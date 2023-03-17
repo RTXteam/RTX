@@ -219,18 +219,18 @@ class InferUtilities:
                 if drug_canonical_id not in kedges:
                     treat_score = node_id_to_score[node_id]
                     edge_attribute_list = [
-                        EdgeAttribute(original_attribute_name="provided_by", value="infores:arax",
+                        EdgeAttribute(original_attribute_name=None, value="infores:arax",
                                       attribute_type_id="biolink:aggregator_knowledge_source",
                                       attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                         EdgeAttribute(original_attribute_name=None, value=True,
-                                      attribute_type_id="biolink:computed_value",
+                                      attribute_type_id="EDAM-DATA:1772",
                                       attribute_source="infores:arax", value_type_id="metatype:Boolean",
                                       value_url=None,
                                       description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                        EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                        EdgeAttribute(attribute_type_id="EDAM:data_0951", original_attribute_name="probability_treats",
+                        EdgeAttribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats",
                                       value=str(treat_score))
                     ]
                     new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:treats', attributes=edge_attribute_list)
@@ -319,7 +319,7 @@ class InferUtilities:
                     ## add attributes to the path-based edge
                     edge_attribute_list = [
                         EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                        EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer based on RTX-KG2c.")
+                        EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer based on RTX-KG2c.")
                     ]
                     new_edge.attributes += edge_attribute_list
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=kp)
@@ -330,12 +330,12 @@ class InferUtilities:
                 treat_score = top_drugs.loc[top_drugs['drug_id'] == drug]["tp_score"].iloc[0]
                 essence_scores[drug_name] = treat_score
                 edge_attribute_list = [
-                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                    EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                    EdgeAttribute(attribute_type_id="EDAM:data_0951", original_attribute_name="probability_treats", value=str(treat_score))
+                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                    EdgeAttribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score))
                 ]
                 #edge_predicate = qedge_id
                 edge_predicate = "biolink:treats"
@@ -556,18 +556,18 @@ class InferUtilities:
                     if gene_canonical_id not in kedges:
                         prob_score = node_id_to_score[node_id]
                         edge_attribute_list = [
-                            EdgeAttribute(original_attribute_name="provided_by", value="infores:arax",
+                            EdgeAttribute(original_attribute_name=None, value="infores:arax",
                                         attribute_type_id="biolink:aggregator_knowledge_source",
                                         attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                             EdgeAttribute(original_attribute_name=None, value=True,
-                                        attribute_type_id="biolink:computed_value",
+                                        attribute_type_id="EDAM-DATA:1772",
                                         attribute_source="infores:arax", value_type_id="metatype:Boolean",
                                         value_url=None,
                                         description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                            EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                            EdgeAttribute(attribute_type_id="EDAM:operation_2423", original_attribute_name=f"probably_{model_type}_activity",
+                            EdgeAttribute(attribute_type_id="EDAM-OPERATION:2434", original_attribute_name=f"probably_{model_type}_activity",
                                         value=str(prob_score))
                         ]
                         if model_type == 'increase':
@@ -605,18 +605,18 @@ class InferUtilities:
                     if chemical_canonical_id not in kedges:
                         prob_score = node_id_to_score[node_id]
                         edge_attribute_list = [
-                            EdgeAttribute(original_attribute_name="provided_by", value="infores:arax",
+                            EdgeAttribute(original_attribute_name=None, value="infores:arax",
                                         attribute_type_id="biolink:aggregator_knowledge_source",
                                         attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                            EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                             EdgeAttribute(original_attribute_name=None, value=True,
-                                        attribute_type_id="biolink:computed_value",
+                                        attribute_type_id="EDAM-DATA:1772",
                                         attribute_source="infores:arax", value_type_id="metatype:Boolean",
                                         value_url=None,
                                         description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                            EdgeAttribute(attribute_type_id="EDAM:operation_2423", original_attribute_name=f"probably_{model_type}_activity",
+                            EdgeAttribute(attribute_type_id="EDAM-OPERATION:2434", original_attribute_name=f"probably_{model_type}_activity",
                                         value=str(prob_score))
                         ]
                         if model_type == 'increase':
@@ -715,11 +715,11 @@ class InferUtilities:
                             new_edge = Edge(subject=object_curie, object=subject_curie, predicate=temp_predicate, attributes=[])
                         ## add attributes to the path-based edges 
                         edge_attribute_list = [
-                            EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                            EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                            EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer based on RTX-KG2c.")
+                            EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer based on RTX-KG2c.")
                         ]
                         new_edge.attributes += edge_attribute_list
                         new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=temp_kp)
@@ -734,12 +734,12 @@ class InferUtilities:
                     regulate_score = top_predictions.loc[top_predictions['chemical_id'] == chemical]["tp_prob"].iloc[0]
                     essence_scores[chemical_curie] = regulate_score
                 edge_attribute_list = [
-                    EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                    EdgeAttribute(attribute_type_id="EDAM:operation_2423", original_attribute_name=f"probably_{model_type}_activity", value=str(regulate_score))
+                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                    EdgeAttribute(attribute_type_id="EDAM-OPERATION:2434", original_attribute_name=f"probably_{model_type}_activity", value=str(regulate_score))
                 ]
                 edge_predicate = f'biolink:regulates'
                 if hasattr(qedges[qedge_id], 'predicates') and qedges[qedge_id].predicates:
