@@ -50,7 +50,7 @@ class QGOrganizedKnowledgeGraph:
         if node_key in self.nodes_by_qg_id[qnode_key]:
             existing_node = self.nodes_by_qg_id[qnode_key][node_key]
             # Merge categories (retain all distinct categories)
-            existing_node.categories = list(set(existing_node.categories).union(set(node.categories)))
+            existing_node.categories = list(convert_to_set(existing_node.categories).union(convert_to_set(node.categories)))
             # Merge attributes
             new_node_attributes = node.attributes if node.attributes else []
             if existing_node.attributes:
