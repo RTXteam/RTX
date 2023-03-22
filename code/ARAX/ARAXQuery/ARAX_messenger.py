@@ -30,6 +30,7 @@ from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
 from node_synonymizer import NodeSynonymizer
+from biolink_helper import BiolinkHelper
 
 
 class ARAXMessenger:
@@ -93,11 +94,13 @@ class ARAXMessenger:
         self.message = message
 
         #### Fill it with default information
+        biolink_helper = BiolinkHelper()
         envelope.id = None
         envelope.type = "translator_reasoner_response"
         envelope.reasoner_id = "ARAX"
         envelope.tool_version = RTXConfiguration().version
-        envelope.schema_version = "1.3.0"
+        envelope.schema_version = "1.4.0"
+        envelope.biolink_version = biolink_helper.get_current_arax_biolink_version()
         envelope.status = "OK"
         envelope.description = "Created empty template response"
         envelope.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
