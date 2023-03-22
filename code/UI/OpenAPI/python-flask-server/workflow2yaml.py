@@ -21,7 +21,7 @@ def main():
     argparser.add_argument('--verbose', action='count', help='If set, print more information about ongoing processing' )
     params = argparser.parse_args()
 
-    response_content = requests.get('https://raw.githubusercontent.com/NCATSTranslator/OperationsAndWorkflows/main/schema/operation.json', headers={'accept': 'application/json'})
+    response_content = requests.get('http://standards.ncats.io/operation/1.3.2/schema', headers={'accept': 'application/json'})
     status_code = response_content.status_code
 
     if status_code != 200:
@@ -34,6 +34,8 @@ def main():
     except:
         eprint("Cannot decode request response")
         return
+
+    print(json.dumps(response_dict,indent=2))
 
     response_dict['components'] = {}
     response_dict['components']['schemas'] = response_dict['$defs']

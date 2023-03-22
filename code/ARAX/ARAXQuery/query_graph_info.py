@@ -128,7 +128,7 @@ class QueryGraphInfo:
 
         #### Ignore special informationational edges for now.
         virtual_edge_predicates = {
-            'biolink:has_normalized_google_distance_with': 1,
+            'biolink:occurs_together_in_literature_with': 1,
             'biolink:has_fisher_exact_test_p-value_with': 1,
             'biolink:has_jaccard_index_with': 1,
             'biolink:probably_treats': 1,

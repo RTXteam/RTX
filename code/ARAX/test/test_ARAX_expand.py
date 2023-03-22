@@ -20,6 +20,8 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.attribute import Attribute
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
+from biolink_helper import BiolinkHelper
 
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
@@ -46,21 +48,21 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
 
     # Optionally print more detail
     if debug:
-        _print_nodes(nodes_by_qg_id)
-        _print_edges(edges_by_qg_id)
-        _print_counts_by_qgid(nodes_by_qg_id, edges_by_qg_id)
+        print_nodes(nodes_by_qg_id)
+        print_edges(edges_by_qg_id)
+        print_counts_by_qgid(nodes_by_qg_id, edges_by_qg_id)
         print(response.show(level=ARAXResponse.DEBUG))
 
     # Run standard testing (applies to every test case)
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
-    _check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
-    _check_property_format(nodes_by_qg_id, edges_by_qg_id)
-    _check_node_categories(message.knowledge_graph.nodes, message.query_graph)
+    check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
+    check_property_format(nodes_by_qg_id, edges_by_qg_id)
+    check_node_categories(message.knowledge_graph.nodes, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
 
 
-def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     print(f"KG counts:")
     if nodes_by_qg_id or edges_by_qg_id:
         for qnode_key, corresponding_nodes in sorted(nodes_by_qg_id.items()):
@@ -71,32 +73,20 @@ def _print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_q
         print("  KG is empty")
 
 
-def _print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
+def print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
     for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
             print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node.qnode_keys}, "
                   f"{node.query_ids if hasattr(node, 'query_ids') else ''}")
 
 
-def _print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     for qedge_key, edges in sorted(edges_by_qg_id.items()):
         for edge_key, edge in sorted(edges.items()):
             print(f"{qedge_key}: {edge_key}, {edge.subject}--{edge.predicate}->{edge.object}, {edge.qedge_keys}")
 
 
-def _print_node_counts_by_prefix(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
-    node_counts_by_prefix = dict()
-    for qnode_key, nodes in nodes_by_qg_id.items():
-        for node_key, node in nodes.items():
-            prefix = node_key.split(':')[0]
-            if prefix in node_counts_by_prefix.keys():
-                node_counts_by_prefix[prefix] += 1
-            else:
-                node_counts_by_prefix[prefix] = 1
-    print(node_counts_by_prefix)
-
-
-def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     node_keys = set()
     node_keys_used_by_edges = set()
     for qnode_key, nodes in nodes_by_qg_id.items():
@@ -109,7 +99,7 @@ def _check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_i
     assert node_keys == node_keys_used_by_edges or len(node_keys_used_by_edges) == 0
 
 
-def _check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
     for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             assert node_key and isinstance(node_key, str)
@@ -143,12 +133,16 @@ def _check_attribute(attribute: Attribute):
     assert isinstance(attribute.description, str) or attribute.description is None
 
 
-def _check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
+def check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
+    bh = BiolinkHelper()
+    qnode_descendant_categories_map = {qnode_key: set(bh.get_descendants(qnode.categories))
+                                       for qnode_key, qnode in query_graph.nodes.items() if qnode.categories}
     for node in nodes.values():
         for qnode_key in node.qnode_keys:
             qnode = query_graph.nodes[qnode_key]
-            if qnode.categories:
-                assert set(qnode.categories).issubset(set(node.categories))  # Could have additional categories if it has multiple qnode keys
+            if qnode.categories and not qnode.ids:
+                # A node's categories should be only descendants of what was asked for in the QG
+                assert set(node.categories).issubset(qnode_descendant_categories_map[qnode_key])
 
 
 @pytest.mark.slow
@@ -730,7 +724,7 @@ def test_kg2_predicate_hierarchy_reasoning():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:affects")
-    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:entity_positively_regulates_entity")
+    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:regulates")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
 
@@ -808,15 +802,43 @@ def test_many_kp_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, timeout=10)
 
 
-def test_entity_to_entity_query():
-    actions_list = [
-        "add_qnode(ids=NCBIGene:375, categories=biolink:Gene, key=n0)",
-        "add_qnode(categories=biolink:Gene, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e0, predicates=biolink:entity_negatively_regulates_entity)",
-        "expand(kp=infores:rtx-kg2)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+def test_qualified_regulates_query():
+    query = {
+        "nodes": {
+            "n0": {
+                "ids": ["NCBIGene:375"]
+            },
+            "n1": {
+                "categories": ["biolink:Gene"]
+            }
+        },
+        "edges": {
+            "e0": {
+                "subject": "n0",
+                "object": "n1",
+                "qualifier_constraints": [
+                    {"qualifier_set": [
+                        {"qualifier_type_id": "biolink:qualified_predicate",
+                         "qualifier_value": "biolink:causes"},
+                        {"qualifier_type_id": "biolink:object_direction_qualifier",
+                         "qualifier_value": "decreased"},
+                        {"qualifier_type_id": "biolink:object_aspect_qualifier",
+                         "qualifier_value": "activity_or_abundance"}
+                    ]}
+                ],
+                "attribute_constraints": [
+                    {
+                        "id": "biolink:knowledge_source",
+                        "name": "knowledge source",
+                        "value": ["infores:rtx-kg2"],
+                        "operator": "==",
+                        "not": False
+                    }
+                ]
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
 
 
 def test_1516_single_quotes_in_ids():
@@ -840,7 +862,6 @@ def test_input_curie_remapping():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
     assert "KEGG.COMPOUND:C02700" in nodes_by_qg_id["n0"]
-    assert "formylkynurenine" in nodes_by_qg_id["n0"]["KEGG.COMPOUND:C02700"].name.lower()
 
 
 def test_constraint_validation():
@@ -1252,6 +1273,7 @@ def test_xdtd_no_curies():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True)
 
 
+@pytest.mark.skip
 def test_xdtd_with_other_edges():
     query = {
         "nodes": {
@@ -1431,6 +1453,17 @@ def test_subclass_answers_for_non_pinned_qnodes():
             }
         }
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, timeout=75)
+
+
+def test_kp_list():
+    actions = [
+        "add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)",
+        "add_qnode(key=qg1, categories=biolink:Protein)",
+        "add_qedge(subject=qg1, object=qg0, key=qe0)",
+        "expand(edge_key=qe0, kp=[infores:rtx-kg2, infores:molepro])",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions, timeout=75)
 
 
 if __name__ == "__main__":

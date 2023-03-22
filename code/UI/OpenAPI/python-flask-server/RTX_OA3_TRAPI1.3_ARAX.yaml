@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   description: TRAPI 1.3 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
-  version: 1.3.0
+  version: 1.3.1
   title: ARAX Translator Reasoner
   contact:
     email: edeutsch@systemsbiology.org
@@ -14,7 +14,7 @@ info:
     team:
       - Expander Agent
     infores: infores:arax
-    biolink-version: 2.2.11
+    biolink-version: 3.0.3
     externalDocs:
       description: >-
         The values for component and team are restricted according to this
@@ -796,6 +796,7 @@ components:
               - $ref: '#/components/schemas/OperationFilterResults'
               - $ref: '#/components/schemas/OperationFilterResultsTopN'
               - $ref: '#/components/schemas/OperationLookup'
+              - $ref: '#/components/schemas/OperationLookupAndScore'
               - $ref: '#/components/schemas/OperationOverlay'
               - $ref: '#/components/schemas/OperationOverlayComputeJaccard'
               - $ref: '#/components/schemas/OperationOverlayComputeNgd'
@@ -943,12 +944,12 @@ components:
             e00:
               subject: n00
               object: n01
-              predicates: [ biolink:physically_interacts_with ]
+              predicates: [ 'biolink:physically_interacts_with' ]
           nodes:
             n00:
-              ids: [ CHEMBL.COMPOUND:CHEMBL112 ]
+              ids: [ 'CHEMBL.COMPOUND:CHEMBL112' ]
             n01:
-              categories: [ biolink:Protein ]
+              categories: [ 'biolink:Protein' ]
     LogEntry:
       description: >-
         The LogEntry object contains information useful for tracing
@@ -1254,7 +1255,7 @@ components:
           items:
             $ref: '#/components/schemas/CURIE'
           minItems: 1
-          example: [OMIM:603903]
+          example: [ 'OMIM:603903' ]
           description: CURIE identifier for this node
           nullable: true
         categories:
@@ -1919,17 +1920,49 @@ components:
           description: Format of the response (full or compact)
     OperationAnnotate:
       additionalProperties: false
+      description: This operation adds attributes to knowledge graph elements.
       properties:
         id:
           enum:
           - annotate
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationAnnotateEdges:
       additionalProperties: false
+      description: This operation adds attributes to knowledge graph edges.
       properties:
         id:
           enum:
@@ -1946,11 +1979,42 @@ components:
                 type: string
               type: array
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationAnnotateNodes:
       additionalProperties: false
+      description: This operation adds attributes to knowledge graph nodes.
       properties:
         id:
           enum:
@@ -1967,33 +2031,129 @@ components:
                 type: string
               type: array
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationBind:
       additionalProperties: false
+      description: This operation adds results binding kgraph elements to qgraph elements.
       properties:
         id:
           enum:
           - bind
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationCompleteResults:
       additionalProperties: false
+      description: This operation combines partial results into complete results.
       properties:
         id:
           enum:
           - complete_results
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationEnrichResults:
       additionalProperties: false
+      description: Create new results by applying enrichment analysis to existing
+        results.  In particular, combines results by transforming a qnode into a set,
+        formed of knodes that share a property or relation more often than expected
+        by chance.
       properties:
         id:
           enum:
@@ -2017,11 +2177,43 @@ components:
                 type: string
               type: array
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationFill:
       additionalProperties: false
+      description: This operation adds knodes and kedges. Any constraints attached
+        to QNodes and QEdges specified in the TRAPI must be respected.
       properties:
         id:
           enum:
@@ -2041,13 +2233,14 @@ components:
                 minLength: 1
                 type: array
               qedge_keys:
-                type: array
+                description: A list of qedge keys. If included only edges corresponding
+                  to the given qedge keys, as well as their connected nodes, will
+                  be filled. If not included all edges will be filled.
+                example:
+                - e00
                 items:
                   type: string
-                description: A list of qedge keys. If included only edges
-                  corresponding to the given qedge keys, as well as their
-                  connected nodes, will be filled. If not included all edges
-                  will be filled.
+                type: array
           - additionalProperties: false
             properties:
               denylist:
@@ -2060,30 +2253,94 @@ components:
                 minLength: 1
                 type: array
               qedge_keys:
-                type: array
+                description: A list of qedge keys. If included only edges corresponding
+                  to the given qedge keys, as well as their connected nodes, will
+                  be filled. If not included all edges will be filled.
+                example:
+                - e00
                 items:
                   type: string
-                description: A list of qedge keys. If included only edges
-                  corresponding to the given qedge keys, as well as their
-                  connected nodes, will be filled. If not included all edges
-                  will be filled.
+                type: array
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationFilterKgraph:
       additionalProperties: false
+      description: This operation removes kgraph elements (nodes and/or edges).
       properties:
         id:
           enum:
           - filter_kgraph
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationFilterKgraphContinuousKedgeAttribute:
       additionalProperties: false
+      description: This operation removes kgraph edges based on the value of a continuous
+        edge attribute. Edges without the given attribute are left alone.
       properties:
         id:
           enum:
@@ -2129,12 +2386,45 @@ components:
           - threshold
           - remove_above_or_below
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationFilterKgraphDiscreteKedgeAttribute:
       additionalProperties: false
+      description: This operation removes kgraph edges which have a discrete attribute
+        containing the specified value. Edges without the given attribute are left
+        alone.
       properties:
         id:
           enum:
@@ -2173,12 +2463,47 @@ components:
           - edge_attribute
           - remove_value
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationFilterKgraphDiscreteKnodeAttribute:
       additionalProperties: false
+      description: This operation removes kgraph nodes which have a discrete attribute
+        containing the specified value. In TRAPI 1.1+ this will look in the `attribute_type_id`
+        and `original_attribute_name` attribute fields for the attribute name. Node
+        without the given attribute are left alone. Edges connecting to the removed
+        nodes will also be removed.
       properties:
         id:
           enum:
@@ -2207,23 +2532,87 @@ components:
           - node_attribute
           - remove_value
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationFilterKgraphOrphans:
       additionalProperties: false
+      description: This operation removes kgraph elements that are not referenced
+        by any results.
       properties:
         id:
           enum:
           - filter_kgraph_orphans
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationFilterKgraphPercentile:
       additionalProperties: false
+      description: This operation removes kgraph edges that have attribute values
+        are below/above the given percentile.
       properties:
         id:
           enum:
@@ -2271,12 +2660,44 @@ components:
           required:
           - edge_attribute
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationFilterKgraphStdDev:
       additionalProperties: false
+      description: This operation removes kgraph edges that have attribute values
+        are below/above the mean +/- n standard deviations.
       properties:
         id:
           enum:
@@ -2333,12 +2754,44 @@ components:
           required:
           - edge_attribute
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationFilterKgraphTopN:
       additionalProperties: false
+      description: This operation removes kgraph edges that have attribute values
+        are below/above the top/bottom n values.
       properties:
         id:
           enum:
@@ -2386,23 +2839,87 @@ components:
           required:
           - edge_attribute
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationFilterResults:
       additionalProperties: false
+      description: This operation allows the TRAPI server to remove elements from
+        the list of results.
       properties:
         id:
           enum:
           - filter_results
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationFilterResultsTopN:
       additionalProperties: false
+      description: This operation truncates the results to at most `max_results` that
+        appear in the TRAPI JSON message.
       properties:
         id:
           enum:
@@ -2418,34 +2935,183 @@ components:
           required:
           - max_results
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationLookup:
       additionalProperties: false
+      description: This operation adds knodes/kedges and (complete) results. It is
+        equivalent to the workflow fill + bind + complete_results. Any constraints
+        attached to QNodes and QEdges specified in the TRAPI must be respected.
       properties:
         id:
           enum:
           - lookup
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationLookupAndScore:
+      additionalProperties: false
+      description: This operation adds knodes/kedges, (complete) results, and scores
+        (to the results). It is equivalent to the workflow fill + bind + complete_results
+        + score. Any constraints attached to QNodes and QEdges specified in the TRAPI
+        must be respected.
+      properties:
+        id:
+          enum:
+          - lookup_and_score
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationOverlay:
       additionalProperties: false
+      description: This operation adds additional qedges and/or kedges and/or result
+        edge bindings.
       properties:
         id:
           enum:
           - overlay
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationOverlayComputeJaccard:
       additionalProperties: false
+      description: This operation computes the Jaccard Similarity which measures how
+        many intermediate_node_key nodes are directly connected to both the end_node_keys
+        nodes for all pairs of nodes with corresponding keys. It will then add edges
+        to the knowledge graph along with edge attributes (with the property name
+        jaccard_index) between each start_node_key and object_node_key. A query graph
+        edge will also be added using the key specified by virtual_relation_label.
+        This is used for purposes such as "find me all drugs (start_node_key) that
+        have many proteins (intermediate_node_key) in common with this disease (end_node_key)."
+        This can be used for downstream filtering to concentrate on relevant bioentities.
       properties:
         id:
           enum:
@@ -2475,12 +3141,46 @@ components:
           - end_node_keys
           - virtual_relation_label
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationOverlayComputeNgd:
       additionalProperties: false
+      description: This operation computes the normalized Google distance (co-occurrence
+        frequency) in PubMed abstracts and adds virual edges between qnodes AND/OR
+        knodes AND/OR results edge bindings. If no publications are found infinity
+        is returned.
       properties:
         id:
           enum:
@@ -2506,23 +3206,98 @@ components:
           - virtual_relation_label
           - qnode_keys
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationOverlayConnectKnodes:
       additionalProperties: false
+      description: Given a TRAPI message, create new kedges between existing knodes.  These
+        may be created using arbitrary methods or data sources, though provenance
+        should be attached to the new kedges.   Each new kedge is also added to all
+        results containing node bindings to both the subject and object knodes.  This
+        may be independent of any qedge connections, i.e. kedges can be created between
+        any nodes in the kgraph.
       properties:
         id:
           enum:
           - overlay_connect_knodes
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationOverlayFisherExactTest:
       additionalProperties: false
+      description: Fisher exact test computes the Fisher's Exact Test p-values of
+        the connection between a list of given nodes with specified query id (subject_qnode_key
+        e.g. n01) to their adjacent nodes with specified query id (object_qnode_key
+        e.g. n02) in the message knowledge graph. This information is then added as
+        an edge attribute to a virtual edge which is then added to the query graph
+        and knowledge graph. It can also allow you to filter out the user-defined
+        insignificance of connections based on a specified p-value cutoff or return
+        the top n smallest p-value of connections and only add their corresponding
+        virtual edges to the knowledge graph.
       properties:
         id:
           enum:
@@ -2553,45 +3328,174 @@ components:
           - object_qnode_key
           - virtual_relation_label
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationRestate:
       additionalProperties: false
+      description: This operation modifies the query graph.
       properties:
         id:
           enum:
           - restate
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationScore:
       additionalProperties: false
+      description: This operation adds scores to results.
       properties:
         id:
           enum:
           - score
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationSortResults:
       additionalProperties: false
+      description: This operation allows the TRAPI server to sort the elements of
+        the list of results.
       properties:
         id:
           enum:
           - sort_results
           type: string
         parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       type: object
     OperationSortResultsEdgeAttribute:
       additionalProperties: false
+      description: This operation sorts the results by the given edge attribute. If
+        in ascending order, the minimum value of the results edges with the given
+        attribute will be taken while the maximum will be taken for descending order.
+        If a result has no edges with the given attribute, it will be listed last.
+        If `max_results` is given, it truncates the results to at most the given value.
       properties:
         id:
           enum:
@@ -2623,12 +3527,47 @@ components:
           - edge_attribute
           - ascending_or_descending
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationSortResultsNodeAttribute:
       additionalProperties: false
+      description: This operation sorts the results by the given node attribute. If
+        in ascending order, the minimum value of the results nodes with the given
+        attribute will be taken while the maximum will be taken for descending order.
+        If a result has no nodes with the given attribute, it will be listed last.
+        If `max_results` is given, it truncates the results to at most the given value.
       properties:
         id:
           enum:
@@ -2660,12 +3599,44 @@ components:
           - node_attribute
           - ascending_or_descending
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters
       type: object
     OperationSortResultsScore:
       additionalProperties: false
+      description: This operation sorts the results by the result score. If `max_results`
+        is given, it truncates the results to at most the given value.
       properties:
         id:
           enum:
@@ -2683,6 +3654,36 @@ components:
           required:
           - ascending_or_descending
           type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                example:
+                - infores:aragorn
+                items:
+                  type: string
+                minLength: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
       required:
       - id
       - parameters

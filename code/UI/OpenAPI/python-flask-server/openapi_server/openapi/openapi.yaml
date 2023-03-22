@@ -9,13 +9,13 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: ARAX Translator Reasoner
-  version: 1.3.0
+  version: 1.3.1
   x-translator:
     component: ARA
     team:
     - Expander Agent
     infores: infores:arax
-    biolink-version: 2.2.11
+    biolink-version: 3.0.3
     externalDocs:
       description: The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url

@@ -159,7 +159,7 @@ def test_example_3():
     assert len(message.results) >= 60
     assert message.results[0].essence is not None
     _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
-    _virtual_tester(message, 'biolink:has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
+    _virtual_tester(message, 'biolink:occurs_together_in_literature_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
 
 
 @pytest.mark.slow
@@ -914,7 +914,7 @@ def test_issue_1848():
 #     #assert len(message.results) == ?
 #     assert message.results[0].essence is not None
 #     _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
-#     _virtual_tester(message, 'biolink:has_normalized_google_distance_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
+#     _virtual_tester(message, 'biolink:occurs_together_in_literature_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
 
 @pytest.mark.slow
 def test_example_3_issue_679():

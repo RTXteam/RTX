@@ -46,3 +46,6 @@ code/ARAX/NodeSynonymizer/kg2_synonyms.json
 
 code/kg2c/**/*.tsv
 code/kg2c/*.pickle
+
+code/ARAX/ARAXQuery/Infer/data/xCRG_data/*.pt
+code/ARAX/ARAXQuery/Infer/data/xCRG_data/*.npz
