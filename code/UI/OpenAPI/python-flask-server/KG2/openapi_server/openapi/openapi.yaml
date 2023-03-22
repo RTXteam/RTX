@@ -2,14 +2,14 @@ openapi: 3.0.1
 info:
   contact:
     email: edeutsch@systemsbiology.org
-  description: TRAPI 1.3 endpoint for the NCATS Biomedical Translator KP called RTX
+  description: TRAPI 1.4 endpoint for the NCATS Biomedical Translator KP called RTX
     KG2
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2
-  version: 2.8.0.0
+  version: 2.8.0.1
   x-translator:
     component: KP
     team:
@@ -21,7 +21,7 @@ info:
         external JSON schema. See schema and examples at url
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.3.0
+    version: 1.4.0
     asyncquery: false
     operations:
     - lookup
@@ -33,8 +33,8 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: RTX-KG2 TRAPI 1.3 endpoint - development
-  url: https://arax.ncats.io/api/rtxkg2/v1.3
+- description: RTX-KG2 TRAPI 1.4 endpoint - development
+  url: https://arax.ncats.io/api/rtxkg2/v1.4
   x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web
