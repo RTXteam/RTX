@@ -2,14 +2,14 @@ openapi: 3.0.1
 info:
   contact:
     email: edeutsch@systemsbiology.org
-  description: TRAPI 1.3 endpoint for the NCATS Biomedical Translator Reasoner called
+  description: TRAPI 1.4 endpoint for the NCATS Biomedical Translator Reasoner called
     ARAX
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: ARAX Translator Reasoner
-  version: 1.3.1
+  version: 1.4.0
   x-translator:
     component: ARA
     team:
@@ -21,7 +21,7 @@ info:
         external JSON schema. See schema and examples at url
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.3.0
+    version: 1.4.0
     asyncquery: true
     operations:
     - lookup
@@ -53,29 +53,8 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: ARAX TRAPI 1.3 endpoint - production
-  url: https://arax.transltr.io/api/arax/v1.3
-  x-maturity: production
-- description: ARAX TRAPI 1.3 endpoint - production
-  url: https://arax.ncats.io/api/arax/v1.3
-  x-maturity: production
-- description: ARAX TRAPI 1.3 endpoint - testing
-  url: https://arax.test.transltr.io/api/arax/v1.3
-  x-maturity: testing
-- description: ARAX TRAPI 1.3 endpoint - staging
-  url: https://arax.ci.transltr.io/api/arax/v1.3
-  x-maturity: staging
-- description: ARAX TRAPI 1.3 endpoint - development
-  url: https://arax.ncats.io/beta/api/arax/v1.3
-  x-maturity: development
-- description: ARAX TRAPI 1.3 endpoint - development
-  url: https://arax.ncats.io/test/api/arax/v1.3
-  x-maturity: development
-- description: ARAX TRAPI 1.3 endpoint - development
-  url: https://arax.ncats.io/devED/api/arax/v1.3
-  x-maturity: development
-- description: ARAX TRAPI 1.3 endpoint - development
-  url: https://arax.ncats.io/devLM/api/arax/v1.3
+- description: ARAX TRAPI 1.4 endpoint - development
+  url: https://arax.ncats.io/api/arax/v1.4
   x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web
