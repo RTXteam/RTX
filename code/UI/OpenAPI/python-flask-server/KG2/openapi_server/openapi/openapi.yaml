@@ -8,7 +8,7 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
-  title: RTX KG2
+  title: RTX KG2 - TRAPI 1.4.0
   version: 2.8.0.1
   x-translator:
     component: KP
