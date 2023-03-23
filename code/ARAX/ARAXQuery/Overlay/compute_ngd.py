@@ -161,7 +161,7 @@ class ComputeNGD:
                             ## fix #1980 issue
                             temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
                             if len(temp_list) != 0:
-                                pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=temp_list)
+                                pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=temp_list)
                                 edge_attribute_list.append(pmid_attribute)
 
                             #### FIXME temporary hack by EWD
@@ -272,7 +272,7 @@ class ComputeNGD:
                     ## fix #1980 issue
                     temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
                     if len(temp_list) != 0:
-                        pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=temp_list)
+                        pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=temp_list)
                         edge_attribute_list.append(pmid_attribute)
 
                     #### FIXME temporary hack by EWD
