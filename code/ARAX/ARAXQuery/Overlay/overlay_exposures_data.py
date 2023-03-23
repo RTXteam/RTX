@@ -36,7 +36,7 @@ class OverlayExposuresData:
         self.icees_known_curies = self._load_icees_known_curies(self.response)
         self.synonyms_dict = self._get_node_synonyms(self.message.knowledge_graph)
         self.icees_attribute_name = "icees_p-value"
-        self.icees_attribute_type = "EDAM:data_1669"
+        self.icees_attribute_type = "EDAM-DATA:1669"
         self.icees_edge_type = "biolink:has_icees_p-value_with"
         self.icees_knowledge_graph_overlay_url = "https://icees.renci.org:16340/knowledge_graph_overlay"
         self.virtual_relation_label = self.parameters.get('virtual_relation_label')

@@ -38,7 +38,7 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     Tests attributes of a message
     message: returned from _do_arax_query
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM:data_1234')
+    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
     edges_of_interest = []
@@ -61,7 +61,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     edge_predicate: the name of the virtual edge (eg. biolink:has_jaccard_index_with)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM:data_1234')
+    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])

@@ -116,7 +116,7 @@ class OverlayClinicalInfo:
         try:
             # edge attributes
             name = name
-            type = "EDAM:data_0951"
+            type = "EDAM-DATA:0951"
             url = "http://cohd.smart-api.info/"
             value = default
 

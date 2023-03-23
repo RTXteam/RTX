@@ -386,7 +386,7 @@ def test_dtd_expand_1():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:probability_treats" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].original_attribute_name == "probability_treats" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM-DATA:0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
@@ -402,7 +402,7 @@ def test_dtd_expand_2():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert all([edges_by_qg_id[qedge_key][edge_key].predicate == "biolink:probability_treats" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].original_attribute_name == "probability_treats" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM:data_0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
+    assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM-DATA:0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
