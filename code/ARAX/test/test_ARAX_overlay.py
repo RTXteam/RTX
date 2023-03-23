@@ -52,6 +52,7 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     edges_of_interest = []
     values = set()
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         if hasattr(edge, 'attributes') and edge.attributes:
             for attr in edge.attributes:
                 if attr.original_attribute_name == attribute_name:
@@ -79,6 +80,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     assert edge_predicate in edge_predicates_in_kg
     edges_of_interest = []
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         add_edge = False
         for attribute in edge.attributes:
             if attribute.original_attribute_name == "virtual_relation_label":
@@ -120,6 +122,7 @@ def test_jaccard():
     assert 'biolink:has_jaccard_index_with' in edge_predicates_in_kg
     jaccard_edges = []
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         add_edge = False
         for attribute in edge.attributes:
             if attribute.original_attribute_name == "virtual_relation_label":
@@ -186,6 +189,7 @@ def test_compute_ngd_virtual():
     ngd_edges = []
     for edge in message.knowledge_graph.edges.values():
         add_edge = False
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         for attribute in edge.attributes:
             if attribute.original_attribute_name == "virtual_relation_label":
                 if attribute.value == "N1":
@@ -219,6 +223,7 @@ def test_compute_ngd_attribute():
     assert response.status == 'OK'
     ngd_edges = []
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         if hasattr(edge, 'attributes'):
             for attr in edge.attributes:
                 if attr.original_attribute_name == 'normalized_google_distance':
@@ -275,8 +280,7 @@ def test_FET_ex1():
         edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
-        #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
-        assert edge_attributes_dict['provided_by'] == 'infores:arax'
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         if relation_name == 'FET1':
             assert 0 <= float(edge.attributes[0].value) < 0.001
         else:
@@ -313,6 +317,7 @@ def test_FET_ex2():
     FET_edges = []
     FET_edge_labels = set()
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         relation_name = None
         add_edge = False
         for attribute in edge.attributes:
@@ -332,8 +337,6 @@ def test_FET_ex2():
         edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
-        #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
-        assert edge_attributes_dict['provided_by'] == 'infores:arax'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 1
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
@@ -701,6 +704,7 @@ def test_missing_ngd_pmids():
     assert response.status == 'OK'
     ngd_publications = {}
     for edge_key, edge in message.knowledge_graph.edges.items():
+        assert 'biolink:primary_knowledge_source' in edge.attributes
         if edge.attributes is not None:
             for attribute in edge.attributes:
                 if attribute.original_attribute_name == 'normalized_google_distance':
@@ -742,6 +746,7 @@ def test_jaccard_not_above_1():
     assert 'biolink:has_jaccard_index_with' in edge_predicates_in_kg
     jaccard_edges = []
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in edge.attributes
         add_edge = False
         for attribute in edge.attributes:
             if attribute.original_attribute_name == "virtual_relation_label":
