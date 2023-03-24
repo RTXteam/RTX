@@ -15,7 +15,8 @@ import pickle
 import platform
 
 from sri_node_normalizer import SriNodeNormalizer
-from category_manager import CategoryManager
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 
 # Testing and debugging flags
 DEBUG = True
@@ -1934,8 +1935,8 @@ class NodeSynonymizer:
         batches = []
         results = {}
 
-        # Set up the category manager
-        category_manager = CategoryManager()
+        # We start with an undefined BiolinkHelper() and will only set it up if we need it. Don't always need it and it is slow to set up
+        biolink_helper = None
 
         # Make sets of comma-separated list strings for the curies and set up the results dict with all the input values
         uc_curies = []
@@ -2003,6 +2004,7 @@ class NodeSynonymizer:
                      INNER JOIN unique_concepts AS U ON S.unique_concept_curie == U.uc_curie
                      WHERE S.lc_name in ( '{batch['batch_str']}' )"""
             #print(f"INFO: Processing {batch['batch_type']} batch: {batch['batch_str']}")
+
             cursor = self.connection.cursor()
             cursor.execute( sql )
             rows = cursor.fetchall()
@@ -2044,7 +2046,13 @@ class NodeSynonymizer:
 
                     #### Also store tidy categories
                     if return_all_categories:
-                        results[entity]['expanded_categories'] = category_manager.get_expansive_categories(row[4])
+                        if biolink_helper is None:
+                            biolink_helper = BiolinkHelper()
+                        ancestor_list = biolink_helper.get_ancestors(row[4])
+                        ancestor_dict = {}
+                        for ancestor in ancestor_list:
+                            ancestor_dict[ancestor] = True
+                        results[entity]['expanded_categories'] = ancestor_dict
 
                 else:
                     print(f"ERROR: Unable to find entity {entity}")
@@ -2093,7 +2101,6 @@ class NodeSynonymizer:
                 for entity,all_categories in entity_all_categories.items():
                     if entity in results and results[entity] is not None:
                         results[entity]['all_categories'] = all_categories
-
 
         return results
 
@@ -2559,7 +2566,7 @@ def run_example_12():
 
 # ############################################################################################
 def run_examples():
-    run_example_7()
+    run_example_10()
     return
     run_example_1()
     run_example_2()

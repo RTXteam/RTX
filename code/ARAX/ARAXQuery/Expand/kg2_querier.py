@@ -22,6 +22,7 @@ from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.qualifier import Qualifier
 
 
 class KG2Querier:
@@ -223,18 +224,41 @@ class KG2Querier:
     def _convert_kg2c_plover_edge_to_trapi_edge(self, edge_tuple: list) -> Edge:
         edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
         knowledge_sources = edge_tuple[3]
+        qualified_predicate = edge_tuple[4]
+        qualified_object_direction = edge_tuple[5]
+        qualified_object_aspect = edge_tuple[6]
+
         # Indicate that this edge came from the KG2 KP
         edge.attributes.append(Attribute(attribute_type_id="biolink:aggregator_knowledge_source",
                                          value=self.kg2_infores_curie,
                                          value_type_id="biolink:InformationResource",
                                          attribute_source=self.kg2_infores_curie))
+
         # Create knowledge source attributes for each of this edge's knowledge sources
-        knowledge_source_attributes = [Attribute(attribute_type_id="biolink:knowledge_source",
+        knowledge_source_attributes = [Attribute(attribute_type_id="biolink:primary_knowledge_source",
                                                  value=infores_curie,
                                                  value_type_id="biolink:InformationResource",
                                                  attribute_source=self.kg2_infores_curie)
                                        for infores_curie in knowledge_sources]
         edge.attributes += knowledge_source_attributes
+
+        # Add any qualifiers as appropriate
+        qualifiers = []
+        if qualified_predicate:
+            predicate_qualifier = Qualifier(qualifier_type_id="biolink:qualified_predicate",
+                                            qualifier_value=qualified_predicate)
+            qualifiers.append(predicate_qualifier)
+        if qualified_object_direction:
+            direction_qualifier = Qualifier(qualifier_type_id="biolink:object_direction_qualifier",
+                                            qualifier_value=qualified_object_direction)
+            qualifiers.append(direction_qualifier)
+        if qualified_object_aspect:
+            aspect_qualifier = Qualifier(qualifier_type_id="biolink:object_aspect_qualifier",
+                                         qualifier_value=qualified_object_aspect)
+            qualifiers.append(aspect_qualifier)
+        if qualifiers:
+            edge.qualifiers = qualifiers
+
         return edge
 
     @staticmethod

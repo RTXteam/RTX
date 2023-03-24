@@ -81,7 +81,7 @@ def main():
     upload_to_s3 = kg2c_config_info["kg2c"]["upload_to_s3"]
     build_synonymizer = kg2c_config_info["synonymizer"]["build"]
     synonymizer_name = kg2c_config_info["synonymizer"]["name"]
-    upload_to_arax_ncats_io = kg2c_config_info["upload_to_arax.ncats.io"]
+    upload_to_arax_databases_rtx_ai = kg2c_config_info["upload_to_arax_databases.rtx.ai"]
     upload_directory = kg2c_config_info["upload_directory"]
     logging.info(f"KG2pre version to use is {kg2_version}")
     logging.info(f"KG2pre neo4j endpoint to use is {kg2pre_endpoint}")
@@ -97,7 +97,7 @@ def main():
             raise ValueError(f"kg2c_config.json specifies that a new synonymizer should be built, but the "
                              f"synonymizer name provided already exists in {synonymizer_dir}. You must enter a new "
                              f"synonymizer name.")
-        if upload_to_arax_ncats_io and not upload_directory:
+        if upload_to_arax_databases_rtx_ai and not upload_directory:
             raise ValueError(f"You must specify the path of the directory on arax.ncats.io to upload synonymizer "
                              f"artifacts to in kg2c_config.json.")
     else:
@@ -115,9 +115,9 @@ def main():
     if build_synonymizer and not args.test:
         logging.info("Building node synonymizer off of specified KG2..")
         subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/build-synonymizer.sh"])
-        if upload_to_arax_ncats_io:
-            logging.info(f"Uploading synonymizer artifacts to arax.ncats.io:{upload_directory}")
-            subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", upload_directory, synonymizer_name])
+        if upload_to_arax_databases_rtx_ai:
+            logging.info(f"Uploading synonymizer artifacts to arax-databases.rtx.ai:{upload_directory}")
+            subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", RTXConfiguration().db_host, upload_directory, synonymizer_name])
         logging.info("Done building synonymizer.")
 
     # Actually build KG2c
@@ -129,9 +129,9 @@ def main():
         if not args.test:
             if upload_to_s3:
                 _upload_output_files_to_s3()
-            if upload_to_arax_ncats_io:
-                logging.info(f"Uploading KG2c artifacts to arax.ncats.io:{upload_directory}")
-                subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", upload_directory])
+            if upload_to_arax_databases_rtx_ai:
+                logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
+                subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTXConfiguration().db_host, upload_directory])
 
         logging.info(f"DONE WITH {'TEST ' if args.test else ''}KG2c BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours")
 

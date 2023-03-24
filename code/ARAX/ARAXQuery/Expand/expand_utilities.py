@@ -180,6 +180,11 @@ def convert_to_list(item: Union[str, set, list, None]) -> List[str]:
         return []
 
 
+def convert_to_set(item: Union[str, set, list, None]) -> Set[str]:
+    item_list = convert_to_list(item)
+    return set(item_list)
+
+
 def get_node_keys_used_by_edges(edges_dict: Dict[str, Edge]) -> Set[str]:
     return {node_key for edge in edges_dict.values() for node_key in [edge.subject, edge.object]}
 
@@ -533,34 +538,12 @@ def get_computed_value_attribute() -> Attribute:
                                  "directly attachable to other edges.")
 
 
-def get_kp_endpoint_url(kp_name: str) -> Union[str, None]:
-    endpoint_map = {
-        "infores:biothings-explorer": "https://api.bte.ncats.io/v1",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:genetics-data-provider": "https://translator.broadinstitute.org/genetics_provider/trapi/v1.3",
-        "infores:molepro": "https://translator.broadinstitute.org/molepro/trapi/v1.3",
-        "infores:rtx-kg2": RTXConfig.rtx_kg2_url,
-        "infores:biothings-multiomics-clinical-risk": "https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:biothings-multiomics-wellness": "https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:spoke": "https://spokekp.healthdatascience.cloud/api/v1.3",
-        "infores:biothings-multiomics-biggim-drug-response": "https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:biothings-tcga-mut-freq": "https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:connections-hypothesis": "http://chp.thayer.dartmouth.edu",  # This always points to their latest TRAPI endpoint (CHP suggested using it over their '/v1.2' URL, which has some issues)   # TODO: Update to 1.3 once registered in SmartAPI?
-        "infores:cohd": "https://cohd.io/api",   # This should be using latest TRAPI
-        "infores:icees-dili": "https://icees-dili.renci.org",  # TODO: Update to 1.3 once registered in SmartAPI
-        "infores:icees-asthma": "https://icees-asthma.renci.org"  # TODO: Update to 1.3 once registered in SmartAPI
-    }
-    return endpoint_map.get(kp_name)
-
-
 def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXResponse) -> List[str]:
-    # Order KPs such that those with longer requests will tend to be kicked off earlier
+    # Our in-house KPs block the multi-threading, because there's no request to wait for; so we process them first
     kp_names = set(kp_names)
-    asyncio_start_order = ["infores:connections-hypothesis", "infores:biothings-explorer", "infores:biothings-multiomics-biggim-drug-response", "infores:biothings-multiomics-clinical-risk", "infores:biothings-multiomics-wellness", "infores:spoke", "infores:biothings-tcga-mut-freq",
-                           "infores:icees-dili", "infores:icees-asthma", "infores:cohd", "infores:molepro", "infores:rtx-kg2", "infores:genetics-data-provider", "infores:arax-normalized-google-distance", "infores:arax-drug-treats-disease"]
-    unordered_kps = kp_names.difference(set(asyncio_start_order))
-    if unordered_kps:
-        log.warning(f"Selected KP(s) don't have asyncio start ordering specified: {unordered_kps}")
-        asyncio_start_order = list(unordered_kps) + asyncio_start_order
+    to_call_first = ["infores:arax-drug-treats-disease", "infores:arax-normalized-google-distance"]
+    unordered_kps = kp_names.difference(set(to_call_first))
+    asyncio_start_order = to_call_first + list(unordered_kps)
     ordered_kps = [kp for kp in asyncio_start_order if kp in kp_names]
     return ordered_kps
 
