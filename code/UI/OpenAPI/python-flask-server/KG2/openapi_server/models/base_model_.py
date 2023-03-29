@@ -70,6 +70,8 @@ class Model(object):
                 result[attr] = result_dict
 
             else:
+                if attr == '_not':
+                    attr = 'not'
                 result[attr] = value
 
         return result
