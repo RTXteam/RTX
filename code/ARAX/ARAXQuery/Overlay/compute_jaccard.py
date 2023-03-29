@@ -40,13 +40,15 @@ class ComputeJaccard:
         # TODO: For now, assume that they are
         try:
             intermediate_nodes = set()
-            end_node_to_intermediate_node_set = dict()  # keys will be end node curies, values will be tuples the (intermediate curie ids, edge_type)
+            end_node_to_intermediate_node_set = dict()
+            subject_node_key = dict()
+            # keys will be end node curies, values will be tuples the (intermediate curie ids, edge_type)
             for key, node in message.knowledge_graph.nodes.items():
                 if parameters['intermediate_node_key'] in node.qnode_keys:
                     intermediate_nodes.add(key)  # add the intermediate node by it's identifier
                 # also look for the subject node id
                 if parameters['start_node_key'] in node.qnode_keys:
-                    subject_node_key = key
+                    subject_node_key[key] = set()
                 if parameters['end_node_key'] in node.qnode_keys:
                     end_node_to_intermediate_node_set[key] = set()
 
@@ -58,19 +60,24 @@ class ComputeJaccard:
                         # FW: Old way was to add in unique predicate, node id pairs but then count total number of intermediate nodes.
                         # I've now changed this to add only node ids on both but we could change back but instead count all pairs for the demoninator.
                         end_node_to_intermediate_node_set[edge.object].add(edge.subject)
+                    elif edge.object in subject_node_key:
+                        subject_node_key[edge.object].add(edge.subject)
                 elif edge.object in intermediate_nodes:  # if object is intermediate
                     if edge.subject in end_node_to_intermediate_node_set:
                         # end_node_to_intermediate_node_set[edge.subject].add((edge.object, edge.predicate))  # add object
                         end_node_to_intermediate_node_set[edge.subject].add(edge.object)
+                    elif edge.subject in subject_node_key:
+                        subject_node_key[edge.subject].add(edge.object)
 
             # now compute the actual jaccard indexes
-            denom = len(intermediate_nodes)
             end_node_to_jaccard = dict()
             for end_node_key in end_node_to_intermediate_node_set:
+                end_node_to_jaccard[end_node_key] = dict()
+                for start_node_key in subject_node_key:
                 # TODO: add code here if you care about edge types
-                numerator = len(end_node_to_intermediate_node_set[end_node_key])
-                jacc = numerator / float(denom)
-                end_node_to_jaccard[end_node_key] = jacc
+                    numerator = len(end_node_to_intermediate_node_set[end_node_key].intersection(subject_node_key[start_node_key]))
+                    jacc = numerator/ float(len(subject_node_key[start_node_key]))
+                    end_node_to_jaccard[end_node_key][start_node_key] = jacc
 
             # now add them all as virtual edges
 
@@ -97,39 +104,40 @@ class ComputeJaccard:
 
             # edge attribute properties
             description = f"Jaccard index based on intermediate query nodes {parameters['intermediate_node_key']}"
-            attribute_type = 'EDAM:data_1772'
+            attribute_type = 'EDAM-DATA:1772'
             name = "jaccard_index"
             url = None
 
             # now actually add the virtual edges in
-            for end_node_key, value in end_node_to_jaccard.items():
-                edge_attribute = EdgeAttribute(attribute_type_id=attribute_type, original_attribute_name=name, value=value, value_url=url)
-                # try to ensure a unique edge id
-                id = f"J{j_iter}"
-                # if by chance you get the same id then loop until a unique one is generated
-                # probably a btter way of doing this but need to check how ids are generated in expand first
-                while id in message.knowledge_graph.edges:
-                    id = f"J{j_iter}.{random.randint(10**(9-1), (10**9)-1)}"
-                j_iter += 1
-                object_key = end_node_key
-                # likely will need to fix this for TRAPI 1.0 after being able to test
-                # Do these need a attribute type and url?
-                edge_attribute_list = [
-                    edge_attribute,
-                    EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="EDAM-OPERATION:0226"),
-                    # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
-                    EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
-                ]
-                # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key, object_key=object_key,
-                #             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
-                #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
-                edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
-                            attributes=edge_attribute_list)
-                edge.qedge_keys = qedge_keys
-                message.knowledge_graph.edges[id] = edge
+            for end_node_key, start_nodes in end_node_to_jaccard.items():
+                for subject_key, value in start_nodes.items():
+                    edge_attribute = EdgeAttribute(attribute_type_id=attribute_type, original_attribute_name=name, value=value, value_url=url)
+                    # try to ensure a unique edge id
+                    id = f"J{j_iter}"
+                    # if by chance you get the same id then loop until a unique one is generated
+                    # probably a btter way of doing this but need to check how ids are generated in expand first
+                    while id in message.knowledge_graph.edges:
+                        id = f"J{j_iter}.{random.randint(10**(9-1), (10**9)-1)}"
+                    j_iter += 1
+                    object_key = end_node_key
+                    # likely will need to fix this for TRAPI 1.0 after being able to test
+                    # Do these need a attribute type and url?
+                    edge_attribute_list = [
+                        edge_attribute,
+                        EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="EDAM-OPERATION:0226"),
+                        # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
+                        EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
+                        EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
+                    ]
+                    # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key, object_key=object_key,
+                    #             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
+                    #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
+                    edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
+                                attributes=edge_attribute_list)
+                    edge.qedge_keys = qedge_keys
+                    message.knowledge_graph.edges[id] = edge
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             subject_qnode_key = parameters['start_node_key']

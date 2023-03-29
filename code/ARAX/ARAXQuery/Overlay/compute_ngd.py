@@ -67,7 +67,7 @@ class ComputeNGD:
         self.response.info(f"Computing the normalized Google distance: weighting edges based on subject/object node "
                            f"co-occurrence frequency in PubMed abstracts")
         name = "normalized_google_distance"
-        type = "EDAM:data_2526"
+        type = "EDAM-DATA:2526"
         default_value = self.parameters['default_value']
         url = "https://arax.ncats.io/api/rtx/v1/ui/#/PubmedMeshNgd"
         qg = self.message.query_graph
@@ -161,7 +161,7 @@ class ComputeNGD:
                             ## fix #1980 issue
                             temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
                             if len(temp_list) != 0:
-                                pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=temp_list)
+                                pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=temp_list)
                                 edge_attribute_list.append(pmid_attribute)
 
                             #### FIXME temporary hack by EWD
@@ -272,7 +272,7 @@ class ComputeNGD:
                     ## fix #1980 issue
                     temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
                     if len(temp_list) != 0:
-                        pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=temp_list)
+                        pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=temp_list)
                         edge_attribute_list.append(pmid_attribute)
 
                     #### FIXME temporary hack by EWD
@@ -339,7 +339,7 @@ class ComputeNGD:
                     ## fix #1980 issue
                     temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
                     if len(temp_list) != 0:
-                        pmid_edge_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM:data_1187", value=temp_list)
+                        pmid_edge_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM-DATA:1187", value=temp_list)
                         edge.attributes.append(pmid_edge_attribute)
             except:
                 tb = traceback.format_exc()

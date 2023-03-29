@@ -884,7 +884,7 @@ class DTDQuerier:
         swagger_edge_key = f"DTD:{subject}-{name}-{object}"
         swagger_edge.relation = None
 
-        type = "EDAM:data_0951"
+        type = "EDAM-DATA:0951"
         url = "https://doi.org/10.1101/765305"
 
         description = "ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model)."

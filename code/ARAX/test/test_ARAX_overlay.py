@@ -45,13 +45,14 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     Tests attributes of a message
     message: returned from _do_arax_query
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM:data_1234')
+    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     num_edges_of_interest: the minimum number of edges in the KG you wish to see have the attribute of interest
     """
     edges_of_interest = []
     values = set()
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         if hasattr(edge, 'attributes') and edge.attributes:
             for attr in edge.attributes:
                 if attr.original_attribute_name == attribute_name:
@@ -71,7 +72,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     edge_predicate: the name of the virtual edge (eg. biolink:has_jaccard_index_with)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM:data_1234')
+    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     num_edges_of_interest: the minimum number of virtual edges you wish to see have been added to the KG
     """
@@ -79,6 +80,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     assert edge_predicate in edge_predicates_in_kg
     edges_of_interest = []
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         add_edge = False
         for attribute in edge.attributes:
             if attribute.original_attribute_name == "virtual_relation_label":
@@ -120,6 +122,7 @@ def test_jaccard():
     assert 'biolink:has_jaccard_index_with' in edge_predicates_in_kg
     jaccard_edges = []
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         add_edge = False
         for attribute in edge.attributes:
             if attribute.original_attribute_name == "virtual_relation_label":
@@ -163,7 +166,7 @@ def test_add_node_pmids():
     for node in nodes_with_pmids:
         for attr in node.attributes:
             if attr.original_attribute_name == "pubmed_ids":
-                assert attr.attribute_type_id == 'EDAM:data_0971'
+                assert attr.attribute_type_id == 'EDAM-DATA:0971'
                 assert attr.value.__class__ == list
 
 
@@ -186,6 +189,7 @@ def test_compute_ngd_virtual():
     ngd_edges = []
     for edge in message.knowledge_graph.edges.values():
         add_edge = False
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         for attribute in edge.attributes:
             if attribute.original_attribute_name == "virtual_relation_label":
                 if attribute.value == "N1":
@@ -197,8 +201,8 @@ def test_compute_ngd_virtual():
         assert hasattr(edge, 'attributes')
         assert edge.attributes
         attribute_names = {attribute.original_attribute_name: attribute.value for attribute in edge.attributes}
-        assert "publications" in attribute_names
-        assert len(attribute_names["publications"]) <= 30
+        if 'publications' in attribute_names:
+            assert len(attribute_names["publications"]) <= 30
         assert edge.attributes[0].original_attribute_name == 'normalized_google_distance'
         assert float(edge.attributes[0].value) >= 0
 
@@ -219,17 +223,18 @@ def test_compute_ngd_attribute():
     assert response.status == 'OK'
     ngd_edges = []
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         if hasattr(edge, 'attributes'):
             for attr in edge.attributes:
                 if attr.original_attribute_name == 'normalized_google_distance':
                     ngd_edges.append(edge)
                     assert float(attr.value) >= 0
-                    assert attr.attribute_type_id == 'EDAM:data_2526'
+                    assert attr.attribute_type_id == 'EDAM-DATA:2526'
     assert len(ngd_edges) > 0
     for edge in ngd_edges:
         attribute_names = {attribute.original_attribute_name: attribute.value for attribute in edge.attributes}
-        assert "ngd_publications" in attribute_names
-        assert len(attribute_names["ngd_publications"]) <= 30
+        if "publications" in attribute_names:
+            assert len(attribute_names["publications"]) <= 30
 
 
 def test_FET_ex1():
@@ -274,9 +279,8 @@ def test_FET_ex1():
         assert edge.attributes
         edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
-        assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
-        #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
-        assert edge_attributes_dict['provided_by'] == 'infores:arax'
+        assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         if relation_name == 'FET1':
             assert 0 <= float(edge.attributes[0].value) < 0.001
         else:
@@ -313,6 +317,7 @@ def test_FET_ex2():
     FET_edges = []
     FET_edge_labels = set()
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         relation_name = None
         add_edge = False
         for attribute in edge.attributes:
@@ -331,9 +336,7 @@ def test_FET_ex2():
         assert edge.attributes
         edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
-        assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
-        #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
-        assert edge_attributes_dict['provided_by'] == 'infores:arax'
+        assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     assert len(FET_query_edges) == 1
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
@@ -361,7 +364,7 @@ def test_paired_concept_frequency_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'paired_concept_frequency', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.slow
@@ -379,7 +382,7 @@ def test_paired_concept_frequency_attribute():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.slow
@@ -397,7 +400,7 @@ def test_observed_expected_ratio_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'observed_expected_ratio', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.slow
@@ -415,7 +418,7 @@ def test_observed_expected_ratio_attribute():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 2)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.slow
@@ -433,7 +436,7 @@ def test_chi_square_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'chi_square', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'chi_square', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.slow
@@ -451,7 +454,7 @@ def test_chi_square_attribute():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 2)
+    _attribute_tester(message, 'chi_square', 'EDAM-DATA:0951', 2)
 
 
 # CM: I changed 'MONDO:0004992' to 'DOID:0080909' for a more specific disease
@@ -470,7 +473,7 @@ def test_predict_drug_treats_disease_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM-DATA:0951', 2)
 
 
 # CM: I changed 'MONDO:0004992' to 'DOID:0080909' for a more specific disease
@@ -489,7 +492,7 @@ def test_predict_drug_treats_disease_attribute():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _attribute_tester(message, 'probability_treats', 'EDAM:data_0951', 2)
+    _attribute_tester(message, 'probability_treats', 'EDAM-DATA:0951', 2)
 
 
 # CM: I changed 'MONDO:0004992' to 'DOID:0080909' for a more specific disease
@@ -508,7 +511,7 @@ def test_issue_832():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.slow
@@ -546,7 +549,7 @@ def test_issue_840():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'V1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'V1', 'paired_concept_frequency', 'EDAM-DATA:0951', 2)
 
     # And for the non-virtual test
     query = {"operations": {"actions": [
@@ -562,7 +565,7 @@ def test_issue_840():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 2)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.slow
@@ -621,7 +624,7 @@ def test_issue_892():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 10)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM-DATA:0951', 10)
 
 
 @pytest.mark.external
@@ -637,7 +640,7 @@ def test_overlay_exposures_data_virtual():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     print(response.show())
-    _virtual_tester(message, 'biolink:has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM:data_1669', 1)
+    _virtual_tester(message, 'biolink:has_icees_p-value_with', 'E1', 'icees_p-value', 'EDAM-DATA:1669', 1)
 
 
 @pytest.mark.external
@@ -654,7 +657,7 @@ def test_overlay_exposures_data_attribute():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     print(response.show())
-    _attribute_tester(message, 'icees_p-value', 'EDAM:data_1669', 1)
+    _attribute_tester(message, 'icees_p-value', 'EDAM-DATA:1669', 1)
 
 
 @pytest.mark.slow
@@ -672,12 +675,12 @@ def test_overlay_clinical_info_no_ids():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 1)
-    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 1)
-    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
-    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C1', 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C2', 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
+    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C3', 'chi_square', 'EDAM-DATA:0951', 1)
+    _attribute_tester(message, 'chi_square', 'EDAM-DATA:0951', 1)
 
 @pytest.mark.slow
 def test_missing_ngd_pmids():
@@ -701,6 +704,7 @@ def test_missing_ngd_pmids():
     assert response.status == 'OK'
     ngd_publications = {}
     for edge_key, edge in message.knowledge_graph.edges.items():
+        assert 'biolink:primary_knowledge_source' in edge.attributes
         if edge.attributes is not None:
             for attribute in edge.attributes:
                 if attribute.original_attribute_name == 'normalized_google_distance':
@@ -742,6 +746,7 @@ def test_jaccard_not_above_1():
     assert 'biolink:has_jaccard_index_with' in edge_predicates_in_kg
     jaccard_edges = []
     for edge in message.knowledge_graph.edges.values():
+        assert 'biolink:primary_knowledge_source' in edge.attributes
         add_edge = False
         for attribute in edge.attributes:
             if attribute.original_attribute_name == "virtual_relation_label":

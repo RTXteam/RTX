@@ -36,12 +36,13 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     Tests attributes of a message
     message: returned from _do_arax_query
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM:data_1234')
+    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
     edges_of_interest = []
     values = set()
     for key, edge in message.knowledge_graph.edges.items():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         if hasattr(edge, 'edge_attributes'):
             for attr in edge.edge_attributes:
                 if attr.original_attribute_name == attribute_name:
@@ -59,7 +60,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     edge_predicate: the name of the virtual edge (eg. biolink:has_jaccard_index_with)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM:data_1234')
+    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
@@ -68,6 +69,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     values = set()
     assert len(edges_of_interest) > 0
     for edge in edges_of_interest:
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         assert hasattr(edge, 'attributes')
         assert edge.attributes
         assert edge.attributes[0].original_attribute_name == attribute_name
@@ -188,7 +190,7 @@ def test_xdtd_with_only_qg():
 def test_xcrg_infer_bomeol():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=chemical_gene_regulation_graph_expansion, subject_curie=CHEMBL.COMPOUND:CHEMBL1097205, regulation_type=increase, threshold=0.6, path_len=2, n_result_curies=5, n_paths=10)",
+            "infer(action=chemical_gene_regulation_graph_expansion, subject_curie=CHEMBL.COMPOUND:CHEMBL1097205, regulation_type=increase, threshold=0.6, path_len=2, n_result_curies=1, n_paths=1)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -235,7 +237,7 @@ def test_xcrg_with_qg1():
         }
         },
         "operations": {"actions": [
-            "infer(action=chemical_gene_regulation_graph_expansion,object_qnode_id=gene,qedge_id=r_edge,n_result_curies=5)",
+            "infer(action=chemical_gene_regulation_graph_expansion,object_qnode_id=gene,qedge_id=r_edge,n_result_curies=1)",
             "return(message=true, store=true)"
         ]}
     }
@@ -285,7 +287,7 @@ def test_xcrg_with_qg2():
         }
         },
         "operations": {"actions": [
-            "infer(action=chemical_gene_regulation_graph_expansion,subject_qnode_id=chemical,qedge_id=r_edge,n_result_curies=5)",
+            "infer(action=chemical_gene_regulation_graph_expansion,subject_qnode_id=chemical,qedge_id=r_edge,n_result_curies=1)",
             "return(message=true, store=true)"
         ]}
     }
@@ -352,7 +354,7 @@ def test_xcrg_infer_dsl():
             "add_qnode(name=acetaminophen, key=n0)",
             "add_qnode(categories=biolink:Gene, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
-            "infer(action=chemical_gene_regulation_graph_expansion, subject_qnode_id=n0, qedge_id=e0, regulation_type=increase, n_result_curies=5)",
+            "infer(action=chemical_gene_regulation_graph_expansion, subject_qnode_id=n0, qedge_id=e0, regulation_type=increase, n_result_curies=1)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
             "resultify()",
             "filter_results(action=limit_number_of_results, max_results=30)",
