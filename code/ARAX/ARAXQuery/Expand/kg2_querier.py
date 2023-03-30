@@ -23,6 +23,7 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.qualifier import Qualifier
+from openapi_server.models.retrieval_source import RetrievalSource
 
 
 class KG2Querier:
@@ -222,25 +223,24 @@ class KG2Querier:
         return node
 
     def _convert_kg2c_plover_edge_to_trapi_edge(self, edge_tuple: list) -> Edge:
-        edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
         knowledge_sources = edge_tuple[3]
         qualified_predicate = edge_tuple[4]
         qualified_object_direction = edge_tuple[5]
         qualified_object_aspect = edge_tuple[6]
+        sources = []
 
         # Indicate that this edge came from the KG2 KP
-        edge.attributes.append(Attribute(attribute_type_id="biolink:aggregator_knowledge_source",
-                                         value=self.kg2_infores_curie,
-                                         value_type_id="biolink:InformationResource",
-                                         attribute_source=self.kg2_infores_curie))
+        kg2_retrieval_source = RetrievalSource(resource=self.kg2_infores_curie,
+                                               resource_role="biolink:aggregator_knowledge_source")
+        sources.append(kg2_retrieval_source)
 
         # Create knowledge source attributes for each of this edge's knowledge sources
-        knowledge_source_attributes = [Attribute(attribute_type_id="biolink:primary_knowledge_source",
-                                                 value=infores_curie,
-                                                 value_type_id="biolink:InformationResource",
-                                                 attribute_source=self.kg2_infores_curie)
-                                       for infores_curie in knowledge_sources]
-        edge.attributes += knowledge_source_attributes
+        primary_retrieval_sources = [RetrievalSource(resource=infores_curie,
+                                                     resource_role="biolink:primary_knowledge_source")
+                                     for infores_curie in knowledge_sources]
+        sources += primary_retrieval_sources
+
+        edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], sources=sources)
 
         # Add any qualifiers as appropriate
         qualifiers = []
