@@ -196,10 +196,11 @@ class TRAPIQuerier:
                                                  f"query sent to {self.kp_name}, none of which are the KG ID ({kg_id})."
                                                  f" This is invalid TRAPI. Skipping this binding.")
 
-            for qedge_key, edge_bindings in result.edge_bindings.items():
-                for edge_binding in edge_bindings:
-                    kg_id = edge_binding.id
-                    qedge_key_mappings[kg_id].add(qedge_key)
+            for analysis in result.analyses:  # TODO: Do we need to worry about extracting supporting_graphs from KPs?
+                for qedge_key, edge_bindings in analysis.edge_bindings.items():
+                    for edge_binding in edge_bindings:
+                        kg_id = edge_binding.id
+                        qedge_key_mappings[kg_id].add(qedge_key)
 
         if not self.kp_name == "infores:rtx-kg2":
             # Convert parent curie mappings back to canonical form (we send KPs synonyms sometimes..)

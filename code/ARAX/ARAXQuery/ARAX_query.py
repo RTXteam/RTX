@@ -745,10 +745,10 @@ class ARAXQuery:
                         filter.apply(response,action['parameters'])
 
                     elif action['command'] == 'resultify':
-                        resultifier.apply(response, action['parameters'])
+                        resultifier.apply(response, action['parameters'], mode=mode)
 
                     elif action['command'] == 'scoreless_resultify':
-                        resultifier.apply(response, action['parameters'])
+                        resultifier.apply(response, action['parameters'], mode=mode)
 
                     elif action['command'] == 'overlay':  # recognize the overlay command
                         overlay.apply(response, action['parameters'])

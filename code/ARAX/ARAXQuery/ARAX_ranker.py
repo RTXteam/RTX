@@ -44,15 +44,16 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
     res_graph = qg_nx.copy()
     qg_edge_tuples = tuple(qg_nx.edges(keys=True, data=True))
     qg_edge_key_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
-    for key, edge_binding_list in result.edge_bindings.items():
-        for edge_binding in edge_binding_list:
-            kg_edge = kg_edge_id_to_edge[edge_binding.id]
-            kg_edge_conf = kg_edge.confidence
-            #kg_edge_conf = kg_edge_attributes["confidence"]
-            qedge_keys = kg_edge.qedge_keys
-            for qedge_key in qedge_keys:
-                qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
-                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] += kg_edge_conf
+    for analysis in result.analyses:  # For now we only ever have one Analysis per Result
+        for key, edge_binding_list in analysis.edge_bindings.items():
+            for edge_binding in edge_binding_list:
+                kg_edge = kg_edge_id_to_edge[edge_binding.id]
+                kg_edge_conf = kg_edge.confidence
+                #kg_edge_conf = kg_edge_attributes["confidence"]
+                qedge_keys = kg_edge.qedge_keys
+                for qedge_key in qedge_keys:
+                    qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
+                    res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] += kg_edge_conf
     return res_graph
 
 
@@ -624,7 +625,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         result_scores = sum(ranks_list)/float(len(ranks_list))
         #print(result_scores)
         for result, score in zip(results, result_scores):
-            result.score = score
+            result.analyses[0].score = score  # For now we only ever have one Analysis per Result
 
         # for result in message.results:
         #     self.result_confidence_maker(result)
@@ -632,11 +633,11 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
             # Make all scores at least 0.001. This is all way low anyway, but let's not have anything that rounds to zero
             # This is a little bad in that 0.0005 becomes better than 0.0011, but this is all way low, so who cares
-            if result.score < 0.001:
-                result.score += 0.001
+            if result.analyses[0].score < 0.001:
+                result.analyses[0].score += 0.001
 
             # Round to reasonable precision. Keep only 3 digits after the decimal
-            score = int(result.score * 1000 + 0.5) / 1000.0
+            score = int(result.analyses[0].score * 1000 + 0.5) / 1000.0
 
             result.row_data = [score, result.essence, result.essence_category]
 
@@ -644,7 +645,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         response.envelope.table_column_names = ['score', 'essence', 'essence_category']
 
         # Re-sort the final results
-        message.results.sort(key=lambda result: result.score, reverse=True)
+        message.results.sort(key=lambda result: result.analyses[0].score, reverse=True)
         response.debug("Results have been ranked and sorted")
 
 
