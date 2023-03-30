@@ -45,6 +45,12 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
             subject_categories = biolink_helper.add_conflations(subject_node["all_categories"])
             object_categories = biolink_helper.add_conflations(object_node["all_categories"])
             predicate = edge["predicate"]
+            qualified_predicate = edge["qualified_predicate"]
+            qualified_object_aspect = edge["qualified_object_aspect"]
+            qualified_object_direction = edge["qualified_object_direction"]
+            qualifiers = [{"qualified_predicate": qualified_predicate, 
+                        "qualified_object_aspect": qualified_object_aspect, 
+                        "qualified_object_direction": qualified_object_direction }]
             for subject_category in subject_categories:
                 for object_category in object_categories:
                     meta_triples.add((subject_category, predicate, object_category))
@@ -53,7 +59,8 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
                             "attribute_source": kg2_infores_curie},
                            {"attribute_type_id": "biolink:aggregator_knowledge_source",
                             "attribute_source": kg2_infores_curie}]
-    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "attributes": standard_attributes}
+
+    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "attributes": standard_attributes, "qualifiers": qualifiers}
                   for triple in meta_triples]
     logging.info(f" Created {len(meta_edges)} meta edges")
 
@@ -191,7 +198,7 @@ def record_meta_kg_info(is_test: bool):
     add_neighbor_counts_to_sqlite(nodes_by_id, edges_by_id, sqlite_file_name, expanded_labels_property_name, is_test)
     add_category_counts_to_sqlite(nodes_by_id, sqlite_file_name, expanded_labels_property_name)
     generate_fda_approved_drugs_pickle(edges_by_id, fda_approved_file_name)
-
+    
     logging.info(f"Recording meta KG info took {round((time.time() - start) / 60, 1)} minutes.")
 
 
