@@ -148,7 +148,7 @@ class ARAXDecorator:
         edge_attributes_ordered = list(self.edge_attributes)
         edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
         search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
-        search_keys_str = "','".join(search_keys_set)  # SQL wants ('node1', 'node2') format for string lists
+        search_keys_str = "','".join(search_keys_set)  # SQL wants ('edge1', 'edge2') format for string lists
         sql_query = f"SELECT E.{search_key_column}, {edge_cols_str} " \
                     f"FROM edges AS E " \
                     f"WHERE E.{search_key_column} IN ('{search_keys_str}')"
@@ -230,9 +230,9 @@ class ARAXDecorator:
     @staticmethod
     def _get_kg2c_edge_key(edge: Edge) -> str:
         qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
-        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
-        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
-        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
+        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate", "")
+        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier", "")
+        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier", "")
         # TODO: Switch order of object direction and aspect below when KG2c code is changed that way
         edge_key = f"{edge.subject}--{edge.predicate}--{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{edge.object}"
         return edge_key
