@@ -263,7 +263,7 @@ def test_curie_list_query():
     actions_list = [
         "add_qnode(ids=[DOID:6419, DOID:3717, DOID:11406], key=n00)",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:has_phenotype, key=e00)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
@@ -1459,11 +1459,30 @@ def test_kp_list():
     actions = [
         "add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(key=qg1, categories=biolink:Protein)",
-        "add_qedge(subject=qg1, object=qg0, key=qe0)",
+        "add_qedge(subject=qg1, object=qg0, key=qe0, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=qe0, kp=[infores:rtx-kg2, infores:molepro])",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions, timeout=75)
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions, timeout=30)
+
+
+def test_missing_semmed_publications():
+    actions = [
+        "add_qnode(name=Parkinsons disease, key=n0)",
+        "add_qnode(categories=biolink:Drug, key=n1)",
+        "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:predisposes)",
+        "expand(kp=infores:rtx-kg2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
+    for qedge_key, edges in edges_by_qg_id.items():
+        for edge_key, edge in edges.items():
+            primary_knowledge_sources = {attribute.value for attribute in edge.attributes
+                                         if attribute.attribute_type_id == "biolink:primary_knowledge_source"}
+            if "infores:semmeddb" in primary_knowledge_sources:
+                publications = [attribute.value for attribute in edge.attributes
+                                if attribute.attribute_type_id == "biolink:publications"]
+                assert publications
 
 
 if __name__ == "__main__":
