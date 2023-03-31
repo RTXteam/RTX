@@ -232,6 +232,7 @@ function reset_vars() {
     document.getElementById("menunumresults").innerHTML = "--";
     document.getElementById("menunumresults").className = "numold menunum";
     summary_table_html = '';
+    summary_score_histogram = {};
     summary_tsv = [];
     columnlist = [];
     all_nodes = {};

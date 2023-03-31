@@ -33,8 +33,20 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: RTX-KG2 TRAPI 1.3 endpoint - development
+- description: RTX-KG2 TRAPI 1.3 endpoint - ITRB production
+  url: https://kg2.transltr.io/api/rtxkg2/v1.3
+  x-maturity: production
+- description: RTX-KG2 TRAPI 1.3 endpoint - production
   url: https://arax.ncats.io/api/rtxkg2/v1.3
+  x-maturity: production
+- description: RTX-KG2 TRAPI 1.3 endpoint - ITRB testing
+  url: https://kg2.test.transltr.io/api/rtxkg2/v1.3
+  x-maturity: testing
+- description: RTX-KG2 TRAPI 1.3 endpoint - ITRB staging
+  url: https://kg2.ci.transltr.io/api/rtxkg2/v1.3
+  x-maturity: staging
+- description: RTX-KG2 TRAPI 1.3 endpoint - development
+  url: https://arax.ncats.io/beta/api/rtxkg2/v1.3
   x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web
@@ -56,6 +68,9 @@ tags:
     description: Documentation for the reasoner asynchquery function
     url: https://arax.ncats.io/overview.html#asyncquery
   name: asyncquery
+- description: Retrieve the current status of a previously submitted asyncquery given
+    its job_id
+  name: asyncquery_status
 - description: Required for SmartAPI validation of x-translator
   name: translator
 - description: Required for SmartAPI validation of x-trapi
@@ -83,7 +98,7 @@ paths:
           content:
             application/json:
               schema:
-                type: string
+                $ref: '#/components/schemas/AsyncQueryResponse'
           description: The query is accepted for processing and the Response will
             be sent to the callback url when complete.
         "400":
@@ -124,6 +139,42 @@ paths:
       tags:
       - asyncquery
       x-openapi-router-controller: openapi_server.controllers.asyncquery_controller
+  /asyncquery_status/{job_id}:
+    get:
+      operationId: asyncquery_status
+      parameters:
+      - description: Identifier of the job for status request
+        example: rXEOAosN3L
+        explode: false
+        in: path
+        name: job_id
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncQueryStatusResponse'
+          description: Returns the status and current logs of a previously submitted
+            asyncquery.
+        "404":
+          description: job_id not found
+        "501":
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Return code 501 indicates that this endpoint has not been implemented
+            at this site. Sites that implement /asyncquery MUST implement /asyncquery_status/{job_id},
+            but those that do not implement /asyncquery SHOULD NOT implement /asyncquery_status.
+      summary: Retrieve the current status of a previously submitted asyncquery given
+        its job_id
+      tags:
+      - asyncquery_status
+      x-openapi-router-controller: openapi_server.controllers.asyncquery_status_controller
   /entity:
     get:
       operationId: get_entity
@@ -463,6 +514,88 @@ components:
       - message
       type: object
       x-body-name: request_body
+    AsyncQueryResponse:
+      additionalProperties: true
+      description: The AsyncQueryResponse object contains a payload that must be returned
+        from a submitted async_query.
+      example:
+        job_id: rXEOAosN3L
+        description: Async_query has been queued
+        status: Accepted
+      properties:
+        status:
+          description: 'One of a standardized set of short codes: e.g. Accepted, QueryNotTraversable,
+            KPsNotAvailable'
+          example: Accepted
+          nullable: true
+          type: string
+        description:
+          description: A brief human-readable description of the result of the async_query
+            submission.
+          example: Async_query has been queued
+          nullable: true
+          type: string
+        job_id:
+          description: An identifier for the submitted job that can be used with /async_query_status
+            to receive an update on the status of the job.
+          example: rXEOAosN3L
+          nullable: false
+          type: string
+      required:
+      - job_id
+      title: AsyncQueryResponse
+      type: object
+    AsyncQueryStatusResponse:
+      additionalProperties: true
+      description: The AsyncQueryStatusResponse object contains a payload that describes
+        the current status of a previously submitted async_query.
+      example:
+        description: Callback URL returned 500
+        logs:
+        - code: code
+          level: ""
+          message: message
+          timestamp: 2020-09-03T18:13:49Z
+        - code: code
+          level: ""
+          message: message
+          timestamp: 2020-09-03T18:13:49Z
+        status: Running
+        response_url: https://arax.ncats.io/api/arax/v1.3/response/116481
+      properties:
+        status:
+          description: 'One of a standardized set of short codes: Queued, Running,
+            Completed, Failed'
+          example: Running
+          nullable: false
+          type: string
+        description:
+          description: A brief human-readable description of the current state or
+            summary of the problem if the status is Failed.
+          example: Callback URL returned 500
+          nullable: false
+          type: string
+        logs:
+          description: A list of LogEntry items, containing errors, warnings, debugging
+            information, etc. List items MUST be in chronological order with earliest
+            first. The most recent entry should be last. Its timestamp will be compared
+            against the current time to see if there is still activity.
+          items:
+            $ref: '#/components/schemas/LogEntry'
+          nullable: false
+          type: array
+        response_url:
+          description: Optional URL that can be queried to restrieve the full TRAPI
+            Response.
+          example: https://arax.ncats.io/api/arax/v1.3/response/116481
+          nullable: true
+          type: string
+      required:
+      - description
+      - logs
+      - status
+      title: AsyncQueryStatusResponse
+      type: object
     Response:
       additionalProperties: true
       description: The Response object contains the main payload when a TRAPI query
@@ -481,6 +614,7 @@ components:
           coalesce: true
           threshold: 0.9
         restated_question: Which proteins are affected by sickle cell anemia?
+        biolink_version: 3.1.2
         description: Success. 42 results found.
         message:
           query_graph:
@@ -535,8 +669,9 @@ components:
           nullable: true
           type: string
         logs:
-          description: Log entries containing errors, warnings, debugging information,
-            etc
+          description: A list of LogEntry items, containing errors, warnings, debugging
+            information, etc. List items MUST be in chronological order with earliest
+            first.
           items:
             $ref: '#/components/schemas/LogEntry'
           nullable: true
@@ -571,6 +706,10 @@ components:
         schema_version:
           description: Version label of this TRAPI schema
           example: 1.3.0
+          type: string
+        biolink_version:
+          description: Version label of the Biolink model used in this document
+          example: 3.1.2
           type: string
         datetime:
           description: Datetime string for the time that this response was generated
@@ -695,15 +834,18 @@ components:
         timestamp: 2020-09-03T18:13:49Z
       properties:
         timestamp:
-          description: Timestamp in ISO 8601 format
+          description: Timestamp in ISO 8601 format, providing the LogEntry time either
+            in univeral coordinated time (UTC) using the 'Z' tag (e.g 2020-09-03T18:13:49Z),
+            or, if local time is provided, the timezone offset must be provided (e.g.
+            2020-09-03T18:13:49-04:00).
           example: 2020-09-03T18:13:49Z
           format: date-time
-          nullable: true
+          nullable: false
           type: string
         level:
-          allOf:
-          - $ref: '#/components/schemas/LogLevel'
           nullable: true
+          oneOf:
+          - $ref: '#/components/schemas/LogLevel'
         code:
           description: One of a standardized set of short codes e.g. QueryNotTraversable,
             KPNotAvailable, KPResponseMalformed
@@ -711,8 +853,11 @@ components:
           type: string
         message:
           description: A human-readable log message
-          nullable: true
+          nullable: false
           type: string
+      required:
+      - message
+      - timestamp
       title: LogEntry
       type: object
     LogLevel:

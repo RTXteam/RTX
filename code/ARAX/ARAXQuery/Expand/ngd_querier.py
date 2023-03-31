@@ -31,7 +31,7 @@ class NGDQuerier:
         self.ngd_edge_predicate = "biolink:occurs_together_in_literature_with"
         self.accepted_qedge_predicates = {"biolink:occurs_together_in_literature_with", "biolink:related_to"}
         self.ngd_edge_attribute_name = "normalized_google_distance"
-        self.ngd_edge_attribute_type = "EDAM:data_2526"
+        self.ngd_edge_attribute_type = "EDAM-DATA:2526"
         self.decorator = ARAXDecorator()
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:

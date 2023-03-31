@@ -36,12 +36,13 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     Tests attributes of a message
     message: returned from _do_arax_query
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM:data_1234')
+    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
     edges_of_interest = []
     values = set()
     for key, edge in message.knowledge_graph.edges.items():
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         if hasattr(edge, 'edge_attributes'):
             for attr in edge.edge_attributes:
                 if attr.original_attribute_name == attribute_name:
@@ -59,7 +60,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     edge_predicate: the name of the virtual edge (eg. biolink:has_jaccard_index_with)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM:data_1234')
+    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
     num_different_values: the number of distinct values you wish to see have been added as attributes
     """
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
@@ -68,6 +69,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     values = set()
     assert len(edges_of_interest) > 0
     for edge in edges_of_interest:
+        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         assert hasattr(edge, 'attributes')
         assert edge.attributes
         assert edge.attributes[0].original_attribute_name == attribute_name
@@ -132,8 +134,8 @@ def test_example_2():
     assert response.status == 'OK'
     assert len(message.results) > 0  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
     assert message.results[0].essence is not None
-    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM:data_0951', 2)
-    _virtual_tester(message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
+    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM-DATA:0951', 2)
+    _virtual_tester(message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM-DATA:1772', 2)
 
 
 @pytest.mark.slow
@@ -158,8 +160,8 @@ def test_example_3():
     #assert len(message.results) in [47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
     assert len(message.results) >= 60
     assert message.results[0].essence is not None
-    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
-    _virtual_tester(message, 'biolink:occurs_together_in_literature_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
+    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM-DATA:0951', 2)
+    _virtual_tester(message, 'biolink:occurs_together_in_literature_with', 'N1', 'normalized_google_distance', 'EDAM-DATA:2526', 2)
 
 
 @pytest.mark.slow
@@ -199,7 +201,7 @@ def test_FET_example_1():
         edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert 0 <= float(edge.attributes[0].value) < 0.005
-        assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
+        assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
         #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
         assert edge_attributes_dict['provided_by'] == 'ARAX'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
@@ -257,7 +259,7 @@ def test_FET_example_2():
         edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert 0 <= float(edge.attributes[0].value) < 0.01
-        assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
+        assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
         #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
         assert edge_attributes_dict['provided_by'] == 'ARAX'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
@@ -324,7 +326,7 @@ def test_FET_example_3():
         edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert 0 <= float(edge.attributes[0].value) < 0.001
-        assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
+        assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
         #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
         assert edge_attributes_dict['provided_by'] == 'ARAX'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
@@ -374,7 +376,7 @@ def test_FET_example_4():
             assert 0 <= float(edge.attributes[0].value) < 0.001
         else:
             assert float(edge.attributes[0].value) >= 0
-        assert edge.attributes[0].attribute_type_id == 'EDAM:data_1669'
+        assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
         #assert edge_attributes_dict['is_defined_by'] == 'ARAX'
         assert edge_attributes_dict['provided_by'] == 'ARAX'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
@@ -425,7 +427,7 @@ def test_example_2_kg2():
     assert response.status == 'OK'
     assert len(message.results) == 15
     assert message.results[0].essence is not None
-    _virtual_tester(response.envelope.message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM:data_1772', 2)
+    _virtual_tester(response.envelope.message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM-DATA:1772', 2)
 
 
 @pytest.mark.slow
@@ -456,9 +458,9 @@ def test_clinical_overlay_example1():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 2)
-    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 2)
-    _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 2)
+    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM-DATA:0951', 2)
+    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM-DATA:0951', 2)
+    _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.skip(reason="redundant if the test_clinical_overlay_example() passes and test_ARAX_overlay passes")
@@ -486,9 +488,9 @@ def test_clinical_overlay_example2():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
-    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
-    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
+    _attribute_tester(message, 'chi_square', 'EDAM-DATA:0951', 1)
 
 
 @pytest.mark.skip(reason="redundant if test_one_hop_based_on_types_1() and test_ARAX_overlay() passes")
@@ -521,9 +523,9 @@ def test_two_hop_based_on_types_1():
         [response, message] = _do_arax_query(query)
         print(message.id)
         assert response.status == 'OK'
-        _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM:data_0951', 1)
-        _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM:data_0951', 1)
-        _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM:data_0951', 1)
+        _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
+        _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
+        _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM-DATA:0951', 1)
         assert len(message.results) > 1
 
 
@@ -580,9 +582,9 @@ def test_one_hop_kitchen_sink_BTE_1():
     [response, message] = _do_arax_query(query)
     print(message.id)
     assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
-    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
-    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
+    _attribute_tester(message, 'chi_square', 'EDAM-DATA:0951', 1)
 
 
 @pytest.mark.skip(reason="Work in progress (and takes a very long time)")
@@ -609,9 +611,9 @@ def test_one_hop_kitchen_sink_BTE_2():
     [response, message] = _do_arax_query(query)
     print(message.id)
     assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'EDAM:data_0951', 1)
-    _attribute_tester(message, 'observed_expected_ratio', 'EDAM:data_0951', 1)
-    _attribute_tester(message, 'chi_square', 'EDAM:data_0951', 1)
+    _attribute_tester(message, 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
+    _attribute_tester(message, 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
+    _attribute_tester(message, 'chi_square', 'EDAM-DATA:0951', 1)
 
 def test_FET_ranking_2():
     query = {"operations": {"actions": [
@@ -913,8 +915,8 @@ def test_issue_1848():
 #     assert response.status == 'OK'
 #     #assert len(message.results) == ?
 #     assert message.results[0].essence is not None
-#     _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM:data_0951', 2)
-#     _virtual_tester(message, 'biolink:occurs_together_in_literature_with', 'N1', 'normalized_google_distance', 'EDAM:data_2526', 2)
+#     _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM-DATA:0951', 2)
+#     _virtual_tester(message, 'biolink:occurs_together_in_literature_with', 'N1', 'normalized_google_distance', 'EDAM-DATA:2526', 2)
 
 @pytest.mark.slow
 def test_example_3_issue_679():
