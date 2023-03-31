@@ -22,9 +22,6 @@ from biolink_helper import BiolinkHelper
 # Testing and debugging flags
 DEBUG = False
 
-# We start with an undefined BiolinkHelper() and will only set it up if we need it. Don't always need it and it is slow to set up
-biolink_helper = None
-
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -1951,6 +1948,9 @@ class NodeSynonymizer:
         # Set up containers for the batches and results
         batches = []
         results = {}
+
+        # We start with an undefined BiolinkHelper() and will only set it up if we need it. Don't always need it and it is slow to set up
+        biolink_helper = None
 
         # Make sets of comma-separated list strings for the curies and set up the results dict with all the input values
         uc_curies = []
