@@ -53,14 +53,14 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
                         "qualified_object_direction": qualified_object_direction }]
             for subject_category in subject_categories:
                 for object_category in object_categories:
-                    meta_triples.add((subject_category, predicate, object_category))
+                    meta_triples.add((subject_category, predicate, object_category, qualifiers))
     kg2_infores_curie = "infores:rtx-kg2"
     standard_attributes = [{"attribute_type_id": "biolink:knowledge_source",
                             "attribute_source": kg2_infores_curie},
                            {"attribute_type_id": "biolink:aggregator_knowledge_source",
                             "attribute_source": kg2_infores_curie}]
 
-    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "attributes": standard_attributes, "qualifiers": qualifiers}
+    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "attributes": standard_attributes, "qualifiers": triples[3]}
                   for triple in meta_triples]
     logging.info(f" Created {len(meta_edges)} meta edges")
 
