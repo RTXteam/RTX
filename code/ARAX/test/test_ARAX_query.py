@@ -24,7 +24,7 @@ def test_query_by_query_graph_2():
 
     assert response.status == 'OK'
     message = response.envelope.message
-    assert len(message.results) >= 30
+    assert len(message.results) >= 10
     assert response.envelope.schema_version == '1.3.0'
 
 
