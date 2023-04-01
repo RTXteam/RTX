@@ -19,11 +19,12 @@ class RTXConfiguration:
 
     # ### Constructor
     def __init__(self):
-        t0 = timeit.default_timer()
 
-        # Determine current ARAX and TRAPI versions
+        t0 = timeit.default_timer()
         file_dir = os.path.dirname(os.path.abspath(__file__))
 
+        # Determine current ARAX and TRAPI versions
+        # YAML is super slow to ready, so refresh a JSON if necessary or read the JSON, which is much faster
         openapi_yaml_path = f"{file_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml"
         openapi_json_path = f"{file_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.json"
         if not os.path.exists(openapi_json_path) or os.path.getmtime(openapi_yaml_path) > os.path.getmtime(openapi_json_path):
