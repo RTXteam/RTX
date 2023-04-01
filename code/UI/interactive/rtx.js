@@ -2480,6 +2480,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	    cnf = Number(result.score).toFixed(3);
 	else if (Number(result.confidence))
 	    cnf = Number(result.confidence).toFixed(3);
+	else if (result.analyses && Number(result.analyses[0].score))
+	    cnf = Number(result.analyses[0].score).toFixed(3);
 	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
 
         if (result.row_data)
@@ -2493,6 +2495,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	var rsrc = mainreasoner;
 	if (result.reasoner_id)
 	    rsrc = result.reasoner_id;
+	else if (result.analyses && result.analyses[0].reasoner_id)
+	    rsrc = result.analyses[0].reasoner_id;
 	var rscl =
 	    (rsrc=="ARAX")     ? "srtx" :
 	    (rsrc=="BTE")      ? "sbte" :
@@ -2506,6 +2510,7 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	    (rsrc=="Genetics") ? "sgen" :
 	    (rsrc=="Unsecret") ? "suns" :
 	    (rsrc=="ImProving")? "simp" :
+	    (rsrc=="CHP")      ? "schp" :
 	    "p0";
 
 	if (rsrc=="ARAX")
@@ -2660,8 +2665,9 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	    }
 	}
 
-	for (var ebid in result.edge_bindings) {
-	    for (var edge of result.edge_bindings[ebid]) {
+	let da_edge_bindings = result.edge_bindings ? result.edge_bindings : result.analyses[0].edge_bindings;
+	for (var ebid in da_edge_bindings) {
+	    for (var edge of da_edge_bindings[ebid]) {
 		var kmne = Object.create(kg.edges[edge.id]);
 		kmne.parentdivnum = num;
 		kmne.trapiversion = trapi;
@@ -2887,10 +2893,10 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'),null);
+	show_attributes(div, this.data('attributes'),null,"value");
         if (this.data('node_binding_attributes')) {
 	    div.appendChild(document.createElement("br"));
-	    show_attributes(div, this.data('node_binding_attributes'),"Node Binding Attributes:");
+	    show_attributes(div, this.data('node_binding_attributes'),"Node Binding Attributes:","value");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -2959,10 +2965,14 @@ function add_cyto(i) {
 			cyobj[i].nodes("[id='"+this.data('target')+"']").data('name')
 		       );
 
-	show_attributes(div, this.data('attributes'),null);
+	show_attributes(div, this.data('attributes'),null,"value");
 	if (this.data('edge_binding_attributes')) {
             div.appendChild(document.createElement("br"));
-            show_attributes(div, this.data('edge_binding_attributes'),"Edge Binding Attributes:");
+            show_attributes(div, this.data('edge_binding_attributes'),"Edge Binding Attributes:","value");
+	}
+	if (this.data('sources')) {
+            div.appendChild(document.createElement("br"));
+            show_attributes(div, this.data('sources'),"Edge Sources:","upstream_resources");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -3097,7 +3107,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 }
 
 
-function show_attributes(html_div, atts, title) {
+function show_attributes(html_div, atts, title, mainvalue) {
     if (atts == null)  { return; }
 
     var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
@@ -3118,13 +3128,13 @@ function show_attributes(html_div, atts, title) {
     }
 
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
-	display_attribute(atts_table, att, semmeddb_sentences);
+	display_attribute(atts_table, att, semmeddb_sentences, mainvalue);
     }
 
     html_div.appendChild(atts_table);
 }
 
-function display_attribute(tab, att, semmeddb) {
+function display_attribute(tab, att, semmeddb, mainvalue) {
     var row = document.createElement("tr");
     var cell = document.createElement("td");
 
@@ -3136,8 +3146,9 @@ function display_attribute(tab, att, semmeddb) {
     var sub_atts = null;
 
     var value = null;
+    var flagifmainvaluenull = true;
     for (var nom in att) {
-	if (nom == "value") {
+	if (nom == mainvalue) {
 	    value = att[nom];
 	    continue;
 	}
@@ -3165,24 +3176,27 @@ function display_attribute(tab, att, semmeddb) {
 
 	    row.appendChild(cell);
 	    tab.appendChild(row);
+
+	    if (att[nom] == "biolink:primary_knowledge_source")
+		flagifmainvaluenull = false;
 	}
     }
 
     row = document.createElement("tr");
     cell = document.createElement("td");
     cell.style.fontWeight = "bold";
-    cell.appendChild(document.createTextNode("value:"));
+    cell.appendChild(document.createTextNode(mainvalue+":"));
     row.appendChild(cell);
     cell = document.createElement("td");
     cell.style.overflowWrap = "anywhere"; //??
 
     if (value != null && value != '') {
-	if (Array.isArray(att.value)) {
+	if (Array.isArray(att[mainvalue])) {
 	    if (att.attribute_type_id != "biolink:publications")
                 cell.className = 'attvalue';
 
 	    var br = false;
-	    for (var val of att.value) {
+	    for (var val of att[mainvalue]) {
 		if (br)
 		    cell.appendChild(document.createElement("br"));
 
@@ -3235,17 +3249,17 @@ function display_attribute(tab, att, semmeddb) {
 		br = true;
 	    }
 	}
-	else if (typeof att.value === 'object') {
+	else if (typeof att[mainvalue] === 'object') {
             var pre = document.createElement("pre");
-	    pre.appendChild(document.createTextNode(JSON.stringify(att.value,null,2)));
+	    pre.appendChild(document.createTextNode(JSON.stringify(att[mainvalue],null,2)));
 	    cell.appendChild(pre);
 	}
         else if (attributes_to_truncate.includes(att.original_attribute_name)) {
             cell.className = 'attvalue';
-            if (isNaN(att.value))
-		cell.appendChild(document.createTextNode(att.value));
+            if (isNaN(att[mainvalue]))
+		cell.appendChild(document.createTextNode(att[mainvalue]));
 	    else
-		cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
+		cell.appendChild(document.createTextNode(Number(att[mainvalue]).toPrecision(3)));
 	}
 	else if (value.toString().startsWith("http")) {
 	    cell.className = 'attvalue';
@@ -3258,7 +3272,7 @@ function display_attribute(tab, att, semmeddb) {
 	else {
             cell.className = 'attvalue';
 
-	    var multi = att.value.toString().split(/(-!-|---|\;\;)/);
+	    var multi = att[mainvalue].toString().split(/(-!-|---|\;\;)/);
 	    if (multi.length > 1) {
 		for (var line of multi) {
 		    cell.appendChild(document.createTextNode('\u25BA'));
@@ -3267,13 +3281,15 @@ function display_attribute(tab, att, semmeddb) {
 		}
 	    }
 	    else
-		cell.appendChild(document.createTextNode(att.value));
+		cell.appendChild(document.createTextNode(att[mainvalue]));
 	}
     }
     else {
         var text = document.createElement("i");
 	text.appendChild(document.createTextNode("-- empty / no value! --"));
 	cell.appendChild(text);
+	if (flagifmainvaluenull)
+	    row.className = 'p1 qprob';
     }
 
     row.appendChild(cell);
@@ -3292,7 +3308,7 @@ function display_attribute(tab, att, semmeddb) {
 	subatts_table.className = 't100';
 
 	for (var sub_att of sub_atts)
-	    display_attribute(subatts_table, sub_att, semmeddb);
+	    display_attribute(subatts_table, sub_att, semmeddb, mainvalue);
 
 	cell.appendChild(subatts_table);
         row.appendChild(cell);
@@ -5540,8 +5556,8 @@ function retrieveKPInfo() {
 			}
 			else if (item["version"].startsWith("1.4"))
 			    text.className = "qprob p9";
-			//else if (item["version"].startsWith("1.2"))
-			//text.className = "qprob srtx";
+			else if (item["version"] == "1.4.0")
+			    text.className = "qprob schp";
 			else
 			    text.className = "qprob p1";
                         text.appendChild(document.createTextNode(item["version"]));
