@@ -53,17 +53,17 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
                 for object_category in object_categories:
                     meta_triples.add((subject_category, predicate, object_category))
 
-                    if(f"{subject_category}-{object_category}" in qualifier_triple):
-                        qualifier_triple[f"{subject_category}-{object_category}"].append(edge_qualifier)
+                    if(f"{subject_category}-{object_category}" in qualifier_triples):
+                        qualifier_triples[f"{subject_category}-{object_category}"].append(edge_qualifier)
                     else:
-                        qualifier_triple[f"{subject_category}-{object_category}"] = [edge_qualifier]
+                        qualifier_triples[f"{subject_category}-{object_category}"] = [edge_qualifier]
     kg2_infores_curie = "infores:rtx-kg2"
     standard_attributes = [{"attribute_type_id": "biolink:knowledge_source",
                             "attribute_source": kg2_infores_curie},
                            {"attribute_type_id": "biolink:aggregator_knowledge_source",
                             "attribute_source": kg2_infores_curie}]
 
-    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "attributes": standard_attributes, "qualifiers": qualifier_triple[f"{triple[0]-triple[2]}"] }
+    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "attributes": standard_attributes, "qualifiers": qualifier_triples[f"{triple[0]-triple[2]}"] }
                   for triple in meta_triples]
     logging.info(f" Created {len(meta_edges)} meta edges")
 
