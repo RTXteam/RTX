@@ -31,9 +31,9 @@ def serialize_with_sets(obj: any) -> any:
         return obj
 
 def get_meta_qualifier(qualified_predicate, qualified_object_direction, qualified_object_aspect):
-    return [{"qualifier_type_id": "qualified_predicate", "applicable_values": [qualified_predicate]},
-            {"qualifier_type_id": "object_direction_qualifier", "applicable_values": [qualified_object_direction]},
-            {"qualifier_type_id":"object_aspect_qualifier", "applicable_values": [qualified_object_aspect]}
+    return [{"qualifier_type_id": "biolink:qualified_predicate", "applicable_values": [qualified_predicate]},
+            {"qualifier_type_id": "biolink:object_direction_qualifier", "applicable_values": [qualified_object_direction]},
+            {"qualifier_type_id":"biolink:object_aspect_qualifier", "applicable_values": [qualified_object_aspect]}
             ]
 
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
