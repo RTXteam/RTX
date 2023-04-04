@@ -257,6 +257,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # Currently a dead simple "just multiply them all together"
         edge_confidence = 1
         edge_attribute_dict = {}
+        publications = []
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
                 if edge_attribute.original_attribute_name is not None:
@@ -265,25 +266,25 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 else:
                     edge_attribute_dict[edge_attribute.attribute_type_id] = edge_attribute.value
                     normalized_score = self.edge_attribute_score_normalizer(edge_attribute.attribute_type_id, edge_attribute.value)
+                if edge_attribute.attribute_type_id == "biolink:publications":
+                    if isinstance(edge_attribute.value,str):
+                        publications = publications + [edge_attribute.value]
+                    elif isinstance(edge_attribute.value,list):
+                        publications = publications + edge_attribute.value
                 if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
                     continue  # so don't do anything to the score since we don't know what to do with it yet
                 else:  # we have a way to normalize it, so multiply away
                     edge_confidence *= normalized_score
-        if edge.attributes and any(attribute.attribute_type_id == "biolink:knowledge_source" and
-                                   attribute.value == "infores:semmeddb" for attribute in edge.attributes):
-            if edge_attribute_dict.get("biolink:publications", None) is not None:
-                n_publications = len(edge_attribute_dict["biolink:publications"])
-            else:
-                n_publications = 0
-            if n_publications == 0:
-                pub_value = 0.01
-            else:
-                pub_value = np.log(n_publications)
-                max_value = 1.0
-                curve_steepness = 3.16993
-                logistic_midpoint = 1.38629
-                pub_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
-            edge_confidence *= pub_value
+        n_publications = len(set(publications))
+        if n_publications == 0:
+            pub_value = 0.01
+        else:
+            pub_value = np.log(n_publications)
+            max_value = 1.0
+            curve_steepness = 3.16993
+            logistic_midpoint = 1.38629
+            pub_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
+        edge_confidence *= pub_value
         return edge_confidence
 
     def edge_attribute_score_normalizer(self, edge_attribute_name: str, edge_attribute_value) -> float:
