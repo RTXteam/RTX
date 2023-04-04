@@ -46,24 +46,20 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
             subject_categories = biolink_helper.add_conflations(subject_node["all_categories"])
             object_categories = biolink_helper.add_conflations(object_node["all_categories"])
             predicate = edge["predicate"]
-            edge_qualifier = [{"attribute_type_id": "qualified_predicate", "applicable_values": [edge["qualified_predicate"]]},
-                          {"attribute_type_id": "object_direction_qualifier", "applicable_values": [edge["qualified_object_direction"]]}, 
-                          {"attribute_type_id":"object_aspect_qualifier", "applicable_values": [edge["qualified_object_aspect"]]}]
+
+            qualified_predicate_attribute = {"attribute_type_id": "qualified_predicate", "applicable_values": edge["qualified_predicate"]},
+            qualified_object_direction = {"attribute_type_id": "object_direction_qualifier", "applicable_values": edge["qualified_object_direction"]}, 
+            qualified_object_aspect = {"attribute_type_id":"object_aspect_qualifier", "applicable_values": edge["qualified_object_aspect"]}]
             for subject_category in subject_categories:
                 for object_category in object_categories:
-                    meta_triples.add((subject_category, predicate, object_category))
-
-                    if(f"{subject_category}-{object_category}" in qualifier_triples):
-                        qualifier_triples[f"{subject_category}-{object_category}"].append(edge_qualifier)
-                    else:
-                        qualifier_triples[f"{subject_category}-{object_category}"] = [edge_qualifier]
+                    meta_triples.add((subject_category, predicate, object_category, qualified_predicate, qualified_object_direction, qualified_object_aspect))
     kg2_infores_curie = "infores:rtx-kg2"
     standard_attributes = [{"attribute_type_id": "biolink:knowledge_source",
                             "attribute_source": kg2_infores_curie},
                            {"attribute_type_id": "biolink:aggregator_knowledge_source",
                             "attribute_source": kg2_infores_curie}]
-
-    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "attributes": standard_attributes, "qualifiers": qualifier_triples[f"{triple[0]-triple[2]}"] }
+    
+    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "attributes": standard_attributes, "qualifiers": [triple[3], triple[4], triple[5]]}
                   for triple in meta_triples]
     logging.info(f" Created {len(meta_edges)} meta edges")
 
