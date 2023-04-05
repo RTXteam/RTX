@@ -31,16 +31,28 @@ def serialize_with_sets(obj: any) -> any:
         return obj
 
 def get_meta_qualifier(qualified_predicate, qualified_object_direction, qualified_object_aspect):
-    return [{"qualifier_type_id": "biolink:qualified_predicate", "applicable_values": [qualified_predicate]},
-            {"qualifier_type_id": "biolink:object_direction_qualifier", "applicable_values": [qualified_object_direction]},
-            {"qualifier_type_id":"biolink:object_aspect_qualifier", "applicable_values": [qualified_object_aspect]}
+    return [{"qualifier_type_id": "biolink:qualified_predicate", "applicable_values": qualified_predicate},
+            {"qualifier_type_id": "biolink:object_direction_qualifier", "applicable_values": qualified_object_direction},
+            {"qualifier_type_id":"biolink:object_aspect_qualifier", "applicable_values": qualified_object_aspect}
             ]
+def add_edge_to_applicable_values(qualifier_dict, key, value):
+    if (value != ""):
+        if(key in qualifier_dict):
+            qualifier_dict[key].append(value)
+        else:
+            qualifer_dict[key] = [value]
+    else:
+        qualifer_dict[key] = []
+
 
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
                   meta_kg_file_name: str, biolink_helper: BiolinkHelper, is_test: bool):
     logging.info(f"Building meta KG..")
     logging.info(" Gathering all meta triples..")
     meta_triples = set()
+    qualified_predicate = {}
+    qualified_object_direction = {}
+    qualified_object_aspect = {}
     for edge in edges_by_id.values():
         subject_node_id = edge["subject"]
         object_node_id = edge["object"]
@@ -50,12 +62,19 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
             subject_categories = biolink_helper.add_conflations(subject_node["all_categories"])
             object_categories = biolink_helper.add_conflations(object_node["all_categories"])
             predicate = edge["predicate"]
+
             for subject_category in subject_categories:
                 for object_category in object_categories:
-                    meta_triples.add((subject_category, predicate, object_category, edge["qualified_predicate"], edge["qualified_object_direction"], edge["qualified_object_aspect"]))
+                    add_edge_to_applicable_values(qualified_predicate, f"{subject_category}-{object_category}", edge["qualified_predicate"])
+                    add_edge_to_applicable_values(qualified_object_direction, f"{subject_category}-{object_category}", edge["qualified_object_direction"])
+                    add_edge_to_applicable_values(qualified_object_aspect, f"{subject_category}-{object_category}", edge["qualified_object_aspect"])
+                    meta_triples.add((subject_category, predicate, object_category))
     kg2_infores_curie = "infores:rtx-kg2"
 
-    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "qualifiers": get_meta_qualifier(triple[3], triple[4], triple[5]) }
+    meta_edges = [{"subject": triple[0], 
+                   "predicate": triple[1], 
+                   "object": triple[2], 
+                   "qualifiers": get_meta_qualifier(qualified_predicate[f"{triple[0]}-{triple[2]}"], qualified_object_direction[f"{triple[0]}-{triple[2]}"], qualified_object_aspect[f"{triple[0]}-{triple[2]}"]) }
                   for triple in meta_triples]
     logging.info(f" Created {len(meta_edges)} meta edges")
 
