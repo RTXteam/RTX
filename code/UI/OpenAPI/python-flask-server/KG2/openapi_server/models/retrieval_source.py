@@ -17,11 +17,11 @@ class RetrievalSource(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, resource=None, resource_role=None, upstream_resource_ids=None, source_record_urls=None):  # noqa: E501
+    def __init__(self, resource_id=None, resource_role=None, upstream_resource_ids=None, source_record_urls=None):  # noqa: E501
         """RetrievalSource - a model defined in OpenAPI
 
-        :param resource: The resource of this RetrievalSource.  # noqa: E501
-        :type resource: str
+        :param resource_id: The resource_id of this RetrievalSource.  # noqa: E501
+        :type resource_id: str
         :param resource_role: The resource_role of this RetrievalSource.  # noqa: E501
         :type resource_role: ResourceRoleEnum
         :param upstream_resource_ids: The upstream_resource_ids of this RetrievalSource.  # noqa: E501
@@ -30,20 +30,20 @@ class RetrievalSource(Model):
         :type source_record_urls: List[str]
         """
         self.openapi_types = {
-            'resource': str,
+            'resource_id': str,
             'resource_role': ResourceRoleEnum,
             'upstream_resource_ids': List[str],
             'source_record_urls': List[str]
         }
 
         self.attribute_map = {
-            'resource': 'resource',
+            'resource_id': 'resource_id',
             'resource_role': 'resource_role',
             'upstream_resource_ids': 'upstream_resource_ids',
             'source_record_urls': 'source_record_urls'
         }
 
-        self._resource = resource
+        self._resource_id = resource_id
         self._resource_role = resource_role
         self._upstream_resource_ids = upstream_resource_ids
         self._source_record_urls = source_record_urls
@@ -60,29 +60,29 @@ class RetrievalSource(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def resource(self):
-        """Gets the resource of this RetrievalSource.
+    def resource_id(self):
+        """Gets the resource_id of this RetrievalSource.
 
         A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
-        :return: The resource of this RetrievalSource.
+        :return: The resource_id of this RetrievalSource.
         :rtype: str
         """
-        return self._resource
+        return self._resource_id
 
-    @resource.setter
-    def resource(self, resource):
-        """Sets the resource of this RetrievalSource.
+    @resource_id.setter
+    def resource_id(self, resource_id):
+        """Sets the resource_id of this RetrievalSource.
 
         A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
-        :param resource: The resource of this RetrievalSource.
-        :type resource: str
+        :param resource_id: The resource_id of this RetrievalSource.
+        :type resource_id: str
         """
-        if resource is None:
-            raise ValueError("Invalid value for `resource`, must not be `None`")  # noqa: E501
+        if resource_id is None:
+            raise ValueError("Invalid value for `resource_id`, must not be `None`")  # noqa: E501
 
-        self._resource = resource
+        self._resource_id = resource_id
 
     @property
     def resource_role(self):
