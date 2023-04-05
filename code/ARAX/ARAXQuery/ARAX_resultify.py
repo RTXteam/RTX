@@ -752,7 +752,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     qnodes_with_multiple_ids = {qnode_key for qnode_key, qnode in qg.nodes.items()
                                 if qnode.ids and len(qnode.ids) > 1}
 
-    reasoner_id = "infores:arax" if mode == "ARAX" else "infores:rtx-kg2"
+    resource_id = "infores:arax" if mode == "ARAX" else "infores:rtx-kg2"
     results = []
     for result_graph in final_result_graphs:
         node_bindings = dict()
@@ -764,7 +764,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         edge_bindings = dict()
         for qedge_key, edge_keys in result_graph['edges'].items():
             edge_bindings[qedge_key] = [EdgeBinding(id=edge_key) for edge_key in edge_keys]
-        result = Result(node_bindings=node_bindings, analyses=[Analysis(reasoner_id=reasoner_id,
+        result = Result(node_bindings=node_bindings, analyses=[Analysis(resource_id=resource_id,
                                                                         edge_bindings=edge_bindings)])
 
         # Fill out the essence for the result
