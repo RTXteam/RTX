@@ -17,35 +17,35 @@ class RetrievalSource(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, resource=None, resource_role=None, upstream_resources=None, source_record_urls=None):  # noqa: E501
+    def __init__(self, resource=None, resource_role=None, upstream_resource_ids=None, source_record_urls=None):  # noqa: E501
         """RetrievalSource - a model defined in OpenAPI
 
         :param resource: The resource of this RetrievalSource.  # noqa: E501
         :type resource: str
         :param resource_role: The resource_role of this RetrievalSource.  # noqa: E501
         :type resource_role: ResourceRoleEnum
-        :param upstream_resources: The upstream_resources of this RetrievalSource.  # noqa: E501
-        :type upstream_resources: List[str]
+        :param upstream_resource_ids: The upstream_resource_ids of this RetrievalSource.  # noqa: E501
+        :type upstream_resource_ids: List[str]
         :param source_record_urls: The source_record_urls of this RetrievalSource.  # noqa: E501
         :type source_record_urls: List[str]
         """
         self.openapi_types = {
             'resource': str,
             'resource_role': ResourceRoleEnum,
-            'upstream_resources': List[str],
+            'upstream_resource_ids': List[str],
             'source_record_urls': List[str]
         }
 
         self.attribute_map = {
             'resource': 'resource',
             'resource_role': 'resource_role',
-            'upstream_resources': 'upstream_resources',
+            'upstream_resource_ids': 'upstream_resource_ids',
             'source_record_urls': 'source_record_urls'
         }
 
         self._resource = resource
         self._resource_role = resource_role
-        self._upstream_resources = upstream_resources
+        self._upstream_resource_ids = upstream_resource_ids
         self._source_record_urls = source_record_urls
 
     @classmethod
@@ -108,27 +108,27 @@ class RetrievalSource(Model):
         self._resource_role = resource_role
 
     @property
-    def upstream_resources(self):
-        """Gets the upstream_resources of this RetrievalSource.
+    def upstream_resource_ids(self):
+        """Gets the upstream_resource_ids of this RetrievalSource.
 
         An upstream InformationResource from which the resource being described directly retrieved a record of the knowledge expressed in the Edge, or data used to generate this knowledge. This is an array because there are cases where a merged Edge holds knowledge that was retrieved from multiple sources. e.g. an Edge provided by the ARAGORN ARA can expressing knowledge it retrieved from both the automat-mychem-info and molepro KPs, which both provided it with records of this single fact.  # noqa: E501
 
-        :return: The upstream_resources of this RetrievalSource.
+        :return: The upstream_resource_ids of this RetrievalSource.
         :rtype: List[str]
         """
-        return self._upstream_resources
+        return self._upstream_resource_ids
 
-    @upstream_resources.setter
-    def upstream_resources(self, upstream_resources):
-        """Sets the upstream_resources of this RetrievalSource.
+    @upstream_resource_ids.setter
+    def upstream_resource_ids(self, upstream_resource_ids):
+        """Sets the upstream_resource_ids of this RetrievalSource.
 
         An upstream InformationResource from which the resource being described directly retrieved a record of the knowledge expressed in the Edge, or data used to generate this knowledge. This is an array because there are cases where a merged Edge holds knowledge that was retrieved from multiple sources. e.g. an Edge provided by the ARAGORN ARA can expressing knowledge it retrieved from both the automat-mychem-info and molepro KPs, which both provided it with records of this single fact.  # noqa: E501
 
-        :param upstream_resources: The upstream_resources of this RetrievalSource.
-        :type upstream_resources: List[str]
+        :param upstream_resource_ids: The upstream_resource_ids of this RetrievalSource.
+        :type upstream_resource_ids: List[str]
         """
 
-        self._upstream_resources = upstream_resources
+        self._upstream_resource_ids = upstream_resource_ids
 
     @property
     def source_record_urls(self):
