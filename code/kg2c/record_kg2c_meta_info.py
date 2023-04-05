@@ -35,8 +35,8 @@ def get_meta_qualifier(qualified_predicate, qualified_object_direction, qualifie
             {"qualifier_type_id": "biolink:object_direction_qualifier", "applicable_values": qualified_object_direction},
             {"qualifier_type_id":"biolink:object_aspect_qualifier", "applicable_values": qualified_object_aspect}
             ]
-def add_edge_to_applicable_values(qualifier_dict, key, value):
-    if (value != ""):
+def add_edge_to_applicable_values(qualifier_dict, key, value): #Adds the qualifier value to the corresponding applicable values of the list
+    if (value != ""):                                          #given the key.
         if(key in qualifier_dict):
             qualifier_dict[key].append(value)
         else:
@@ -65,9 +65,9 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
 
             for subject_category in subject_categories:
                 for object_category in object_categories:
-                    add_edge_to_applicable_values(qualified_predicate, f"{subject_category}-{object_category}", edge["qualified_predicate"])
-                    add_edge_to_applicable_values(qualified_object_direction, f"{subject_category}-{object_category}", edge["qualified_object_direction"])
-                    add_edge_to_applicable_values(qualified_object_aspect, f"{subject_category}-{object_category}", edge["qualified_object_aspect"])
+                    add_edge_to_applicable_values(qualified_predicate, f"{subject_category}-{object_category}", edge["qualified_predicate"]) #Adding the  qualified_predicate of the edge to the corresponding applicable values list for the object_category-subject_category pair
+                    add_edge_to_applicable_values(qualified_object_direction, f"{subject_category}-{object_category}", edge["qualified_object_direction"]) #Adding the qualified_object_direction of the edge to the corresponding applicable values list for the object_category-subject_category pair
+                    add_edge_to_applicable_values(qualified_object_aspect, f"{subject_category}-{object_category}", edge["qualified_object_aspect"]) #Adding the qualified_object_aspect of the edge to the corresponding applicable values list for the object_category-subject_category pair
                     meta_triples.add((subject_category, predicate, object_category))
     kg2_infores_curie = "infores:rtx-kg2"
 
