@@ -7,6 +7,7 @@ import time
 import re
 import signal
 import socket
+import json
 
 from datetime import datetime
 import sqlalchemy
@@ -18,6 +19,8 @@ from sqlalchemy import text
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.async_query_status_response import AsyncQueryStatusResponse
 
 Base = declarative_base()
 
@@ -358,7 +361,7 @@ class ARAXQueryTracker:
         return { 'status': 'OK', 'description': f"Process {terminate_pid} terminated" }
 
 
-    ####### ###########################################################################################
+    ##################################################################################################
     def get_query_by_id(self, id_):
         if self.session is None:
             return
@@ -374,7 +377,48 @@ class ARAXQueryTracker:
         eprint(f"ERROR: Unable to find query_id {id}")
 
 
-    ####### ###########################################################################################
+    ##################################################################################################
+    def get_job_status(self, job_id):
+        if self.session is None:
+            return
+
+        if job_id is None:
+            eprint(f"ERROR: [ARAX_query_tracker.get_job_status] job_id is null")
+            return
+
+        rows = self.session.query(ARAXQuery).filter(ARAXQuery.query_id == job_id)
+
+        if rows.count() == 0:
+            description = f"ERROR: Unable to find a record of job_id {job_id}"
+            eprint(description)
+            response = AsyncQueryStatusResponse(status='UnknownJobId', description=description, logs=[])
+            ## Should return a 404
+            return response
+
+        row = rows[0]
+        pid = row.pid
+        status = row.message_code
+        state = row.status
+        elapsed = row.elapsed
+        response_id = row.message_id
+
+        if state == 'Completed':
+            description = f"Job {job_id} ended with state '{state}' in {elapsed} seconds"
+            if response_id is None:
+                description += " but no response_id is available"
+            else:
+                description += f" with response_id {response_id}"
+        else:
+            description = f"Job {job_id} has status '{status}' and state '{state}' with pid {pid}"
+
+        response = AsyncQueryStatusResponse(status=state, description=description, logs=[])
+        if response_id is not None:
+            response.response_url = f"https://arax.ncats.io/?r={response_id}"
+
+        return response
+
+
+    ##################################################################################################
     def get_logs(self, mode='tail'):
         if self.session is None:
             return
@@ -431,11 +475,17 @@ class ARAXQueryTracker:
         return instance_name
 
 
+##################################################################################################
 def main():
 
     query_tracker = ARAXQueryTracker()
 
-    query_tracker.clear_unfinished_entries()
+    job_ids = [ 883683, 883764, 999999, 'XXX' ]
+    for job_id in job_ids:
+        eprint(f"INFO: Getting status for job {job_id}")
+        response = query_tracker.get_job_status(job_id)
+        print(response)
+
     return
 
     #query_tracker.create_database()

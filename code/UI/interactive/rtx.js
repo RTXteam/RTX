@@ -2676,6 +2676,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 		kmne.target = kmne.object;
 		if (kmne.predicate)
 		    kmne.type = kmne.predicate;
+		if (kmne.qualifiers && kmne.qualifiers.length == 0)
+		    kmne.qualifiers = null;
 		if (edge.attributes)
 		    kmne.edge_binding_attributes = edge.attributes;
 		var tmpdata = { "data" : kmne };
