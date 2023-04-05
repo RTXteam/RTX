@@ -853,10 +853,10 @@ class ARAXQuery:
 
             #response.envelope.operations['actions'] = operations.actions
 
-            # Update the reasoner_id to ARAX if not already present
+            # Update the resource_id to ARAX if not already present
             for result in response.envelope.message.results:
-                if result.reasoner_id is None:
-                    result.reasoner_id = 'ARAX'
+                if result.resource_id is None:
+                    result.resource_id = 'ARAX'
 
             # Store the validation and provenance metadata
             #trapi_version = '1.2.0'

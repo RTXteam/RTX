@@ -616,7 +616,7 @@ class ARAXExpander:
                 if qedge_key in overarching_kg.edges_by_qg_id:
                     kedges_to_remove = []
                     for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
-                        edge_sources = {retrieval_source.resource for retrieval_source in kedge.sources} if kedge.sources else set()
+                        edge_sources = {retrieval_source.resource_id for retrieval_source in kedge.sources} if kedge.sources else set()
                         # always accept arax as a source
                         if edge_sources == {"infores:arax"}:
                             continue
