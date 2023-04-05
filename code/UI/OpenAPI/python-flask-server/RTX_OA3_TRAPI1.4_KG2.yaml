@@ -1902,7 +1902,7 @@ components:
         served as a source from which knowledge expressed in an Edge, or
         data used to generate this knowledge, was retrieved.
       properties:
-        resource:
+        resource_id:
           $ref: '#/components/schemas/CURIE'
           description: >-
             The CURIE for an Information Resource that served as a source
@@ -1947,7 +1947,7 @@ components:
             [https://db.idrblab.net/ttd/data/drug/details/d0az3c, 
             https://db.idrblab.net/ttd/data/target/details/t57700]
       required:
-        - resource
+        - resource_id
         - resource_role
       additionalProperties: true
     ResourceRoleEnum:
