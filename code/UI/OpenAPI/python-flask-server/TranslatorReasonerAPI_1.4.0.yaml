@@ -22,7 +22,7 @@ info:
       url: https://github.com/NCATSTranslator/translator_extensions/blob/\
         production/x-translator/
   x-trapi:
-    version: 1.4.0-dev
+    version: 1.4.0
     asyncquery: REPLACE-WITH-true-IF-/asyncquery-IS-IMPLEMENTED-ELSE-false
     operations:
       - LIST-ALL-SUPPORTED-OPERATION-IDS-HERE-OR-REMOVE-THIS-SECTION
@@ -644,9 +644,9 @@ components:
         supporting the analysis (e.g. method or data that supported
         generation of the score).
       properties:
-        reasoner_id:
+        resource_id:
           $ref: '#/components/schemas/CURIE'
-          description: The id of the service generating and using this Anlysis
+          description: The id of the resource generating this Analysis
         score:
           type: number
           format: float
@@ -694,7 +694,7 @@ components:
           nullable: true
       additionalProperties: true
       required:
-        - reasoner_id
+        - resource_id
         - edge_bindings
     EdgeBinding:
       type: object
@@ -1474,7 +1474,7 @@ components:
         served as a source from which knowledge expressed in an Edge, or
         data used to generate this knowledge, was retrieved.
       properties:
-        resource:
+        resource_id:
           $ref: '#/components/schemas/CURIE'
           description: >-
             The CURIE for an Information Resource that served as a source
@@ -1489,7 +1489,7 @@ components:
             source for an Edge. Note that a given Edge should have one
             and only one 'primary' source, and may have any number of
             'aggregator' or 'supporting data' sources.
-        upstream_resources:
+        upstream_resource_ids:
           type: array
           items:
             $ref: '#/components/schemas/CURIE'
@@ -1519,7 +1519,7 @@ components:
             [https://db.idrblab.net/ttd/data/drug/details/d0az3c, 
             https://db.idrblab.net/ttd/data/target/details/t57700]
       required:
-        - resource
+        - resource_id
         - resource_role
       additionalProperties: true
     ResourceRoleEnum:

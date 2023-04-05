@@ -673,12 +673,21 @@ components:
             messages were processed and returned
           oneOf:
             - $ref: '#/components/schemas/Operations'
-        reasoner_id:
+        job_id:
+          description: >-
+            An identifier for the submitted job that can be used with
+            /async_query_status to receive an update on the status of
+            the job.
+          type: string
+          example: rXEOAosN3L
+          nullable: true
+        resource_id:
           type: string
           example: ARAX
           description: >-
-            Identifier string of the reasoner that provided this response
-            (one of ARAX, Robokop, etc.)
+            Identifier string of the resource that provided this response
+            (one of ARAX, Aragorn, etc.)
+          nullable: true
         tool_version:
           type: string
           example: ARAX 0.8.0
@@ -979,12 +988,12 @@ components:
             A score that denotes the similarity of this result to other members
             of the result_group
           nullable: true
-        reasoner_id:
+        resource_id:
           type: string
           example: ARAX
           description: >-
-            Identifier string of the reasoner that provided this result (e.g.,
-            ARAX, Robokop, etc.)
+            Identifier string of the resource that provided this result
+            (one of ARAX, Aragorn, etc.)
           nullable: true
       additionalProperties: true
       required:
@@ -1042,9 +1051,10 @@ components:
         supporting the analysis (e.g. method or data that supported
         generation of the score).
       properties:
-        reasoner_id:
+        resource_id:
           $ref: '#/components/schemas/CURIE'
-          description: The id of the service generating and using this Anlysis
+          description: The id of the resource generating this Analysis
+          nullable: false
         score:
           type: number
           format: float
@@ -1092,7 +1102,7 @@ components:
           nullable: true
       additionalProperties: true
       required:
-        - reasoner_id
+        - resource_id
         - edge_bindings
     EdgeBinding:
       type: object
@@ -1907,7 +1917,7 @@ components:
             source for an Edge. Note that a given Edge should have one
             and only one 'primary' source, and may have any number of
             'aggregator' or 'supporting data' sources.
-        upstream_resources:
+        upstream_resource_ids:
           type: array
           items:
             $ref: '#/components/schemas/CURIE'
