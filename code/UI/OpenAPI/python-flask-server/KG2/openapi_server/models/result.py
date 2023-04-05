@@ -21,7 +21,7 @@ class Result(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, node_bindings=None, analyses=None, id=None, description=None, essence=None, essence_category=None, row_data=None, score=None, score_name=None, score_direction=None, confidence=None, result_group=None, result_group_similarity_score=None, reasoner_id=None):  # noqa: E501
+    def __init__(self, node_bindings=None, analyses=None, id=None, description=None, essence=None, essence_category=None, row_data=None, score=None, score_name=None, score_direction=None, confidence=None, result_group=None, result_group_similarity_score=None, resource_id=None):  # noqa: E501
         """Result - a model defined in OpenAPI
 
         :param node_bindings: The node_bindings of this Result.  # noqa: E501
@@ -50,8 +50,8 @@ class Result(Model):
         :type result_group: int
         :param result_group_similarity_score: The result_group_similarity_score of this Result.  # noqa: E501
         :type result_group_similarity_score: float
-        :param reasoner_id: The reasoner_id of this Result.  # noqa: E501
-        :type reasoner_id: str
+        :param resource_id: The resource_id of this Result.  # noqa: E501
+        :type resource_id: str
         """
         self.openapi_types = {
             'node_bindings': Dict[str, List[NodeBinding]],
@@ -67,7 +67,7 @@ class Result(Model):
             'confidence': float,
             'result_group': int,
             'result_group_similarity_score': float,
-            'reasoner_id': str
+            'resource_id': str
         }
 
         self.attribute_map = {
@@ -84,7 +84,7 @@ class Result(Model):
             'confidence': 'confidence',
             'result_group': 'result_group',
             'result_group_similarity_score': 'result_group_similarity_score',
-            'reasoner_id': 'reasoner_id'
+            'resource_id': 'resource_id'
         }
 
         self._node_bindings = node_bindings
@@ -100,7 +100,7 @@ class Result(Model):
         self._confidence = confidence
         self._result_group = result_group
         self._result_group_similarity_score = result_group_similarity_score
-        self._reasoner_id = reasoner_id
+        self._resource_id = resource_id
 
     @classmethod
     def from_dict(cls, dikt) -> 'Result':
@@ -190,7 +190,7 @@ class Result(Model):
     def description(self):
         """Gets the description of this Result.
 
-        A free text description of this result answer from the reasoner  # noqa: E501
+        A free text description of this result answer from the resource  # noqa: E501
 
         :return: The description of this Result.
         :rtype: str
@@ -201,7 +201,7 @@ class Result(Model):
     def description(self, description):
         """Sets the description of this Result.
 
-        A free text description of this result answer from the reasoner  # noqa: E501
+        A free text description of this result answer from the resource  # noqa: E501
 
         :param description: The description of this Result.
         :type description: str
@@ -417,24 +417,24 @@ class Result(Model):
         self._result_group_similarity_score = result_group_similarity_score
 
     @property
-    def reasoner_id(self):
-        """Gets the reasoner_id of this Result.
+    def resource_id(self):
+        """Gets the resource_id of this Result.
 
-        Identifier string of the reasoner that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
+        Identifier string of the resource that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
 
-        :return: The reasoner_id of this Result.
+        :return: The resource_id of this Result.
         :rtype: str
         """
-        return self._reasoner_id
+        return self._resource_id
 
-    @reasoner_id.setter
-    def reasoner_id(self, reasoner_id):
-        """Sets the reasoner_id of this Result.
+    @resource_id.setter
+    def resource_id(self, resource_id):
+        """Sets the resource_id of this Result.
 
-        Identifier string of the reasoner that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
+        Identifier string of the resource that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
 
-        :param reasoner_id: The reasoner_id of this Result.
-        :type reasoner_id: str
+        :param resource_id: The resource_id of this Result.
+        :type resource_id: str
         """
 
-        self._reasoner_id = reasoner_id
+        self._resource_id = resource_id
