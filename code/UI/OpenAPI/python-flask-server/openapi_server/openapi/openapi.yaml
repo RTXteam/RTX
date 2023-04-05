@@ -883,8 +883,9 @@ components:
         - chemical_substance.name
         - chemical_substance.id
         tool_version: ARAX 0.8.0
+        job_id: rXEOAosN3L
         context: https://rtx.ncats.io/ns/translator.jsonld
-        reasoner_id: ARAX
+        resource_id: ARAX
         id: https://arax.ncats.io/api/rtx/v1.3/response/123
         logs:
         - code: code
@@ -966,10 +967,17 @@ components:
             those messages were processed and returned
           oneOf:
           - $ref: '#/components/schemas/Operations'
-        reasoner_id:
-          description: Identifier string of the reasoner that provided this response
-            (one of ARAX, Robokop, etc.)
+        job_id:
+          description: An identifier for the submitted job that can be used with /async_query_status
+            to receive an update on the status of the job.
+          example: rXEOAosN3L
+          nullable: true
+          type: string
+        resource_id:
+          description: Identifier string of the resource that provided this response
+            (one of ARAX, Aragorn, etc.)
           example: ARAX
+          nullable: true
           type: string
         tool_version:
           description: Version label of the tool that generated this response
@@ -1252,9 +1260,9 @@ components:
           format: float
           nullable: true
           type: number
-        reasoner_id:
-          description: Identifier string of the reasoner that provided this result
-            (e.g., ARAX, Robokop, etc.)
+        resource_id:
+          description: Identifier string of the resource that provided this result
+            (one of ARAX, Aragorn, etc.)
           example: ARAX
           nullable: true
           type: string
@@ -1307,7 +1315,7 @@ components:
         information supporting the analysis (e.g. method or data that supported generation
         of the score).
       properties:
-        reasoner_id:
+        resource_id:
           description: A Compact URI, consisting of a prefix and a reference separated
             by a colon, such as UniProtKB:P00738. Via an external context definition,
             the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
@@ -1356,7 +1364,7 @@ components:
           type: array
       required:
       - edge_bindings
-      - reasoner_id
+      - resource_id
       title: Analysis
       type: object
     EdgeBinding:
@@ -2276,7 +2284,7 @@ components:
         served as a source from which knowledge expressed in an Edge, or data used
         to generate this knowledge, was retrieved.
       properties:
-        resource:
+        resource_id:
           description: A Compact URI, consisting of a prefix and a reference separated
             by a colon, such as UniProtKB:P00738. Via an external context definition,
             the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/,
@@ -2287,7 +2295,7 @@ components:
           type: string
         resource_role:
           $ref: '#/components/schemas/ResourceRoleEnum'
-        upstream_resources:
+        upstream_resource_ids:
           description: An upstream InformationResource from which the resource being
             described directly retrieved a record of the knowledge expressed in the
             Edge, or data used to generate this knowledge. This is an array because
@@ -2314,7 +2322,7 @@ components:
             type: string
           type: array
       required:
-      - resource
+      - resource_id
       - resource_role
       title: RetrievalSource
       type: object
