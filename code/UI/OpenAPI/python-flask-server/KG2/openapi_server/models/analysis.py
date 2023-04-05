@@ -19,11 +19,11 @@ class Analysis(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, reasoner_id=None, score=None, edge_bindings=None, support_graphs=None, scoring_method=None, attributes=None):  # noqa: E501
+    def __init__(self, resource_id=None, score=None, edge_bindings=None, support_graphs=None, scoring_method=None, attributes=None):  # noqa: E501
         """Analysis - a model defined in OpenAPI
 
-        :param reasoner_id: The reasoner_id of this Analysis.  # noqa: E501
-        :type reasoner_id: str
+        :param resource_id: The resource_id of this Analysis.  # noqa: E501
+        :type resource_id: str
         :param score: The score of this Analysis.  # noqa: E501
         :type score: float
         :param edge_bindings: The edge_bindings of this Analysis.  # noqa: E501
@@ -36,7 +36,7 @@ class Analysis(Model):
         :type attributes: List[Attribute]
         """
         self.openapi_types = {
-            'reasoner_id': str,
+            'resource_id': str,
             'score': float,
             'edge_bindings': Dict[str, List[EdgeBinding]],
             'support_graphs': List[str],
@@ -45,7 +45,7 @@ class Analysis(Model):
         }
 
         self.attribute_map = {
-            'reasoner_id': 'reasoner_id',
+            'resource_id': 'resource_id',
             'score': 'score',
             'edge_bindings': 'edge_bindings',
             'support_graphs': 'support_graphs',
@@ -53,7 +53,7 @@ class Analysis(Model):
             'attributes': 'attributes'
         }
 
-        self._reasoner_id = reasoner_id
+        self._resource_id = resource_id
         self._score = score
         self._edge_bindings = edge_bindings
         self._support_graphs = support_graphs
@@ -72,29 +72,29 @@ class Analysis(Model):
         return util.deserialize_model(dikt, cls)
 
     @property
-    def reasoner_id(self):
-        """Gets the reasoner_id of this Analysis.
+    def resource_id(self):
+        """Gets the resource_id of this Analysis.
 
         A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
-        :return: The reasoner_id of this Analysis.
+        :return: The resource_id of this Analysis.
         :rtype: str
         """
-        return self._reasoner_id
+        return self._resource_id
 
-    @reasoner_id.setter
-    def reasoner_id(self, reasoner_id):
-        """Sets the reasoner_id of this Analysis.
+    @resource_id.setter
+    def resource_id(self, resource_id):
+        """Sets the resource_id of this Analysis.
 
         A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
-        :param reasoner_id: The reasoner_id of this Analysis.
-        :type reasoner_id: str
+        :param resource_id: The resource_id of this Analysis.
+        :type resource_id: str
         """
-        if reasoner_id is None:
-            raise ValueError("Invalid value for `reasoner_id`, must not be `None`")  # noqa: E501
+        if resource_id is None:
+            raise ValueError("Invalid value for `resource_id`, must not be `None`")  # noqa: E501
 
-        self._reasoner_id = reasoner_id
+        self._resource_id = resource_id
 
     @property
     def score(self):
