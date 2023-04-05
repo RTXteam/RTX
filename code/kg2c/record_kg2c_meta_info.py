@@ -42,7 +42,8 @@ def add_edge_to_applicable_values(qualifier_dict, key, value): #Adds the qualifi
         else:
             qualifier_dict[key] = [value]
     else:
-        qualifier_dict[key] = []
+        if(key not in qualifier_dict):
+            qualifier_dict[key] = []
 
 
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
