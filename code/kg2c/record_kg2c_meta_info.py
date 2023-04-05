@@ -36,9 +36,10 @@ def get_meta_qualifier(qualified_predicate, qualified_object_direction, qualifie
             {"qualifier_type_id":"biolink:object_aspect_qualifier", "applicable_values": qualified_object_aspect}
             ]
 def add_edge_to_applicable_values(qualifier_dict, key, value): #Adds the qualifier value to the corresponding applicable values of the list
-    if (value != ""):                                          #given the key.
+    if (value != ""):                                          #given the key nad the value is not alreadt present.
         if(key in qualifier_dict):
-            qualifier_dict[key].append(value)
+            if(value not in qualifier_dict[key]):
+                qualifier_dict[key].append(value)
         else:
             qualifier_dict[key] = [value]
     else:
