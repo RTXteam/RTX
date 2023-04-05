@@ -36,7 +36,7 @@ class OverlayExposuresData:
         self.icees_known_curies = self._load_icees_known_curies(self.response)
         self.synonyms_dict = self._get_node_synonyms(self.message.knowledge_graph)
         self.icees_attribute_name = "icees_p-value"
-        self.icees_attribute_type = "EDAM:data_1669"
+        self.icees_attribute_type = "EDAM-DATA:1669"
         self.icees_edge_type = "biolink:has_icees_p-value_with"
         self.icees_knowledge_graph_overlay_url = "https://icees.renci.org:16340/knowledge_graph_overlay"
         self.virtual_relation_label = self.parameters.get('virtual_relation_label')
@@ -212,13 +212,13 @@ class OverlayExposuresData:
         provided_by = "infores:icees"
         edge_attribute_list = [
             self._create_icees_edge_attribute(p_value),
-            EdgeAttribute(original_attribute_name="virtual_relation_label", value=self.virtual_relation_label, attribute_type_id="biolink:Unknown"),
+            EdgeAttribute(original_attribute_name="virtual_relation_label", value=self.virtual_relation_label, attribute_type_id="EDAM-OPERATION:0226"),
             #EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
             EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-            EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+            # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
             EdgeAttribute(original_attribute_name=None, value="infores:icees", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-            EdgeAttribute(original_attribute_name="provided_by", value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
-            EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
+            EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
+            EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
             #EdgeAttribute(name="qedge_ids", value=[self.virtual_relation_label])
         ]
         edge = Edge(predicate=self.icees_edge_type, subject=subject_curie, object=object_curie,

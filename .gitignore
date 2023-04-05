@@ -49,3 +49,5 @@ code/kg2c/*.pickle
 
 code/ARAX/ARAXQuery/Infer/data/xCRG_data/*.pt
 code/ARAX/ARAXQuery/Infer/data/xCRG_data/*.npz
+
+code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.json
