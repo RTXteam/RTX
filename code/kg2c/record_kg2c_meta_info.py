@@ -75,8 +75,10 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
 
     meta_edges = [{"subject": triple[0], 
                    "predicate": triple[1], 
-                   "object": triple[2], 
-                   "qualifiers": get_meta_qualifier(qualified_predicate[f"{triple[0]}-{triple[2]}"], qualified_object_direction[f"{triple[0]}-{triple[2]}"], qualified_object_aspect[f"{triple[0]}-{triple[2]}"]) }
+                   "object": triple[2],
+                   "qualifiers": get_meta_qualifier(qualified_predicate[f"{triple[0]}-{triple[2]}"], qualified_object_direction[f"{triple[0]}-{triple[2]}"], qualified_object_aspect[f"{triple[0]}-{triple[2]}"]) } if (qualified_predicate[f"{triple[0]}-{triple[2]}"] != []) else {"subject": triple[0], 
+                   "predicate": triple[1], 
+                   "object": triple[2]}
                   for triple in meta_triples]
     logging.info(f" Created {len(meta_edges)} meta edges")
 
