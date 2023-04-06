@@ -1635,7 +1635,9 @@ function render_response(respObj,dispjson) {
 
 	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
 	    var respreas = 'n/a';
-	    if (respObj.reasoner_id)
+	    if (respObj.resource_id)
+		respreas = respObj.resource_id;
+	    else if (respObj.reasoner_id)
 		respreas = respObj.reasoner_id;
 	    process_results(respObj.message["results"],respObj.message["knowledge_graph"],respObj["schema_version"],respreas);
 
@@ -2493,7 +2495,11 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	if (num > UIstate["maxresults"]) continue;
 
 	var rsrc = mainreasoner;
-	if (result.reasoner_id)
+	if (result.resource_id)
+	    rsrc = result.resource_id;
+	else if (result.analyses && result.analyses[0].resource_id)
+	    rsrc = result.analyses[0].resource_id;
+	else if (result.reasoner_id)
 	    rsrc = result.reasoner_id;
 	else if (result.analyses && result.analyses[0].reasoner_id)
 	    rsrc = result.analyses[0].reasoner_id;
@@ -2974,7 +2980,7 @@ function add_cyto(i) {
 	}
 	if (this.data('sources')) {
             div.appendChild(document.createElement("br"));
-            show_attributes(div, this.data('sources'),"Edge Sources:","upstream_resources");
+            show_attributes(div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
