@@ -2,14 +2,14 @@ name: "Test Build"
 
 on:
   push:
-    branches: [ master, production, itrb-test, tests-on-pull-request ]
+    branches: [ master, production, itrb-test ]
     paths:
       - 'code/**'
       - 'DockerBuild/**'
       - 'requirements.txt'
       - '.github/workflows/pytest.yml'
   pull_request:
-    branches: [ master, production, itrb-test, tests-on-pull-request ]
+    branches: [ master, production, itrb-test ]
     paths:
       - 'code/**'
       - 'DockerBuild/**'
