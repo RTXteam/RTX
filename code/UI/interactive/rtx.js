@@ -5556,7 +5556,7 @@ function retrieveKPInfo() {
 			    item["version"] = '--NULL--';
 			    text.className = "qprob p0";
 			}
-			else if (item["version"].startsWith("1.4"))
+			else if (item["version"].startsWith("1.3"))
 			    text.className = "qprob p9";
 			else if (item["version"] == "1.4.0")
 			    text.className = "qprob schp";
