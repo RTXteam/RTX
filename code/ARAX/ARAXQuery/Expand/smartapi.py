@@ -35,7 +35,7 @@ class SmartAPI:
         except:
             return endpoints
 
-        for hit in response_dict["hits"]:
+        for hit in response_dict["hits"]["hits"]:
             endpoints.append(hit)
         return endpoints
 
@@ -74,37 +74,38 @@ class SmartAPI:
         except:
             return endpoints
 
-        for hit in response_dict["hits"]:
+        for hit in response_dict["hits"]["hits"]:
+            hit_source = hit["_source"]
             try:
-                url = hit["servers"][0]["url"]
+                url = hit_source["servers"][0]["url"]
             except (KeyError, IndexError):
                 url = None
             try:
-                url_version = hit["info"]["x-trapi"]["version"]
+                url_version = hit_source["info"]["x-trapi"]["version"]
             except KeyError:
                 url_version = None
             try:
-                operations = hit["info"]["x-trapi"]["operations"]
+                operations = hit_source["info"]["x-trapi"]["operations"]
             except KeyError:
                 operations = None
 
             try:
-                infores_name = hit["info"]["x-translator"]["infores"]
+                infores_name = hit_source["info"]["x-translator"]["infores"]
             except KeyError:
                 infores_name = None
 
             try:
-                component = hit["info"]["x-translator"]["component"]
+                component = hit_source["info"]["x-translator"]["component"]
             except KeyError:
                 component = None
 
             try:
-                title = hit["info"]["title"]
+                title = hit_source["info"]["title"]
             except KeyError:
                 title = None
 
             servers = []
-            for server in hit["servers"]:
+            for server in hit_source["servers"]:
                 try:
                     url = server["url"]
                 except KeyError:
