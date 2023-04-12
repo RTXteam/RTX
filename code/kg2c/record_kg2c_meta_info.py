@@ -31,10 +31,14 @@ def serialize_with_sets(obj: any) -> any:
         return obj
 
 def get_meta_qualifier(qualified_predicate, qualified_object_direction, qualified_object_aspect):
-    return [{"qualifier_type_id": "biolink:qualified_predicate", "applicable_values": qualified_predicate},
-            {"qualifier_type_id": "biolink:object_direction_qualifier", "applicable_values": qualified_object_direction},
-            {"qualifier_type_id":"biolink:object_aspect_qualifier", "applicable_values": qualified_object_aspect}
-            ]
+    meta_qualifier = []
+    if (len(qualified_predicate) != 0):
+        meta_qualifier.append({"qualifier_type_id": "biolink:qualified_predicate", "applicable_values": qualified_predicate})
+    if(len(qualified_object_direction) != 0):
+        meta_qualifier.append({"qualifier_type_id": "biolink:object_direction_qualifier", "applicable_values": qualified_object_direction})
+    if(len(qualified_object_aspect) != 0):    
+        meta_qualifier.append({"qualifier_type_id":"biolink:object_aspect_qualifier", "applicable_values": qualified_object_aspect})
+    return meta_qualifier
 def add_edge_to_applicable_values(qualifier_dict, key, value): #Adds the qualifier value to the corresponding applicable values of the list
     if (value != ""):                                          #given the key nad the value is not alreadt present.
         if(key in qualifier_dict):
