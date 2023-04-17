@@ -35,7 +35,8 @@ class SmartAPI:
         except:
             return endpoints
 
-        for hit in response_dict["hits"]:
+        hits = response_dict["hits"]["hits"] if "hits" in response_dict["hits"] else response_dict["hits"]
+        for hit in hits:
             endpoints.append(hit)
         return endpoints
 
@@ -74,7 +75,11 @@ class SmartAPI:
         except:
             return endpoints
 
-        for hit in response_dict["hits"]:
+        hits = response_dict["hits"]["hits"] if "hits" in response_dict["hits"] else response_dict["hits"]
+        for hit in hits:
+            if "_source" in hit:
+                hit = hit["_source"]
+
             try:
                 url = hit["servers"][0]["url"]
             except (KeyError, IndexError):
