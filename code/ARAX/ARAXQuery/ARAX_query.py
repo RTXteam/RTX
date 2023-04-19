@@ -1,4 +1,5 @@
 #!/bin/env python3
+import copy
 import sys
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -31,6 +32,7 @@ from ARAX_messenger import ARAXMessenger
 from ARAX_ranker import ARAXRanker
 from operation_to_ARAXi import WorkflowToARAXi
 from ARAX_query_tracker import ARAXQueryTracker
+from result_transformer import ResultTransformer
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response
@@ -516,6 +518,9 @@ class ARAXQuery:
         messages = []
         message = None
 
+        # Save the original input query for later reference
+        response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
+
         # If there is already a message (perhaps with a query_graph) already in the query, preserve it
         if 'message' in input_operations_dict and input_operations_dict['message'] is not None:
             incoming_message = input_operations_dict['message']
@@ -822,6 +827,9 @@ class ARAXQuery:
                         if mode == 'asynchronous':
                             self.send_to_callback(callback, response)
                         return response
+
+            result_transformer = ResultTransformer()
+            result_transformer.transform(response)
 
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'response': 'true', 'store': 'true' } }
