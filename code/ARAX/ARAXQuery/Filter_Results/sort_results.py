@@ -86,17 +86,18 @@ class SortResults:
             i = 0
             type_flag = 'edge_relation' in params
             for result in self.message.results:
-                for binding_list in result.edge_bindings.values():
-                    for binding in binding_list:
-                        # need to test this for TRAPI 1.0 after expand (and resultify?)is updated to see if binding.id matches edge_key
-                        if edge_values[binding.id]['value'] is not None:
-                            if not type_flag or (type_flag and params['edge_relation'] == edge_values[binding.id]['relation']):
-                                if abs(value_list[i]) == math.inf:
-                                    value_list[i] = edge_values[binding.id]['value']
-                                else:
-                                    # this will take the sum off all edges with the attribute if we want to change to max edit this line
-                                    value_list[i] += edge_values[binding.id]['value']
-                i+=1
+                for analysis in result.analyses:
+                    for binding_list in analysis.edge_bindings.values():
+                        for binding in binding_list:
+                            # need to test this for TRAPI 1.0 after expand (and resultify?)is updated to see if binding.id matches edge_key
+                            if edge_values[binding.id]['value'] is not None:
+                                if not type_flag or (type_flag and params['edge_relation'] == edge_values[binding.id]['relation']):
+                                    if abs(value_list[i]) == math.inf:
+                                        value_list[i] = edge_values[binding.id]['value']
+                                    else:
+                                        # this will take the sum off all edges with the attribute if we want to change to max edit this line
+                                        value_list[i] += edge_values[binding.id]['value']
+                    i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
             if 'max_results' in params:
@@ -129,7 +130,7 @@ class SortResults:
             value_list=[0]*len(self.message.results)
             i = 0
             for result in self.message.results:
-                value_list[i] = len([binding for binding_list in result.edge_bindings.values() for binding in binding_list])
+                value_list[i] = len([binding for analysis in result.analyses for binding_list in analysis.edge_bindings.values() for binding in binding_list])
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -163,7 +164,7 @@ class SortResults:
             value_list=[0]*len(self.message.results)
             i = 0
             for result in self.message.results:
-                value_list[i] = result.score
+                value_list[i] = result.analyses[0].score
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -298,9 +299,10 @@ class SortResults:
                 for node_binding_list in result.node_bindings.values():
                     for node_binding in node_binding_list:
                         node_keys.add(node_binding.id)
-                for edge_binding_list in result.edge_bindings.values():
-                    for edge_binding in edge_binding_list:
-                        edge_keys.add(edge_binding.id)
+                for analysis in result.analyses:
+                    for edge_binding_list in analysis.edge_bindings.values():
+                        for edge_binding in edge_binding_list:
+                            edge_keys.add(edge_binding.id)
             #node_keys_to_remove = set()
             for key, node in self.message.knowledge_graph.nodes.items():
                 if key not in node_keys:
