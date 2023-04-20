@@ -15,6 +15,11 @@ class ResultTransformer:
     def transform(response: ARAXResponse):
         message = response.envelope.message
         if message.results:
+            if not hasattr(response, "original_query_graph") or not response.original_query_graph.nodes:
+                response.error(f"The original QG was never saved before ARAX edited it! So we can't transform results "
+                               f"to TRAPI 1.4 format (i.e., support_graphs).", error_code="NoOriginalQG")
+                return
+
             response.info(f"Transforming results to TRAPI 1.4 format (moving 'virtual' nodes/edges to support graphs)")
 
             original_qedge_keys = set(response.original_query_graph.edges)
@@ -65,8 +70,10 @@ class ResultTransformer:
                     del node_bindings[virtual_qnode_key]
 
             # Return the original query graph in the response, rather than our edited version
+            response.debug(f"Replacing ARAX's internal edited QG with the original input QG..")
             message.query_graph = response.original_query_graph
 
-            # TODO: May need to check if handling of non-Infer option_group queries is ok...
+            # Log some final stats about result transformation
             response.debug(f"Virtual qedge keys moved to support_graphs were: {all_virtual_qedge_keys}")
+            response.debug(f"There are a total of {len(message.auxiliary_graphs)} AuxiliaryGraphs.")
             response.info(f"Done transforming results to TRAPI 1.4 format (i.e., using support_graphs)")
