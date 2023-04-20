@@ -830,8 +830,9 @@ class ARAXQuery:
                             self.send_to_callback(callback, response)
                         return response
 
-            result_transformer = ResultTransformer()
-            result_transformer.transform(response)
+            if mode != 'RTXKG2':  # KG2 doesn't use virtual edges or edit the QG, so no transformation needed
+                result_transformer = ResultTransformer()
+                result_transformer.transform(response)
 
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'response': 'true', 'store': 'true' } }
