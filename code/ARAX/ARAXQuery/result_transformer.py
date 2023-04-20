@@ -62,7 +62,7 @@ class ResultTransformer:
                 for virtual_qedge_key in virtual_qedge_keys:
                     del edge_bindings[virtual_qedge_key]
 
-                # Delete any virtual nodes from node_bindings (strangely, nodes aren't allowed in AuxiliaryGraphs; they just live in the KG)
+                # Delete any virtual node bindings (strangely, nodes aren't allowed in AuxGraphs; only live in KG)
                 node_bindings = result.node_bindings
                 qnode_keys_in_result = set(node_bindings)
                 virtual_qnode_keys = qnode_keys_in_result.difference(original_qnode_keys)
