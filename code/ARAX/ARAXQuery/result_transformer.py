@@ -14,19 +14,18 @@ class ResultTransformer:
     @staticmethod
     def transform(response: ARAXResponse):
         response.info(f"Transforming results to TRAPI 1.4 format (moving 'virtual' nodes/edges to support graphs)")
-        response.debug(f"Original input QG was: {response.original_query_graph}")  # TODO: Make more compact
         message = response.envelope.message
+        original_qedge_keys = set(response.original_query_graph.edges)
+        original_qnode_keys = set(response.original_query_graph.nodes)
+        response.debug(f"Original input QG contained qnodes {original_qnode_keys} and qedges {original_qedge_keys}")
+        all_virtual_qedge_keys = set()
 
         for result in message.results:
-            response.debug(f"At start, result is {result}")
             # First figure out which edges in this result are 'virtual' and what option groups they belong to
             edge_bindings = result.analyses[0].edge_bindings
-            original_qedge_keys = set(response.original_query_graph.edges)
-            response.debug(f"Original QG was {response.original_query_graph}")
-            response.debug(f"Original qedge keys are {original_qedge_keys}")
             qedge_keys_in_result = set(edge_bindings)
             virtual_qedge_keys = qedge_keys_in_result.difference(original_qedge_keys)
-            response.debug(f"Virtual qedge keys in result are {virtual_qedge_keys}")
+            all_virtual_qedge_keys = all_virtual_qedge_keys.union(virtual_qedge_keys)  # Record these for log info
             virtual_edge_groups_dict = defaultdict(set)
             for virtual_qedge_key in virtual_qedge_keys:
                 virtual_qedge = message.query_graph.edges[virtual_qedge_key]
@@ -58,13 +57,14 @@ class ResultTransformer:
 
             # Delete any virtual nodes from node_bindings (strangely, nodes aren't allowed in AuxiliaryGraphs; they just live in the KG)
             node_bindings = result.node_bindings
-            original_qnode_keys = set(response.original_query_graph.nodes)
             qnode_keys_in_result = set(node_bindings)
             virtual_qnode_keys = qnode_keys_in_result.difference(original_qnode_keys)
             for virtual_qnode_key in virtual_qnode_keys:
                 del node_bindings[virtual_qnode_key]
 
-            response.debug(f"After transformation, result is {result}")
+        # Return the original query graph in the response, rather than our edited version
+        message.query_graph = response.original_query_graph
 
-            # TODO: May need to check if handling of non-Infer option_group queries is ok...
+        # TODO: May need to check if handling of non-Infer option_group queries is ok...
+        response.debug(f"Virtual qedge keys moved to support_graphs were: {all_virtual_qedge_keys}")
         response.info(f"Done transforming results to TRAPI 1.4 format (i.e., using support_graphs)")
