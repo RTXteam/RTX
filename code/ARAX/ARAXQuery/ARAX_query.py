@@ -518,9 +518,6 @@ class ARAXQuery:
         messages = []
         message = None
 
-        # Save the original input query for later reference
-        response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
-
         # If there is already a message (perhaps with a query_graph) already in the query, preserve it
         if 'message' in input_operations_dict and input_operations_dict['message'] is not None:
             incoming_message = input_operations_dict['message']
@@ -644,7 +641,10 @@ class ARAXQuery:
                 optionsDict[option] = 1
 
         # Save the original input query for later reference
-        response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
+        if mode != "RTXKG2" and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
+            response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
+            response.debug(f"Saving original query graph (has qnodes {set(response.original_query_graph.nodes)} "
+                           f"and qedges {set(response.original_query_graph.edges)})..")
 
         #### If there are actions, then fulfill those
         if operations.actions:

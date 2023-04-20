@@ -186,6 +186,12 @@ class ARAXExpander:
         # Make sure the KG2 API doesn't fetch meta info for other KPs
         kp_selector = KPSelector(kg2_mode=True, log=log) if mode == "RTXKG2" else KPSelector(log=log)
 
+        # Save the original QG, if it hasn't already been saved in ARAXQuery (happens for DSL queries..)
+        if mode != "RTXKG2" and not hasattr(response, "original_query_graph"):
+            response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
+            response.debug(f"Saving original query graph (has qnodes {set(response.original_query_graph.nodes)} "
+                           f"and qedges {set(response.original_query_graph.edges)})..")
+
         # If this is a query for the KG2 API, ignore all option_group_id and exclude properties (only does one-hop)
         if mode == "RTXKG2":
             log.debug(f"Ignoring all 'option_group_id' and 'exclude' properties on qnodes/qedges since we're in RTXKG2 mode")
