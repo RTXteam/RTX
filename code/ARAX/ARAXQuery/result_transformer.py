@@ -75,5 +75,5 @@ class ResultTransformer:
 
             # Log some final stats about result transformation
             response.debug(f"Virtual qedge keys moved to support_graphs were: {all_virtual_qedge_keys}")
-            response.debug(f"There are a total of {len(message.auxiliary_graphs)} AuxiliaryGraphs.")
+            response.debug(f"There are a total of {len(message.auxiliary_graphs) if message.auxiliary_graphs else 0} AuxiliaryGraphs.")
             response.info(f"Done transforming results to TRAPI 1.4 format (i.e., using support_graphs)")
