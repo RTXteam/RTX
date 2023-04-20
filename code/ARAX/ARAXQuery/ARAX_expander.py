@@ -623,22 +623,24 @@ class ARAXExpander:
                     kedges_to_remove = []
                     for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
                         edge_sources = {retrieval_source.resource_id for retrieval_source in kedge.sources} if kedge.sources else set()
-                        # always accept arax as a source
-                        if edge_sources == {"infores:arax"}:
-                            continue
-                        # Don't keep edges that ONLY come from excluded sources
-                        if edge_sources.issubset(denylist):
-                            kedges_to_remove.append(kedge_key)
-                            break
-                        # Only keep edges that come from at least ONE allowed source
-                        elif allowlist and not edge_sources.intersection(allowlist):
-                            kedges_to_remove.append(kedge_key)
-                            break
-                    log.debug(f"Removing {len(kedges_to_remove)} edges because they do not fulfill knowledge source constraint")
-                    # remove kedges which have been determined to be constrained
-                    for kedge_key in kedges_to_remove:
-                        if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
-                            del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
+                        if edge_sources:
+                            # always accept arax as a source
+                            if edge_sources == {"infores:arax"}:
+                                continue
+                            # Don't keep edges that ONLY come from excluded sources
+                            if edge_sources.issubset(denylist):
+                                kedges_to_remove.append(kedge_key)
+                                break
+                            # Only keep edges that come from at least ONE allowed source
+                            elif allowlist and not edge_sources.intersection(allowlist):
+                                kedges_to_remove.append(kedge_key)
+                                break
+                    if kedges_to_remove:
+                        log.debug(f"Removing {len(kedges_to_remove)} edges because they do not fulfill knowledge source constraint")
+                        # remove kedges which have been determined to be constrained
+                        for kedge_key in kedges_to_remove:
+                            if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
+                                del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
 
                 if mode != "RTXKG2":
                     # Apply any kryptonite ("not") qedges
