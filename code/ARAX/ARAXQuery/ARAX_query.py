@@ -643,6 +643,8 @@ class ARAXQuery:
                 response.debug(f"   option="+option)
                 optionsDict[option] = 1
 
+        # Save the original input query for later reference
+        response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
 
         #### If there are actions, then fulfill those
         if operations.actions:
