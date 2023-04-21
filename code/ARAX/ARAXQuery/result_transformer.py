@@ -24,7 +24,10 @@ class ResultTransformer:
 
             original_qedge_keys = set(response.original_query_graph.edges)
             original_qnode_keys = set(response.original_query_graph.nodes)
+            non_orphan_qnode_keys = {qnode_key for qedge in response.original_query_graph.edges.values()
+                                     for qnode_key in {qedge.subject, qedge.object}}
             response.debug(f"Original input QG contained qnodes {original_qnode_keys} and qedges {original_qedge_keys}")
+            response.debug(f"Non-orphan qnodes in original QG are: {non_orphan_qnode_keys}")
             all_virtual_qedge_keys = set()
 
             for result in message.results:
@@ -68,6 +71,18 @@ class ResultTransformer:
                 virtual_qnode_keys = qnode_keys_in_result.difference(original_qnode_keys)
                 for virtual_qnode_key in virtual_qnode_keys:
                     del node_bindings[virtual_qnode_key]
+
+                # Delete bindings for any subclass parent nodes that are now orphans (they'll still be in the KG)
+                for non_orphan_qnode_key in non_orphan_qnode_keys:
+                    node_keys = {binding.id for binding in node_bindings[non_orphan_qnode_key]}
+                    node_keys_used_by_result_edges = {node_key for qedge_key in original_qedge_keys
+                                                      for binding in result.analyses[0].edge_bindings[qedge_key]
+                                                      for node_key in {message.knowledge_graph.edges[binding.id].subject,
+                                                                       message.knowledge_graph.edges[binding.id].object}}
+                    orphan_node_keys = node_keys.difference(node_keys_used_by_result_edges)
+                    non_orphan_node_bindings = [binding for binding in result.node_bindings[non_orphan_qnode_key]
+                                                if binding.id not in orphan_node_keys]
+                    result.node_bindings[non_orphan_qnode_key] = non_orphan_node_bindings
 
             # Return the original query graph in the response, rather than our edited version
             response.debug(f"Replacing ARAX's internal edited QG with the original input QG..")
