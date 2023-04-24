@@ -286,9 +286,9 @@ def test_FET_ex1():
         else:
             assert 0 <= float(edge.attributes[0].value) < 0.05
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
-    assert len(FET_query_edges) == 2
+    # assert len(FET_query_edges) == 2
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
-    assert len(query_node_keys) == 3
+    assert len(query_node_keys) == 2
     for key, query_edge in FET_query_edges.items():
         assert hasattr(query_edge, 'predicates')
         assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates

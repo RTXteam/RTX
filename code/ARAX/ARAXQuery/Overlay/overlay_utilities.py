@@ -104,7 +104,7 @@ def update_results_with_overlay_edge(subject_knode_key: str, object_knode_key: s
         new_edge_binding = EdgeBinding(id=kedge_key)
         for result in message.results:
             for analysis in result.analyses:
-                if reasoner_id != analysis.reasoner_id:
+                if reasoner_id != analysis.resource_id:
                     continue
                 for qedge_key in analysis.edge_bindings.keys():
                     if kedge_key not in set([x.id for x in analysis.edge_bindings[qedge_key]]):

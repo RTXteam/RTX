@@ -197,6 +197,8 @@ class TRAPIQuerier:
                                                  f" This is invalid TRAPI. Skipping this binding.")
 
             for analysis in result.analyses:  # TODO: Do we need to worry about extracting supporting_graphs from KPs?
+                if not analysis.edge_bindings:
+                    continue
                 for qedge_key, edge_bindings in analysis.edge_bindings.items():
                     for edge_binding in edge_bindings:
                         kg_id = edge_binding.id

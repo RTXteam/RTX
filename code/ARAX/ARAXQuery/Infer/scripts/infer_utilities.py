@@ -32,6 +32,7 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.qualifier import Qualifier as EdgeQualifier
+from openapi_server.models.retrieval_source import RetrievalSource
 from openapi_server.models.qualifier_constraint import QualifierConstraint as QConstraint
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 
@@ -170,6 +171,8 @@ class InferUtilities:
             message.query_graph.edges[add_qedge_params['key']].filled = True
             drug_qnode_key = 'drug'
             disease_qnode_key = 'disease'
+            self.response.original_query_graph = copy.deepcopy(message.query_graph)
+
         else:
             # add the disease to the knowledge graph
             # FIXME: is this the best way to be adding the node to the knowledge graph?
@@ -219,20 +222,24 @@ class InferUtilities:
                 if drug_canonical_id not in kedges:
                     treat_score = node_id_to_score[node_id]
                     edge_attribute_list = [
-                        EdgeAttribute(original_attribute_name=None, value="infores:arax",
-                                      attribute_type_id="biolink:aggregator_knowledge_source",
-                                      attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        # EdgeAttribute(original_attribute_name=None, value="infores:arax",
+                        #               attribute_type_id="biolink:aggregator_knowledge_source",
+                        #               attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                         EdgeAttribute(original_attribute_name=None, value=True,
                                       attribute_type_id="EDAM-DATA:1772",
                                       attribute_source="infores:arax", value_type_id="metatype:Boolean",
                                       value_url=None,
                                       description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                        EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats",
                                       value=str(treat_score))
                     ]
-                    new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:treats', attributes=edge_attribute_list)
+                    retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:primary_knowledge_source"),
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:aggregator_knowledge_source")
+                    ]
+                    new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:treats', attributes=edge_attribute_list, sources=retrieval_source)
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=kp)
                     kedges[new_edge_key] = new_edge
                     kedges[new_edge_key].filled = True
@@ -318,9 +325,13 @@ class InferUtilities:
                     ## add attributes to the path-based edge
                     edge_attribute_list = [
                         EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                        EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                        EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer based on RTX-KG2c.")
+                    ]
+                    retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:primary_knowledge_source"),
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:aggregator_knowledge_source")
                     ]
                     new_edge.attributes += edge_attribute_list
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=kp)
@@ -330,10 +341,14 @@ class InferUtilities:
             if path_added:
                 treat_score = top_drugs.loc[top_drugs['drug_id'] == drug]["tp_score"].iloc[0]
                 essence_scores[drug_name] = treat_score
+                retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:primary_knowledge_source"),
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:aggregator_knowledge_source")
+                    ]
                 edge_attribute_list = [
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     EdgeAttribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score))
                 ]
@@ -342,7 +357,7 @@ class InferUtilities:
                 if hasattr(qedges[qedge_id], 'predicates') and qedges[qedge_id].predicates:
                     edge_predicate = qedges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?
                 fixed_edge = Edge(predicate=edge_predicate, subject=node_name_to_id[drug_name], object=node_name_to_id[disease_name],
-                                attributes=edge_attribute_list)
+                                attributes=edge_attribute_list, sources=retrieval_source)
                 #fixed_edge.qedge_keys = ["treats"]
                 fixed_edge.qedge_keys = [qedge_id]
                 kedges[f"creative_DTD_prediction_{self.kedge_global_iter}"] = fixed_edge
@@ -556,18 +571,22 @@ class InferUtilities:
                     if gene_canonical_id not in kedges:
                         prob_score = node_id_to_score[node_id]
                         edge_attribute_list = [
-                            EdgeAttribute(original_attribute_name=None, value="infores:arax",
-                                        attribute_type_id="biolink:aggregator_knowledge_source",
-                                        attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            # EdgeAttribute(original_attribute_name=None, value="infores:arax",
+                            #             attribute_type_id="biolink:aggregator_knowledge_source",
+                            #             attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                             EdgeAttribute(original_attribute_name=None, value=True,
                                         attribute_type_id="EDAM-DATA:1772",
                                         attribute_source="infores:arax", value_type_id="metatype:Boolean",
                                         value_url=None,
                                         description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                            EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(attribute_type_id="EDAM-OPERATION:2434", original_attribute_name=f"probably_{model_type}_activity",
                                         value=str(prob_score))
+                        ]
+                        retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:primary_knowledge_source"),
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:aggregator_knowledge_source")
                         ]
                         if model_type == 'increase':
                             edge_qualifier_direction = 'increased'
@@ -577,7 +596,7 @@ class InferUtilities:
                             EdgeQualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                             EdgeQualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                         ]
-                        new_edge = Edge(subject=chemical_curie, object=gene_canonical_id, predicate=f'biolink:regulates', attributes=edge_attribute_list, qualifiers=edge_qualifier_list)
+                        new_edge = Edge(subject=chemical_curie, object=gene_canonical_id, predicate=f'biolink:regulates', attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source)
                         new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp='infores:rtx-kg2')
                         kedges[new_edge_key] = new_edge
                         kedges[new_edge_key].filled = True
@@ -603,11 +622,15 @@ class InferUtilities:
                     # add the edge to the knowledge graph
                     if chemical_canonical_id not in kedges:
                         prob_score = node_id_to_score[node_id]
+                        retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:primary_knowledge_source"),
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:aggregator_knowledge_source")
+                        ]
                         edge_attribute_list = [
-                            EdgeAttribute(original_attribute_name=None, value="infores:arax",
-                                        attribute_type_id="biolink:aggregator_knowledge_source",
-                                        attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                            EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            # EdgeAttribute(original_attribute_name=None, value="infores:arax",
+                            #             attribute_type_id="biolink:aggregator_knowledge_source",
+                            #             attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                             EdgeAttribute(original_attribute_name=None, value=True,
                                         attribute_type_id="EDAM-DATA:1772",
@@ -624,7 +647,7 @@ class InferUtilities:
                             EdgeQualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                             EdgeQualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                         ]
-                        new_edge = Edge(subject=chemical_canonical_id, object=gene_curie, predicate=f'biolink:regulates', attributes=edge_attribute_list, qualifiers=edge_qualifier_list)
+                        new_edge = Edge(subject=chemical_canonical_id, object=gene_curie, predicate=f'biolink:regulates', attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source)
                         new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp='infores:rtx-kg2')
                         kedges[new_edge_key] = new_edge
                         kedges[new_edge_key].filled = True
@@ -712,10 +735,14 @@ class InferUtilities:
                             new_edge = Edge(subject=object_curie, object=subject_curie, predicate=temp_predicate, attributes=[])
                         ## add attributes to the path-based edges 
                         edge_attribute_list = [
-                            EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                            EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                            # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                             EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer based on RTX-KG2c.")
+                        ]
+                        retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:primary_knowledge_source"),
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:aggregator_knowledge_source")
                         ]
                         new_edge.attributes += edge_attribute_list
                         new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=temp_kp)
@@ -730,12 +757,17 @@ class InferUtilities:
                     regulate_score = top_predictions.loc[top_predictions['chemical_id'] == chemical]["tp_prob"].iloc[0]
                     essence_scores[chemical_curie] = regulate_score
                 edge_attribute_list = [
-                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     EdgeAttribute(attribute_type_id="EDAM-OPERATION:2434", original_attribute_name=f"probably_{model_type}_activity", value=str(regulate_score))
                 ]
+                retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:primary_knowledge_source"),
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:aggregator_knowledge_source")
+                        ]
+                
                 edge_predicate = f'biolink:regulates'
                 if hasattr(qedges[qedge_id], 'predicates') and qedges[qedge_id].predicates:
                     edge_predicate = qedges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?
@@ -747,7 +779,7 @@ class InferUtilities:
                     EdgeQualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                     EdgeQualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                 ]
-                fixed_edge = Edge(predicate=edge_predicate, subject=chemical, object=gene, attributes=edge_attribute_list, qualifiers=edge_qualifier_list)
+                fixed_edge = Edge(predicate=edge_predicate, subject=chemical, object=gene, attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source)
                 fixed_edge.qedge_keys = [qedge_id]
                 kedges[f"creative_CRG_prediction_{self.kedge_global_iter}"] = fixed_edge
                 self.kedge_global_iter += 1

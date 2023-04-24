@@ -630,7 +630,7 @@ def test_FET_ranking_2():
     assert response.status == 'OK'
     fet_ranking_value = {}
     for result in message.results:
-        for key, edge_bindings in result.edge_bindings.items():
+        for key, edge_bindings in result.analyses[0].edge_bindings.items():
             if key.startswith('FET'):
                 for edge in edge_bindings:
                     for attribute in message.knowledge_graph.edges[edge.id].attributes:
