@@ -72,17 +72,17 @@ class ARAXInfer:
         }
         self.xdtd_n_drugs_info = {
             "is_required": False,
-            "examples": [5,50,100],
-            "default": 50,
+            "examples": [5,15,25],
+            "default": 10,
             "type": "integer",
-            "description": "The number of drug nodes to return. If not provided defaults to 50."
+            "description": "The number of drug nodes to return. If not provided defaults to 10. Considering the response speed, the maximum number of drugs returned is only allowed to be 25."
         }
         self.xdtd_n_paths_info = {
             "is_required": False,
-            "examples": [5,50,100],
-            "default": 20,
+            "examples": [5,15,25],
+            "default": 10,
             "type": "integer",
-            "description": "The number of paths connecting to each returned node. If not provided defaults to 20."
+            "description": "The number of paths connecting to each returned node. If not provided defaults to 10. Considering the response speed, the maximum number of paths (if available) returned is only allowed to be 25."
         }
         self.xcrg_subject_curie_info = {
             "is_required": True,
@@ -162,11 +162,11 @@ class ARAXInfer:
             "drug_treatment_graph_expansion": {
                 "dsl_command": "infer(action=drug_treatment_graph_expansion)",
                 "description": """
-`drug_treatment_graph_expansion` predicts drug treatments for a given node curie. It return the top n results along with predicted graph explinations.  
+`drug_treatment_graph_expansion` predicts drug treatments for a given disease curie. It returns the top n results along with predicted graph explanations.  
             
 You have the option to limit the maximum number of drug nodes to return (via `n_drugs=<n>`)
             
-This can be applied to an arbitrary nide curie though will not return sensible results for non disease/phenotypic feature nodes.
+This cannot be applied to non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
                     """,
                 'brief_description': """
 drug_treatment_graph_expansion predicts drug treatments for a given node curie and provides along with an explination graph for each prediction.
@@ -366,8 +366,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
                                     'node_curie': {'The node to predict drug treatments for.'},
                                     'qedge_id': {'The edge to place the predicted mechanism of action on. If none is provided, the query graph must be empty and a new one will be inserted.'},
-                                    'n_drugs': {'The number of drugs to return. Defaults to 50.'},
-                                    'n_paths': {'The number of paths connecting each drug to return. Defaults to 20.'}
+                                    'n_drugs': {'The number of drugs to return. Defaults to 10. Maxiumum is only allowable to be 25.'},
+                                    'n_paths': {'The number of paths connecting each drug to return. Defaults to 10.  Maxiumum is only allowable to be 25.'}
                                 }
 
         # A little function to describe what this thing does
@@ -391,29 +391,32 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         if self.response.status != 'OK' or resp == -1:
             return self.response
 
-
         # Set defaults and check parameters:
         if 'n_drugs' in self.parameters:
-            if isinstance(self.parameters['n_drugs'], float):
-                if self.parameters['n_drugs'].is_integer():
-                    self.parameters['n_drugs'] = int(self.parameters['n_drugs'])
-            if not isinstance(self.parameters['n_drugs'], int) or self.parameters['n_drugs'] < 1:
-                self.response.error(
-                f"The `n_drugs` value must be a positive integer. The provided value was {self.parameters['n_drugs']}.",
-                error_code="ValueError")
+            try:
+                self.parameters['n_drugs'] = int(self.parameters['n_drugs'])
+            except ValueError:
+                self.response.error(f"The `n_drugs` value must be a positive integer. The provided value was {self.parameters['n_drugs']}.", error_code="ValueError")
+            if self.parameters['n_drugs'] <= 0:
+                self.response.error(f"The `n_drugs` value should be larger than 0. The provided value was {self.parameters['n_drugs']}.", error_code="ValueError")
+            if self.parameters['n_drugs'] > 25:
+                self.response.warning(f"The `n_drugs` value was set to {self.parameters['n_drugs']}, but the maximum allowable value is 25. Setting `n_drugs` to 25.")
+                self.parameters['n_drugs'] = 25
         else:
-            self.parameters['n_drugs'] = 50
+            self.parameters['n_drugs'] = 10
 
         if 'n_paths' in self.parameters:
-            if isinstance(self.parameters['n_paths'], float):
-                if self.parameters['n_paths'].is_integer():
-                    self.parameters['n_paths'] = int(self.parameters['n_paths'])
-            if not isinstance(self.parameters['n_paths'], int) or self.parameters['n_paths'] < 1:
-                self.response.error(
-                f"The `n_paths` value must be a positive integer. The provided value was {self.parameters['n_paths']}.",
-                error_code="ValueError")
+            try:
+                self.parameters['n_paths'] = int(self.parameters['n_paths'])
+            except ValueError:
+                self.response.error(f"The `n_paths` value must be a positive integer. The provided value was {self.parameters['n_paths']}.", error_code="ValueError")
+            if self.parameters['n_paths'] <= 0:
+                self.response.error(f"The `n_paths` value should be larger than 0. The provided value was {self.parameters['n_paths']}.", error_code="ValueError")
+            if self.parameters['n_paths'] > 25:
+                self.response.warning(f"The `n_paths` value was set to {self.parameters['n_paths']}, but the maximum allowable value is 25. Setting `n_paths` to 25.")
+                self.parameters['n_paths'] = 25
         else:
-            self.parameters['n_paths'] = 20
+            self.parameters['n_paths'] = 10
 
         if self.response.status != 'OK':
             return self.response
@@ -444,6 +447,10 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         # with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
         #     top_paths = pickle.load(fid)
         
+        ## Limit the number of drugs and paths to the top n
+        top_drugs = top_drugs.iloc[:self.parameters['n_drugs'],:].reset_index(drop=True)
+        top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:self.parameters['n_paths']] for row in top_drugs.to_numpy()}
+
         # TRAPI-ifies the results of the model
         iu = InferUtilities()
         qedge_id = self.parameters.get('qedge_id')
