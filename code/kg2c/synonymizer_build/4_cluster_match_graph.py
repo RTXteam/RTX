@@ -196,7 +196,7 @@ def main():
 
     # Load match graph data
     logging.info(f"Loading match_nodes.tsv into a Pandas DataFrame..")
-    nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/match_nodes.tsv",
+    nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_match_nodes.tsv",
                              dtype={
                                  "id": str,
                                  "cluster_id": str,
@@ -207,7 +207,7 @@ def main():
                              })
     logging.info(f"Nodes DataFrame:\n {nodes_df}")
     logging.info(f"Loading match_edges.tsv into a Pandas DataFrame..")
-    edges_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/match_edges.tsv",
+    edges_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_match_edges.tsv",
                              dtype={
                                  "id": str,  # Potentially get rid of this column if space is an issue?
                                  "subject": str,
@@ -224,11 +224,11 @@ def main():
 
     # Do node pre-processing
     assign_major_category_branches(nodes_df, edges_df)  # TODO: better to do this before or after adding name sim edges?
-    nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/match_nodes_preprocessed.tsv", sep="\t")
+    nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv", sep="\t")
 
     # Remove conflicting category edges
     edges_df = remove_conflicting_category_edges(nodes_df, edges_df)
-    edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/match_edges_preprocessed.tsv", sep="\t")
+    edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv", sep="\t")
 
     # Cluster the graph into sets of equivalent nodes
     label_map = cluster_match_graph(nodes_df, edges_df)
@@ -237,9 +237,9 @@ def main():
                  f"(for a total of {len(nodes_df):,} nodes)")
 
     # Save our cluster labeling to a TSV
-    logging.info(f"Saving member_id --> cluster_id map to TSV file (cluster_map.tsv)")
+    logging.info(f"Saving member_id --> cluster_id map to TSV file..")
     label_df = pd.DataFrame(label_map.items(), columns=["member_id", "cluster_id"]).set_index("member_id")
-    label_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/cluster_map.tsv", sep="\t")
+    label_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_cluster_member_map.tsv", sep="\t")
 
 
 if __name__ == "__main__":

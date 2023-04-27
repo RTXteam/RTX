@@ -42,7 +42,15 @@ def create_nodes_table_kg2pre(kg2pre_version: str):
     node_column_names = [column_name.split(":")[0] if not column_name.startswith(":") else column_name
                          for column_name in nodes_header_df.columns]
     columns_to_keep = ["id", "name", "category"]
-    nodes_df = pd.read_table(nodes_tsv_path, names=node_column_names, usecols=columns_to_keep, index_col="id")
+    nodes_df = pd.read_table(nodes_tsv_path,
+                             names=node_column_names,
+                             usecols=columns_to_keep,
+                             index_col="id",
+                             dtype={
+                                 "id": str,
+                                 "name": str,
+                                 "category": "category"
+                             })
 
     # Get rid of biolink prefixes (saves space, makes for easier processing)
     strip_biolink_prefix_vectorized = np.vectorize(strip_biolink_prefix)
@@ -61,7 +69,7 @@ def create_nodes_table_kg2pre(kg2pre_version: str):
         raise ValueError(f"No build node exists in the KG2pre TSVs! Cannot verify we have the correct KG2pre TSVs.")
 
     logging.info(f"KG2pre nodes dataframe is:\n {nodes_df}")
-    nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/match_nodes_kg2pre.tsv", sep="\t")
+    nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/1_match_nodes_kg2pre.tsv", sep="\t")
 
 
 def create_edges_table_kg2pre():
@@ -74,7 +82,15 @@ def create_edges_table_kg2pre():
     edge_column_names = [column_name.split(":")[0] if not column_name.startswith(":") else column_name
                          for column_name in edges_header_df.columns]
     columns_to_keep = ["id", "subject", "predicate", "object", PRIMARY_KNOWLEDGE_SOURCE_PROPERTY_NAME]
-    edges_df_all_predicates = pd.read_table(edges_tsv_path, names=edge_column_names, usecols=columns_to_keep, index_col="id")
+    edges_df_all_predicates = pd.read_table(edges_tsv_path,
+                                            names=edge_column_names,
+                                            usecols=columns_to_keep,
+                                            index_col="id",
+                                            dtype={"id": str,
+                                                   "subject": str,
+                                                   "predicate": "category",
+                                                   "object": str,
+                                                   PRIMARY_KNOWLEDGE_SOURCE_PROPERTY_NAME: "category"})
     if PRIMARY_KNOWLEDGE_SOURCE_PROPERTY_NAME != "primary_knowledge_source":
         edges_df_all_predicates.rename(columns={PRIMARY_KNOWLEDGE_SOURCE_PROPERTY_NAME: "primary_knowledge_source"},
                                        inplace=True)
@@ -89,7 +105,7 @@ def create_edges_table_kg2pre():
     edges_df.predicate = strip_biolink_prefix_vectorized(edges_df.predicate)
 
     logging.info(f"Edges dataframe is:\n {edges_df}")
-    edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/match_edges_kg2pre.tsv", sep="\t")
+    edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/1_match_edges_kg2pre.tsv", sep="\t")
 
 
 def main():

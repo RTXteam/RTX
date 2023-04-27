@@ -30,7 +30,7 @@ def strip_biolink_prefix(item: str) -> str:
 
 def get_kg2pre_node_ids():
     logging.info(f"Grabbing KG2pre node IDs from KG2pre match graph..")
-    kg2pre_nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/match_nodes_kg2pre.tsv")
+    kg2pre_nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/1_match_nodes_kg2pre.tsv")
     kg2pre_node_ids = kg2pre_nodes_df.id.values
     return set(kg2pre_node_ids)
 
@@ -72,8 +72,8 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
     logging.info(f"Starting to build SRI match graph based on {len(kg2pre_node_ids):,} KG2pre node IDs..")
 
     # Save the current version of SRI match graph, if it exists (as backup, in case the SRI NN API is down)
-    sri_match_nodes_file_path = f"{SYNONYMIZER_BUILD_DIR}/match_nodes_sri.tsv"
-    sri_match_edges_file_path = f"{SYNONYMIZER_BUILD_DIR}/match_edges_sri.tsv"
+    sri_match_nodes_file_path = f"{SYNONYMIZER_BUILD_DIR}/2_match_nodes_sri.tsv"
+    sri_match_edges_file_path = f"{SYNONYMIZER_BUILD_DIR}/2_match_edges_sri.tsv"
     if pathlib.Path(sri_match_nodes_file_path).exists():
         subprocess.check_call(["mv", sri_match_nodes_file_path, f"{sri_match_nodes_file_path}_PREVIOUS"])
     if pathlib.Path(sri_match_edges_file_path).exists():

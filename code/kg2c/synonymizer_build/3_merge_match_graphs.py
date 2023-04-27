@@ -17,19 +17,19 @@ ROW_BATCH_SIZE = 1000000
 def merge_edges():
     logging.info(f"Merging edges into one unified match graph..")
     # We don't actually have to merge individual edges; just tack SRI edges onto KG2 edges, record source
-    with open(f"{SYNONYMIZER_BUILD_DIR}/match_edges.tsv", "w+") as merged_edges_file:
+    with open(f"{SYNONYMIZER_BUILD_DIR}/3_match_edges.tsv", "w+") as merged_edges_file:
         writer = csv.writer(merged_edges_file, delimiter="\t")
         merged_headers = ["id", "subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]
         writer.writerow(merged_headers)
 
         # First process and save KG2pre edges
-        with open(f"{SYNONYMIZER_BUILD_DIR}/match_edges_kg2pre.tsv") as kg2pre_edges_file:
+        with open(f"{SYNONYMIZER_BUILD_DIR}/1_match_edges_kg2pre.tsv") as kg2pre_edges_file:
             reader = csv.reader(kg2pre_edges_file, delimiter="\t")
             kg2pre_headers = next(reader)
             write_edges_in_batches(reader, writer, KG2PRE_RESOURCE_ID, kg2pre_headers)
 
         # Then process and save SRI NN edges
-        with open(f"{SYNONYMIZER_BUILD_DIR}/match_edges_sri.tsv") as sri_edges_file:
+        with open(f"{SYNONYMIZER_BUILD_DIR}/2_match_edges_sri.tsv") as sri_edges_file:
             reader = csv.reader(sri_edges_file, delimiter="\t")
             sri_headers = next(reader)
             write_edges_in_batches(reader, writer, SRI_NN_RESOURCE_ID, sri_headers)
@@ -69,7 +69,7 @@ def merge_nodes():
     # Merge the KG2pre and SRI node sets
     logging.info(f"Merging nodes into one unified match graph..")
 
-    with open(f"{SYNONYMIZER_BUILD_DIR}/match_nodes.tsv", "w+") as merged_nodes_file:
+    with open(f"{SYNONYMIZER_BUILD_DIR}/3_match_nodes.tsv", "w+") as merged_nodes_file:
         writer = csv.writer(merged_nodes_file, delimiter="\t")
         merged_headers = ["id", "cluster_id",
                           "category_kg2pre", "name_kg2pre",
@@ -77,7 +77,7 @@ def merge_nodes():
         writer.writerow(merged_headers)
 
         # First load KG2pre nodes into memory (small enough to fit)
-        with open(f"{SYNONYMIZER_BUILD_DIR}/match_nodes_kg2pre.tsv") as kg2pre_nodes_file:
+        with open(f"{SYNONYMIZER_BUILD_DIR}/1_match_nodes_kg2pre.tsv") as kg2pre_nodes_file:
             reader = csv.reader(kg2pre_nodes_file, delimiter="\t")
             kg2pre_headers = next(reader)
             kg2pre_id_col = kg2pre_headers.index("id")
@@ -86,7 +86,7 @@ def merge_nodes():
             kg2pre_nodes_dict = {row[kg2pre_id_col]: row for row in reader}
 
         # Then go through SRI nodes, merge them as necessary with KG2pre nodes, and write them in batches
-        with open(f"{SYNONYMIZER_BUILD_DIR}/match_nodes_sri.tsv") as sri_nodes_file:
+        with open(f"{SYNONYMIZER_BUILD_DIR}/2_match_nodes_sri.tsv") as sri_nodes_file:
             reader = csv.reader(sri_nodes_file, delimiter="\t")
             sri_headers = next(reader)
             sri_id_col = sri_headers.index("id")
