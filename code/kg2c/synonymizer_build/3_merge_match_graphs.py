@@ -17,7 +17,7 @@ ROW_BATCH_SIZE = 1000000
 def merge_edges():
     logging.info(f"Merging edges into one unified match graph..")
     # We don't actually have to merge individual edges; just tack SRI edges onto KG2 edges, record source
-    with open(f"{SYNONYMIZER_BUILD_DIR}/3_match_edges.tsv", "w+") as merged_edges_file:
+    with open(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_edges.tsv", "w+") as merged_edges_file:
         writer = csv.writer(merged_edges_file, delimiter="\t")
         merged_headers = ["id", "subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]
         writer.writerow(merged_headers)
@@ -69,7 +69,7 @@ def merge_nodes():
     # Merge the KG2pre and SRI node sets
     logging.info(f"Merging nodes into one unified match graph..")
 
-    with open(f"{SYNONYMIZER_BUILD_DIR}/3_match_nodes.tsv", "w+") as merged_nodes_file:
+    with open(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_nodes.tsv", "w+") as merged_nodes_file:
         writer = csv.writer(merged_nodes_file, delimiter="\t")
         merged_headers = ["id", "cluster_id",
                           "category_kg2pre", "name_kg2pre",

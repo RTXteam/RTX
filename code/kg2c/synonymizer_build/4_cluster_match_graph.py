@@ -196,7 +196,7 @@ def main():
 
     # Load match graph data
     logging.info(f"Loading match_nodes.tsv into a Pandas DataFrame..")
-    nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_match_nodes.tsv",
+    nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_nodes.tsv",
                              dtype={
                                  "id": str,
                                  "cluster_id": str,
@@ -207,7 +207,7 @@ def main():
                              })
     logging.info(f"Nodes DataFrame:\n {nodes_df}")
     logging.info(f"Loading match_edges.tsv into a Pandas DataFrame..")
-    edges_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_match_edges.tsv",
+    edges_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_edges.tsv",
                              dtype={
                                  "id": str,  # Potentially get rid of this column if space is an issue?
                                  "subject": str,
