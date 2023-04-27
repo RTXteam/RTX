@@ -60,8 +60,9 @@ def get_most_specific_category(categories: List[str]) -> str:
                             f"cluster was: {categories}")
             most_specific_category = chosen_category
         else:
-            raise ValueError(f"Could not determine most specific category for SRI cluster with categories: "
-                             f"{categories}")
+            logging.warning(f"Could not determine most specific category for SRI cluster with categories: "
+                            f"{categories}. Will consider this category group to be NamedThing.")
+            most_specific_category = "biolink:NamedThing"
         CATEGORY_LEAF_MAP[categories_group_key] = most_specific_category
 
     return CATEGORY_LEAF_MAP[categories_group_key]
