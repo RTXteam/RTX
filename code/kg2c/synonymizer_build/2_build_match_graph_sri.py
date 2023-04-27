@@ -1,13 +1,17 @@
-import csv
 import itertools
 import logging
 import os
 import pathlib
 import subprocess
+import sys
 from typing import Set, List
 
+import numpy as np
 import pandas as pd
 import requests
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
@@ -15,6 +19,9 @@ SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s: %(message)s',
                     handlers=[logging.StreamHandler()])
+
+BH = BiolinkHelper()  # TODO: Eventually specify biolink version that this particular KG2 version uses.. or SRI ?
+CATEGORY_LEAF_MAP = dict()
 
 
 def strip_biolink_prefix(item: str) -> str:
@@ -29,8 +36,35 @@ def get_kg2pre_node_ids():
 
 
 def get_most_specific_category(categories: List[str]) -> str:
-    # TODO
-    return ""
+    # The SRI includes all ancestors of the category in the cluster's categories list; we want to remove those
+    true_categories = BH.filter_out_mixins(categories)
+    simplified_categories_set = set(true_categories).difference({"biolink:Entity"})
+    categories_group_key = "--".join(sorted(list(simplified_categories_set)))
+
+    # Figure out the leaf category for this group of categories if we haven't seen it before
+    if categories_group_key not in CATEGORY_LEAF_MAP:
+        relative_leaf_categories = set()
+        for category in simplified_categories_set:
+            descendants = BH.get_descendants(category, include_mixins=False, include_conflations=False)
+            descendants_in_set = (set(descendants).intersection(simplified_categories_set)).difference({category})
+            if not descendants_in_set:
+                relative_leaf_categories.add(category)
+
+        # Choose one category to assign to the cluster
+        if len(relative_leaf_categories) == 1:
+            most_specific_category = list(relative_leaf_categories)[0]
+        elif len(relative_leaf_categories) > 1:
+            chosen_category = sorted(list(relative_leaf_categories))[0]
+            logging.warning(f"More than one category in an SRI cluster's category list are (relative) leaves: "
+                            f"{relative_leaf_categories}. Will use {chosen_category}. Full categories list for the "
+                            f"cluster was: {categories}")
+            most_specific_category = chosen_category
+        else:
+            raise ValueError(f"Could not determine most specific category for SRI cluster with categories: "
+                             f"{categories}")
+        CATEGORY_LEAF_MAP[categories_group_key] = most_specific_category
+
+    return CATEGORY_LEAF_MAP[categories_group_key]
 
 
 def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
@@ -111,6 +145,10 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
         else:
             logging.warning(f"Batch {batch_num} returned non-200 status ({response.status_code}): {response.text}")
             num_failed_batches += 1
+
+    # Get rid of biolink prefixes (saves space, makes for easier processing)
+    strip_biolink_prefix_vectorized = np.vectorize(strip_biolink_prefix)
+    nodes_df.category = strip_biolink_prefix_vectorized(nodes_df.category)
 
     logging.info(f"Final SRI NN match nodes df is: \n{nodes_df}")
     logging.info(f"Final SRI NN match edges df is: \n{edges_df}")
