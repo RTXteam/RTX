@@ -64,6 +64,9 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
     logging.info(f"Sending {len(kg2pre_node_id_batches)} batches to the SRI Node Normalizer RestAPI ({sri_nn_url})")
     for node_id_batch in kg2pre_node_id_batches:
         batch_num += 1
+        if batch_num % 1000 == 0:
+            logging.info(f"On batch {batch_num} of {len(kg2pre_node_id_batches)}...")
+
         query_body = {"curies": node_id_batch,
                       "conflate": True}
         response = requests.post(sri_nn_url, json=query_body)
@@ -111,6 +114,9 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
 
     logging.info(f"Final SRI NN match nodes df is: \n{nodes_df}")
     logging.info(f"Final SRI NN match edges df is: \n{edges_df}")
+    logging.info(f"Saving SRI match graph to TSVs..")
+    nodes_df.to_csv(sri_match_nodes_file_path, sep="\t")
+    edges_df.to_csv(sri_match_edges_file_path, sep="\t")
 
     # Report some final stats
     logging.info(f"SRI NN API recognized {num_kg2pre_nodes_recognized:,} of {len(kg2pre_node_ids):,} KG2pre node IDs"
