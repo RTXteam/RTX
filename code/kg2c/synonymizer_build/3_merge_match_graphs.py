@@ -72,8 +72,8 @@ def merge_nodes():
     with open(f"{SYNONYMIZER_BUILD_DIR}/match_nodes.tsv", "w+") as merged_nodes_file:
         writer = csv.writer(merged_nodes_file, delimiter="\t")
         merged_headers = ["id", "cluster_id",
-                          "in_kg2pre", "category_kg2pre", "name_kg2pre",
-                          "in_sri", "category_sri", "name_sri"]
+                          "category_kg2pre", "name_kg2pre",
+                          "category_sri", "name_sri"]
         writer.writerow(merged_headers)
 
         # First load KG2pre nodes into memory (small enough to fit)
@@ -102,14 +102,14 @@ def merge_nodes():
                 if node_id in kg2pre_nodes_dict:
                     kg2pre_row = kg2pre_nodes_dict[node_id]
                     merged_row = [node_id, sri_row[sri_cluster_id_col],
-                                  True, kg2pre_row[kg2pre_category_col], kg2pre_row[kg2pre_name_col],
-                                  True, sri_row[sri_category_col], sri_row[sri_name_col]]
+                                  kg2pre_row[kg2pre_category_col], kg2pre_row[kg2pre_name_col],
+                                  sri_row[sri_category_col], sri_row[sri_name_col]]
                     del kg2pre_nodes_dict[node_id]
                 # Otherwise this node is only in SRI NN; just transform it to 'merged' format
                 else:
                     merged_row = [node_id, sri_row[sri_cluster_id_col],
-                                  False, None, None,
-                                  True, sri_row[sri_category_col], sri_row[sri_name_col]]
+                                  None, None,
+                                  sri_row[sri_category_col], sri_row[sri_name_col]]
 
                 row_batch.append(merged_row)
 
@@ -122,8 +122,8 @@ def merge_nodes():
         logging.info(f"Processing the {len(kg2pre_nodes_dict):,} KG2pre nodes that were not in SRI NN..")
         for remaining_node_id, kg2pre_row in kg2pre_nodes_dict.items():
             merged_row = [remaining_node_id, None,
-                          True, kg2pre_row[kg2pre_category_col], kg2pre_row[kg2pre_name_col],
-                          False, None, None]
+                          kg2pre_row[kg2pre_category_col], kg2pre_row[kg2pre_name_col],
+                          None, None]
             row_batch.append(merged_row)
         _ = write_node_batch(writer, row_batch)
 
