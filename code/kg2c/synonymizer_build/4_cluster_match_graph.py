@@ -174,6 +174,8 @@ def create_name_sim_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
 
 
 def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> Dict[str, str]:
+    # TODO: Switch to modularity-based clustering, rather than label propagation..
+
     # Do label propagation, where each node starts with its own ID as its label
     logging.info(f"Starting to cluster the match graph into groups of equivalent nodes...")
 
