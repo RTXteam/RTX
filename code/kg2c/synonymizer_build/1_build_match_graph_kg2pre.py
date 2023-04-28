@@ -32,7 +32,7 @@ def download_kg2pre_tsvs():
     subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", KG2PRE_TSV_DIR])
 
 
-def create_nodes_table_kg2pre(kg2pre_version: str):
+def create_match_nodes_kg2pre(kg2pre_version: str):
     logging.info(f"Creating KG2pre nodes table...")
 
     # Load KG2pre data into nodes table, including only the columns relevant to us
@@ -73,7 +73,7 @@ def create_nodes_table_kg2pre(kg2pre_version: str):
     nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/1_match_nodes_kg2pre.tsv", sep="\t")
 
 
-def create_edges_table_kg2pre():
+def create_match_edges_kg2pre():
     logging.info(f"Creating KG2pre edges table...")
 
     # Load KG2pre data into edges table, including only the columns relevant to us
@@ -121,8 +121,8 @@ def main():
         download_kg2pre_tsvs()
 
     # Transform KG2pre data into 'match graph' format
-    create_nodes_table_kg2pre(args.kg2pre_version)
-    create_edges_table_kg2pre()
+    create_match_nodes_kg2pre(args.kg2pre_version)
+    create_match_edges_kg2pre()
 
 
 if __name__ == "__main__":
