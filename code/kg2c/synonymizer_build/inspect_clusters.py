@@ -68,12 +68,18 @@ def get_graph(node_ids: List[str], edge_ids: List[str], cursor, hide_predicate: 
             edge["predicate_hidden"] = edge["predicate"]
             del edge["predicate"]
 
+    # Choose one name (SRI or KG2) for each node
+    for node in cluster_graph["nodes"]:
+        node["name"] = node["name_sri"] if node.get("name_sri") else node["name_kg2pre"]
+
     logging.info(f"Cluster graph has {len(cluster_graph['nodes'])} nodes, {len(cluster_graph['edges'])} edges.")
     return cluster_graph
 
 
 def get_node_name(node: any) -> Optional[str]:
-    if node.get("name_sri"):
+    if node.get("name"):
+        return node["name"]
+    elif node.get("name_sri"):
         return node["name_sri"]
     else:
         return node.get("name_kg2pre")
