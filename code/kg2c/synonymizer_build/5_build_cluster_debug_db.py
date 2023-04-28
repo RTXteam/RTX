@@ -73,12 +73,14 @@ def save_cluster_data_for_debugging(nodes_df: pd.DataFrame, edges_df: pd.DataFra
         table_rows.append([cluster_id, f"{member_ids}", f"{list(intra_cluster_edge_ids)}"])
 
     # Save a table of cluster info
-    logging.info(f"Saving table of cluster info (cluster_id, member_ids, intra_cluster_edge_ids)")
+    logging.info(f"Creating DataFrame of cluster info (cluster_id, member_ids, intra_cluster_edge_ids)")
     cluster_info_df = pd.DataFrame(table_rows, columns=["cluster_id", "member_ids", "intra_cluster_edge_ids"]).set_index("cluster_id")
     logging.info(f"Cluster info df is:\n{cluster_info_df}")
+    logging.info(f"Dumping cluster info DataFrame to sqlite..")
     cluster_info_df.to_sql("cluster_info", db_connection)
     db_connection.execute("CREATE UNIQUE INDEX cluster_id_index on cluster_info (cluster_id)")
     db_connection.commit()
+    logging.info(f"Done saving data in sqlite")
 
     db_connection.close()
 
