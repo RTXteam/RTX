@@ -413,8 +413,8 @@ class InferUtilities:
                     'name': chemical_curie
                 }
                 self.response = messenger.add_qnode(self.response, add_qnode_params)
-                knowledge_graph.nodes[chemical_curie] = Node(name=chemical_name, categories=['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule'])
-                knowledge_graph.nodes[chemical_curie].qnode_keys = ['chemical']
+                message.knowledge_graph.nodes[chemical_curie] = Node(name=chemical_name, categories=['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule'])
+                message.knowledge_graph.nodes[chemical_curie].qnode_keys = ['chemical']
                 add_qnode_params = {
                     'key': "gene",
                     'categories': ['biolink:Gene','biolink:Protein']
@@ -434,8 +434,8 @@ class InferUtilities:
                     'name': gene_curie
                 }
                 self.response = messenger.add_qnode(self.response, add_qnode_params)
-                knowledge_graph.nodes[gene_curie] = Node(name=gene_name, categories=['biolink:Gene','biolink:Protein'])
-                knowledge_graph.nodes[gene_curie].qnode_keys = ['gene']
+                message.knowledge_graph.nodes[gene_curie] = Node(name=gene_name, categories=['biolink:Gene','biolink:Protein'])
+                message.knowledge_graph.nodes[gene_curie].qnode_keys = ['gene']
 
             if model_type == 'increase':
                 edge_qualifier_direction = 'increased'
@@ -473,10 +473,10 @@ class InferUtilities:
                 categories_to_add.update(self.bh.get_ancestors(['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule']))
                 categories_to_add.update(list(synonymizer.get_normalizer_results(chemical_curie)[chemical_curie]['categories'].keys()))
                 categories_to_add = list(categories_to_add)
-                knowledge_graph.nodes[chemical_curie] = Node(name=chemical_name, categories=categories_to_add)
+                message.knowledge_graph.nodes[chemical_curie] = Node(name=chemical_name, categories=categories_to_add)
                 chemical_qnode_key = message.query_graph.edges[qedge_id].subject
                 gene_qnode_key = message.query_graph.edges[qedge_id].object
-                knowledge_graph.nodes[chemical_curie].qnode_keys = [chemical_qnode_key]
+                message.knowledge_graph.nodes[chemical_curie].qnode_keys = [chemical_qnode_key]
                 # Don't add a new edge in for the treats as there is already an edge there with the knowledge type inferred
                 # But do say that this edge has been filled
                 message.query_graph.edges[qedge_id].filled = True
@@ -493,10 +493,10 @@ class InferUtilities:
                 categories_to_add.update(self.bh.get_ancestors(['biolink:Gene','biolink:Protein']))
                 categories_to_add.update(list(synonymizer.get_normalizer_results(gene_curie)[gene_curie]['categories'].keys()))
                 categories_to_add = list(categories_to_add)
-                knowledge_graph.nodes[gene_curie] = Node(name=gene_name, categories=categories_to_add)
+                message.knowledge_graph.nodes[gene_curie] = Node(name=gene_name, categories=categories_to_add)
                 chemical_qnode_key = message.query_graph.edges[qedge_id].subject
                 gene_qnode_key = message.query_graph.edges[qedge_id].object
-                knowledge_graph.nodes[gene_curie].qnode_keys = [gene_qnode_key]
+                message.knowledge_graph.nodes[gene_curie].qnode_keys = [gene_qnode_key]
                 # Don't add a new edge in for the treats as there is already an edge there with the knowledge type inferred
                 # But do say that this edge has been filled
                 message.query_graph.edges[qedge_id].filled = True
@@ -508,8 +508,8 @@ class InferUtilities:
 
         # Just use the chemical and gene that are currently in the QG
         # now that KG and QG are populated with stuff, shorthand them
-        knodes = knowledge_graph.nodes
-        kedges = knowledge_graph.edges
+        knodes = message.knowledge_graph.nodes
+        kedges = message.knowledge_graph.edges
         qnodes = message.query_graph.nodes
         qedges = message.query_graph.edges
 
