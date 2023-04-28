@@ -57,6 +57,7 @@ def create_nodes_table_kg2pre(kg2pre_version: str):
     nodes_df.category = strip_biolink_prefix_vectorized(nodes_df.category)
 
     # Make sure this is actually the KG2 version we are supposed to be using
+    logging.info(f"Verifying that the KG2pre version in the KG2pre TSVs matches what was requested..")
     kg2pre_build_node_id = "RTX:KG2"
     if kg2pre_build_node_id in nodes_df.index:
         kg2pre_build_node = nodes_df.loc[kg2pre_build_node_id]

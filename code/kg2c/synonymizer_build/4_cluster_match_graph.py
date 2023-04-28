@@ -77,6 +77,7 @@ def assign_major_category_branches(nodes_df: pd.DataFrame, edges_df: pd.DataFram
 
     # Assign each node its (modified) category branch - or None if it's a NamedThing/BiologicalEntity
     logging.info(f"Choosing between KG2pre and SRI categories (favor SRI over KG2pre)..")
+    # TODO: If SRI category is NamedThing and KG2pre one isn't, use KG2pre?
     # Note: If a category dtype is equal to itself, that means it must not be NaN..
     nodes_df["category"] = np.where(nodes_df.category_sri == nodes_df.category_sri, nodes_df.category_sri, nodes_df.category_kg2pre)
 
@@ -224,11 +225,9 @@ def main():
 
     # Do node pre-processing
     assign_major_category_branches(nodes_df, edges_df)  # TODO: better to do this before or after adding name sim edges?
-    nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv", sep="\t")
 
     # Remove conflicting category edges
     edges_df = remove_conflicting_category_edges(nodes_df, edges_df)
-    edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv", sep="\t")
 
     # Cluster the graph into sets of equivalent nodes
     label_map = cluster_match_graph(nodes_df, edges_df)
@@ -236,7 +235,10 @@ def main():
     logging.info(f"After clustering equivalent nodes, there are a total of {len(cluster_ids):,} clusters "
                  f"(for a total of {len(nodes_df):,} nodes)")
 
-    # Save our cluster labeling to a TSV
+    # Save our nodes/edges table, plus a simple TSV with the cluster labeling (for easy access)
+    logging.info(f"Saving final nodes and edges tables..")
+    nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv", sep="\t", index=False)
+    edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv", sep="\t", index=False)
     logging.info(f"Saving member_id --> cluster_id map to TSV file..")
     label_df = pd.DataFrame(label_map.items(), columns=["member_id", "cluster_id"]).set_index("member_id")
     label_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_cluster_member_map.tsv", sep="\t")

@@ -65,6 +65,8 @@ def get_most_specific_category(categories: List[str]) -> str:
             most_specific_category = "biolink:NamedThing"
         CATEGORY_LEAF_MAP[categories_group_key] = most_specific_category
 
+    # TODO: Add one-off for ['biolink:GenomicEntity']? (which is a mixin, I think..)
+
     return CATEGORY_LEAF_MAP[categories_group_key]
 
 
@@ -81,12 +83,14 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
         subprocess.check_call(["mv", sri_match_edges_file_path, f"{sri_match_edges_file_path}_PREVIOUS"])
 
     # Divide KG2pre node IDs into batches
+    # TODO: Remove member nodes from remaining IDs to query after each batch; should reduce batches by ~3x?
     batch_size = 1000  # This is the suggested max batch size from Chris Bizon (in Translator slack..)
     logging.info(f"Dividing KG2pre node IDs into batches of {batch_size}")
     kg2pre_node_id_batches = [kg2pre_node_ids[batch_start:batch_start + batch_size]
                               for batch_start in range(0, len(kg2pre_node_ids), batch_size)]
 
     # Send each batch to the normalizer and transform results into 'match graph' format
+    # Note: This is their development (non-ITRB) server, which seems to be faster for us..
     sri_nn_url = "https://nodenormalization-sri.renci.org/1.3/get_normalized_nodes"
     batch_num = 0
     num_failed_batches = 0
@@ -99,9 +103,10 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
     logging.info(f"Sending {len(kg2pre_node_id_batches)} batches to the SRI Node Normalizer RestAPI ({sri_nn_url})")
     for node_id_batch in kg2pre_node_id_batches:
         batch_num += 1
-        if batch_num % 1000 == 0:
+        if batch_num % 100 == 0:
             logging.info(f"On batch {batch_num} of {len(kg2pre_node_id_batches)}...")
 
+        # Send this batch of node IDs to the SRI NN API
         query_body = {"curies": node_id_batch,
                       "conflate": True}
         response = requests.post(sri_nn_url, json=query_body)
