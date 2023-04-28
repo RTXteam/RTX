@@ -223,10 +223,8 @@ def main():
     assign_edge_weights(edges_df)
     create_name_sim_edges(nodes_df, edges_df)
 
-    # Do node pre-processing
+    # Attempt to remove paths between nodes with conflicting categories
     assign_major_category_branches(nodes_df, edges_df)  # TODO: better to do this before or after adding name sim edges?
-
-    # Remove conflicting category edges
     edges_df = remove_conflicting_category_edges(nodes_df, edges_df)
 
     # Cluster the graph into sets of equivalent nodes

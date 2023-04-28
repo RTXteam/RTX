@@ -84,6 +84,7 @@ def save_cluster_data_for_debugging(nodes_df: pd.DataFrame, edges_df: pd.DataFra
 
 
 def main():
+    logging.info(f"Loading nodes and edges TSVs into DataFrames..")
     # Load the match graph into DataFrames
     nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv",
                              dtype={
@@ -106,7 +107,8 @@ def main():
                                  "primary_knowledge_source": "category",
                                  "weight": float
                              })
-    print(nodes_df)
+    logging.info(f"Loaded nodes DF is:\n{nodes_df}")
+    logging.info(f"Loaded edges DF is:\n{edges_df}")
 
     # Create a sqlite database for easy inspection/debugging of clusters
     save_cluster_data_for_debugging(nodes_df, edges_df)
