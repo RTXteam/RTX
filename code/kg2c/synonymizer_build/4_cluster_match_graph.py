@@ -86,12 +86,12 @@ def assign_major_category_branches(nodes_df: pd.DataFrame, edges_df: pd.DataFram
 
     logging.info(f"Doing label propagation of major branches to NamedThing/BiologicalEntity nodes")
     adj_dict_weighted = get_weighted_adjacency_dict(edges_df)
-    branch_label_map_partial = dict(zip(nodes_df.id, nodes_df.major_branch))
+    branch_label_map_partial = dict(zip(nodes_df.index, nodes_df.major_branch))
     nodes_missing_major_branch = [node_id for node_id, label in branch_label_map_partial.items() if not label]
     label_map = do_label_propagation(branch_label_map_partial, adj_dict_weighted, nodes_to_label=nodes_missing_major_branch)
 
     # Assign all nodes their new major branch (orphans will always remain unlabeled)
-    nodes_df.major_branch = nodes_df.id.map(label_map).astype("category")
+    nodes_df.major_branch = nodes_df.index.map(label_map).astype("category")
 
 
 def choose_major_branch(row) -> str:
@@ -109,7 +109,7 @@ def choose_major_branch(row) -> str:
 def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> pd.DataFrame:
     # Remove every edge that links two nodes from different major category branches
     logging.info(f"Before filtering conflicting category edges, there are {edges_df.shape[0]} edges")
-    major_branch_map = dict(zip(nodes_df.id, nodes_df.major_branch))
+    major_branch_map = dict(zip(nodes_df.index, nodes_df.major_branch))
     edges_df = edges_df[edges_df.apply(lambda row: major_branch_map.get(row.subject) == major_branch_map.get(row.object),
                                        axis=1)]
     logging.info(f"After filtering conflicting category edges, there are {edges_df.shape[0]} edges")
@@ -128,15 +128,15 @@ def do_label_propagation(label_map: Dict[str, str], adj_list_weighted: Dict[str,
         logging.info(f"Starting iteration {iteration} of label propagation..")
         # Put nodes into a new DF in a random order
         random.shuffle(node_ids)
-        nodes_df_random = pd.DataFrame(node_ids, columns=["id"])
+        nodes_df_random = pd.DataFrame(node_ids, columns=["id"]).set_index("id")
         # Then update their current majority labels (changes to one node may impact others)
         get_most_common_neighbor_label_vectorized = np.vectorize(get_most_common_neighbor_label)
-        nodes_df_random["current_label"] = get_most_common_neighbor_label_vectorized(nodes_df_random.id,
+        nodes_df_random["current_label"] = get_most_common_neighbor_label_vectorized(nodes_df_random.index,
                                                                                      adj_list_weighted,
                                                                                      label_map,
                                                                                      update_label_map=True)
         # Then determine the majority label for each node, when considering the current labeling 'frozen'
-        nodes_df_random["major_label"] = get_most_common_neighbor_label_vectorized(nodes_df_random.id,
+        nodes_df_random["major_label"] = get_most_common_neighbor_label_vectorized(nodes_df_random.index,
                                                                                    adj_list_weighted,
                                                                                    label_map,
                                                                                    update_label_map=False)
@@ -181,9 +181,9 @@ def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> Dict[
     logging.info(f"Starting to cluster the match graph into groups of equivalent nodes...")
 
     logging.info(f"Determining initial cluster labels and which nodes need labeling..")
-    node_ids_missing_cluster_id = list(nodes_df[nodes_df.cluster_id != nodes_df.cluster_id].id.values)  # NaN value is not equal to itself
-    initial_labels = np.where(nodes_df.cluster_id == nodes_df.cluster_id, nodes_df.cluster_id, nodes_df.id)
-    label_map_initial = dict(zip(nodes_df.id, initial_labels))
+    node_ids_missing_cluster_id = list(nodes_df[nodes_df.cluster_id != nodes_df.cluster_id].index.values)  # NaN value is not equal to itself
+    initial_labels = np.where(nodes_df.cluster_id == nodes_df.cluster_id, nodes_df.cluster_id, nodes_df.index)
+    label_map_initial = dict(zip(nodes_df.index, initial_labels))
 
     adj_list_weighted = get_weighted_adjacency_dict(edges_df)
 
@@ -198,6 +198,7 @@ def main():
     # Load match graph data
     logging.info(f"Loading match_nodes.tsv into a Pandas DataFrame..")
     nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_nodes.tsv",
+                             index_col="id",
                              dtype={
                                  "id": str,
                                  "cluster_id": str,
@@ -209,6 +210,7 @@ def main():
     logging.info(f"Nodes DataFrame:\n {nodes_df}")
     logging.info(f"Loading match_edges.tsv into a Pandas DataFrame..")
     edges_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_edges.tsv",
+                             index_col="id",
                              dtype={
                                  "id": str,  # Potentially get rid of this column if space is an issue?
                                  "subject": str,
@@ -235,8 +237,8 @@ def main():
 
     # Save our nodes/edges table, plus a simple TSV with the cluster labeling (for easy access)
     logging.info(f"Saving final nodes and edges tables..")
-    nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv", sep="\t", index=False)
-    edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv", sep="\t", index=False)
+    nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv", sep="\t")
+    edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv", sep="\t")
     logging.info(f"Saving member_id --> cluster_id map to TSV file..")
     label_df = pd.DataFrame(label_map.items(), columns=["member_id", "cluster_id"]).set_index("member_id")
     label_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_cluster_member_map.tsv", sep="\t")
