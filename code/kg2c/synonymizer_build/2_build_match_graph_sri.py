@@ -71,8 +71,8 @@ def get_most_specific_category(categories: List[str]) -> str:
 
 
 def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
-    kg2pre_node_ids = list(kg2pre_node_ids_set)
-    logging.info(f"Starting to build SRI match graph based on {len(kg2pre_node_ids):,} KG2pre node IDs..")
+    total_num_kg2pre_node_ids = len(kg2pre_node_ids_set)
+    logging.info(f"Starting to build SRI match graph based on {total_num_kg2pre_node_ids:,} KG2pre node IDs..")
 
     # Save the current version of SRI match graph, if it exists (as backup, in case the SRI NN API is down)
     sri_match_nodes_file_path = f"{SYNONYMIZER_BUILD_DIR}/2_match_nodes_sri.tsv"
@@ -82,75 +82,71 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
     if pathlib.Path(sri_match_edges_file_path).exists():
         subprocess.check_call(["mv", sri_match_edges_file_path, f"{sri_match_edges_file_path}_PREVIOUS"])
 
-    # Divide KG2pre node IDs into batches
-    # TODO: Remove member nodes from remaining IDs to query after each batch; should reduce batches by ~3x?
-    batch_size = 1000  # This is the suggested max batch size from Chris Bizon (in Translator slack..)
-    logging.info(f"Dividing KG2pre node IDs into batches of {batch_size}")
-    kg2pre_node_id_batches = [kg2pre_node_ids[batch_start:batch_start + batch_size]
-                              for batch_start in range(0, len(kg2pre_node_ids), batch_size)]
-
-    # Send each batch to the normalizer and transform results into 'match graph' format
-    # Note: This is their development (non-ITRB) server, which seems to be faster for us..
-    sri_nn_url = "https://nodenormalization-sri.renci.org/1.3/get_normalized_nodes"
+    # Ask the SRI NodeNormalizer for normalized info for all KG2pre IDs, divided into batches
+    sri_nodes = dict()
+    sri_edges = set()
+    kg2pre_node_ids_remaining = kg2pre_node_ids_set
+    batch_size = 1000  # This is the preferred max batch size, according to Chris Bizon in Translator slack
     batch_num = 0
     num_failed_batches = 0
-    num_kg2pre_nodes_recognized = 0
-    sri_cluster_ids_seen = set()
-    node_cols = ["id", "name", "category", "cluster_id"]
-    edge_cols = ["id", "subject", "predicate", "object"]
-    nodes_df = pd.DataFrame(columns=node_cols).set_index("id")
-    edges_df = pd.DataFrame(columns=edge_cols).set_index("id")
-    logging.info(f"Sending {len(kg2pre_node_id_batches)} batches to the SRI Node Normalizer RestAPI ({sri_nn_url})")
-    for node_id_batch in kg2pre_node_id_batches:
-        batch_num += 1
-        if batch_num % 100 == 0:
-            logging.info(f"On batch {batch_num} of {len(kg2pre_node_id_batches)}...")
+    num_unrecognized_nodes = 0
+    while kg2pre_node_ids_remaining:
+        # Grab the next batch of node IDs
+        batch_node_ids = set(itertools.islice(kg2pre_node_ids_remaining, batch_size))
+        kg2pre_node_ids_remaining -= batch_node_ids
 
-        # Send this batch of node IDs to the SRI NN API
-        query_body = {"curies": node_id_batch,
+        # Send the batch to the SRI NN RestAPI
+        # Note: This is their development (non-ITRB) server, which seems to be faster for us..
+        sri_nn_url = "https://nodenormalization-sri.renci.org/1.3/get_normalized_nodes"
+        query_body = {"curies": list(batch_node_ids),
                       "conflate": True}
         response = requests.post(sri_nn_url, json=query_body)
+
+        # Extract the canonical identifiers and any other equivalent IDs from the response for this batch
         if response.status_code == 200:
-            # Transform the returned SRI clusters into 'match graph' format
-            batch_nodes = dict()
-            batch_edges = list()
-            for input_node_id, normalized_info in response.json().items():
-
-                if normalized_info:  # We skip KG2pre nodes the SRI NN didn't recognize
-                    num_kg2pre_nodes_recognized += 1
-
-                    # First parse the cluster-level info
-                    preferred_node = normalized_info["id"]
-                    cluster_id = preferred_node["identifier"]
+            for kg2pre_node_id, normalized_info in response.json().items():
+                # This means the SRI NN recognized the KG2pre node ID we asked for
+                if normalized_info:
+                    cluster_id = normalized_info["id"]["identifier"]
 
                     # Process this cluster if we haven't seen it before
-                    if cluster_id not in sri_cluster_ids_seen:
-                        sri_cluster_ids_seen.add(cluster_id)
+                    if cluster_id not in sri_nodes:
                         cluster_category = get_most_specific_category(normalized_info["type"])
 
-                        # Then create nodes and edges for each cluster member and add them to this batch's nodes
-                        cluster_nodes = {}
+                        # Add each cluster member to our overall nodes dict
+                        member_ids = []
                         for equivalent_node in normalized_info["equivalent_identifiers"]:
                             node_id = equivalent_node["identifier"]
                             node_name = equivalent_node.get("label")
-                            cluster_nodes[node_id] = [node_id, node_name, cluster_category, cluster_id]
-                        batch_nodes = dict(cluster_nodes, **batch_nodes)  # Effectively takes union of dictionaries
+                            sri_nodes[node_id] = (node_id, node_name, cluster_category, cluster_id)
+                            member_ids.append(node_id)
+                        # Mark any of the non-preferred, equivalent nodes as processed, so we don't do repeat queries
+                        kg2pre_node_ids_remaining = kg2pre_node_ids_remaining.difference(member_ids)
 
-                        # Then create intra-cluster edges and add them to our edges dataframe
-                        if len(cluster_nodes) > 1:
-                            possible_node_id_combos = itertools.combinations(list(cluster_nodes), 2)
+                        # Then create intra-cluster edges
+                        if len(member_ids) > 1:
+                            possible_node_id_combos = itertools.combinations(member_ids, 2)
                             for subject_node_id, object_node_id in possible_node_id_combos:
+                                # Note: Order of subject/object shouldn't matter here, since this should be the only
+                                # cluster with an edge between these two nodes
                                 edge_id = f"SRINN:{subject_node_id}--{object_node_id}"
-                                batch_edges.append([edge_id, subject_node_id, "same_as", object_node_id])
-
-            # Add this batch of nodes/edges to our overarching SRI nodes/edges dataframes
-            batch_nodes_df = pd.DataFrame(batch_nodes.values(), columns=node_cols).set_index("id")
-            nodes_df = pd.concat([nodes_df, batch_nodes_df])
-            batch_edges_df = pd.DataFrame(batch_edges, columns=edge_cols).set_index("id")
-            edges_df = pd.concat([edges_df, batch_edges_df])
+                                sri_edges.add((edge_id, subject_node_id, "same_as", object_node_id))
+                else:
+                    # The SRI NN did not recognize the KG2pre node ID we asked for
+                    num_unrecognized_nodes += 1
         else:
             logging.warning(f"Batch {batch_num} returned non-200 status ({response.status_code}): {response.text}")
             num_failed_batches += 1
+
+        # Log our progress
+        batch_num += 1
+        if batch_num % 100 == 0:
+            logging.info(f"Have processed {batch_num} batches.. {len(kg2pre_node_ids_remaining):,} "
+                         f"KG2pre node IDs remaining")
+
+    # Load our nodes and edges dicts into DataFrames
+    nodes_df = pd.DataFrame(sri_nodes.values(), columns=["id", "name", "category", "cluster_id"])
+    edges_df = pd.DataFrame(sri_edges, columns=["id", "subject", "predicate", "object"])
 
     # Get rid of biolink prefixes (saves space, makes for easier processing)
     strip_biolink_prefix_vectorized = np.vectorize(strip_biolink_prefix)
@@ -159,13 +155,13 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
     logging.info(f"Final SRI NN match nodes df is: \n{nodes_df}")
     logging.info(f"Final SRI NN match edges df is: \n{edges_df}")
     logging.info(f"Saving SRI match graph to TSVs..")
-    nodes_df.to_csv(sri_match_nodes_file_path, sep="\t")
-    edges_df.to_csv(sri_match_edges_file_path, sep="\t")
+    nodes_df.to_csv(sri_match_nodes_file_path, sep="\t", index=False)
+    edges_df.to_csv(sri_match_edges_file_path, sep="\t", index=False)
 
     # Report some final stats
-    logging.info(f"SRI NN API recognized {num_kg2pre_nodes_recognized:,} of {len(kg2pre_node_ids):,} KG2pre node IDs"
-                 f" ({round(num_kg2pre_nodes_recognized / len(kg2pre_node_ids), 2) * 100}%)")
-    logging.info(f"Our SRI match graph includes {len(sri_cluster_ids_seen):,} SRI clusters")
+    logging.info(f"SRI NN API did not recognize {num_unrecognized_nodes:,} of {total_num_kg2pre_node_ids:,} "
+                 f"KG2pre nodes ({round(num_unrecognized_nodes / total_num_kg2pre_node_ids, 2) * 100}%)")
+    logging.info(f"Our SRI match graph includes {len(nodes_df):,} SRI clusters")
     if num_failed_batches:
         logging.warning(f"{num_failed_batches} requests to SRI NN API failed. Each failed request included "
                         f"{batch_size} KG2pre node IDs.")
