@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO,
 
 def save_cluster_data_for_debugging(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     # Get sqlite set up
-    sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/clusters.sqlite"
+    sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/5_clusters.sqlite"
     if pathlib.Path(sqlite_db_path).exists():
         subprocess.check_call(["rm", sqlite_db_path])
     db_connection = sqlite3.connect(sqlite_db_path)
@@ -86,6 +86,8 @@ def save_cluster_data_for_debugging(nodes_df: pd.DataFrame, edges_df: pd.DataFra
 
 
 def main():
+    logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
+
     logging.info(f"Loading nodes and edges TSVs into DataFrames..")
     # Load the match graph into DataFrames
     nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv",

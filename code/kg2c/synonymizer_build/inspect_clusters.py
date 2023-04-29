@@ -99,7 +99,7 @@ def main():
     arg_parser.add_argument("node_id")
     args = arg_parser.parse_args()
 
-    sqlite_path = f"{SYNONYMIZER_BUILD_DIR}/clusters.sqlite"
+    sqlite_path = f"{SYNONYMIZER_BUILD_DIR}/5_clusters.sqlite"
     cluster_graphs_path = f"{SYNONYMIZER_BUILD_DIR}/cluster_debug_graphs"
     if not pathlib.Path(cluster_graphs_path).exists():
         subprocess.check_call(["mkdir", cluster_graphs_path])
