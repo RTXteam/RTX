@@ -82,16 +82,25 @@ def assign_major_category_branches(nodes_df: pd.DataFrame, edges_df: pd.DataFram
     nodes_df["category"] = np.where(nodes_df.category_sri == nodes_df.category_sri, nodes_df.category_sri, nodes_df.category_kg2pre)
 
     logging.info(f"Assigning nodes to their major category branches..")
-    nodes_df["major_branch"] = nodes_df.category.map(categories_to_major_branch).astype("category")
+    nodes_df["major_branch"] = nodes_df.category.map(categories_to_major_branch).astype(str)  # Note: np.vectorize doesn't like Pandas "category" data type...
 
-    logging.info(f"Doing label propagation of major branches to NamedThing/BiologicalEntity nodes")
+    logging.info(f"Starting to do label propagation of major branches to NamedThing/BiologicalEntity nodes..")
     adj_dict_weighted = get_weighted_adjacency_dict(edges_df)
+    logging.info(f"Determining which nodes are missing a major branch labeling prior to propagation..")
+    node_ids_missing_major_branch = list(nodes_df[nodes_df.major_branch != nodes_df.major_branch].index.values)  # NaN value is not equal to itself
     branch_label_map_partial = dict(zip(nodes_df.index, nodes_df.major_branch))
-    nodes_missing_major_branch = [node_id for node_id, label in branch_label_map_partial.items() if not label]
-    label_map = do_label_propagation(branch_label_map_partial, adj_dict_weighted, nodes_to_label=nodes_missing_major_branch)
+    label_map = do_label_propagation(branch_label_map_partial, adj_dict_weighted,
+                                     nodes_to_label=node_ids_missing_major_branch)
 
     # Assign all nodes their new major branch (orphans will always remain unlabeled)
-    nodes_df.major_branch = nodes_df.index.map(label_map).astype("category")
+    logging.info(f"Updating all nodes with their final major branches..")
+    nodes_df.major_branch = nodes_df.index.map(label_map).astype(str)  # Note: np.vectorize doesn't like Pandas "category" data type...
+    logging.info(f"For nodes whose major branch couldn't be determined, we'll consider their category "
+                 f"(NamedThing or BiologicalEntity) to be their major branch..")
+    # Note: Since we have to store major_branch as a string datatype, Pandas makes NaN values be the string "nan"..
+    nodes_df.major_branch = np.where(nodes_df.major_branch == "nan", nodes_df.category, nodes_df.major_branch)
+
+    logging.info(f"Nodes DataFrame after assigning major branches is: \n{nodes_df}")
 
 
 def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> pd.DataFrame:
@@ -129,12 +138,15 @@ def do_label_propagation(label_map: Dict[str, str], adj_list_weighted: Dict[str,
         random.shuffle(node_ids)
         nodes_df_random = pd.DataFrame(node_ids, columns=["id"]).set_index("id")
         # Then update their current majority labels (changes to one node may impact others)
+        logging.info(f"Updating current majority labels (updating label map as we go)..")
         get_most_common_neighbor_label_vectorized = np.vectorize(get_most_common_neighbor_label)
+        logging.info(f"Now actually starting...")
         nodes_df_random["current_label"] = get_most_common_neighbor_label_vectorized(nodes_df_random.index,
                                                                                      adj_list_weighted,
                                                                                      label_map,
                                                                                      update_label_map=True)
         # Then determine the majority label for each node, when considering the current labeling 'frozen'
+        logging.info(f"Determining majority labels for nodes, considering current labeling to be 'frozen'..")
         nodes_df_random["major_label"] = get_most_common_neighbor_label_vectorized(nodes_df_random.index,
                                                                                    adj_list_weighted,
                                                                                    label_map,
@@ -179,21 +191,24 @@ def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     # Do label propagation, where each node starts with its own ID as its label
     logging.info(f"Starting to cluster the match graph into groups of equivalent nodes...")
 
-    logging.info(f"Determining initial cluster labels and which nodes need labeling..")
-    node_ids_missing_cluster_id = list(nodes_df[nodes_df.cluster_id != nodes_df.cluster_id].index.values)  # NaN value is not equal to itself
+    logging.info(f"Determining initial cluster ID labels and which nodes need labeling..")
+    # Note: A NaN value is not equal to itself
+    nodes_missing_cluster_id_df = nodes_df[nodes_df.cluster_id != nodes_df.cluster_id]
+    logging.info(f"Nodes missing cluster ID are: \n{nodes_missing_cluster_id_df}")
     initial_labels = np.where(nodes_df.cluster_id == nodes_df.cluster_id, nodes_df.cluster_id, nodes_df.index)
     label_map_initial = dict(zip(nodes_df.index, initial_labels))
 
     adj_list_weighted = get_weighted_adjacency_dict(edges_df)
 
-    label_map = do_label_propagation(label_map_initial, adj_list_weighted, nodes_to_label=node_ids_missing_cluster_id)
+    label_map = do_label_propagation(label_map_initial, adj_list_weighted,
+                                     nodes_to_label=list(nodes_missing_cluster_id_df.index.values))
+
+    logging.info(f"Updating the nodes DataFrame with the final cluster IDs..")
+    nodes_df.cluster_id = nodes_df.index.map(label_map)
 
     cluster_ids = set(nodes_df.cluster_id.values)
     logging.info(f"After clustering equivalent nodes, there are a total of {len(cluster_ids):,} clusters "
                  f"(for a total of {len(nodes_df):,} nodes)")
-
-    logging.info(f"Updating the nodes DataFrame with the final cluster IDs..")
-    nodes_df.cluster_id = nodes_df.index.map(label_map)
 
 
 def verify_clustering_output(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
