@@ -53,6 +53,7 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     nodes_to_name_map = dict(zip(nodes_df.id, nodes_df.name))
 
     # Figure out each clusters' intra-cluster edges
+    # TODO: Might be able to do this faster using vectorization? See label propagation function for ideas..
     logging.info(f"Determining each cluster's intra-cluster edge IDs...")
     table_rows = []
     for cluster_id, member_ids in cluster_to_member_ids.items():
@@ -88,6 +89,50 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     logging.info(f"Done saving data in sqlite")
 
     db_connection.close()
+
+    # Save some reports about the graph content
+    logging.info(f"Writing some reports about the graph's content..")
+
+    logging.info(f"First calculating the size of each node's cluster..")
+    cluster_ids_to_sizes = {cluster_id: len(member_ids) for cluster_id, member_ids in cluster_to_member_ids.items()}
+    nodes_df["cluster_size"] = nodes_df.cluster_id.map(cluster_ids_to_sizes)
+    cluster_size_counts_df = nodes_df.groupby("cluster_size").size().to_frame("num_nodes")
+    logging.info(f"Cluster size counts DataFrame is: \n{cluster_size_counts_df}")
+    cluster_size_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_cluster_sizes.tsv", sep="\t")
+
+    logging.info(f"Now saving report on cluster size but for only non-sri nodes..")
+    logging.info(f"First locating which nodes from KG2 were not recognized by the SRI..")
+    kg2_nodes_not_in_sri_df = nodes_df[nodes_df.category_sri != nodes_df.category_sri]
+    logging.info(f"DataFrame of KG2 nodes that are not recognized by the SRI is: \n{kg2_nodes_not_in_sri_df}")
+    logging.info(f"Grouping non-SRI nodes by cluster size..")
+    cluster_size_counts_df_non_sri_nodes = kg2_nodes_not_in_sri_df.groupby("cluster_size").size().to_frame("num_nodes")
+    logging.info(f"Cluster size counts DataFrame for KG2pre nodes not recognized by SRI is: \n{cluster_size_counts_df_non_sri_nodes}")
+    cluster_size_counts_df_non_sri_nodes.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_cluster_sizes_non_sri_nodes.tsv", sep="\t")
+
+    logging.info(f"Creating category count report..")
+    category_counts_df = nodes_df.groupby("category").size().to_frame("num_nodes").sort_values(by=["num_nodes"], ascending=False)
+    logging.info(f"Category counts DataFrame is: \n{category_counts_df}")
+    category_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_category_counts.tsv", sep="\t")
+
+    logging.info(f"Creating major branch report..")
+    major_branch_counts_df = nodes_df.groupby("major_branch").size().to_frame("num_nodes").sort_values(by=["num_nodes"], ascending=False)
+    logging.info(f"Major branch counts DataFrame is: \n{major_branch_counts_df}")
+    major_branch_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_major_branch_counts.tsv", sep="\t")
+
+    logging.info(f"Creating upstream resource report..")
+    resource_counts_df = edges_df.groupby("upstream_resource_id").size().to_frame("num_edges").sort_values(by=["num_edges"], ascending=False)
+    logging.info(f"Upstream resource counts DataFrame is: \n{resource_counts_df}")
+    resource_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_upstream_resource_counts.tsv", sep="\t")
+
+    logging.info(f"Creating primary knowledge source report..")
+    ks_counts_df = edges_df.groupby("primary_knowledge_source").size().to_frame("num_edges").sort_values(by=["num_edges"], ascending=False)
+    logging.info(f"Primary knowledge source counts DataFrame is: \n{ks_counts_df}")
+    ks_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_primary_knowledge_source_counts.tsv", sep="\t")
+
+    logging.info(f"Creating predicate report..")
+    predicate_counts_df = edges_df.groupby("predicate").size().to_frame("num_edges").sort_values(by=["num_edges"], ascending=False)
+    logging.info(f"Predicate counts DataFrame is: \n{predicate_counts_df}")
+    predicate_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_predicate_counts.tsv", sep="\t")
 
 
 def main():
