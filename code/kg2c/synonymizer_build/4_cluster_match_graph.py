@@ -96,12 +96,23 @@ def assign_major_category_branches(nodes_df: pd.DataFrame, edges_df: pd.DataFram
 
 def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> pd.DataFrame:
     # Remove every edge that links two nodes from different major category branches
-    logging.info(f"Before filtering conflicting category edges, there are {edges_df.shape[0]} edges")
+    logging.info(f"Creating helper map of node ID to major branch..")
     major_branch_map = dict(zip(nodes_df.index, nodes_df.major_branch))
+
+    logging.info(f"Determining which edges have conflicting categories..")
+    bad_edges_df = edges_df[edges_df.apply(lambda row: major_branch_map.get(row.subject) != major_branch_map.get(row.object),
+                                           axis=1)]
+    logging.info(f"Saving the {bad_edges_df.shape[0]:,} conflicting category edges to TSV..")
+    bad_edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_conflicting_category_edges.tsv")
+
+    logging.info(f"Before filtering conflicting category edges, there are {edges_df.shape[0]:,} edges")
+    logging.info(f"Filtering out conflicting category edges..")
     edges_df = edges_df[edges_df.apply(lambda row: major_branch_map.get(row.subject) == major_branch_map.get(row.object),
                                        axis=1)]
-    logging.info(f"After filtering conflicting category edges, there are {edges_df.shape[0]} edges")
+    logging.info(f"After filtering conflicting category edges, there are {edges_df.shape[0]:,} edges")
+
     # TODO: This isn't entirely eliminating paths between nodes of different branches... alternate solution?
+
     return edges_df
 
 
