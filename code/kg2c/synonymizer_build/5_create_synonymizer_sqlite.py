@@ -4,6 +4,7 @@ import pathlib
 import sqlite3
 import subprocess
 from collections import defaultdict
+from typing import Dict, Set
 
 import numpy as np
 import pandas as pd
@@ -16,7 +17,38 @@ logging.basicConfig(level=logging.INFO,
                     handlers=[logging.StreamHandler()])
 
 
-def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
+def load_final_nodes() -> pd.DataFrame:
+    nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv",
+                             dtype={
+                                 "id": str,
+                                 "cluster_id": str,
+                                 "category": "category",
+                                 "major_branch": "category",
+                                 "category_kg2pre": "category",
+                                 "name_kg2pre": str,
+                                 "category_sri": "category",
+                                 "name_sri": str
+                             })
+    logging.info(f"Loaded nodes DF is:\n{nodes_df}")
+    return nodes_df
+
+
+def load_final_edges() -> pd.DataFrame:
+    edges_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv",
+                             dtype={
+                                 "id": str,
+                                 "subject": str,
+                                 "predicate": "category",
+                                 "object": str,
+                                 "upstream_resource_id": "category",
+                                 "primary_knowledge_source": "category",
+                                 "weight": float
+                             })
+    logging.info(f"Loaded edges DF is:\n{edges_df}")
+    return edges_df
+
+
+def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> Dict[str, Set[str]]:
     # Get sqlite set up
     sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
     if pathlib.Path(sqlite_db_path).exists():
@@ -90,7 +122,10 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
 
     db_connection.close()
 
-    # Save some reports about the graph content
+    return cluster_to_member_ids
+
+
+def write_graph_reports(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, cluster_to_member_ids: Dict[str, Set[str]]):
     logging.info(f"Writing some reports about the graph's content..")
 
     logging.info(f"First calculating the size of each node's cluster..")
@@ -134,38 +169,27 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     logging.info(f"Predicate counts DataFrame is: \n{predicate_counts_df}")
     predicate_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_predicate_counts.tsv", sep="\t")
 
+    logging.info(f"Looking for any clusters that seem oversized..")
+    nodes_in_oversized_clusters_df = nodes_df[nodes_df.cluster_size > 50]
+    logging.info(f"DataFrame of nodes in clusters that seem oversized is: \n{nodes_in_oversized_clusters_df}")
+    oversized_clusters_df = nodes_in_oversized_clusters_df[["cluster_id", "cluster_size"]].drop_duplicates().sort_values(by=["cluster_size"], ascending=False)
+    logging.info(f"{oversized_clusters_df.shape[0]} clusters seem to be oversized: \n{oversized_clusters_df}")
+    oversized_clusters_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_oversized_clusters.tsv", sep="\t", index=False)
+
 
 def main():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
 
     logging.info(f"Loading nodes and edges TSVs into DataFrames..")
     # Load the match graph into DataFrames
-    nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv",
-                             dtype={
-                                 "id": str,
-                                 "cluster_id": str,
-                                 "category": "category",
-                                 "major_branch": "category",
-                                 "category_kg2pre": "category",
-                                 "name_kg2pre": str,
-                                 "category_sri": "category",
-                                 "name_sri": str
-                             })
-    edges_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv",
-                             dtype={
-                                 "id": str,
-                                 "subject": str,
-                                 "predicate": "category",
-                                 "object": str,
-                                 "upstream_resource_id": "category",
-                                 "primary_knowledge_source": "category",
-                                 "weight": float
-                             })
-    logging.info(f"Loaded nodes DF is:\n{nodes_df}")
-    logging.info(f"Loaded edges DF is:\n{edges_df}")
+    nodes_df = load_final_nodes()
+    edges_df = load_final_edges()
 
     # Create the final database that will be the backend of the NodeSynonymizer
-    create_synonymizer_sqlite(nodes_df, edges_df)
+    cluster_to_member_ids = create_synonymizer_sqlite(nodes_df, edges_df)
+
+    # Save some reports about the graph's content (meta-level)
+    write_graph_reports(nodes_df, edges_df, cluster_to_member_ids)
 
 
 if __name__ == "__main__":
