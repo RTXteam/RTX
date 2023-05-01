@@ -4,7 +4,7 @@ import pathlib
 import sqlite3
 import subprocess
 from collections import defaultdict
-from typing import Dict, Set
+from typing import Dict, Set, List
 
 import numpy as np
 import pandas as pd
@@ -48,6 +48,12 @@ def load_final_edges() -> pd.DataFrame:
     return edges_df
 
 
+def get_edge_ids_for_node(node_id: str, edges_by_subject_map: Dict[str, List[str]], edges_by_object_map: Dict[str, List[str]]):
+    edges_node_is_subject = edges_by_subject_map.get(node_id, [])
+    edges_node_is_object = edges_by_object_map.get(node_id, [])
+    return edges_node_is_subject + edges_node_is_object  # Note: Couldn't be repeats, since no self-edges
+
+
 def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> Dict[str, Set[str]]:
     # Get sqlite set up
     sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
@@ -71,10 +77,16 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
 
     # Create some helper maps for determining intra-cluster edges and other cluster info
     logging.info(f"Creating helper map of node IDs to their edge IDs...")
-    nodes_to_edges_map = defaultdict(set)
-    for _, edge_row in edges_df.iterrows():
-        nodes_to_edges_map[edge_row.subject].add(edge_row.id)
-        nodes_to_edges_map[edge_row.object].add(edge_row.id)
+    logging.info(f"First grouping edges by subject and object..")
+    edges_grouped_by_subject = edges_df.groupby(by="subject").id.apply(list).to_dict()
+    edges_grouped_by_object = edges_df.groupby(by="object").id.apply(list).to_dict()
+    logging.info(f"Now combining subject/object edge lists in vectorized fashion..")
+    get_edge_ids_for_node_vectorized = np.vectorize(get_edge_ids_for_node, otypes=[list])
+    nodes_df["edge_ids"] = get_edge_ids_for_node_vectorized(nodes_df.id, edges_grouped_by_subject, edges_grouped_by_object)
+    logging.info(f"Nodes DataFrame with edge IDs tacked on is: \n{nodes_df}")
+    logging.info(f"Now converting mappings into a dict..")
+    nodes_to_edges_map = dict(zip(nodes_df.id, nodes_df.edge_ids))
+
     logging.info(f"Creating helper map of cluster IDs to member IDs...")
     grouped_df = nodes_df.groupby(by="cluster_id").id
     cluster_to_member_ids = grouped_df.apply(list).to_dict()
