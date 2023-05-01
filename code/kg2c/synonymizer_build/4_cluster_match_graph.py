@@ -115,15 +115,18 @@ def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataF
 
     logging.info(f"Determining which edges have conflicting categories..")
     is_conflicting_category_edge_vectorized = np.vectorize(is_conflicting_category_edge, otypes=[bool])
-    bad_edges_df = edges_df[is_conflicting_category_edge_vectorized(edges_df.subject, edges_df.object, major_branch_map)]
+    edges_df["is_conflicting_category_edge"] = is_conflicting_category_edge_vectorized(edges_df.subject, edges_df.object, major_branch_map)
+    bad_edges_df = edges_df[edges_df.is_conflicting_category_edge]
     logging.info(f"Conflicting edges df is: \n{bad_edges_df}")
     logging.info(f"Saving the {bad_edges_df.shape[0]:,} conflicting category edges to TSV..")
-    bad_edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_conflicting_category_edges.tsv")
+    bad_edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_conflicting_category_edges.tsv", sep="\t")
 
     logging.info(f"Before filtering conflicting category edges, there are {edges_df.shape[0]:,} edges")
     logging.info(f"Filtering out conflicting category edges..")
-    edges_df = edges_df[is_conflicting_category_edge_vectorized(edges_df.subject, edges_df.object, major_branch_map) == False]
+    edges_df = edges_df[~edges_df.is_conflicting_category_edge]
     logging.info(f"After filtering conflicting category edges, there are {edges_df.shape[0]:,} edges")
+    logging.info(f"Removing temporary conflicting edge column..")
+    edges_df = edges_df.drop("is_conflicting_category_edge", axis=1)
     logging.info(f"Edges df is now: \n{edges_df}")
 
     # TODO: This isn't entirely eliminating paths between nodes of different branches... alternate solution?
@@ -242,7 +245,7 @@ def verify_clustering_output(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
 
 
 def load_merged_nodes() -> pd.DataFrame:
-    logging.info(f"Loading match_nodes.tsv into a Pandas DataFrame..")
+    logging.info(f"Loading merged match nodes into a Pandas DataFrame..")
     nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_nodes.tsv",
                              index_col="id",
                              dtype={
@@ -255,6 +258,7 @@ def load_merged_nodes() -> pd.DataFrame:
                              })
     logging.info(f"Nodes DataFrame:\n {nodes_df}")
     # Make sure there's only one row per node (no duplicates)
+    # TODO: May be faster to do this with df.duplicated()? Though this only takes like 40 seconds on full graph..
     unique_node_ids = set(nodes_df.index.values)
     all_rows_unique = sorted(list(unique_node_ids)) == sorted(list(nodes_df.index.values))
     if all_rows_unique:
@@ -266,7 +270,7 @@ def load_merged_nodes() -> pd.DataFrame:
 
 
 def load_merged_edges() -> pd.DataFrame:
-    logging.info(f"Loading match_edges.tsv into a Pandas DataFrame..")
+    logging.info(f"Loading merged match edges into a Pandas DataFrame..")
     edges_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_edges.tsv",
                              index_col="id",
                              dtype={
