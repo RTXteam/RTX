@@ -20,6 +20,7 @@ PREDICATE_WEIGHTS = {
     "close_match": 0.5,
     "has_name_similarity": 0.2
 }
+BIO_RELATED_MAJOR_BRANCHES = {"BiologicalEntity", "GeneticOrMolecularBiologicalEntity", "DiseaseOrPhenotypicFeature"}
 
 
 def assign_edge_weights(edges_df: pd.DataFrame):
@@ -59,7 +60,7 @@ def add_node_pair_to_adj_list(node_pair_tuple, summed_weight, adj_list_weighted:
     adj_list_weighted[node_b][node_a] = summed_weight
 
 
-def assign_major_category_branches(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
+def assign_major_category_branches(nodes_df: pd.DataFrame):
     """
     We want to know which 'major branch' of the Biolink category tree each node belongs to, where a 'major branch'
     is a node at depth 1 in the category tree, with the exception of the BiologicalEntity branch: within that branch,
@@ -82,25 +83,32 @@ def assign_major_category_branches(nodes_df: pd.DataFrame, edges_df: pd.DataFram
     nodes_df["category"] = np.where(nodes_df.category_sri == nodes_df.category_sri, nodes_df.category_sri, nodes_df.category_kg2pre)
 
     logging.info(f"Assigning nodes to their major category branches..")
-    nodes_df["major_branch"] = nodes_df.category.map(categories_to_major_branch).astype(str)  # Note: np.vectorize doesn't like Pandas "category" data type...
+    nodes_df["major_branch"] = nodes_df.category.map(categories_to_major_branch)
+    logging.info(f"After preliminary assignment, nodes DataFrame is: \n{nodes_df}")
 
-    logging.info(f"Starting to do label propagation of major branches to NamedThing/BiologicalEntity nodes..")
-    adj_dict_weighted = get_weighted_adjacency_dict(edges_df)
-    logging.info(f"Determining which nodes are missing a major branch labeling prior to propagation..")
-    node_ids_missing_major_branch = list(nodes_df[nodes_df.major_branch != nodes_df.major_branch].index.values)  # NaN value is not equal to itself
-    branch_label_map_partial = dict(zip(nodes_df.index, nodes_df.major_branch))
-    label_map = do_label_propagation(branch_label_map_partial, adj_dict_weighted,
-                                     nodes_to_label=node_ids_missing_major_branch)
-
-    # Assign all nodes their new major branch (orphans will always remain unlabeled)
-    logging.info(f"Updating all nodes with their final major branches..")
-    nodes_df.major_branch = nodes_df.index.map(label_map).astype(str)  # Note: np.vectorize doesn't like Pandas "category" data type...
     logging.info(f"For nodes whose major branch couldn't be determined, we'll consider their category "
                  f"(NamedThing or BiologicalEntity) to be their major branch..")
-    # Note: Since we have to store major_branch as a string datatype, Pandas makes NaN values be the string "nan"..
-    nodes_df.major_branch = np.where(nodes_df.major_branch == "nan", nodes_df.category, nodes_df.major_branch)
+    # Note: NaN value is not equal to itself..
+    nodes_df.major_branch = np.where(nodes_df.major_branch != nodes_df.major_branch, nodes_df.category, nodes_df.major_branch)
 
     logging.info(f"Nodes DataFrame after assigning major branches is: \n{nodes_df}")
+
+
+def is_conflicting_category_edge(subject_id: str, object_id: str, major_branch_map: Dict[str, any]) -> bool:
+    subject_major_branch = major_branch_map[subject_id]
+    object_major_branch = major_branch_map[object_id]
+
+    if subject_major_branch == object_major_branch:
+        return False
+    else:
+        major_branches = {subject_major_branch, object_major_branch}
+        if "NamedThing" in major_branches:
+            # TODO: NamedThing nodes could still link nodes with conflicting categories; we don't address this...
+            return False
+        elif major_branches.issubset(BIO_RELATED_MAJOR_BRANCHES):
+            return False
+        else:
+            return True
 
 
 def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> pd.DataFrame:
@@ -109,16 +117,17 @@ def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataF
     major_branch_map = dict(zip(nodes_df.index, nodes_df.major_branch))
 
     logging.info(f"Determining which edges have conflicting categories..")
-    bad_edges_df = edges_df[edges_df.apply(lambda row: major_branch_map.get(row.subject) != major_branch_map.get(row.object),
-                                           axis=1)]
+    is_conflicting_category_edge_vectorized = np.vectorize(is_conflicting_category_edge, otypes=[bool])
+    bad_edges_df = edges_df[is_conflicting_category_edge_vectorized(edges_df.subject, edges_df.object, major_branch_map)]
+    logging.info(f"Conflicting edges df is: \n{bad_edges_df}")
     logging.info(f"Saving the {bad_edges_df.shape[0]:,} conflicting category edges to TSV..")
     bad_edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_conflicting_category_edges.tsv")
 
     logging.info(f"Before filtering conflicting category edges, there are {edges_df.shape[0]:,} edges")
     logging.info(f"Filtering out conflicting category edges..")
-    edges_df = edges_df[edges_df.apply(lambda row: major_branch_map.get(row.subject) == major_branch_map.get(row.object),
-                                       axis=1)]
+    edges_df = edges_df[is_conflicting_category_edge_vectorized(edges_df.subject, edges_df.object, major_branch_map) == False]
     logging.info(f"After filtering conflicting category edges, there are {edges_df.shape[0]:,} edges")
+    logging.info(f"Edges df is now: \n{edges_df}")
 
     # TODO: This isn't entirely eliminating paths between nodes of different branches... alternate solution?
 
@@ -140,7 +149,6 @@ def do_label_propagation(label_map: Dict[str, str], adj_list_weighted: Dict[str,
         # Then update their current majority labels (changes to one node may impact others)
         logging.info(f"Updating current majority labels (updating label map as we go)..")
         get_most_common_neighbor_label_vectorized = np.vectorize(get_most_common_neighbor_label)
-        logging.info(f"Now actually starting...")
         nodes_df_random["current_label"] = get_most_common_neighbor_label_vectorized(nodes_df_random.index,
                                                                                      adj_list_weighted,
                                                                                      label_map,
@@ -206,25 +214,34 @@ def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     logging.info(f"Updating the nodes DataFrame with the final cluster IDs..")
     nodes_df.cluster_id = nodes_df.index.map(label_map)
 
+    logging.info(f"The final nodes DataFrame is: \n{nodes_df}")
+
     cluster_ids = set(nodes_df.cluster_id.values)
-    logging.info(f"After clustering equivalent nodes, there are a total of {len(cluster_ids):,} clusters "
+    logging.info(f"There are a total of {len(cluster_ids):,} different clusters "
                  f"(for a total of {len(nodes_df):,} nodes)")
 
 
 def verify_clustering_output(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
-    # Make sure every node has a cluster ID filled out (note: a NaN value is not equal to itself)
+    # Make sure every node has a cluster ID filled out
     logging.info(f"Verifying every node has a cluster ID...")
-    nodes_missing_cluster_id = list(nodes_df[nodes_df.cluster_id != nodes_df.cluster_id].index.values)
+    nodes_missing_cluster_id = list(nodes_df[nodes_df.cluster_id != nodes_df.cluster_id].index.values)  # NaN value is not equal to itself
     if nodes_missing_cluster_id:
         raise ValueError(f"{len(nodes_missing_cluster_id)} nodes are missing a cluster ID, even though "
                          f"clustering is finished: {nodes_missing_cluster_id}")
 
     # Make sure every node has a category (i.e., either SRI or KG2pre category..)
     logging.info(f"Verifying every node has a category...")
-    nodes_missing_category = list(nodes_df[nodes_df.category != nodes_df.category].index.values)
+    nodes_missing_category = list(nodes_df[nodes_df.category != nodes_df.category].index.values)  # NaN value is not equal to itself
     if nodes_missing_category:
         raise ValueError(f"{len(nodes_missing_category)} nodes are missing a category "
                          f"(i.e., no SRI or KG2pre category): {nodes_missing_category}")
+
+    # Make sure every node has a major branch
+    logging.info(f"Verifying every node has a major_branch...")
+    nodes_missing_major_branch = list(nodes_df[nodes_df.major_branch != nodes_df.major_branch].index.values)  # NaN value is not equal to itself
+    if nodes_missing_major_branch:
+        raise ValueError(f"{len(nodes_missing_major_branch)} nodes are missing a major branch assignment: "
+                         f"{nodes_missing_major_branch}")
 
 
 def load_merged_nodes() -> pd.DataFrame:
@@ -279,7 +296,7 @@ def main():
     create_name_sim_edges(nodes_df, edges_df)
 
     # Attempt to remove paths between nodes with conflicting categories
-    assign_major_category_branches(nodes_df, edges_df)
+    assign_major_category_branches(nodes_df)
     edges_df = remove_conflicting_category_edges(nodes_df, edges_df)
 
     # Cluster the graph into sets of equivalent nodes
