@@ -169,7 +169,7 @@ def get_most_common_neighbor_label(node_id: str, adj_list_weighted: dict, label_
 
 
 def create_name_sim_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
-    # TODO: Create name similarity edges; using blocking to avoid n^2 situation (do in a second iteration)
+    # TODO: Create name similarity edges; use blocking to avoid n^2 situation (do in a second iteration)
     pass
 
 
@@ -241,7 +241,7 @@ def load_merged_edges() -> pd.DataFrame:
     edges_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_edges.tsv",
                              index_col="id",
                              dtype={
-                                 "id": str,  # Potentially get rid of this column if space is an issue?
+                                 "id": str,
                                  "subject": str,
                                  "predicate": "category",
                                  "object": str,
@@ -264,7 +264,7 @@ def main():
     create_name_sim_edges(nodes_df, edges_df)
 
     # Attempt to remove paths between nodes with conflicting categories
-    assign_major_category_branches(nodes_df, edges_df)  # TODO: better to do this before or after adding name sim edges?
+    assign_major_category_branches(nodes_df, edges_df)
     edges_df = remove_conflicting_category_edges(nodes_df, edges_df)
 
     # Cluster the graph into sets of equivalent nodes
