@@ -5,6 +5,7 @@ import sqlite3
 import subprocess
 from collections import defaultdict
 
+import numpy as np
 import pandas as pd
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -36,7 +37,7 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     db_connection.execute("CREATE UNIQUE INDEX edge_id_index on edges (id)")
     db_connection.commit()
 
-    # Create some helper maps for determining intra-cluster edges
+    # Create some helper maps for determining intra-cluster edges and other cluster info
     logging.info(f"Creating helper map of node IDs to their edge IDs...")
     nodes_to_edges_map = defaultdict(set)
     for _, edge_row in edges_df.iterrows():
@@ -45,6 +46,11 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     logging.info(f"Creating helper map of cluster IDs to member IDs...")
     grouped_df = nodes_df.groupby(by="cluster_id").id
     cluster_to_member_ids = grouped_df.apply(list).to_dict()
+    logging.info(f"Creating helper map of node IDs to categories..")
+    nodes_to_category_map = dict(zip(nodes_df.id, nodes_df.category))
+    logging.info(f"Creating helper map of node IDs to names..")
+    nodes_df["name"] = np.where(nodes_df.name_sri == nodes_df.name_sri, nodes_df.name_sri, nodes_df.name_kg2pre)  # NaN value is not equal to itself
+    nodes_to_name_map = dict(zip(nodes_df.id, nodes_df.name))
 
     # Figure out each clusters' intra-cluster edges
     logging.info(f"Determining each cluster's intra-cluster edge IDs...")
@@ -68,14 +74,15 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
                 index = index + 2
             else:
                 index = index + 1
-        table_rows.append([cluster_id, f"{member_ids}", f"{list(intra_cluster_edge_ids)}"])
+        table_rows.append([cluster_id, nodes_to_category_map[cluster_id], nodes_to_name_map[cluster_id],
+                           f"{member_ids}", f"{list(intra_cluster_edge_ids)}"])
 
     # Save a table of cluster info
     logging.info(f"Creating DataFrame of clusters (cluster_id, member_ids, intra_cluster_edge_ids)")
-    cluster_info_df = pd.DataFrame(table_rows, columns=["cluster_id", "member_ids", "intra_cluster_edge_ids"]).set_index("cluster_id")
-    logging.info(f"Clusters df is:\n{cluster_info_df}")
+    clusters_df = pd.DataFrame(table_rows, columns=["cluster_id", "category", "name", "member_ids", "intra_cluster_edge_ids"]).set_index("cluster_id")
+    logging.info(f"Clusters df is:\n{clusters_df}")
     logging.info(f"Dumping clusters DataFrame to sqlite..")
-    cluster_info_df.to_sql("clusters", db_connection)
+    clusters_df.to_sql("clusters", db_connection)
     db_connection.execute("CREATE UNIQUE INDEX cluster_id_index on clusters (cluster_id)")
     db_connection.commit()
     logging.info(f"Done saving data in sqlite")

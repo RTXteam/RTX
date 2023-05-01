@@ -138,6 +138,7 @@ def do_label_propagation(label_map: Dict[str, str], adj_list_weighted: Dict[str,
     logging.info(f"Starting label propagation; {len(node_ids)} nodes need labeling")
     iteration = 1
     done = False
+    get_most_common_neighbor_label_vectorized = np.vectorize(get_most_common_neighbor_label, otypes=[str])
     while not done and iteration < 100:
         logging.info(f"Starting iteration {iteration} of label propagation..")
         # Put nodes into a new DF in a random order
@@ -145,7 +146,6 @@ def do_label_propagation(label_map: Dict[str, str], adj_list_weighted: Dict[str,
         nodes_df_random = pd.DataFrame(node_ids, columns=["id"]).set_index("id")
         # Then update their current majority labels (changes to one node may impact others)
         logging.info(f"Updating current majority labels (updating label map as we go)..")
-        get_most_common_neighbor_label_vectorized = np.vectorize(get_most_common_neighbor_label)
         nodes_df_random["current_label"] = get_most_common_neighbor_label_vectorized(nodes_df_random.index,
                                                                                      adj_list_weighted,
                                                                                      label_map,
