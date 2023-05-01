@@ -23,7 +23,7 @@ PREDICATE_WEIGHTS = {
 
 
 def assign_edge_weights(edges_df: pd.DataFrame):
-    # Assign weights to all match edges, save in match_edges_preprocessed
+    # Assign weights to all match edges
     logging.info(f"Assigning edge weights...")
     edges_df["weight"] = edges_df.predicate.map(PREDICATE_WEIGHTS).astype(float)
     logging.info(f"Edges df with weights is now: \n{edges_df}")
@@ -152,7 +152,7 @@ def do_label_propagation(label_map: Dict[str, str], adj_list_weighted: Dict[str,
     return label_map
 
 
-def get_most_common_neighbor_label(node_id: str, adj_list_weighted: dict, label_map: Dict[str, str], update_label_map: bool) -> str:
+def get_most_common_neighbor_label(node_id: str, adj_list_weighted: dict, label_map: Dict[str, any], update_label_map: bool) -> any:
     weighted_neighbors = adj_list_weighted.get(node_id)
     if weighted_neighbors:
         summed_label_weights = defaultdict(float)
@@ -173,7 +173,7 @@ def create_name_sim_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     pass
 
 
-def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> Dict[str, str]:
+def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     # TODO: Switch to modularity-based clustering, rather than label propagation..
 
     # Do label propagation, where each node starts with its own ID as its label
@@ -188,7 +188,8 @@ def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> Dict[
 
     label_map = do_label_propagation(label_map_initial, adj_list_weighted, nodes_to_label=node_ids_missing_cluster_id)
 
-    return label_map
+    logging.info(f"Updating the nodes DataFrame with the final cluster IDs..")
+    nodes_df.cluster_id = nodes_df.index.map(label_map)
 
 
 def main():
@@ -229,20 +230,18 @@ def main():
     edges_df = remove_conflicting_category_edges(nodes_df, edges_df)
 
     # Cluster the graph into sets of equivalent nodes
-    label_map = cluster_match_graph(nodes_df, edges_df)
-    cluster_ids = set(label_map.values())
+    cluster_match_graph(nodes_df, edges_df)
+    cluster_ids = set(nodes_df.cluster_id.values)
     logging.info(f"After clustering equivalent nodes, there are a total of {len(cluster_ids):,} clusters "
                  f"(for a total of {len(nodes_df):,} nodes)")
-    logging.info(f"Updating the nodes DataFrame with the final cluster IDs..")
-    nodes_df.cluster_id = nodes_df.index.map(label_map)
 
     # Save our nodes/edges table, plus a simple TSV with the cluster labeling (for easy access)
     logging.info(f"Saving final nodes and edges tables..")
     nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv", sep="\t")
     edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv", sep="\t")
     logging.info(f"Saving member_id --> cluster_id map to TSV file..")
-    label_df = pd.DataFrame(label_map.items(), columns=["member_id", "cluster_id"]).set_index("member_id")
-    label_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_cluster_member_map.tsv", sep="\t")
+    cluster_map_df = nodes_df[["cluster_id"]]
+    cluster_map_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_cluster_member_map.tsv", sep="\t")
 
 
 if __name__ == "__main__":
