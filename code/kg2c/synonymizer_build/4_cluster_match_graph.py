@@ -188,14 +188,31 @@ def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
 
     label_map = do_label_propagation(label_map_initial, adj_list_weighted, nodes_to_label=node_ids_missing_cluster_id)
 
+    cluster_ids = set(nodes_df.cluster_id.values)
+    logging.info(f"After clustering equivalent nodes, there are a total of {len(cluster_ids):,} clusters "
+                 f"(for a total of {len(nodes_df):,} nodes)")
+
     logging.info(f"Updating the nodes DataFrame with the final cluster IDs..")
     nodes_df.cluster_id = nodes_df.index.map(label_map)
 
 
-def main():
-    logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
+def verify_clustering_output(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
+    # Make sure every node has a cluster ID filled out (note: a NaN value is not equal to itself)
+    logging.info(f"Verifying every node has a cluster ID...")
+    nodes_missing_cluster_id = list(nodes_df[nodes_df.cluster_id != nodes_df.cluster_id].index.values)
+    if nodes_missing_cluster_id:
+        raise ValueError(f"{len(nodes_missing_cluster_id)} nodes are missing a cluster ID, even though "
+                         f"clustering is finished: {nodes_missing_cluster_id}")
 
-    # Load match graph data
+    # Make sure every node has a category (i.e., either SRI or KG2pre category..)
+    logging.info(f"Verifying every node has a category...")
+    nodes_missing_category = list(nodes_df[nodes_df.category != nodes_df.category].index.values)
+    if nodes_missing_category:
+        raise ValueError(f"{len(nodes_missing_category)} nodes are missing a category "
+                         f"(i.e., no SRI or KG2pre category): {nodes_missing_category}")
+
+
+def load_merged_nodes() -> pd.DataFrame:
     logging.info(f"Loading match_nodes.tsv into a Pandas DataFrame..")
     nodes_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_nodes.tsv",
                              index_col="id",
@@ -208,6 +225,18 @@ def main():
                                  "name_sri": str,
                              })
     logging.info(f"Nodes DataFrame:\n {nodes_df}")
+    # Make sure there's only one row per node (no duplicates)
+    unique_node_ids = set(nodes_df.index.values)
+    all_rows_unique = sorted(list(unique_node_ids)) == sorted(list(nodes_df.index.values))
+    if all_rows_unique:
+        logging.info(f"Verified all node rows are unique")
+    else:
+        raise ValueError(f"merged_match_nodes.tsv contains duplicate rows!")
+
+    return nodes_df
+
+
+def load_merged_edges() -> pd.DataFrame:
     logging.info(f"Loading match_edges.tsv into a Pandas DataFrame..")
     edges_df = pd.read_table(f"{SYNONYMIZER_BUILD_DIR}/3_merged_match_edges.tsv",
                              index_col="id",
@@ -220,6 +249,15 @@ def main():
                                  "primary_knowledge_source": "category"
                              })
     logging.info(f"Edges DataFrame:\n {edges_df}")
+    return edges_df
+
+
+def main():
+    logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
+
+    # Load match graph data
+    nodes_df = load_merged_nodes()
+    edges_df = load_merged_edges()
 
     # Do edge pre-processing
     assign_edge_weights(edges_df)
@@ -231,11 +269,11 @@ def main():
 
     # Cluster the graph into sets of equivalent nodes
     cluster_match_graph(nodes_df, edges_df)
-    cluster_ids = set(nodes_df.cluster_id.values)
-    logging.info(f"After clustering equivalent nodes, there are a total of {len(cluster_ids):,} clusters "
-                 f"(for a total of {len(nodes_df):,} nodes)")
 
-    # Save our nodes/edges table, plus a simple TSV with the cluster labeling (for easy access)
+    # Run some checks to make sure the output looks reasonable
+    verify_clustering_output(nodes_df, edges_df)
+
+    # Save our final nodes/edges tables, plus a simple TSV with the cluster labeling (for easy access)
     logging.info(f"Saving final nodes and edges tables..")
     nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv", sep="\t")
     edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv", sep="\t")
