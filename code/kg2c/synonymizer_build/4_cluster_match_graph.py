@@ -30,6 +30,11 @@ def assign_edge_weights(edges_df: pd.DataFrame):
     logging.info(f"Edges df with weights is now: \n{edges_df}")
 
 
+def remove_self_edges(edges_df: pd.DataFrame):
+    logging.info(f"Removing any self-edges (useless for us)..")
+    return edges_df[edges_df.subject != edges_df.object]
+
+
 def get_weighted_adjacency_dict(edges_df: pd.DataFrame) -> Dict[str, Dict[str, float]]:
     logging.info(f"Creating weighted adjacency dict from edges data frame...")
     start = time.time()
@@ -294,6 +299,7 @@ def main():
 
     # Do edge pre-processing
     assign_edge_weights(edges_df)
+    edges_df = remove_self_edges(edges_df)
     create_name_sim_edges(nodes_df, edges_df)
 
     # Attempt to remove paths between nodes with conflicting categories
