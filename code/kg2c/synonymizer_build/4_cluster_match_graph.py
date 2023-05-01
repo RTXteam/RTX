@@ -94,18 +94,6 @@ def assign_major_category_branches(nodes_df: pd.DataFrame, edges_df: pd.DataFram
     nodes_df.major_branch = nodes_df.index.map(label_map).astype("category")
 
 
-def choose_major_branch(row) -> str:
-    if row.major_branch_kg2pre and row.major_branch_sri:
-        if row.major_branch_kg2pre not in {"NamedThing", "BiologicalEntity"}:
-            return row.major_branch_kg2pre
-        else:
-            return row.major_branch_sri
-    elif row.major_branch_kg2pre:
-        return row.major_branch_kg2pre
-    else:
-        return row.major_branch_sri
-
-
 def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> pd.DataFrame:
     # Remove every edge that links two nodes from different major category branches
     logging.info(f"Before filtering conflicting category edges, there are {edges_df.shape[0]} edges")
@@ -234,6 +222,8 @@ def main():
     cluster_ids = set(label_map.values())
     logging.info(f"After clustering equivalent nodes, there are a total of {len(cluster_ids):,} clusters "
                  f"(for a total of {len(nodes_df):,} nodes)")
+    logging.info(f"Updating the nodes DataFrame with the final cluster IDs..")
+    nodes_df.cluster_id = nodes_df.index.map(label_map)
 
     # Save our nodes/edges table, plus a simple TSV with the cluster labeling (for easy access)
     logging.info(f"Saving final nodes and edges tables..")

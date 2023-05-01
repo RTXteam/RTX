@@ -13,7 +13,7 @@ def main():
     step_2_command = ["python", "2_build_match_graph_sri.py"]
     step_3_command = ["python", "3_merge_match_graphs.py"]
     step_4_command = ["python", "4_cluster_match_graph.py"]
-    step_5_command = ["python", "5_build_cluster_debug_db.py"]
+    step_5_command = ["python", "5_create_synonymizer_sqlite.py"]
     all_steps = [step_1_command, step_2_command, step_3_command, step_4_command, step_5_command]
 
     # Run the requested steps (default is all steps)

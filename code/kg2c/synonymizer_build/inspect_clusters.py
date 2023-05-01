@@ -31,7 +31,7 @@ def get_cluster_id(node_id: str, cursor) -> Optional[str]:
 
 
 def get_member_ids(cluster_id: str, cursor) -> Tuple[List[str], List[str]]:
-    answer = cursor.execute(f"SELECT * FROM cluster_info WHERE cluster_id = '{cluster_id}'")
+    answer = cursor.execute(f"SELECT * FROM clusters WHERE cluster_id = '{cluster_id}'")
     matching_row = answer.fetchone()
     if matching_row:
         member_ids = ast.literal_eval(matching_row[1])  # Lists are stored as strings in sqlite
@@ -89,7 +89,10 @@ def compute_cluster_density(cluster_graph: any) -> float:
     num_nodes = len(cluster_graph["nodes"])
     total_possible_edges = (num_nodes * (num_nodes - 1)) / 2
     weighted_edge_count = sum([edge.get("weight", 1) for edge in cluster_graph["edges"]])
-    density = weighted_edge_count / total_possible_edges
+    if total_possible_edges:
+        density = weighted_edge_count / total_possible_edges
+    else:
+        density = 1.0
     # TODO: Account for fact that we have a multigraph...
     return density
 
@@ -99,7 +102,7 @@ def main():
     arg_parser.add_argument("node_id")
     args = arg_parser.parse_args()
 
-    sqlite_path = f"{SYNONYMIZER_BUILD_DIR}/5_clusters.sqlite"
+    sqlite_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
     cluster_graphs_path = f"{SYNONYMIZER_BUILD_DIR}/cluster_debug_graphs"
     if not pathlib.Path(cluster_graphs_path).exists():
         subprocess.check_call(["mkdir", cluster_graphs_path])

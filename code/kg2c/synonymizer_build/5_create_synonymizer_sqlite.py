@@ -15,9 +15,9 @@ logging.basicConfig(level=logging.INFO,
                     handlers=[logging.StreamHandler()])
 
 
-def save_cluster_data_for_debugging(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
+def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     # Get sqlite set up
-    sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/5_clusters.sqlite"
+    sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
     if pathlib.Path(sqlite_db_path).exists():
         subprocess.check_call(["rm", sqlite_db_path])
     db_connection = sqlite3.connect(sqlite_db_path)
@@ -32,19 +32,17 @@ def save_cluster_data_for_debugging(nodes_df: pd.DataFrame, edges_df: pd.DataFra
     # Save edges table
     logging.info(f"Dumping edges table to sqlite...")
     edges_df.to_sql("edges", con=db_connection, index=False)
-    logging.info(f"Creating index on edge subject...")
-    db_connection.execute("CREATE INDEX subject_index on edges (subject)")
-    logging.info(f"Creating index on edge object...")
-    db_connection.execute("CREATE INDEX object_index on edges (object)")
+    logging.info(f"Creating index on edge ID...")
+    db_connection.execute("CREATE UNIQUE INDEX edge_id_index on edges (id)")
     db_connection.commit()
 
     # Create some helper maps for determining intra-cluster edges
-    logging.info(f"Creating map of nodes to their edge IDs...")
+    logging.info(f"Creating helper map of node IDs to their edge IDs...")
     nodes_to_edges_map = defaultdict(set)
     for _, edge_row in edges_df.iterrows():
         nodes_to_edges_map[edge_row.subject].add(edge_row.id)
         nodes_to_edges_map[edge_row.object].add(edge_row.id)
-    logging.info(f"Creating map of cluster IDs to member IDs...")
+    logging.info(f"Creating helper map of cluster IDs to member IDs...")
     grouped_df = nodes_df.groupby(by="cluster_id").id
     cluster_to_member_ids = grouped_df.apply(list).to_dict()
 
@@ -73,12 +71,12 @@ def save_cluster_data_for_debugging(nodes_df: pd.DataFrame, edges_df: pd.DataFra
         table_rows.append([cluster_id, f"{member_ids}", f"{list(intra_cluster_edge_ids)}"])
 
     # Save a table of cluster info
-    logging.info(f"Creating DataFrame of cluster info (cluster_id, member_ids, intra_cluster_edge_ids)")
+    logging.info(f"Creating DataFrame of clusters (cluster_id, member_ids, intra_cluster_edge_ids)")
     cluster_info_df = pd.DataFrame(table_rows, columns=["cluster_id", "member_ids", "intra_cluster_edge_ids"]).set_index("cluster_id")
-    logging.info(f"Cluster info df is:\n{cluster_info_df}")
-    logging.info(f"Dumping cluster info DataFrame to sqlite..")
-    cluster_info_df.to_sql("cluster_info", db_connection)
-    db_connection.execute("CREATE UNIQUE INDEX cluster_id_index on cluster_info (cluster_id)")
+    logging.info(f"Clusters df is:\n{cluster_info_df}")
+    logging.info(f"Dumping clusters DataFrame to sqlite..")
+    cluster_info_df.to_sql("clusters", db_connection)
+    db_connection.execute("CREATE UNIQUE INDEX cluster_id_index on clusters (cluster_id)")
     db_connection.commit()
     logging.info(f"Done saving data in sqlite")
 
@@ -114,8 +112,8 @@ def main():
     logging.info(f"Loaded nodes DF is:\n{nodes_df}")
     logging.info(f"Loaded edges DF is:\n{edges_df}")
 
-    # Create a sqlite database for easy inspection/debugging of clusters
-    save_cluster_data_for_debugging(nodes_df, edges_df)
+    # Create the final database that will be the backend of the NodeSynonymizer
+    create_synonymizer_sqlite(nodes_df, edges_df)
 
 
 if __name__ == "__main__":
