@@ -128,7 +128,7 @@ def write_graph_reports(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, clusters
     logging.info(f"Writing some reports about the graph's content..")
 
     logging.info(f"First creating counts of different cluster sizes..")
-    cluster_size_counts_df = clusters_df.groupby("cluster_size").size().to_frame("num_nodes")
+    cluster_size_counts_df = clusters_df.groupby("cluster_size").size().to_frame("num_clusters")
     logging.info(f"Cluster size counts DataFrame is: \n{cluster_size_counts_df}")
     cluster_size_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_cluster_sizes.tsv", sep="\t")
 

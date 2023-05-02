@@ -1,6 +1,8 @@
+import itertools
 import logging
 import os
 import random
+import string
 import time
 from collections import defaultdict
 from typing import Dict, List, Optional
@@ -18,9 +20,10 @@ logging.basicConfig(level=logging.INFO,
 PREDICATE_WEIGHTS = {
     "same_as": 1.0,
     "close_match": 0.5,
-    "has_name_similarity": 0.2
+    "has_similar_name": 0.7
 }
 BIO_RELATED_MAJOR_BRANCHES = {"BiologicalEntity", "GeneticOrMolecularBiologicalEntity", "DiseaseOrPhenotypicFeature"}
+UNNECESSARY_CHARS_MAP = {ord(char): None for char in string.punctuation + string.whitespace}
 
 
 def assign_edge_weights(edges_df: pd.DataFrame):
@@ -33,6 +36,11 @@ def assign_edge_weights(edges_df: pd.DataFrame):
 def remove_self_edges(edges_df: pd.DataFrame):
     logging.info(f"Removing any self-edges (useless for us)..")
     return edges_df[edges_df.subject != edges_df.object]
+
+
+def remove_close_match_edges(edges_df: pd.DataFrame):
+    logging.info(f"Removing any close_match edges (don't work very well with label propagation clustering..)")
+    return edges_df[edges_df.predicate != "close_match"]
 
 
 def get_weighted_adjacency_dict(edges_df: pd.DataFrame) -> Dict[str, Dict[str, float]]:
@@ -82,13 +90,6 @@ def assign_major_category_branches(nodes_df: pd.DataFrame):
     categories_to_major_branch = res.json()["category_to_major_branch"]
 
     # Assign each node its category branch
-    logging.info(f"Assigning each node one category (favor SRI over KG2pre)..")
-    # TODO: If SRI category is NamedThing and KG2pre one isn't, should we use KG2pre?
-    # Note: If a category dtype is equal to itself, that means it must not be NaN..
-    nodes_df["category"] = np.where(nodes_df.category_sri == nodes_df.category_sri, nodes_df.category_sri, nodes_df.category_kg2pre)
-    logging.info(f"Assigning each node one name (favor SRI over KG2pre)..")
-    nodes_df["name"] = np.where(nodes_df.name_sri == nodes_df.name_sri, nodes_df.name_sri, nodes_df.name_kg2pre)
-
     logging.info(f"Assigning nodes to their major category branches..")
     nodes_df["major_branch"] = nodes_df.category.map(categories_to_major_branch)
     logging.info(f"After preliminary assignment, nodes DataFrame is: \n{nodes_df}")
@@ -195,9 +196,51 @@ def get_most_common_neighbor_label(node_id: str, adj_list_weighted: dict, label_
         return label_map[node_id]  # Ensures orphan nodes always return something (their label will never change)
 
 
+def simplify_name(name: str) -> str:
+    return name.lower().translate(UNNECESSARY_CHARS_MAP) if name == name else name
+
+
 def create_name_sim_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
-    # TODO: Create name similarity edges; use blocking to avoid n^2 situation (do in a second iteration)
-    pass
+    # Only create edges for what are close to exact matches for now
+    logging.info(f"Starting to create name similarity edges..")
+
+    logging.info(f"Assigning nodes their simplified names...")
+    simplify_name_vectorized = np.vectorize(simplify_name, otypes=[str])
+    nodes_df["name_simplified"] = simplify_name_vectorized(nodes_df.name)
+    logging.info(f"After adding simplified names, DataFrame is: \n{nodes_df}")
+
+    logging.info(f"Excluding nodes without names..")
+    nodes_with_names_df = nodes_df[nodes_df.name == nodes_df.name]
+    logging.info(f"Special name sim DF is: \n{nodes_with_names_df}")
+
+    logging.info(f"Deleting temporary name_simplified column from nodes DataFrame..")
+    nodes_df.drop("name_simplified", axis=1, inplace=True)
+
+    logging.info(f"Filtering out nodes without any name matches..")
+    nodes_with_name_matches_df = nodes_with_names_df[nodes_with_names_df.groupby(by="name_simplified").transform("size") > 1]
+    logging.info(f"Nodes with name matches are: \n{nodes_with_name_matches_df}")
+
+    logging.info(f"Grouping nodes by name matches..")
+    nodes_grouped_df = nodes_with_name_matches_df.groupby(by="name_simplified")
+
+    logging.info(f"Looping through groups and creating name sim edges..")
+    edge_rows = []
+    for simplified_name, node_group_df in nodes_grouped_df:
+        if node_group_df.size <= 100:
+            node_ids = node_group_df.index.values
+            node_pairs = itertools.combinations(node_ids, 2)
+            group_edge_rows = [(f"NAMESIM:{'--'.join(node_pair)}", node_pair[0], "has_similar_name", node_pair[1], "infores:arax-node-synonymizer", None)
+                               for node_pair in node_pairs]
+            edge_rows += group_edge_rows
+        else:
+            logging.warning(f"More than 100 nodes have the same simplified name: {simplified_name}. Not creating name sim edges for these.")
+
+    logging.info(f"Tacking name sim edges onto existing edges DataFrame..")
+    name_sim_edges_df = pd.DataFrame(edge_rows,
+                                     columns=["id", "subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]).set_index("id")
+    edges_df = pd.concat([edges_df, name_sim_edges_df])
+
+    return edges_df
 
 
 def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
@@ -273,6 +316,14 @@ def load_merged_nodes() -> pd.DataFrame:
     else:
         raise ValueError(f"merged_match_nodes.tsv contains duplicate rows!")
 
+    # Choose a single name and category for each node
+    logging.info(f"Assigning each node one category (favor SRI over KG2pre)..")
+    # TODO: If SRI category is NamedThing and KG2pre one isn't, should we use KG2pre?
+    # Note: If a category dtype is equal to itself, that means it must not be NaN..
+    nodes_df["category"] = np.where(nodes_df.category_sri == nodes_df.category_sri, nodes_df.category_sri, nodes_df.category_kg2pre)
+    logging.info(f"Assigning each node one name (favor SRI over KG2pre)..")
+    nodes_df["name"] = np.where(nodes_df.name_sri == nodes_df.name_sri, nodes_df.name_sri, nodes_df.name_kg2pre)
+
     return nodes_df
 
 
@@ -300,11 +351,12 @@ def main():
     edges_df = load_merged_edges()
 
     # Do edge pre-processing
-    assign_edge_weights(edges_df)
     edges_df = remove_self_edges(edges_df)
-    create_name_sim_edges(nodes_df, edges_df)
+    edges_df = remove_close_match_edges(edges_df)
+    edges_df = create_name_sim_edges(nodes_df, edges_df)
+    assign_edge_weights(edges_df)
 
-    # Attempt to remove paths between nodes with conflicting categories
+    # Remove edges between nodes with conflicting categories
     assign_major_category_branches(nodes_df)
     edges_df = remove_conflicting_category_edges(nodes_df, edges_df)
 
