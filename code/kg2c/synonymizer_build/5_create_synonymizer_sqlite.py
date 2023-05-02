@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import pathlib
@@ -48,10 +49,8 @@ def load_final_edges() -> pd.DataFrame:
     return edges_df
 
 
-def get_edge_ids_for_node(node_id: str, edges_by_subject_map: Dict[str, List[str]], edges_by_object_map: Dict[str, List[str]]):
-    edges_node_is_subject = edges_by_subject_map.get(node_id, [])
-    edges_node_is_object = edges_by_object_map.get(node_id, [])
-    return edges_node_is_subject + edges_node_is_object  # Note: Couldn't be repeats, since no self-edges
+def convert_list_to_str(list_value: List[any]) -> str:
+    return json.dumps(list_value)  # We want to convert to str for sqlite..
 
 
 def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> Dict[str, Set[str]]:
@@ -75,57 +74,44 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
     db_connection.execute("CREATE UNIQUE INDEX edge_id_index on edges (id)")
     db_connection.commit()
 
-    # Create some helper maps for determining intra-cluster edges and other cluster info
-    logging.info(f"Creating helper map of node IDs to their edge IDs...")
-    logging.info(f"First grouping edges by subject and object..")
-    edges_grouped_by_subject = edges_df.groupby(by="subject").id.apply(list).to_dict()
-    edges_grouped_by_object = edges_df.groupby(by="object").id.apply(list).to_dict()
-    logging.info(f"Now combining subject/object edge lists in vectorized fashion..")
-    get_edge_ids_for_node_vectorized = np.vectorize(get_edge_ids_for_node, otypes=[list])
-    nodes_df["edge_ids"] = get_edge_ids_for_node_vectorized(nodes_df.id, edges_grouped_by_subject, edges_grouped_by_object)
-    logging.info(f"Nodes DataFrame with edge IDs tacked on is: \n{nodes_df}")
-    logging.info(f"Now converting mappings into a dict..")
-    nodes_to_edges_map = dict(zip(nodes_df.id, nodes_df.edge_ids))
+    # Start compiling a clusters table
+    logging.info(f"Beginning to create clusters DataFrame...")
+    clusters_df = nodes_df[nodes_df.cluster_id == nodes_df.id]
+    clusters_df = clusters_df[["cluster_id", "category", "name"]]
 
-    logging.info(f"Creating helper map of cluster IDs to member IDs...")
+    # Then add member node IDs to each cluster row
+    logging.info(f"Adding member node IDs to each cluster row...")
+    logging.info(f"First grouping nodes by cluster id..")
     grouped_df = nodes_df.groupby(by="cluster_id").id
+    logging.info(f"Now converting the grouped DataFrame into dictionary format..")
     cluster_to_member_ids = grouped_df.apply(list).to_dict()
-    logging.info(f"Creating helper map of node IDs to categories..")
-    nodes_to_category_map = dict(zip(nodes_df.id, nodes_df.category))
-    logging.info(f"Creating helper map of node IDs to names..")
-    nodes_df["name"] = np.where(nodes_df.name_sri == nodes_df.name_sri, nodes_df.name_sri, nodes_df.name_kg2pre)  # NaN value is not equal to itself
-    nodes_to_name_map = dict(zip(nodes_df.id, nodes_df.name))
+    logging.info(f"Now mapping that dictionary to the clusters DataFrame...")
+    clusters_df["member_ids"] = clusters_df.cluster_id.map(cluster_to_member_ids)
+    logging.info(f"Now converting list member IDs to string representation...")
+    convert_list_to_str_vectorized = np.vectorize(convert_list_to_str, otypes=[str])
+    clusters_df.member_ids = convert_list_to_str_vectorized(clusters_df.member_ids)
 
-    # Figure out each clusters' intra-cluster edges
-    # TODO: Might be able to do this faster using vectorization? See label propagation function for ideas..
-    logging.info(f"Determining each cluster's intra-cluster edge IDs...")
-    table_rows = []
-    for cluster_id, member_ids in cluster_to_member_ids.items():
-        # Create a list of every member's edge IDs, including repeats
-        member_edge_ids_with_repeats = []
-        for member_id in member_ids:
-            edge_ids = nodes_to_edges_map.get(member_id, [])
-            member_edge_ids_with_repeats += edge_ids
-        # Then take advantage of the fact that each edge ID could only possibly be listed once or twice to efficiently
-        # determine which are intra-cluster (since each edge has 2 nodes, 1 OR both of which must be in this cluster)
-        member_edge_ids_with_repeats.sort()
-        intra_cluster_edge_ids = set()
-        index = 0
-        while index < len(member_edge_ids_with_repeats) - 1:
-            current_edge_id = member_edge_ids_with_repeats[index]
-            next_edge_id = member_edge_ids_with_repeats[index + 1]
-            if current_edge_id == next_edge_id:
-                intra_cluster_edge_ids.add(current_edge_id)
-                index = index + 2
-            else:
-                index = index + 1
-        table_rows.append([cluster_id, nodes_to_category_map[cluster_id], nodes_to_name_map[cluster_id],
-                           f"{member_ids}", f"{list(intra_cluster_edge_ids)}"])
+    # Then add intra-cluster edge IDs to each cluster row
+    logging.info(f"Adding intra-cluster edge IDs to each cluster row...")
+    logging.info(f"First creating a map of nodes to cluster id...")
+    nodes_to_cluster_id_map = dict(zip(nodes_df.id, nodes_df.cluster_id))
+    logging.info(f"Now assigning edges their cluster subj/obj IDs..")
+    edges_df["subject_cluster_id"] = edges_df.subject.map(nodes_to_cluster_id_map)
+    edges_df["object_cluster_id"] = edges_df.object.map(nodes_to_cluster_id_map)
+    logging.info(f"After tagging edges with subj/obj cluster IDs, edges df is: \n{edges_df}")
+    logging.info(f"Filtering out any INTER-cluster edges..")
+    intra_cluster_edges_df = edges_df[edges_df.subject_cluster_id == edges_df.object_cluster_id]
+    logging.info(f"Grouping INTRA-cluster edges by their cluster IDs..")
+    intra_cluster_edges_df_grouped = intra_cluster_edges_df.groupby(by="subject_cluster_id").id
+    logging.info(f"Converting grouped clusters into dictionary format...")
+    cluster_to_edge_ids = intra_cluster_edges_df_grouped.apply(list).to_dict()
+    logging.info(f"Mapping cluster edge IDs onto clusters DataFrame...")
+    clusters_df["intra_cluster_edge_ids"] = clusters_df.cluster_id.map(cluster_to_edge_ids)
+    logging.info(f"Now converting list edge IDs to string representation...")
+    clusters_df.intra_cluster_edge_ids = convert_list_to_str_vectorized(clusters_df.intra_cluster_edge_ids)
+    logging.info(f"After filling out all columns, clusters DataFrame is: \n{clusters_df}")
 
     # Save a table of cluster info
-    logging.info(f"Creating DataFrame of clusters (cluster_id, member_ids, intra_cluster_edge_ids)")
-    clusters_df = pd.DataFrame(table_rows, columns=["cluster_id", "category", "name", "member_ids", "intra_cluster_edge_ids"]).set_index("cluster_id")
-    logging.info(f"Clusters df is:\n{clusters_df}")
     logging.info(f"Dumping clusters DataFrame to sqlite..")
     clusters_df.to_sql("clusters", db_connection)
     db_connection.execute("CREATE UNIQUE INDEX cluster_id_index on clusters (cluster_id)")

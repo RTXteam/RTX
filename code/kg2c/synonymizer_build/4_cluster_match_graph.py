@@ -81,11 +81,13 @@ def assign_major_category_branches(nodes_df: pd.DataFrame):
     res = requests.get("https://tree-viz-biolink.herokuapp.com/major_branches/er/3.0.3")
     categories_to_major_branch = res.json()["category_to_major_branch"]
 
-    # Assign each node its (modified) category branch - or None if it's a NamedThing/BiologicalEntity
-    logging.info(f"Choosing between KG2pre and SRI categories (favor SRI over KG2pre)..")
-    # TODO: If SRI category is NamedThing and KG2pre one isn't, use KG2pre?
+    # Assign each node its category branch
+    logging.info(f"Assigning each node one category (favor SRI over KG2pre)..")
+    # TODO: If SRI category is NamedThing and KG2pre one isn't, should we use KG2pre?
     # Note: If a category dtype is equal to itself, that means it must not be NaN..
     nodes_df["category"] = np.where(nodes_df.category_sri == nodes_df.category_sri, nodes_df.category_sri, nodes_df.category_kg2pre)
+    logging.info(f"Assigning each node one name (favor SRI over KG2pre)..")
+    nodes_df["name"] = np.where(nodes_df.name_sri == nodes_df.name_sri, nodes_df.name_sri, nodes_df.name_kg2pre)
 
     logging.info(f"Assigning nodes to their major category branches..")
     nodes_df["major_branch"] = nodes_df.category.map(categories_to_major_branch)

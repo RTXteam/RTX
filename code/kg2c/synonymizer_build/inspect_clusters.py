@@ -31,11 +31,11 @@ def get_cluster_id(node_id: str, cursor) -> Optional[str]:
 
 
 def get_member_ids(cluster_id: str, cursor) -> Tuple[List[str], List[str]]:
-    answer = cursor.execute(f"SELECT * FROM clusters WHERE cluster_id = '{cluster_id}'")
+    answer = cursor.execute(f"SELECT member_ids, intra_cluster_edge_ids FROM clusters WHERE cluster_id = '{cluster_id}'")
     matching_row = answer.fetchone()
     if matching_row:
-        member_ids = ast.literal_eval(matching_row[1])  # Lists are stored as strings in sqlite
-        intra_cluster_edge_ids = ast.literal_eval(matching_row[2])  # Lists are stored as strings in sqlite
+        member_ids = ast.literal_eval(matching_row[0])  # Lists are stored as strings in sqlite
+        intra_cluster_edge_ids = ast.literal_eval(matching_row[1])  # Lists are stored as strings in sqlite
         logging.debug(f"Cluster {cluster_id} has member IDs {member_ids} and "
                       f"intra cluster edge IDs {intra_cluster_edge_ids}")
     else:
