@@ -202,7 +202,7 @@ def create_name_sim_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
 
     logging.info(f"Excluding nodes without names..")
     nodes_with_names_df = nodes_df[nodes_df.name == nodes_df.name]
-    logging.info(f"Special name sim DF is: \n{nodes_with_names_df}")
+    logging.info(f"Nodes with names are: \n{nodes_with_names_df}")
 
     logging.info(f"Assigning nodes their simplified names...")
     nodes_with_names_df["name_simplified"] = nodes_with_names_df.name.apply(lambda name: name.lower().translate(UNNECESSARY_CHARS_MAP))
@@ -218,7 +218,7 @@ def create_name_sim_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     logging.info(f"Looping through groups and creating name sim edges..")
     edge_rows = []
     for simplified_name, node_group_df in nodes_grouped_df:
-        if node_group_df.size <= 100:
+        if node_group_df.size <= 500:
             node_ids = node_group_df.index.values
             node_pairs = itertools.combinations(node_ids, 2)
             group_edge_rows = [(f"NAMESIM:{'--'.join(node_pair)}", node_pair[0], "has_similar_name", node_pair[1], "infores:arax-node-synonymizer", None)
