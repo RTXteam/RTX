@@ -49,11 +49,7 @@ def load_final_edges() -> pd.DataFrame:
     return edges_df
 
 
-def convert_list_to_str(list_value: List[any]) -> str:
-    return json.dumps(list_value)  # We want to convert to str for sqlite..
-
-
-def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> Dict[str, Set[str]]:
+def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> pd.DataFrame:
     # Get sqlite set up
     sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
     if pathlib.Path(sqlite_db_path).exists():
@@ -83,13 +79,16 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
     logging.info(f"Adding member node IDs to each cluster row...")
     logging.info(f"First grouping nodes by cluster id..")
     grouped_df = nodes_df.groupby(by="cluster_id").id
-    logging.info(f"Now converting the grouped DataFrame into dictionary format..")
-    cluster_to_member_ids = grouped_df.apply(list).to_dict()
-    logging.info(f"Now mapping that dictionary to the clusters DataFrame...")
-    clusters_df["member_ids"] = clusters_df.cluster_id.map(cluster_to_member_ids)
+    logging.info(f"Now converting the grouped DataFrame into list format..")
+    cluster_to_member_ids_df = grouped_df.apply(list).reset_index(name="member_ids")
+    logging.info(f"Now zipping member IDs DataFrame with clusters DataFrame...")
+    clusters_df = pd.merge(clusters_df, cluster_to_member_ids_df, how="inner", on="cluster_id")
+    logging.info(f"After joining, clusters DataFrame is: \n{clusters_df}")
+    logging.info(f"Now recording cluster sizes, before we convert member IDs list into string format...")
+    clusters_df["cluster_size"] = clusters_df.member_ids.apply(len)
     logging.info(f"Now converting list member IDs to string representation...")
-    convert_list_to_str_vectorized = np.vectorize(convert_list_to_str, otypes=[str])
-    clusters_df.member_ids = convert_list_to_str_vectorized(clusters_df.member_ids)
+    clusters_df.member_ids = clusters_df.member_ids.apply(str)
+    logging.info(f"After finishing member IDs processing, clusters DataFrame is: \n{clusters_df}")
 
     # Then add intra-cluster edge IDs to each cluster row
     logging.info(f"Adding intra-cluster edge IDs to each cluster row...")
@@ -103,13 +102,15 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
     intra_cluster_edges_df = edges_df[edges_df.subject_cluster_id == edges_df.object_cluster_id]
     logging.info(f"Grouping INTRA-cluster edges by their cluster IDs..")
     intra_cluster_edges_df_grouped = intra_cluster_edges_df.groupby(by="subject_cluster_id").id
-    logging.info(f"Converting grouped clusters into dictionary format...")
-    cluster_to_edge_ids = intra_cluster_edges_df_grouped.apply(list).to_dict()
-    logging.info(f"Mapping cluster edge IDs onto clusters DataFrame...")
-    clusters_df["intra_cluster_edge_ids"] = clusters_df.cluster_id.map(cluster_to_edge_ids)
-    logging.info(f"Now converting list edge IDs to string representation...")
-    clusters_df.intra_cluster_edge_ids = convert_list_to_str_vectorized(clusters_df.intra_cluster_edge_ids)
-    logging.info(f"After filling out all columns, clusters DataFrame is: \n{clusters_df}")
+    logging.info(f"Now converting the grouped DataFrame into list format..")
+    cluster_to_edge_ids_df = intra_cluster_edges_df_grouped.apply(list).reset_index(name="intra_cluster_edge_ids")
+    cluster_to_edge_ids_df.rename(columns={"subject_cluster_id": "cluster_id"}, inplace=True)
+    logging.info(f"Now zipping intra-cluster edge IDs DataFrame with clusters DataFrame...")
+    clusters_df = pd.merge(clusters_df, cluster_to_edge_ids_df, how="left", on="cluster_id")
+    logging.info(f"After joining, clusters DataFrame is: \n{clusters_df}")
+    logging.info(f"Now converting intra-cluster edge IDs to string representation...")
+    clusters_df.intra_cluster_edge_ids = clusters_df.intra_cluster_edge_ids.apply(str)
+    logging.info(f"After finishing intra-cluster edge IDs processing, clusters DataFrame is: \n{clusters_df}")
 
     # Save a table of cluster info
     logging.info(f"Dumping clusters DataFrame to sqlite..")
@@ -120,16 +121,14 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
 
     db_connection.close()
 
-    return cluster_to_member_ids
+    return clusters_df
 
 
-def write_graph_reports(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, cluster_to_member_ids: Dict[str, Set[str]]):
+def write_graph_reports(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, clusters_df: pd.DataFrame):
     logging.info(f"Writing some reports about the graph's content..")
 
-    logging.info(f"First calculating the size of each node's cluster..")
-    cluster_ids_to_sizes = {cluster_id: len(member_ids) for cluster_id, member_ids in cluster_to_member_ids.items()}
-    nodes_df["cluster_size"] = nodes_df.cluster_id.map(cluster_ids_to_sizes)
-    cluster_size_counts_df = nodes_df.groupby("cluster_size").size().to_frame("num_nodes")
+    logging.info(f"First creating counts of different cluster sizes..")
+    cluster_size_counts_df = clusters_df.groupby("cluster_size").size().to_frame("num_nodes")
     logging.info(f"Cluster size counts DataFrame is: \n{cluster_size_counts_df}")
     cluster_size_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_cluster_sizes.tsv", sep="\t")
 
@@ -137,6 +136,8 @@ def write_graph_reports(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, cluster_
     logging.info(f"First locating which nodes from KG2 were not recognized by the SRI..")
     kg2_nodes_not_in_sri_df = nodes_df[nodes_df.category_sri != nodes_df.category_sri]
     logging.info(f"DataFrame of KG2 nodes that are not recognized by the SRI is: \n{kg2_nodes_not_in_sri_df}")
+    logging.info(f"Adding cluster size column to non-SRI nodes DataFrame...")
+    kg2_nodes_not_in_sri_df = pd.merge(kg2_nodes_not_in_sri_df, clusters_df, on="cluster_id", how="left")
     logging.info(f"Grouping non-SRI nodes by cluster size..")
     cluster_size_counts_df_non_sri_nodes = kg2_nodes_not_in_sri_df.groupby("cluster_size").size().to_frame("num_nodes")
     logging.info(f"Cluster size counts DataFrame for KG2pre nodes not recognized by SRI is: \n{cluster_size_counts_df_non_sri_nodes}")
@@ -168,11 +169,10 @@ def write_graph_reports(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, cluster_
     predicate_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_predicate_counts.tsv", sep="\t")
 
     logging.info(f"Looking for any clusters that seem oversized..")
-    nodes_in_oversized_clusters_df = nodes_df[nodes_df.cluster_size > 50]
-    logging.info(f"DataFrame of nodes in clusters that seem oversized is: \n{nodes_in_oversized_clusters_df}")
-    oversized_clusters_df = nodes_in_oversized_clusters_df[["cluster_id", "cluster_size"]].drop_duplicates().sort_values(by=["cluster_size"], ascending=False)
+    oversized_clusters_df = clusters_df[clusters_df.cluster_size > 50].sort_values(by=["cluster_size"], ascending=False)
     logging.info(f"{oversized_clusters_df.shape[0]} clusters seem to be oversized: \n{oversized_clusters_df}")
-    oversized_clusters_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_oversized_clusters.tsv", sep="\t", index=False)
+    oversized_clusters_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_oversized_clusters.tsv", sep="\t", index=False,
+                                 columns=["cluster_id", "cluster_size", "category", "name"])
 
 
 def main():
@@ -184,10 +184,10 @@ def main():
     edges_df = load_final_edges()
 
     # Create the final database that will be the backend of the NodeSynonymizer
-    cluster_to_member_ids = create_synonymizer_sqlite(nodes_df, edges_df)
+    clusters_df = create_synonymizer_sqlite(nodes_df, edges_df)
 
     # Save some reports about the graph's content (meta-level)
-    write_graph_reports(nodes_df, edges_df, cluster_to_member_ids)
+    write_graph_reports(nodes_df, edges_df, clusters_df)
 
 
 if __name__ == "__main__":
