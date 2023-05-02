@@ -196,25 +196,17 @@ def get_most_common_neighbor_label(node_id: str, adj_list_weighted: dict, label_
         return label_map[node_id]  # Ensures orphan nodes always return something (their label will never change)
 
 
-def simplify_name(name: str) -> str:
-    return name.lower().translate(UNNECESSARY_CHARS_MAP) if name == name else name
-
-
 def create_name_sim_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     # Only create edges for what are close to exact matches for now
     logging.info(f"Starting to create name similarity edges..")
-
-    logging.info(f"Assigning nodes their simplified names...")
-    simplify_name_vectorized = np.vectorize(simplify_name, otypes=[str])
-    nodes_df["name_simplified"] = simplify_name_vectorized(nodes_df.name)
-    logging.info(f"After adding simplified names, DataFrame is: \n{nodes_df}")
 
     logging.info(f"Excluding nodes without names..")
     nodes_with_names_df = nodes_df[nodes_df.name == nodes_df.name]
     logging.info(f"Special name sim DF is: \n{nodes_with_names_df}")
 
-    logging.info(f"Deleting temporary name_simplified column from nodes DataFrame..")
-    nodes_df.drop("name_simplified", axis=1, inplace=True)
+    logging.info(f"Assigning nodes their simplified names...")
+    nodes_with_names_df["name_simplified"] = nodes_with_names_df.name.apply(lambda name: name.lower().translate(UNNECESSARY_CHARS_MAP))
+    logging.info(f"After adding simplified names, DataFrame is: \n{nodes_with_names_df}")
 
     logging.info(f"Filtering out nodes without any name matches..")
     nodes_with_name_matches_df = nodes_with_names_df[nodes_with_names_df.groupby(by="name_simplified").transform("size") > 1]
