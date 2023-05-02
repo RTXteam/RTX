@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO,
 PREDICATE_WEIGHTS = {
     "same_as": 1.0,
     "close_match": 0.5,
-    "has_similar_name": 0.7
+    "has_similar_name": 0.1
 }
 BIO_RELATED_MAJOR_BRANCHES = {"BiologicalEntity", "GeneticOrMolecularBiologicalEntity", "DiseaseOrPhenotypicFeature"}
 UNNECESSARY_CHARS_MAP = {ord(char): None for char in string.punctuation + string.whitespace}
@@ -217,20 +217,24 @@ def create_name_sim_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
 
     logging.info(f"Looping through groups and creating name sim edges..")
     edge_rows = []
+    group_size_limit = 500
     for simplified_name, node_group_df in nodes_grouped_df:
-        if node_group_df.size <= 500:
+        if node_group_df.size <= group_size_limit:
             node_ids = node_group_df.index.values
             node_pairs = itertools.combinations(node_ids, 2)
             group_edge_rows = [(f"NAMESIM:{'--'.join(node_pair)}", node_pair[0], "has_similar_name", node_pair[1], "infores:arax-node-synonymizer", None)
                                for node_pair in node_pairs]
             edge_rows += group_edge_rows
         else:
-            logging.warning(f"More than 100 nodes have the same simplified name: {simplified_name}. Not creating name sim edges for these.")
+            # TODO: Maybe rather than skipping all, create name sime edges only for orphans? or nodes with few edges?
+            logging.warning(f"{node_group_df.size} nodes have the same simplified name: {simplified_name}. Not creating name sim edges for these (too many).")
 
     logging.info(f"Tacking name sim edges onto existing edges DataFrame..")
     name_sim_edges_df = pd.DataFrame(edge_rows,
                                      columns=["id", "subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]).set_index("id")
+    logging.info(f"Created a total of {name_sim_edges_df.shape[0]:,} name sim edges")
     edges_df = pd.concat([edges_df, name_sim_edges_df])
+    logging.info(f"Edges DataFrame is now: \n{edges_df}")
 
     return edges_df
 
