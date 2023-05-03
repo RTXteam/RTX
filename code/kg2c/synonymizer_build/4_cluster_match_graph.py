@@ -240,17 +240,21 @@ def create_name_sim_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
 
 
 def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
-    # TODO: Switch to modularity-based clustering, rather than label propagation..
-
     # Do label propagation, where each node starts with its own ID as its label
+    # TODO: Switch to modularity-based clustering, rather than label propagation..
     logging.info(f"Starting to cluster the match graph into groups of equivalent nodes...")
 
-    logging.info(f"Determining initial cluster ID labels and which nodes need labeling..")
+    logging.info(f"Determining which nodes need labeling..")
     # Note: A NaN value is not equal to itself
     nodes_missing_cluster_id_df = nodes_df[nodes_df.cluster_id != nodes_df.cluster_id]
     logging.info(f"Nodes missing cluster ID are: \n{nodes_missing_cluster_id_df}")
-    initial_labels = np.where(nodes_df.cluster_id == nodes_df.cluster_id, nodes_df.cluster_id, nodes_df.index)
-    label_map_initial = dict(zip(nodes_df.index, initial_labels))
+
+    logging.info(f"Assigning initial cluster ID labels (to nodes that don't already have one)..")
+    nodes_df.fillna(value={"cluster_id": nodes_df.index.to_series()}, inplace=True)
+    logging.info(f"Nodes DF after assigning initial cluster IDs is: \n{nodes_df}")
+
+    logging.info(f"Zipping node IDs with cluster IDs and converting to dictionary format..")
+    label_map_initial = dict(zip(nodes_df.index, nodes_df.cluster_id))
 
     adj_list_weighted = get_weighted_adjacency_dict(edges_df)
 

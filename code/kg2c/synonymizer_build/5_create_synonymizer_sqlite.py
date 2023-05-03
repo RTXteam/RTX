@@ -1,13 +1,9 @@
-import json
 import logging
 import os
 import pathlib
 import sqlite3
 import subprocess
-from collections import defaultdict
-from typing import Dict, Set, List
 
-import numpy as np
 import pandas as pd
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
