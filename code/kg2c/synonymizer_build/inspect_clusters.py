@@ -97,6 +97,10 @@ def compute_cluster_density(cluster_graph: any) -> float:
     return density
 
 
+def convert_to_check_mark(some_bool: bool) -> str:
+    return "X" if some_bool else ""
+
+
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("node_id")
@@ -112,16 +116,36 @@ def main():
     cluster_id = get_cluster_id(args.node_id, cursor)
     member_node_ids, intra_cluster_edge_ids = get_member_ids(cluster_id, cursor)
     cluster_graph = get_graph(member_node_ids, intra_cluster_edge_ids, cursor)
+    cluster_rep = next(node for node in cluster_graph["nodes"] if node["id"] == cluster_id)
+
+    # Print out the cluster nodes in tabular format
+    column_names = ["id", "category", "name", "in_SRI", "in_KG2pre", "is_cluster_rep"]
+    cluster_node_rows = [[node["id"], node["category"], node["name"],
+                          convert_to_check_mark(node["category_sri"] is not None),
+                          convert_to_check_mark(node["category_kg2pre"] is not None),
+                          convert_to_check_mark(node["id"] == cluster_id)]
+                         for node in cluster_graph["nodes"]]
+    cluster_nodes_df = pd.DataFrame(cluster_node_rows, columns=column_names).sort_values(by="id")
+    print(f"\n{cluster_nodes_df.to_markdown(index=False)}\n")
+
+    # Print out the cluster edges in tabular format
+    column_names = ["subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]
+    cluster_edge_rows = [[edge["subject"], edge["predicate"], edge["object"],
+                          edge["upstream_resource_id"],
+                          edge["primary_knowledge_source"] if edge["primary_knowledge_source"] else ""]
+                         for edge in cluster_graph["edges"]]
+    cluster_edges_df = pd.DataFrame(cluster_edge_rows, columns=column_names).sort_values(by="upstream_resource_id")
+    print(f"\n{cluster_edges_df.to_markdown(index=False)}\n")
+
+    # Compute the density of this cluster
+    density = compute_cluster_density(cluster_graph)
+    logging.info(f"Density of cluster {cluster_id} is: {density}")
 
     # Save the cluster graph in a JSON file
-    cluster_rep = next(node for node in cluster_graph["nodes"] if node["id"] == cluster_id)
     cluster_file_path = f"{cluster_graphs_path}/{get_node_name(cluster_rep)}_{cluster_id}.json"
     with open(cluster_file_path, "w+") as cluster_file:
         json.dump(cluster_graph, cluster_file, indent=2)
     logging.info(f"Cluster saved in Biolink format to: {cluster_file_path}")
-
-    density = compute_cluster_density(cluster_graph)
-    logging.info(f"Density of cluster {cluster_id} is {density}")
 
     cursor.close()
     db_connection.close()
