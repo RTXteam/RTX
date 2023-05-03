@@ -275,7 +275,7 @@ def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     label_map_initial_2 = dict(zip(nodes_df.index, nodes_df.cluster_id))
     label_map_2 = do_label_propagation(label_map_initial_2, adj_list_weighted,
                                        nodes_to_label=non_sri_node_ids)
-    logging.info(f"Updating the nodes DataFrame with the cluster IDs determined by first label propagation run..")
+    logging.info(f"Updating the nodes DataFrame with the cluster IDs determined by second label propagation run..")
     nodes_df.cluster_id = nodes_df.index.map(label_map_2)
 
     logging.info(f"The final nodes DataFrame is: \n{nodes_df}")
