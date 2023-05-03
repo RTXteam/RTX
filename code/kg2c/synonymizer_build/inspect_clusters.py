@@ -105,7 +105,7 @@ def convert_to_check_mark(some_bool: bool) -> str:
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("node_id")
-    arg_parser.add_argument('--showall', dest='show_all', action='store_true')
+    arg_parser.add_argument('--full', dest='full', action='store_true')
     args = arg_parser.parse_args()
 
     sqlite_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
@@ -121,22 +121,30 @@ def main():
     cluster_rep = next(node for node in cluster_graph["nodes"] if node["id"] == cluster_id)
 
     # Print out the cluster edges in tabular format
-    column_names = ["subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]
-    cluster_edge_rows = [[edge["subject"], edge["predicate"], edge["object"],
-                          edge["upstream_resource_id"],
-                          edge["primary_knowledge_source"] if edge["primary_knowledge_source"] else ""]
-                         for edge in cluster_graph["edges"]]
+    if args.full:
+        column_names = ["id", "subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source", "weight"]
+        cluster_edge_rows = [[edge["id"], edge["subject"], edge["predicate"], edge["object"],
+                              edge["upstream_resource_id"],
+                              edge["primary_knowledge_source"] if edge["primary_knowledge_source"] else "",
+                              edge["weight"]]
+                             for edge in cluster_graph["edges"]]
+    else:
+        column_names = ["subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]
+        cluster_edge_rows = [[edge["subject"], edge["predicate"], edge["object"],
+                              edge["upstream_resource_id"],
+                              edge["primary_knowledge_source"] if edge["primary_knowledge_source"] else ""]
+                             for edge in cluster_graph["edges"]]
     cluster_edges_df = pd.DataFrame(cluster_edge_rows, columns=column_names).sort_values(by="upstream_resource_id")
     print(f"\nCluster for {args.node_id} ({cluster_id}) has {cluster_edges_df.shape[0]} edges:")
     print(f"\n{cluster_edges_df.to_markdown(index=False)}\n")
 
     # Print out the cluster nodes in tabular format
-    if args.show_all:
-        column_names = ["id", "category", "name",
+    if args.full:
+        column_names = ["id", "category", "major_branch", "name",
                         "in_SRI", "category_sri", "name_sri",
                         "in_KG2pre", "category_kg2pre", "name_kg2pre",
                         "is_cluster_rep"]
-        cluster_node_rows = [[node["id"], node["category"], node["name"],
+        cluster_node_rows = [[node["id"], node["category"], node["major_branch"], node["name"],
                               convert_to_check_mark(node["category_sri"] is not None),
                               node["category_sri"], node["name_sri"],
                               convert_to_check_mark(node["category_kg2pre"] is not None),
