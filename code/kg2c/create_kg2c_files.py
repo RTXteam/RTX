@@ -276,14 +276,14 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
     }
 
 
-def _create_edge(subject: str, object: str, predicate: str, knowledge_source: List[str], publications: List[str],
+def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_source: List[str], publications: List[str],
                  publications_info: Dict[str, any], kg2_ids: List[str],
                  qualified_predicate, qualified_object_aspect, qualified_object_direction) -> Dict[str, any]:
     edge_properties_lookup = PROPERTIES_LOOKUP["edges"]
     assert isinstance(subject, edge_properties_lookup["subject"]["type"])
     assert isinstance(object, edge_properties_lookup["object"]["type"])
     assert isinstance(predicate, edge_properties_lookup["predicate"]["type"])
-    assert isinstance(knowledge_source, edge_properties_lookup["knowledge_source"]["type"])
+    assert isinstance(primary_knowledge_source, edge_properties_lookup["primary_knowledge_source"]["type"])
     assert isinstance(publications, edge_properties_lookup["publications"]["type"])
     assert isinstance(publications_info, edge_properties_lookup["publications_info"]["type"])
     assert isinstance(kg2_ids, edge_properties_lookup["kg2_ids"]["type"])
@@ -296,7 +296,7 @@ def _create_edge(subject: str, object: str, predicate: str, knowledge_source: Li
         "subject": subject,
         "object": object,
         "predicate": predicate,
-        "knowledge_source": knowledge_source,
+        "primary_knowledge_source": primary_knowledge_source,
         "publications": publications,
         "publications_info": publications_info,
         "kg2_ids": kg2_ids,
@@ -523,7 +523,7 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
         canonicalized_subject = curie_map.get(original_subject, original_subject)
         canonicalized_object = curie_map.get(original_object, original_object)
         edge_publications = kg2pre_edge['publications'] if kg2pre_edge.get('publications') else []
-        edge_knowledge_source = kg2pre_edge['knowledge_source'] if kg2pre_edge.get('knowledge_source') else []
+        edge_primary_knowledge_source = kg2pre_edge['primary_knowledge_source'] if kg2pre_edge.get('primary_knowledge_source') else ""
         edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if (kg2pre_edge.get('qualified_predicate') and kg2pre_edge.get('qualified_predicate') != "None") else ""
         edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if (kg2pre_edge.get('qualified_object_aspect') and kg2pre_edge.get('qualified_object_aspect') != "None") else ""
         edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if (kg2pre_edge.get('qualified_object_direction') and kg2pre_edge.get('qualified_object_direction') != "None") else ""
@@ -540,7 +540,7 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
             canonicalized_edge_key = _get_edge_key(canonicalized_subject, canonicalized_object, kg2pre_edge['predicate'], edge_qualified_predicate, edge_qualified_object_aspect, edge_qualified_object_direction)
             if canonicalized_edge_key in canonicalized_edges:
                 canonicalized_edge = canonicalized_edges[canonicalized_edge_key]
-                canonicalized_edge['knowledge_source'] = _merge_two_lists(canonicalized_edge['knowledge_source'], edge_knowledge_source)
+                canonicalized_edge['primary_knowledge_source'] = canonicalized_edge['primary_knowledge_source']
                 canonicalized_edge['publications'] = _merge_two_lists(canonicalized_edge['publications'], edge_publications)
                 canonicalized_edge['publications_info'].update(edge_publications_info)
                 canonicalized_edge['kg2_ids'].append(kg2_edge_id)
@@ -548,7 +548,7 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
                 new_canonicalized_edge = _create_edge(subject=canonicalized_subject,
                                                       object=canonicalized_object,
                                                       predicate=kg2pre_edge['predicate'],
-                                                      knowledge_source=edge_knowledge_source,
+                                                      primary_knowledge_source=edge_primary_knowledge_source,
                                                       publications=edge_publications,
                                                       publications_info=edge_publications_info,
                                                       kg2_ids=[kg2_edge_id],
