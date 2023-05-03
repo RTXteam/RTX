@@ -136,7 +136,8 @@ def main():
                           convert_to_check_mark(node["id"] == cluster_id)]
                          for node in cluster_graph["nodes"]]
     cluster_nodes_df = pd.DataFrame(cluster_node_rows, columns=column_names).sort_values(by="id")
-    print(f"\nCluster for {args.node_id} ({cluster_id}) has {cluster_nodes_df.shape[0]} nodes:")
+    cluster_id_str = f" ({cluster_id})" if args.node_id != cluster_id else ""
+    print(f"\nCluster for {args.node_id}{cluster_id_str} has {cluster_nodes_df.shape[0]} nodes:")
     print(f"\n{cluster_nodes_df.to_markdown(index=False)}\n")
 
     # Compute the density of this cluster
