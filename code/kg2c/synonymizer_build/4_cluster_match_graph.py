@@ -117,7 +117,7 @@ def is_conflicting_category_edge_harsh(subject_id: str, object_id: str, major_br
     return subject_major_branch != object_major_branch
 
 
-def is_conflicting_category_edge(subject_id: str, object_id: str, major_branch_map: Dict[str, any]) -> bool:
+def is_conflicting_category_edge_lenient(subject_id: str, object_id: str, major_branch_map: Dict[str, any]) -> bool:
     """
     Nodes have conflicting categories if their major branches aren't the same, with exceptions for NamedThing and
     BiologicalEntity. If a node has a major branch of NamedThing, it can be connected to any other node. If a node
@@ -142,7 +142,7 @@ def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataF
     major_branch_map = dict(zip(nodes_df.index, nodes_df.major_branch))
 
     logging.info(f"Determining which edges have conflicting categories..")
-    is_conflicting_category_edge_vectorized = np.vectorize(is_conflicting_category_edge, otypes=[bool])
+    is_conflicting_category_edge_vectorized = np.vectorize(is_conflicting_category_edge_harsh, otypes=[bool])
     edges_df["is_conflicting_category_edge"] = is_conflicting_category_edge_vectorized(edges_df.subject, edges_df.object, major_branch_map)
     bad_edges_df = edges_df[edges_df.is_conflicting_category_edge]
     logging.info(f"Conflicting edges df is: \n{bad_edges_df}")
