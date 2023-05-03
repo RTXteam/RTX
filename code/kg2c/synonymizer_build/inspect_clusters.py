@@ -35,7 +35,8 @@ def get_member_ids(cluster_id: str, cursor) -> Tuple[List[str], List[str]]:
     matching_row = answer.fetchone()
     if matching_row:
         member_ids = ast.literal_eval(matching_row[0])  # Lists are stored as strings in sqlite
-        intra_cluster_edge_ids = ast.literal_eval(matching_row[1])  # Lists are stored as strings in sqlite
+        intra_cluster_edge_ids_str = "[]" if matching_row[1] == "nan" else matching_row[1]
+        intra_cluster_edge_ids = ast.literal_eval(intra_cluster_edge_ids_str)  # Lists are stored as strings in sqlite
         logging.debug(f"Cluster {cluster_id} has member IDs {member_ids} and "
                       f"intra cluster edge IDs {intra_cluster_edge_ids}")
     else:
