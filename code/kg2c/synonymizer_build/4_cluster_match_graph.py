@@ -22,7 +22,8 @@ PREDICATE_WEIGHTS = {
     "close_match": 0.5,
     "has_similar_name": 0.1
 }
-BIO_RELATED_MAJOR_BRANCHES = {"BiologicalEntity", "GeneticOrMolecularBiologicalEntity", "DiseaseOrPhenotypicFeature"}
+BIO_RELATED_MAJOR_BRANCHES = {"BiologicalEntity", "GeneticOrMolecularBiologicalEntity", "DiseaseOrPhenotypicFeature",
+                              "BiologicalProcessOrActivity", "OrganismalEntity"}
 UNNECESSARY_CHARS_MAP = {ord(char): None for char in string.punctuation + string.whitespace}
 
 
@@ -102,9 +103,9 @@ def assign_major_category_branches(nodes_df: pd.DataFrame):
     logging.info(f"Nodes DataFrame after assigning major branches is: \n{nodes_df}")
 
 
-def is_conflicting_category_edge(subject_id: str, object_id: str, major_branch_map: Dict[str, any]) -> bool:
+def is_conflicting_category_edge_harsh(subject_id: str, object_id: str, major_branch_map: Dict[str, any]) -> bool:
     """
-    To start, we'll use a harsh rule where nodes have to belong to exactly the same 'major branch'. This means
+    This is a harsh rule where nodes have to belong to exactly the same 'major branch'. This means
     that NamedThing nodes can only connect to NamedThing nodes, even though it could be valid for a NamedThing
     node to be in a cluster in which the other nodes belong to another major branch (since that must sort of be a subset
     of NamedThing). But it's difficult to fully eliminate paths between NamedThing nodes in a way that makes sense..
@@ -116,8 +117,27 @@ def is_conflicting_category_edge(subject_id: str, object_id: str, major_branch_m
     return subject_major_branch != object_major_branch
 
 
+def is_conflicting_category_edge(subject_id: str, object_id: str, major_branch_map: Dict[str, any]) -> bool:
+    """
+    Nodes have conflicting categories if their major branches aren't the same, with exceptions for NamedThing and
+    BiologicalEntity. If a node has a major branch of NamedThing, it can be connected to any other node. If a node
+    has a major branch of BiologicalEntity, it can be connected to NamedThing or any of our 'major branches' that are
+    part of the BiologicalEntity branch ().
+    """
+    # TODO: This isn't entirely eliminating PATHS between nodes of different branches... better solution?
+    major_branches = {major_branch_map[subject_id], major_branch_map[object_id]}
+    if len(major_branches) == 1:
+        return False
+    elif "NamedThing" in major_branches:
+        return False
+    elif "BiologicalEntity" in major_branches and major_branches.issubset(BIO_RELATED_MAJOR_BRANCHES):
+        return False
+    else:
+        return True
+
+
 def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> pd.DataFrame:
-    # Remove every edge that links two nodes from different major category branches
+    # Remove every edge that links two nodes with conflicting major branches.
     logging.info(f"Creating helper map of node ID to major branch..")
     major_branch_map = dict(zip(nodes_df.index, nodes_df.major_branch))
 
@@ -136,8 +156,6 @@ def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataF
     logging.info(f"Removing temporary conflicting edge column..")
     edges_df = edges_df.drop("is_conflicting_category_edge", axis=1)
     logging.info(f"Edges df is now: \n{edges_df}")
-
-    # TODO: This isn't entirely eliminating paths between nodes of different branches... alternate solution?
 
     return edges_df
 
