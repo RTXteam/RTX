@@ -126,7 +126,7 @@ def main():
                           convert_to_check_mark(node["id"] == cluster_id)]
                          for node in cluster_graph["nodes"]]
     cluster_nodes_df = pd.DataFrame(cluster_node_rows, columns=column_names).sort_values(by="id")
-    print(f"\n{cluster_nodes_df.to_markdown(index=False)}\n")
+    print(f"\n{cluster_nodes_df.to_markdown()}\n")
 
     # Print out the cluster edges in tabular format
     column_names = ["subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]
@@ -135,7 +135,7 @@ def main():
                           edge["primary_knowledge_source"] if edge["primary_knowledge_source"] else ""]
                          for edge in cluster_graph["edges"]]
     cluster_edges_df = pd.DataFrame(cluster_edge_rows, columns=column_names).sort_values(by="upstream_resource_id")
-    print(f"\n{cluster_edges_df.to_markdown(index=False)}\n")
+    print(f"\n{cluster_edges_df.to_markdown()}\n")
 
     # Compute the density of this cluster
     density = compute_cluster_density(cluster_graph)
