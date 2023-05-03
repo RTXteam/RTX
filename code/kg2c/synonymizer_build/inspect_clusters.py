@@ -105,6 +105,7 @@ def convert_to_check_mark(some_bool: bool) -> str:
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("node_id")
+    arg_parser.add_argument('--showall', dest='show_all', action='store_true')
     args = arg_parser.parse_args()
 
     sqlite_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
@@ -130,12 +131,25 @@ def main():
     print(f"\n{cluster_edges_df.to_markdown(index=False)}\n")
 
     # Print out the cluster nodes in tabular format
-    column_names = ["id", "category", "name", "in_SRI", "in_KG2pre", "is_cluster_rep"]
-    cluster_node_rows = [[node["id"], node["category"], node["name"],
-                          convert_to_check_mark(node["category_sri"] is not None),
-                          convert_to_check_mark(node["category_kg2pre"] is not None),
-                          convert_to_check_mark(node["id"] == cluster_id)]
-                         for node in cluster_graph["nodes"]]
+    if args.show_all:
+        column_names = ["id", "category", "name",
+                        "in_SRI", "category_sri", "name_sri",
+                        "in_KG2pre", "category_kg2pre", "name_kg2pre",
+                        "is_cluster_rep"]
+        cluster_node_rows = [[node["id"], node["category"], node["name"],
+                              convert_to_check_mark(node["category_sri"] is not None),
+                              node["category_sri"], node["name_sri"],
+                              convert_to_check_mark(node["category_kg2pre"] is not None),
+                              node["category_kg2pre"], node["name_kg2pre"],
+                              convert_to_check_mark(node["id"] == cluster_id)]
+                             for node in cluster_graph["nodes"]]
+    else:
+        column_names = ["id", "category", "name", "in_SRI", "in_KG2pre", "is_cluster_rep"]
+        cluster_node_rows = [[node["id"], node["category"], node["name"],
+                              convert_to_check_mark(node["category_sri"] is not None),
+                              convert_to_check_mark(node["category_kg2pre"] is not None),
+                              convert_to_check_mark(node["id"] == cluster_id)]
+                             for node in cluster_graph["nodes"]]
     cluster_nodes_df = pd.DataFrame(cluster_node_rows, columns=column_names).sort_values(by="id")
     cluster_id_str = f" ({cluster_id})" if args.node_id != cluster_id else ""
     print(f"\nCluster for {args.node_id}{cluster_id_str} has {cluster_nodes_df.shape[0]} nodes:")
