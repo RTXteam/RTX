@@ -186,9 +186,10 @@ def get_most_common_neighbor_label(node_id: str, adj_list_weighted: dict, label_
         summed_label_weights = defaultdict(float)
         for neighbor_id, weight in weighted_neighbors.items():
             neighbor_label = label_map[neighbor_id]
-            summed_label_weights[neighbor_label] += weight
-        # TODO: How does this handle ties? Supposed to break ties in random fashion...
-        most_common_label = max(summed_label_weights, key=summed_label_weights.get)
+            if neighbor_label == neighbor_label:  # Means it's not NaN
+                summed_label_weights[neighbor_label] += weight
+            # TODO: How does this handle ties? Supposed to break ties in random fashion...
+        most_common_label = max(summed_label_weights, key=summed_label_weights.get) if summed_label_weights else np.NaN
         if update_label_map:
             label_map[node_id] = most_common_label  # Important to update label_map itself...
         return most_common_label
@@ -246,23 +247,36 @@ def cluster_match_graph(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
 
     logging.info(f"Determining which nodes need labeling..")
     # Note: A NaN value is not equal to itself
-    nodes_missing_cluster_id_df = nodes_df[nodes_df.cluster_id != nodes_df.cluster_id]
-    logging.info(f"Nodes missing cluster ID are: \n{nodes_missing_cluster_id_df}")
-
-    logging.info(f"Assigning initial cluster ID labels (to nodes that don't already have one)..")
-    nodes_df.fillna(value={"cluster_id": nodes_df.index.to_series()}, inplace=True)
-    logging.info(f"Nodes DF after assigning initial cluster IDs is: \n{nodes_df}")
-
-    logging.info(f"Zipping node IDs with cluster IDs and converting to dictionary format..")
-    label_map_initial = dict(zip(nodes_df.index, nodes_df.cluster_id))
+    non_sri_nodes_df = nodes_df[nodes_df.cluster_id != nodes_df.cluster_id]
+    non_sri_node_ids = list(non_sri_nodes_df.index.values)
+    logging.info(f"Nodes missing cluster ID (non-SRI nodes) are: \n{non_sri_nodes_df}")
 
     adj_list_weighted = get_weighted_adjacency_dict(edges_df)
 
-    label_map = do_label_propagation(label_map_initial, adj_list_weighted,
-                                     nodes_to_label=list(nodes_missing_cluster_id_df.index.values))
+    # First do label propagation without assigning node IDs as initial labels (this allows SRI cluster IDs
+    # to be propagated as far as possible, rather than a KG2 node ID becoming a cluster ID and dominating, thus
+    # preventing a small SRI cluster from being merged with the larger KG2 cluster
+    logging.info(f"Starting run 1 of label propagation (using NaN as default starting labels)..")
+    logging.info(f"Zipping node IDs with cluster IDs and converting to dictionary format..")
+    label_map_initial_1 = dict(zip(nodes_df.index, nodes_df.cluster_id))
+    label_map_1 = do_label_propagation(label_map_initial_1, adj_list_weighted,
+                                       nodes_to_label=non_sri_node_ids)
+    logging.info(f"Updating the nodes DataFrame with the cluster IDs determined by first label propagation run..")
+    nodes_df.cluster_id = nodes_df.index.map(label_map_1)
 
-    logging.info(f"Updating the nodes DataFrame with the final cluster IDs..")
-    nodes_df.cluster_id = nodes_df.index.map(label_map)
+    # Then do another run of label propagation where we use node IDs as initial labels (this allows nodes that are only
+    # weakly clustered in an SRI cluster to be won over by a dominating KG2 cluster), and also to allow clustering of
+    # nodes that are not connected at all to SRI nodes
+    logging.info(f"Starting run 2 of label propagation (using node IDs as default starting labels)..")
+    logging.info(f"Assigning node IDs as cluster labels for nodes that don't yet have one..")
+    nodes_df.fillna(value={"cluster_id": nodes_df.index.to_series()}, inplace=True)
+    logging.info(f"Nodes DataFrame after assigning initial cluster IDs is: \n{nodes_df}")
+    logging.info(f"Zipping node IDs with cluster IDs and converting to dictionary format..")
+    label_map_initial_2 = dict(zip(nodes_df.index, nodes_df.cluster_id))
+    label_map_2 = do_label_propagation(label_map_initial_2, adj_list_weighted,
+                                       nodes_to_label=non_sri_node_ids)
+    logging.info(f"Updating the nodes DataFrame with the cluster IDs determined by first label propagation run..")
+    nodes_df.cluster_id = nodes_df.index.map(label_map_2)
 
     logging.info(f"The final nodes DataFrame is: \n{nodes_df}")
 
