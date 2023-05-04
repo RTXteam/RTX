@@ -37,7 +37,6 @@ class NodeSynonymizer:
         curies_set = self._convert_to_set_format(curies)
         names_set = self._convert_to_set_format(names)
         results_dict = dict()
-        results_dict_names = dict()
 
         if curies_set:
             # Query the synonymizer sqlite database for these identifiers
@@ -64,13 +63,7 @@ class NodeSynonymizer:
             matching_rows = self._execute_sql_query(sql_query)
 
             # For each input name, pick the cluster that nodes with that exact name most often belong to
-            names_to_cluster_counts = defaultdict(lambda: defaultdict(int))
-            for row in matching_rows:
-                name = row[1]
-                cluster_id = row[2]
-                names_to_cluster_counts[name][cluster_id] += 1
-            names_to_best_cluster_id = {name: max(cluster_counts, key=cluster_counts.get)
-                                        for name, cluster_counts in names_to_cluster_counts.items()}
+            names_to_best_cluster_id = self._count_clusters_per_name(matching_rows, name_index=1, cluster_id_index=2)
 
             # Transform the results into the proper response format
             node_ids_to_rows = {row[0]: row for row in matching_rows}
@@ -79,8 +72,8 @@ class NodeSynonymizer:
                                                                          preferred_name=node_ids_to_rows[cluster_id][3])
                                   for name, cluster_id in names_to_best_cluster_id.items()}
 
-        # Merge our results for input curies and input names
-        results_dict.update(results_dict_names)
+            # Merge these results with any results for input curies
+            results_dict.update(results_dict_names)
 
         # Tack on all categories, if asked for (infrequent enough that it's ok to have an extra query for this)
         if return_all_categories:
@@ -111,38 +104,67 @@ class NodeSynonymizer:
 
         return results_dict
 
-    def get_equivalent_nodes(self, curies: Optional[Union[str, Set[str], List[str]]],
-                             include_unrecognized_curies: bool = True) -> dict:
+    def get_equivalent_nodes(self, curies: Optional[Union[str, Set[str], List[str]]] = None,
+                             names: Optional[Union[str, Set[str], List[str]]] = None,
+                             include_unrecognized_entities: bool = True) -> dict:
 
-        # Convert any input curies to Set format
-        curies = self._convert_to_set_format(curies)
+        # Convert any input values to Set format
+        curies_set = self._convert_to_set_format(curies)
+        names_set = self._convert_to_set_format(names)
+        results_dict = dict()
 
-        # Query the synonymizer sqlite database for these identifiers
-        sql_query = f"""
-                SELECT N.id, C.member_ids
-                FROM nodes as N
-                INNER JOIN clusters as C on C.cluster_id == N.cluster_id
-                WHERE N.id in ('{self._convert_to_str_format(curies)}')"""
-        matching_rows = self._execute_sql_query(sql_query)
+        if curies_set:
+            # Query the synonymizer sqlite database for these identifiers
+            sql_query = f"""
+                    SELECT N.id, C.member_ids
+                    FROM nodes as N
+                    INNER JOIN clusters as C on C.cluster_id == N.cluster_id
+                    WHERE N.id in ('{self._convert_to_str_format(curies_set)}')"""
+            matching_rows = self._execute_sql_query(sql_query)
 
-        # Transform the results into the proper response format
-        results_dict = {row[0]: set(ast.literal_eval(row[1])) for row in matching_rows}
+            # Transform the results into the proper response format
+            results_dict = {row[0]: set(ast.literal_eval(row[1])) for row in matching_rows}
 
-        if include_unrecognized_curies:
+        if names_set:
+            # Query the synonymizer sqlite database for these names
+            sql_query = f"""
+                    SELECT N.id, N.name, C.cluster_id, C.member_ids
+                    FROM nodes as N
+                    INNER JOIN clusters as C on C.cluster_id == N.cluster_id
+                    WHERE N.name in ('{self._convert_to_str_format(names_set)}')"""
+            matching_rows = self._execute_sql_query(sql_query)
+
+            # For each input name, pick the cluster that nodes with that exact name most often belong to
+            names_to_best_cluster_id = self._count_clusters_per_name(matching_rows, name_index=1, cluster_id_index=2)
+
+            # Transform the results into the proper response format
+            node_ids_to_rows = {row[0]: row for row in matching_rows}
+            results_dict_names = {name: set(ast.literal_eval(node_ids_to_rows[cluster_id][3]))
+                                  for name, cluster_id in names_to_best_cluster_id.items()}
+
+            # Merge these results with any results for input curies
+            results_dict.update(results_dict_names)
+
+        if include_unrecognized_entities:
             # Add None values for any unrecognized input curies
-            unrecognized_curies = curies.difference(results_dict)
+            unrecognized_curies = (curies_set.union(names_set)).difference(results_dict)
             for unrecognized_curie in unrecognized_curies:
                 results_dict[unrecognized_curie] = None
 
         return results_dict
 
-    def get_normalizer_results(self, curies: Optional[Union[str, Set[str], List[str]]]) -> dict:
+    def get_normalizer_results(self, entities: Optional[Union[str, Set[str], List[str]]]) -> dict:
 
         # Convert any input curies to Set format
-        curies = self._convert_to_set_format(curies)
+        entities_set = self._convert_to_set_format(entities)
 
         # First get all equivalent IDs for each input curie
-        equivalent_curies_dict = self.get_equivalent_nodes(curies, include_unrecognized_curies=False)
+        equivalent_curies_dict = self.get_equivalent_nodes(curies=entities_set, include_unrecognized_entities=False)
+        unrecognized_entities = entities_set.difference(equivalent_curies_dict)
+        # If we weren't successful at looking up some entities as curies, try looking them up as names
+        if unrecognized_entities:
+            equivalent_curies_dict_names = self.get_equivalent_nodes(names=unrecognized_entities, include_unrecognized_entities=False)
+            equivalent_curies_dict.update(equivalent_curies_dict_names)
 
         # Then get info for all of those equivalent nodes
         all_node_ids = set().union(*equivalent_curies_dict.values())
@@ -162,30 +184,31 @@ class NodeSynonymizer:
                                "name_kg2pre": row[7],
                                "category_kg2pre": self._add_biolink_prefix(row[8]),
                                "cluster_id": row[1]} for row in matching_rows}
+        print(equivalent_curies_dict)
 
         # Transform the results into the proper response format
         results_dict = dict()
-        for input_curie, equivalent_curies in equivalent_curies_dict.items():
-            cluster_id = nodes_dict[input_curie]["cluster_id"]
+        for input_entity, equivalent_curies in equivalent_curies_dict.items():
+            cluster_id = nodes_dict[next(iter(equivalent_curies))]["cluster_id"]  # All should have the same cluster ID
             cluster_rep = nodes_dict[cluster_id]
-            results_dict[input_curie] = {"id": {"identifier": cluster_id,
-                                                "name": cluster_rep["label"],
-                                                "category": cluster_rep["category"],
-                                                "SRI_normalizer_name": cluster_rep["name_sri"],
-                                                "SRI_normalizer_category": cluster_rep["category_sri"],
-                                                "SRI_normalizer_curie": cluster_id if cluster_rep["category_sri"] else None},
-                                         "categories": defaultdict(int),
-                                         "nodes": [nodes_dict[equivalent_curie] for equivalent_curie in equivalent_curies]}
+            results_dict[input_entity] = {"id": {"identifier": cluster_id,
+                                                 "name": cluster_rep["label"],
+                                                 "category": cluster_rep["category"],
+                                                 "SRI_normalizer_name": cluster_rep["name_sri"],
+                                                 "SRI_normalizer_category": cluster_rep["category_sri"],
+                                                 "SRI_normalizer_curie": cluster_id if cluster_rep["category_sri"] else None},
+                                          "categories": defaultdict(int),
+                                          "nodes": [nodes_dict[equivalent_curie] for equivalent_curie in equivalent_curies]}
 
         # Do some post-processing (tally up category counts and remove no-longer-needed 'cluster_id' property)
-        for input_curie, concept_info_dict in results_dict.items():
+        for concept_info_dict in results_dict.values():
             for equivalent_node in concept_info_dict["nodes"]:
                 concept_info_dict["categories"][equivalent_node["category"]] += 1
                 if "cluster_id" in equivalent_node:
                     del equivalent_node["cluster_id"]
 
         # Add None values for any unrecognized input curies
-        unrecognized_curies = curies.difference(results_dict)
+        unrecognized_curies = entities_set.difference(results_dict)
         for unrecognized_curie in unrecognized_curies:
             results_dict[unrecognized_curie] = None
 
@@ -220,6 +243,17 @@ class NodeSynonymizer:
         else:
             return category
 
+    @staticmethod
+    def _count_clusters_per_name(rows: list, name_index: int, cluster_id_index: int) -> dict:
+        names_to_cluster_counts = defaultdict(lambda: defaultdict(int))
+        for row in rows:
+            name = row[name_index]
+            cluster_id = row[cluster_id_index]
+            names_to_cluster_counts[name][cluster_id] += 1
+        names_to_best_cluster_id = {name: max(cluster_counts, key=cluster_counts.get)
+                                    for name, cluster_counts in names_to_cluster_counts.items()}
+        return names_to_best_cluster_id
+
     def _create_preferred_node_dict(self, preferred_id: str, preferred_category: str, preferred_name: Optional[str]) -> dict:
         return {
             "preferred_curie": preferred_id,
@@ -243,6 +277,8 @@ def main():
     results = synonymizer.get_equivalent_nodes(test_curies)
     results = synonymizer.get_normalizer_results(test_curies)
     results = synonymizer.get_canonical_curies(names=test_names, curies=test_curies)
+    results = synonymizer.get_equivalent_nodes(names=test_names, curies=test_curies)
+    results = synonymizer.get_normalizer_results(test_curies + test_names)
     print(json.dumps(results, indent=2))
 
 
