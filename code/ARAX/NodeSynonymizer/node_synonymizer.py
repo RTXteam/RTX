@@ -1,3 +1,4 @@
+import ast
 import os
 import sqlite3
 import sys
@@ -27,18 +28,11 @@ class NodeSynonymizer:
 
     # --------------------------------------- EXTERNAL MAIN METHODS ----------------------------------------------- #
 
-    def get_canonical_curies(self,
-                             curies: Optional[Union[str, Set[str], List[str]]],
+    def get_canonical_curies(self, curies: Optional[Union[str, Set[str], List[str]]],
                              return_all_categories: bool = False) -> dict:
 
-        # Convert any input curies to set form
-        if curies:
-            if isinstance(curies, set) or isinstance(curies, list):
-                curies = set(curies)
-            elif isinstance(curies, str):
-                curies = {curies}
-            else:
-                raise ValueError(f"Input curies are not an allowable data type (list, set, or string)!")
+        # Convert any input curies to Set format
+        curies = self._convert_input_to_set_format(curies)
 
         # Query the synonymizer sqlite database for these identifiers
         sql_query = f"""
@@ -71,11 +65,34 @@ class NodeSynonymizer:
                 member_category = self._add_biolink_prefix(member_category)
                 clusters_by_category_counts[cluster_id][member_category] += 1
 
-            # Add our counts to our response
+            # Add the counts to our response
             for canonical_info in results_dict.values():
                 cluster_id = canonical_info["preferred_curie"]
                 category_counts = clusters_by_category_counts[cluster_id]
                 canonical_info["all_categories"] = dict(category_counts)
+
+        # Add None values for any unrecognized input curies
+        unrecognized_curies = curies.difference(results_dict)
+        for unrecognized_curie in unrecognized_curies:
+            results_dict[unrecognized_curie] = None
+
+        return results_dict
+
+    def get_equivalent_nodes(self, curies: Optional[Union[str, Set[str], List[str]]]) -> dict:
+
+        # Convert any input curies to Set format
+        curies = self._convert_input_to_set_format(curies)
+
+        # Query the synonymizer sqlite database for these identifiers
+        sql_query = f"""
+                SELECT N.id, C.member_ids
+                FROM nodes as N
+                INNER JOIN clusters as C on C.cluster_id == N.cluster_id
+                WHERE N.id in ('{self._convert_to_str_format(curies)}')"""
+        matching_rows = self._execute_sql_query(sql_query)
+
+        # Transform the results into the proper response format
+        results_dict = {row[0]: set(ast.literal_eval(row[1])) for row in matching_rows}
 
         # Add None values for any unrecognized input curies
         unrecognized_curies = curies.difference(results_dict)
@@ -93,6 +110,18 @@ class NodeSynonymizer:
         return list_str
 
     @staticmethod
+    def _convert_input_to_set_format(input_values: Optional[Union[str, Set[str], List[str]]]) -> set:
+        if input_values:
+            if isinstance(input_values, set) or isinstance(input_values, list):
+                return set(input_values)
+            elif isinstance(input_values, str):
+                return {input_values}
+            else:
+                raise ValueError(f"Input is not an allowable data type (list, set, or string)!")
+        else:
+            return set()
+
+    @staticmethod
     def _add_biolink_prefix(category: str) -> str:
         return f"biolink:{category}"
 
@@ -108,6 +137,7 @@ def main():
     test_curies = ["DOID:14330", "CHEMBL.COMPOUND:CHEMBL112", "UNICORN"]
     synonymizer = NodeSynonymizer()
     results = synonymizer.get_canonical_curies(test_curies)
+    results = synonymizer.get_equivalent_nodes(test_curies)
     print(results)
 
 
