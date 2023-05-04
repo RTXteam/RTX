@@ -1,9 +1,10 @@
 import ast
+import json
 import os
 import sqlite3
 import sys
 from collections import defaultdict
-from typing import Optional, Union, Sequence, List, Set
+from typing import Optional, Union, List, Set
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -32,7 +33,7 @@ class NodeSynonymizer:
                              return_all_categories: bool = False) -> dict:
 
         # Convert any input curies to Set format
-        curies = self._convert_input_to_set_format(curies)
+        curies = self._convert_to_set_format(curies)
 
         # Query the synonymizer sqlite database for these identifiers
         sql_query = f"""
@@ -78,10 +79,11 @@ class NodeSynonymizer:
 
         return results_dict
 
-    def get_equivalent_nodes(self, curies: Optional[Union[str, Set[str], List[str]]]) -> dict:
+    def get_equivalent_nodes(self, curies: Optional[Union[str, Set[str], List[str]]],
+                             include_unrecognized_curies: bool = True) -> dict:
 
         # Convert any input curies to Set format
-        curies = self._convert_input_to_set_format(curies)
+        curies = self._convert_to_set_format(curies)
 
         # Query the synonymizer sqlite database for these identifiers
         sql_query = f"""
@@ -93,6 +95,62 @@ class NodeSynonymizer:
 
         # Transform the results into the proper response format
         results_dict = {row[0]: set(ast.literal_eval(row[1])) for row in matching_rows}
+
+        if include_unrecognized_curies:
+            # Add None values for any unrecognized input curies
+            unrecognized_curies = curies.difference(results_dict)
+            for unrecognized_curie in unrecognized_curies:
+                results_dict[unrecognized_curie] = None
+
+        return results_dict
+
+    def get_normalizer_results(self, curies: Optional[Union[str, Set[str], List[str]]]) -> dict:
+
+        # Convert any input curies to Set format
+        curies = self._convert_to_set_format(curies)
+
+        # First get all equivalent IDs for each input curie
+        equivalent_curies_dict = self.get_equivalent_nodes(curies, include_unrecognized_curies=False)
+
+        # Then get info for all of those equivalent nodes
+        all_node_ids = set().union(*equivalent_curies_dict.values())
+        sql_query = f"""
+                SELECT N.id, N.cluster_id, N.name, N.category, N.major_branch, N.name_sri, N.category_sri, N.name_kg2pre, N.category_kg2pre
+                FROM nodes as N
+                WHERE N.id in ('{self._convert_to_str_format(all_node_ids)}')"""
+        matching_rows = self._execute_sql_query(sql_query)
+        nodes_dict = {row[0]: {"identifier": row[0],
+                               "category": self._add_biolink_prefix(row[3]),
+                               "label": row[2],
+                               "major_branch": row[4],
+                               "in_sri": row[6] is not None,
+                               "name_sri": row[5],
+                               "category_sri": self._add_biolink_prefix(row[6]),
+                               "in_kg2pre": row[8] is not None,
+                               "name_kg2pre": row[7],
+                               "category_kg2pre": self._add_biolink_prefix(row[8]),
+                               "cluster_id": row[1]} for row in matching_rows}
+
+        # Transform the results into the proper response format
+        results_dict = dict()
+        for input_curie, equivalent_curies in equivalent_curies_dict.items():
+            cluster_id = nodes_dict[input_curie]["cluster_id"]
+            cluster_rep = nodes_dict[cluster_id]
+            results_dict[input_curie] = {"id": {"identifier": cluster_id,
+                                                "name": cluster_rep["label"],
+                                                "category": cluster_rep["category"],
+                                                "SRI_normalizer_name": cluster_rep["name_sri"],
+                                                "SRI_normalizer_category": cluster_rep["category_sri"],
+                                                "SRI_normalizer_curie": cluster_id if cluster_rep["category_sri"] else None},
+                                         "categories": defaultdict(int),
+                                         "nodes": [nodes_dict[equivalent_curie] for equivalent_curie in equivalent_curies]}
+
+        # Do some post-processing (tally up category counts and remove no-longer-needed 'cluster_id' property
+        for input_curie, concept_info_dict in results_dict.items():
+            for equivalent_node in concept_info_dict["nodes"]:
+                concept_info_dict["categories"][equivalent_node["category"]] += 1
+                if "cluster_id" in equivalent_node:
+                    del equivalent_node["cluster_id"]
 
         # Add None values for any unrecognized input curies
         unrecognized_curies = curies.difference(results_dict)
@@ -110,20 +168,23 @@ class NodeSynonymizer:
         return list_str
 
     @staticmethod
-    def _convert_input_to_set_format(input_values: Optional[Union[str, Set[str], List[str]]]) -> set:
-        if input_values:
-            if isinstance(input_values, set) or isinstance(input_values, list):
-                return set(input_values)
-            elif isinstance(input_values, str):
-                return {input_values}
+    def _convert_to_set_format(some_value: Optional[Union[str, Set[str], List[str]]]) -> set:
+        if some_value:
+            if isinstance(some_value, set) or isinstance(some_value, list):
+                return set(some_value)
+            elif isinstance(some_value, str):
+                return {some_value}
             else:
                 raise ValueError(f"Input is not an allowable data type (list, set, or string)!")
         else:
             return set()
 
     @staticmethod
-    def _add_biolink_prefix(category: str) -> str:
-        return f"biolink:{category}"
+    def _add_biolink_prefix(category: Optional[str]) -> Optional[str]:
+        if category:
+            return f"biolink:{category}"
+        else:
+            return category
 
     def _execute_sql_query(self, sql_query: str) -> list:
         cursor = self.db_connection.cursor()
@@ -134,11 +195,12 @@ class NodeSynonymizer:
 
 
 def main():
-    test_curies = ["DOID:14330", "CHEMBL.COMPOUND:CHEMBL112", "UNICORN"]
+    test_curies = ["DOID:14330", "MONDO:0005180", "CHEMBL.COMPOUND:CHEMBL112", "UNICORN"]
     synonymizer = NodeSynonymizer()
     results = synonymizer.get_canonical_curies(test_curies)
     results = synonymizer.get_equivalent_nodes(test_curies)
-    print(results)
+    results = synonymizer.get_normalizer_results(test_curies)
+    print(json.dumps(results, indent=2))
 
 
 if __name__ == "__main__":
