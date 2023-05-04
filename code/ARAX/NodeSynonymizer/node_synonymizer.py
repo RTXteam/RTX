@@ -75,8 +75,8 @@ class NodeSynonymizer:
             # Transform the results into the proper response format
             node_ids_to_rows = {row[0]: row for row in matching_rows}
             results_dict_names = {name: self._create_preferred_node_dict(preferred_id=cluster_id,
-                                                                         preferred_category=node_ids_to_rows[cluster_id][3],
-                                                                         preferred_name=node_ids_to_rows[cluster_id][4])
+                                                                         preferred_category=node_ids_to_rows[cluster_id][4],
+                                                                         preferred_name=node_ids_to_rows[cluster_id][3])
                                   for name, cluster_id in names_to_best_cluster_id.items()}
 
         # Merge our results for input curies and input names
@@ -220,12 +220,11 @@ class NodeSynonymizer:
         else:
             return category
 
-    @staticmethod
-    def _create_preferred_node_dict(preferred_id: str, preferred_category: str, preferred_name: Optional[str]) -> dict:
+    def _create_preferred_node_dict(self, preferred_id: str, preferred_category: str, preferred_name: Optional[str]) -> dict:
         return {
             "preferred_curie": preferred_id,
             "preferred_name": preferred_name,
-            "preferred_category": preferred_category
+            "preferred_category": self._add_biolink_prefix(preferred_category)
         }
 
     def _execute_sql_query(self, sql_query: str) -> list:
