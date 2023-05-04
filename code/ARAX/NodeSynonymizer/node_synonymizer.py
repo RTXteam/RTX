@@ -29,28 +29,60 @@ class NodeSynonymizer:
 
     # --------------------------------------- EXTERNAL MAIN METHODS ----------------------------------------------- #
 
-    def get_canonical_curies(self, curies: Optional[Union[str, Set[str], List[str]]],
+    def get_canonical_curies(self, curies: Optional[Union[str, Set[str], List[str]]] = None,
+                             names: Optional[Union[str, Set[str], List[str]]] = None,
                              return_all_categories: bool = False) -> dict:
 
-        # Convert any input curies to Set format
-        curies = self._convert_to_set_format(curies)
+        # Convert any input values to Set format
+        curies_set = self._convert_to_set_format(curies)
+        names_set = self._convert_to_set_format(names)
+        results_dict = dict()
+        results_dict_names = dict()
 
-        # Query the synonymizer sqlite database for these identifiers
-        sql_query = f"""
-                SELECT N.id, N.cluster_id, C.name, C.category
-                FROM nodes as N
-                INNER JOIN clusters as C on C.cluster_id == N.cluster_id
-                WHERE N.id in ('{self._convert_to_str_format(curies)}')"""
-        matching_rows = self._execute_sql_query(sql_query)
+        if curies_set:
+            # Query the synonymizer sqlite database for these identifiers
+            sql_query = f"""
+                    SELECT N.id, N.cluster_id, C.name, C.category
+                    FROM nodes as N
+                    INNER JOIN clusters as C on C.cluster_id == N.cluster_id
+                    WHERE N.id in ('{self._convert_to_str_format(curies_set)}')"""
+            matching_rows = self._execute_sql_query(sql_query)
 
-        # Transform the results into the proper response format
-        results_dict = {row[0]: {
-            "preferred_curie": row[1],
-            "preferred_name": row[2],
-            "preferred_category": row[3]
-        } for row in matching_rows}
+            # Transform the results into the proper response format
+            results_dict = {row[0]: self._create_preferred_node_dict(preferred_id=row[1],
+                                                                     preferred_category=row[3],
+                                                                     preferred_name=row[2])
+                            for row in matching_rows}
 
-        # Grab all categories if that was asked for (infrequent enough that it's ok to have an extra query for this)
+        if names_set:
+            # Query the synonymizer sqlite database for these names
+            sql_query = f"""
+                    SELECT N.id, N.name, N.cluster_id, C.name, C.category
+                    FROM nodes as N
+                    INNER JOIN clusters as C on C.cluster_id == N.cluster_id
+                    WHERE N.name in ('{self._convert_to_str_format(names_set)}')"""
+            matching_rows = self._execute_sql_query(sql_query)
+
+            # For each input name, pick the cluster that nodes with that exact name most often belong to
+            names_to_cluster_counts = defaultdict(lambda: defaultdict(int))
+            for row in matching_rows:
+                name = row[1]
+                cluster_id = row[2]
+                names_to_cluster_counts[name][cluster_id] += 1
+            names_to_best_cluster_id = {name: max(cluster_counts, key=cluster_counts.get)
+                                        for name, cluster_counts in names_to_cluster_counts.items()}
+
+            # Transform the results into the proper response format
+            node_ids_to_rows = {row[0]: row for row in matching_rows}
+            results_dict_names = {name: self._create_preferred_node_dict(preferred_id=cluster_id,
+                                                                         preferred_category=node_ids_to_rows[cluster_id][3],
+                                                                         preferred_name=node_ids_to_rows[cluster_id][4])
+                                  for name, cluster_id in names_to_best_cluster_id.items()}
+
+        # Merge our results for input curies and input names
+        results_dict.update(results_dict_names)
+
+        # Tack on all categories, if asked for (infrequent enough that it's ok to have an extra query for this)
         if return_all_categories:
             cluster_ids = {canonical_info["preferred_curie"]
                            for canonical_info in results_dict.values()}
@@ -72,10 +104,10 @@ class NodeSynonymizer:
                 category_counts = clusters_by_category_counts[cluster_id]
                 canonical_info["all_categories"] = dict(category_counts)
 
-        # Add None values for any unrecognized input curies
-        unrecognized_curies = curies.difference(results_dict)
-        for unrecognized_curie in unrecognized_curies:
-            results_dict[unrecognized_curie] = None
+        # Add None values for any unrecognized input values
+        unrecognized_input_values = (curies_set.union(names_set)).difference(results_dict)
+        for unrecognized_value in unrecognized_input_values:
+            results_dict[unrecognized_value] = None
 
         return results_dict
 
@@ -145,7 +177,7 @@ class NodeSynonymizer:
                                          "categories": defaultdict(int),
                                          "nodes": [nodes_dict[equivalent_curie] for equivalent_curie in equivalent_curies]}
 
-        # Do some post-processing (tally up category counts and remove no-longer-needed 'cluster_id' property
+        # Do some post-processing (tally up category counts and remove no-longer-needed 'cluster_id' property)
         for input_curie, concept_info_dict in results_dict.items():
             for equivalent_node in concept_info_dict["nodes"]:
                 concept_info_dict["categories"][equivalent_node["category"]] += 1
@@ -170,7 +202,9 @@ class NodeSynonymizer:
     @staticmethod
     def _convert_to_set_format(some_value: Optional[Union[str, Set[str], List[str]]]) -> set:
         if some_value:
-            if isinstance(some_value, set) or isinstance(some_value, list):
+            if isinstance(some_value, set):
+                return some_value
+            elif isinstance(some_value, list):
                 return set(some_value)
             elif isinstance(some_value, str):
                 return {some_value}
@@ -186,6 +220,14 @@ class NodeSynonymizer:
         else:
             return category
 
+    @staticmethod
+    def _create_preferred_node_dict(preferred_id: str, preferred_category: str, preferred_name: Optional[str]) -> dict:
+        return {
+            "preferred_curie": preferred_id,
+            "preferred_name": preferred_name,
+            "preferred_category": preferred_category
+        }
+
     def _execute_sql_query(self, sql_query: str) -> list:
         cursor = self.db_connection.cursor()
         cursor.execute(sql_query)
@@ -196,10 +238,12 @@ class NodeSynonymizer:
 
 def main():
     test_curies = ["DOID:14330", "MONDO:0005180", "CHEMBL.COMPOUND:CHEMBL112", "UNICORN"]
+    test_names = ["Acetaminophen", "Unicorn", "ACETAMINOPHEN", "Parkinson disease"]
     synonymizer = NodeSynonymizer()
     results = synonymizer.get_canonical_curies(test_curies)
     results = synonymizer.get_equivalent_nodes(test_curies)
     results = synonymizer.get_normalizer_results(test_curies)
+    results = synonymizer.get_canonical_curies(names=test_names, curies=test_curies)
     print(json.dumps(results, indent=2))
 
 
