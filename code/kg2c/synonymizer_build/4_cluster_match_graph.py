@@ -103,7 +103,7 @@ def assign_major_category_branches(nodes_df: pd.DataFrame):
     logging.info(f"Nodes DataFrame after assigning major branches is: \n{nodes_df}")
 
 
-def is_conflicting_category_edge_harsh(subject_id: str, object_id: str, major_branch_map: Dict[str, any]) -> bool:
+def is_conflicting_category_edge_harsh(subject_id: str, object_id: str, upstream_resource_id: str, major_branch_map: Dict[str, any]) -> bool:
     """
     This is a harsh rule where nodes have to belong to exactly the same 'major branch'. This means
     that NamedThing nodes can only connect to NamedThing nodes, even though it could be valid for a NamedThing
@@ -111,10 +111,12 @@ def is_conflicting_category_edge_harsh(subject_id: str, object_id: str, major_br
     of NamedThing). But it's difficult to fully eliminate paths between NamedThing nodes in a way that makes sense..
     so we'll go with this strict definition, at least to start.
     """
-    subject_major_branch = major_branch_map[subject_id]
-    object_major_branch = major_branch_map[object_id]
-
-    return subject_major_branch != object_major_branch
+    if upstream_resource_id == "infores:sri-node-normalizer":
+        # We don't get rid of conflicting category edges from the SRI; they can't lead to cluster merge errors, and
+        #   we want to see them in the cluster graphs for debugging purposes
+        return False
+    else:
+        return major_branch_map[subject_id] != major_branch_map[object_id]
 
 
 def is_conflicting_category_edge_lenient(subject_id: str, object_id: str, major_branch_map: Dict[str, any]) -> bool:
@@ -143,9 +145,11 @@ def remove_conflicting_category_edges(nodes_df: pd.DataFrame, edges_df: pd.DataF
 
     logging.info(f"Determining which edges have conflicting categories..")
     is_conflicting_category_edge_vectorized = np.vectorize(is_conflicting_category_edge_harsh, otypes=[bool])
-    edges_df["is_conflicting_category_edge"] = is_conflicting_category_edge_vectorized(edges_df.subject, edges_df.object, major_branch_map)
+    edges_df["is_conflicting_category_edge"] = is_conflicting_category_edge_vectorized(edges_df.subject, edges_df.object, edges_df.upstream_resource_id, major_branch_map)
     bad_edges_df = edges_df[edges_df.is_conflicting_category_edge]
     logging.info(f"Conflicting edges df is: \n{bad_edges_df}")
+    bad_by_source_df = bad_edges_df.groupby(by="upstream_resource_id").size().to_frame("num_edges")
+    logging.info(f"Bad edge counts grouped by source are: {bad_by_source_df}")
     logging.info(f"Saving the {bad_edges_df.shape[0]:,} conflicting category edges to TSV..")
     bad_edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_conflicting_category_edges.tsv", sep="\t")
 
