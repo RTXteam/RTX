@@ -35,13 +35,11 @@ class NodeSynonymizer:
         if not pathlib.Path(self.database_path).exists():
             raise ValueError(f"Synonymizer specified in config_dbs file does not exist locally, even after "
                              f"running the database manager! It should be at: {self.database_path}")
-
-        print(f"Connecting to database {self.database_name}, located at {self.database_path}")
-        self.db_connection = sqlite3.connect(self.database_path)
+        else:
+            self.db_connection = sqlite3.connect(self.database_path)
 
     def __del__(self):
         if hasattr(self, "db_connection"):
-            print(f"Closing database connection")
             self.db_connection.close()
 
     # --------------------------------------- EXTERNAL MAIN METHODS ----------------------------------------------- #
@@ -159,10 +157,15 @@ class NodeSynonymizer:
             # For each input name, pick the cluster that nodes with that exact name most often belong to
             names_to_best_cluster_id = self._count_clusters_per_name(matching_rows, name_index=1, cluster_id_index=2)
 
-            # Transform the results into the proper response format
+            # Create some helper maps
+            cluster_ids_to_node_id = {row[2]: row[0] for row in matching_rows}  # Doesn't matter that this gives ONE node per cluster
             node_ids_to_rows = {row[0]: row for row in matching_rows}
-            results_dict_names = {name: ast.literal_eval(node_ids_to_rows[cluster_id][3])
-                                  for name, cluster_id in names_to_best_cluster_id.items()}
+            names_to_cluster_rows = {name: node_ids_to_rows[cluster_ids_to_node_id[cluster_id]]
+                                     for name, cluster_id in names_to_best_cluster_id.items()}
+
+            # Transform the results into the proper response format
+            results_dict_names = {name: ast.literal_eval(cluster_row[3])
+                                  for name, cluster_row in names_to_cluster_rows.items()}
 
             # Merge these results with any results for input curies
             results_dict.update(results_dict_names)
@@ -315,9 +318,9 @@ def main():
     results = synonymizer.get_canonical_curies(test_curies)
     results = synonymizer.get_equivalent_nodes(test_curies)
     results = synonymizer.get_normalizer_results(test_curies)
-    results = synonymizer.get_canonical_curies(names=test_names, curies=test_curies)
-    results = synonymizer.get_equivalent_nodes(names=test_names, curies=test_curies)
     results = synonymizer.get_normalizer_results(test_curies + test_names)
+    results = synonymizer.get_canonical_curies(names=test_names)
+    results = synonymizer.get_equivalent_nodes(names=test_names)
     print(json.dumps(results, indent=2))
 
 
