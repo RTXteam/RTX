@@ -21,7 +21,6 @@ class NodeSynonymizer:
     def __init__(self):
         self.rtx_config = RTXConfiguration()
         self.database_name = self.rtx_config.node_synonymizer_path.split("/")[-1]
-        self.database_name = "node_synonymizer_v1.1_KG2.8.0.sqlite"  # TODO: temporary for testing - remove later
         synonymizer_dir = os.path.dirname(os.path.abspath(__file__))
         self.database_path = f"{synonymizer_dir}/{self.database_name}"
         self.placeholder_lookup_values_str = "**LOOKUP_VALUES_GO_HERE**"
