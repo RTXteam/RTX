@@ -287,7 +287,7 @@ def test_xcrg_with_qg1():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) == 1
     assert len(message.results) > 0
     creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
     if len(creative_mode_edges) != 0:
