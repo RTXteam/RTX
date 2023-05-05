@@ -59,6 +59,8 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
     db_connection.execute("CREATE UNIQUE INDEX node_id_index on nodes (id)")
     logging.info(f"Creating index on node name...")
     db_connection.execute("CREATE INDEX node_name on nodes (name)")
+    logging.info(f"Creating index on node cluster_id...")
+    db_connection.execute("CREATE INDEX node_cluster_id on nodes (cluster_id)")
     db_connection.commit()
 
     # Save edges table
