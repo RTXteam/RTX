@@ -1,6 +1,7 @@
 import ast
 import json
 import os
+import pathlib
 import sqlite3
 import sys
 from collections import defaultdict
@@ -11,6 +12,9 @@ RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
+from ARAX_database_manager import ARAXDatabaseManager
+
 
 class NodeSynonymizer:
 
@@ -20,12 +24,25 @@ class NodeSynonymizer:
         self.database_name = "node_synonymizer_v1.1_KG2.8.0.sqlite"  # TODO: temporary for testing - remove later
         synonymizer_dir = os.path.dirname(os.path.abspath(__file__))
         self.database_path = f"{synonymizer_dir}/{self.database_name}"
+        self.placeholder_lookup_values_str = "**LOOKUP_VALUES_GO_HERE**"
+
+        # If the database doesn't seem to exist, try running the DatabaseManager
+        if not pathlib.Path(self.database_path).exists():
+            print(f"Synonymizer not present at {self.database_path}; attempting to download with database manager..")
+            db_manager = ARAXDatabaseManager()
+            db_manager.update_databases()
+
+        if not pathlib.Path(self.database_path).exists():
+            raise ValueError(f"Synonymizer specified in config_dbs file does not exist locally, even after "
+                             f"running the database manager! It should be at: {self.database_path}")
+
         print(f"Connecting to database {self.database_name}, located at {self.database_path}")
         self.db_connection = sqlite3.connect(self.database_path)
 
     def __del__(self):
-        print(f"Closing database connection")
-        self.db_connection.close()
+        if hasattr(self, "db_connection"):
+            print(f"Closing database connection")
+            self.db_connection.close()
 
     # --------------------------------------- EXTERNAL MAIN METHODS ----------------------------------------------- #
 
@@ -40,12 +57,12 @@ class NodeSynonymizer:
 
         if curies_set:
             # Query the synonymizer sqlite database for these identifiers
-            sql_query = f"""
-                    SELECT N.id, N.cluster_id, C.name, C.category
-                    FROM nodes as N
-                    INNER JOIN clusters as C on C.cluster_id == N.cluster_id
-                    WHERE N.id in ('{self._convert_to_str_format(curies_set)}')"""
-            matching_rows = self._execute_sql_query(sql_query)
+            sql_query_template = f"""
+                        SELECT N.id, N.cluster_id, C.name, C.category
+                        FROM nodes as N
+                        INNER JOIN clusters as C on C.cluster_id == N.cluster_id
+                        WHERE N.id in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, curies_set)
 
             # Transform the results into the proper response format
             results_dict = {row[0]: self._create_preferred_node_dict(preferred_id=row[1],
@@ -55,12 +72,12 @@ class NodeSynonymizer:
 
         if names_set:
             # Query the synonymizer sqlite database for these names
-            sql_query = f"""
-                    SELECT N.id, N.name, N.cluster_id, C.name, C.category
-                    FROM nodes as N
-                    INNER JOIN clusters as C on C.cluster_id == N.cluster_id
-                    WHERE N.name in ('{self._convert_to_str_format(names_set)}')"""
-            matching_rows = self._execute_sql_query(sql_query)
+            sql_query_template = f"""
+                        SELECT N.id, N.name, N.cluster_id, C.name, C.category
+                        FROM nodes as N
+                        INNER JOIN clusters as C on C.cluster_id == N.cluster_id
+                        WHERE N.name in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, names_set)
 
             # For each input name, pick the cluster that nodes with that exact name most often belong to
             names_to_best_cluster_id = self._count_clusters_per_name(matching_rows, name_index=1, cluster_id_index=2)
@@ -84,11 +101,11 @@ class NodeSynonymizer:
         if return_all_categories:
             cluster_ids = {canonical_info["preferred_curie"]
                            for canonical_info in results_dict.values()}
-            sql_query = f"""
-                    SELECT N.cluster_id, N.category
-                    FROM nodes as N
-                    WHERE N.cluster_id in ('{self._convert_to_str_format(cluster_ids)}')"""
-            matching_rows = self._execute_sql_query(sql_query)
+            sql_query_template = f"""
+                        SELECT N.cluster_id, N.category
+                        FROM nodes as N
+                        WHERE N.cluster_id in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, cluster_ids)
 
             # Count up how many members this cluster has with different categories
             clusters_by_category_counts = defaultdict(lambda: defaultdict(int))
@@ -119,25 +136,25 @@ class NodeSynonymizer:
         results_dict = dict()
 
         if curies_set:
-            # Query the synonymizer sqlite database for these identifiers
-            sql_query = f"""
-                    SELECT N.id, C.member_ids
-                    FROM nodes as N
-                    INNER JOIN clusters as C on C.cluster_id == N.cluster_id
-                    WHERE N.id in ('{self._convert_to_str_format(curies_set)}')"""
-            matching_rows = self._execute_sql_query(sql_query)
+            # Query the synonymizer sqlite database for these identifiers (in batches, if necessary)
+            sql_query_template = f"""
+                        SELECT N.id, C.member_ids
+                        FROM nodes as N
+                        INNER JOIN clusters as C on C.cluster_id == N.cluster_id
+                        WHERE N.id in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, curies_set)
 
             # Transform the results into the proper response format
             results_dict = {row[0]: ast.literal_eval(row[1]) for row in matching_rows}
 
         if names_set:
             # Query the synonymizer sqlite database for these names
-            sql_query = f"""
-                    SELECT N.id, N.name, C.cluster_id, C.member_ids
-                    FROM nodes as N
-                    INNER JOIN clusters as C on C.cluster_id == N.cluster_id
-                    WHERE N.name in ('{self._convert_to_str_format(names_set)}')"""
-            matching_rows = self._execute_sql_query(sql_query)
+            sql_query_template = f"""
+                        SELECT N.id, N.name, C.cluster_id, C.member_ids
+                        FROM nodes as N
+                        INNER JOIN clusters as C on C.cluster_id == N.cluster_id
+                        WHERE N.name in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, names_set)
 
             # For each input name, pick the cluster that nodes with that exact name most often belong to
             names_to_best_cluster_id = self._count_clusters_per_name(matching_rows, name_index=1, cluster_id_index=2)
@@ -173,11 +190,11 @@ class NodeSynonymizer:
 
         # Then get info for all of those equivalent nodes
         all_node_ids = set().union(*equivalent_curies_dict.values())
-        sql_query = f"""
-                SELECT N.id, N.cluster_id, N.name, N.category, N.major_branch, N.name_sri, N.category_sri, N.name_kg2pre, N.category_kg2pre
-                FROM nodes as N
-                WHERE N.id in ('{self._convert_to_str_format(all_node_ids)}')"""
-        matching_rows = self._execute_sql_query(sql_query)
+        sql_query_template = f"""
+                    SELECT N.id, N.cluster_id, N.name, N.category, N.major_branch, N.name_sri, N.category_sri, N.name_kg2pre, N.category_kg2pre
+                    FROM nodes as N
+                    WHERE N.id in ('{self.placeholder_lookup_values_str}')"""
+        matching_rows = self._run_sql_query_in_batches(sql_query_template, all_node_ids)
         nodes_dict = {row[0]: {"identifier": row[0],
                                "category": self._add_biolink_prefix(row[3]),
                                "label": row[2],
@@ -189,7 +206,6 @@ class NodeSynonymizer:
                                "name_kg2pre": row[7],
                                "category_kg2pre": self._add_biolink_prefix(row[8]),
                                "cluster_id": row[1]} for row in matching_rows}
-        print(equivalent_curies_dict)
 
         # Transform the results into the proper response format
         results_dict = dict()
@@ -259,12 +275,30 @@ class NodeSynonymizer:
                                     for name, cluster_counts in names_to_cluster_counts.items()}
         return names_to_best_cluster_id
 
+    @staticmethod
+    def _divide_into_chunks(some_set: Set[str], chunk_size: int) -> List[List[str]]:
+        some_list = list(some_set)
+        return [some_list[start:start + chunk_size] for start in range(0, len(some_list), chunk_size)]
+
     def _create_preferred_node_dict(self, preferred_id: str, preferred_category: str, preferred_name: Optional[str]) -> dict:
         return {
             "preferred_curie": preferred_id,
             "preferred_name": preferred_name,
             "preferred_category": self._add_biolink_prefix(preferred_category)
         }
+
+    def _run_sql_query_in_batches(self, sql_query_template: str, lookup_values: Set[str]) -> list:
+        """
+        Sqlite has a max length allowed for SQL statements, so we divide really long curie/name lists into batches.
+        """
+        lookup_values_batches = self._divide_into_chunks(lookup_values, 5000)
+        all_matching_rows = []
+        for lookup_values_batch in lookup_values_batches:
+            sql_query = sql_query_template.replace(self.placeholder_lookup_values_str,
+                                                   self._convert_to_str_format(lookup_values_batch))
+            matching_rows = self._execute_sql_query(sql_query)
+            all_matching_rows += matching_rows
+        return all_matching_rows
 
     def _execute_sql_query(self, sql_query: str) -> list:
         cursor = self.db_connection.cursor()
