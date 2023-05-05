@@ -65,11 +65,16 @@ class NodeSynonymizer:
             # For each input name, pick the cluster that nodes with that exact name most often belong to
             names_to_best_cluster_id = self._count_clusters_per_name(matching_rows, name_index=1, cluster_id_index=2)
 
-            # Transform the results into the proper response format
+            # Create some helper maps
+            cluster_ids_to_node_id = {row[2]: row[0] for row in matching_rows}  # Doesn't matter that this gives ONE node per cluster
             node_ids_to_rows = {row[0]: row for row in matching_rows}
+            names_to_cluster_rows = {name: node_ids_to_rows[cluster_ids_to_node_id[cluster_id]]
+                                     for name, cluster_id in names_to_best_cluster_id.items()}
+
+            # Transform the results into the proper response format
             results_dict_names = {name: self._create_preferred_node_dict(preferred_id=cluster_id,
-                                                                         preferred_category=node_ids_to_rows[cluster_id][4],
-                                                                         preferred_name=node_ids_to_rows[cluster_id][3])
+                                                                         preferred_category=names_to_cluster_rows[name][4],
+                                                                         preferred_name=names_to_cluster_rows[name][3])
                                   for name, cluster_id in names_to_best_cluster_id.items()}
 
             # Merge these results with any results for input curies
@@ -123,7 +128,7 @@ class NodeSynonymizer:
             matching_rows = self._execute_sql_query(sql_query)
 
             # Transform the results into the proper response format
-            results_dict = {row[0]: set(ast.literal_eval(row[1])) for row in matching_rows}
+            results_dict = {row[0]: ast.literal_eval(row[1]) for row in matching_rows}
 
         if names_set:
             # Query the synonymizer sqlite database for these names
@@ -139,7 +144,7 @@ class NodeSynonymizer:
 
             # Transform the results into the proper response format
             node_ids_to_rows = {row[0]: row for row in matching_rows}
-            results_dict_names = {name: set(ast.literal_eval(node_ids_to_rows[cluster_id][3]))
+            results_dict_names = {name: ast.literal_eval(node_ids_to_rows[cluster_id][3])
                                   for name, cluster_id in names_to_best_cluster_id.items()}
 
             # Merge these results with any results for input curies
@@ -218,7 +223,7 @@ class NodeSynonymizer:
 
     @staticmethod
     def _convert_to_str_format(list_or_set: Union[Set[str], List[str]]) -> str:
-        preprocessed_list = [item.replace("'", "''") for item in list_or_set]  # Need to escape ' characters for SQL
+        preprocessed_list = [item.replace("'", "''") for item in list_or_set if item]  # Need to escape ' characters for SQL
         list_str = "','".join(preprocessed_list)  # SQL wants ('id1', 'id2') format for string lists
         return list_str
 
