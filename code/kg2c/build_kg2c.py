@@ -61,6 +61,8 @@ def _upload_output_files_to_s3():
 
 
 def _create_kg2pre_tsv_test_files():
+    logging.info(f"Creating test versions of the KG2pre TSVs...")
+
     # Download the full KG2pre TSVs (since no test versions are available)
     kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
     logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
@@ -68,6 +70,8 @@ def _create_kg2pre_tsv_test_files():
         ["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
     logging.info(f"Unpacking {kg2pre_tarball_name}..")
     local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
+    if not pathlib.Path(local_tsv_dir_path).exists():
+        subprocess.check_call(["mkdir", local_tsv_dir_path])
     subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
 
     # Reduce the files to include only N nodes and edges
