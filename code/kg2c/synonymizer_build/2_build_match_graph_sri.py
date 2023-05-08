@@ -57,7 +57,6 @@ def get_sri_cluster_id_mappings(kg2pre_node_ids_set: Set[str]):
     # Ask the SRI NodeNormalizer for normalized info for each batch of KG2pre IDs
     logging.info(f"Beginning to send {len(kg2pre_node_id_batches)} batches to SRI NN..")
     sri_node_id_to_cluster_id_map = dict()
-    kg2pre_node_ids_remaining = kg2pre_node_ids_set
     batch_size = 1000  # This is the preferred max batch size, according to Chris Bizon in Translator slack
     batch_num = 0
     num_failed_batches = 0
