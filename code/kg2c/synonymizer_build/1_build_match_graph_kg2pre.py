@@ -3,6 +3,7 @@ import logging
 import os
 import pathlib
 import subprocess
+from typing import Set
 
 import numpy as np
 import pandas as pd
@@ -32,7 +33,7 @@ def download_kg2pre_tsvs():
     subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", KG2PRE_TSV_DIR])
 
 
-def create_match_nodes_kg2pre(kg2pre_version: str):
+def create_match_nodes_kg2pre(kg2pre_version: str) -> Set[str]:
     logging.info(f"Creating KG2pre nodes table...")
 
     # Load KG2pre data into nodes table, including only the columns relevant to us
@@ -71,9 +72,10 @@ def create_match_nodes_kg2pre(kg2pre_version: str):
 
     logging.info(f"KG2pre nodes dataframe is:\n {nodes_df}")
     nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/1_match_nodes_kg2pre.tsv", sep="\t")
+    return set(nodes_df.index)
 
 
-def create_match_edges_kg2pre():
+def create_match_edges_kg2pre(all_kg2pre_node_ids: Set[str]):
     logging.info(f"Creating KG2pre edges table...")
 
     # Load KG2pre data into edges table, including only the columns relevant to us
@@ -97,11 +99,18 @@ def create_match_edges_kg2pre():
                                        inplace=True)
 
     # Filter down to only 'match' edges from non-semmeddb sources
+    logging.info(f"Filtering down to only 'match' edges..")
     match_predicates = {"biolink:same_as", "biolink:exact_match", "biolink:close_match"}
     edges_df = edges_df_all_predicates[edges_df_all_predicates.predicate.isin(match_predicates)]
     edges_df = edges_df[edges_df.primary_knowledge_source != "infores:semmeddb"]
 
+    # Get rid of any orphan edges (generally only happens with test builds)
+    logging.info(f"Filtering out any orphan edges..")
+    edges_df = edges_df[edges_df.subject.isin(all_kg2pre_node_ids)]
+    edges_df = edges_df[edges_df.object.isin(all_kg2pre_node_ids)]
+
     # Get rid of biolink prefixes (saves space, makes for easier processing)
+    logging.info(f"Stripping biolink prefixes...")
     strip_biolink_prefix_vectorized = np.vectorize(strip_biolink_prefix)
     edges_df.predicate = strip_biolink_prefix_vectorized(edges_df.predicate)
 
@@ -121,8 +130,8 @@ def main():
         download_kg2pre_tsvs()
 
     # Transform KG2pre data into 'match graph' format
-    create_match_nodes_kg2pre(args.kg2pre_version)
-    create_match_edges_kg2pre()
+    all_kg2pre_node_ids = create_match_nodes_kg2pre(args.kg2pre_version)
+    create_match_edges_kg2pre(all_kg2pre_node_ids)
 
 
 if __name__ == "__main__":
