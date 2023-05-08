@@ -62,7 +62,7 @@ def _upload_output_files_to_s3():
 
 def _create_kg2pre_tsv_test_files():
     logging.info(f"Creating test versions of the KG2pre TSVs...")
-    subprocess.check_call(["bash", "-x", "create_kg2pre_test_tsvs.sh"])
+    subprocess.check_call(["bash", "-x", "create-kg2pre-test-tsvs.sh"])
 
 
 def main():
