@@ -58,7 +58,7 @@ PROPERTIES_LOOKUP = {
         "kg2_ids": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
         "publications_info": {"type": dict, "in_kg2pre": True, "in_kg2c_lite": False},
         "qualified_predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "qualified_object_aspect" : {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "qualified_object_aspect": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True}
     }
 }
@@ -94,8 +94,10 @@ def _merge_two_lists(list_a: List[any], list_b: List[any]) -> List[any]:
     return [item for item in unique_items if item]
 
 
-def _get_edge_key(subject: str, object: str, predicate: str, qualified_predicate: str, qualified_object_aspect: str, qualified_object_direction) -> str:
-        return f"{subject}--{predicate}--{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{object}"
+def _get_edge_key(subject: str, object: str, predicate: str, primary_knowledge_source: str,
+                  qualified_predicate: str, qualified_object_direction: str, qualified_object_aspect: str) -> str:
+    qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+    return f"{subject}--{predicate}--{qualified_portion}--{object}--{primary_knowledge_source}"
 
 
 def _get_kg2pre_headers(header_file_path: str) -> List[str]:
@@ -276,7 +278,7 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
     }
 
 
-def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_source: List[str], publications: List[str],
+def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_source: str, publications: List[str],
                  publications_info: Dict[str, any], kg2_ids: List[str],
                  qualified_predicate, qualified_object_aspect, qualified_object_direction) -> Dict[str, any]:
     edge_properties_lookup = PROPERTIES_LOOKUP["edges"]
@@ -419,7 +421,13 @@ def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     question_marks_string = ", ".join(["?" for _ in range(len(sqlite_edge_properties))])
     cols_string = ", ".join(sqlite_edge_properties)
     connection.execute(f"CREATE TABLE edges (triple TEXT, node_pair TEXT, {cols_with_types_string})")
-    edge_rows = [[_get_edge_key(edge['subject'], edge['object'], edge['predicate'], edge['qualified_predicate'], edge['qualified_object_aspect'], edge['qualified_object_direction']),
+    edge_rows = [[_get_edge_key(subject=edge['subject'],
+                                object=edge['object'],
+                                predicate=edge['predicate'],
+                                qualified_predicate=edge['qualified_predicate'],
+                                qualified_object_aspect=edge['qualified_object_aspect'],
+                                qualified_object_direction=edge['qualified_object_direction'],
+                                primary_knowledge_source=edge['primary_knowledge_source']),
                   f"{edge['subject']}--{edge['object']}"] + [_prep_for_sqlite(edge[property_name]) for property_name in sqlite_edge_properties]
 
                  for edge in canonicalized_edges_dict.values()]
@@ -524,23 +532,27 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
         canonicalized_object = curie_map.get(original_object, original_object)
         edge_publications = kg2pre_edge['publications'] if kg2pre_edge.get('publications') else []
         edge_primary_knowledge_source = kg2pre_edge['primary_knowledge_source'] if kg2pre_edge.get('primary_knowledge_source') else ""
-        edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if (kg2pre_edge.get('qualified_predicate') and kg2pre_edge.get('qualified_predicate') != "None") else ""
-        edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if (kg2pre_edge.get('qualified_object_aspect') and kg2pre_edge.get('qualified_object_aspect') != "None") else ""
-        edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if (kg2pre_edge.get('qualified_object_direction') and kg2pre_edge.get('qualified_object_direction') != "None") else ""
+        edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if kg2pre_edge.get('qualified_predicate') else ""
+        edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if kg2pre_edge.get('qualified_object_aspect') else ""
+        edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if kg2pre_edge.get('qualified_object_direction') else ""
 
         '''Patch for lack of qualified_predicate when qualified_object_direction is present'''
         predicate = kg2pre_edge['predicate']
-        if(predicate == "biolink:regulates" and edge_qualified_predicate == "" and edge_qualified_object_direction != ""):
+        if (predicate == "biolink:regulates" and edge_qualified_predicate == "" and edge_qualified_object_direction != ""):
             edge_qualified_predicate = "biolink:causes"
             edge_qualified_object_aspect = "activity_or_abundance"
 
-
         edge_publications_info = _load_publications_info(kg2pre_edge['publications_info'], kg2_edge_id) if kg2pre_edge.get('publications_info') else dict()
         if canonicalized_subject != canonicalized_object:  # Don't allow self-edges
-            canonicalized_edge_key = _get_edge_key(canonicalized_subject, canonicalized_object, kg2pre_edge['predicate'], edge_qualified_predicate, edge_qualified_object_aspect, edge_qualified_object_direction)
+            canonicalized_edge_key = _get_edge_key(subject=canonicalized_subject,
+                                                   object=canonicalized_object,
+                                                   predicate=kg2pre_edge['predicate'],
+                                                   qualified_predicate=edge_qualified_predicate,
+                                                   qualified_object_aspect=edge_qualified_object_aspect,
+                                                   qualified_object_direction=edge_qualified_object_direction,
+                                                   primary_knowledge_source=edge_primary_knowledge_source)
             if canonicalized_edge_key in canonicalized_edges:
                 canonicalized_edge = canonicalized_edges[canonicalized_edge_key]
-                canonicalized_edge['primary_knowledge_source'] = canonicalized_edge['primary_knowledge_source']
                 canonicalized_edge['publications'] = _merge_two_lists(canonicalized_edge['publications'], edge_publications)
                 canonicalized_edge['publications_info'].update(edge_publications_info)
                 canonicalized_edge['kg2_ids'].append(kg2_edge_id)
@@ -554,8 +566,7 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
                                                       kg2_ids=[kg2_edge_id],
                                                       qualified_predicate=edge_qualified_predicate,
                                                       qualified_object_aspect=edge_qualified_object_aspect,
-                                                      qualified_object_direction= edge_qualified_object_direction
-                                                      )
+                                                      qualified_object_direction=edge_qualified_object_direction)
                 canonicalized_edges[canonicalized_edge_key] = new_canonicalized_edge
     logging.info(f"Number of KG2pre edges was reduced to {len(canonicalized_edges)} "
                  f"({round((len(canonicalized_edges) / len(kg2pre_edges)) * 100)}%)")
