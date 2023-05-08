@@ -22,6 +22,7 @@ from RTXConfiguration import RTXConfiguration
 
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
 CODE_DIR = f"{KG2C_DIR}/.."
+RTX_CONFIG = RTXConfiguration()
 
 
 def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
@@ -114,10 +115,19 @@ def main():
     # Build a new node synonymizer, if we're supposed to
     if build_synonymizer and not args.test:
         logging.info("Building node synonymizer off of specified KG2..")
-        subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/build-synonymizer.sh"])
+        subprocess.check_call(["python3", f"{KG2C_DIR}/synonymizer_build/build_synonymizer.py",
+                               kg2_version, "--downloadkg2pre", "--useconfigname"])
+
+        logging.info(f"Regenerating autocomplete database..")
+        subprocess.check_call(["python3", f"{KG2C_DIR}/synonymizer_build/dump_autocomplete_node_info.py", kg2_version])
+        subprocess.check_call(["python3", f"{CODE_DIR}/autocomplete/create_load_db.py",
+                               "--input", f"{KG2C_DIR}/synonymizer_build/autocomplete_node_info.tsv",
+                               "--output" f"{KG2C_DIR}/synonymizer_build/autocomplete.sqlite"])
+
         if upload_to_arax_databases_rtx_ai:
             logging.info(f"Uploading synonymizer artifacts to arax-databases.rtx.ai:{upload_directory}")
-            subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", RTXConfiguration().db_host, upload_directory, synonymizer_name])
+            subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", RTX_CONFIG.db_host, upload_directory, synonymizer_name])
+
         logging.info("Done building synonymizer.")
 
     # Actually build KG2c
@@ -131,7 +141,7 @@ def main():
                 _upload_output_files_to_s3()
             if upload_to_arax_databases_rtx_ai:
                 logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
-                subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTXConfiguration().db_host, upload_directory])
+                subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTX_CONFIG.db_host, upload_directory])
 
         logging.info(f"DONE WITH {'TEST ' if args.test else ''}KG2c BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours")
 

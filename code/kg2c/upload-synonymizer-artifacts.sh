@@ -4,8 +4,8 @@
 
 set -e
 
-script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"  # Thanks https://stackoverflow.com/a/246128
-arax_dir=${script_dir}/../ARAX
+kg2c_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"  # Thanks https://stackoverflow.com/a/246128
+synonymizer_build_dir=${kg2c_dir}/synonymizer_build
 db_host=$1
 remote_database_dir=$2
 synonymizer_name=$3
@@ -15,13 +15,21 @@ remote_database_subdir="${remote_database_dir}/extra_files"
 ssh rtxconfig@${db_host} "mkdir -p ${remote_database_dir}"
 ssh rtxconfig@${db_host} "mkdir -p ${remote_database_subdir}"
 
-cd ${arax_dir}/NodeSynonymizer
+cd ${synonymizer_build_dir}
+
+# Upload required databases
 scp ${synonymizer_name} rtxconfig@${db_host}:${remote_database_dir}
-scp kg2_node_info.tsv rtxconfig@${db_host}:${remote_database_subdir}
-scp kg2_equivalencies.tsv rtxconfig@${db_host}:${remote_database_subdir}
-scp kg2_synonyms.json rtxconfig@${db_host}:${remote_database_subdir}
-scp Problems.tsv rtxconfig@${db_host}:${remote_database_subdir}
-scp Exceptions.txt rtxconfig@${db_host}:${remote_database_subdir}
-scp sri_node_normalizer_curie_cache.pickle rtxconfig@${db_host}:${remote_database_subdir}
-scp sri_node_normalizer_requests_cache.sqlite rtxconfig@${db_host}:${remote_database_subdir}
 scp autocomplete.sqlite rtxconfig@${db_host}:${remote_database_dir}
+
+# Upload 'extra files' (nice for debugging; not needed by running ARAX code)
+scp 3_merged_match_nodes.tsv rtxconfig@${db_host}:${remote_database_subdir}
+scp 3_merged_match_edges.tsv rtxconfig@${db_host}:${remote_database_subdir}
+scp 4_cluster_member_map.tsv rtxconfig@${db_host}:${remote_database_subdir}
+scp 5_report_category_counts.tsv rtxconfig@${db_host}:${remote_database_subdir}
+scp 5_report_cluster_sizes.tsv rtxconfig@${db_host}:${remote_database_subdir}
+scp 5_report_cluster_sizes_non_sri_nodes.tsv rtxconfig@${db_host}:${remote_database_subdir}
+scp 5_report_major_branch_counts.tsv rtxconfig@${db_host}:${remote_database_subdir}
+scp 5_report_oversized_clusters.tsv rtxconfig@${db_host}:${remote_database_subdir}
+scp 5_report_predicate_counts.tsv rtxconfig@${db_host}:${remote_database_subdir}
+scp 5_report_primary_knowledge_source_counts.tsv rtxconfig@${db_host}:${remote_database_subdir}
+scp 5_report_upstream_resource_counts.tsv rtxconfig@${db_host}:${remote_database_subdir}
