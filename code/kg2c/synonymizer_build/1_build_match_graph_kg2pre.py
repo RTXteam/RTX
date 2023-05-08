@@ -14,7 +14,7 @@ SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s: %(message)s',
                     handlers=[logging.StreamHandler()])
-PRIMARY_KNOWLEDGE_SOURCE_PROPERTY_NAME = "knowledge_source"
+PRIMARY_KNOWLEDGE_SOURCE_PROPERTY_NAME = "primary_knowledge_source"
 
 
 def strip_biolink_prefix(item: str) -> str:
