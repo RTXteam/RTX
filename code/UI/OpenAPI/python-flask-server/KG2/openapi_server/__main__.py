@@ -32,7 +32,7 @@ def receive_sigpipe(signal_number, frame):
 
 def main():
     app = connexion.App(__name__, specification_dir='./openapi/')
-    app.app.json_encoder = openapi_server.encoder.JSONEncoder
+    app.app.json_provider_class = openapi_server.encoder.JSONEncoder
     app.add_api('openapi.yaml',
                 arguments={'title': 'RTX KG2 Translator KP'},
                 pythonic_params=True)

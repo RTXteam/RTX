@@ -33,7 +33,7 @@ class AddNodePMIDS:
         self.response.debug(f"Adding node PMIDs")
         self.response.info(f"Adding pubmed ID's to nodes based on occurrence in PubMed abstracts")
         name = "pubmed_ids"
-        type = "EDAM:data_0971"
+        type = "EDAM-DATA:0971"
         value = ""
         url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
         ncbi_warning_flag = True

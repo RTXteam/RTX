@@ -4,12 +4,14 @@ import os
 import datetime
 import json
 import time
+import timeit
 import re
 from typing import Optional
 
 import yaml
 from pygit2 import Repository, discover_repository
 
+DEBUG = False
 
 class RTXConfiguration:
 
@@ -17,13 +19,37 @@ class RTXConfiguration:
 
     # ### Constructor
     def __init__(self):
-        # Determine current ARAX and TRAPI versions
+
+        t0 = timeit.default_timer()
         file_dir = os.path.dirname(os.path.abspath(__file__))
+
+        # Determine current ARAX and TRAPI versions
+        # YAML is super slow to ready, so refresh a JSON if necessary or read the JSON, which is much faster
         openapi_yaml_path = f"{file_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml"
-        with open(openapi_yaml_path) as api_file:
-            openapi_yaml = yaml.safe_load(api_file)
-        self.arax_version = openapi_yaml["info"]["version"]
-        self.trapi_version = openapi_yaml["info"]["x-trapi"]["version"]
+        openapi_json_path = f"{file_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.json"
+        if not os.path.exists(openapi_json_path) or os.path.getmtime(openapi_yaml_path) > os.path.getmtime(openapi_json_path):
+            if DEBUG:
+                t1 = timeit.default_timer()
+                print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. OpenAPI JSON file is missing or stale")
+            with open(openapi_yaml_path) as api_file:
+                openapi_configuration = yaml.safe_load(api_file)
+            if DEBUG:
+                t1 = timeit.default_timer()
+                print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Read OpenAPI YAML file")
+            with open(openapi_json_path, 'w') as api_file:
+                json.dump(openapi_configuration, api_file, default=str)
+            if DEBUG:
+                t1 = timeit.default_timer()
+                print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Created OpenAPI JSON file")
+        else:
+            with open(openapi_json_path) as api_file:
+                openapi_configuration = json.load(api_file)
+            if DEBUG:
+                t1 = timeit.default_timer()
+                print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Read OpenAPI JSON file")
+
+        self.arax_version = openapi_configuration["info"]["version"]
+        self.trapi_version = openapi_configuration["info"]["x-trapi"]["version"]
         first_two_trapi_version_nums = self.trapi_version.split(".")[:2]
         self.trapi_major_version = ".".join(first_two_trapi_version_nums)
         self.version = f"ARAX {self.arax_version}"  # Not sure exactly what this is used for; legacy?
@@ -42,6 +68,9 @@ class RTXConfiguration:
                     self.domain = line.strip()
         except:
             self.domain = '??'
+        if DEBUG:
+            t1 = timeit.default_timer()
+            print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Read {file_dir}/config.domain")
 
         # Determine the branch we're running in
         repo_path = discover_repository(file_dir)
@@ -52,6 +81,9 @@ class RTXConfiguration:
             # TODO: Figure out why Docker container doesn't like this Git branch determination method
             # Ok to skip branch name here for now since domain name can be used instead in such cases
             self.current_branch_name = None
+        if DEBUG:
+            t1 = timeit.default_timer()
+            print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Determined repo information from {repo_path}")
 
         # Determine our maturity
         maturity_override_value = self._read_override_file(f"{file_dir}/maturity_override.txt")
@@ -72,6 +104,9 @@ class RTXConfiguration:
                     self.maturity = "development"
             else:
                 self.maturity = "development"
+        if DEBUG:
+            t1 = timeit.default_timer()
+            print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Determined maturity")
 
         # Determine if this is an ITRB instance or our CICD instance
         self.is_itrb_instance = "transltr.io" in self.domain  # Hacky, but works
@@ -99,6 +134,9 @@ class RTXConfiguration:
             self.config_secrets = json.load(config_secrets_file)
         with open(config_dbs_file_path, 'r') as config_dbs_file:
             self.config_dbs = json.load(config_dbs_file)
+        if DEBUG:
+            t1 = timeit.default_timer()
+            print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Got secrets")
 
         # AG: Not sure exactly what this is doing?
         self.is_production_server = False
@@ -137,7 +175,7 @@ class RTXConfiguration:
         self.xcrg_increase_model_path = database_downloads["xcrg_increase_model"]
         self.xcrg_increase_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
         self.xcrg_decrease_model_path = database_downloads["xcrg_decrease_model"]
-        self.xcrg_decrease_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')         
+        self.xcrg_decrease_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
 
         # Set up mysql feedback
         self.mysql_feedback_host = self.config_secrets["mysql_feedback"]["host"]
@@ -155,6 +193,9 @@ class RTXConfiguration:
             self.plover_url = self.config_dbs["plover"]["test"]
         else:  # Includes staging, development
             self.plover_url = self.config_dbs["plover"]["dev"]
+        if DEBUG:
+            t1 = timeit.default_timer()
+            print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Read override file {file_dir}/plover_url_override.txt")
 
         # Set KG2 url if an override was provided
         kg2_url_override_value = self._read_override_file(f"{file_dir}/kg2_url_override.txt")
@@ -165,6 +206,10 @@ class RTXConfiguration:
 
         # Default to KG2c neo4j
         self.neo4j_kg2 = "KG2c"
+        if DEBUG:
+            t1 = timeit.default_timer()
+            print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Done creating RTXConfiguration object")
+
 
     @staticmethod
     def _read_override_file(file_path: str) -> Optional[str]:
@@ -282,6 +327,7 @@ class RTXConfiguration:
 
 
 def main():
+    t0 = timeit.default_timer()
     rtxConfig = RTXConfiguration()
     print("RTX Version string: " + rtxConfig.version)
     print("neo4j KG2 version: %s" % rtxConfig.neo4j_kg2)
@@ -298,6 +344,8 @@ def main():
     print(f"maturity: {rtxConfig.maturity}")
     print(f"current branch: {rtxConfig.current_branch_name}")
     print(f"is_itrb_instance: {rtxConfig.is_itrb_instance}")
+    t1 = timeit.default_timer()
+    print(f"Total elapsed time: {(t1-t0)*1000:.2f} ms")
 
 
 if __name__ == "__main__":

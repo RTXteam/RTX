@@ -169,10 +169,17 @@ class BiolinkHelper:
         """
         code_dir = f"{os.path.dirname(os.path.abspath(__file__))}/../.."
         openapi_yaml_path = f"{code_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml"
-        with open(openapi_yaml_path) as api_file:
-            openapi_yaml = yaml.safe_load(api_file)
-        biolink_version = openapi_yaml["info"]["x-translator"]["biolink-version"]
-        return biolink_version
+        openapi_json_path = f"{code_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.json"
+
+        # Read the cached JSON openAPI file if it's already been created by RTXConfiguration (faster than YAML)
+        openapi_json_file = pathlib.Path(openapi_json_path)
+        if openapi_json_file.exists():
+            with open(openapi_json_file) as json_file:
+                opanapi_data = json.load(json_file)
+        else:
+            with open(openapi_yaml_path) as api_file:
+                opanapi_data = yaml.safe_load(api_file)
+        return opanapi_data["info"]["x-translator"]["biolink-version"]
 
     # ------------------------------------- Internal methods -------------------------------------------------- #
 

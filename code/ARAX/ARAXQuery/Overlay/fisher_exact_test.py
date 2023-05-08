@@ -182,7 +182,7 @@ class ComputeFTEST:
             for edge_key, edge in self.message.knowledge_graph.edges.items():
 
                 ## check if this edge is a compuated edge from ARAX, if so, skip it
-                edge_attribute_list = [x.value for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'biolink:computed_value']
+                edge_attribute_list = [x.value for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'EDAM-DATA:1772']
                 if len(edge_attribute_list) == 0:
 
                     # ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')
@@ -398,13 +398,13 @@ class ComputeFTEST:
             for index, value in enumerate([(virtual_relation_label, output[adj], node, adj) for adj in object_node_dict if adj in output.keys() for node in object_node_dict[adj]], 1):
 
                 edge_attribute_list =  [
-                    EdgeAttribute(attribute_type_id="EDAM:data_1669", original_attribute_name="fisher_exact_test_p-value", value=str(value[1]), value_url=None),
-                    EdgeAttribute(original_attribute_name="virtual_relation_label", value=value[0], attribute_type_id="biolink:Unknown"),
+                    EdgeAttribute(attribute_type_id="EDAM-DATA:1669", original_attribute_name="fisher_exact_test_p-value", value=str(value[1]), value_url=None),
+                    EdgeAttribute(original_attribute_name="virtual_relation_label", value=value[0], attribute_type_id="EDAM-OPERATION:0226"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value="infores:rtx-kg2", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name="provided_by", value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="biolink:computed_value", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
+                    # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                 ]
                 edge_id = f"{value[0]}_{index}"
                 edge = Edge(predicate='biolink:has_fisher_exact_test_p_value_with', subject=value[2], object=value[3],

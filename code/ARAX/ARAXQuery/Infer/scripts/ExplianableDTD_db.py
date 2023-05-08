@@ -41,7 +41,7 @@ def get_logger(logname):
 class ExplainableDTD(object):
 
     # Constructor
-    def __init__(self, build=False, path_to_score_results=None, path_to_path_results=None, database_name=None, outdir=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])):
+    def __init__(self, path_to_score_results=None, path_to_path_results=None, database_name=None, outdir=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction']), build=False):
         """
         Args:
             path_to_score_results (str): path to a folder containing the prediction score results of all diseases

@@ -314,7 +314,7 @@ class ResponseCache:
                     if len(messages['errors']) == 0:
                         envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages }
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validatior errors', 'validation_messages': messages }
+                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
 
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
@@ -510,7 +510,7 @@ class ResponseCache:
                     if len(messages['errors']) == 0:
                         envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages }
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validatior errors', 'validation_messages': messages }
+                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages }
 
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())

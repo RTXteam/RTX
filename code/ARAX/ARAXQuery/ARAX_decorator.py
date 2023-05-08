@@ -22,7 +22,7 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 class ARAXDecorator:
 
-    def __init__(self):
+    def __init__(self, use_kg2c_sqlite: bool = True):
         self.node_attributes = {"iri": str, "description": str, "all_categories": list, "all_names": list,
                                 "equivalent_curies": list, "publications": list}
         self.edge_attributes = {"publications": list, "publications_info": dict, "kg2_ids": list,
@@ -53,6 +53,7 @@ class ARAXDecorator:
         }
         self.array_delimiter_char = "ǂ"
         self.kg2_infores_curie = "infores:rtx-kg2"  # Can't use expand_utilities.py here due to circular imports
+        self.use_kg2c_sqlite = use_kg2c_sqlite
 
     def decorate_nodes(self, response: ARAXResponse) -> ARAXResponse:
         message = response.envelope.message
@@ -63,17 +64,31 @@ class ARAXDecorator:
 
         # Extract the KG2c nodes from sqlite
         response.debug(f"Looking up corresponding KG2c nodes in sqlite")
-        node_attributes_ordered = list(self.node_attributes)
-        node_cols_str = ", ".join([f"N.{property_name}" for property_name in node_attributes_ordered])
-        node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
-        node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
-        sql_query = f"SELECT N.id, {node_cols_str} " \
-                    f"FROM nodes AS N " \
-                    f"WHERE N.id IN ('{node_keys_str}')"
-        cursor.execute(sql_query)
-        rows = cursor.fetchall()
-        cursor.close()
-        connection.close()
+        if self.use_kg2c_sqlite:
+            node_attributes_ordered = list(self.node_attributes)
+            node_cols_str = ", ".join([f"N.{property_name}" for property_name in node_attributes_ordered])
+            node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
+            node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
+            sql_query = f"SELECT N.id, {node_cols_str} " \
+                        f"FROM nodes AS N " \
+                        f"WHERE N.id IN ('{node_keys_str}')"
+            cursor.execute(sql_query)
+            rows = cursor.fetchall()
+            cursor.close()
+            connection.close()
+        else:
+            ## set use_kg2c_sqlite to False to use the old version of kg2c for xdtd model developed by Chunyu
+            node_attributes_ordered = list(self.node_attributes)
+            node_cols_str = ", ".join([property_name for property_name in node_attributes_ordered])
+            node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
+            node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
+            sql_query = f"SELECT id, {node_cols_str} " \
+                        f"FROM NODE_MAPPING_TABLE AS N " \
+                        f"WHERE N.id IN ('{node_keys_str}')"
+            cursor.execute(sql_query)
+            rows = cursor.fetchall()
+            cursor.close()
+            connection.close()
 
         # Decorate nodes in the KG with info in these KG2c nodes
         response.debug(f"Adding attributes to nodes in the KG")
@@ -145,17 +160,32 @@ class ARAXDecorator:
         # Extract the proper entries from sqlite
         connection, cursor = self._connect_to_kg2c_sqlite()
         response.debug(f"Looking up EPC edge info in KG2c sqlite")
-        edge_attributes_ordered = list(self.edge_attributes)
-        edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
-        search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
-        search_keys_str = "','".join(search_keys_set)  # SQL wants ('node1', 'node2') format for string lists
-        sql_query = f"SELECT E.{search_key_column}, {edge_cols_str} " \
-                    f"FROM edges AS E " \
-                    f"WHERE E.{search_key_column} IN ('{search_keys_str}')"
-        cursor.execute(sql_query)
-        rows = cursor.fetchall()
-        cursor.close()
-        connection.close()
+        response.debug(f"Looking up corresponding KG2c nodes in sqlite")
+        if self.use_kg2c_sqlite:
+            edge_attributes_ordered = list(self.edge_attributes)
+            edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
+            search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
+            search_keys_str = "','".join(search_keys_set)  # SQL wants ('edge1', 'edge2') format for string lists
+            sql_query = f"SELECT E.{search_key_column}, {edge_cols_str} " \
+                        f"FROM edges AS E " \
+                        f"WHERE E.{search_key_column} IN ('{search_keys_str}')"
+            cursor.execute(sql_query)
+            rows = cursor.fetchall()
+            cursor.close()
+            connection.close()
+        else:
+            edge_attributes_ordered = list(self.edge_attributes)
+            edge_cols_str = ", ".join([property_name for property_name in edge_attributes_ordered])
+            search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
+            search_keys_str = "','".join(search_keys_set)  # SQL wants ('edge1', 'edge2') format for string lists
+            sql_query = f"SELECT triple, {edge_cols_str} " \
+                        f"FROM EDGE_MAPPING_TABLE AS E " \
+                        f"WHERE E.triple IN ('{search_keys_str}')"
+            cursor.execute(sql_query)
+            rows = cursor.fetchall()
+            cursor.close()
+            connection.close()
+            
         response.debug(f"Got {len(rows)} rows back from KG2c sqlite")
 
         response.debug(f"Adding attributes to edges in the KG")
@@ -227,26 +257,37 @@ class ARAXDecorator:
             attribute.attribute_source = attribute_source
         return attribute
 
-    @staticmethod
-    def _get_kg2c_edge_key(edge: Edge) -> str:
-        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
-        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
-        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
-        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
-        # TODO: Switch order of object direction and aspect below when KG2c code is changed that way
-        edge_key = f"{edge.subject}--{edge.predicate}--{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{edge.object}"
+    def _get_kg2c_edge_key(self, edge: Edge) -> str:
+        if self.use_kg2c_sqlite:
+            qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
+            qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate", "")
+            qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier", "")
+            qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier", "")
+            # TODO: Switch order of object direction and aspect below when KG2c code is changed that way
+            edge_key = f"{edge.subject}--{edge.predicate}--{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{edge.object}"
+        else:
+            edge_key = f"{edge.subject}--{edge.predicate}--{edge.object}"
         return edge_key
 
-    @staticmethod
-    def _connect_to_kg2c_sqlite() -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
-        path_list = os.path.realpath(__file__).split(os.path.sep)
-        rtx_index = path_list.index("RTX")
-        rtxc = RTXConfiguration()
-        sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
-        sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
-        sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
-        connection = sqlite3.connect(sqlite_file_path)
-        cursor = connection.cursor()
+    def _connect_to_kg2c_sqlite(self) -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
+        if self.use_kg2c_sqlite:
+            path_list = os.path.realpath(__file__).split(os.path.sep)
+            rtx_index = path_list.index("RTX")
+            rtxc = RTXConfiguration()
+            sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+            sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
+            sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
+            connection = sqlite3.connect(sqlite_file_path)
+            cursor = connection.cursor()
+        else:
+            path_list = os.path.realpath(__file__).split(os.path.sep)
+            rtx_index = path_list.index("RTX")
+            rtxc = RTXConfiguration()
+            sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
+            sqlite_name = rtxc.explainable_dtd_db_path.split('/')[-1]
+            sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
+            connection = sqlite3.connect(sqlite_file_path)
+            cursor = connection.cursor()
         return connection, cursor
 
     def _load_property(self, property_name: str, raw_value: str) -> Union[str, List[str], Dict[str, any], None]:
@@ -255,10 +296,18 @@ class ARAXDecorator:
         if ultimate_value_type is list:
             return [item for item in raw_value.split(self.array_delimiter_char) if item]
         elif ultimate_value_type is dict:
-            return ujson.loads(raw_value)
+            if '"' not in raw_value:
+                raw_value = raw_value.replace("'", '"')
+            try:
+                return ujson.loads(raw_value)
+            except:
+                return {}
         else:
             return raw_value
 
     @staticmethod
     def _get_attribute_triple(attribute: Attribute) -> str:
         return f"{attribute.attribute_type_id}--{attribute.value}--{attribute.attribute_source}"
+
+
+

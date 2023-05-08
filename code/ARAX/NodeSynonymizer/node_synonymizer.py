@@ -13,13 +13,14 @@ import sqlite3
 import json
 import pickle
 import platform
+import datetime
 
 from sri_node_normalizer import SriNodeNormalizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper/")
 from biolink_helper import BiolinkHelper
 
 # Testing and debugging flags
-DEBUG = True
+DEBUG = False
 
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
@@ -34,6 +35,9 @@ class NodeSynonymizer:
 
     # Constructor
     def __init__(self):
+
+        if DEBUG:
+            eprint(f"{datetime.datetime.now().isoformat()}: DEBUG: Create new NodeSynonymizer object")
 
         self.databaseLocation = os.path.dirname(os.path.abspath(__file__))
         #self.databaseLocation = "G:/local/tmp"
@@ -52,7 +56,13 @@ class NodeSynonymizer:
             'rename': {},
         }
 
+        if DEBUG:
+            eprint(f"{datetime.datetime.now().isoformat()}: DEBUG: Setting up RTXConfiguration object")
+
         self.RTXConfig = RTXConfiguration()
+
+        if DEBUG:
+            eprint(f"{datetime.datetime.now().isoformat()}: DEBUG: RTXConfiguration object ready")
 
         #self.databaseName = "node_synonymizer.sqlite"
         self.databaseName = self.RTXConfig.node_synonymizer_path.split('/')[-1]
@@ -61,6 +71,7 @@ class NodeSynonymizer:
         self.logfile_handle = None
 
         self.connection = None
+
         self.connect()
 
         #### Define a priority of curie prefixes. Higher is better
@@ -95,10 +106,13 @@ class NodeSynonymizer:
             return
 
         # Create an engine object
-        if DEBUG is True:
-            print("INFO: Connecting to database")
+        if DEBUG:
+            eprint(f"{datetime.datetime.now().isoformat()}: DEBUG: Connecting to {self.databaseLocation}/{self.databaseName}")
 
         self.connection = sqlite3.connect(f"{self.databaseLocation}/{self.databaseName}")
+
+        if DEBUG:
+            eprint(f"{datetime.datetime.now().isoformat()}: DEBUG: Connected")
 
 
     # ############################################################################################

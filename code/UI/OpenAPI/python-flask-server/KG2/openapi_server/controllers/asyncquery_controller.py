@@ -16,7 +16,7 @@ def asyncquery(request_body):  # noqa: E501
     :param request_body: Query information to be submitted
     :type request_body: Dict[str, ]
 
-    :rtype: Response
+    :rtype: AsyncQueryResponse
     """
 
     # Note that we never even get here if the request_body is not schema-valid JSON

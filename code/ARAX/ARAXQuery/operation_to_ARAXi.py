@@ -10,12 +10,20 @@ def _make_expand_query(KP_name, qedge_keys):
     araxi_string = ""
     if not KP_name:
         araxi_string = "expand("
-    else:
-        araxi_string = f"expand(kp={KP_name}"
+
+    elif isinstance(KP_name, list):
+        if len(KP_name) > 0:
+            araxi_string = re.sub("['\"]", "",f"expand(kp={KP_name}")
+        else:
+            araxi_string = "expand("
+
+    elif isinstance(KP_name, str):
+        araxi_string = re.sub("['\"]", "",f"expand(kp={KP_name}")
     if not qedge_keys:
         pass
     else:
-        araxi_string += ","
+        if araxi_string != "expand(":
+            araxi_string += ","
         araxi_string += re.sub("['\"]", "", f"edge_key={qedge_keys}")
     araxi_string += ")"
     print(f"ARAXi: {araxi_string}")
@@ -123,8 +131,7 @@ class WorkflowToARAXi:
         ARAXi = []
         araxi_string = ""
         if 'allowlist' in parameters:
-            for KP_name in parameters['allowlist']:
-                ARAXi.append(_make_expand_query(KP_name, parameters.get('qedge_keys')))
+            ARAXi.append(_make_expand_query(parameters['allowlist'], parameters.get('qedge_keys')))
         else:
             araxi_string += "expand("
             if "qedge_keys" in parameters:

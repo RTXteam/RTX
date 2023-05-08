@@ -248,9 +248,23 @@ hr {
     background-color: #fff;
     max-width: 100%;
 }
+.statusfoot {
+    background-color: #ccc;
+    color: #000;
+    padding: 4px 10px;
+    max-width: 100%;
+    border-bottom: 1px solid #444;
+    border-left: 1px solid #444;
+    border-right: 1px solid #444;
+    text-align: right;
+    outline: none;
+    font-size: 12px;
+    font-weight:bold;
+}
 .statushead .qprob {
     font-size: 12px;
 }
+
 #logdiv {
     padding: 0px;
 }
@@ -422,6 +436,7 @@ hr {
 .sgen { background-color: #5f2c4b; }
 .sbte { background-color: #528ac7; }
 .smol { background-color: #006db6; }
+.schp { background-color: #8250df; }
 
 .hide {
     background-color: #bbb;

@@ -7,6 +7,7 @@ var predicates = {};
 var all_predicates = [];
 var all_nodes = {};
 var summary_table_html = '';
+var summary_score_histogram = {};
 var summary_tsv = [];
 var compare_tsv = [];
 var columnlist = [];
@@ -66,6 +67,7 @@ function main() {
     UIstate["pid"] = null;
     UIstate["viewing"] = null;
     UIstate["version"] = checkUIversion(false);
+    UIstate["scorestep"] = 0.1;
     UIstate["maxresults"] = 1000;
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
@@ -230,6 +232,7 @@ function reset_vars() {
     document.getElementById("menunumresults").innerHTML = "--";
     document.getElementById("menunumresults").className = "numold menunum";
     summary_table_html = '';
+    summary_score_histogram = {};
     summary_tsv = [];
     columnlist = [];
     all_nodes = {};
@@ -391,7 +394,7 @@ function postQuery_EXT(queryObj) {
 	statusdiv.appendChild(document.createElement("br"));
 	sesame('openmax',statusdiv);
 
-	if (!data["status"] || data["status"] == "OK") {
+	if (!data["status"] || data["status"] == "OK" || data["status"] == "Success") {
 	    input_qg = { "edges": {}, "nodes": {} };
 	    render_response(data, true);
 	}
@@ -597,7 +600,7 @@ function postQuery_ARAX(qtype,queryObj) {
 		document.getElementById("killquerybutton").remove();
 
 	    document.getElementById("progressBar").style.width = "800px";
-	    if (data.status == "OK")
+	    if (data.status == "OK" || data.status == "Success")
 		document.getElementById("progressBar").innerHTML = "Finished\u00A0\u00A0";
 	    else {
 		document.getElementById("progressBar").classList.add("barerror");
@@ -612,7 +615,7 @@ function postQuery_ARAX(qtype,queryObj) {
 	    if (data["status"] == "QueryGraphZeroNodes") {
 		qg_new(false,false);
 	    }
-	    else if (data["status"] == "OK") {
+	    else if (data["status"] == "OK" || data["status"] == "Success") {
 		input_qg = { "edges": {}, "nodes": {} };
 		render_response(data,qtype == "DSL");
 	    }
@@ -667,7 +670,7 @@ function kill_query() {
 	    else throw new Error('Something went wrong with termination...');
 	})
         .then(data => {
-            if (data.status == 'OK') {
+            if (data.status == 'OK' || data.status == 'Success') {
 		document.getElementById("killquerybutton").id = 'killquerybuttondead';
 		addCheckBox(document.getElementById("killquerybuttondead"),true);
 		var timeout = setTimeout(function() { document.getElementById("killquerybuttondead").remove(); } , 1500 );
@@ -1166,6 +1169,7 @@ function process_ars_message(ars_msg, level) {
 
 
 function process_response(resp_url, resp_id, type, jsonObj2) {
+    var statusdiv = document.getElementById("statusdiv");
     if (type == "all") {
 	var devdiv = document.getElementById("devdiv");
 	devdiv.appendChild(document.createElement("br"));
@@ -1178,11 +1182,6 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
 	devdiv.appendChild(link);
 	devdiv.appendChild(document.createElement("br"));
-	// remove, for now, as it may gobble up way too much memory and is already available via link anyway:
-	//var pre = document.createElement("pre");
-	//pre.id = 'responseJSON';
-	//pre.textContent = JSON.stringify(jsonObj2,null,2);
-	//devdiv.appendChild(pre);
     }
 
     if (jsonObj2["children"]) {
@@ -1197,18 +1196,49 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 
     if (jsonObj2.validation_result) {
 	var nr = document.createElement("span");
-        if (type == "all")
-	    statusdiv.innerHTML += "<br>TRAPI v"+jsonObj2.validation_result.version+" validation: <b>"+jsonObj2.validation_result.status+"</b><br>";
+        if (type == "all") {
+	    statusdiv.appendChild(document.createElement("br"));
+	    statusdiv.appendChild(document.createTextNode("TRAPI v"+jsonObj2.validation_result.version+" validation: "));
+	    var vares;
+	    if (jsonObj2.validation_result.validation_messages) {
+		vares = document.createElement("a");
+		vares.style.fontWeight = "bold";
+                vares.style.cursor = "pointer";
+		vares.title = "Click for full (JSON) report";
+		var valink = document.createElement("a");
+                valink.target = '_validator';
+                valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
+                valink.innerHTML = 'Validation Codes Dictionary';
+		vares.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages, valink); };
+	    }
+	    else
+		vares = document.createElement("b");
+            vares.appendChild(document.createTextNode(jsonObj2.validation_result.status));
+	    statusdiv.appendChild(vares);
+	    if (vares.title)
+		statusdiv.appendChild(document.createTextNode(" ("+vares.title+")"));
+            statusdiv.appendChild(document.createElement("br"));
+	}
 	if (jsonObj2.validation_result.status == "FAIL") {
-	    if (type == "all")
-		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
+	    if (type == "all") {
+		var span = document.createElement("span");
+		span.className = 'error';
+		span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+		statusdiv.appendChild(span);
+		statusdiv.appendChild(document.createElement("br"));
+	    }
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
 	    nr.title = 'Failed TRAPI 1.3 validation';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
-            if (type == "all")
-		statusdiv.innerHTML += "<span class='error'>"+jsonObj2.validation_result.message+"</span><br>";
+            if (type == "all") {
+                var span = document.createElement("span");
+                span.className = 'error';
+                span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+                statusdiv.appendChild(span);
+                statusdiv.appendChild(document.createElement("br"));
+	    }
 	    nr.innerHTML = '&nsub;';
 	    nr.className = 'explevel p0';
             nr.title = 'Response is non-TRAPI';
@@ -1263,7 +1293,11 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 
 		tnode.appendChild(table);
                 html_node.appendChild(tnode);
-                html_node.onclick = function () { showKPQuery("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages); };
+		var valink = document.createElement("a");
+		valink.target = '_validator';
+		valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
+		valink.innerHTML = 'Validation Codes Dictionary';
+                html_node.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages, valink); };
 	    }
             else if (jsonObj2.validation_result.message) {
                 var tnode = document.createElement("span");
@@ -1358,12 +1392,16 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	document.getElementById("arsresultsdiv").style.height = document.getElementById("arsresultsdiv").scrollHeight + "px";
 
     if (type == "all") {
-	statusdiv.innerHTML += "<br>";
+	var h3 = document.createElement("h3");
+	h3.style.fontStyle = "italic";
 	if (jsonObj2.description)
-            statusdiv.innerHTML += "<h3><i>"+jsonObj2.description+"</i></h3>";
+            h3.appendChild(document.createTextNode(jsonObj2.description));
+	h3.appendChild(document.createElement("br"));
+	h3.appendChild(document.createElement("br"));
 	if (jsonObj2.status)
-            statusdiv.innerHTML += "<h3><i>"+jsonObj2.status+"</i></h3>";
-        statusdiv.innerHTML += "<br>";
+            h3.appendChild(document.createTextNode(jsonObj2.status));
+        statusdiv.appendChild(h3);
+        statusdiv.appendChild(document.createElement("br"));
     }
     sesame('openmax',statusdiv);
 
@@ -1597,7 +1635,9 @@ function render_response(respObj,dispjson) {
 
 	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
 	    var respreas = 'n/a';
-	    if (respObj.reasoner_id)
+	    if (respObj.resource_id)
+		respreas = respObj.resource_id;
+	    else if (respObj.reasoner_id)
 		respreas = respObj.reasoner_id;
 	    process_results(respObj.message["results"],respObj.message["knowledge_graph"],respObj["schema_version"],respreas);
 
@@ -1647,8 +1687,46 @@ function render_response(respObj,dispjson) {
 	button.setAttribute('onclick', 'copyTSVToClipboard(this,summary_tsv);');
         div.appendChild(button);
 
-        div.appendChild(document.createElement("br"));
-	div.appendChild(document.createElement("br"));
+
+	if (Object.keys(summary_score_histogram).length > 0) {
+	    var table = document.createElement("table");
+	    table.style.display = "inline-table";
+            table.style.marginLeft = "80px";
+
+	    var tr = document.createElement("tr");
+            var td = document.createElement("th");
+	    td.style.borderBottom = "1px solid black";
+	    td.colSpan = Object.keys(summary_score_histogram).length;
+            td.appendChild(document.createTextNode("SCORE DISTRIBUTION"));
+            tr.appendChild(td);
+            table.appendChild(tr);
+
+	    var tr = document.createElement("tr");
+	    for (var s in summary_score_histogram) {
+		td = document.createElement("td");
+		td.className = 'hoverable';
+		td.style.verticalAlign = "bottom";
+		td.style.textAlign = "center";
+		td.style.padding = "0px";
+                td.appendChild(document.createTextNode(summary_score_histogram[s]));
+		td.appendChild(document.createElement("br"));
+
+		var span = document.createElement("span");
+		span.className = "bar";
+		var barh = Number(summary_score_histogram[s]);
+		span.style.height = barh + "px";
+		span.style.width = "25px";
+		td.appendChild(span);
+		td.appendChild(document.createElement("br"));
+
+		td.appendChild(document.createTextNode(s));
+		tr.appendChild(td);
+	    }
+	    table.appendChild(tr);
+            div.appendChild(table);
+	    div.appendChild(document.createElement("br"));
+            div.appendChild(document.createElement("br"));
+	}
 
 	var table = document.createElement("table");
 	table.className = 'sumtab';
@@ -1999,7 +2077,7 @@ function render_queryplan_table(qp,node) {
                 var link = document.createElement("a");
 		link.title = 'view the posted query (JSON)';
 		link.style.cursor = "pointer";
-		link.onclick = function () { showKPQuery("Query sent to "+kp, qp.qedge_keys[edge][kp]["query"]); };
+		link.onclick = function () { showJSONpopup("Query sent to "+kp, qp.qedge_keys[edge][kp]["query"], false); };
 		link.appendChild(document.createTextNode("query"));
 		td.appendChild(link);
 	    }
@@ -2012,8 +2090,7 @@ function render_queryplan_table(qp,node) {
     node.appendChild(table);
 }
 
-// Should rename this...
-function showKPQuery(wtitle,query) {
+function showJSONpopup(wtitle,query,footer) {
     var popup;
     if (document.getElementById("kpq"))
 	popup = document.getElementById("kpq");
@@ -2048,6 +2125,13 @@ function showKPQuery(wtitle,query) {
     pre.appendChild(document.createTextNode(JSON.stringify(query,null,2)));
     div.appendChild(pre);
     popup.appendChild(div);
+
+    if (footer) {
+	div = document.createElement("div");
+	div.className = 'statusfoot';
+	div.appendChild(footer);
+	popup.appendChild(div);
+    }
 
     dragElement(popup);
     var timeout = setTimeout(function() { popup.classList.add('shake'); }, 50 );
@@ -2198,6 +2282,31 @@ function filtermsgs(span, type) {
     }
 }
 
+
+function add_to_score_histogram(score) {
+    if (score == 'n/a')
+	return;
+
+    if (Object.keys(summary_score_histogram).length == 0) {
+        for (var s = 0; s < 1; s+=UIstate["scorestep"]) {
+	    summary_score_histogram[s.toFixed(1)] = 0;
+	}
+    }
+
+    var p = 0;
+    var missedit = true;
+    for (var s in summary_score_histogram) {
+	if (score < Number(s)) {
+	    summary_score_histogram[p]++;
+	    missedit = false;
+	    break;
+	}
+	p = s;
+    }
+    if (missedit)
+	summary_score_histogram[p]++;
+
+}
 
 function add_to_summary(rowdata, num) {
     var cell = 'td';
@@ -2373,6 +2482,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	    cnf = Number(result.score).toFixed(3);
 	else if (Number(result.confidence))
 	    cnf = Number(result.confidence).toFixed(3);
+	else if (result.analyses && Number(result.analyses[0].score))
+	    cnf = Number(result.analyses[0].score).toFixed(3);
 	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
 
         if (result.row_data)
@@ -2384,8 +2495,14 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	if (num > UIstate["maxresults"]) continue;
 
 	var rsrc = mainreasoner;
-	if (result.reasoner_id)
+	if (result.resource_id)
+	    rsrc = result.resource_id;
+	else if (result.analyses && result.analyses[0].resource_id)
+	    rsrc = result.analyses[0].resource_id;
+	else if (result.reasoner_id)
 	    rsrc = result.reasoner_id;
+	else if (result.analyses && result.analyses[0].reasoner_id)
+	    rsrc = result.analyses[0].reasoner_id;
 	var rscl =
 	    (rsrc=="ARAX")     ? "srtx" :
 	    (rsrc=="BTE")      ? "sbte" :
@@ -2399,8 +2516,11 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	    (rsrc=="Genetics") ? "sgen" :
 	    (rsrc=="Unsecret") ? "suns" :
 	    (rsrc=="ImProving")? "simp" :
+	    (rsrc=="CHP")      ? "schp" :
 	    "p0";
 
+	if (rsrc=="ARAX")
+	    add_to_score_histogram(cnf);
 
 	var div = document.createElement("div");
         div.id = 'h'+num+'_div';
@@ -2551,8 +2671,9 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 	    }
 	}
 
-	for (var ebid in result.edge_bindings) {
-	    for (var edge of result.edge_bindings[ebid]) {
+	let da_edge_bindings = result.edge_bindings ? result.edge_bindings : result.analyses[0].edge_bindings;
+	for (var ebid in da_edge_bindings) {
+	    for (var edge of da_edge_bindings[ebid]) {
 		var kmne = Object.create(kg.edges[edge.id]);
 		kmne.parentdivnum = num;
 		kmne.trapiversion = trapi;
@@ -2561,6 +2682,8 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 		kmne.target = kmne.object;
 		if (kmne.predicate)
 		    kmne.type = kmne.predicate;
+		if (kmne.qualifiers && kmne.qualifiers.length == 0)
+		    kmne.qualifiers = null;
 		if (edge.attributes)
 		    kmne.edge_binding_attributes = edge.attributes;
 		var tmpdata = { "data" : kmne };
@@ -2778,10 +2901,10 @@ function add_cyto(i) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'),null);
+	show_attributes(div, this.data('attributes'),null,"value");
         if (this.data('node_binding_attributes')) {
 	    div.appendChild(document.createElement("br"));
-	    show_attributes(div, this.data('node_binding_attributes'),"Node Binding Attributes:");
+	    show_attributes(div, this.data('node_binding_attributes'),"Node Binding Attributes:","value");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -2850,10 +2973,14 @@ function add_cyto(i) {
 			cyobj[i].nodes("[id='"+this.data('target')+"']").data('name')
 		       );
 
-	show_attributes(div, this.data('attributes'),null);
+	show_attributes(div, this.data('attributes'),null,"value");
 	if (this.data('edge_binding_attributes')) {
             div.appendChild(document.createElement("br"));
-            show_attributes(div, this.data('edge_binding_attributes'),"Edge Binding Attributes:");
+            show_attributes(div, this.data('edge_binding_attributes'),"Edge Binding Attributes:","value");
+	}
+	if (this.data('sources')) {
+            div.appendChild(document.createElement("br"));
+            show_attributes(div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -2988,7 +3115,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 }
 
 
-function show_attributes(html_div, atts, title) {
+function show_attributes(html_div, atts, title, mainvalue) {
     if (atts == null)  { return; }
 
     var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
@@ -3009,13 +3136,13 @@ function show_attributes(html_div, atts, title) {
     }
 
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
-	display_attribute(atts_table, att, semmeddb_sentences);
+	display_attribute(atts_table, att, semmeddb_sentences, mainvalue);
     }
 
     html_div.appendChild(atts_table);
 }
 
-function display_attribute(tab, att, semmeddb) {
+function display_attribute(tab, att, semmeddb, mainvalue) {
     var row = document.createElement("tr");
     var cell = document.createElement("td");
 
@@ -3027,8 +3154,9 @@ function display_attribute(tab, att, semmeddb) {
     var sub_atts = null;
 
     var value = null;
+    var flagifmainvaluenull = true;
     for (var nom in att) {
-	if (nom == "value") {
+	if (nom == mainvalue) {
 	    value = att[nom];
 	    continue;
 	}
@@ -3056,24 +3184,27 @@ function display_attribute(tab, att, semmeddb) {
 
 	    row.appendChild(cell);
 	    tab.appendChild(row);
+
+	    if (att[nom] == "biolink:primary_knowledge_source")
+		flagifmainvaluenull = false;
 	}
     }
 
     row = document.createElement("tr");
     cell = document.createElement("td");
     cell.style.fontWeight = "bold";
-    cell.appendChild(document.createTextNode("value:"));
+    cell.appendChild(document.createTextNode(mainvalue+":"));
     row.appendChild(cell);
     cell = document.createElement("td");
     cell.style.overflowWrap = "anywhere"; //??
 
     if (value != null && value != '') {
-	if (Array.isArray(att.value)) {
+	if (Array.isArray(att[mainvalue])) {
 	    if (att.attribute_type_id != "biolink:publications")
                 cell.className = 'attvalue';
 
 	    var br = false;
-	    for (var val of att.value) {
+	    for (var val of att[mainvalue]) {
 		if (br)
 		    cell.appendChild(document.createElement("br"));
 
@@ -3126,17 +3257,17 @@ function display_attribute(tab, att, semmeddb) {
 		br = true;
 	    }
 	}
-	else if (typeof att.value === 'object') {
+	else if (typeof att[mainvalue] === 'object') {
             var pre = document.createElement("pre");
-	    pre.appendChild(document.createTextNode(JSON.stringify(att.value,null,2)));
+	    pre.appendChild(document.createTextNode(JSON.stringify(att[mainvalue],null,2)));
 	    cell.appendChild(pre);
 	}
         else if (attributes_to_truncate.includes(att.original_attribute_name)) {
             cell.className = 'attvalue';
-            if (isNaN(att.value))
-		cell.appendChild(document.createTextNode(att.value));
+            if (isNaN(att[mainvalue]))
+		cell.appendChild(document.createTextNode(att[mainvalue]));
 	    else
-		cell.appendChild(document.createTextNode(Number(att.value).toPrecision(3)));
+		cell.appendChild(document.createTextNode(Number(att[mainvalue]).toPrecision(3)));
 	}
 	else if (value.toString().startsWith("http")) {
 	    cell.className = 'attvalue';
@@ -3149,7 +3280,7 @@ function display_attribute(tab, att, semmeddb) {
 	else {
             cell.className = 'attvalue';
 
-	    var multi = att.value.toString().split(/(-!-|---|\;\;)/);
+	    var multi = att[mainvalue].toString().split(/(-!-|---|\;\;)/);
 	    if (multi.length > 1) {
 		for (var line of multi) {
 		    cell.appendChild(document.createTextNode('\u25BA'));
@@ -3158,13 +3289,15 @@ function display_attribute(tab, att, semmeddb) {
 		}
 	    }
 	    else
-		cell.appendChild(document.createTextNode(att.value));
+		cell.appendChild(document.createTextNode(att[mainvalue]));
 	}
     }
     else {
         var text = document.createElement("i");
 	text.appendChild(document.createTextNode("-- empty / no value! --"));
 	cell.appendChild(text);
+	if (flagifmainvaluenull)
+	    row.className = 'p1 qprob';
     }
 
     row.appendChild(cell);
@@ -3183,7 +3316,7 @@ function display_attribute(tab, att, semmeddb) {
 	subatts_table.className = 't100';
 
 	for (var sub_att of sub_atts)
-	    display_attribute(subatts_table, sub_att, semmeddb);
+	    display_attribute(subatts_table, sub_att, semmeddb, mainvalue);
 
 	cell.appendChild(subatts_table);
         row.appendChild(cell);
@@ -5431,8 +5564,8 @@ function retrieveKPInfo() {
 			}
 			else if (item["version"].startsWith("1.3"))
 			    text.className = "qprob p9";
-			//else if (item["version"].startsWith("1.2"))
-			//text.className = "qprob srtx";
+			else if (item["version"] == "1.4.0")
+			    text.className = "qprob schp";
 			else
 			    text.className = "qprob p1";
                         text.appendChild(document.createTextNode(item["version"]));
