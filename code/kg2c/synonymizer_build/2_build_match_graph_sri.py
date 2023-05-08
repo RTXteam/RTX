@@ -113,7 +113,7 @@ def get_sri_cluster_id_mappings(kg2pre_node_ids_set: Set[str]):
     return sri_node_id_to_cluster_id_map
 
 
-def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_test: bool = False) -> Set[str]:
+def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_test: bool) -> Set[str]:
     # Grab the KG2pre-related nodes from the SRI NN json lines file (which is huge - has ~600 million nodes in total)
     logging.info(f"Extracting relevant nodes from bulk SRI NN json lines file..")
 
@@ -131,6 +131,9 @@ def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_tes
                     node_row = (node_id, line_obj.get("name"), line_obj["category"], cluster_id)
                     nodes_dict[node_id] = node_row
 
+                    if is_test and len(nodes_dict) > 10:
+                        break
+
     # Save our selected SRI nodes
     logging.info(f"Loading select SRI nodes into DataFrame..")
     nodes_df = pd.DataFrame(nodes_dict.values(), columns=["id", "name", "category", "cluster_id"])
@@ -146,22 +149,18 @@ def create_match_edges_sri(sri_node_ids: Set[str], is_test: bool = False):
     # Grab the KG2pre-related edges from the SRI NN json lines file (which is huge - has ~200 million edges)
     logging.info(f"Extracting relevant edges from bulk SRI NN json lines file..")
 
-    if is_test:
-        # We'll make up some edges for testing purposes
-        edges_dict = dict()
-        for node_a, node_b in itertools.combinations(sri_node_ids[:10], 2):
-            edge_id = get_sri_edge_id(node_a, node_b)
-            edges_dict[edge_id] = (edge_id, node_a, "biolink:same_as", node_b)
-    else:
-        edges_dict = dict()
-        with json_lines.open(f"{SRI_NN_DIR}/{SRI_NN_EDGES_FILE_NAME}") as jsonl_file:
-            for line_obj in jsonl_file:
-                edge_subject = line_obj["subject"]
-                edge_object = line_obj["object"]
-                if edge_subject in sri_node_ids and edge_object in sri_node_ids:
-                    edge_id = get_sri_edge_id(edge_subject, edge_object)
-                    edge_row = (edge_id, edge_subject, line_obj["predicate"], edge_object)
-                    edges_dict[edge_id] = edge_row
+    edges_dict = dict()
+    with json_lines.open(f"{SRI_NN_DIR}/{SRI_NN_EDGES_FILE_NAME}") as jsonl_file:
+        for line_obj in jsonl_file:
+            edge_subject = line_obj["subject"]
+            edge_object = line_obj["object"]
+            if edge_subject in sri_node_ids and edge_object in sri_node_ids:
+                edge_id = get_sri_edge_id(edge_subject, edge_object)
+                edge_row = (edge_id, edge_subject, line_obj["predicate"], edge_object)
+                edges_dict[edge_id] = edge_row
+
+                if is_test and len(edges_dict) > 10:
+                    break
 
     # Save our selected SRI edges
     logging.info(f"Loading select SRI edges into DataFrame..")
@@ -204,7 +203,7 @@ def main():
 
     # Then build an SRI 'match graph' using the SRI NN bulk download
     sri_node_ids = create_match_nodes_sri(sri_node_id_to_cluster_id_map, args.test)
-    create_match_edges_sri(sri_node_ids)
+    create_match_edges_sri(sri_node_ids, args.test)
 
 
 if __name__ == "__main__":
