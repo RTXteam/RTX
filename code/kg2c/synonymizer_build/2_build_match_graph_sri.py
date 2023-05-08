@@ -119,7 +119,7 @@ def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_tes
                 cluster_id = sri_node_id_to_cluster_id_map[node_id]
                 node_row = (node_id, line_obj.get("name"), line_obj["category"], cluster_id)
                 nodes_dict[node_id] = node_row
-                if is_test and len(nodes_dict) > 100:
+                if is_test and len(nodes_dict) > 10:
                     break
 
     # Save our selected SRI nodes
@@ -146,7 +146,7 @@ def create_match_edges_sri(sri_node_ids: Set[str], is_test: bool = False):
                 edge_row = (edge_id, edge_subject, line_obj["predicate"], edge_object)
                 edges_dict[edge_id] = edge_row
                 # Stop early if this is a test
-                if is_test and len(edges_dict) > 100:
+                if is_test and len(edges_dict) > 10:
                     break
 
     # Save our selected SRI edges
