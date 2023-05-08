@@ -108,7 +108,7 @@ def get_sri_cluster_id_mappings(kg2pre_node_ids_set: Set[str]):
     return sri_node_id_to_cluster_id_map
 
 
-def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str]) -> Set[str]:
+def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_test: bool = False) -> Set[str]:
     # Grab the KG2pre-related nodes from the SRI NN json lines file (which is huge - has ~600 million nodes in total)
     logging.info(f"Extracting relevant nodes from bulk SRI NN json lines file..")
     nodes_dict = dict()
@@ -119,6 +119,8 @@ def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str]) -> Set
                 cluster_id = sri_node_id_to_cluster_id_map[node_id]
                 node_row = (node_id, line_obj.get("name"), line_obj["category"], cluster_id)
                 nodes_dict[node_id] = node_row
+                if is_test and len(nodes_dict) > 100:
+                    break
 
     # Save our selected SRI nodes
     logging.info(f"Loading select SRI nodes into DataFrame..")
@@ -131,7 +133,7 @@ def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str]) -> Set
     return set(nodes_dict)
 
 
-def create_match_edges_sri(sri_node_ids: Set[str]):
+def create_match_edges_sri(sri_node_ids: Set[str], is_test: bool = False):
     # Grab the KG2pre-related edges from the SRI NN json lines file (which is huge - has ~200 million edges)
     logging.info(f"Extracting relevant edges from bulk SRI NN json lines file..")
     edges_dict = dict()
@@ -143,6 +145,9 @@ def create_match_edges_sri(sri_node_ids: Set[str]):
                 edge_id = f"SRI:{edge_subject}--{edge_object}"
                 edge_row = (edge_id, edge_subject, line_obj["predicate"], edge_object)
                 edges_dict[edge_id] = edge_row
+                # Stop early if this is a test
+                if is_test and len(edges_dict) > 100:
+                    break
 
     # Save our selected SRI edges
     logging.info(f"Loading select SRI edges into DataFrame..")
@@ -172,6 +177,7 @@ def main():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('--downloadfresh', dest='download_fresh', action='store_true')
+    arg_parser.add_argument('--test', dest='test', action='store_true')
     args = arg_parser.parse_args()
 
     # Download a fresh copy of the bulk SRI NN data, if requested
@@ -183,7 +189,7 @@ def main():
     sri_node_id_to_cluster_id_map = get_sri_cluster_id_mappings(kg2pre_node_ids)
 
     # Then build an SRI 'match graph' using the SRI NN bulk download
-    sri_node_ids = create_match_nodes_sri(sri_node_id_to_cluster_id_map)
+    sri_node_ids = create_match_nodes_sri(sri_node_id_to_cluster_id_map, args.test)
     create_match_edges_sri(sri_node_ids)
 
 

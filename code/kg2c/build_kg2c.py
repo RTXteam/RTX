@@ -123,7 +123,7 @@ def main():
     if build_synonymizer:
         logging.info("Building node synonymizer off of specified KG2..")
         subprocess.check_call(["python", f"{KG2C_DIR}/synonymizer_build/build_synonymizer.py",
-                               kg2_version, "--useconfigname"] + (["--downloadkg2pre"] if not args.test else []))
+                               kg2_version, "--useconfigname"] + (["--test"] if args.test else ["--downloadkg2pre"]))
 
         logging.info(f"Regenerating autocomplete database..")
         subprocess.check_call(["python", f"{KG2C_DIR}/synonymizer_build/dump_autocomplete_node_info.py", kg2_version])
