@@ -13,7 +13,7 @@ kg2pre_tsv_dir="${kg2c_dir}/kg2pre_tsvs"
 mkdir -p ${kg2pre_tsv_dir}
 tar -xvzf ${kg2c_dir}/${kg2pre_tarball_name} -C ${kg2pre_tsv_dir}
 
-tail -10000 ${kg2pre_tsv_dir}/nodes.tsv > ${kg2pre_tsv_dir}/nodes.tsv_TEMP
+tail -100000 ${kg2pre_tsv_dir}/nodes.tsv > ${kg2pre_tsv_dir}/nodes.tsv_TEMP
 mv ${kg2pre_tsv_dir}/nodes.tsv_TEMP ${kg2pre_tsv_dir}/nodes.tsv
-tail -50000 ${kg2pre_tsv_dir}/edges.tsv > ${kg2pre_tsv_dir}/edges.tsv_TEMP
+tail -100000 ${kg2pre_tsv_dir}/edges.tsv > ${kg2pre_tsv_dir}/edges.tsv_TEMP
 mv ${kg2pre_tsv_dir}/edges.tsv_TEMP ${kg2pre_tsv_dir}/edges.tsv
