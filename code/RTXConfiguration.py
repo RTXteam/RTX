@@ -19,11 +19,12 @@ class RTXConfiguration:
 
     # ### Constructor
     def __init__(self):
-        t0 = timeit.default_timer()
 
-        # Determine current ARAX and TRAPI versions
+        t0 = timeit.default_timer()
         file_dir = os.path.dirname(os.path.abspath(__file__))
 
+        # Determine current ARAX and TRAPI versions
+        # YAML is super slow to ready, so refresh a JSON if necessary or read the JSON, which is much faster
         openapi_yaml_path = f"{file_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml"
         openapi_json_path = f"{file_dir}/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.json"
         if not os.path.exists(openapi_json_path) or os.path.getmtime(openapi_yaml_path) > os.path.getmtime(openapi_json_path):
@@ -174,7 +175,7 @@ class RTXConfiguration:
         self.xcrg_increase_model_path = database_downloads["xcrg_increase_model"]
         self.xcrg_increase_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
         self.xcrg_decrease_model_path = database_downloads["xcrg_decrease_model"]
-        self.xcrg_decrease_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')         
+        self.xcrg_decrease_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
 
         # Set up mysql feedback
         self.mysql_feedback_host = self.config_secrets["mysql_feedback"]["host"]

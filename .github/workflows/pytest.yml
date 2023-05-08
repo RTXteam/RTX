@@ -8,6 +8,13 @@ on:
       - 'DockerBuild/**'
       - 'requirements.txt'
       - '.github/workflows/pytest.yml'
+  pull_request:
+    branches: [ master, production, itrb-test ]
+    paths:
+      - 'code/**'
+      - 'DockerBuild/**'
+      - 'requirements.txt'
+      - '.github/workflows/pytest.yml'
 
 jobs:
   analyze:
