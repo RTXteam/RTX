@@ -1,9 +1,8 @@
-#!/bin/env python3
 """
 This script creates a canonicalized version of KG2 stored in various file formats, including TSVs ready for import
 into Neo4j. Files are created in the directory this script is in. It relies on the options you specify in
 kg2c_config.json; in particular, the KG2c will be built off of the KG2 endpoint you specify in that config file.
-Usage: python3 build_kg2c.py [--test]
+Usage: python build_kg2c.py [--test]
 """
 import argparse
 import logging
@@ -123,12 +122,12 @@ def main():
     # Build a new node synonymizer, if we're supposed to
     if build_synonymizer:
         logging.info("Building node synonymizer off of specified KG2..")
-        subprocess.check_call(["python3", f"{KG2C_DIR}/synonymizer_build/build_synonymizer.py",
+        subprocess.check_call(["python", f"{KG2C_DIR}/synonymizer_build/build_synonymizer.py",
                                kg2_version, "--useconfigname"] + (["--downloadkg2pre"] if not args.test else []))
 
         logging.info(f"Regenerating autocomplete database..")
-        subprocess.check_call(["python3", f"{KG2C_DIR}/synonymizer_build/dump_autocomplete_node_info.py", kg2_version])
-        subprocess.check_call(["python3", f"{CODE_DIR}/autocomplete/create_load_db.py",
+        subprocess.check_call(["python", f"{KG2C_DIR}/synonymizer_build/dump_autocomplete_node_info.py", kg2_version])
+        subprocess.check_call(["python", f"{CODE_DIR}/autocomplete/create_load_db.py",
                                "--input", f"{KG2C_DIR}/synonymizer_build/autocomplete_node_info.tsv",
                                "--output" f"{KG2C_DIR}/synonymizer_build/autocomplete.sqlite"])
 
