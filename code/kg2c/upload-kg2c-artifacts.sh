@@ -16,7 +16,11 @@ ssh rtxconfig@${db_host} "mkdir -p ${remote_database_dir}"
 ssh rtxconfig@${db_host} "mkdir -p ${remote_database_subdir}"
 
 cd ${script_dir}
-scp kg2c_${kg2c_db_version}_KG${kg2_version}.sqlite rtxconfig@${db_host}:${remote_database_dir}
-scp meta_kg_${kg2c_db_version}_KG${kg2_version}c.json rtxconfig@${db_host}:${remote_database_dir}
+
+# First upload required files
+scp kg2c.sqlite rtxconfig@${db_host}:${remote_database_dir}/kg2c_${kg2c_db_version}_KG${kg2_version}.sqlite
+scp meta_kg.json rtxconfig@${db_host}:${remote_database_dir}/meta_kg_${kg2c_db_version}_KG${kg2_version}c.json
+scp fda_approved_drugs.pickle rtxconfig@${db_host}:${remote_database_dir}/fda_approved_drugs_${kg2c_db_version}_KG${kg2_version}c.pickle
+
+# Then upload files not actually needed for running ARAX code
 scp kg2c-tsv.tar.gz rtxconfig@${db_host}:${remote_database_subdir}
-scp fda_approved_drugs_${kg2c_db_version}_KG${kg2_version}c.pickle rtxconfig@${db_host}:${remote_database_dir}
