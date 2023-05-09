@@ -3,5 +3,6 @@ kg2c*.tsv
 kg2c.json
 kg2c_lite.json
 meta_kg.json
+kg2c-tsv.tar.gz
 master-config.shinc
 setup-kg2-neo4j.sh

@@ -51,8 +51,8 @@ def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
 
 def _upload_output_files_to_s3():
     logging.info("Uploading KG2c json and TSV files to S3..")
-    json_lite_file_path = f"{KG2C_DIR}/kg2c_lite.json"
     subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{KG2C_DIR}/kg2c-tsv.tar.gz", "s3://rtx-kg2/"])
+    json_lite_file_path = f"{KG2C_DIR}/kg2c_lite.json"
     subprocess.check_call(["gzip", "-f", json_lite_file_path])
     subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{json_lite_file_path}.gz", "s3://rtx-kg2/"])
 
@@ -151,7 +151,9 @@ def main():
         record_meta_kg_info(args.test)
 
         logging.info(f"Creating tarball of KG2c TSVs..")
-        subprocess.check_call(["tar", "-czvf", "nodes_c.tsv", "nodes_c_header.tsv", "edges_c.tsv", "edges_c_header.tsv"])
+        subprocess.check_call(["tar", "-czvf", f"{KG2C_DIR}/kg2c-tsv.tar.gz",
+                               f"{KG2C_DIR}/nodes_c.tsv", f"{KG2C_DIR}/nodes_c_header.tsv",
+                               f"{KG2C_DIR}/edges_c.tsv", f"{KG2C_DIR}/edges_c_header.tsv"])
 
         # Upload artifacts to the relevant places (done even for test builds, to ensure these processes work)
         if upload_to_arax_databases_rtx_ai:
