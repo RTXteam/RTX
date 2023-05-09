@@ -49,10 +49,10 @@ def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
         json.dump(rtx_config_dbs_dict, revised_config_dbs_file)
 
 
-def _upload_output_files_to_s3():
+def _upload_output_files_to_s3(kg2c_db_version, kg2_version):
     logging.info("Uploading KG2c json and TSV files to S3..")
     tarball_path = f"{KG2C_DIR}/kg2c-tsv.tar.gz"
-    json_lite_file_path = f"{KG2C_DIR}/kg2c_lite.json"
+    json_lite_file_path = f"{KG2C_DIR}/kg2c_lite_{kg2c_db_version}_KG{kg2_version}.json"
     subprocess.check_call(["tar", "-czvf", tarball_path, "nodes_c.tsv", "nodes_c_header.tsv", "edges_c.tsv", "edges_c_header.tsv"])
     subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", tarball_path, "s3://rtx-kg2/"])
     subprocess.check_call(["gzip", "-f", json_lite_file_path])
@@ -80,19 +80,22 @@ def main():
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
         kg2c_config_info = json.load(config_file)
     kg2_version = kg2c_config_info["kg2pre_version"]
+    kg2c_db_version = kg2c_config_info["kg2c"]["kg2c_db_version"]
     kg2pre_endpoint = kg2c_config_info["kg2pre_neo4j_endpoint"]
     biolink_version = kg2c_config_info["biolink_version"]
     build_kg2c = kg2c_config_info["kg2c"]["build"]
     upload_to_s3 = kg2c_config_info["kg2c"]["upload_to_s3"]
     use_local_kg2pre_tsvs = kg2c_config_info["kg2c"].get("use_local_kg2pre_tsvs")
     build_synonymizer = kg2c_config_info["synonymizer"]["build"]
-    synonymizer_name = kg2c_config_info["synonymizer"]["name"]
+    synonymizer_db_version = kg2c_config_info["synonymizer"]["synonymizer_db_version"]
+    synonymizer_name = f"node_synonymizer_{synonymizer_db_version}_KG{kg2_version}.sqlite"
     upload_to_arax_databases_rtx_ai = kg2c_config_info["upload_to_arax_databases.rtx.ai"]
-    upload_directory = kg2c_config_info["upload_directory"]
+    upload_directory = f"/home/rtxconfig/KG{kg2_version}"
     logging.info(f"KG2pre version to use is {kg2_version}")
     logging.info(f"KG2pre neo4j endpoint to use is {kg2pre_endpoint}")
     logging.info(f"Biolink model version to use is {biolink_version}")
-    logging.info(f"Synonymizer to use is {synonymizer_name}")
+    logging.info(f"Synonymizer name is {synonymizer_name}")
+    logging.info(f"Directory to upload files to on arax-databases.rtx.ai is {upload_directory}")
     arax_synonymizer_dir = f"{CODE_DIR}/ARAX/NodeSynonymizer"
     synonymizer_file = pathlib.Path(f"{arax_synonymizer_dir}/{synonymizer_name}")
 
@@ -140,7 +143,6 @@ def main():
         logging.info(f"Moving the new synonymizer into the ARAX NodeSynonymizer directory")
         subprocess.check_call(["mv", f"{KG2C_DIR}/synonymizer_build/{synonymizer_name}",
                                f"{arax_synonymizer_dir}/{synonymizer_name}"])
-
         logging.info("Done building synonymizer.")
 
     if build_kg2c:
@@ -148,15 +150,23 @@ def main():
         logging.info("Calling create_kg2c_files.py..")
         create_kg2c_files(args.test)
         logging.info("Calling record_kg2c_meta_info.py..")
-        record_meta_kg_info(args.test)
+        record_meta_kg_info(kg2c_db_version, kg2_version, args.test)
 
         # Upload artifacts to the relevant places (done even for test builds, to ensure these processes work)
         if upload_to_arax_databases_rtx_ai:
             logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
             subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTX_CONFIG.db_host,
-                                   upload_directory])
+                                   kg2c_db_version, kg2_version, upload_directory])
         if upload_to_s3:
             _upload_output_files_to_s3()
+        record_meta_kg_info(kg2c_db_version, kg2_version, args.test)
+        if not args.test:
+            if upload_to_s3:
+                _upload_output_files_to_s3(kg2c_db_version, kg2_version)
+            if upload_to_arax_databases_rtx_ai:
+                logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
+                subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTXConfiguration().db_host,
+                                       kg2c_db_version, kg2_version, upload_directory])
 
         logging.info(f"DONE WITH {'TEST ' if args.test else ''}KG2c BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours")
 
