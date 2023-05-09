@@ -16,7 +16,7 @@ botocore==1.27.59
 CacheControl==0.12.11
 cachetools==5.2.0
 cattrs==22.1.0
-certifi==2022.6.15
+certifi==2022.12.7
 cffi==1.15.1
 CFGraph==0.2.1
 chardet==4.0.0
