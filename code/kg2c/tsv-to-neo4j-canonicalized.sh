@@ -92,12 +92,5 @@ sudo sed -i '/dbms.read_only/c\dbms.read_only=true' ${neo4j_config}
 
 sudo service neo4j restart
 
-# create a neo4j dump file for use downstream in building the DTD database
-sudo service neo4j stop
-dump_name=kg2c.dump
-rm -f ${BUILD_DIR}/${dump_name}
-sudo neo4j-admin dump --database=graph.db --to=${BUILD_DIR}/${dump_name}
-sudo service neo4j start
-
 date
 echo "================ script finished ============================"

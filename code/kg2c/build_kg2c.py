@@ -26,9 +26,9 @@ RTX_CONFIG = RTXConfiguration()
 
 def _setup_config_dbs_file(synonymizer_name: str):
     """
-    This function locally modifies config_dbs.json to point to the right KG2pre Neo4j and synonymizer.
+    This function locally modifies config_dbs.json to point to the right synonymizer.
     """
-    logging.info("Creating a config_dbs.json file pointed to the right synonymizer and KG2pre Neo4j..")
+    logging.info("Creating a config_dbs.json file pointed to the right synonymizer..")
     config_dbs_file_path = f"{CODE_DIR}/config_dbs.json"
 
     # Save a copy of any pre-existing config_dbs.json so we don't overwrite it
@@ -40,7 +40,7 @@ def _setup_config_dbs_file(synonymizer_name: str):
     RTXConfiguration()  # Regenerates config_secrets.json with the latest version
     with open(config_dbs_file_path) as config_dbs_file:
         rtx_config_dbs_dict = json.load(config_dbs_file)
-    # Point to the 'right' KG2 Neo4j (the one specified in the KG2c config) and synonymizer (we always use simple name)
+    # Point to the 'right' synonymizer
     rtx_config_dbs_dict["database_downloads"]["node_synonymizer"] = f"/something/{synonymizer_name}"  # Only need name, not full path
 
     # Save our new config_dbs.json file
