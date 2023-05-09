@@ -43,9 +43,8 @@ def dump_kg2pre_node_info(kg2pre_version: str):
                              })
 
     # Strip any tabs and newlines from names
-    strip_tabs_and_newlines_vectorized = np.vectorize(strip_tabs_and_newlines)
-    nodes_df.name = strip_tabs_and_newlines_vectorized(nodes_df.name)
-    nodes_df.full_name = strip_tabs_and_newlines_vectorized(nodes_df.full_name)
+    nodes_df.name = nodes_df.name.apply(strip_tabs_and_newlines)
+    nodes_df.full_name = nodes_df.full_name.apply(strip_tabs_and_newlines)
 
     # Make sure this is actually the KG2 version we are supposed to be using
     logging.info(f"Verifying that the KG2pre version in the KG2pre TSVs matches what was requested..")
