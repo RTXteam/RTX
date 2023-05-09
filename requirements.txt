@@ -57,7 +57,7 @@ isodate==0.6.1
 itsdangerous==2.1.2
 Jinja2==3.1.2
 jmespath==1.0.1
-joblib==1.1.0
+joblib==1.1.1
 json-flattener==0.1.9
 jsonasobj==1.3.1
 jsonasobj2==1.0.4
