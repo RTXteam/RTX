@@ -6,6 +6,7 @@ import sqlite3
 import subprocess
 import sys
 
+import numpy as np
 import pandas as pd
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -45,6 +46,13 @@ def load_final_edges() -> pd.DataFrame:
                              })
     logging.info(f"Loaded edges DF is:\n{edges_df}")
     return edges_df
+
+
+def add_biolink_prefix(category: str) -> str:
+    if category.startswith("biolink:"):
+        return category
+    else:
+        return f"biolink:{category}"
 
 
 def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> pd.DataFrame:
@@ -135,10 +143,18 @@ def write_graph_reports(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, clusters
     logging.info(f"Cluster size counts DataFrame is: \n{cluster_size_counts_df}")
     cluster_size_counts_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_cluster_sizes.tsv", sep="\t")
 
-    logging.info(f"Now saving report on cluster size but for only non-sri nodes..")
+    logging.info(f"Saving table of KG2pre nodes not recognized by SRI NN..")
     logging.info(f"First locating which nodes from KG2 were not recognized by the SRI..")
     kg2_nodes_not_in_sri_df = nodes_df[nodes_df.category_sri != nodes_df.category_sri]
+    add_biolink_prefix_vectorized = np.vectorize(add_biolink_prefix)
+    kg2_nodes_not_in_sri_df.category = add_biolink_prefix_vectorized(kg2_nodes_not_in_sri_df.category)
+    build_node_ids = {"RTX:KG2", "RTX:KG2c"}
+    kg2_nodes_not_in_sri_df = kg2_nodes_not_in_sri_df[~kg2_nodes_not_in_sri_df.id.isin(build_node_ids)]
     logging.info(f"DataFrame of KG2 nodes that are not recognized by the SRI is: \n{kg2_nodes_not_in_sri_df}")
+    kg2_nodes_not_in_sri_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/kg2_nodes_not_in_sri_nn.tsv", sep="\t",
+                                   columns=["id", "cluster_id", "category", "name"], index=False)
+
+    logging.info(f"Now creating report on cluster size but for only non-sri nodes..")
     logging.info(f"Adding cluster size column to non-SRI nodes DataFrame...")
     kg2_nodes_not_in_sri_df = pd.merge(kg2_nodes_not_in_sri_df, clusters_df, on="cluster_id", how="left")
     logging.info(f"Grouping non-SRI nodes by cluster size..")
@@ -176,7 +192,6 @@ def write_graph_reports(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, clusters
     logging.info(f"{oversized_clusters_df.shape[0]} clusters seem to be oversized: \n{oversized_clusters_df}")
     oversized_clusters_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_oversized_clusters.tsv", sep="\t", index=False,
                                  columns=["cluster_id", "cluster_size", "category", "name"])
-
 
 def main():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
