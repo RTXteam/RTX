@@ -132,7 +132,7 @@ def main():
         if upload_to_arax_databases_rtx_ai:
             logging.info(f"Uploading synonymizer artifacts to arax-databases.rtx.ai:{upload_directory}")
             subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", RTX_CONFIG.db_host,
-                                   upload_directory, synonymizer_name])
+                                   upload_directory, synonymizer_db_version, kg2_version])
 
         # Move the new synonymizer into the ARAX NodeSynonymizer directory so it can be queried properly
         logging.info(f"Moving the new synonymizer into the ARAX NodeSynonymizer directory")
