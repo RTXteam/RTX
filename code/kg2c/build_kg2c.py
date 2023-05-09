@@ -132,7 +132,7 @@ def main():
         if upload_to_arax_databases_rtx_ai:
             logging.info(f"Uploading synonymizer artifacts to arax-databases.rtx.ai:{upload_directory}")
             subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", RTX_CONFIG.db_host,
-                                   upload_directory, synonymizer_db_version, kg2_version])
+                                   upload_directory, synonymizer_db_version, kg2_version, "_TEST" if args.test else ""])
 
         # Move the new synonymizer into the ARAX NodeSynonymizer directory so it can be queried properly
         logging.info(f"Moving the new synonymizer into the ARAX NodeSynonymizer directory")
@@ -156,7 +156,7 @@ def main():
         if upload_to_arax_databases_rtx_ai:
             logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
             subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTX_CONFIG.db_host,
-                                   kg2c_db_version, kg2_version, upload_directory])
+                                   kg2c_db_version, kg2_version, upload_directory, "_TEST" if args.test else ""])
         if upload_to_s3:
             _upload_output_files_to_s3()
 
