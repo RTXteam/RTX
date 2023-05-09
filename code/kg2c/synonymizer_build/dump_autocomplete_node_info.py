@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO,
 
 
 def strip_tabs_and_newlines(some_string: Optional[str]) -> Optional[str]:
-    if some_string:
+    if some_string and some_string == some_string:  # Catches Pandas NaN values..
         return re.sub("\s+", " ", some_string)
     else:
         return some_string
