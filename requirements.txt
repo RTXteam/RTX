@@ -177,7 +177,7 @@ validators==0.20.0
 virtualenv==20.16.3
 watchdog==2.1.9
 websocket-client==1.4.1
-Werkzeug==2.2.2
+Werkzeug==2.2.3
 wrapt==1.14.1
 yarl==1.8.1
 zipp==3.8.1
