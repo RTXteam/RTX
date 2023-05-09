@@ -48,12 +48,17 @@ def _setup_config_dbs_file(synonymizer_name: str):
         json.dump(rtx_config_dbs_dict, revised_config_dbs_file, indent=3)
 
 
-def _upload_output_files_to_s3():
+def _upload_output_files_to_s3(is_test: bool):
     logging.info("Uploading KG2c json and TSV files to S3..")
-    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{KG2C_DIR}/kg2c-tsv.tar.gz", "s3://rtx-kg2/"])
-    json_lite_file_path = f"{KG2C_DIR}/kg2c_lite.json"
+    local_tarball_name = "kg2c-tsv.tar.gz"
+    remote_tarball_name = f"{local_tarball_name}_TEST" if is_test else local_tarball_name
+    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{KG2C_DIR}/{local_tarball_name}", f"s3://rtx-kg2/{remote_tarball_name}"])
+
+    local_lite_json_name = "kg2c_lite.json"
+    json_lite_file_path = f"{KG2C_DIR}/{local_lite_json_name}"
     subprocess.check_call(["gzip", "-f", json_lite_file_path])
-    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{json_lite_file_path}.gz", "s3://rtx-kg2/"])
+    remote_lite_json_name = f"{local_lite_json_name}.gz_TEST" if is_test else f"{local_lite_json_name}.gz"
+    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{json_lite_file_path}.gz", f"s3://rtx-kg2/{remote_lite_json_name}"])
 
 
 def _create_kg2pre_tsv_test_files():
@@ -158,7 +163,7 @@ def main():
             subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTX_CONFIG.db_host,
                                    kg2c_db_version, kg2_version, upload_directory, "_TEST" if args.test else ""])
         if upload_to_s3:
-            _upload_output_files_to_s3()
+            _upload_output_files_to_s3(args.test)
 
         logging.info(f"DONE WITH {'TEST ' if args.test else ''}KG2c BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours")
 
