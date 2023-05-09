@@ -46,7 +46,7 @@ def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
 
     # Save our new config_dbs.json file
     with open(config_dbs_file_path, "w+") as revised_config_dbs_file:
-        json.dump(rtx_config_dbs_dict, revised_config_dbs_file)
+        json.dump(rtx_config_dbs_dict, revised_config_dbs_file, indent=3)
 
 
 def _upload_output_files_to_s3():
