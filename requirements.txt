@@ -38,7 +38,7 @@ exceptiongroup==1.0.0rc8
 fastobo==0.12.1
 filelock==3.8.0
 flake8==5.0.4
-Flask==2.2.2
+Flask==2.2.5
 Flask-Cors==3.0.10
 fonttools==4.37.1
 fpyutils==2.2.0
