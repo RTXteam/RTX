@@ -13,7 +13,6 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
     - [ ] make sure there is enough disk space available on `arax-databases.rtx.ai` (need at least 100G, ideally >120G). delete old KG2 database directories as needed (warn the team on Slack in advance).
     - [ ] make sure to choose to build a new synonymizer in `kg2c_config.json`, as described in the how-to
   - [ ] after the build is done, verify it looks ok:
-    - [ ] the 'build node' (node with ID `RTX:KG2c`) has the expected version number (KG2.X.Y)
     - [ ] `node_synonymizer.sqlite` should be around 15-20 GB
     - [ ] make sure `node_synonymizer.sqlite`'s last modified date is today (or whatever day the build was run)
     - [ ] make sure `kg2c_lite.json.gz`'s last modified date is today (or whatever day the build was run)
