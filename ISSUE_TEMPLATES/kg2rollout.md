@@ -81,9 +81,9 @@ be done well in advance of the rollout; it doesn't hurt anything to do them earl
 - [ ] roll `master` out to the various `arax.ncats.io` endpoints
 - [ ] run the database manager
 - [ ] run the pytest suite on the various endpoints
-- [ ] verify each endpoint is running the new KG2 version by running the following JSON query and inspecting the returned node:
-  - `{"nodes": {"n00": {"ids": ["RTX:KG2c"]}}, "edges": {}}`
-- [ ] verify each endpoint is using the new synonymizer by looking up "RTX:KG2" in the Synonyms tab in the UI
+- [ ] verify the new KG2 version is actually being used
+  - [ ] run this JSON query in the ARAX/KG2 UIs: `{"nodes": {"n00": {"ids": ["RTX:KG2c"]}}, "edges": {}}`
+  - [ ] look up `RTX:KG2` in the Synonyms tab in the UI
 - [ ] update our CI/CD testing instance with the new databases:
   - [ ] `ssh ubuntu@cicd.rtx.ai`
   - [ ] `cd RTX`
