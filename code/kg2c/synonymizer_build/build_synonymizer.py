@@ -11,7 +11,6 @@ def main():
     arg_parser.add_argument('start_at', nargs='?', default='1')
     arg_parser.add_argument('--downloadkg2pre', dest='download_kg2pre', action='store_true')
     arg_parser.add_argument('--downloadsri', dest='download_sri', action='store_true')
-    arg_parser.add_argument('--useconfigname', dest='use_config_name', action='store_true')
     arg_parser.add_argument('--test', dest='test', action='store_true')
     args = arg_parser.parse_args()
 
@@ -19,7 +18,7 @@ def main():
     step_2_command = ["python", f"{SCRIPT_DIR}/2_build_match_graph_sri.py"] + (["--downloadfresh"] if args.download_sri else []) + (["--test"] if args.test else [])
     step_3_command = ["python", f"{SCRIPT_DIR}/3_merge_match_graphs.py"]
     step_4_command = ["python", f"{SCRIPT_DIR}/4_cluster_match_graph.py"]
-    step_5_command = ["python", f"{SCRIPT_DIR}/5_create_synonymizer_sqlite.py"] + (["--useconfigname"] if args.use_config_name else [])
+    step_5_command = ["python", f"{SCRIPT_DIR}/5_create_synonymizer_sqlite.py"]
     all_steps = [step_1_command, step_2_command, step_3_command, step_4_command, step_5_command]
 
     # Run the requested steps (default is all steps)

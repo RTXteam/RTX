@@ -8,10 +8,6 @@ import sys
 
 import pandas as pd
 
-path_list = os.path.realpath(__file__).split(os.path.sep)
-sys.path.append(os.path.sep.join([*path_list[:(path_list.index("RTX") + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
 SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
@@ -51,9 +47,9 @@ def load_final_edges() -> pd.DataFrame:
     return edges_df
 
 
-def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, synonymizer_name: str) -> pd.DataFrame:
+def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> pd.DataFrame:
     # Get sqlite set up
-    sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/{synonymizer_name}"
+    sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
     logging.info(f"Synonymizer will be saved to: {sqlite_db_path}")
     if pathlib.Path(sqlite_db_path).exists():
         subprocess.check_call(["rm", sqlite_db_path])
@@ -184,9 +180,6 @@ def write_graph_reports(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, clusters
 
 def main():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--useconfigname', dest='use_config_name', action='store_true')
-    args = arg_parser.parse_args()
 
     logging.info(f"Loading nodes and edges TSVs into DataFrames..")
     # Load the match graph into DataFrames
@@ -194,8 +187,7 @@ def main():
     edges_df = load_final_edges()
 
     # Create the final database that will be the backend of the NodeSynonymizer
-    synonymizer_name = RTXConfiguration().node_synonymizer_path.split("/")[-1] if args.use_config_name else "node_synonymizer.sqlite"
-    clusters_df = create_synonymizer_sqlite(nodes_df, edges_df, synonymizer_name)
+    clusters_df = create_synonymizer_sqlite(nodes_df, edges_df)
 
     # Save some reports about the graph's content (meta-level)
     write_graph_reports(nodes_df, edges_df, clusters_df)
