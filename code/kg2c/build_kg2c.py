@@ -129,7 +129,7 @@ def main():
         subprocess.check_call(["python", f"{KG2C_DIR}/synonymizer_build/dump_autocomplete_node_info.py", kg2_version])
         subprocess.check_call(["python", f"{CODE_DIR}/autocomplete/create_load_db.py",
                                "--input", f"{KG2C_DIR}/synonymizer_build/autocomplete_node_info.tsv",
-                               "--output" f"{KG2C_DIR}/synonymizer_build/autocomplete.sqlite"])
+                               "--output", f"{KG2C_DIR}/synonymizer_build/autocomplete.sqlite"])
 
         if upload_to_arax_databases_rtx_ai:
             logging.info(f"Uploading synonymizer artifacts to arax-databases.rtx.ai:{upload_directory}")
