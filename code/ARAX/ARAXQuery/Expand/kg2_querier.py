@@ -223,7 +223,7 @@ class KG2Querier:
 
     def _convert_kg2c_plover_edge_to_trapi_edge(self, edge_tuple: list) -> Edge:
         edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
-        knowledge_sources = edge_tuple[3]
+        primary_knowledge_source = edge_tuple[3]
         qualified_predicate = edge_tuple[4]
         qualified_object_direction = edge_tuple[5]
         qualified_object_aspect = edge_tuple[6]
@@ -234,12 +234,11 @@ class KG2Querier:
                                          value_type_id="biolink:InformationResource",
                                          attribute_source=self.kg2_infores_curie))
 
-        # Create knowledge source attributes for each of this edge's knowledge sources
+        # Create an attribute for this edge's primary knowledge source
         knowledge_source_attributes = [Attribute(attribute_type_id="biolink:primary_knowledge_source",
-                                                 value=infores_curie,
+                                                 value=primary_knowledge_source,
                                                  value_type_id="biolink:InformationResource",
-                                                 attribute_source=self.kg2_infores_curie)
-                                       for infores_curie in knowledge_sources]
+                                                 attribute_source=self.kg2_infores_curie)]
         edge.attributes += knowledge_source_attributes
 
         # Add any qualifiers as appropriate
