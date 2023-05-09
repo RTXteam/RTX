@@ -1,7 +1,7 @@
 """
 This script creates a canonicalized version of KG2 stored in various file formats, including TSVs ready for import
 into Neo4j. Files are created in the directory this script is in. It relies on the options you specify in
-kg2c_config.json; in particular, the KG2c will be built off of the KG2 endpoint you specify in that config file.
+kg2c_config.json.
 Usage: python build_kg2c.py [--test]
 """
 import argparse
@@ -24,7 +24,7 @@ CODE_DIR = f"{KG2C_DIR}/.."
 RTX_CONFIG = RTXConfiguration()
 
 
-def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
+def _setup_config_dbs_file(synonymizer_name: str):
     """
     This function locally modifies config_dbs.json to point to the right KG2pre Neo4j and synonymizer.
     """
@@ -41,7 +41,6 @@ def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
     with open(config_dbs_file_path) as config_dbs_file:
         rtx_config_dbs_dict = json.load(config_dbs_file)
     # Point to the 'right' KG2 Neo4j (the one specified in the KG2c config) and synonymizer (we always use simple name)
-    rtx_config_dbs_dict["neo4j"]["KG2pre"] = kg2pre_neo4j_endpoint
     rtx_config_dbs_dict["database_downloads"]["node_synonymizer"] = f"/something/{synonymizer_name}"  # Only need name, not full path
 
     # Save our new config_dbs.json file
@@ -79,7 +78,6 @@ def main():
         kg2c_config_info = json.load(config_file)
     kg2_version = kg2c_config_info["kg2pre_version"]
     kg2c_db_version = kg2c_config_info["kg2c"]["kg2c_db_version"]
-    kg2pre_endpoint = kg2c_config_info["kg2pre_neo4j_endpoint"]
     biolink_version = kg2c_config_info["biolink_version"]
     build_kg2c = kg2c_config_info["kg2c"]["build"]
     upload_to_s3 = kg2c_config_info["kg2c"]["upload_to_s3"]
@@ -90,7 +88,6 @@ def main():
     upload_to_arax_databases_rtx_ai = kg2c_config_info["upload_to_arax_databases.rtx.ai"]
     upload_directory = f"/home/rtxconfig/KG{kg2_version}"
     logging.info(f"KG2pre version to use is {kg2_version}")
-    logging.info(f"KG2pre neo4j endpoint to use is {kg2pre_endpoint}")
     logging.info(f"Biolink model version to use is {biolink_version}")
     logging.info(f"Synonymizer name is {synonymizer_name}")
     logging.info(f"Directory to upload files to on arax-databases.rtx.ai is {upload_directory}")
@@ -114,7 +111,7 @@ def main():
                              f"new synonymizer in kg2c_config.json.")
 
     # Set up an RTX config_local.json file that points to the right KG2 and synonymizer
-    _setup_config_dbs_file(kg2pre_endpoint, synonymizer_name)
+    _setup_config_dbs_file(synonymizer_name)
 
     # Create KG2pre test TSV files as applicable
     if args.test and not use_local_kg2pre_tsvs:
