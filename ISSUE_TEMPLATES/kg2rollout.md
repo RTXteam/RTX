@@ -1,6 +1,6 @@
 _NOTE: To create a new issue based on this template, simply go to: https://github.com/RTXteam/RTX/issues/new?template=kg2rollout.md_
 
-##### 1. Build and load KG2c:
+#### 1. Build and load KG2c:
 
 - [ ] merge `master` into the branch being used for this KG2 version (e.g., `kg2.8.2c`)
 - [ ] update the four hardcoded biolink version numbers in the branch (as needed):
@@ -28,7 +28,7 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
   - [ ] update `config_dbs.json` to point to this new Plover (all maturity levels should point to it for now)
   
 
-##### 2. Rebuild downstream databases:
+#### 2. Rebuild downstream databases:
 
 The following databases should be rebuilt and copies of them should be put in `/home/rtxconfig/KG2.X.Y` on `arax-databases.rtx.ai`. Please use this kind of naming format: `mydatabase_v1.0_KG2.X.Y.sqlite`.
 
@@ -36,12 +36,12 @@ The following databases should be rebuilt and copies of them should be put in `/
 - [ ] refreshed DTD @chunyuma
 - [ ] DTD model @chunyuma _(may be skipped - depends on the changes in this KG2 version)
 - [ ] DTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)
-- [ ] XDTD database
+- [ ] XDTD database @chunyuma
 
 **NOTE**: As databases are rebuilt, `RTX/code/config_dbs.json` will need to be updated to point to their new paths! Push these changes to the branch for this KG2 version, unless the rollout of this KG2 version has already occurred, in which case you should push to `master` (but first follow the steps described [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#config_dbsjson)). 
 
 
-##### 3. Update the ARAX codebase:
+#### 3. Update the ARAX codebase:
 
 All code changes should **go in the branch for this KG2 version**! (e.g., `kg2.8.2c`)
 
@@ -57,14 +57,14 @@ All code changes should **go in the branch for this KG2 version**! (e.g., `kg2.8
   - [ ] locally set `force_local = True` in `ARAX_expander.py` (to avoid using the old KG2 API)
   - [ ] then run the entire ARAX pytest suite
   - [ ] address any failing tests
-- [ ] update the KG2 and ARAX version numbers in the appropriate places (`openapi.yaml`, etc.) @edeutsch
+- [ ] update the KG2 and ARAX version numbers in the appropriate places (`openapi.yaml`, etc.)
   - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` in line 12 (`version:`); the major and minor release numbers are kept synchronous with the TRAPI version; just bump the patch release version (least significant digit)
   - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` in line 12 (`version:`); the first three digits are kept synchronous with the KG2 release version
   - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_ARAX.yaml` on line 4 (`version:`); same as for the ARAX `openapi.yaml` file
   - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_KG2.yaml` on line 4 (`version:`); same as for the KG2 `openapi.yaml` file
   
 
-##### 4. Pre-upload databases:
+#### 4. Pre-upload databases:
 
 Before rolling out, we need to pre-upload the new databases (referenced in `config_dbs.json`) to `arax.ncats.io` and the ITRB SFTP server. These steps can
 be done well in advance of the rollout; it doesn't hurt anything to do them early.
@@ -75,7 +75,7 @@ be done well in advance of the rollout; it doesn't hurt anything to do them earl
 
 
 
-##### 5. Do the rollout:
+#### 5. Do the rollout:
 
 - [ ] merge `master` into the branch for this KG2 version (e.g., `kg2.8.2c`)
 - [ ] merge the branch into `master`
@@ -92,7 +92,7 @@ be done well in advance of the rollout; it doesn't hurt anything to do them earl
   - [ ] `python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused`
 
 
-##### 6. Final items/clean up:
+#### 6. Final items/clean up:
 
 - [ ] generate KGX files and upload them to the KGE Archive @acevedol
 - [ ] turn off the old KG2c version's neo4j instance
