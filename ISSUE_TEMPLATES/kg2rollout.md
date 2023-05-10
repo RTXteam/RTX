@@ -13,7 +13,7 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
     - [ ] make sure there is enough disk space available on `arax-databases.rtx.ai` (need at least 100G, ideally >120G). delete old KG2 database directories as needed (warn the team on Slack in advance).
     - [ ] make sure to choose to build a new synonymizer in `kg2c_config.json`, as described in the how-to
   - [ ] after the build is done, verify it looks ok:
-    - [ ] `node_synonymizer.sqlite` should be around 15-20 GB
+    - [ ] `node_synonymizer.sqlite` should be around 8-15 GB
     - [ ] make sure `node_synonymizer.sqlite`'s last modified date is today (or whatever day the build was run)
     - [ ] make sure `kg2c_lite.json.gz`'s last modified date is today (or whatever day the build was run)
     - [ ] the entire build runtime (synonymizer + KG2c) shouldn't have been more than 24 hours
@@ -24,8 +24,11 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] load the new KG2c into Plover (available at http://kg2cplover.rtx.ai:9990)
-  - [ ] update `config_dbs.json` to point to this new Plover (all maturity levels should point to it for now)
-  
+  - [ ] in the Plover repo, update `kg_config.json` to point to the new version of the kg2c lite file (in the git lfs repo); push this change to a branch
+  - [ ] make any other changes to Plover code that this KG2 version necessitates (in that same branch)
+  - [ ] build a Plover from the branch
+  - [ ] update `config_dbs.json` in the RTX repo to point to this new Plover (all maturity levels should point to it for now)
+
 
 #### 2. Rebuild downstream databases:
 
