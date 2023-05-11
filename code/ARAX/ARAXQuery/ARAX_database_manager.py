@@ -71,7 +71,6 @@ class ARAXDatabaseManager:
         if not os.path.exists(xcrg_decrease_model_filepath):
             os.system(f"mkdir -p {xcrg_decrease_model_filepath}")
 
-
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'graph_database': f"{pred_filepath}{os.path.sep}{self.RTXConfig.graph_database_path.split('/')[-1]}",
@@ -106,7 +105,6 @@ class ARAXDatabaseManager:
             'xcrg_embeddings': self.get_database_subpath(self.RTXConfig.xcrg_embeddings_path),
             "xcrg_increase_model": self.get_database_subpath(self.RTXConfig.xcrg_increase_model_path),
             "xcrg_decrease_model": self.get_database_subpath(self.RTXConfig.xcrg_decrease_model_path)
-
         }
         # user, host, and paths to databases on remote server dbs are downloaded from (arax-databases.rtx.ai)
         self.databases_server_dir_path = '/home/rtxconfig'
@@ -124,7 +122,7 @@ class ARAXDatabaseManager:
             'explainable_dtd_db': self.get_remote_location('explainable_dtd_db'),
             'xcrg_embeddings': self.get_remote_location('xcrg_embeddings'),
             'xcrg_increase_model': self.get_remote_location('xcrg_increase_model'),
-            'xcrg_decrease_model': self.get_remote_location('xcrg_decrease_model')    
+            'xcrg_decrease_model': self.get_remote_location('xcrg_decrease_model')
         }
         # database locations if inside rtx1 docker container
         self.docker_databases_dir_path = '/mnt/data/orangeboard/databases'
@@ -142,7 +140,7 @@ class ARAXDatabaseManager:
             'explainable_dtd_db': self.get_docker_path('explainable_dtd_db'),
             'xcrg_embeddings': self.get_docker_path('xcrg_embeddings'),
             'xcrg_increase_model': self.get_docker_path('xcrg_increase_model'),
-            'xcrg_decrease_model': self.get_docker_path('xcrg_decrease_model') 
+            'xcrg_decrease_model': self.get_docker_path('xcrg_decrease_model')
         }
 
         # database local paths + version numbers
