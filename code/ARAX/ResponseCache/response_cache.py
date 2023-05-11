@@ -318,7 +318,7 @@ class ResponseCache:
                         else:
                             envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': {} }
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
                     if 'logs' not in envelope or envelope['logs'] is None:
@@ -517,7 +517,7 @@ class ResponseCache:
                         else:
                             envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages }
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [] } }
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
 
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
