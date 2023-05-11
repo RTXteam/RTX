@@ -517,7 +517,7 @@ class ResponseCache:
                         else:
                             envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages }
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': {} }
+                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [] } }
 
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
