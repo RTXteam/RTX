@@ -42,7 +42,6 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
         assert response.error_code == error_code
 
     # Convert output knowledge graph to a dictionary format for faster processing (organized by QG IDs)
-    print(list(message.knowledge_graph.edges.values())[:-5])
     dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
     nodes_by_qg_id = dict_kg.nodes_by_qg_id
     edges_by_qg_id = dict_kg.edges_by_qg_id
