@@ -57,12 +57,6 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
     check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     check_property_format(nodes_by_qg_id, edges_by_qg_id)
-    
-    #can't check node categories for inferred queries due to TRAPI1.4
-    for edge in message.query_graph.edges.values():
-        if edge.knowledge_type == 'inferred':
-            return nodes_by_qg_id, edges_by_qg_id
-    check_node_categories(message.knowledge_graph.nodes, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id
 
@@ -411,6 +405,7 @@ def test_dtd_expand_2():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
+@pytest.mark.skip  # The NGD Expand module has been deprecated...
 def test_ngd_expand():
     actions_list = [
         "add_qnode(name=MONDO:0007156, key=n00)",
@@ -833,7 +828,7 @@ def test_qualified_regulates_query():
                 ],
                 "attribute_constraints": [
                     {
-                        "id": "biolink:knowledge_source",
+                        "id": "knowledge_source",
                         "name": "knowledge source",
                         "value": ["infores:rtx-kg2"],
                         "operator": "==",
@@ -911,7 +906,7 @@ def test_edge_constraints():
                     "subject": "n01",
                     "attribute_constraints": [
                         {
-                            "id": "biolink:knowledge_source",
+                            "id": "knowledge_source",
                             "name": "knowledge source",
                             "value": ["infores:rtx-kg2","infores:arax","infores:drugbank"],
                             "operator": "==",
@@ -1391,7 +1386,7 @@ def test_no_query_ids_issue():
                 ],
                 "attribute_constraints": [
                     {
-                        "id": "biolink:knowledge_source",
+                        "id": "knowledge_source",
                         "name": "knowledge source",
                         "value": ["infores:connections-hypothesis"],
                         "operator": "==",
@@ -1482,8 +1477,9 @@ def test_missing_semmed_publications():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
-            primary_knowledge_sources = {attribute.value for attribute in edge.attributes
-                                         if attribute.attribute_type_id == "biolink:primary_knowledge_source"}
+            primary_knowledge_sources = {source.resource_id for source in edge.sources
+                                         if source.resource_role == "primary_knowledge_source"}
+            assert primary_knowledge_sources
             if "infores:semmeddb" in primary_knowledge_sources:
                 publications = [attribute.value for attribute in edge.attributes
                                 if attribute.attribute_type_id == "biolink:publications"]

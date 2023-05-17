@@ -231,13 +231,13 @@ class KG2Querier:
 
         # Create knowledge source attributes for each of this edge's primary knowledge sources
         primary_retrieval_sources = [RetrievalSource(resource_id=infores_curie,
-                                                     resource_role="biolink:primary_knowledge_source")
+                                                     resource_role="primary_knowledge_source")
                                      for infores_curie in primary_knowledge_sources]
         sources += primary_retrieval_sources
 
         # Indicate that this edge came from the KG2 KP
         kg2_retrieval_source = RetrievalSource(resource_id=self.kg2_infores_curie,
-                                               resource_role="biolink:aggregator_knowledge_source",
+                                               resource_role="aggregator_knowledge_source",
                                                upstream_resource_ids=primary_knowledge_sources)
         sources.append(kg2_retrieval_source)
 

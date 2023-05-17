@@ -7,7 +7,7 @@ from ARAX_query_tracker import ARAXQueryTracker
 from Expand.smartapi import SmartAPI
 
 
-def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=None):  # noqa: E501
+def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=None, mode=None):  # noqa: E501
     """Obtain status information about the endpoint
 
      # noqa: E501
@@ -20,6 +20,8 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
     :type terminate_pid: int
     :param authorization: Authorization string required for certain calls to status
     :type authorization: str
+    :param mode: Switch to control the type of returned status information Possible values are: activity: Show query activity on server [default] smartapi: Summarize Translator endpoints at SmartAPI
+    :type mode: str
 
     :rtype: object
     """

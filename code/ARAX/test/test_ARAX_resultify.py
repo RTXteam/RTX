@@ -57,7 +57,7 @@ def _create_edges(kg_edge_info: Iterable[Dict[str, any]]) -> Dict[str, Edge]:
                     object=kg_edge["object"],
                     predicate=kg_edge.get("predicate", "biolink:related_to"),
                     sources=[RetrievalSource(resource_id="infores:arax",
-                                             resource_role="biolink:aggregator_knowledge_source")])
+                                             resource_role="aggregator_knowledge_source")])
         edge.qedge_keys = kg_edge["qedge_keys"]
         edges_dict[kg_edge["edge_key"]] = edge
     return edges_dict
@@ -188,7 +188,7 @@ def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]], shorthand_ed
                                                  object=target_node_key,
                                                  predicate="biolink:related_to",
                                                  sources=[RetrievalSource(resource_id="infores:arax",
-                                                                          resource_role="biolink:aggregator_knowledge_source")]))
+                                                                          resource_role="aggregator_knowledge_source")]))
             if not hasattr(edge, "qedge_keys"):
                 edge.qedge_keys = []
             edge.qedge_keys.append(qedge_key)

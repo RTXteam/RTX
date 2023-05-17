@@ -139,12 +139,12 @@ class RemoveEdges:
         self.response.info(f"Removing edges from the knowledge graph matching the specified property")
         edge_params = self.edge_parameters
         # FW: Hack to allow all provided by synonyms
-        provided_by_attributes = {'biolink:knowledge_source',
-                                            'biolink:primary_knowledge_source',
-                                            'biolink:original_knowledge_source',
-                                            'biolink:aggregator_knowledge_source',
-                                            'biolink:supporting_data_source',
-                                            'biolink:original_source',
+        provided_by_attributes = {'knowledge_source',
+                                            'primary_knowledge_source',
+                                            'original_knowledge_source',
+                                            'aggregator_knowledge_source',
+                                            'supporting_data_source',
+                                            'original_source',
                                             'provided_by'}
         provided_by_flag = edge_params['edge_attribute'] in provided_by_attributes
 

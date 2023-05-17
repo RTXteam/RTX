@@ -509,25 +509,6 @@ def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, 
     return kg
 
 
-def get_arax_source_attribute() -> Attribute:
-    arax_infores_curie = "infores:arax"
-    return Attribute(attribute_type_id="biolink:aggregator_knowledge_source",
-                     value=arax_infores_curie,
-                     value_type_id="biolink:InformationResource",
-                     attribute_source=arax_infores_curie)
-
-
-def get_kp_source_attribute(kp_name: str, arax_kp: bool = False, description: Optional[str] = None) -> Attribute:
-    if not arax_kp and not description:
-        description = f"ARAX inserted this attribute because the KP ({kp_name}) did not seem to provide such " \
-                      f"an attribute (indicating that this edge came from them)."
-    return Attribute(attribute_type_id="biolink:knowledge_source",
-                     value=kp_name,
-                     value_type_id="biolink:InformationResource",
-                     description=description,
-                     attribute_source="infores:arax")
-
-
 def get_computed_value_attribute() -> Attribute:
     arax_infores_curie = "infores:arax"
     return Attribute(attribute_type_id="biolink:computed_value",
@@ -669,7 +650,7 @@ def get_knowledge_source_constraints(edge):
     allowlist = None
     denylist = set()
     for constraint in edge.attribute_constraints:
-        if constraint.id == "biolink:knowledge_source" or constraint.id == "biolink:aggregator_knowledge_source":
+        if constraint.id == "knowledge_source" or constraint.id == "aggregator_knowledge_source":
             if constraint.operator != "==":
                 raise Exception("Given incompatible operator in edge knowledge_source constraint")
             knowledge_sources = set(constraint.value)

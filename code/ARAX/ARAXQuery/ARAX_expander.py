@@ -59,9 +59,9 @@ class ARAXExpander:
         self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
         self.supported_qnode_attribute_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
-        self.supported_qedge_attribute_constraints = {"biolink:knowledge_source": {"==": "*"},
-                                                      "biolink:primary_knowledge_source": {"==": "*"},
-                                                      "biolink:aggregator_knowledge_source": {"==": "*"}}
+        self.supported_qedge_attribute_constraints = {"knowledge_source": {"==": "*"},
+                                                      "primary_knowledge_source": {"==": "*"},
+                                                      "aggregator_knowledge_source": {"==": "*"}}
         self.supported_qedge_qualifier_constraints = {"biolink:qualified_predicate", "biolink:object_direction_qualifier",
                                                       "biolink:object_aspect_qualifier"}
 

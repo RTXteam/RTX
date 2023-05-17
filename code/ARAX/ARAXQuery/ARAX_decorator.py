@@ -47,48 +47,39 @@ class ARAXDecorator:
                                            value_type_id=None),
             "kg2_ids": Attribute(attribute_type_id="biolink:original_edge_information",
                                  value_type_id="metatype:String",
-                                 description="The original RTX-KG2pre edge(s) corresponding to this edge prior to any "
-                                             "synonymization or remapping. Listed in "
-                                             "(subject)--(relation)--(object)--(source) format.")
+                                 description="The IDs of the original RTX-KG2pre edge(s) corresponding to this edge "
+                                             "prior to any synonymization or remapping.")
         }
         self.array_delimiter_char = "ǂ"
         self.kg2_infores_curie = "infores:rtx-kg2"  # Can't use expand_utilities.py here due to circular imports
-        self.use_kg2c_sqlite = use_kg2c_sqlite
+        self.use_kg2c_sqlite = use_kg2c_sqlite  # False means Chunyu's special XDTD KG2 data is used
 
     def decorate_nodes(self, response: ARAXResponse) -> ARAXResponse:
         message = response.envelope.message
         response.debug(f"Decorating nodes with metadata from KG2c")
 
         # Get connected to the local KG2c sqlite database
-        connection, cursor = self._connect_to_kg2c_sqlite()
+        connection, cursor = self._connect_to_sqlite()
 
         # Extract the KG2c nodes from sqlite
         response.debug(f"Looking up corresponding KG2c nodes in sqlite")
+        node_attributes_ordered = list(self.node_attributes)
+        node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
+        node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
         if self.use_kg2c_sqlite:
-            node_attributes_ordered = list(self.node_attributes)
             node_cols_str = ", ".join([f"N.{property_name}" for property_name in node_attributes_ordered])
-            node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
-            node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
             sql_query = f"SELECT N.id, {node_cols_str} " \
                         f"FROM nodes AS N " \
                         f"WHERE N.id IN ('{node_keys_str}')"
-            cursor.execute(sql_query)
-            rows = cursor.fetchall()
-            cursor.close()
-            connection.close()
         else:
-            ## set use_kg2c_sqlite to False to use the old version of kg2c for xdtd model developed by Chunyu
-            node_attributes_ordered = list(self.node_attributes)
             node_cols_str = ", ".join([property_name for property_name in node_attributes_ordered])
-            node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
-            node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
             sql_query = f"SELECT id, {node_cols_str} " \
                         f"FROM NODE_MAPPING_TABLE AS N " \
                         f"WHERE N.id IN ('{node_keys_str}')"
-            cursor.execute(sql_query)
-            rows = cursor.fetchall()
-            cursor.close()
-            connection.close()
+        cursor.execute(sql_query)
+        rows = cursor.fetchall()
+        cursor.close()
+        connection.close()
 
         # Decorate nodes in the KG with info in these KG2c nodes
         response.debug(f"Adding attributes to nodes in the KG")
@@ -131,9 +122,9 @@ class ARAXDecorator:
         # Figure out which edges we need to decorate
         if kind == "RTX-KG2":
             edge_keys_to_decorate = {edge_id for edge_id, edge in kg.edges.items()
-                                     if edge.attributes and any(attribute.value == self.kg2_infores_curie and
-                                                                attribute.attribute_type_id == "biolink:aggregator_knowledge_source"
-                                                                for attribute in edge.attributes)}
+                                     if edge.sources and any(retrieval_source.resource_id == self.kg2_infores_curie and
+                                                             retrieval_source.resource_role == "aggregator_knowledge_source"
+                                                             for retrieval_source in edge.sources)}
         else:
             edge_keys_to_decorate = {edge_id for edge_id, edge in kg.edges.items()
                                      if edge.predicate == "biolink:occurs_together_in_literature_with"}
@@ -158,33 +149,26 @@ class ARAXDecorator:
             search_key_column = "triple"
 
         # Extract the proper entries from sqlite
-        connection, cursor = self._connect_to_kg2c_sqlite()
+        connection, cursor = self._connect_to_sqlite()
         response.debug(f"Looking up EPC edge info in KG2c sqlite")
         response.debug(f"Looking up corresponding KG2c nodes in sqlite")
+        edge_attributes_ordered = list(self.edge_attributes)
+        search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
+        search_keys_str = "','".join(search_keys_set)  # SQL wants ('edge1', 'edge2') format for string lists
         if self.use_kg2c_sqlite:
-            edge_attributes_ordered = list(self.edge_attributes)
             edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
-            search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
-            search_keys_str = "','".join(search_keys_set)  # SQL wants ('edge1', 'edge2') format for string lists
             sql_query = f"SELECT E.{search_key_column}, {edge_cols_str} " \
                         f"FROM edges AS E " \
                         f"WHERE E.{search_key_column} IN ('{search_keys_str}')"
-            cursor.execute(sql_query)
-            rows = cursor.fetchall()
-            cursor.close()
-            connection.close()
         else:
-            edge_attributes_ordered = list(self.edge_attributes)
             edge_cols_str = ", ".join([property_name for property_name in edge_attributes_ordered])
-            search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
-            search_keys_str = "','".join(search_keys_set)  # SQL wants ('edge1', 'edge2') format for string lists
             sql_query = f"SELECT triple, {edge_cols_str} " \
                         f"FROM EDGE_MAPPING_TABLE AS E " \
                         f"WHERE E.triple IN ('{search_keys_str}')"
-            cursor.execute(sql_query)
-            rows = cursor.fetchall()
-            cursor.close()
-            connection.close()
+        cursor.execute(sql_query)
+        rows = cursor.fetchall()
+        cursor.close()
+        connection.close()
             
         response.debug(f"Got {len(rows)} rows back from KG2c sqlite")
 
@@ -269,25 +253,19 @@ class ARAXDecorator:
             edge_key = f"{edge.subject}--{edge.predicate}--{edge.object}"
         return edge_key
 
-    def _connect_to_kg2c_sqlite(self) -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
+    def _connect_to_sqlite(self) -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
+        path_list = os.path.realpath(__file__).split(os.path.sep)
+        rtx_index = path_list.index("RTX")
+        rtxc = RTXConfiguration()
         if self.use_kg2c_sqlite:
-            path_list = os.path.realpath(__file__).split(os.path.sep)
-            rtx_index = path_list.index("RTX")
-            rtxc = RTXConfiguration()
             sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
             sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
-            sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
-            connection = sqlite3.connect(sqlite_file_path)
-            cursor = connection.cursor()
         else:
-            path_list = os.path.realpath(__file__).split(os.path.sep)
-            rtx_index = path_list.index("RTX")
-            rtxc = RTXConfiguration()
             sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
             sqlite_name = rtxc.explainable_dtd_db_path.split('/')[-1]
-            sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
-            connection = sqlite3.connect(sqlite_file_path)
-            cursor = connection.cursor()
+        sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
+        connection = sqlite3.connect(sqlite_file_path)
+        cursor = connection.cursor()
         return connection, cursor
 
     def _load_property(self, property_name: str, raw_value: str) -> Union[str, List[str], Dict[str, any], None]:
