@@ -107,7 +107,7 @@ function main() {
 	selectInput("qid");
     }
     else {
-	add_cyto(99999);
+	add_cyto(99999,0);
 	//add_cyto(0); // now done on user click
     }
 
@@ -1639,7 +1639,9 @@ function render_response(respObj,dispjson) {
 		respreas = respObj.resource_id;
 	    else if (respObj.reasoner_id)
 		respreas = respObj.reasoner_id;
-	    process_results(respObj.message["results"],respObj.message["knowledge_graph"],respObj["schema_version"],respreas);
+
+	    var auxiliary_graphs = respObj.message["auxiliary_graphs"] ? respObj.message["auxiliary_graphs"] : null;
+	    process_results(respObj.message["results"],respObj.message["knowledge_graph"],auxiliary_graphs,respObj["schema_version"],respreas);
 
 
             if (respObj.message.results.length > UIstate["maxresults"])
@@ -1935,7 +1937,7 @@ function render_response(respObj,dispjson) {
 
 
     //add_cyto(0); // now done on user click
-    add_cyto(99999);
+    add_cyto(99999,0);
     statusdiv.appendChild(document.createTextNode("done."));
     statusdiv.appendChild(document.createElement("br"));
     if (respObj["submitter"]) {
@@ -2341,8 +2343,10 @@ function add_to_summary(rowdata, num) {
 }
 
 
+// used for gid = 0 [kg] and 999999 [query graph]
 function process_graph(gne,gid,trapi) {
     cytodata[gid] = [];
+    cytodata[gid][0] = [];
     for (var id in gne.nodes) {
 	var gnode = Object.create(gne['nodes'][id]); // make a copy!
 
@@ -2381,7 +2385,7 @@ function process_graph(gne,gid,trapi) {
 	}
 
         var tmpdata = { "data" : gnode };
-        cytodata[gid].push(tmpdata);
+        cytodata[gid][0].push(tmpdata);
     }
 
     for (var id in gne.edges) {
@@ -2398,7 +2402,7 @@ function process_graph(gne,gid,trapi) {
 	    gedge.type = gedge.predicates[0];
 
         var tmpdata = { "data" : gedge };
-        cytodata[gid].push(tmpdata);
+        cytodata[gid][0].push(tmpdata);
     }
 
 
@@ -2447,7 +2451,7 @@ function eau_du_essence(result) {
     return guessence;
 }
 
-function process_results(reslist,kg,trapi,mainreasoner) {
+function process_results(reslist,kg,aux,trapi,mainreasoner) {
     // do this only once
     if (Object.keys(all_nodes).length === 0 && all_nodes.constructor === Object) {
 	for (var result of reslist)
@@ -2526,7 +2530,7 @@ function process_results(reslist,kg,trapi,mainreasoner) {
         div.id = 'h'+num+'_div';
 	div.title = 'Click to expand / collapse result '+num;
         div.className = 'accordion';
-	div.setAttribute('onclick', 'add_cyto('+num+');sesame(this,a'+num+'_div);');
+	div.setAttribute('onclick', 'add_cyto('+num+',0);sesame(this,a'+num+'_div);');
 	div.appendChild(document.createTextNode("Result "+num));
 	if (ess)
 	    div.innerHTML += " :: <b>"+ess+"</b>"; // meh...
@@ -2632,6 +2636,39 @@ function process_results(reslist,kg,trapi,mainreasoner) {
         tr.appendChild(td);
         table.appendChild(tr);
 
+	if (result.analyses && result.analyses[0].support_graphs.length > 0) {
+            tr = document.createElement("tr");
+	    td = document.createElement("td");
+	    td.className = 'cytograph_controls';
+	    td.colSpan = "2";
+	    td.style.paddingLeft = "40px";
+            td.appendChild(document.createTextNode(" VIEW :: "));
+            link = document.createElement("a");
+	    link.style.fontWeight = "bold";
+	    link.style.fontSize = "larger";
+	    link.style.marginRight = "20px";
+	    link.title = 'View Main Result Graph';
+	    link.setAttribute('onclick', 'add_cyto('+num+',0);');
+	    link.appendChild(document.createTextNode("Result Graph"));
+	    td.appendChild(link);
+
+	    td.appendChild(document.createTextNode(" Support Graphs: "));
+
+	    for (var sg in result.analyses[0].support_graphs) {
+		link = document.createElement("a");
+		link.style.fontWeight = "bold";
+		link.style.fontSize = "larger";
+		link.style.marginLeft = "20px";
+		link.title = 'Graph ID: '+result.analyses[0].support_graphs[sg];
+		var sg1 = Number(sg)+1;
+		link.setAttribute('onclick', 'add_cyto('+num+','+sg1+');');
+		link.appendChild(document.createTextNode(sg1));
+		td.appendChild(link);
+	    }
+
+            tr.appendChild(td);
+	    table.appendChild(tr);
+	}
 
         tr = document.createElement("tr");
 	//td = document.createElement("td");
@@ -2656,6 +2693,7 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 
 
         cytodata[num] = [];
+        cytodata[num][0] = [];
 	//console.log("=================== CYTO num:"+num+"  #nb:"+result.node_bindings.length);
 
         for (var nbid in result.node_bindings) {
@@ -2667,7 +2705,7 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 		if (node.attributes)
 		    kmne.node_binding_attributes = node.attributes;
 		var tmpdata = { "data" : kmne };
-		cytodata[num].push(tmpdata);
+		cytodata[num][0].push(tmpdata);
 	    }
 	}
 
@@ -2687,9 +2725,50 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 		if (edge.attributes)
 		    kmne.edge_binding_attributes = edge.attributes;
 		var tmpdata = { "data" : kmne };
-		cytodata[num].push(tmpdata);
+		cytodata[num][0].push(tmpdata);
 	    }
 	}
+
+
+        if (result.analyses && result.analyses[0].support_graphs.length > 0) {
+            for (var sg in result.analyses[0].support_graphs) {
+		var sup = Number(sg)+1;
+		cytodata[num][sup] = [];
+		var sgid = result.analyses[0].support_graphs[sg];
+		var nodes = {};
+
+		for (var edgeid of aux[sgid]["edges"]) {
+                    var kmne = Object.create(kg.edges[edgeid]);
+		    kmne.parentdivnum = num;
+		    kmne.trapiversion = trapi;
+		    kmne.id = edgeid;
+		    kmne.source = kmne.subject;
+		    kmne.target = kmne.object;
+		    nodes[kmne.subject] = 1;
+		    nodes[kmne.object] = 1;
+		    if (kmne.predicate)
+			kmne.type = kmne.predicate;
+		    if (kmne.qualifiers && kmne.qualifiers.length == 0)
+			kmne.qualifiers = null;
+		    //if (edge.attributes)
+		    //kmne.edge_binding_attributes = edge.attributes;
+		    var tmpdata = { "data" : kmne };
+		    cytodata[num][sup].push(tmpdata);
+		}
+
+		for (var nodeid in nodes) {
+                    var kmne = Object.create(kg.nodes[nodeid]);
+		    kmne.parentdivnum = num;
+		    kmne.trapiversion = trapi;
+		    kmne.id = nodeid;
+		    //if (node.attributes)
+		    //kmne.node_binding_attributes = node.attributes;
+		    var tmpdata = { "data" : kmne };
+		    cytodata[num][sup].push(tmpdata);
+		}
+	    }
+	}
+
 
     }
 
@@ -2697,9 +2776,9 @@ function process_results(reslist,kg,trapi,mainreasoner) {
 }
 
 
-function add_cyto(i) {
+function add_cyto(i,s) {
     // once rendered, data is set to null so as to only do this once per graph
-    if (cytodata[i] == null) return;
+    // //////if (cytodata[i] == null) return;
 
     var num = Number(i);// + 1;
 
@@ -2744,7 +2823,7 @@ function add_cyto(i) {
 		'text-opacity': 0
 	    }),
 
-	elements: cytodata[i],
+	elements: cytodata[i][s],
 
 	wheelSensitivity: 0.2,
 
@@ -2985,7 +3064,7 @@ function add_cyto(i) {
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
     });
-    cytodata[i] = null;
+    // //////cytodata[i] = null;
 }
 
 
@@ -3414,7 +3493,7 @@ function mapEdgeColor(ele) {
 // build-a-qGraph
 function qg_new(msg,nodes) {
     if (cyobj[99999]) { cyobj[99999].elements().remove(); }
-    else add_cyto(99999);
+    else add_cyto(99999,0);
     input_qg = { "edges": {}, "nodes": {} };
     qgids = [];
     UIstate.editedgeid = null;
@@ -4085,8 +4164,9 @@ function qg_edge_swap_obj_subj() {
 
 function qg_edit(msg) {
     cytodata[99999] = [];
+    cytodata[99999][0] = [];
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
-    else add_cyto(99999);
+    else add_cyto(99999,0);
     UIstate.editedgeid = null;
     UIstate.editnodeid = null;
 

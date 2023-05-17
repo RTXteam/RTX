@@ -32,8 +32,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import desc
 from sqlalchemy import inspect
 
-sys.path = ['/mnt/data/python/TestValidator'] + sys.path
-from reasoner_validator import TRAPIResponseValidator
+#sys.path = ['/mnt/data/python/TestValidator'] + sys.path
+#from reasoner_validator import TRAPIResponseValidator
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
@@ -304,18 +304,21 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
+                enable_validation = False
                 schema_version = trapi_version
                 if 'schema_version' in envelope:
                     schema_version = envelope['schema_version']
                 try:
-                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
-                    validator.check_compliance_of_trapi_response(envelope)
-                    messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
-                    if len(messages['errors']) == 0:
-                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages }
+                    if enable_validation:
+                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+                        validator.check_compliance_of_trapi_response(envelope)
+                        messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                        if len(messages['errors']) == 0:
+                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages }
+                        else:
+                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
-
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
                     if 'logs' not in envelope or envelope['logs'] is None:
@@ -500,17 +503,21 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
+                enable_validation = False
                 schema_version = trapi_version
                 if 'schema_version' in envelope:
                     schema_version = envelope['schema_version']
                 try:
-                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
-                    validator.check_compliance_of_trapi_response(envelope)
-                    messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
-                    if len(messages['errors']) == 0:
-                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages }
+                    if enable_validation:
+                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+                        validator.check_compliance_of_trapi_response(envelope)
+                        messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                        if len(messages['errors']) == 0:
+                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages }
+                        else:
+                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages }
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages }
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
 
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
