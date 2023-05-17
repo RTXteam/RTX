@@ -259,9 +259,10 @@ class ARAXDecorator:
         rtxc = RTXConfiguration()
         if self.use_kg2c_sqlite:
             sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+            sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
         else:
             sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
-        sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
+            sqlite_name = rtxc.explainable_dtd_db_path.split('/')[-1]
         sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
         connection = sqlite3.connect(sqlite_file_path)
         cursor = connection.cursor()
