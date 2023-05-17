@@ -1,10 +1,11 @@
 _NOTE: To create a new issue based on this template, simply go to: https://github.com/RTXteam/RTX/issues/new?template=kg2rollout.md_
 
-**THE BRANCH FOR THIS ROLLOUT IS: ________**
+**THE BRANCH FOR THIS ROLLOUT IS: `________`**
+**THE ARAX-DATABASES.RTX.AI DIRECTORY FOR THIS ROLLOUT IS: `/home/rtxconfig/KG2_____`**
 
 #### 1. Build and load KG2c:
 
-- [ ] merge `master` into the branch being used for this KG2 version (e.g., `kg2.8.2c`)
+- [ ] merge `master` into the branch being used for this KG2 version
 - [ ] update the four hardcoded biolink version numbers in the branch (as needed):
   - [ ] in [code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml)
   - [ ] in [code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml)
@@ -22,7 +23,13 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
     - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax-databases.rtx.ai` (`/home/rtxconfig/KG2.X.Y`)
 - [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/ (how to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#host-kg2canonicalized-in-neo4j))
   - [ ] verify the correct KG2 version was uploaded by running this query: `match (n {id:"RTX:KG2c"}) return n`
-  - [ ] update the KG2pre and KG2c Neo4j endpoints in `RTX/code/config_dbs.json` (push to the branch)
+- [ ] update `RTX/code/config_dbs.json` in the branch:
+  - [ ] update the synonymizer version number/path
+  - [ ] update the fda_approved_drugs version number/path
+  - [ ] update the autocomplete version number/path
+  - [ ] update the meta_kg version number/path
+  - [ ] update the kg2c sqlite version number/path
+  - [ ] update the KG2pre and KG2c Neo4j endpoints
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] load the new KG2c into Plover (available at http://kg2cplover.rtx.ai:9990)
@@ -47,7 +54,7 @@ The following databases should be rebuilt and copies of them should be put in `/
 
 #### 3. Update the ARAX codebase:
 
-All code changes should **go in the branch for this KG2 version**! (e.g., `kg2.8.2c`)
+All code changes should **go in the branch for this KG2 version**!
 
 - [ ] regenerate the KG2c test triples file @acevedol
   - [ ] ensure the new KG2c Neo4j is currently running
@@ -81,7 +88,7 @@ be done well in advance of the rollout; it doesn't hurt anything to do them earl
 
 #### 5. Do the rollout:
 
-- [ ] merge `master` into the branch for this KG2 version (e.g., `kg2.8.2c`)
+- [ ] merge `master` into the branch for this KG2 version
 - [ ] merge the branch into `master`
 - [ ] roll `master` out to the various `arax.ncats.io` endpoints
 - [ ] run the database manager
