@@ -18,6 +18,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-f
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
+from openapi_server.models.retrieval_source import RetrievalSource
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
 
@@ -122,20 +123,27 @@ class ComputeJaccard:
                     object_key = end_node_key
                     # likely will need to fix this for TRAPI 1.0 after being able to test
                     # Do these need a attribute type and url?
+                    retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:primary_knowledge_source"),
+                                        RetrievalSource(resource_id=provided_by, resource_role="biolink:aggregator_knowledge_source")
+                    ]
+
+
                     edge_attribute_list = [
                         edge_attribute,
                         EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="EDAM-OPERATION:0226"),
                         # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                        EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
-                        EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
+                        # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                     ]
+
                     # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key, object_key=object_key,
                     #             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
                     #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
                     edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
-                                attributes=edge_attribute_list)
+                                attributes=edge_attribute_list, sources=retrieval_source)
                     edge.qedge_keys = qedge_keys
                     message.knowledge_graph.edges[id] = edge
 

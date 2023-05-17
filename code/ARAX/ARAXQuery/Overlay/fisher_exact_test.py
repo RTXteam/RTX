@@ -20,6 +20,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
+from openapi_server.models.retrieval_source import RetrievalSource
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -263,17 +264,19 @@ class ComputeFTEST:
                     self.response.warning(f"No cateogry is specified for the subject node with qnode key {subject_qnode_key} in Query Graph. We will automatically assign {subject_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
         ## check if the object node type is None, if so, automatically set it to biolink:NamedThing
-        if object_node_category is None:
-            if object_node_ids is None:
-                self.response.error(f"The object node with qnode key {object_node_ids} in Query Graph has no assigned cateogry and ids.")
-            else:
-                normalized_object_node = self.nodesynonymizer.get_canonical_curies(object_node_ids[0])[object_node_ids[0]]
-                if normalized_object_node is None:
-                    self.response.warning(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
-                    object_node_category = ['biolink:NamedThing']
-                else:
-                    object_node_category = normalized_object_node['preferred_category']
-                    self.response.warning(f"No cateogry is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
+        if object_node_ids is None:
+            # self.response.error(f"The object node with qnode key {object_node_ids} in Query Graph has no assigned cateogry and ids.")
+            # return self.response
+            if object_node_category is None:
+                object_node_category = ['biolink:NamedThing'] # for issue 1817
+        else:
+            normalized_object_node = self.nodesynonymizer.get_canonical_curies(object_node_ids[0])[object_node_ids[0]]
+            if normalized_object_node is None:
+                self.response.warning(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
+                object_node_category = ['biolink:NamedThing'] # for issue 1817
+            else:                    
+                object_node_category = normalized_object_node['preferred_category']
+                self.response.warning(f"No cateogry is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
 
         # ## check how many kps were used in message KG. If more than one, the one with the max number of edges connnected to both subject nodes and object nodes was used
@@ -402,13 +405,17 @@ class ComputeFTEST:
                     EdgeAttribute(original_attribute_name="virtual_relation_label", value=value[0], attribute_type_id="EDAM-OPERATION:0226"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                     # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:aggregator_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                 ]
                 edge_id = f"{value[0]}_{index}"
+                retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:primary_knowledge_source"),
+                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:aggregator_knowledge_source")
+                    ]
                 edge = Edge(predicate='biolink:has_fisher_exact_test_p_value_with', subject=value[2], object=value[3],
-                            attributes=edge_attribute_list)
+                            attributes=edge_attribute_list, sources=retrieval_source)
                 edge.qedge_keys = [value[0]]
 
                 self.message.knowledge_graph.edges[edge_id] = edge

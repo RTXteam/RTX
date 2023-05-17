@@ -449,7 +449,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         
         ## Limit the number of drugs and paths to the top n
         top_drugs = top_drugs.iloc[:self.parameters['n_drugs'],:].reset_index(drop=True)
-        top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:self.parameters['n_paths']] for row in top_drugs.to_numpy()}
+        top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:self.parameters['n_paths']] for row in top_drugs.to_numpy() if (row[0], row[2]) in top_paths}
 
         # TRAPI-ifies the results of the model
         iu = InferUtilities()

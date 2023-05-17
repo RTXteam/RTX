@@ -29,12 +29,35 @@ def serialize_with_sets(obj: any) -> any:
     else:
         return obj
 
+def get_meta_qualifier(qualified_predicate, qualified_object_direction, qualified_object_aspect):
+    meta_qualifier = []
+    if (len(qualified_predicate) != 0):
+        meta_qualifier.append({"qualifier_type_id": "biolink:qualified_predicate", "applicable_values": qualified_predicate})
+    if(len(qualified_object_direction) != 0):
+        meta_qualifier.append({"qualifier_type_id": "biolink:object_direction_qualifier", "applicable_values": qualified_object_direction})
+    if(len(qualified_object_aspect) != 0):    
+        meta_qualifier.append({"qualifier_type_id":"biolink:object_aspect_qualifier", "applicable_values": qualified_object_aspect})
+    return meta_qualifier
+def add_edge_to_applicable_values(qualifier_dict, key, value): #Adds the qualifier value to the corresponding applicable values of the list
+    if (value != ""):                                          #given the key nad the value is not alreadt present.
+        if(key in qualifier_dict):
+            if(value not in qualifier_dict[key]):
+                qualifier_dict[key].append(value)
+        else:
+            qualifier_dict[key] = [value]
+    else:
+        if(key not in qualifier_dict):
+            qualifier_dict[key] = []
+
 
 def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
                   meta_kg_file_name: str, biolink_helper: BiolinkHelper, is_test: bool):
     logging.info(f"Building meta KG..")
     logging.info(" Gathering all meta triples..")
     meta_triples = set()
+    qualified_predicate = {}
+    qualified_object_direction = {}
+    qualified_object_aspect = {}
     for edge in edges_by_id.values():
         subject_node_id = edge["subject"]
         object_node_id = edge["object"]
@@ -44,15 +67,21 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
             subject_categories = biolink_helper.add_conflations(subject_node["all_categories"])
             object_categories = biolink_helper.add_conflations(object_node["all_categories"])
             predicate = edge["predicate"]
+
             for subject_category in subject_categories:
                 for object_category in object_categories:
+                    add_edge_to_applicable_values(qualified_predicate, f"{subject_category}-{object_category}", edge["qualified_predicate"]) #Adding the  qualified_predicate of the edge to the corresponding applicable values list for the object_category-subject_category pair
+                    add_edge_to_applicable_values(qualified_object_direction, f"{subject_category}-{object_category}", edge["qualified_object_direction"]) #Adding the qualified_object_direction of the edge to the corresponding applicable values list for the object_category-subject_category pair
+                    add_edge_to_applicable_values(qualified_object_aspect, f"{subject_category}-{object_category}", edge["qualified_object_aspect"]) #Adding the qualified_object_aspect of the edge to the corresponding applicable values list for the object_category-subject_category pair
                     meta_triples.add((subject_category, predicate, object_category))
     kg2_infores_curie = "infores:rtx-kg2"
-    standard_attributes = [{"attribute_type_id": "biolink:knowledge_source",
-                            "attribute_source": kg2_infores_curie},
-                           {"attribute_type_id": "biolink:aggregator_knowledge_source",
-                            "attribute_source": kg2_infores_curie}]
-    meta_edges = [{"subject": triple[0], "predicate": triple[1], "object": triple[2], "attributes": standard_attributes}
+
+    meta_edges = [{"subject": triple[0], 
+                   "predicate": triple[1], 
+                   "object": triple[2],
+                   "qualifiers": get_meta_qualifier(qualified_predicate[f"{triple[0]}-{triple[2]}"], qualified_object_direction[f"{triple[0]}-{triple[2]}"], qualified_object_aspect[f"{triple[0]}-{triple[2]}"]) } if (qualified_predicate[f"{triple[0]}-{triple[2]}"] != []) else {"subject": triple[0], 
+                   "predicate": triple[1], 
+                   "object": triple[2]}
                   for triple in meta_triples]
     logging.info(f" Created {len(meta_edges)} meta edges")
 
@@ -190,7 +219,7 @@ def record_meta_kg_info(is_test: bool):
     add_neighbor_counts_to_sqlite(nodes_by_id, edges_by_id, sqlite_file_name, expanded_labels_property_name, is_test)
     add_category_counts_to_sqlite(nodes_by_id, sqlite_file_name, expanded_labels_property_name)
     generate_fda_approved_drugs_pickle(edges_by_id, fda_approved_file_name)
-
+    
     logging.info(f"Recording meta KG info took {round((time.time() - start) / 60, 1)} minutes.")
 
 

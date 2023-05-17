@@ -16,7 +16,7 @@ var UIstate = {};
 
 // defaults
 var base = "";
-var baseAPI = base + "api/arax/v1.3";
+var baseAPI = base + "api/arax/v1.4";
 var araxQuery = '';
 
 // possibly imported by calling page (e.g. index.html)
@@ -35,7 +35,7 @@ var providers = {
     "ARAX" : { "url" : baseAPI },
     "ARAXQ": { "url" : araxQuery },
     "ARS"  : { "url" : "https://ars-prod.transltr.io/ars/api/submit" },
-    "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.3" }
+    "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.4" }
 };
 
 // these attributes are floats; truncate them
@@ -78,7 +78,8 @@ function main() {
     display_list('A');
     display_list('B');
     add_status_divs();
-    cytodata[99999] = 'dummy';
+    cytodata[99999] = [];
+    cytodata[99999][0] = 'dummy';
 
     for (var prov in providers) {
 	document.getElementById(prov+"_url").value = providers[prov].url;
@@ -238,6 +239,7 @@ function reset_vars() {
     all_nodes = {};
     cyobj = [];
     cytodata = [];
+    cytodata[99999] = [];
 }
 
 function viewResponse() {
@@ -1068,7 +1070,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.3?","N_Results","Nodes / Edges","Sources","Cache"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.4?","N_Results","Nodes / Edges","Sources","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -1229,7 +1231,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
-	    nr.title = 'Failed TRAPI 1.3 validation';
+	    nr.title = 'Failed TRAPI 1.4 validation';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all") {
@@ -1246,7 +1248,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
-	    nr.title = 'Passed TRAPI 1.3 validation';
+	    nr.title = 'Passed TRAPI 1.4 validation';
 	}
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
@@ -1526,7 +1528,7 @@ function update_response_stats_on_error(rid,msg,clearall) {
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     if (!respObj["schema_version"])
-	respObj["schema_version"] = "1.3 (presumed)";
+	respObj["schema_version"] = "1.4 (presumed)";
     statusdiv.appendChild(document.createTextNode("Rendering TRAPI "+respObj["schema_version"]+" message..."));
 
     sesame('openmax',statusdiv);
@@ -1589,9 +1591,10 @@ function render_response(respObj,dispjson) {
 	}
 	process_graph(respObj.message["query_graph"],99999,respObj["schema_version"]);
     }
-    else
-	cytodata[99999] = 'dummy'; // this enables query graph editing
-
+    else {
+	cytodata[99999] = [];
+	cytodata[99999][0] = 'dummy'; // this enables query graph editing
+    }
 
     if (respObj["operations"])
 	process_q_options(respObj["operations"]);
@@ -2343,7 +2346,7 @@ function add_to_summary(rowdata, num) {
 }
 
 
-// used for gid = 0 [kg] and 999999 [query graph]
+// used for gid = 0 [kg] and 99999 [query graph]
 function process_graph(gne,gid,trapi) {
     cytodata[gid] = [];
     cytodata[gid][0] = [];
