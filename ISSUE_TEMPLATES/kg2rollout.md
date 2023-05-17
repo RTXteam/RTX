@@ -1,5 +1,7 @@
 _NOTE: To create a new issue based on this template, simply go to: https://github.com/RTXteam/RTX/issues/new?template=kg2rollout.md_
 
+**THE BRANCH FOR THIS ROLLOUT IS: ________**
+
 #### 1. Build and load KG2c:
 
 - [ ] merge `master` into the branch being used for this KG2 version (e.g., `kg2.8.2c`)
