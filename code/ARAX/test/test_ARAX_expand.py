@@ -42,6 +42,7 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
         assert response.error_code == error_code
 
     # Convert output knowledge graph to a dictionary format for faster processing (organized by QG IDs)
+    print(list(message.knowledge_graph.edges.values())[:-5])
     dict_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
     nodes_by_qg_id = dict_kg.nodes_by_qg_id
     edges_by_qg_id = dict_kg.edges_by_qg_id
@@ -828,7 +829,7 @@ def test_qualified_regulates_query():
                 ],
                 "attribute_constraints": [
                     {
-                        "id": "biolink:knowledge_source",
+                        "id": "knowledge_source",
                         "name": "knowledge source",
                         "value": ["infores:rtx-kg2"],
                         "operator": "==",
@@ -906,7 +907,7 @@ def test_edge_constraints():
                     "subject": "n01",
                     "attribute_constraints": [
                         {
-                            "id": "biolink:knowledge_source",
+                            "id": "knowledge_source",
                             "name": "knowledge source",
                             "value": ["infores:rtx-kg2","infores:arax","infores:drugbank"],
                             "operator": "==",
@@ -1386,7 +1387,7 @@ def test_no_query_ids_issue():
                 ],
                 "attribute_constraints": [
                     {
-                        "id": "biolink:knowledge_source",
+                        "id": "knowledge_source",
                         "name": "knowledge source",
                         "value": ["infores:connections-hypothesis"],
                         "operator": "==",
@@ -1478,7 +1479,7 @@ def test_missing_semmed_publications():
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             primary_knowledge_sources = {attribute.value for attribute in edge.attributes
-                                         if attribute.attribute_type_id == "biolink:primary_knowledge_source"}
+                                         if attribute.attribute_type_id == "primary_knowledge_source"}
             if "infores:semmeddb" in primary_knowledge_sources:
                 publications = [attribute.value for attribute in edge.attributes
                                 if attribute.attribute_type_id == "biolink:publications"]

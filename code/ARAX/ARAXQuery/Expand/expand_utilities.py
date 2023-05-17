@@ -661,7 +661,7 @@ def get_knowledge_source_constraints(edge):
     allowlist = None
     denylist = set()
     for constraint in edge.attribute_constraints:
-        if constraint.id == "biolink:knowledge_source" or constraint.id == "biolink:aggregator_knowledge_source":
+        if constraint.id == "knowledge_source" or constraint.id == "aggregator_knowledge_source":
             if constraint.operator != "==":
                 raise Exception("Given incompatible operator in edge knowledge_source constraint")
             knowledge_sources = set(constraint.value)
