@@ -1477,8 +1477,9 @@ def test_missing_semmed_publications():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
-            primary_knowledge_sources = {attribute.value for attribute in edge.attributes
-                                         if attribute.attribute_type_id == "primary_knowledge_source"}
+            primary_knowledge_sources = {source.resource_id for source in edge.sources
+                                         if source.resource_role == "primary_knowledge_source"}
+            assert primary_knowledge_sources
             if "infores:semmeddb" in primary_knowledge_sources:
                 publications = [attribute.value for attribute in edge.attributes
                                 if attribute.attribute_type_id == "biolink:publications"]
