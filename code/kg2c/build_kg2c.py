@@ -124,7 +124,7 @@ def main():
     _setup_config_dbs_file(synonymizer_name)
 
     # Create KG2pre test TSV files as applicable
-    if args.test and not use_local_kg2pre_tsvs:
+    if args.test:
         _create_kg2pre_tsv_test_files(use_local_kg2pre_tsvs)
 
     # Build a new node synonymizer, if we're supposed to
