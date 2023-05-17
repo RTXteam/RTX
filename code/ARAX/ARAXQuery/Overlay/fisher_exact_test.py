@@ -411,8 +411,7 @@ class ComputeFTEST:
                 ]
                 edge_id = f"{value[0]}_{index}"
                 retrieval_source = [
-                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                                        RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source")
+                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                     ]
                 edge = Edge(predicate='biolink:has_fisher_exact_test_p_value_with', subject=value[2], object=value[3],
                             attributes=edge_attribute_list, sources=retrieval_source)

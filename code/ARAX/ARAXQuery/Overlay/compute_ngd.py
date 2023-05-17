@@ -169,8 +169,7 @@ class ComputeNGD:
                             #edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
                             #            attributes=edge_attribute_list)
                             retrieval_source = [
-                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                                        RetrievalSource(resource_id=provided_by, resource_role="aggregator_knowledge_source")
+                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                             ]
                             edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                         attributes=edge_attribute_list,sources=retrieval_source)
@@ -285,8 +284,7 @@ class ComputeNGD:
                     #edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
                     #            attributes=edge_attribute_list)
                     retrieval_source = [
-                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                                        RetrievalSource(resource_id=provided_by, resource_role="aggregator_knowledge_source")
+                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                             ]
                     edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                 attributes=edge_attribute_list, sources=retrieval_source)

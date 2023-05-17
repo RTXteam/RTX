@@ -124,8 +124,7 @@ class ComputeJaccard:
                     # likely will need to fix this for TRAPI 1.0 after being able to test
                     # Do these need a attribute type and url?
                     retrieval_source = [
-                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                                        RetrievalSource(resource_id=provided_by, resource_role="aggregator_knowledge_source")
+                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                     ]
 
 
