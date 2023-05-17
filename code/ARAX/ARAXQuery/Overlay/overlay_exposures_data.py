@@ -224,7 +224,9 @@ class OverlayExposuresData:
         ]
         retrieval_source = [
                                         RetrievalSource(resource_id="infores:icees", resource_role="primary_knowledge_source"),
-                                        RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source")
+                                        RetrievalSource(resource_id="infores:arax",
+                                                        resource_role="aggregator_knowledge_source",
+                                                        upstream_resource_ids=["infores:icees"])
                     ]
         edge = Edge(predicate=self.icees_edge_type, subject=subject_curie, object=object_curie,
                         attributes=edge_attribute_list,sources=retrieval_source)

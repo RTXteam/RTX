@@ -335,7 +335,9 @@ class OverlayClinicalInfo:
                 #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
                 retrieval_source = [
                                         RetrievalSource(resource_id="infores:cohd", resource_role="primary_knowledge_source"),
-                                        RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source")
+                                        RetrievalSource(resource_id="infores:arax",
+                                                        resource_role="aggregator_knowledge_source",
+                                                        upstream_resource_ids=["infores:cohd"])
                     ]
                 edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                 attributes=edge_attribute_list, sources=retrieval_source)
