@@ -78,7 +78,8 @@ function main() {
     display_list('A');
     display_list('B');
     add_status_divs();
-    cytodata[99999] = 'dummy';
+    cytodata[99999] = [];
+    cytodata[99999][0] = 'dummy';
 
     for (var prov in providers) {
 	document.getElementById(prov+"_url").value = providers[prov].url;
@@ -238,6 +239,7 @@ function reset_vars() {
     all_nodes = {};
     cyobj = [];
     cytodata = [];
+    cytodata[99999] = [];
 }
 
 function viewResponse() {
@@ -1589,9 +1591,10 @@ function render_response(respObj,dispjson) {
 	}
 	process_graph(respObj.message["query_graph"],99999,respObj["schema_version"]);
     }
-    else
-	cytodata[99999] = 'dummy'; // this enables query graph editing
-
+    else {
+	cytodata[99999] = [];
+	cytodata[99999][0] = 'dummy'; // this enables query graph editing
+    }
 
     if (respObj["operations"])
 	process_q_options(respObj["operations"]);
@@ -2343,7 +2346,7 @@ function add_to_summary(rowdata, num) {
 }
 
 
-// used for gid = 0 [kg] and 999999 [query graph]
+// used for gid = 0 [kg] and 99999 [query graph]
 function process_graph(gne,gid,trapi) {
     cytodata[gid] = [];
     cytodata[gid][0] = [];
