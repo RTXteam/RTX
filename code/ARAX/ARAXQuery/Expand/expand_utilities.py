@@ -509,17 +509,6 @@ def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, 
     return kg
 
 
-def get_kp_source_attribute(kp_name: str, arax_kp: bool = False, description: Optional[str] = None) -> Attribute:
-    if not arax_kp and not description:
-        description = f"ARAX inserted this attribute because the KP ({kp_name}) did not seem to provide such " \
-                      f"an attribute (indicating that this edge came from them)."
-    return Attribute(attribute_type_id="biolink:knowledge_source",
-                     value=kp_name,
-                     value_type_id="biolink:InformationResource",
-                     description=description,
-                     attribute_source="infores:arax")
-
-
 def get_computed_value_attribute() -> Attribute:
     arax_infores_curie = "infores:arax"
     return Attribute(attribute_type_id="biolink:computed_value",
