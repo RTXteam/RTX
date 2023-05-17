@@ -243,7 +243,7 @@ class ARAXQuery:
                 'code_description': 'Query running via /asyncquery'
             }
             query_tracker = ARAXQueryTracker()
-            query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
+            query_tracker.update_tracker_entry(self.response.job_id, attributes)
         else:
             self.track_query_finish()
             #### Switch OK to Success for TRAPI compliance
@@ -269,7 +269,7 @@ class ARAXQuery:
             'code_description': self.response.message
         }
 
-        query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
+        query_tracker.update_tracker_entry(self.response.job_id, attributes)
 
 
 
@@ -323,7 +323,7 @@ class ARAXQuery:
                 response.envelope.submitter = '?'
 
         #### Create an entry to track this query
-        tracker_id = None
+        job_id = None
         if origin == 'API':
             query_tracker = ARAXQueryTracker()
             if 'remote_address' in query and query['remote_address'] is not None:
@@ -331,8 +331,8 @@ class ARAXQuery:
             else:
                 remote_address = '????'
             attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': remote_address }
-            tracker_id = query_tracker.create_tracker_entry(attributes)
-        response.tracker_id = tracker_id
+            job_id = query_tracker.create_tracker_entry(attributes)
+        response.job_id = job_id
 
         try:
             #### Determine a plan for what to do based on the input
@@ -704,7 +704,7 @@ class ARAXQuery:
                     'code_description': 'Query executing via /asyncquery'
                 }
                 query_tracker = ARAXQueryTracker()
-                query_tracker.alter_tracker_entry(self.response.tracker_id, attributes)
+                query_tracker.alter_tracker_entry(self.response.job_id, attributes)
 
 
             #### If there is already a KG with edges, recompute the qg_keys
