@@ -256,7 +256,7 @@ def test_score():
     assert response.status == 'OK'
     assert len(message.results) > 0
     for result in message.results:
-        assert result.score is not None
+        assert result.analyses[0].score is not None
 
 def test_bind():
     query = {
@@ -414,7 +414,7 @@ def test_filter_results_top_n():
     assert response.status == 'OK'
     assert len(message.results) == 20
     for result in message.results:
-        assert result.score is not None
+        assert result.analyses[0].score is not None
 
 def test_overlay_after_lookup():
     query = {
@@ -473,8 +473,8 @@ def test_overlay_after_lookup():
     assert len(message.results) == 20
     ngd_bindings = set()
     for result in message.results:
-        assert result.score is not None
-        for eb_key, edge_bindings in result.edge_bindings.items():
+        assert result.analyses[0].score is not None
+        for eb_key, edge_bindings in result.analyses[0].edge_bindings.items():
             for edge_binding in edge_bindings:
                 if edge_binding.id.startswith("NGD1"):
                     ngd_bindings.add(edge_binding.id)

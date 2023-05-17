@@ -6,12 +6,12 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from openapi_server.models.base_model_ import Model
-from openapi_server.models.edge_binding import EdgeBinding
+from openapi_server.models.analysis import Analysis
 from openapi_server.models.node_binding import NodeBinding
 from openapi_server.models.any_type import AnyType
 from openapi_server import util
 
-from openapi_server.models.edge_binding import EdgeBinding  # noqa: E501
+from openapi_server.models.analysis import Analysis  # noqa: E501
 from openapi_server.models.node_binding import NodeBinding  # noqa: E501
 from openapi_server.models.any_type import AnyType  # noqa: E501
 
@@ -21,13 +21,13 @@ class Result(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, node_bindings=None, edge_bindings=None, id=None, description=None, essence=None, essence_category=None, row_data=None, score=None, score_name=None, score_direction=None, confidence=None, result_group=None, result_group_similarity_score=None, reasoner_id=None):  # noqa: E501
+    def __init__(self, node_bindings=None, analyses=None, id=None, description=None, essence=None, essence_category=None, row_data=None, score=None, score_name=None, score_direction=None, confidence=None, result_group=None, result_group_similarity_score=None, resource_id=None):  # noqa: E501
         """Result - a model defined in OpenAPI
 
         :param node_bindings: The node_bindings of this Result.  # noqa: E501
         :type node_bindings: Dict[str, List[NodeBinding]]
-        :param edge_bindings: The edge_bindings of this Result.  # noqa: E501
-        :type edge_bindings: Dict[str, List[EdgeBinding]]
+        :param analyses: The analyses of this Result.  # noqa: E501
+        :type analyses: List[Analysis]
         :param id: The id of this Result.  # noqa: E501
         :type id: str
         :param description: The description of this Result.  # noqa: E501
@@ -50,12 +50,12 @@ class Result(Model):
         :type result_group: int
         :param result_group_similarity_score: The result_group_similarity_score of this Result.  # noqa: E501
         :type result_group_similarity_score: float
-        :param reasoner_id: The reasoner_id of this Result.  # noqa: E501
-        :type reasoner_id: str
+        :param resource_id: The resource_id of this Result.  # noqa: E501
+        :type resource_id: str
         """
         self.openapi_types = {
             'node_bindings': Dict[str, List[NodeBinding]],
-            'edge_bindings': Dict[str, List[EdgeBinding]],
+            'analyses': List[Analysis],
             'id': str,
             'description': str,
             'essence': str,
@@ -67,12 +67,12 @@ class Result(Model):
             'confidence': float,
             'result_group': int,
             'result_group_similarity_score': float,
-            'reasoner_id': str
+            'resource_id': str
         }
 
         self.attribute_map = {
             'node_bindings': 'node_bindings',
-            'edge_bindings': 'edge_bindings',
+            'analyses': 'analyses',
             'id': 'id',
             'description': 'description',
             'essence': 'essence',
@@ -84,11 +84,11 @@ class Result(Model):
             'confidence': 'confidence',
             'result_group': 'result_group',
             'result_group_similarity_score': 'result_group_similarity_score',
-            'reasoner_id': 'reasoner_id'
+            'resource_id': 'resource_id'
         }
 
         self._node_bindings = node_bindings
-        self._edge_bindings = edge_bindings
+        self._analyses = analyses
         self._id = id
         self._description = description
         self._essence = essence
@@ -100,7 +100,7 @@ class Result(Model):
         self._confidence = confidence
         self._result_group = result_group
         self._result_group_similarity_score = result_group_similarity_score
-        self._reasoner_id = reasoner_id
+        self._resource_id = resource_id
 
     @classmethod
     def from_dict(cls, dikt) -> 'Result':
@@ -139,29 +139,29 @@ class Result(Model):
         self._node_bindings = node_bindings
 
     @property
-    def edge_bindings(self):
-        """Gets the edge_bindings of this Result.
+    def analyses(self):
+        """Gets the analyses of this Result.
 
-        The dictionary of Input Query Graph to Result Knowledge Graph edge bindings where the dictionary keys are the key identifiers of the Query Graph edges and the associated values of those keys are instances of EdgeBinding schema type (see below). This value is an array of EdgeBindings since a given query edge may resolve to multiple knowledge graph edges in the result.  # noqa: E501
+        The list of all Analysis components that contribute to the result. See below for Analysis components.  # noqa: E501
 
-        :return: The edge_bindings of this Result.
-        :rtype: Dict[str, List[EdgeBinding]]
+        :return: The analyses of this Result.
+        :rtype: List[Analysis]
         """
-        return self._edge_bindings
+        return self._analyses
 
-    @edge_bindings.setter
-    def edge_bindings(self, edge_bindings):
-        """Sets the edge_bindings of this Result.
+    @analyses.setter
+    def analyses(self, analyses):
+        """Sets the analyses of this Result.
 
-        The dictionary of Input Query Graph to Result Knowledge Graph edge bindings where the dictionary keys are the key identifiers of the Query Graph edges and the associated values of those keys are instances of EdgeBinding schema type (see below). This value is an array of EdgeBindings since a given query edge may resolve to multiple knowledge graph edges in the result.  # noqa: E501
+        The list of all Analysis components that contribute to the result. See below for Analysis components.  # noqa: E501
 
-        :param edge_bindings: The edge_bindings of this Result.
-        :type edge_bindings: Dict[str, List[EdgeBinding]]
+        :param analyses: The analyses of this Result.
+        :type analyses: List[Analysis]
         """
-        if edge_bindings is None:
-            raise ValueError("Invalid value for `edge_bindings`, must not be `None`")  # noqa: E501
+        if analyses is None:
+            raise ValueError("Invalid value for `analyses`, must not be `None`")  # noqa: E501
 
-        self._edge_bindings = edge_bindings
+        self._analyses = analyses
 
     @property
     def id(self):
@@ -190,7 +190,7 @@ class Result(Model):
     def description(self):
         """Gets the description of this Result.
 
-        A free text description of this result answer from the reasoner  # noqa: E501
+        A free text description of this result answer from the resource  # noqa: E501
 
         :return: The description of this Result.
         :rtype: str
@@ -201,7 +201,7 @@ class Result(Model):
     def description(self, description):
         """Sets the description of this Result.
 
-        A free text description of this result answer from the reasoner  # noqa: E501
+        A free text description of this result answer from the resource  # noqa: E501
 
         :param description: The description of this Result.
         :type description: str
@@ -417,24 +417,24 @@ class Result(Model):
         self._result_group_similarity_score = result_group_similarity_score
 
     @property
-    def reasoner_id(self):
-        """Gets the reasoner_id of this Result.
+    def resource_id(self):
+        """Gets the resource_id of this Result.
 
-        Identifier string of the reasoner that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
+        Identifier string of the resource that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
 
-        :return: The reasoner_id of this Result.
+        :return: The resource_id of this Result.
         :rtype: str
         """
-        return self._reasoner_id
+        return self._resource_id
 
-    @reasoner_id.setter
-    def reasoner_id(self, reasoner_id):
-        """Sets the reasoner_id of this Result.
+    @resource_id.setter
+    def resource_id(self, resource_id):
+        """Sets the resource_id of this Result.
 
-        Identifier string of the reasoner that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
+        Identifier string of the resource that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
 
-        :param reasoner_id: The reasoner_id of this Result.
-        :type reasoner_id: str
+        :param resource_id: The resource_id of this Result.
+        :type resource_id: str
         """
 
-        self._reasoner_id = reasoner_id
+        self._resource_id = resource_id

@@ -30,6 +30,7 @@ from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
 from node_synonymizer import NodeSynonymizer
+from biolink_helper import BiolinkHelper
 
 
 class ARAXMessenger:
@@ -66,7 +67,7 @@ class ARAXMessenger:
         command_definition = {
             'dsl_command': 'create_envelope()',
             'description': """The `create_envelope` command creates a basic empty Response object with basic boilerplate metadata
-                such as reasoner_id, schema_version, etc. filled in. This DSL command takes no arguments. This command is not explicitly
+                such as resource_id, schema_version, etc. filled in. This DSL command takes no arguments. This command is not explicitly
                 necessary, as it is called implicitly when needed. e.g. If a DSL program begins with add_qnode(), the
                 create_envelope() will be executed automatically if there is not yet a ARAXResponse. If there is already ARAXResponse in memory,
                 then this command will destroy the previous one (in memory) and begin a new envelope.""",
@@ -93,11 +94,13 @@ class ARAXMessenger:
         self.message = message
 
         #### Fill it with default information
+        biolink_helper = BiolinkHelper()
         envelope.id = None
         envelope.type = "translator_reasoner_response"
-        envelope.reasoner_id = "ARAX"
+        envelope.resource_id = "ARAX"
         envelope.tool_version = RTXConfiguration().version
-        envelope.schema_version = "1.3.0"
+        envelope.schema_version = "1.4.0"
+        envelope.biolink_version = biolink_helper.get_current_arax_biolink_version()
         envelope.status = "OK"
         envelope.description = "Created empty template response"
         envelope.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"

@@ -88,7 +88,7 @@ def test_xdtd_infer_alkaptonuria_1():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) == 1
     assert len(message.results) > 0
 
 def test_xdtd_infer_alkaptonuria_2():
@@ -165,7 +165,7 @@ def test_xdtd_with_qg2():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) == 1
     assert len(message.results) > 0
 
 
@@ -226,7 +226,7 @@ def test_xdtd_with_only_qg():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) == 1
     assert len(message.results) > 0
 
 @pytest.mark.slow

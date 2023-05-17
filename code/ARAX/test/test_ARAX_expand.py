@@ -57,6 +57,11 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
     assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
     check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     check_property_format(nodes_by_qg_id, edges_by_qg_id)
+    
+    #can't check node categories for inferred queries due to TRAPI1.4
+    for edge in message.query_graph.edges.values():
+        if edge.knowledge_type == 'inferred':
+            return nodes_by_qg_id, edges_by_qg_id
     check_node_categories(message.knowledge_graph.nodes, message.query_graph)
 
     return nodes_by_qg_id, edges_by_qg_id

@@ -173,6 +173,11 @@ class RemoveEdges:
                                 # FW: Hack to allow all provided by synonyms
                                 if provided_by_flag and attribute.attribute_type_id in provided_by_attributes:
                                     edge_dict[edge_params['edge_attribute']] = edge_params['value']
+                if provided_by_flag and hasattr(edge, 'sources'):
+                    for source in edge.sources:
+                        if source.resource_id == edge_params['value']:
+                            edge_dict[edge_params['edge_attribute']] = edge_params['value']
+
                 if edge_params['edge_attribute'] in edge_dict:
                     if type(edge_dict[edge_params['edge_attribute']]) == list or type(edge_dict[edge_params['edge_attribute']]) == set:
                         if edge_params['value'] in edge_dict[edge_params['edge_attribute']]:

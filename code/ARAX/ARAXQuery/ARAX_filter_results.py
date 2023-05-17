@@ -982,7 +982,7 @@ def main():
     #### If successful, show the result
     # print(response.show(level=ARAXResponse.DEBUG))
     # response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
-    #    'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
+    #    'resource_id': message.resource_id, 'tool_version': message.tool_version }
     # response.data['message_stats']['confidence_scores'] = []
     # for result in message.results:
     #    response.data['message_stats']['confidence_scores'].append(result.confidence)
