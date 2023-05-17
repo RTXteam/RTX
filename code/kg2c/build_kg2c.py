@@ -130,8 +130,12 @@ def main():
     # Build a new node synonymizer, if we're supposed to
     if build_synonymizer:
         logging.info("Building node synonymizer off of specified KG2..")
-        subprocess.check_call(["python", f"{KG2C_DIR}/synonymizer_build/build_synonymizer.py",
-                               kg2_version] + (["--test"] if args.test else ["--downloadkg2pre"]))
+        flags = []
+        if args.test:
+            flags.append("--test")
+        elif not use_local_kg2pre_tsvs:
+            flags.append("--downloadkg2pre")
+        subprocess.check_call(["python", f"{KG2C_DIR}/synonymizer_build/build_synonymizer.py", kg2_version] + flags)
 
         logging.info(f"Regenerating autocomplete database..")
         subprocess.check_call(["python", f"{KG2C_DIR}/synonymizer_build/dump_autocomplete_node_info.py", kg2_version])
