@@ -746,7 +746,7 @@ def test_jaccard_not_above_1():
     assert 'biolink:has_jaccard_index_with' in edge_predicates_in_kg
     jaccard_edges = []
     for edge in message.knowledge_graph.edges.values():
-        assert 'primary_knowledge_source' in edge.attributes
+        assert 'primary_knowledge_source' in [source.resource_role for source in edge.sources]
         add_edge = False
         for attribute in edge.attributes:
             if attribute.original_attribute_name == "virtual_relation_label":
