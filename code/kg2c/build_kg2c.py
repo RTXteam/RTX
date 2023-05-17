@@ -61,8 +61,13 @@ def _upload_output_files_to_s3(is_test: bool):
     subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{json_lite_file_path}.gz", f"s3://rtx-kg2/{remote_lite_json_name}"])
 
 
-def _create_kg2pre_tsv_test_files():
+def _create_kg2pre_tsv_test_files(use_local_kg2pre_tsvs: bool):
     logging.info(f"Creating test versions of the KG2pre TSVs...")
+
+    if not use_local_kg2pre_tsvs:
+        logging.info(f"Downloading KG2pre TSVs from S3...")
+        subprocess.check_call(["bash", "-x", "download-kg2pre-tsvs.sh"])
+
     subprocess.check_call(["bash", "-x", "create-kg2pre-test-tsvs.sh"])
 
 
@@ -120,7 +125,7 @@ def main():
 
     # Create KG2pre test TSV files as applicable
     if args.test and not use_local_kg2pre_tsvs:
-        _create_kg2pre_tsv_test_files()
+        _create_kg2pre_tsv_test_files(use_local_kg2pre_tsvs)
 
     # Build a new node synonymizer, if we're supposed to
     if build_synonymizer:
