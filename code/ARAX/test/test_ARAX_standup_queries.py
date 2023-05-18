@@ -221,6 +221,7 @@ def test_diseases_treated_by_drug_issue_20():
     assert len(message.results) > 0
 
 
+@pytest.mark.skip  # TODO: Needs to be rewritten using qualifiers (many of the predicates are no longer valid)
 def test_chemical_substances_that_down_regulate_STK11_issue_28():
     query = {
       "message": {
