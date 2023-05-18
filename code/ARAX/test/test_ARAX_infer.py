@@ -100,7 +100,7 @@ def test_xdtd_infer_alkaptonuria_2():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert message.auxiliary_graphs
     assert len(message.results) > 0
 
 def test_xdtd_with_qg():
@@ -198,7 +198,7 @@ def test_xdtd_with_qg3():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert message.auxiliary_graphs
     assert len(message.results) > 0
 
 def test_xdtd_with_only_qg():
