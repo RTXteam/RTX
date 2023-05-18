@@ -42,7 +42,7 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     edges_of_interest = []
     values = set()
     for key, edge in message.knowledge_graph.edges.items():
-        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
+        assert 'primary_knowledge_source' in [source.resource_role for source in edge.sources]
         if hasattr(edge, 'edge_attributes'):
             for attr in edge.edge_attributes:
                 if attr.original_attribute_name == attribute_name:
@@ -69,7 +69,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     values = set()
     assert len(edges_of_interest) > 0
     for edge in edges_of_interest:
-        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
+        assert 'primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         assert hasattr(edge, 'attributes')
         assert edge.attributes
         assert edge.attributes[0].original_attribute_name == attribute_name
@@ -100,7 +100,7 @@ def test_xdtd_infer_alkaptonuria_2():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert message.auxiliary_graphs
     assert len(message.results) > 0
 
 def test_xdtd_with_qg():
@@ -198,7 +198,7 @@ def test_xdtd_with_qg3():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert message.auxiliary_graphs
     assert len(message.results) > 0
 
 def test_xdtd_with_only_qg():

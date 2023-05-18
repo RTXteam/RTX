@@ -320,9 +320,9 @@ class OverlayClinicalInfo:
                     EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="EDAM-OPERATION:0226"),
                     #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                     # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                    # EdgeAttribute(original_attribute_name=None, value="infores:cohd", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                    # EdgeAttribute(original_attribute_name=None, value="infores:cohd", attribute_type_id="primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
-                    # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
+                    # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
                     EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                     #EdgeAttribute(name="confidence", value=confidence, type="biolink:ConfidenceLevel"),
                     #EdgeAttribute(name="weight", value=weight, type="metatype:Float"),
@@ -334,8 +334,10 @@ class OverlayClinicalInfo:
                 #             provided_by=provided_by,
                 #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
                 retrieval_source = [
-                                        RetrievalSource(resource_id="infores:cohd", resource_role="biolink:primary_knowledge_source"),
-                                        RetrievalSource(resource_id="infores:arax", resource_role="biolink:aggregator_knowledge_source")
+                                        RetrievalSource(resource_id="infores:cohd", resource_role="primary_knowledge_source"),
+                                        RetrievalSource(resource_id="infores:arax",
+                                                        resource_role="aggregator_knowledge_source",
+                                                        upstream_resource_ids=["infores:cohd"])
                     ]
                 edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                 attributes=edge_attribute_list, sources=retrieval_source)

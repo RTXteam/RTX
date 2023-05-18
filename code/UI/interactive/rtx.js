@@ -2639,7 +2639,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
         tr.appendChild(td);
         table.appendChild(tr);
 
-	if (result.analyses && result.analyses[0].support_graphs.length > 0) {
+	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
             tr = document.createElement("tr");
 	    td = document.createElement("td");
 	    td.className = 'cytograph_controls';
@@ -2733,7 +2733,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	}
 
 
-        if (result.analyses && result.analyses[0].support_graphs.length > 0) {
+	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
             for (var sg in result.analyses[0].support_graphs) {
 		var sup = Number(sg)+1;
 		cytodata[num][sup] = [];

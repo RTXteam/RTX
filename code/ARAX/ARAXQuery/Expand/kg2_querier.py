@@ -232,11 +232,11 @@ class KG2Querier:
 
         # Add this edge's primary knowledge source
         edge.sources.append(RetrievalSource(resource_id=primary_knowledge_source,
-                                            resource_role="biolink:primary_knowledge_source"))
+                                            resource_role="primary_knowledge_source"))
 
         # Indicate that this edge came from the KG2 KP
         edge.sources.append(RetrievalSource(resource_id=self.kg2_infores_curie,
-                                            resource_role="biolink:aggregator_knowledge_source",
+                                            resource_role="aggregator_knowledge_source",
                                             upstream_resource_ids=[primary_knowledge_source]))
 
         # Add any qualifiers as appropriate

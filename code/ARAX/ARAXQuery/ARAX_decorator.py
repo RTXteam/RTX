@@ -46,9 +46,8 @@ class ARAXDecorator:
                                            value_type_id=None),
             "kg2_ids": Attribute(attribute_type_id="biolink:original_edge_information",
                                  value_type_id="metatype:String",
-                                 description="The original RTX-KG2pre edge(s) corresponding to this edge prior to any "
-                                             "synonymization or remapping. Listed in "
-                                             "(subject)--(relation)--(object)--(source) format.")
+                                 description="The IDs of the original RTX-KG2pre edge(s) corresponding to this edge "
+                                             "prior to any synonymization or remapping.")
         }
         self.array_delimiter_char = "ǂ"
         self.kg2_infores_curie = "infores:rtx-kg2"  # Can't use expand_utilities.py here due to circular imports
@@ -122,9 +121,9 @@ class ARAXDecorator:
         # Figure out which edges we need to decorate
         if kind == "RTX-KG2":
             edge_keys_to_decorate = {edge_id for edge_id, edge in kg.edges.items()
-                                     if edge.attributes and any(attribute.value == self.kg2_infores_curie and
-                                                                attribute.attribute_type_id == "biolink:aggregator_knowledge_source"
-                                                                for attribute in edge.attributes)}
+                                     if edge.sources and any(retrieval_source.resource_id == self.kg2_infores_curie and
+                                                             retrieval_source.resource_role == "aggregator_knowledge_source"
+                                                             for retrieval_source in edge.sources)}
         else:
             edge_keys_to_decorate = {edge_id for edge_id, edge in kg.edges.items()
                                      if edge.predicate == "biolink:occurs_together_in_literature_with"}
@@ -266,9 +265,10 @@ class ARAXDecorator:
         rtxc = RTXConfiguration()
         if self.use_kg2c_sqlite:
             sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+            sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
         else:
             sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
-        sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
+            sqlite_name = rtxc.explainable_dtd_db_path.split('/')[-1]
         sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
         connection = sqlite3.connect(sqlite_file_path)
         cursor = connection.cursor()
