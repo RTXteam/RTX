@@ -207,8 +207,7 @@ class InferUtilities:
                                     value=str(treat_score))
                 ]
                 retrieval_source = [
-                                    RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                                    RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source")
+                                    RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                 ]
                 new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:treats', attributes=edge_attribute_list, sources=retrieval_source)
                 new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=kp)
@@ -289,6 +288,7 @@ class InferUtilities:
                     elif object_qnode_key not in knodes[object_curie].qnode_keys:
                         knodes[object_curie].qnode_keys.append(object_qnode_key)
                     predicate = edges_info[i].predicate
+                    knowledge_source = edges_info[i].knowledge_source
                     # Handle the self-loop relation
                     if predicate == "SELF_LOOP_RELATION":
                         self.response.warning(f"Self-loop relation detected: {subject_name} {predicate} {object_name}, replacing with placeholder 'biolink:self_loop_relation'")
@@ -298,20 +298,21 @@ class InferUtilities:
                     edge_attribute_list = [
                         Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime")
                     ]
-                    retrieval_source = [
-                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                                        RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source")
-                    ]
                     if predicate == "biolink:self_loop_relation":
                         edge_attribute_list += [
                             Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This self-loop edge was added by ARAXInfer in the inferene process for flexible path length.")
+                        ]
+                        retrieval_source = [
+                                            RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                         ]
                     else:
                         edge_attribute_list += [
                             Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from RTX-KG2.7.3c by ARAXInfer."),
                         ]
-                        retrieval_source += [
-                            RetrievalSource(resource_id="infores:rtx-kg2", resource_role="aggregator_knowledge_source")
+                        retrieval_source = [
+                            RetrievalSource(resource_id=knowledge_source, resource_role="primary_knowledge_source"),
+                            RetrievalSource(resource_id="infores:rtx-kg2", resource_role="aggregator_knowledge_source", upstream_resource_ids=[knowledge_source]),
+                            RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source", upstream_resource_ids=['infores:rtx-kg2'])
                         ]
                     new_edge.attributes += edge_attribute_list
                     new_edge.sources += retrieval_source
@@ -328,8 +329,7 @@ class InferUtilities:
                     Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score))
                 ]
                 retrieval_source = [
-                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                        RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source")
+                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                     ]
                 #edge_predicate = qedge_id
                 edge_predicate = "biolink:treats"
@@ -559,8 +559,7 @@ class InferUtilities:
                                     value=str(prob_score))
                     ]
                     retrieval_source = [
-                                    RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                                    RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source")
+                                    RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                     ]
                     if model_type == 'increase':
                         edge_qualifier_direction = 'increased'
@@ -597,8 +596,7 @@ class InferUtilities:
                     # add the edge to the knowledge graph
                     prob_score = node_id_to_score[node_id]
                     retrieval_source = [
-                                    RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                                    RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source")
+                                    RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                     ]
                     edge_attribute_list = [
                         Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
@@ -697,22 +695,19 @@ class InferUtilities:
                     elif object_qnode_key not in knodes[object_curie].qnode_keys:
                         knodes[object_curie].qnode_keys.append(object_qnode_key)
                     predicates = edge_tuples[i][1]
-                    for predicate in predicates:
+                    for predicate, (temp_retrieval_source, temp_attributes, temp_qualifiers) in predicates:
                         temp_predicate = predicate.split('--')[1]
                         temp_kp = ':'.join(predicate.split('--')[0].split(':')[:2])
                         if subject_curie in predicate.split('--')[0] or object_curie in predicate.split('--')[-1]:
-                            new_edge = Edge(subject=subject_curie, object=object_curie, predicate=temp_predicate, attributes=[])
+                            new_edge = Edge(subject=subject_curie, object=object_curie, predicate=temp_predicate, attributes=[], qualifiers=temp_qualifiers, sources=temp_retrieval_source)
                         else:
-                            new_edge = Edge(subject=object_curie, object=subject_curie, predicate=temp_predicate, attributes=[])
+                            new_edge = Edge(subject=object_curie, object=subject_curie, predicate=temp_predicate, attributes=[], qualifiers=temp_qualifiers, sources=temp_retrieval_source)
                         ## add attributes to the path-based edges 
                         edge_attribute_list = [
                             Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                            Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer based on RTX-KG2c.")
-                        ]
-                        retrieval_source = [
-                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                                        RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source")
-                        ]
+                            Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer.")
+                        ] + temp_attributes
+
                         new_edge.attributes += edge_attribute_list
                         new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=temp_kp)
                         kedges[new_edge_key] = new_edge
@@ -731,8 +726,7 @@ class InferUtilities:
                     Attribute(attribute_type_id="EDAM-OPERATION:2434", original_attribute_name=f"probably_{model_type}_activity", value=str(regulate_score))
                 ]
                 retrieval_source = [
-                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source"),
-                                        RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source")
+                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                         ]
                 
                 edge_predicate = f'biolink:regulates'
