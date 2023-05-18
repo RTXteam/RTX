@@ -162,7 +162,7 @@ def main():
         record_meta_kg_info(args.test)
 
         logging.info(f"Creating tarball of KG2c TSVs..")
-        subprocess.check_call(["bash", "-x", "create_kg2c_tarball.sh"])
+        subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/make-kg2c-tarball.sh"])
 
         # Upload artifacts to the relevant places (done even for test builds, to ensure these processes work)
         if upload_to_arax_databases_rtx_ai:

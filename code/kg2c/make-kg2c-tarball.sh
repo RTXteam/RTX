@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # This script creates a gzipped tarball of the KG2c TSvs.
-# Usage: bash -x create-kg2c-tarball.sh
+# Usage: bash -x make-kg2c-tarball.sh
 
 set -e
 

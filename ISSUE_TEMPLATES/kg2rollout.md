@@ -36,7 +36,7 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
   - [ ] in the Plover repo, update `kg_config.json` to point to the new version of the kg2c lite file (in the git lfs repo); push this change to a branch
   - [ ] make any other changes to Plover code that this KG2 version necessitates (in that same branch)
   - [ ] build a Plover from the branch
-  - [ ] update `config_dbs.json` in the RTX repo to point to this new Plover (all maturity levels should point to it for now)
+  - [ ] update `config_dbs.json` in the RTX repo to point to this new Plover **for the 'dev' maturity level**
 
 
 #### 2. Rebuild downstream databases:

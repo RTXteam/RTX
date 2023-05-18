@@ -109,7 +109,10 @@ def _get_kg2pre_headers(header_file_path: str) -> List[str]:
 
 def _load_property(raw_property_value_from_tsv: str, property_type: any) -> Union[list, str, dict]:
     if property_type is str:
-        return raw_property_value_from_tsv
+        if raw_property_value_from_tsv == "None":
+            return ""
+        else:
+            return raw_property_value_from_tsv
     elif property_type is list:
         split_string = raw_property_value_from_tsv.split(KG2PRE_ARRAY_DELIMITER)
         processed_list = [item.strip() for item in split_string if item]
@@ -535,7 +538,7 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
 
         '''Patch for lack of qualified_predicate when qualified_object_direction is present'''
         predicate = kg2pre_edge['predicate']
-        if (predicate == "biolink:regulates" and edge_qualified_predicate == "" and edge_qualified_object_direction != ""):
+        if predicate == "biolink:regulates" and edge_qualified_object_direction and not edge_qualified_predicate:
             edge_qualified_predicate = "biolink:causes"
             edge_qualified_object_aspect = "activity_or_abundance"
 
