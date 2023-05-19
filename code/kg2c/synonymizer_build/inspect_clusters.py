@@ -77,15 +77,6 @@ def get_graph(node_ids: List[str], edge_ids: List[str], cursor, hide_predicate: 
     return cluster_graph
 
 
-def get_node_name(node: any) -> Optional[str]:
-    if node.get("name"):
-        return node["name"]
-    elif node.get("name_sri"):
-        return node["name_sri"]
-    else:
-        return node.get("name_kg2pre")
-
-
 def compute_cluster_density(cluster_graph: any) -> float:
     num_nodes = len(cluster_graph["nodes"])
     total_possible_edges = (num_nodes * (num_nodes - 1)) / 2
@@ -169,7 +160,7 @@ def main():
           f"density of cluster is: {density}\n")
 
     # Save the cluster graph in a JSON file
-    cluster_file_path = f"{cluster_graphs_path}/{get_node_name(cluster_rep)}_{cluster_id}.json"
+    cluster_file_path = f"{cluster_graphs_path}/{cluster_rep['name']}_{cluster_id}.json"
     with open(cluster_file_path, "w+") as cluster_file:
         json.dump(cluster_graph, cluster_file, indent=2)
     print(f"Cluster saved in Biolink format to: {cluster_file_path}\n")

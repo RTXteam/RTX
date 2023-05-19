@@ -1,10 +1,8 @@
-import argparse
 import logging
 import os
 import pathlib
 import sqlite3
 import subprocess
-import sys
 
 import numpy as np
 import pandas as pd
@@ -97,9 +95,7 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
     logging.info(f"After joining, clusters DataFrame is: \n{clusters_df}")
     logging.info(f"Now recording cluster sizes, before we convert member IDs list into string format...")
     clusters_df["cluster_size"] = clusters_df.member_ids.apply(len)
-    logging.info(f"Now converting list member IDs to string representation...")
-    clusters_df.member_ids = clusters_df.member_ids.apply(str)
-    logging.info(f"After finishing member IDs processing, clusters DataFrame is: \n{clusters_df}")
+    logging.info(f"After finishing adding member IDs, clusters DataFrame is: \n{clusters_df}")
 
     # Then add intra-cluster edge IDs to each cluster row
     logging.info(f"Adding intra-cluster edge IDs to each cluster row...")
@@ -118,10 +114,34 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
     cluster_to_edge_ids_df.rename(columns={"subject_cluster_id": "cluster_id"}, inplace=True)
     logging.info(f"Now zipping intra-cluster edge IDs DataFrame with clusters DataFrame...")
     clusters_df = pd.merge(clusters_df, cluster_to_edge_ids_df, how="left", on="cluster_id")
-    logging.info(f"After joining, clusters DataFrame is: \n{clusters_df}")
+    logging.info(f"After finishing adding intra-cluster edge IDs, clusters DataFrame is: \n{clusters_df}")
+
+    # Go through and choose 'best' cluster name for clusters whose preferred identifiers don't have a name
+    logging.info(f"Choosing best name for clusters whose cluster rep has no name (from either SRI or KG2)")
+    nodes_with_names_df = nodes_df[nodes_df["name"] == nodes_df["name"]]
+    logging.info(f"DataFrame of nodes with names is: \n{nodes_with_names_df}")
+    logging.info(f"Dropping all but one named node per cluster (first row is retained)..")
+    one_named_node_per_cluster_df = nodes_with_names_df.drop_duplicates(subset=["cluster_id"])[["cluster_id", "name"]]
+    one_named_node_per_cluster_df.rename(columns={"name": "name_chosen"}, inplace=True)
+    logging.info(f"After dropping all but one named node per cluster, DataFrame of named nodes "
+                 f"is:\n{one_named_node_per_cluster_df}")
+    logging.info(f"Joining chosen cluster names with clusters DF..")
+    clusters_df = pd.merge(clusters_df, one_named_node_per_cluster_df, how="left", on="cluster_id")
+    logging.info(f"After joining, clusters DF is: \n{clusters_df}")
+    # Use chosen name as cluster name for clusters lacking a name
+    logging.info(f"Replacing missing cluster names with chosen names where appropriate..")
+    clusters_df["name"] = np.where(clusters_df["name"] != clusters_df["name"], clusters_df.name_chosen, clusters_df["name"])
+    logging.info(f"After filling missing names, clusters DF is: \n{clusters_df}")
+    logging.info(f"Deleting temporary chosen name column..")
+    clusters_df.drop(columns=["name_chosen"], inplace=True)
+    logging.info(f"After dropping temporary column, clusters DF is: \n{clusters_df}")
+
+    # Convert our list values into strings, for sqlite-compatible format
+    logging.info(f"Now converting list member IDs to string representation...")
+    clusters_df.member_ids = clusters_df.member_ids.apply(str)
     logging.info(f"Now converting intra-cluster edge IDs to string representation...")
     clusters_df.intra_cluster_edge_ids = clusters_df.intra_cluster_edge_ids.apply(str)
-    logging.info(f"After finishing intra-cluster edge IDs processing, clusters DataFrame is: \n{clusters_df}")
+    logging.info(f"After converting list values to string format, clusters DF is: \n{clusters_df}")
 
     # Save a table of cluster info
     logging.info(f"Dumping clusters DataFrame to sqlite..")
