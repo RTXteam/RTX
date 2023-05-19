@@ -193,8 +193,9 @@ class NodeSynonymizer:
         # Then get info for all of those equivalent nodes
         all_node_ids = set().union(*equivalent_curies_dict.values())
         sql_query_template = f"""
-                    SELECT N.id, N.cluster_id, N.name, N.category, N.major_branch, N.name_sri, N.category_sri, N.name_kg2pre, N.category_kg2pre
+                    SELECT N.id, N.cluster_id, N.name, N.category, N.major_branch, N.name_sri, N.category_sri, N.name_kg2pre, N.category_kg2pre, C.name
                     FROM nodes as N
+                    INNER JOIN clusters as C on C.cluster_id == N.cluster_id
                     WHERE N.id in ('{self.placeholder_lookup_values_str}')"""
         matching_rows = self._run_sql_query_in_batches(sql_query_template, all_node_ids)
         nodes_dict = {row[0]: {"identifier": row[0],
@@ -207,7 +208,8 @@ class NodeSynonymizer:
                                "in_kg2pre": row[8] is not None,
                                "name_kg2pre": row[7],
                                "category_kg2pre": self._add_biolink_prefix(row[8]),
-                               "cluster_id": row[1]} for row in matching_rows}
+                               "cluster_id": row[1],
+                               "cluster_preferred_name": row[9]} for row in matching_rows}
 
         # Transform the results into the proper response format
         results_dict = dict()
@@ -215,7 +217,7 @@ class NodeSynonymizer:
             cluster_id = nodes_dict[next(iter(equivalent_curies))]["cluster_id"]  # All should have the same cluster ID
             cluster_rep = nodes_dict[cluster_id]
             results_dict[input_entity] = {"id": {"identifier": cluster_id,
-                                                 "name": cluster_rep["label"],
+                                                 "name": cluster_rep["cluster_preferred_name"],
                                                  "category": cluster_rep["category"],
                                                  "SRI_normalizer_name": cluster_rep["name_sri"],
                                                  "SRI_normalizer_category": cluster_rep["category_sri"],
@@ -229,6 +231,8 @@ class NodeSynonymizer:
                 concept_info_dict["categories"][equivalent_node["category"]] += 1
                 if "cluster_id" in equivalent_node:
                     del equivalent_node["cluster_id"]
+                if "cluster_preferred_name" in equivalent_node:
+                    del equivalent_node["cluster_preferred_name"]
 
         # Add None values for any unrecognized input curies
         unrecognized_curies = entities_set.difference(results_dict)
