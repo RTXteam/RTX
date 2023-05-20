@@ -356,7 +356,7 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
     # Save this lite KG to a JSON file
     logging.info(f"  Saving lite json...")
     with open(f"{KG2C_DIR}/kg2c_lite.json", "w+") as output_file:
-        json.dump(lite_kg, output_file)
+        json.dump(lite_kg, output_file, indent=2)
 
 
 def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],

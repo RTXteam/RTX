@@ -60,7 +60,7 @@ All code changes should **go in the branch for this KG2 version**!
   - [ ] ensure the new KG2c Neo4j is currently running
   - [ ] check out the branch and pull to get the latest changes (this is important for ensuring the correct KG2c Neo4j is used)
   - [ ] run [this script](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/create_csv_of_kp_predicate_triples.py)
-  - [ ] push the regenerated file to `RTX/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json` (in the `kg2integration` branch)
+  - [ ] push the regenerated file to `RTX/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json` (in the branch)
 - [ ] update Expand code as needed
 - [ ] update any other modules as needed
 - [ ] test everything together:
@@ -77,8 +77,7 @@ All code changes should **go in the branch for this KG2 version**!
 
 #### 4. Pre-upload databases:
 
-Before rolling out, we need to pre-upload the new databases (referenced in `config_dbs.json`) to `arax.ncats.io` and the ITRB SFTP server. These steps can
-be done well in advance of the rollout; it doesn't hurt anything to do them early.
+Before rolling out, we need to pre-upload the new databases (referenced in `config_dbs.json`) to `arax.ncats.io` and the ITRB SFTP server. These steps can be done well in advance of the rollout; it doesn't hurt anything to do them early.
 
 - [ ] make sure `arax.ncats.io` has at least 100G of disk space free; delete old KG2 databases to free up space as needed (warn the team on slack first)
 - [ ] `scp` the new databases from `arax-databases.rtx.ai` to `arax.ncats.io:/data/orangeboard/databases/KG2.X.Y`
