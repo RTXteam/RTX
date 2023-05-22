@@ -945,6 +945,7 @@ function getIdStats(id) {
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
 	document.getElementById("nsources_"+id).innerHTML = '';
+	document.getElementById("numaux_"+id).innerHTML = '';
 	document.getElementById("cachelink_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
@@ -1006,6 +1007,7 @@ function sendId(is_ars_refresh) {
 	document.getElementById("respsize_"+id).innerHTML = '';
 	document.getElementById("nodedges_"+id).innerHTML = '';
         document.getElementById("nsources_"+id).innerHTML = '';
+        document.getElementById("numaux_"+id).innerHTML = '';
         document.getElementById("cachelink_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
@@ -1070,7 +1072,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.4?","N_Results","Nodes / Edges","Sources","Cache"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.4?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.appendChild(document.createTextNode(head));
@@ -1119,6 +1121,7 @@ function process_ars_message(ars_msg, level) {
 	link = document.createElement("a");
 	link.title = 'view this response';
 	link.style.cursor = "pointer";
+	link.style.fontFamily = "monospace";
 	link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId(false);');
 	link.appendChild(document.createTextNode(ars_msg.message));
 	if (!ars_msg["children"] || ars_msg["children"].length == 0)
@@ -1149,6 +1152,11 @@ function process_ars_message(ars_msg, level) {
 
     td = document.createElement("td");
     td.id = "nsources_"+ars_msg.message;
+    td.style.textAlign = "center";
+    tr.appendChild(td);
+
+    td = document.createElement("td");
+    td.id = "numaux_"+ars_msg.message;
     td.style.textAlign = "center";
     tr.appendChild(td);
 
@@ -1310,6 +1318,9 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
                 html_node.className += " tooltip";
                 html_node.appendChild(tnode);
 	    }
+
+	    if (jsonObj2.message["auxiliary_graphs"] && Object.keys(jsonObj2.message["auxiliary_graphs"]).length > 0)
+		document.getElementById("numaux_"+jsonObj2.araxui_response).innerHTML = Object.keys(jsonObj2.message["auxiliary_graphs"]).length;
 
 	    if (jsonObj2.validation_result.n_nodes)
 		document.getElementById("nodedges_"+jsonObj2.araxui_response).innerHTML = jsonObj2.validation_result.n_nodes+' / '+jsonObj2.validation_result.n_edges;
@@ -1520,6 +1531,7 @@ function update_response_stats_on_error(rid,msg,clearall) {
 	document.getElementById("respsize_"+rid).innerHTML = '---';
 	document.getElementById("nodedges_"+rid).innerHTML = '';
 	document.getElementById("nsources_"+rid).innerHTML = '';
+	document.getElementById("numaux_"+rid).innerHTML = '';
 	document.getElementById("istrapi_"+rid).innerHTML = '';
 	document.getElementById("cachelink_"+rid).innerHTML = '';
     }
@@ -1636,6 +1648,7 @@ function render_response(respObj,dispjson) {
             document.getElementById("menunumresults").classList.add("numnew");
 	    document.getElementById("menunumresults").classList.remove("numold");
 
+
 	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
 	    var respreas = 'n/a';
 	    if (respObj.resource_id)
@@ -1645,7 +1658,6 @@ function render_response(respObj,dispjson) {
 
 	    var auxiliary_graphs = respObj.message["auxiliary_graphs"] ? respObj.message["auxiliary_graphs"] : null;
 	    process_results(respObj.message["results"],respObj.message["knowledge_graph"],auxiliary_graphs,respObj["schema_version"],respreas);
-
 
             if (respObj.message.results.length > UIstate["maxresults"])
 		document.getElementById("result_container").appendChild(h2.cloneNode(true));
@@ -1947,6 +1959,37 @@ function render_response(respObj,dispjson) {
 	statusdiv.appendChild(document.createTextNode("Submitted by: "+respObj.submitter));
 	statusdiv.appendChild(document.createElement("br"));
     }
+
+    // add stats
+    statusdiv.appendChild(document.createTextNode("Number of results: "));
+    if (respObj.message["results"] && respObj.message["results"].length > 0)
+	statusdiv.appendChild(document.createTextNode(respObj.message["results"].length));
+    else
+	statusdiv.appendChild(document.createTextNode("none"));
+    statusdiv.appendChild(document.createElement("br"));
+
+    statusdiv.appendChild(document.createTextNode("Number of nodes: "));
+    if (respObj.message["knowledge_graph"] && respObj.message["knowledge_graph"]["nodes"] && Object.keys(respObj.message["knowledge_graph"]["nodes"]).length > 0)
+	statusdiv.appendChild(document.createTextNode(Object.keys(respObj.message["knowledge_graph"]["nodes"]).length));
+    else
+	statusdiv.appendChild(document.createTextNode("none"));
+    statusdiv.appendChild(document.createElement("br"));
+
+    statusdiv.appendChild(document.createTextNode("Number of edges: "));
+    if (respObj.message["knowledge_graph"] && respObj.message["knowledge_graph"]["edges"] && Object.keys(respObj.message["knowledge_graph"]["edges"]).length > 0)
+	statusdiv.appendChild(document.createTextNode(Object.keys(respObj.message["knowledge_graph"]["edges"]).length));
+    else
+	statusdiv.appendChild(document.createTextNode("none"));
+    statusdiv.appendChild(document.createElement("br"));
+
+    statusdiv.appendChild(document.createTextNode("Number of aux graphs: "));
+    if (respObj.message["auxiliary_graphs"] && Object.keys(respObj.message["auxiliary_graphs"]).length > 0)
+        statusdiv.appendChild(document.createTextNode(Object.keys(respObj.message["auxiliary_graphs"]).length));
+    else
+        statusdiv.appendChild(document.createTextNode("none"));
+    statusdiv.appendChild(document.createElement("br"));
+
+
     var nr = document.createElement("span");
     nr.className = 'essence';
     nr.appendChild(document.createTextNode("Click on Results, Summary, Provenance, or Knowledge Graph links on the left to explore results."));
@@ -2489,8 +2532,15 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	    cnf = Number(result.score).toFixed(3);
 	else if (Number(result.confidence))
 	    cnf = Number(result.confidence).toFixed(3);
-	else if (result.analyses && Number(result.analyses[0].score))
-	    cnf = Number(result.analyses[0].score).toFixed(3);
+        else if (result.analyses && result.analyses.length > 0) {
+	    var maxscore = -1;
+	    for (var ranal in result.analyses) {
+                if (Number(result.analyses[ranal].score) && Number(result.analyses[ranal].score) > maxscore)
+		    maxscore = Number(result.analyses[ranal].score).toFixed(3);
+	    }
+	    if (maxscore >= 0)
+		cnf = maxscore;
+	}
 	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
 
         if (result.row_data)
@@ -2504,27 +2554,9 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	var rsrc = mainreasoner;
 	if (result.resource_id)
 	    rsrc = result.resource_id;
-	else if (result.analyses && result.analyses[0].resource_id)
-	    rsrc = result.analyses[0].resource_id;
 	else if (result.reasoner_id)
 	    rsrc = result.reasoner_id;
-	else if (result.analyses && result.analyses[0].reasoner_id)
-	    rsrc = result.analyses[0].reasoner_id;
-	var rscl =
-	    (rsrc=="ARAX")     ? "srtx" :
-	    (rsrc=="BTE")      ? "sbte" :
-	    (rsrc=="Cam")      ? "scam" :
-	    (rsrc=="COHD")     ? "scod" :
-	    (rsrc=="infores:cohd") ? "scod" :
-	    (rsrc=="Indigo")   ? "sind" :
-	    (rsrc=="Robokop")  ? "srob" :
-	    (rsrc=="Aragorn")  ? "sara" :
-	    (rsrc=="MolePro")  ? "smol" :
-	    (rsrc=="Genetics") ? "sgen" :
-	    (rsrc=="Unsecret") ? "suns" :
-	    (rsrc=="ImProving")? "simp" :
-	    (rsrc=="CHP")      ? "schp" :
-	    "p0";
+	var rscl = get_css_class_from_reasoner(rsrc);
 
 	if (rsrc=="ARAX")
 	    add_to_score_histogram(cnf);
@@ -2543,7 +2575,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 
         var span = document.createElement("span");
         span.className = pcl+' qprob';
-	span.title = "confidence="+cnf;
+	span.title = "score="+cnf;
         span.appendChild(document.createTextNode(cnf));
 	span100.appendChild(span);
 
@@ -2563,11 +2595,89 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
         var table = document.createElement("table");
         table.className = 't100';
 
-        var tr = document.createElement("tr");
-	var td = document.createElement("td");
+        var tr,td,link;
+
+	if (result.analyses && result.analyses.length > 0) {
+            for (var ranal in result.analyses) {
+		tr = document.createElement("tr");
+		td = document.createElement("td");
+		td.className = 'cytograph_controls';
+		td.colSpan = "2";
+		td.style.paddingLeft = "40px";
+                td.appendChild(document.createTextNode(" Analysis "+ranal+" :: "));
+
+		link = document.createElement("a");
+		link.style.fontWeight = "bold";
+		link.style.fontSize = "larger";
+		link.style.marginRight = "20px";
+		link.title = 'View Main Result Graph';
+		link.setAttribute('onclick', 'add_cyto('+num+',0);');
+		link.appendChild(document.createTextNode("Result Graph"));
+		td.appendChild(link);
+
+                if (result.analyses[ranal].support_graphs && result.analyses[ranal].support_graphs.length > 0) {
+		    td.appendChild(document.createTextNode(" Support Graphs: "));
+
+		    for (var sg in result.analyses[ranal].support_graphs) {
+			link = document.createElement("a");
+			link.style.fontWeight = "bold";
+			link.style.fontSize = "larger";
+			link.style.marginLeft = "20px";
+			link.title = 'Graph ID: '+result.analyses[ranal].support_graphs[sg];
+			var sg1 = Number(sg)+1;
+			link.setAttribute('onclick', 'add_cyto('+num+','+sg1+');');
+			link.appendChild(document.createTextNode(sg1));
+			td.appendChild(link);
+		    }
+		}
+		else {
+                    td.appendChild(document.createTextNode(" No Support Graphs found"));
+		}
+
+                var cnf = 'n/a';
+		if (Number(result.analyses[ranal].score))
+		    cnf = Number(result.analyses[ranal].score).toFixed(3);
+		var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
+
+		var rsrc = 'n/a';
+		if (result.analyses[ranal].resource_id)
+		    rsrc = result.analyses[ranal].resource_id;
+		else if (result.analyses[ranal].reasoner_id)
+		    rsrc = result.analyses[ranal].reasoner_id;
+
+		var rscl = get_css_class_from_reasoner(rsrc);
+
+		var span100 = document.createElement("span");
+		span100.style.float = 'right';
+		span100.style.marginRight = '70px';
+		span100.style.marginTop = '5px';
+
+                var span = document.createElement("span");
+		span.className = pcl+' qprob';
+		span.title = "score="+cnf;
+		span.appendChild(document.createTextNode(cnf));
+		span100.appendChild(span);
+
+		span = document.createElement("span");
+		span.className = rscl+' qprob';
+		span.title = "source="+rsrc;
+		span.appendChild(document.createTextNode(rsrc));
+		span100.appendChild(span);
+
+		//td = document.createElement("td");
+		td.appendChild(span100);
+
+		tr.appendChild(td);
+		table.appendChild(tr);
+	    }
+	}
+
+
+	tr = document.createElement("tr");
+	td = document.createElement("td");
         td.className = 'cytograph_controls';
 
-	var link = document.createElement("a");
+	link = document.createElement("a");
 	link.title = 'reset zoom and center';
         link.setAttribute('onclick', 'cyobj['+num+'].reset();');
         link.appendChild(document.createTextNode("\u21BB"));
@@ -2639,40 +2749,6 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
         tr.appendChild(td);
         table.appendChild(tr);
 
-	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
-            tr = document.createElement("tr");
-	    td = document.createElement("td");
-	    td.className = 'cytograph_controls';
-	    td.colSpan = "2";
-	    td.style.paddingLeft = "40px";
-            td.appendChild(document.createTextNode(" VIEW :: "));
-            link = document.createElement("a");
-	    link.style.fontWeight = "bold";
-	    link.style.fontSize = "larger";
-	    link.style.marginRight = "20px";
-	    link.title = 'View Main Result Graph';
-	    link.setAttribute('onclick', 'add_cyto('+num+',0);');
-	    link.appendChild(document.createTextNode("Result Graph"));
-	    td.appendChild(link);
-
-	    td.appendChild(document.createTextNode(" Support Graphs: "));
-
-	    for (var sg in result.analyses[0].support_graphs) {
-		link = document.createElement("a");
-		link.style.fontWeight = "bold";
-		link.style.fontSize = "larger";
-		link.style.marginLeft = "20px";
-		link.title = 'Graph ID: '+result.analyses[0].support_graphs[sg];
-		var sg1 = Number(sg)+1;
-		link.setAttribute('onclick', 'add_cyto('+num+','+sg1+');');
-		link.appendChild(document.createTextNode(sg1));
-		td.appendChild(link);
-	    }
-
-            tr.appendChild(td);
-	    table.appendChild(tr);
-	}
-
         tr = document.createElement("tr");
 	//td = document.createElement("td");
 	//tr.appendChild(td);
@@ -2712,6 +2788,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	    }
 	}
 
+	//FIX THIS for multiple result.analyses...
 	let da_edge_bindings = result.edge_bindings ? result.edge_bindings : result.analyses[0].edge_bindings;
 	for (var ebid in da_edge_bindings) {
 	    for (var edge of da_edge_bindings[ebid]) {
@@ -2732,7 +2809,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	    }
 	}
 
-
+	//FIX THIS for multiple result.analyses...
 	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
             for (var sg in result.analyses[0].support_graphs) {
 		var sup = Number(sg)+1;
@@ -2778,6 +2855,37 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
     document.getElementById("result_container").appendChild(results_fragment);
 }
 
+function get_css_class_from_reasoner(r) {
+    try {
+	if (r.toUpperCase().includes("IMPROVING"))
+	    return "simp";
+	if (r.toUpperCase().includes("UNSECRET"))
+	    return "suns";
+	if (r.toUpperCase().includes("MOLEPRO"))
+	    return "smol";
+	if (r.toUpperCase().includes("ROBOKOP"))
+	    return "srob";
+	if (r.toUpperCase().includes("ARAGORN"))
+	    return "sara";
+	if (r.toUpperCase().includes("INDIGO"))
+	    return "sind";
+	if (r.toUpperCase().includes("GENETICS"))
+	    return "sgen";
+	if (r.toUpperCase().includes("COHD"))
+	    return "scod";
+	if (r.toUpperCase().includes("ARAX"))
+	    return "srtx";
+	if (r.toUpperCase().includes("BTE"))
+	    return"sbte";
+	if (r.toUpperCase().includes("CAM"))
+	    return "scam";
+	if (r.toUpperCase().includes("CHP"))
+	    return "schp";
+    }
+    catch(e) {}
+    return "p0";
+}
+
 
 function add_cyto(i,s) {
     // once rendered, data is set to null so as to only do this once per graph
@@ -2809,7 +2917,12 @@ function add_cyto(i,s) {
 		'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
 		'target-arrow-shape': 'triangle',
 		'opacity': 0.8,
-		'content': function(ele) { if ((ele.data().parentdivnum > 0) && ele.data().type) { return ele.data().type + (ele.data().qualifiers ? ' [q]':''); } return '';}
+		'content': function(ele) {
+		    if ((ele.data().parentdivnum > 0) && ele.data().type) {
+			return ele.data().type + (ele.data().qualifiers ? ' [q]':'');
+		    }
+		    return '';
+		}
 	    })
 	    .selector(':selected')
 	    .css({
@@ -3267,7 +3380,7 @@ function display_attribute(tab, att, semmeddb, mainvalue) {
 	    row.appendChild(cell);
 	    tab.appendChild(row);
 
-	    if (att[nom] == "biolink:primary_knowledge_source")
+	    if (att[nom] == "primary_knowledge_source")
 		flagifmainvaluenull = false;
 	}
     }
@@ -5673,7 +5786,7 @@ function retrieveKPInfo() {
 
 			var main_td = td;
 			var is_first = true;
-			for (var mature of ["production","staging","testing","development"] ) {
+			for (var mature of ["production","testing","staging","development"] ) {
 			    var status_nodes = [];
 			    var had_transltr_io = false; //(item["infores_name"].startsWith("infores:automat") || component == "Utility");
 			    var was_mature = false;
@@ -5776,7 +5889,7 @@ function retrieveKPInfo() {
 				td = document.createElement("td");
 				var span = document.createElement("span");
 				span.className = "explevel p1";
-				span.title = "Maturity does not match expected list [production, staging, testing, development]";
+				span.title = "Maturity does not match expected list [production, testing, staging, development]";
 				span.appendChild(document.createTextNode('\u00A0'));
 				span.appendChild(document.createTextNode('\u00A0'));
 				td.appendChild(span);
@@ -6345,7 +6458,7 @@ function display_cache() {
 
     for (var pid in response_cache) {
         numitems++;
-        listhtml += "<tr><td>"+numitems+".</td><td>"+pid+"</td><td><a href='javascript:remove_from_cache(\"" + pid +"\");'/>Remove</a></td></tr>";
+        listhtml += "<tr><td>"+numitems+".</td><td style='font-family:monospace;'>"+pid+"</td><td><a href='javascript:remove_from_cache(\"" + pid +"\");'/>Remove</a></td></tr>";
 	if (document.getElementById("cachelink_"+pid))
 	    document.getElementById("cachelink_"+pid).innerHTML = "<a href='javascript:remove_from_cache(\"" + pid +"\");'/>Clear</a>";
     }
