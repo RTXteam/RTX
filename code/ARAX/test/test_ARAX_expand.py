@@ -20,8 +20,6 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.attribute import Attribute
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
-from biolink_helper import BiolinkHelper
 
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
@@ -130,18 +128,6 @@ def _check_attribute(attribute: Attribute):
     assert isinstance(attribute.attribute_source, str) or attribute.attribute_source is None
     assert isinstance(attribute.original_attribute_name, str) or attribute.original_attribute_name is None
     assert isinstance(attribute.description, str) or attribute.description is None
-
-
-def check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
-    bh = BiolinkHelper()
-    qnode_descendant_categories_map = {qnode_key: set(bh.get_descendants(qnode.categories))
-                                       for qnode_key, qnode in query_graph.nodes.items() if qnode.categories}
-    for node in nodes.values():
-        for qnode_key in node.qnode_keys:
-            qnode = query_graph.nodes[qnode_key]
-            if qnode.categories and not qnode.ids:
-                # A node's categories should be only descendants of what was asked for in the QG
-                assert set(node.categories).issubset(qnode_descendant_categories_map[qnode_key])
 
 
 @pytest.mark.slow
