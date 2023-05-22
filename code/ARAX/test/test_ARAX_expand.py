@@ -1452,9 +1452,9 @@ def test_kp_list():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions, timeout=30)
 
 
-def test_missing_semmed_publications():
+def test_missing_epc_attributes():
     actions = [
-        "add_qnode(name=Parkinsons disease, key=n0)",
+        "add_qnode(name=Parkinson's disease, key=n0)",
         "add_qnode(categories=biolink:Drug, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:predisposes)",
         "expand(kp=infores:rtx-kg2)",
@@ -1467,6 +1467,7 @@ def test_missing_semmed_publications():
                                          if source.resource_role == "primary_knowledge_source"}
             assert primary_knowledge_sources
             if "infores:semmeddb" in primary_knowledge_sources:
+                assert edge.attributes
                 publications = [attribute.value for attribute in edge.attributes
                                 if attribute.attribute_type_id == "biolink:publications"]
                 assert publications
