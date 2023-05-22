@@ -56,11 +56,11 @@ The following databases should be rebuilt and copies of them should be put in `/
 
 All code changes should **go in the branch for this KG2 version**!
 
-- [ ] regenerate the KG2c test triples file @acevedol
+- [ ] regenerate the KG2c test triples file in the branch for this KG2 version @acevedol
   - [ ] ensure the new KG2c Neo4j is currently running
   - [ ] check out the branch and pull to get the latest changes (this is important for ensuring the correct KG2c Neo4j is used)
-  - [ ] run [this script](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/create_csv_of_kp_predicate_triples.py)
-  - [ ] push the regenerated file to `RTX/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json` (in the branch)
+  - [ ] run [create_json_of_kp_predicate_triples.py](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/create_json_of_kp_predicate_triples.py)
+  - [ ] push the regenerated file to `RTX/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json`
 - [ ] update Expand code as needed
 - [ ] update any other modules as needed
 - [ ] test everything together:
