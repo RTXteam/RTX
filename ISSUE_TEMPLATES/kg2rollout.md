@@ -69,10 +69,10 @@ All code changes should **go in the branch for this KG2 version**!
   - [ ] then run the entire ARAX pytest suite
   - [ ] address any failing tests
 - [ ] update the KG2 and ARAX version numbers in the appropriate places (`openapi.yaml`, etc.)
-  - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` in line 12 (`version:`); the major and minor release numbers are kept synchronous with the TRAPI version; just bump the patch release version (least significant digit)
-  - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` in line 12 (`version:`); the first three digits are kept synchronous with the KG2 release version
-  - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_ARAX.yaml` on line 4 (`version:`); same as for the ARAX `openapi.yaml` file
-  - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_KG2.yaml` on line 4 (`version:`); same as for the KG2 `openapi.yaml` file
+  - [ ] Bump version for [RTX/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml) in line 12 (`version:`); the major and minor release numbers are kept synchronous with the TRAPI version; just bump the patch release version (least significant digit)
+  - [ ] Bump version for [RTX/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml) in line 12 (`version:`); the first three digits are kept synchronous with the KG2 release version
+  - [ ] Bump version number in [RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml) on line 4 (`version:`); same as for the ARAX `openapi.yaml` file
+  - [ ] Bump version number in [RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml) on line 4 (`version:`); same as for the KG2 `openapi.yaml` file
   
 
 #### 4. Pre-upload databases:
