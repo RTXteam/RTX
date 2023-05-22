@@ -68,7 +68,7 @@ def get_kg2_predicate_triples():
              'head(tail(s)) as object'
     results = run_neo4j_query(cypher, "KG2c", "predicate triples")
     triples_dict = {"subject": [], "predicate": [], "object": []}
-    test_triples_json = {"url": "https://kg2.transltr.io/api/rtxkg2/v1.2",
+    test_triples_json = {"url": "https://kg2.transltr.io/api/rtxkg2/v1.4",
                          "TRAPI": True,
                          "edges": []
                          }
