@@ -52,7 +52,7 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
         print(response.show(level=ARAXResponse.DEBUG))
 
     # Run standard testing (applies to every test case)
-    assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
+    assert eu.qg_is_fulfilled(response.original_query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
     check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     check_property_format(nodes_by_qg_id, edges_by_qg_id)
 
