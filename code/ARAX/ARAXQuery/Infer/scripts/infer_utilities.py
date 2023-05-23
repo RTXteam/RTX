@@ -470,6 +470,7 @@ class InferUtilities:
             message.query_graph.edges[add_qedge_params['key']].filled = True
             chemical_qnode_key = 'chemical'
             gene_qnode_key = 'gene'
+            self.response.original_query_graph = copy.deepcopy(message.query_graph)
 
         else:
 
@@ -756,6 +757,5 @@ class InferUtilities:
         #FIXME: this might cause a problem since it doesn't add optional groups for 1 and 2 hops
         # This might also cause issues when infer is on an intermediate edge
         self.resultify_and_sort(essence_scores)
-        
 
         return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
