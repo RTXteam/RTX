@@ -3,9 +3,10 @@ import json
 import os
 import pathlib
 import sqlite3
+import string
 import sys
 from collections import defaultdict
-from typing import Optional, Union, List, Set
+from typing import Optional, Union, List, Set, Dict, Tuple
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -24,6 +25,7 @@ class NodeSynonymizer:
         synonymizer_dir = os.path.dirname(os.path.abspath(__file__))
         self.database_path = f"{synonymizer_dir}/{self.database_name}"
         self.placeholder_lookup_values_str = "**LOOKUP_VALUES_GO_HERE**"
+        self.unnecessary_chars_map = {ord(char): None for char in string.punctuation + string.whitespace}
 
         # If the database doesn't seem to exist, try running the DatabaseManager
         if not pathlib.Path(self.database_path).exists():
@@ -53,30 +55,38 @@ class NodeSynonymizer:
         results_dict = dict()
 
         if curies_set:
+            # First transform curies so that their prefixes are entirely uppercase
+            curies_to_capitalized_curies, capitalized_curies = self._map_to_capitalized_curies(curies_set)
+
             # Query the synonymizer sqlite database for these identifiers
             sql_query_template = f"""
-                        SELECT N.id, N.cluster_id, C.name, C.category
+                        SELECT N.id_simplified, N.cluster_id, C.name, C.category
                         FROM nodes as N
                         INNER JOIN clusters as C on C.cluster_id == N.cluster_id
-                        WHERE N.id in ('{self.placeholder_lookup_values_str}')"""
-            matching_rows = self._run_sql_query_in_batches(sql_query_template, curies_set)
+                        WHERE N.id_simplified in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, capitalized_curies)
 
             # Transform the results into the proper response format
-            results_dict = {row[0]: self._create_preferred_node_dict(preferred_id=row[1],
-                                                                     preferred_category=row[3],
-                                                                     preferred_name=row[2])
-                            for row in matching_rows}
+            results_dict_capitalized = {row[0]: self._create_preferred_node_dict(preferred_id=row[1],
+                                                                                 preferred_category=row[3],
+                                                                                 preferred_name=row[2])
+                                        for row in matching_rows}
+            results_dict = {input_curie: results_dict_capitalized[capitalized_curie]
+                            for input_curie, capitalized_curie in curies_to_capitalized_curies.items()}
 
         if names_set:
+            # First transform to simplified names (lowercase, no punctuation/whitespace)
+            names_to_simplified_names, simplified_names = self._map_to_simplified_names(names_set)
+
             # Query the synonymizer sqlite database for these names
             sql_query_template = f"""
-                        SELECT N.id, N.name, N.cluster_id, C.name, C.category
+                        SELECT N.id, N.name_simplified, N.cluster_id, C.name, C.category
                         FROM nodes as N
                         INNER JOIN clusters as C on C.cluster_id == N.cluster_id
-                        WHERE N.name in ('{self.placeholder_lookup_values_str}')"""
-            matching_rows = self._run_sql_query_in_batches(sql_query_template, names_set)
+                        WHERE N.name_simplified in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, simplified_names)
 
-            # For each input name, pick the cluster that nodes with that exact name most often belong to
+            # For each simplified name, pick the cluster that nodes with that simplified name most often belong to
             names_to_best_cluster_id = self._count_clusters_per_name(matching_rows, name_index=1, cluster_id_index=2)
 
             # Create some helper maps
@@ -86,10 +96,12 @@ class NodeSynonymizer:
                                      for name, cluster_id in names_to_best_cluster_id.items()}
 
             # Transform the results into the proper response format
-            results_dict_names = {name: self._create_preferred_node_dict(preferred_id=cluster_id,
-                                                                         preferred_category=names_to_cluster_rows[name][4],
-                                                                         preferred_name=names_to_cluster_rows[name][3])
-                                  for name, cluster_id in names_to_best_cluster_id.items()}
+            results_dict_names_simplified = {name: self._create_preferred_node_dict(preferred_id=cluster_id,
+                                                                                    preferred_category=names_to_cluster_rows[name][4],
+                                                                                    preferred_name=names_to_cluster_rows[name][3])
+                                             for name, cluster_id in names_to_best_cluster_id.items()}
+            results_dict_names = {input_name: results_dict_names_simplified[simplified_name]
+                                  for input_name, simplified_name in names_to_simplified_names.items()}
 
             # Merge these results with any results for input curies
             results_dict.update(results_dict_names)
@@ -133,27 +145,35 @@ class NodeSynonymizer:
         results_dict = dict()
 
         if curies_set:
+            # First transform curies so that their prefixes are entirely uppercase
+            curies_to_capitalized_curies, capitalized_curies = self._map_to_capitalized_curies(curies_set)
+
             # Query the synonymizer sqlite database for these identifiers (in batches, if necessary)
             sql_query_template = f"""
-                        SELECT N.id, C.member_ids
+                        SELECT N.id_simplified, C.member_ids
                         FROM nodes as N
                         INNER JOIN clusters as C on C.cluster_id == N.cluster_id
-                        WHERE N.id in ('{self.placeholder_lookup_values_str}')"""
-            matching_rows = self._run_sql_query_in_batches(sql_query_template, curies_set)
+                        WHERE N.id_simplified in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, capitalized_curies)
 
             # Transform the results into the proper response format
-            results_dict = {row[0]: ast.literal_eval(row[1]) for row in matching_rows}
+            results_dict_capitalized = {row[0]: ast.literal_eval(row[1]) for row in matching_rows}
+            results_dict = {input_curie: results_dict_capitalized[capitalized_curie]
+                            for input_curie, capitalized_curie in curies_to_capitalized_curies.items()}
 
         if names_set:
+            # First transform to simplified names (lowercase, no punctuation/whitespace)
+            names_to_simplified_names, simplified_names = self._map_to_simplified_names(names_set)
+
             # Query the synonymizer sqlite database for these names
             sql_query_template = f"""
-                        SELECT N.id, N.name, C.cluster_id, C.member_ids
+                        SELECT N.id, N.name_simplified, C.cluster_id, C.member_ids
                         FROM nodes as N
                         INNER JOIN clusters as C on C.cluster_id == N.cluster_id
-                        WHERE N.name in ('{self.placeholder_lookup_values_str}')"""
-            matching_rows = self._run_sql_query_in_batches(sql_query_template, names_set)
+                        WHERE N.name_simplified in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, simplified_names)
 
-            # For each input name, pick the cluster that nodes with that exact name most often belong to
+            # For each simplified name, pick the cluster that nodes with that simplified name most often belong to
             names_to_best_cluster_id = self._count_clusters_per_name(matching_rows, name_index=1, cluster_id_index=2)
 
             # Create some helper maps
@@ -163,8 +183,10 @@ class NodeSynonymizer:
                                      for name, cluster_id in names_to_best_cluster_id.items()}
 
             # Transform the results into the proper response format
-            results_dict_names = {name: ast.literal_eval(cluster_row[3])
-                                  for name, cluster_row in names_to_cluster_rows.items()}
+            results_dict_names_simplified = {name: ast.literal_eval(cluster_row[3])
+                                             for name, cluster_row in names_to_cluster_rows.items()}
+            results_dict_names = {input_name: results_dict_names_simplified[simplified_name]
+                                  for input_name, simplified_name in names_to_simplified_names.items()}
 
             # Merge these results with any results for input curies
             results_dict.update(results_dict_names)
@@ -182,7 +204,7 @@ class NodeSynonymizer:
         # Convert any input curies to Set format
         entities_set = self._convert_to_set_format(entities)
 
-        # First get all equivalent IDs for each input curie
+        # First try looking up input entities as curies
         equivalent_curies_dict = self.get_equivalent_nodes(curies=entities_set, include_unrecognized_entities=False)
         unrecognized_entities = entities_set.difference(equivalent_curies_dict)
         # If we weren't successful at looking up some entities as curies, try looking them up as names
@@ -191,6 +213,7 @@ class NodeSynonymizer:
             equivalent_curies_dict.update(equivalent_curies_dict_names)
 
         # Then get info for all of those equivalent nodes
+        # Note: We don't need to query by capitalized curies because these are all curies that exist in the synonymizer
         all_node_ids = set().union(*equivalent_curies_dict.values())
         sql_query_template = f"""
                     SELECT N.id, N.cluster_id, N.name, N.category, N.major_branch, N.name_sri, N.category_sri, N.name_kg2pre, N.category_kg2pre, C.name
@@ -286,6 +309,12 @@ class NodeSynonymizer:
         some_list = list(some_set)
         return [some_list[start:start + chunk_size] for start in range(0, len(some_list), chunk_size)]
 
+    @staticmethod
+    def capitalize_curie_prefix(curie: str) -> str:
+        curie_chunks = curie.split(":")
+        curie_chunks[0] = curie_chunks[0].upper()
+        return ":".join(curie_chunks)
+
     def _create_preferred_node_dict(self, preferred_id: str, preferred_category: str, preferred_name: Optional[str]) -> dict:
         return {
             "preferred_curie": preferred_id,
@@ -312,6 +341,17 @@ class NodeSynonymizer:
         matching_rows = cursor.fetchall()
         cursor.close()
         return matching_rows
+
+    def _map_to_capitalized_curies(self, curies_set: Set[str]) -> Tuple[Dict[str, str], Set[str]]:
+        curies_to_capitalized_curies = {curie: self.capitalize_curie_prefix(curie) for curie in curies_set}
+        capitalized_curies = set(curies_to_capitalized_curies.values())
+        return curies_to_capitalized_curies, capitalized_curies
+
+    def _map_to_simplified_names(self, names_set: Set[str]) -> Tuple[Dict[str, str], Set[str]]:
+        names_to_simplified_names = {name: name.lower().translate(self.unnecessary_chars_map)
+                                     for name in names_set}
+        simplified_names = set(names_to_simplified_names.values())
+        return names_to_simplified_names, simplified_names
 
 
 def main():
