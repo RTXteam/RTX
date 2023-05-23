@@ -2,6 +2,7 @@ import logging
 import os
 import pathlib
 import sqlite3
+import string
 import subprocess
 
 import numpy as np
@@ -13,6 +14,8 @@ SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s: %(message)s',
                     handlers=[logging.StreamHandler()])
+
+UNNECESSARY_CHARS_MAP = {ord(char): None for char in string.punctuation + string.whitespace}
 
 
 def load_final_nodes() -> pd.DataFrame:
@@ -53,6 +56,12 @@ def add_biolink_prefix(category: str) -> str:
         return f"biolink:{category}"
 
 
+def capitalize_curie_prefix(curie: str) -> str:
+    curie_chunks = curie.split(":")
+    curie_chunks[0] = curie_chunks[0].upper()
+    return ":".join(curie_chunks)
+
+
 def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) -> pd.DataFrame:
     # Get sqlite set up
     sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
@@ -61,13 +70,27 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
         subprocess.check_call(["rm", sqlite_db_path])
     db_connection = sqlite3.connect(sqlite_db_path)
 
+    # Add a column of simplified names (for better name-based lookup)
+    logging.info(f"Assigning nodes their simplified names...")
+    nodes_df["name_simplified"] = nodes_df.name.apply(lambda name: name.lower().translate(UNNECESSARY_CHARS_MAP) if name == name else np.nan)
+    logging.info(f"After adding simplified names, DataFrame is: \n{nodes_df}")
+
+    # Add a column of simplified IDs (prefixes in all caps)
+    logging.info(f"Assigning nodes their simplified IDs...")
+    nodes_df["id_simplified"] = nodes_df.id.apply(capitalize_curie_prefix)
+    logging.info(f"After adding simplified ids, DataFrame is: \n{nodes_df}")
+
     # Save nodes table
     logging.info(f"Dumping nodes table to sqlite...")
     nodes_df.to_sql("nodes", con=db_connection, index=False)
     logging.info(f"Creating index on node ID...")
     db_connection.execute("CREATE UNIQUE INDEX node_id_index on nodes (id)")
+    logging.info(f"Creating index on simplified node ID...")
+    db_connection.execute("CREATE UNIQUE INDEX node_id_simplified on nodes (id_simplified)")
     logging.info(f"Creating index on node name...")
     db_connection.execute("CREATE INDEX node_name on nodes (name)")
+    logging.info(f"Creating index on node name simplified...")
+    db_connection.execute("CREATE INDEX node_name_simplified on nodes (name_simplified)")
     logging.info(f"Creating index on node cluster_id...")
     db_connection.execute("CREATE INDEX node_cluster_id on nodes (cluster_id)")
     db_connection.commit()

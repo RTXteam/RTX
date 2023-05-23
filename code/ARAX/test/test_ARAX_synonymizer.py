@@ -305,5 +305,58 @@ def test_get_normalizer_results():
                     assert equivalent_node["category_kg2pre"].startswith("biolink:")
 
 
+def test_improper_curie_prefix_capitalization():
+    synonymizer = NodeSynonymizer()
+
+    improper_curie = "NCBIGENE:1017"
+    results = synonymizer.get_canonical_curies(improper_curie)
+    assert results[improper_curie]
+    assert len(results) == 1
+
+    improper_curie = "NCBIGENE:1017"
+    results = synonymizer.get_canonical_curies(improper_curie, return_all_categories=True)
+    assert results[improper_curie]
+    assert len(results) == 1
+
+    improper_curie = "NCBIGENE:1017"
+    results = synonymizer.get_equivalent_nodes(improper_curie)
+    assert results[improper_curie]
+    assert len(results) == 1
+
+    improper_curie = "NCBIGENE:1017"
+    results = synonymizer.get_normalizer_results(improper_curie)
+    assert results[improper_curie]
+    assert len(results) == 1
+
+
+def test_approximate_name_based_matching():
+    synonymizer = NodeSynonymizer()
+
+    name_not_exactly_in_synonymizer = "Parkinsons disease"
+    results = synonymizer.get_equivalent_nodes(names=name_not_exactly_in_synonymizer)
+    assert results[name_not_exactly_in_synonymizer]
+    assert len(results) == 1
+
+    name_not_exactly_in_synonymizer_2 = "ATRIAL FIBRILLATION"
+    results = synonymizer.get_canonical_curies(names=name_not_exactly_in_synonymizer_2)
+    assert results[name_not_exactly_in_synonymizer_2]
+    assert len(results) == 1
+
+    name_not_exactly_in_synonymizer_2 = "ATRIAL FIBRILLATION"
+    results = synonymizer.get_canonical_curies(names=name_not_exactly_in_synonymizer_2, return_all_categories=True)
+    assert results[name_not_exactly_in_synonymizer_2]
+    assert len(results) == 1
+
+    name_not_exactly_in_synonymizer_2 = "ATRIAL FIBRILLATION"
+    results = synonymizer.get_equivalent_nodes(names=name_not_exactly_in_synonymizer_2)
+    assert results[name_not_exactly_in_synonymizer_2]
+    assert len(results) == 1
+
+    name_not_exactly_in_synonymizer_2 = "ATRIAL FIBRILLATION"
+    results = synonymizer.get_normalizer_results(name_not_exactly_in_synonymizer_2)
+    assert results[name_not_exactly_in_synonymizer_2]
+    assert len(results) == 1
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_synonymizer.py'])
