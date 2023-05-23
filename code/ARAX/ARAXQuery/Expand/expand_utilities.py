@@ -226,6 +226,12 @@ def edges_are_parallel(edge_a: Union[QEdge, Edge], edge_b: Union[QEdge, Edge]) -
     return {edge_a.subject, edge_a.object} == {edge_b.subject, edge_b.object}
 
 
+def get_primary_knowledge_source(edge: Edge) -> str:
+    primary_ks_sources = [source.resource_id for source in edge.sources
+                          if source.resource_role == "primary_knowledge_source"] if edge.sources else []
+    return primary_ks_sources[0] if primary_ks_sources else ""
+
+
 def merge_two_kgs(kg_a: QGOrganizedKnowledgeGraph, kg_b: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
     for qnode_key, nodes in kg_a.nodes_by_qg_id.items():
         for node_key, node in nodes.items():
