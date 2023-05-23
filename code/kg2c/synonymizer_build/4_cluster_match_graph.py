@@ -406,9 +406,6 @@ def main():
     logging.info(f"Saving final nodes and edges tables..")
     nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv", sep="\t")
     edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv", sep="\t")
-    logging.info(f"Saving member_id --> cluster_id map to TSV file..")
-    cluster_map_df = nodes_df[["cluster_id"]]
-    cluster_map_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_cluster_member_map.tsv", sep="\t")
 
 
 if __name__ == "__main__":

@@ -20,8 +20,6 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.attribute import Attribute
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
-from biolink_helper import BiolinkHelper
 
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
@@ -54,7 +52,7 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
         print(response.show(level=ARAXResponse.DEBUG))
 
     # Run standard testing (applies to every test case)
-    assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
+    assert eu.qg_is_fulfilled(response.original_query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
     check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     check_property_format(nodes_by_qg_id, edges_by_qg_id)
 
@@ -130,18 +128,6 @@ def _check_attribute(attribute: Attribute):
     assert isinstance(attribute.attribute_source, str) or attribute.attribute_source is None
     assert isinstance(attribute.original_attribute_name, str) or attribute.original_attribute_name is None
     assert isinstance(attribute.description, str) or attribute.description is None
-
-
-def check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
-    bh = BiolinkHelper()
-    qnode_descendant_categories_map = {qnode_key: set(bh.get_descendants(qnode.categories))
-                                       for qnode_key, qnode in query_graph.nodes.items() if qnode.categories}
-    for node in nodes.values():
-        for qnode_key in node.qnode_keys:
-            qnode = query_graph.nodes[qnode_key]
-            if qnode.categories and not qnode.ids:
-                # A node's categories should be only descendants of what was asked for in the QG
-                assert set(node.categories).issubset(qnode_descendant_categories_map[qnode_key])
 
 
 @pytest.mark.slow
@@ -1466,9 +1452,9 @@ def test_kp_list():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions, timeout=30)
 
 
-def test_missing_semmed_publications():
+def test_missing_epc_attributes():
     actions = [
-        "add_qnode(name=Parkinsons disease, key=n0)",
+        "add_qnode(name=Parkinson's disease, key=n0)",
         "add_qnode(categories=biolink:Drug, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:predisposes)",
         "expand(kp=infores:rtx-kg2)",
@@ -1481,6 +1467,7 @@ def test_missing_semmed_publications():
                                          if source.resource_role == "primary_knowledge_source"}
             assert primary_knowledge_sources
             if "infores:semmeddb" in primary_knowledge_sources:
+                assert edge.attributes
                 publications = [attribute.value for attribute in edge.attributes
                                 if attribute.attribute_type_id == "biolink:publications"]
                 assert publications

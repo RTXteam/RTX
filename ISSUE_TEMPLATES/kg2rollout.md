@@ -7,10 +7,10 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
 
 - [ ] merge `master` into the branch being used for this KG2 version
 - [ ] update the four hardcoded biolink version numbers in the branch (as needed):
-  - [ ] in [code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml)
-  - [ ] in [code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml)
-  - [ ] in [code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_ARAX.yaml](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_ARAX.yaml)
-  - [ ] in [code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_KG2.yaml](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_KG2.yaml)
+  - [ ] in `code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml))
+  - [ ] in `code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml))
+  - [ ] in `code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml#L17); [local](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml))
+  - [ ] in `code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml#L17); [local](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml))
 - [ ] build a new KG2c on `buildkg2c.rtx.ai` from the branch (how-to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#build-kg2canonicalized))
   - [ ] before starting the build:
     - [ ] make sure there is enough disk space available on `arax-databases.rtx.ai` (need at least 100G, ideally >120G). delete old KG2 database directories as needed (warn the team on Slack in advance).
@@ -56,11 +56,11 @@ The following databases should be rebuilt and copies of them should be put in `/
 
 All code changes should **go in the branch for this KG2 version**!
 
-- [ ] regenerate the KG2c test triples file @acevedol
+- [ ] regenerate the KG2c test triples file in the branch for this KG2 version @acevedol
   - [ ] ensure the new KG2c Neo4j is currently running
   - [ ] check out the branch and pull to get the latest changes (this is important for ensuring the correct KG2c Neo4j is used)
-  - [ ] run [this script](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/create_csv_of_kp_predicate_triples.py)
-  - [ ] push the regenerated file to `RTX/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json` (in the branch)
+  - [ ] run [create_json_of_kp_predicate_triples.py](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/create_json_of_kp_predicate_triples.py)
+  - [ ] push the regenerated file to `RTX/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json`
 - [ ] update Expand code as needed
 - [ ] update any other modules as needed
 - [ ] test everything together:
@@ -68,11 +68,11 @@ All code changes should **go in the branch for this KG2 version**!
   - [ ] locally set `force_local = True` in `ARAX_expander.py` (to avoid using the old KG2 API)
   - [ ] then run the entire ARAX pytest suite
   - [ ] address any failing tests
-- [ ] update the KG2 and ARAX version numbers in the appropriate places (`openapi.yaml`, etc.)
-  - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` in line 12 (`version:`); the major and minor release numbers are kept synchronous with the TRAPI version; just bump the patch release version (least significant digit)
-  - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` in line 12 (`version:`); the first three digits are kept synchronous with the KG2 release version
-  - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_ARAX.yaml` on line 4 (`version:`); same as for the ARAX `openapi.yaml` file
-  - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.3_KG2.yaml` on line 4 (`version:`); same as for the KG2 `openapi.yaml` file
+- [ ] update the KG2 and ARAX version numbers in the appropriate places (in the branch for this KG2 version)
+  - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L12); [local](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml)) in line 12 (`version:`); the major and minor release numbers are kept synchronous with the TRAPI version; just bump the patch release version (least significant digit)
+  - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L12); [local](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml)) in line 12 (`version:`); the first three digits are kept synchronous with the KG2 release version
+  - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml#L4); [local](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml)) on line 4 (`version:`); same as for the ARAX `openapi.yaml` file
+  - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml#L4); [local](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml)) on line 4 (`version:`); same as for the KG2 `openapi.yaml` file
   
 
 #### 4. Pre-upload databases:

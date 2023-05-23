@@ -27,7 +27,8 @@ scp autocomplete.sqlite rtxconfig@${db_host}:${remote_database_dir}/autocomplete
 for file_name in  \
 3_merged_match_nodes.tsv \
 3_merged_match_edges.tsv \
-4_cluster_member_map.tsv \
+4_match_nodes_preprocessed.tsv \
+4_match_edges_preprocessed.tsv \
 5_report_category_counts.tsv \
 5_report_cluster_sizes.tsv \
 5_report_cluster_sizes_non_sri_nodes.tsv \

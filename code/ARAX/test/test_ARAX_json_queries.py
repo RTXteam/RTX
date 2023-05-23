@@ -179,8 +179,8 @@ def test_workflow1():
         }
     }
     nodes_by_qg_id, edges_by_qg_id, response = _run_query_and_do_standard_testing(json_query=query)
-    essences = [x.to_dict()['essence'] for x in response.envelope.message.results]
-    assert 'METICRANE' in essences
+    essences = [x.to_dict()['essence'].upper() for x in response.envelope.message.results]
+    assert 'PEGINESATIDE' in essences
 
 @pytest.mark.slow
 def test_workflow2():

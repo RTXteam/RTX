@@ -228,16 +228,17 @@ class KG2Querier:
         qualified_predicate = edge_tuple[4]
         qualified_object_direction = edge_tuple[5]
         qualified_object_aspect = edge_tuple[6]
-        edge.sources = list()
 
+        sources = list()
         # Add this edge's primary knowledge source
-        edge.sources.append(RetrievalSource(resource_id=primary_knowledge_source,
-                                            resource_role="primary_knowledge_source"))
+        sources.append(RetrievalSource(resource_id=primary_knowledge_source,
+                                       resource_role="primary_knowledge_source"))
 
         # Indicate that this edge came from the KG2 KP
-        edge.sources.append(RetrievalSource(resource_id=self.kg2_infores_curie,
-                                            resource_role="aggregator_knowledge_source",
-                                            upstream_resource_ids=[primary_knowledge_source]))
+        sources.append(RetrievalSource(resource_id=self.kg2_infores_curie,
+                                       resource_role="aggregator_knowledge_source",
+                                       upstream_resource_ids=[primary_knowledge_source]))
+        edge.sources = sources
 
         # Add any qualifiers as appropriate
         qualifiers = []

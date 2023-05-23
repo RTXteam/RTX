@@ -255,9 +255,9 @@ class ARAXDecorator:
 
     @staticmethod
     def _get_primary_knowledge_source(edge: Edge) -> str:
-        primary_ks_attributes = [attribute for attribute in edge.attributes
-                                 if attribute.attribute_type_id == "biolink:primary_knowledge_source"] if edge.attributes else []
-        return primary_ks_attributes[0].value if primary_ks_attributes else ""
+        primary_ks_sources = [source.resource_id for source in edge.sources
+                              if source.resource_role == "primary_knowledge_source"] if edge.sources else []
+        return primary_ks_sources[0] if primary_ks_sources else ""
 
     def _connect_to_sqlite(self) -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
         path_list = os.path.realpath(__file__).split(os.path.sep)
