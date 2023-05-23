@@ -353,7 +353,7 @@ class NodeSynonymizer:
 
     def _map_to_simplified_names(self, names_set: Set[str]) -> Tuple[Dict[str, str], Set[str]]:
         names_to_simplified_names = {name: name.lower().translate(self.unnecessary_chars_map)
-                                     for name in names_set}
+                                     for name in names_set if name}  # Skip None names
         simplified_names = set(names_to_simplified_names.values())
         return names_to_simplified_names, simplified_names
 
