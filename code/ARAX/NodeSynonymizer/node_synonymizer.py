@@ -72,7 +72,8 @@ class NodeSynonymizer:
                                                                                  preferred_name=row[2])
                                         for row in matching_rows}
             results_dict = {input_curie: results_dict_capitalized[capitalized_curie]
-                            for input_curie, capitalized_curie in curies_to_capitalized_curies.items()}
+                            for input_curie, capitalized_curie in curies_to_capitalized_curies.items()
+                            if capitalized_curie in results_dict_capitalized}
 
         if names_set:
             # First transform to simplified names (lowercase, no punctuation/whitespace)
@@ -101,7 +102,8 @@ class NodeSynonymizer:
                                                                                     preferred_name=names_to_cluster_rows[name][3])
                                              for name, cluster_id in names_to_best_cluster_id.items()}
             results_dict_names = {input_name: results_dict_names_simplified[simplified_name]
-                                  for input_name, simplified_name in names_to_simplified_names.items()}
+                                  for input_name, simplified_name in names_to_simplified_names.items()
+                                  if simplified_name in results_dict_names_simplified}
 
             # Merge these results with any results for input curies
             results_dict.update(results_dict_names)
@@ -159,7 +161,8 @@ class NodeSynonymizer:
             # Transform the results into the proper response format
             results_dict_capitalized = {row[0]: ast.literal_eval(row[1]) for row in matching_rows}
             results_dict = {input_curie: results_dict_capitalized[capitalized_curie]
-                            for input_curie, capitalized_curie in curies_to_capitalized_curies.items()}
+                            for input_curie, capitalized_curie in curies_to_capitalized_curies.items()
+                            if capitalized_curie in results_dict_capitalized}
 
         if names_set:
             # First transform to simplified names (lowercase, no punctuation/whitespace)
@@ -186,7 +189,8 @@ class NodeSynonymizer:
             results_dict_names_simplified = {name: ast.literal_eval(cluster_row[3])
                                              for name, cluster_row in names_to_cluster_rows.items()}
             results_dict_names = {input_name: results_dict_names_simplified[simplified_name]
-                                  for input_name, simplified_name in names_to_simplified_names.items()}
+                                  for input_name, simplified_name in names_to_simplified_names.items()
+                                  if simplified_name in results_dict_names_simplified}
 
             # Merge these results with any results for input curies
             results_dict.update(results_dict_names)
