@@ -306,9 +306,25 @@ def test_get_normalizer_results():
 
 
 def test_improper_curie_prefix_capitalization():
-    improper_curie = "NCBIGENE:1017"
     synonymizer = NodeSynonymizer()
+
+    improper_curie = "NCBIGENE:1017"
     results = synonymizer.get_canonical_curies(improper_curie)
+    assert results[improper_curie]
+    assert len(results) == 1
+
+    improper_curie = "NCBIGENE:1017"
+    results = synonymizer.get_canonical_curies(improper_curie, return_all_categories=True)
+    assert results[improper_curie]
+    assert len(results) == 1
+
+    improper_curie = "NCBIGENE:1017"
+    results = synonymizer.get_equivalent_nodes(improper_curie)
+    assert results[improper_curie]
+    assert len(results) == 1
+
+    improper_curie = "NCBIGENE:1017"
+    results = synonymizer.get_normalizer_results(improper_curie)
     assert results[improper_curie]
     assert len(results) == 1
 
@@ -323,6 +339,21 @@ def test_approximate_name_based_matching():
 
     name_not_exactly_in_synonymizer_2 = "ATRIAL FIBRILLATION"
     results = synonymizer.get_canonical_curies(names=name_not_exactly_in_synonymizer_2)
+    assert results[name_not_exactly_in_synonymizer_2]
+    assert len(results) == 1
+
+    name_not_exactly_in_synonymizer_2 = "ATRIAL FIBRILLATION"
+    results = synonymizer.get_canonical_curies(names=name_not_exactly_in_synonymizer_2, return_all_categories=True)
+    assert results[name_not_exactly_in_synonymizer_2]
+    assert len(results) == 1
+
+    name_not_exactly_in_synonymizer_2 = "ATRIAL FIBRILLATION"
+    results = synonymizer.get_equivalent_nodes(names=name_not_exactly_in_synonymizer_2)
+    assert results[name_not_exactly_in_synonymizer_2]
+    assert len(results) == 1
+
+    name_not_exactly_in_synonymizer_2 = "ATRIAL FIBRILLATION"
+    results = synonymizer.get_normalizer_results(name_not_exactly_in_synonymizer_2)
     assert results[name_not_exactly_in_synonymizer_2]
     assert len(results) == 1
 
