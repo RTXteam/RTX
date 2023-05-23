@@ -132,7 +132,7 @@ rdflib-shim==1.0.3
 reasoner-validator==2.2.14
 recommonmark==0.7.1
 regex==2022.8.17
-requests==2.28.1
+requests==2.31.0
 requests-cache==0.9.6
 ruamel.yaml==0.17.21
 ruamel.yaml.clib==0.2.6
