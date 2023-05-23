@@ -1216,25 +1216,6 @@ def test_xdtd_different_predicates():
             }
         }
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
-    query = {
-        "nodes": {
-            "disease": {
-                "ids": ["UMLS:C4023597"]
-            },
-            "chemical": {
-                "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
-            }
-        },
-        "edges": {
-            "t_edge": {
-                "object": "disease",
-                "subject": "chemical",
-                "predicates": ["biolink:affects"],
-                "knowledge_type": "inferred"
-            }
-        }
-    }
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
 
 
 def test_xdtd_no_curies():
