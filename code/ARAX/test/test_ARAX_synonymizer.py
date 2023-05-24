@@ -352,5 +352,23 @@ def test_approximate_name_based_matching():
     assert len(results) == 1
 
 
+def test_entity_controller_input_no_format():
+    synonymizer = NodeSynonymizer()
+    controller_param = {"terms": [PARKINSONS_CURIE]}
+    results = synonymizer.get_normalizer_results(controller_param)
+    print(json.dumps(results, indent=2))
+    assert PARKINSONS_CURIE in results
+    assert len(results) == 1
+
+
+def test_entity_controller_input_minimal_format():
+    synonymizer = NodeSynonymizer()
+    controller_param = {"terms": [WARFARIN_NAME], "format": "minimal"}
+    results = synonymizer.get_normalizer_results(controller_param)
+    print(json.dumps(results, indent=2))
+    assert WARFARIN_NAME in results
+    assert len(results) == 1
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_synonymizer.py'])
