@@ -178,7 +178,7 @@ class ARAXExpander:
     def apply(self, response, input_parameters, mode: str = "ARAX"):
         force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
         message = response.envelope.message
-        # Initiate an empty knowledge graph if one doesn't already exist../ARAXQuery/ARAX_expander.py
+        # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
             message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
         log = response
