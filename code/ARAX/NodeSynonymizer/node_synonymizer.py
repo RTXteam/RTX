@@ -208,6 +208,13 @@ class NodeSynonymizer:
 
     def get_normalizer_results(self, entities: Optional[Union[str, Set[str], List[str]]]) -> dict:
 
+        # First handle any special input from /entity endpoint
+        output_format = None
+        if isinstance(entities, dict):
+            entities_dict = entities
+            entities = entities_dict.get("terms")
+            output_format = entities_dict.get("format")
+
         # Convert any input curies to Set format
         entities_set = self._convert_to_set_format(entities)
 
@@ -268,6 +275,13 @@ class NodeSynonymizer:
         unrecognized_curies = entities_set.difference(results_dict)
         for unrecognized_curie in unrecognized_curies:
             results_dict[unrecognized_curie] = None
+
+        # Trim down to minimal output, if requested
+        if output_format == "minimal":
+            for normalizer_info in results_dict.values():
+                keys_to_delete = set(normalizer_info.keys()).difference({"id"})
+                for dict_key in keys_to_delete:
+                    del normalizer_info[dict_key]
 
         return results_dict
 
