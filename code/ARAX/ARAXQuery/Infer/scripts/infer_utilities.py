@@ -542,7 +542,7 @@ class InferUtilities:
 
             essence_scores = {}
             if query_chemical:
-                node_ids = top_predictions['gene_id']
+                node_ids = list(top_predictions['gene_id'].to_numpy())
                 node_info = synonymizer.get_canonical_curies(node_ids)
                 node_id_to_canonical_id = {k: v['preferred_curie'] for k, v in node_info.items() if v is not None}
                 node_id_to_score = dict(zip(node_ids, top_predictions['tp_prob']))
@@ -589,7 +589,7 @@ class InferUtilities:
                         kedges[new_edge_key].filled = True
                         kedges[new_edge_key].qedge_keys = [qedge_id]
             else:
-                node_ids = top_predictions['chemical_id']
+                node_ids = list(top_predictions['gene_id'].to_numpy())
                 node_info = synonymizer.get_canonical_curies(node_ids)
                 node_id_to_canonical_id = {k: v['preferred_curie'] for k, v in node_info.items() if v is not None}
                 node_id_to_score = dict(zip(node_ids, top_predictions['tp_prob']))
@@ -709,6 +709,7 @@ class InferUtilities:
                         knodes[object_curie].qnode_keys.append(object_qnode_key)
                     predicates = edge_tuples[i][1]
                     for predicate, (temp_retrieval_source, temp_attributes, temp_qualifiers) in predicates:
+                        primary_knowledge_source = predicate.split('--')[-1]
                         temp_predicate = predicate.split('--')[1]
                         temp_kp = ':'.join(predicate.split('--')[0].split(':')[:2])
                         if subject_curie in predicate.split('--')[0] or object_curie in predicate.split('--')[-1]:
@@ -722,7 +723,7 @@ class InferUtilities:
                         ] + temp_attributes
 
                         new_edge.attributes += edge_attribute_list
-                        new_edge_key = self.__get_formated_edge_key(edge=new_edge, kp=temp_kp)
+                        new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source=primary_knowledge_source, kp=temp_kp)
                         kedges[new_edge_key] = new_edge
                         kedges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
                 path_added = True
