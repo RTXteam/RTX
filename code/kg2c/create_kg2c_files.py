@@ -1,8 +1,7 @@
-#!/bin/env python3
 """
 This script creates a canonicalized version of KG2 stored in various formats, including TSV files ready for import
 into neo4j. The files are created in the directory this script is in.
-Usage: python3 create_kg2c_files.py [--test]
+Usage: python create_kg2c_files.py [--test]
 """
 import argparse
 import ast
@@ -53,12 +52,12 @@ PROPERTIES_LOOKUP = {
         "subject": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "object": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "knowledge_source": {"type": list, "in_kg2pre": True, "in_kg2c_lite": True},
+        "primary_knowledge_source": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "publications": {"type": list, "in_kg2pre": True, "in_kg2c_lite": False},
         "kg2_ids": {"type": list, "in_kg2pre": False, "in_kg2c_lite": False},
         "publications_info": {"type": dict, "in_kg2pre": True, "in_kg2c_lite": False},
         "qualified_predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "qualified_object_aspect" : {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "qualified_object_aspect": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True}
     }
 }
@@ -94,8 +93,10 @@ def _merge_two_lists(list_a: List[any], list_b: List[any]) -> List[any]:
     return [item for item in unique_items if item]
 
 
-def _get_edge_key(subject: str, object: str, predicate: str, qualified_predicate: str, qualified_object_aspect: str, qualified_object_direction) -> str:
-        return f"{subject}--{predicate}--{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{object}"
+def _get_edge_key(subject: str, object: str, predicate: str, primary_knowledge_source: str,
+                  qualified_predicate: str, qualified_object_direction: str, qualified_object_aspect: str) -> str:
+    qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+    return f"{subject}--{predicate}--{qualified_portion}--{object}--{primary_knowledge_source}"
 
 
 def _get_kg2pre_headers(header_file_path: str) -> List[str]:
@@ -108,7 +109,10 @@ def _get_kg2pre_headers(header_file_path: str) -> List[str]:
 
 def _load_property(raw_property_value_from_tsv: str, property_type: any) -> Union[list, str, dict]:
     if property_type is str:
-        return raw_property_value_from_tsv
+        if raw_property_value_from_tsv == "None":
+            return ""
+        else:
+            return raw_property_value_from_tsv
     elif property_type is list:
         split_string = raw_property_value_from_tsv.split(KG2PRE_ARRAY_DELIMITER)
         processed_list = [item.strip() for item in split_string if item]
@@ -205,7 +209,7 @@ def _load_publications_info(raw_publications_info: Union[str, dict], kg2_edge_id
     return publications_info
 
 
-def _load_kg2pre_tsv(local_tsv_dir_path: str, nodes_or_edges: str, is_test: bool) -> List[Dict[str, any]]:
+def _load_kg2pre_tsv(local_tsv_dir_path: str, nodes_or_edges: str) -> List[Dict[str, any]]:
     tsv_path = f"{local_tsv_dir_path}/{nodes_or_edges}.tsv"
     tsv_header_path = f"{local_tsv_dir_path}/{nodes_or_edges}_header.tsv"
     kg2pre_objects = []
@@ -223,8 +227,6 @@ def _load_kg2pre_tsv(local_tsv_dir_path: str, nodes_or_edges: str, is_test: bool
                 raw_property_value = row[headers.index(property_name)]
                 new_object[property_name] = _load_property(raw_property_value, property_info["type"])
             kg2pre_objects.append(new_object)
-            if is_test and counter > 100000:
-                break
     return kg2pre_objects
 
 
@@ -276,14 +278,14 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
     }
 
 
-def _create_edge(subject: str, object: str, predicate: str, knowledge_source: List[str], publications: List[str],
+def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_source: str, publications: List[str],
                  publications_info: Dict[str, any], kg2_ids: List[str],
                  qualified_predicate, qualified_object_aspect, qualified_object_direction) -> Dict[str, any]:
     edge_properties_lookup = PROPERTIES_LOOKUP["edges"]
     assert isinstance(subject, edge_properties_lookup["subject"]["type"])
     assert isinstance(object, edge_properties_lookup["object"]["type"])
     assert isinstance(predicate, edge_properties_lookup["predicate"]["type"])
-    assert isinstance(knowledge_source, edge_properties_lookup["knowledge_source"]["type"])
+    assert isinstance(primary_knowledge_source, edge_properties_lookup["primary_knowledge_source"]["type"])
     assert isinstance(publications, edge_properties_lookup["publications"]["type"])
     assert isinstance(publications_info, edge_properties_lookup["publications_info"]["type"])
     assert isinstance(kg2_ids, edge_properties_lookup["kg2_ids"]["type"])
@@ -296,7 +298,7 @@ def _create_edge(subject: str, object: str, predicate: str, knowledge_source: Li
         "subject": subject,
         "object": object,
         "predicate": predicate,
-        "knowledge_source": knowledge_source,
+        "primary_knowledge_source": primary_knowledge_source,
         "publications": publications,
         "publications_info": publications_info,
         "kg2_ids": kg2_ids,
@@ -311,11 +313,11 @@ def _write_list_to_neo4j_ready_tsv(input_list: List[Dict[str, any]], file_name_r
     logging.info(f"  Creating {file_name_root} header file..")
     column_headers = list(input_list[0].keys())
     modified_headers = _modify_column_headers_for_neo4j(column_headers, file_name_root)
-    with open(f"{KG2C_DIR}/{'test_' if is_test else ''}{file_name_root}_header.tsv", "w+") as header_file:
+    with open(f"{KG2C_DIR}/{file_name_root}_header.tsv", "w+") as header_file:
         dict_writer = csv.DictWriter(header_file, modified_headers, delimiter='\t')
         dict_writer.writeheader()
     logging.info(f"  Creating {file_name_root} file..")
-    with open(f"{KG2C_DIR}/{'test_' if is_test else ''}{file_name_root}.tsv", "w+") as data_file:
+    with open(f"{KG2C_DIR}/{file_name_root}.tsv", "w+") as data_file:
         dict_writer = csv.DictWriter(data_file, column_headers, delimiter='\t')
         dict_writer.writerows(input_list)
 
@@ -327,7 +329,7 @@ def create_kg2c_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     kgx_format_json = {"nodes": list(canonicalized_nodes_dict.values()),
                        "edges": list(canonicalized_edges_dict.values())}
     kgx_format_json.update(meta_info_dict)
-    with open(f"{KG2C_DIR}/kg2c{'_test' if is_test else ''}.json", "w+") as output_file:
+    with open(f"{KG2C_DIR}/kg2c.json", "w+") as output_file:
         json.dump(kgx_format_json, output_file)
 
 
@@ -353,8 +355,8 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
 
     # Save this lite KG to a JSON file
     logging.info(f"  Saving lite json...")
-    with open(f"{KG2C_DIR}/kg2c_lite{'_test' if is_test else ''}.json", "w+") as output_file:
-        json.dump(lite_kg, output_file)
+    with open(f"{KG2C_DIR}/kg2c_lite.json", "w+") as output_file:
+        json.dump(lite_kg, output_file, indent=2)
 
 
 def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
@@ -388,7 +390,7 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
 def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                           canonicalized_edges_dict: Dict[str, Dict[str, any]], is_test: bool):
     logging.info(" Creating KG2c sqlite database..")
-    db_name = f"kg2c{'_test' if is_test else ''}.sqlite"
+    db_name = f"kg2c.sqlite"
     # Remove any preexisting version of this database
     if os.path.exists(db_name):
         os.remove(db_name)
@@ -413,13 +415,19 @@ def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
 
     # Add all edges (edge object is dumped into a JSON string)
     logging.info(f"  Creating edges table..")
-    sqlite_edge_properties = list(set(PROPERTIES_LOOKUP["edges"]).difference(_get_lite_properties("edges")).union({"knowledge_source"}))
+    sqlite_edge_properties = list(set(PROPERTIES_LOOKUP["edges"]).difference(_get_lite_properties("edges")).union({"primary_knowledge_source"}))
     logging.info(f"   Edge properties to store in sqlite db are: {sqlite_edge_properties}")
     cols_with_types_string = ", ".join([f"{property_name} TEXT" for property_name in sqlite_edge_properties])
     question_marks_string = ", ".join(["?" for _ in range(len(sqlite_edge_properties))])
     cols_string = ", ".join(sqlite_edge_properties)
     connection.execute(f"CREATE TABLE edges (triple TEXT, node_pair TEXT, {cols_with_types_string})")
-    edge_rows = [[_get_edge_key(edge['subject'], edge['object'], edge['predicate'], edge['qualified_predicate'], edge['qualified_object_aspect'], edge['qualified_object_direction']),
+    edge_rows = [[_get_edge_key(subject=edge['subject'],
+                                object=edge['object'],
+                                predicate=edge['predicate'],
+                                qualified_predicate=edge['qualified_predicate'],
+                                qualified_object_aspect=edge['qualified_object_aspect'],
+                                qualified_object_direction=edge['qualified_object_direction'],
+                                primary_knowledge_source=edge['primary_knowledge_source']),
                   f"{edge['subject']}--{edge['object']}"] + [_prep_for_sqlite(edge[property_name]) for property_name in sqlite_edge_properties]
 
                  for edge in canonicalized_edges_dict.values()]
@@ -523,24 +531,28 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
         canonicalized_subject = curie_map.get(original_subject, original_subject)
         canonicalized_object = curie_map.get(original_object, original_object)
         edge_publications = kg2pre_edge['publications'] if kg2pre_edge.get('publications') else []
-        edge_knowledge_source = kg2pre_edge['knowledge_source'] if kg2pre_edge.get('knowledge_source') else []
-        edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if (kg2pre_edge.get('qualified_predicate') and kg2pre_edge.get('qualified_predicate') != "None") else ""
-        edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if (kg2pre_edge.get('qualified_object_aspect') and kg2pre_edge.get('qualified_object_aspect') != "None") else ""
-        edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if (kg2pre_edge.get('qualified_object_direction') and kg2pre_edge.get('qualified_object_direction') != "None") else ""
+        edge_primary_knowledge_source = kg2pre_edge['primary_knowledge_source'] if kg2pre_edge.get('primary_knowledge_source') else ""
+        edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if kg2pre_edge.get('qualified_predicate') else ""
+        edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if kg2pre_edge.get('qualified_object_aspect') else ""
+        edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if kg2pre_edge.get('qualified_object_direction') else ""
 
         '''Patch for lack of qualified_predicate when qualified_object_direction is present'''
         predicate = kg2pre_edge['predicate']
-        if(predicate == "biolink:regulates" and edge_qualified_predicate == "" and edge_qualified_object_direction != ""):
+        if predicate == "biolink:regulates" and edge_qualified_object_direction and not edge_qualified_predicate:
             edge_qualified_predicate = "biolink:causes"
             edge_qualified_object_aspect = "activity_or_abundance"
 
-
         edge_publications_info = _load_publications_info(kg2pre_edge['publications_info'], kg2_edge_id) if kg2pre_edge.get('publications_info') else dict()
         if canonicalized_subject != canonicalized_object:  # Don't allow self-edges
-            canonicalized_edge_key = _get_edge_key(canonicalized_subject, canonicalized_object, kg2pre_edge['predicate'], edge_qualified_predicate, edge_qualified_object_aspect, edge_qualified_object_direction)
+            canonicalized_edge_key = _get_edge_key(subject=canonicalized_subject,
+                                                   object=canonicalized_object,
+                                                   predicate=kg2pre_edge['predicate'],
+                                                   qualified_predicate=edge_qualified_predicate,
+                                                   qualified_object_aspect=edge_qualified_object_aspect,
+                                                   qualified_object_direction=edge_qualified_object_direction,
+                                                   primary_knowledge_source=edge_primary_knowledge_source)
             if canonicalized_edge_key in canonicalized_edges:
                 canonicalized_edge = canonicalized_edges[canonicalized_edge_key]
-                canonicalized_edge['knowledge_source'] = _merge_two_lists(canonicalized_edge['knowledge_source'], edge_knowledge_source)
                 canonicalized_edge['publications'] = _merge_two_lists(canonicalized_edge['publications'], edge_publications)
                 canonicalized_edge['publications_info'].update(edge_publications_info)
                 canonicalized_edge['kg2_ids'].append(kg2_edge_id)
@@ -548,14 +560,13 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
                 new_canonicalized_edge = _create_edge(subject=canonicalized_subject,
                                                       object=canonicalized_object,
                                                       predicate=kg2pre_edge['predicate'],
-                                                      knowledge_source=edge_knowledge_source,
+                                                      primary_knowledge_source=edge_primary_knowledge_source,
                                                       publications=edge_publications,
                                                       publications_info=edge_publications_info,
                                                       kg2_ids=[kg2_edge_id],
                                                       qualified_predicate=edge_qualified_predicate,
                                                       qualified_object_aspect=edge_qualified_object_aspect,
-                                                      qualified_object_direction= edge_qualified_object_direction
-                                                      )
+                                                      qualified_object_direction=edge_qualified_object_direction)
                 canonicalized_edges[canonicalized_edge_key] = new_canonicalized_edge
     logging.info(f"Number of KG2pre edges was reduced to {len(canonicalized_edges)} "
                  f"({round((len(canonicalized_edges) / len(kg2pre_edges)) * 100)}%)")
@@ -658,11 +669,12 @@ def create_kg2c_files(is_test=False):
     biolink_version = kg2c_config_info.get("biolink_version")
     start_from_kg2c_json = kg2c_config_info["kg2c"].get("start_from_kg2c_json")
     use_local_kg2pre_tsvs = kg2c_config_info["kg2c"].get("use_local_kg2pre_tsvs")
+    did_synonymizer_build = kg2c_config_info["synonymizer"]["build"]
 
     # Start with the pre-existing kg2c.json, if directed to in the config file (allows partial builds)
     if start_from_kg2c_json:
         logging.info(f"Loading KG2c from pre-existing kg2c.json..")
-        with open(f"{KG2C_DIR}/kg2c{'_test' if is_test else ''}.json") as kg2c_json_file:
+        with open(f"{KG2C_DIR}/kg2c.json") as kg2c_json_file:
             kg2c = json.load(kg2c_json_file)
         canonicalized_nodes_dict = {node["id"]: node for node in kg2c["nodes"]}
         canonicalized_edges_dict = {edge["id"]: edge for edge in kg2c["edges"]}
@@ -672,38 +684,39 @@ def create_kg2c_files(is_test=False):
         # First make sure the KG2pre TSV directory exists as it should
         local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
         if not pathlib.Path(local_tsv_dir_path).exists():
-            if is_test and use_local_kg2pre_tsvs:
-                raise ValueError(f"You must put your own test KG2pre TSVs into place (in {local_tsv_dir_path}). They "
-                                 f"must be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
-            elif use_local_kg2pre_tsvs:
-                raise ValueError(f"No local KG2pre TSVs exist. You must put all four of them into {local_tsv_dir_path}."
-                                 f" They must be named: nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
+            if use_local_kg2pre_tsvs:
+                raise ValueError(f"You specified in kg2c_config.json that you want your own local KG2pre TSVs to be "
+                                 f"used, but they don't seem to exist in {local_tsv_dir_path}. They must be named: "
+                                 f"nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
             else:
                 subprocess.check_call(["mkdir", local_tsv_dir_path])
-        # Download the KG2pre TSVs from the AWS S3 bucket
-        if not use_local_kg2pre_tsvs:
+
+        # Download the KG2pre TSVs from the AWS S3 bucket as needed
+        if not (is_test or use_local_kg2pre_tsvs or did_synonymizer_build):  # Synonymizer build downloads KG2pre TSVs
             kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
             logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
             subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
             logging.info(f"Unpacking {kg2pre_tarball_name}..")
             subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
+        else:
+            logging.info(f"Using the KG2pre TSVs in {local_tsv_dir_path} (not downloading fresh versions)")
 
-        # Canonicalize nodes
-        kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes", is_test)
+        # Load the KG2pre nodes
+        kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes")
         canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
+
         # Make sure that the KG2pre version matches the version we're supposed to be building a KG2c off of
-        if not is_test:
-            kg2pre_build_node = canonicalized_nodes_dict.get("RTX:KG2")
-            if not kg2pre_build_node:
-                raise ValueError(f"There is no build node (i.e., no node with the ID 'RTX:KG2' in the ingested KG2pre "
-                                 f"TSVs; this means I can't verify that the KG2pre version matches what we want, "
-                                 f"so I'll halt processing")
-            else:
-                kg2pre_version = kg2pre_build_node["name"].replace("RTX KG", "")
-                if kg2pre_version != kg2_version:
-                    raise ValueError(f"The version on the KG2pre build node in the ingested KG2pre TSVs is "
-                                     f"{kg2pre_version}, but the KG2c version you want to build is {kg2_version}. "
-                                     f"These version numbers must match. Halting the build.")
+        kg2pre_build_node = canonicalized_nodes_dict.get("RTX:KG2")
+        if not kg2pre_build_node:
+            raise ValueError(f"There is no build node (i.e., no node with the ID 'RTX:KG2' in the ingested KG2pre "
+                             f"TSVs; this means I can't verify that the KG2pre version matches what we want, "
+                             f"so I'll halt processing")
+        else:
+            kg2pre_version = kg2pre_build_node["name"].replace("RTX KG", "")
+            if kg2pre_version != kg2_version:
+                raise ValueError(f"The version on the KG2pre build node in the ingested KG2pre TSVs is "
+                                 f"{kg2pre_version}, but the KG2c version you want to build is {kg2_version}. "
+                                 f"These version numbers must match. Halting the build.")
 
         # Add a node containing information about this KG2C build
         build_node = _create_build_node(kg2_version, biolink_version)
@@ -713,7 +726,7 @@ def create_kg2c_files(is_test=False):
         gc.collect()
 
         # Canonicalize edges
-        kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges", is_test)
+        kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges")
         canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
         del kg2pre_edges
         gc.collect()

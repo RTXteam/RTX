@@ -367,9 +367,10 @@ class TRAPIQuerier:
                         attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_infores_curie})"
 
             # Indicate that this edge passed through ARAX
-            if not returned_edge.sources:
-                returned_edge.sources = []
-            returned_edge.sources.append(self.arax_retrieval_source)
+            if returned_edge.sources:
+                returned_edge.sources.append(self.arax_retrieval_source)
+            else:
+                returned_edge.sources = [self.arax_retrieval_source]
 
             if returned_edge_key in kg_to_qg_mappings['edges']:
                 for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
@@ -417,7 +418,9 @@ class TRAPIQuerier:
         qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
         qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
         qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
-        edge_key = f"{self.kp_infores_curie}:{edge.subject}--{edge.predicate}--{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}--{edge.object}"
+        qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+        primary_ks = eu.get_primary_knowledge_source(edge)
+        edge_key = f"{self.kp_infores_curie}:{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_ks}"
         return edge_key
 
     def _get_query_timeout_length(self) -> int:

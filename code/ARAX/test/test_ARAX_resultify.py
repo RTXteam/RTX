@@ -28,6 +28,11 @@ from openapi_server.models.result import Result
 from openapi_server.models.message import Message
 from openapi_server.models.retrieval_source import RetrievalSource
 
+DIABETES_CURIE = "MONDO:0005015"
+TYPE_1_DIABETES_CURIE = "MONDO:0005147"
+INSULIN_CURIE = "PUBCHEM.COMPOUND:16137271"
+HEART_DISEASE_CURIE = "MONDO:0005267"
+
 
 def _slim_kg(kg: KnowledgeGraph) -> KnowledgeGraph:
     slimmed_nodes = {node_key: Node(categories=node.categories,
@@ -1446,10 +1451,9 @@ def test_issue_1848():
 
 
 def test_node_binding_query_id_one_hop_single_input_curie():
-    diabetes_curie = "MONDO:0005015"
-    type_1_diabetes_curie = "MONDO:0005147"
+
     actions = [
-        f"add_qnode(ids={diabetes_curie}, key=n00)",
+        f"add_qnode(ids={DIABETES_CURIE}, key=n00)",
         f"add_qnode(categories=biolink:Drug, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
         "expand(kp=infores:rtx-kg2)",
@@ -1461,8 +1465,8 @@ def test_node_binding_query_id_one_hop_single_input_curie():
     assert len(message.results) > 1
     kg = response.envelope.message.knowledge_graph
     # Make the input curie and one of its children appear somewhere in the results
-    assert diabetes_curie in kg.nodes
-    assert type_1_diabetes_curie in kg.nodes
+    assert DIABETES_CURIE in kg.nodes
+    assert TYPE_1_DIABETES_CURIE in kg.nodes
     # Make sure node bindings do/don't have 'query_id' filled out as appropriate
     for result in message.results:
         for node_binding in result.node_bindings["n00"]:
@@ -1472,14 +1476,13 @@ def test_node_binding_query_id_one_hop_single_input_curie():
             assert node_binding.query_id is None
     # Make sure we have some subclass edges
     assert any(edge.predicate == "biolink:subclass_of" for edge in message.knowledge_graph.edges.values())
-    insulin_results = [result for result in message.results if result.essence == "Insulin"]
+    insulin_results = [result for result in message.results if any([node_binding.id == INSULIN_CURIE
+                                                                    for node_binding in result.node_bindings["n01"]])]
     assert len(insulin_results) == 1
 
 
 def test_node_binding_query_id_one_hop_multiple_input_curies():
-    diabetes_curie = "MONDO:0005015"
-    type_1_diabetes_curie = "MONDO:0005147"
-    parent_query_ids = {diabetes_curie, type_1_diabetes_curie}
+    parent_query_ids = {DIABETES_CURIE, TYPE_1_DIABETES_CURIE}
     actions = [
         f"add_qnode(ids=[{','.join(parent_query_ids)}], key=n00)",
         f"add_qnode(categories=biolink:Drug, key=n01)",
@@ -1493,7 +1496,7 @@ def test_node_binding_query_id_one_hop_multiple_input_curies():
     assert len(message.results) > 1
     kg = response.envelope.message.knowledge_graph
     # Make sure both input curies appear somewhere in the results
-    assert diabetes_curie in kg.nodes
+    assert DIABETES_CURIE in kg.nodes
     # TODO: Do the below check after we've figured out the multiple query IDs problem (nodes could fulfill either
     #  diabetes or type 1 diabetes), but can only have 1 n00 parent specified
     # assert type_1_diabetes_curie in kg.nodes
@@ -1508,17 +1511,16 @@ def test_node_binding_query_id_one_hop_multiple_input_curies():
             assert node_binding.query_id is None
     # Make sure we have some results with subclass self-edges (Expand assigns such qedges keys like 'subclass:n00-n00')
     assert any(edge.predicate == "biolink:subclass_of" for edge in message.knowledge_graph.edges.values())
-    insulin_results = [result for result in message.results if result.essence == "Insulin"]
+    insulin_results = [result for result in message.results if any([node_binding.id == INSULIN_CURIE
+                                                                    for node_binding in result.node_bindings["n01"]])]
     assert len(insulin_results) in range(1, 3)
 
 
 @pytest.mark.slow
 def test_node_binding_query_id_two_hop_double_pinned():
-    diabetes_curie = "MONDO:0005015"
-    heart_disease_curie = "MONDO:0005267"
     actions = [
-        f"add_qnode(ids={diabetes_curie}, key=n00)",
-        f"add_qnode(ids={heart_disease_curie}, key=n01)",
+        f"add_qnode(ids={DIABETES_CURIE}, key=n00)",
+        f"add_qnode(ids={HEART_DISEASE_CURIE}, key=n01)",
         f"add_qnode(categories=biolink:Drug, key=n02)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:related_to, key=e00)",
         "add_qedge(subject=n01, object=n02, predicates=biolink:treats, key=e01)",
@@ -1531,8 +1533,8 @@ def test_node_binding_query_id_two_hop_double_pinned():
     assert len(message.results) > 1
     kg = response.envelope.message.knowledge_graph
     # Make the input curie and one of its children appear somewhere in the results
-    assert diabetes_curie in kg.nodes
-    assert heart_disease_curie in kg.nodes
+    assert DIABETES_CURIE in kg.nodes
+    assert HEART_DISEASE_CURIE in kg.nodes
     # Make sure node bindings do/don't have 'query_id' filled out as appropriate
     for result in message.results:
         for node_binding in result.node_bindings["n00"]:

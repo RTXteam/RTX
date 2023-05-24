@@ -24,16 +24,7 @@ database="graph.db"
 build_flag=${1:-""}
 tsv_dir=${BUILD_DIR}/TSV_Canonicalized
 
-if [[ "${build_flag}" == "test" ]]
-then
-    test_arg="-test"
-    test_prefix="test_"
-else
-    test_arg=""
-    test_prefix=""
-fi
-
-tsv_tarball_base=kg2c-tsv${test_arg}.tar.gz
+tsv_tarball_base=kg2c-tsv.tar.gz
 tsv_tarball=${tsv_dir}/${tsv_tarball_base}
 
 echo "copying RTX Configuration JSON file from S3"
@@ -76,8 +67,8 @@ script_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"  # T
 mem_gb=`${script_dir}/get-system-memory-gb.sh`
 
 # import TSV files into Neo4j as Neo4j
-sudo -u neo4j neo4j-admin import --nodes "${tsv_dir}/${test_prefix}nodes_c_header.tsv,${tsv_dir}/${test_prefix}nodes_c.tsv" \
-    --relationships "${tsv_dir}/${test_prefix}edges_c_header.tsv,${tsv_dir}/${test_prefix}edges_c.tsv" \
+sudo -u neo4j neo4j-admin import --nodes "${tsv_dir}/nodes_c_header.tsv,${tsv_dir}/nodes_c.tsv" \
+    --relationships "${tsv_dir}/edges_c_header.tsv,${tsv_dir}/edges_c.tsv" \
     --max-memory=${mem_gb}G --multiline-fields=true --delimiter "\009" \
     --array-delimiter="ǂ" --report-file="${tsv_dir}/import.report" \
     --database=${database} --ignore-missing-nodes=true
@@ -100,13 +91,6 @@ sudo service neo4j restart
 sudo sed -i '/dbms.read_only/c\dbms.read_only=true' ${neo4j_config}
 
 sudo service neo4j restart
-
-# create a neo4j dump file for use downstream in building the DTD database
-sudo service neo4j stop
-dump_name=kg2c.dump
-rm -f ${BUILD_DIR}/${dump_name}
-sudo neo4j-admin dump --database=graph.db --to=${BUILD_DIR}/${dump_name}
-sudo service neo4j start
 
 date
 echo "================ script finished ============================"

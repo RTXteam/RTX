@@ -25,8 +25,7 @@ class ARAXDecorator:
     def __init__(self, use_kg2c_sqlite: bool = True):
         self.node_attributes = {"iri": str, "description": str, "all_categories": list, "all_names": list,
                                 "equivalent_curies": list, "publications": list}
-        self.edge_attributes = {"publications": list, "publications_info": dict, "kg2_ids": list,
-                                "knowledge_source": list}
+        self.edge_attributes = {"publications": list, "publications_info": dict, "kg2_ids": list}
         self.attribute_shells = {
             "iri": Attribute(attribute_type_id="biolink:IriType",
                              value_type_id="metatype:Uri"),
@@ -180,7 +179,7 @@ class ARAXDecorator:
             search_key_to_kg2c_edge_tuples_map[search_key].append(row)
 
         attribute_type_id_map = {property_name: self.create_attribute(property_name, "something").attribute_type_id
-                                 for property_name in set(self.edge_attributes).difference({"knowledge_source"})}
+                                 for property_name in set(self.edge_attributes)}
         for search_key, kg2c_edge_tuples in search_key_to_kg2c_edge_tuples_map.items():
             # Join the property values found for all edges matching the given search key
             merged_kg2c_properties = {property_name: None for property_name in edge_attributes_ordered}
@@ -195,8 +194,6 @@ class ARAXDecorator:
                             merged_kg2c_properties[property_name].update(set(value))
                         else:
                             merged_kg2c_properties[property_name].update(value)
-            joined_knowledge_sources = list(merged_kg2c_properties["knowledge_source"]) if merged_kg2c_properties.get("knowledge_source") else set()
-            knowledge_source = joined_knowledge_sources[0] if len(joined_knowledge_sources) == 1 else None
             joined_kg2_ids = list(merged_kg2c_properties["kg2_ids"]) if merged_kg2c_properties.get("kg2_ids") else set()
             joined_publications = list(merged_kg2c_properties["publications"]) if merged_kg2c_properties.get("publications") else set()
             joined_publications_info = merged_kg2c_properties["publications_info"] if merged_kg2c_properties.get("publications_info") else dict()
@@ -205,6 +202,7 @@ class ARAXDecorator:
             corresponding_bare_edge_keys = search_key_to_edge_keys_map[search_key]
             for edge_key in corresponding_bare_edge_keys:
                 bare_edge = kg.edges[edge_key]
+                primary_knowledge_source = self._get_primary_knowledge_source(bare_edge)
                 existing_attribute_type_ids = {attribute.attribute_type_id for attribute in bare_edge.attributes} if bare_edge.attributes else set()
                 new_attributes = []
                 # Create KG2 edge-specific attributes
@@ -213,11 +211,11 @@ class ARAXDecorator:
                         new_attributes.append(self.create_attribute("kg2_ids", list(joined_kg2_ids)))
                     if joined_publications and attribute_type_id_map["publications"] not in existing_attribute_type_ids:
                         new_attributes.append(self.create_attribute("publications", list(joined_publications),
-                                                                    attribute_source=knowledge_source))
+                                                                    attribute_source=primary_knowledge_source if primary_knowledge_source else None))
                 # Create attributes that belong on both KG2 and NGD edges
                 if joined_publications_info and attribute_type_id_map["publications_info"] not in existing_attribute_type_ids:
                     new_attributes.append(self.create_attribute("publications_info", joined_publications_info,
-                                                                attribute_source=knowledge_source))
+                                                                attribute_source=primary_knowledge_source if primary_knowledge_source else None))
                 # Actually tack the new attributes onto the edge
                 if new_attributes:
                     if not bare_edge.attributes:
@@ -247,11 +245,19 @@ class ARAXDecorator:
             qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate", "")
             qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier", "")
             qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier", "")
-            # TODO: Switch order of object direction and aspect below when KG2c code is changed that way
-            edge_key = f"{edge.subject}--{edge.predicate}--{qualified_predicate}--{qualified_object_aspect}--{qualified_object_direction}--{edge.object}"
+            primary_knowledge_source = self._get_primary_knowledge_source(edge)
+
+            qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+            edge_key = f"{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_knowledge_source}"
         else:
             edge_key = f"{edge.subject}--{edge.predicate}--{edge.object}"
         return edge_key
+
+    @staticmethod
+    def _get_primary_knowledge_source(edge: Edge) -> str:
+        primary_ks_sources = [source.resource_id for source in edge.sources
+                              if source.resource_role == "primary_knowledge_source"] if edge.sources else []
+        return primary_ks_sources[0] if primary_ks_sources else ""
 
     def _connect_to_sqlite(self) -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
         path_list = os.path.realpath(__file__).split(os.path.sep)

@@ -118,10 +118,13 @@ class creativeCRG:
         # load embeddings
         chemical_gene_embeddings_name = RTXConfig.xcrg_embeddings_path.split("/")[-1]
         npzfile = np.load(os.path.join(self.data_path, chemical_gene_embeddings_name), allow_pickle=True)
-        for name in ['chemical','gene']:
-            exec(f"self.{name}_curies = npzfile['{name}_curies'].tolist()")
-            exec(f"self.{name}_curie_types = npzfile['{name}_curie_types'].tolist()")
-            exec(f"self.{name}_embs = npzfile['{name}_embs']")
+        self.chemical_curies = npzfile['chemical_curies'].tolist()
+        self.chemical_curie_types = npzfile['chemical_curie_types'].tolist()
+        self.chemical_embs = npzfile['chemical_embs']
+        self.gene_curies = npzfile['gene_curies'].tolist()
+        self.gene_curie_types = npzfile['gene_curie_types'].tolist()
+        self.gene_embs = npzfile['gene_embs']
+
 
         # load ML models
         self.increase_model = load_ML_CRGmodel(self.response, self.data_path, 'increase')
@@ -292,6 +295,7 @@ class creativeCRG:
 
                 ## filter results according to threshold
                 res = self._top_N_chemicals_dict[model_type][preferred_query_chemical]
+
                 if threshold:
                     res = res.loc[res['tp_prob'] >= threshold,:].reset_index(drop=True)
 
@@ -387,6 +391,9 @@ class creativeCRG:
                         result = araxq.query(DSL_query)
                         message = araxq.response.envelope.message
                         mapping_edgekey_to_resource = {edge_key:[edge.sources, edge.attributes, edge.qualifiers] for edge_key, edge in message.knowledge_graph.edges.items()}
+
+                        for result in message.results:
+                            break
 
                         if result.status != 'OK':
                             self.response.warning(f"Get something wrong with using 'ARAXQuery' to extract paths for the {start_n}-{end_n} pair, we skip this pair.")

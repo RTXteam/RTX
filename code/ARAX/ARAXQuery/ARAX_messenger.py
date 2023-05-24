@@ -30,6 +30,7 @@ from openapi_server.models.q_edge import QEdge
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
 from node_synonymizer import NodeSynonymizer
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper")
 from biolink_helper import BiolinkHelper
 
 
