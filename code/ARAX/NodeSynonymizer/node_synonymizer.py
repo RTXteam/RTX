@@ -1,3 +1,4 @@
+import argparse
 import ast
 import json
 import os
@@ -359,16 +360,27 @@ class NodeSynonymizer:
 
 
 def main():
-    test_curies = ["DOID:14330", "MONDO:0005180", "CHEMBL.COMPOUND:CHEMBL112", "UNICORN"]
-    test_names = ["Acetaminophen", "Unicorn", "ACETAMINOPHEN", "Parkinson disease"]
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("curie_or_name")
+    arg_parser.add_argument("-c", "--canonical", dest="canonical", action="store_true")
+    arg_parser.add_argument("-e", "--equivalent", dest="equivalent", action="store_true")
+    arg_parser.add_argument("-n", "--normalizer", dest="normalizer", action="store_true")
+    args = arg_parser.parse_args()
+
     synonymizer = NodeSynonymizer()
-    results = synonymizer.get_canonical_curies(test_curies)
-    results = synonymizer.get_equivalent_nodes(test_curies)
-    results = synonymizer.get_normalizer_results(test_curies)
-    results = synonymizer.get_normalizer_results(test_curies + test_names)
-    results = synonymizer.get_canonical_curies(names=test_names)
-    results = synonymizer.get_equivalent_nodes(names=test_names)
-    print(json.dumps(results, indent=2))
+    if args.canonical:
+        results = synonymizer.get_canonical_curies(curies=args.curie_or_name)
+        if not results[args.curie_or_name]:
+            results = synonymizer.get_canonical_curies(names=args.curie_or_name)
+        print(json.dumps(results, indent=2))
+    if args.equivalent:
+        results = synonymizer.get_equivalent_nodes(curies=args.curie_or_name)
+        if not results[args.curie_or_name]:
+            results = synonymizer.get_equivalent_nodes(names=args.curie_or_name)
+        print(json.dumps(results, indent=2))
+    if args.normalizer:
+        results = synonymizer.get_normalizer_results(entities=args.curie_or_name)
+        print(json.dumps(results, indent=2))
 
 
 if __name__ == "__main__":
