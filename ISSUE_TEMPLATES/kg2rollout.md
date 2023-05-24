@@ -103,6 +103,9 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `ssh ubuntu@cicd.rtx.ai`
   - [ ] `cd RTX`
   - [ ] `git pull origin master`
+  - [ ] `sudo bash`
+  - [ ] `mkdir -m 777 /mnt/data/orangeboard/databases/KG2.X.Y`
+  - [ ] `exit`
   - [ ] `python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused`
 
 
