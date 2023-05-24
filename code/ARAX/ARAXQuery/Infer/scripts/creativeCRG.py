@@ -94,11 +94,11 @@ def extract_path(path_result: openapi_server.models.result.Result, mapping: Dict
         curie2 = find_parent[qnode_id1] if qnode_id2 in find_parent else curie2
         qedge_id, edge_list = edge_bindings[index][0], edge_bindings[index][1]
         res.update({qnode_id1:curie1})
-        filtered_edge_list = [edge.id for edge in edge_list if (curie1 in edge.id.split('--')[0] and curie2 in edge.id.split('--')[-1]) or (curie2 in edge.id.split('--')[0] and curie1 in edge.id.split('--')[-1])]
+        filtered_edge_list = [edge.id for edge in edge_list if (curie1 in edge.id.split('--')[0] and curie2 in edge.id.split('--')[-2]) or (curie2 in edge.id.split('--')[0] and curie1 in edge.id.split('--')[-2])]
         if len(filtered_edge_list) == 0:
             return None
         else:
-            res.update({qedge_id:[(edge.id, mapping[edge.id]) for edge in edge_list if (curie1 in edge.id.split('--')[0] and curie2 in edge.id.split('--')[-1]) or (curie2 in edge.id.split('--')[0] and curie1 in edge.id.split('--')[-1])]})
+            res.update({qedge_id:[(edge.id, mapping[edge.id]) for edge in edge_list if (curie1 in edge.id.split('--')[0] and curie2 in edge.id.split('--')[-2]) or (curie2 in edge.id.split('--')[0] and curie1 in edge.id.split('--')[-2])]})
         res.update({qnode_id2:curie2})
     return res
 
@@ -387,19 +387,17 @@ class creativeCRG:
                     for start_n, end_n in tqdm(res[['chemical_id','gene_id']].to_numpy()):
                         self.response.info(f"extract top{M} paths for the {start_n}-{end_n} pair")
                         DSL_query = build_DSL_command(start_n, end_n, path_len + 1 - 2, M, kp, interm_ids, interm_names, interm_categories)
-                        araxq = ARAXQuery()
+                        araxq = ARAXQuery()    
                         result = araxq.query(DSL_query)
                         message = araxq.response.envelope.message
-                        mapping_edgekey_to_resource = {edge_key:[edge.sources, edge.attributes, edge.qualifiers] for edge_key, edge in message.knowledge_graph.edges.items()}
-
-                        for result in message.results:
-                            break
+                        mapping_edgekey_to_resource = {edge_key:[edge.sources, edge.attributes, edge.qualifiers] for edge_key, edge in message.knowledge_graph.edges.items()}                            
 
                         if result.status != 'OK':
                             self.response.warning(f"Get something wrong with using 'ARAXQuery' to extract paths for the {start_n}-{end_n} pair, we skip this pair.")
                             continue
                         else:
                             top_paths[(start_n, end_n)] = [extract_path(result, mapping_edgekey_to_resource) for result in message.results]
+                            
                     return top_paths
         else:
 
