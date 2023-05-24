@@ -1,3 +1,4 @@
+import argparse
 import ast
 import json
 import os
@@ -7,6 +8,8 @@ import string
 import sys
 from collections import defaultdict
 from typing import Optional, Union, List, Set, Dict, Tuple
+
+import pandas as pd
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -268,6 +271,48 @@ class NodeSynonymizer:
 
         return results_dict
 
+    # ---------------------------------------- EXTERNAL DEBUG METHODS --------------------------------------------- #
+
+    def print_cluster_table(self, curie_or_name: str):
+        # First figure out what cluster this concept belongs to
+        canonical_info = self.get_canonical_curies(curies=curie_or_name)
+        if not canonical_info[curie_or_name]:
+            canonical_info = self.get_canonical_curies(names=curie_or_name)
+
+        # Grab the cluster nodes/edges if we found a corresponding cluster
+        if canonical_info[curie_or_name]:
+            cluster_id = canonical_info[curie_or_name]["preferred_curie"]
+
+            sql_query = f"SELECT member_ids, intra_cluster_edge_ids FROM clusters WHERE cluster_id = '{cluster_id}'"
+            results = self._execute_sql_query(sql_query)
+            if results:
+                cluster_row = results[0]
+                member_ids = ast.literal_eval(cluster_row[0])  # Lists are stored as strings in sqlite
+                intra_cluster_edge_ids_str = "[]" if cluster_row[1] == "nan" else cluster_row[1]
+                intra_cluster_edge_ids = ast.literal_eval(
+                    intra_cluster_edge_ids_str)  # Lists are stored as strings in sqlite
+
+                nodes_query = f"SELECT * FROM nodes WHERE id IN ('{self._convert_to_str_format(member_ids)}')"
+                node_rows = self._execute_sql_query(nodes_query)
+                nodes_df = self._load_records_into_dataframe(node_rows, "nodes")
+
+                # TODO: Improve formatting! (indicate if in SRI vs. KG2pre, etc...)
+                nodes_df = nodes_df[["id", "category", "name"]]
+                edges_query = f"SELECT * FROM edges WHERE id IN ('{self._convert_to_str_format(intra_cluster_edge_ids)}')"
+                edge_rows = self._execute_sql_query(edges_query)
+                edges_df = self._load_records_into_dataframe(edge_rows, "edges")
+                edges_df = edges_df[["subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]]
+
+                print(f"\nCluster for {curie_or_name} has {edges_df.shape[0]} edges:\n")
+                print(f"{edges_df.to_markdown(index=False)}\n")
+                print(f"\nCluster for {curie_or_name} has {nodes_df.shape[0]} nodes:\n")
+                print(f"{nodes_df.to_markdown(index=False)}\n")
+            else:
+                print(f"No cluster exists with a cluster_id of {cluster_id}")
+                return dict()
+        else:
+            print(f"Sorry, input concept {curie_or_name} is not recognized.")
+
     # ---------------------------------------- INTERNAL HELPER METHODS -------------------------------------------- #
 
     @staticmethod
@@ -357,18 +402,42 @@ class NodeSynonymizer:
         simplified_names = set(names_to_simplified_names.values())
         return names_to_simplified_names, simplified_names
 
+    def _load_records_into_dataframe(self, records: list, table_name: str) -> pd.DataFrame:
+        column_info = self._execute_sql_query(f"PRAGMA table_info({table_name})")
+        column_names = [column_info[1] for column_info in column_info]
+        records_df = pd.DataFrame(records, columns=column_names)
+        return records_df
+
 
 def main():
-    test_curies = ["DOID:14330", "MONDO:0005180", "CHEMBL.COMPOUND:CHEMBL112", "UNICORN"]
-    test_names = ["Acetaminophen", "Unicorn", "ACETAMINOPHEN", "Parkinson disease"]
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("curie_or_name")
+    # Add flags corresponding to each of the three main synonymizer methods
+    arg_parser.add_argument("-c", "--canonical", dest="canonical", action="store_true")
+    arg_parser.add_argument("-e", "--equivalent", dest="equivalent", action="store_true")
+    arg_parser.add_argument("-n", "--normalizer", dest="normalizer", action="store_true")
+    # Add a couple other data viewing options (tabular and TRAPI cluster graph format)
+    arg_parser.add_argument("-t", "--table", dest="table", action="store_true")
+    arg_parser.add_argument("-g", "--graph", dest="graph", action="store_true")
+    args = arg_parser.parse_args()
+
     synonymizer = NodeSynonymizer()
-    results = synonymizer.get_canonical_curies(test_curies)
-    results = synonymizer.get_equivalent_nodes(test_curies)
-    results = synonymizer.get_normalizer_results(test_curies)
-    results = synonymizer.get_normalizer_results(test_curies + test_names)
-    results = synonymizer.get_canonical_curies(names=test_names)
-    results = synonymizer.get_equivalent_nodes(names=test_names)
-    print(json.dumps(results, indent=2))
+    if args.canonical:
+        results = synonymizer.get_canonical_curies(curies=args.curie_or_name)
+        if not results[args.curie_or_name]:
+            results = synonymizer.get_canonical_curies(names=args.curie_or_name)
+        print(json.dumps(results, indent=2))
+    if args.equivalent:
+        results = synonymizer.get_equivalent_nodes(curies=args.curie_or_name)
+        if not results[args.curie_or_name]:
+            results = synonymizer.get_equivalent_nodes(names=args.curie_or_name)
+        print(json.dumps(results, indent=2))
+    if args.normalizer:
+        results = synonymizer.get_normalizer_results(entities=args.curie_or_name)
+        print(json.dumps(results, indent=2))
+    # Default to printing the tabular view of the cluster if nothing else was specified
+    if args.table or (not args.canonical and not args.equivalent and not args.normalizer and not args.graph):
+        synonymizer.print_cluster_table(args.curie_or_name)
 
 
 if __name__ == "__main__":

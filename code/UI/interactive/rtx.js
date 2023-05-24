@@ -2,7 +2,7 @@ var input_qg = { "edges": {}, "nodes": {} };
 var workflow = { 'workflow' : [], 'message' : {} };
 var qgids = [];
 var cyobj = [];
-var cytodata = [];
+var cytodata = {};
 var predicates = {};
 var all_predicates = [];
 var all_nodes = {};
@@ -78,8 +78,7 @@ function main() {
     display_list('A');
     display_list('B');
     add_status_divs();
-    cytodata[99999] = [];
-    cytodata[99999][0] = 'dummy';
+    cytodata['QG'] = 'dummy';
 
     for (var prov in providers) {
 	document.getElementById(prov+"_url").value = providers[prov].url;
@@ -108,8 +107,7 @@ function main() {
 	selectInput("qid");
     }
     else {
-	add_cyto(99999,0);
-	//add_cyto(0); // now done on user click
+	add_cyto(99999,"QG");
     }
 
     if (syn) {
@@ -117,7 +115,8 @@ function main() {
 	lookup_synonym(syn,false);
     }
     else if (rec) {
-        tab = "recentqs";
+	document.getElementById("qftime").value = rec;
+	tab = "recentqs";
 	retrieveRecentQs();
     }
     else if (sai) {
@@ -238,8 +237,7 @@ function reset_vars() {
     columnlist = [];
     all_nodes = {};
     cyobj = [];
-    cytodata = [];
-    cytodata[99999] = [];
+    cytodata['QG'] = 'dummy';
 }
 
 function viewResponse() {
@@ -1601,11 +1599,10 @@ function render_response(respObj,dispjson) {
 	    }
 	    document.getElementById("jsonText").value = JSON.stringify(respObj.message["query_graph"],null,2);
 	}
-	process_graph(respObj.message["query_graph"],99999,respObj["schema_version"]);
+	process_graph(respObj.message["query_graph"],'QG',respObj["schema_version"]);
     }
     else {
-	cytodata[99999] = [];
-	cytodata[99999][0] = 'dummy'; // this enables query graph editing
+	cytodata['QG'] = 'dummy'; // this enables query graph editing
     }
 
     if (respObj["operations"])
@@ -1649,7 +1646,7 @@ function render_response(respObj,dispjson) {
 	    document.getElementById("menunumresults").classList.remove("numold");
 
 
-	    process_graph(respObj.message["knowledge_graph"],0,respObj["schema_version"]);
+	    process_graph(respObj.message["knowledge_graph"],'KG',respObj["schema_version"]);
 	    var respreas = 'n/a';
 	    if (respObj.resource_id)
 		respreas = respObj.resource_id;
@@ -1951,8 +1948,7 @@ function render_response(respObj,dispjson) {
 	document.getElementById("provenance_container").innerHTML += "<h2>Provenance information not available for this response</h2>";
 
 
-    //add_cyto(0); // now done on user click
-    add_cyto(99999,0);
+    add_cyto(99999,"QG");
     statusdiv.appendChild(document.createTextNode("done."));
     statusdiv.appendChild(document.createElement("br"));
     if (respObj["submitter"]) {
@@ -2389,10 +2385,10 @@ function add_to_summary(rowdata, num) {
 }
 
 
-// used for gid = 0 [kg] and 99999 [query graph]
-function process_graph(gne,gid,trapi) {
-    cytodata[gid] = [];
-    cytodata[gid][0] = [];
+// used for gid = 0 [KG] and 99999 [QG]
+function process_graph(gne,graphid,trapi) {
+    cytodata[graphid] = [];
+    var gid = graphid == "KG" ? 0 : 99999;
     for (var id in gne.nodes) {
 	var gnode = Object.create(gne['nodes'][id]); // make a copy!
 
@@ -2431,7 +2427,7 @@ function process_graph(gne,gid,trapi) {
 	}
 
         var tmpdata = { "data" : gnode };
-        cytodata[gid][0].push(tmpdata);
+        cytodata[graphid].push(tmpdata);
     }
 
     for (var id in gne.edges) {
@@ -2448,11 +2444,11 @@ function process_graph(gne,gid,trapi) {
 	    gedge.type = gedge.predicates[0];
 
         var tmpdata = { "data" : gedge };
-        cytodata[gid][0].push(tmpdata);
+        cytodata[graphid].push(tmpdata);
     }
 
 
-    if (gid == 99999) {
+    if (graphid == 'QG') {
 	for (var id in gne.nodes) {
 	    var gnode = gne.nodes[id];
 	    qgids.push(id);
@@ -2565,7 +2561,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
         div.id = 'h'+num+'_div';
 	div.title = 'Click to expand / collapse result '+num;
         div.className = 'accordion';
-	div.setAttribute('onclick', 'add_cyto('+num+',0);sesame(this,a'+num+'_div);');
+	div.setAttribute('onclick', 'add_cyto('+num+',"R'+num+'");sesame(this,a'+num+'_div);');
 	div.appendChild(document.createTextNode("Result "+num));
 	if (ess)
 	    div.innerHTML += " :: <b>"+ess+"</b>"; // meh...
@@ -2611,7 +2607,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		link.style.fontSize = "larger";
 		link.style.marginRight = "20px";
 		link.title = 'View Main Result Graph';
-		link.setAttribute('onclick', 'add_cyto('+num+',0);');
+		link.setAttribute('onclick', 'add_cyto('+num+',"R'+num+'");');
 		link.appendChild(document.createTextNode("Result Graph"));
 		td.appendChild(link);
 
@@ -2623,10 +2619,10 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 			link.style.fontWeight = "bold";
 			link.style.fontSize = "larger";
 			link.style.marginLeft = "20px";
-			link.title = 'Graph ID: '+result.analyses[ranal].support_graphs[sg];
-			var sg1 = Number(sg)+1;
-			link.setAttribute('onclick', 'add_cyto('+num+','+sg1+');');
-			link.appendChild(document.createTextNode(sg1));
+			var sgid = result.analyses[ranal].support_graphs[sg];
+			link.title = 'Graph ID: '+ sgid;
+			link.setAttribute('onclick', 'add_cyto('+num+',"AUX'+sgid+'");');
+			link.appendChild(document.createTextNode(Number(sg)+1));
 			td.appendChild(link);
 		    }
 		}
@@ -2770,9 +2766,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	div.appendChild(table);
 	results_fragment.appendChild(div);
 
-
-        cytodata[num] = [];
-        cytodata[num][0] = [];
+        cytodata['R'+num] = [];
 	//console.log("=================== CYTO num:"+num+"  #nb:"+result.node_bindings.length);
 
         for (var nbid in result.node_bindings) {
@@ -2784,7 +2778,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		if (node.attributes)
 		    kmne.node_binding_attributes = node.attributes;
 		var tmpdata = { "data" : kmne };
-		cytodata[num][0].push(tmpdata);
+		cytodata['R'+num].push(tmpdata);
 	    }
 	}
 
@@ -2805,16 +2799,15 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		if (edge.attributes)
 		    kmne.edge_binding_attributes = edge.attributes;
 		var tmpdata = { "data" : kmne };
-		cytodata[num][0].push(tmpdata);
+		cytodata['R'+num].push(tmpdata);
 	    }
 	}
 
 	//FIX THIS for multiple result.analyses...
 	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
             for (var sg in result.analyses[0].support_graphs) {
-		var sup = Number(sg)+1;
-		cytodata[num][sup] = [];
 		var sgid = result.analyses[0].support_graphs[sg];
+		cytodata['AUX'+sgid] = [];
 		var nodes = {};
 
 		for (var edgeid of aux[sgid]["edges"]) {
@@ -2833,7 +2826,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		    //if (edge.attributes)
 		    //kmne.edge_binding_attributes = edge.attributes;
 		    var tmpdata = { "data" : kmne };
-		    cytodata[num][sup].push(tmpdata);
+                    cytodata['AUX'+sgid].push(tmpdata);
 		}
 
 		for (var nodeid in nodes) {
@@ -2844,7 +2837,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		    //if (node.attributes)
 		    //kmne.node_binding_attributes = node.attributes;
 		    var tmpdata = { "data" : kmne };
-		    cytodata[num][sup].push(tmpdata);
+                    cytodata['AUX'+sgid].push(tmpdata);
 		}
 	    }
 	}
@@ -2887,7 +2880,7 @@ function get_css_class_from_reasoner(r) {
 }
 
 
-function add_cyto(i,s) {
+function add_cyto(i,dataid) {
     // once rendered, data is set to null so as to only do this once per graph
     // //////if (cytodata[i] == null) return;
 
@@ -2939,7 +2932,7 @@ function add_cyto(i,s) {
 		'text-opacity': 0
 	    }),
 
-	elements: cytodata[i][s],
+	elements: cytodata[dataid],
 
 	wheelSensitivity: 0.2,
 
@@ -3609,7 +3602,7 @@ function mapEdgeColor(ele) {
 // build-a-qGraph
 function qg_new(msg,nodes) {
     if (cyobj[99999]) { cyobj[99999].elements().remove(); }
-    else add_cyto(99999,0);
+    else add_cyto(99999,'QG');
     input_qg = { "edges": {}, "nodes": {} };
     qgids = [];
     UIstate.editedgeid = null;
@@ -4279,10 +4272,9 @@ function qg_edge_swap_obj_subj() {
 }
 
 function qg_edit(msg) {
-    cytodata[99999] = [];
-    cytodata[99999][0] = [];
+    cytodata['QG'] = [];
     if (cyobj[99999]) {cyobj[99999].elements().remove();}
-    else add_cyto(99999,0);
+    else add_cyto(99999,"QG");
     UIstate.editedgeid = null;
     UIstate.editnodeid = null;
 
@@ -5249,6 +5241,8 @@ function load_meta_knowledge_graph() {
 }
 
 function retrieveRecentQs() {
+    document.getElementById("recentqsLink").innerHTML = '';
+
     var recents_node = document.getElementById("recent_queries_container");
     recents_node.innerHTML = '';
     recents_node.className = '';
@@ -5282,6 +5276,14 @@ function retrieveRecentQs() {
 	    stats.hostname  = {};
 	    stats.instance_name  = {};
 	    stats.remote_address = {};
+
+	    var link = document.createElement("a");
+	    link.target = '_blank';
+	    link.title = 'link to this view';
+	    link.href = "http://"+ window.location.hostname + window.location.pathname + "?recent=" + hours;
+	    link.innerHTML = "[ Direct link to this view ]";
+	    document.getElementById("recentqsLink").appendChild(link);
+
 	    var timeline = {};
             timeline["ISB_watchdog"] = { "data": [ { "label": 0 , "data": [] , "_qstart": new Date() } ] };
 
