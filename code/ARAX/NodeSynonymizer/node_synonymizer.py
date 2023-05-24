@@ -435,7 +435,8 @@ def main():
     if args.normalizer:
         results = synonymizer.get_normalizer_results(entities=args.curie_or_name)
         print(json.dumps(results, indent=2))
-    if args.table:
+    # Default to printing the tabular view of the cluster if nothing else was specified
+    if args.table or (not args.canonical and not args.equivalent and not args.normalizer and not args.graph):
         synonymizer.print_cluster_table(args.curie_or_name)
 
 
