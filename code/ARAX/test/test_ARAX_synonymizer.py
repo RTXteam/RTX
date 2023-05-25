@@ -29,6 +29,7 @@ PARKINSONS_NAME = "Parkinson's disease"
 WARFARIN_NAME = "Warfarin"
 BRCA1_NAME = "BRCA1"
 FAKE_NAME = "THISISNOTAREALNODENAME!"
+PTGS1_NAME = "PTGS1"
 
 
 # ------------------------------- LEGACY TESTS FROM ORIGINAL SYNONYMIZER ------------------------------------- #
@@ -368,6 +369,30 @@ def test_entity_controller_input_minimal_format():
     print(json.dumps(results, indent=2))
     assert WARFARIN_NAME in results
     assert len(results) == 1
+
+
+def test_cluster_graphs():
+    synonymizer = NodeSynonymizer()
+    results = synonymizer.get_normalizer_results(PTGS1_NAME)
+    assert results[PTGS1_NAME]
+    assert results[PTGS1_NAME]["knowledge_graph"]
+    print(json.dumps(results[PTGS1_NAME]["knowledge_graph"], indent=2))
+    assert results[PTGS1_NAME]["knowledge_graph"]["nodes"]
+    assert results[PTGS1_NAME]["knowledge_graph"]["edges"]
+    assert len(results[PTGS1_NAME]["knowledge_graph"]["nodes"]) == len(results[PTGS1_NAME]["nodes"])
+
+    for edge in results[PTGS1_NAME]["knowledge_graph"]["edges"].values():
+        assert edge["subject"] in results[PTGS1_NAME]["knowledge_graph"]["nodes"]
+        assert edge["object"] in results[PTGS1_NAME]["knowledge_graph"]["nodes"]
+        assert edge["predicate"].startswith("biolink:")
+        assert edge["sources"]
+        assert edge["attributes"]
+
+    for node in results[PTGS1_NAME]["knowledge_graph"]["nodes"].values():
+        assert node["categories"]
+        for category in node["categories"]:
+            assert category.startswith("biolink:")
+        assert node["attributes"]
 
 
 if __name__ == "__main__":

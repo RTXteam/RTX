@@ -19,6 +19,13 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
 from ARAX_database_manager import ARAXDatabaseManager
 
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
+from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.node import Node
+from openapi_server.models.edge import Edge
+from openapi_server.models.attribute import Attribute
+from openapi_server.models.retrieval_source import RetrievalSource
+
 
 class NodeSynonymizer:
 
@@ -29,6 +36,9 @@ class NodeSynonymizer:
         self.database_path = f"{synonymizer_dir}/{self.database_name}"
         self.placeholder_lookup_values_str = "**LOOKUP_VALUES_GO_HERE**"
         self.unnecessary_chars_map = {ord(char): None for char in string.punctuation + string.whitespace}
+        self.kg2_infores_curie = "infores:rtx-kg2"
+        self.sri_nn_infores_curie = "infores:sri-node-normalizer"
+        self.arax_infores_curie = "infores:arax"
 
         # If the database doesn't seem to exist, try running the DatabaseManager
         if not pathlib.Path(self.database_path).exists():
@@ -282,6 +292,11 @@ class NodeSynonymizer:
                 keys_to_delete = set(normalizer_info.keys()).difference({"id"})
                 for dict_key in keys_to_delete:
                     del normalizer_info[dict_key]
+        # Otherwise add in cluster graphs
+        else:
+            for normalizer_info in results_dict.values():
+                if normalizer_info:
+                    normalizer_info["knowledge_graph"] = self._get_cluster_graph(normalizer_info)
 
         return results_dict
 
@@ -373,10 +388,137 @@ class NodeSynonymizer:
         return [some_list[start:start + chunk_size] for start in range(0, len(some_list), chunk_size)]
 
     @staticmethod
-    def capitalize_curie_prefix(curie: str) -> str:
+    def _capitalize_curie_prefix(curie: str) -> str:
         curie_chunks = curie.split(":")
         curie_chunks[0] = curie_chunks[0].upper()
         return ":".join(curie_chunks)
+
+    def _get_cluster_graph(self, normalizer_info: dict) -> dict:
+        kg = KnowledgeGraph()
+        cluster_id = normalizer_info["id"]["identifier"]
+
+        # Add TRAPI nodes for each cluster member
+        trapi_nodes = {node["identifier"]: self._convert_to_trapi_node(node)
+                       for node in normalizer_info["nodes"]}
+        # Indicate which one is the cluster representative (i.e., 'preferred' identifier
+        trapi_nodes[cluster_id].attributes.append(Attribute(attribute_type_id="biolink:description",
+                                                            value_type_id="metatype:String",
+                                                            value="This node is the preferred/canonical identifier "
+                                                                  "for this concept cluster.",
+                                                            attribute_source="infores:arax"))
+        kg.nodes = trapi_nodes
+
+        # Add TRAPI edges for any intra-cluster edges
+        sql_query = f"SELECT intra_cluster_edge_ids FROM clusters WHERE cluster_id = '{cluster_id}'"
+        results = self._execute_sql_query(sql_query)
+        if results:
+            cluster_row = results[0]
+            intra_cluster_edge_ids_str = "[]" if cluster_row[0] == "nan" else cluster_row[0]
+            intra_cluster_edge_ids = ast.literal_eval(intra_cluster_edge_ids_str)  # Lists are stored as strings in sqlite
+
+            edges_query = f"SELECT * FROM edges WHERE id IN ('{self._convert_to_str_format(intra_cluster_edge_ids)}')"
+            edge_rows = self._execute_sql_query(edges_query)
+            edges_df = self._load_records_into_dataframe(edge_rows, "edges")
+            edge_dicts = edges_df.to_dict(orient="records")
+            trapi_edges = {edge["id"]: self._convert_to_trapi_edge(edge)
+                           for edge in edge_dicts}
+            kg.edges = trapi_edges
+
+        return kg.to_dict()
+
+    def _convert_to_trapi_edge(self, edge_dict: dict) -> Edge:
+        # Fix the predicate used for name similarity edges created during the synonymizer build..
+        predicate = "similar_to" if edge_dict["predicate"] == "has_similar_name" else edge_dict["predicate"]
+
+        edge = Edge(subject=edge_dict["subject"],
+                    object=edge_dict["object"],
+                    predicate=self._add_biolink_prefix(predicate))
+
+        # Tack on provenance information
+        primary_ks = edge_dict["primary_knowledge_source"]
+        ingested_ks = edge_dict["upstream_resource_id"]
+        if ingested_ks == "infores:arax-node-synonymizer":
+            ingested_ks = self.arax_infores_curie  # For now there isn't a curie specifically for the NodeSynonymizer
+        sources = []
+        if primary_ks:
+            sources.append(RetrievalSource(resource_id=primary_ks,
+                                           resource_role="primary_knowledge_source"))
+            sources.append(RetrievalSource(resource_id=ingested_ks,
+                                           resource_role="aggregator_knowledge_source",
+                                           upstream_resource_ids=[primary_ks]))
+        else:
+            sources.append(RetrievalSource(resource_id=ingested_ks,
+                                           resource_role="primary_knowledge_source"))
+        if ingested_ks != self.arax_infores_curie:
+            # List ARAX as an aggregator knowledge source, unless this is an ARAX-created edge...
+            sources.append(RetrievalSource(resource_id=self.arax_infores_curie,
+                                           resource_role="aggregator_knowledge_source",
+                                           upstream_resource_ids=[ingested_ks]))
+        edge.sources = sources
+
+        # Tack on the edge weight used during the synonymizer build
+        edge.attributes = [Attribute(attribute_type_id="EDAM-DATA:1772",
+                                     value=edge_dict["weight"],
+                                     value_type_id="metatype:Float",
+                                     attribute_source=self.arax_infores_curie,
+                                     description="The edge weight used for the clustering algorithm run as "
+                                                 "part of the ARAX NodeSynonymizer's build process")]
+
+        # Add a description for name-similarity edges
+        if edge.predicate == "biolink:similar_to":
+            edge.attributes.append(Attribute(attribute_type_id="biolink:description",
+                                             value_type_id="metatype:String",
+                                             attribute_source=self.arax_infores_curie,
+                                             value="This edge was created during the ARAX NodeSynonymizer build "
+                                                   "to represent the similarity between the names of the two involved "
+                                                   "nodes."))
+
+        return edge
+
+    def _convert_to_trapi_node(self, normalizer_node: dict) -> Node:
+        node = Node(name=normalizer_node["label"],
+                    categories=[normalizer_node["category"]],
+                    attributes=[])
+
+        # Indicate which sources provided this node
+        provided_bys = []
+        if normalizer_node["in_sri"]:
+            provided_bys.append(self.sri_nn_infores_curie)
+        if normalizer_node["in_kg2pre"]:
+            provided_bys.append(self.kg2_infores_curie)
+        node.attributes.append(Attribute(attribute_type_id="biolink:provided_by",
+                                         value=provided_bys,
+                                         value_type_id="biolink:Uriorcurie",
+                                         attribute_source=self.arax_infores_curie,
+                                         description="The sources the ARAX NodeSynonymizer extracted this node from"))
+
+        # Tack on the SRI NN's name and category for this node
+        if normalizer_node["in_sri"]:
+            node.attributes.append(Attribute(attribute_type_id="biolink:name",
+                                             value=normalizer_node["name_sri"],
+                                             value_type_id="metatype:String",
+                                             attribute_source=self.sri_nn_infores_curie,
+                                             description="Name for this identifier in the SRI NodeNormalizer bulk download"))
+            node.attributes.append(Attribute(attribute_type_id="biolink:category",
+                                             value=normalizer_node["category_sri"],
+                                             value_type_id="metatype:Uriorcurie",
+                                             attribute_source=self.sri_nn_infores_curie,
+                                             description="Category for this identifier in the SRI NodeNormalizer bulk download"))
+
+        # Tack on KG2pre's name and category for this node
+        if normalizer_node["in_kg2pre"]:
+            node.attributes.append(Attribute(attribute_type_id="biolink:name",
+                                             value=normalizer_node["name_kg2pre"],
+                                             value_type_id="metatype:String",
+                                             attribute_source=self.kg2_infores_curie,
+                                             description="Name for this identifier in RTX-KG2pre"))
+            node.attributes.append(Attribute(attribute_type_id="biolink:category",
+                                             value=normalizer_node["category_kg2pre"],
+                                             value_type_id="metatype:Uriorcurie",
+                                             attribute_source=self.kg2_infores_curie,
+                                             description="Category for this identifier in RTX-KG2pre"))
+
+        return node
 
     def _create_preferred_node_dict(self, preferred_id: str, preferred_category: str, preferred_name: Optional[str]) -> dict:
         return {
@@ -406,7 +548,7 @@ class NodeSynonymizer:
         return matching_rows
 
     def _map_to_capitalized_curies(self, curies_set: Set[str]) -> Tuple[Dict[str, str], Set[str]]:
-        curies_to_capitalized_curies = {curie: self.capitalize_curie_prefix(curie) for curie in curies_set}
+        curies_to_capitalized_curies = {curie: self._capitalize_curie_prefix(curie) for curie in curies_set}
         capitalized_curies = set(curies_to_capitalized_curies.values())
         return curies_to_capitalized_curies, capitalized_curies
 
