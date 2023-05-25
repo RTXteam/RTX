@@ -121,6 +121,9 @@ class InferUtilities:
         except ValueError:
             max_path_len = 0
 
+        if len(message.query_graph.edges) !=0 and not hasattr(self.response, 'original_query_graph'):
+            self.response.original_query_graph = copy.deepcopy(message.query_graph)
+
         disease_curie = top_drugs['disease_id'].tolist()[0]
         disease_name = top_drugs['disease_name'].tolist()[0]
         disease_info = xdtdmapping.get_node_info(node_id=disease_curie)
@@ -411,6 +414,8 @@ class InferUtilities:
         except ValueError:
             max_path_len = 0
 
+        if len(message.query_graph.edges) !=0 and not hasattr(self.response, 'original_query_graph'):
+            self.response.original_query_graph = copy.deepcopy(message.query_graph)
 
         if not message.knowledge_graph or not hasattr(message, 'knowledge_graph'):  # if the knowledge graph is empty, create it
             message.knowledge_graph = KnowledgeGraph()
