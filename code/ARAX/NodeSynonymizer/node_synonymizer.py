@@ -273,13 +273,15 @@ class NodeSynonymizer:
                                           "nodes": [nodes_dict[equivalent_curie] for equivalent_curie in equivalent_curies]}
 
         # Do some post-processing (tally up category counts and remove no-longer-needed 'cluster_id' property)
-        for concept_info_dict in results_dict.values():
-            for equivalent_node in concept_info_dict["nodes"]:
-                concept_info_dict["categories"][equivalent_node["category"]] += 1
+        for normalizer_info in results_dict.values():
+            for equivalent_node in normalizer_info["nodes"]:
+                normalizer_info["categories"][equivalent_node["category"]] += 1
                 if "cluster_id" in equivalent_node:
                     del equivalent_node["cluster_id"]
                 if "cluster_preferred_name" in equivalent_node:
                     del equivalent_node["cluster_preferred_name"]
+            # Sort nodes by their curies
+            normalizer_info["nodes"].sort(key=lambda node: node["identifier"].upper())
 
         # Add None values for any unrecognized input curies
         unrecognized_curies = entities_set.difference(results_dict)
