@@ -165,7 +165,7 @@ threadpoolctl==3.1.0
 tomark==0.1.4
 toml==0.10.2
 tomli==1.2.3
-tornado==6.2
+tornado==6.3.2
 tox==3.25.1
 tox-docker==3.1.0
 tqdm==4.64.0
