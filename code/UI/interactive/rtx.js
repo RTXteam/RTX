@@ -821,7 +821,7 @@ async function sendSyn() {
 	table = document.createElement("table");
 	table.className = 'sumtab';
 	tr = document.createElement("tr");
-	for (var head of ["Identifier","Label","Original Label","Category"] ) {
+	for (var head of ["Identifier","Label","Category","KG2pre","KG2pre Name","KG2pre Category","SRI_NN","SRI Name","SRI Category"] ) {
 	    td = document.createElement("th")
 	    td.appendChild(document.createTextNode(head));
 	    tr.appendChild(td);
@@ -838,11 +838,53 @@ async function sendSyn() {
 	    td.appendChild(document.createTextNode(syn.label));
 	    tr.appendChild(td);
 	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.original_label));
-	    tr.appendChild(td);
-	    td = document.createElement("td")
 	    td.appendChild(document.createTextNode(syn.category));
 	    tr.appendChild(td);
+
+	    td = document.createElement("td")
+	    text = document.createElement("span");
+	    if (syn.in_kg2pre) {
+		text.innerHTML = '&check;';
+		text.className = 'explevel p9';
+		text.title = 'Found in KG2pre';
+	    }
+	    else {
+		text.innerHTML = '&cross;';
+		text.className = 'explevel p0';
+		text.title = 'NOT found in KG2pre';
+	    }
+	    td.appendChild(text);
+	    tr.appendChild(td);
+
+            td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.name_kg2pre));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.category_kg2pre));
+	    tr.appendChild(td);
+
+	    td = document.createElement("td")
+            text = document.createElement("span");
+	    if (syn.in_sri) {
+		text.innerHTML = '&check;';
+		text.className = 'explevel p9';
+		text.title = 'Found in SRI NodeNormalizer';
+	    }
+	    else {
+		text.innerHTML = '&cross;';
+		text.className = 'explevel p0';
+		text.title = 'NOT found in SRI NodeNormalizer';
+	    }
+            td.appendChild(text);
+            tr.appendChild(td);
+
+            td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.name_sri));
+	    tr.appendChild(td);
+	    td = document.createElement("td")
+	    td.appendChild(document.createTextNode(syn.category_sri));
+	    tr.appendChild(td);
+
 	    table.appendChild(tr);
 	}
 	div.appendChild(table);
@@ -917,6 +959,27 @@ async function sendSyn() {
 
     div.appendChild(document.createElement("br"));
     syndiv.appendChild(div);
+
+    if (allweknow[word]["knowledge_graph"]) {
+	process_graph(allweknow[word]["knowledge_graph"],'SYN',"1.4");
+
+	div = document.createElement("div");
+	div.className = "statushead";
+	div.appendChild(document.createTextNode("Concept Graph"));
+	syndiv.appendChild(div);
+
+	div = document.createElement("div");
+        div.className = "status";
+	div.id = "a88888_div";
+	table = document.createElement("table");
+	table.className = 't100';
+        add_graph_to_table(table,88888);
+        div.appendChild(table);
+        syndiv.appendChild(div);
+
+        add_cyto(88888,"SYN");
+    }
+
 }
 
 function link_to_identifiers_dot_org(thing) {
@@ -2388,7 +2451,7 @@ function add_to_summary(rowdata, num) {
 // used for gid = 0 [KG] and 99999 [QG]
 function process_graph(gne,graphid,trapi) {
     cytodata[graphid] = [];
-    var gid = graphid == "KG" ? 0 : 99999;
+    var gid = graphid == "KG" ? 0 : graphid == "SYN" ? 88888 : 99999;
     for (var id in gne.nodes) {
 	var gnode = Object.create(gne['nodes'][id]); // make a copy!
 
@@ -2426,7 +2489,10 @@ function process_graph(gne,graphid,trapi) {
 		gnode.name = "(Any)";
 	}
 
-        var tmpdata = { "data" : gnode };
+	if (graphid == 'SYN')
+	    gnode.idname = id;
+
+	var tmpdata = { "data" : gnode };
         cytodata[graphid].push(tmpdata);
     }
 
@@ -2668,100 +2734,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	    }
 	}
 
-
-	tr = document.createElement("tr");
-	td = document.createElement("td");
-        td.className = 'cytograph_controls';
-
-	link = document.createElement("a");
-	link.title = 'reset zoom and center';
-        link.setAttribute('onclick', 'cyobj['+num+'].reset();');
-        link.appendChild(document.createTextNode("\u21BB"));
-        td.appendChild(link);
-	td.appendChild(document.createElement("br"));
-	tr.appendChild(td);
-
-        link = document.createElement("a");
-	link.title = 'breadthfirst layout';
-	link.setAttribute('onclick', 'cylayout('+num+',"breadthfirst");');
-	link.appendChild(document.createTextNode("B"));
-	td.appendChild(link);
-	td.appendChild(document.createElement("br"));
-
-        link = document.createElement("a");
-	link.title = 'force-directed layout';
-	link.setAttribute('onclick', 'cylayout('+num+',"cose");');
-	link.appendChild(document.createTextNode("F"));
-	td.appendChild(link);
-	td.appendChild(document.createElement("br"));
-
-        link = document.createElement("a");
-	link.title = 'circle layout';
-	link.setAttribute('onclick', 'cylayout('+num+',"circle");');
-	link.appendChild(document.createTextNode("C"));
-	td.appendChild(link);
-	td.appendChild(document.createElement("br"));
-
-        link = document.createElement("a");
-	link.title = 'random layout';
-	link.setAttribute('onclick', 'cylayout('+num+',"random");');
-	link.appendChild(document.createTextNode("R"));
-	td.appendChild(link);
-        td.appendChild(document.createElement("br"));
-
-	link = document.createElement("a");
-	link.style.marginTop = "80px";
-	link.title = 'small graph';
-	link.setAttribute('onclick', 'cyresize('+num+',"s");');
-	link.appendChild(document.createTextNode("s"));
-	td.appendChild(link);
-        td.appendChild(document.createElement("br"));
-
-        link = document.createElement("a");
-	link.title = 'medium-sized graph';
-	link.setAttribute('onclick', 'cyresize('+num+',"m");');
-	link.appendChild(document.createTextNode("M"));
-	td.appendChild(link);
-	td.appendChild(document.createElement("br"));
-
-        link = document.createElement("a");
-        link.style.fontWeight = "bold";
-        link.style.fontSize = "larger";
-	link.title = 'Large graph';
-	link.setAttribute('onclick', 'cyresize('+num+',"L");');
-	link.appendChild(document.createTextNode("L"));
-	td.appendChild(link);
-	td.appendChild(document.createElement("br"));
-
-	tr.appendChild(td);
-
-        td = document.createElement("td");
-	td.className = 'cytograph';
-        var div2 = document.createElement("div");
-	div2.id = 'cy'+num;
-	div2.style.height = '100%';
-	div2.style.width  = '100%';
-	td.appendChild(div2);
-        tr.appendChild(td);
-        table.appendChild(tr);
-
-        tr = document.createElement("tr");
-	//td = document.createElement("td");
-	//tr.appendChild(td);
-
-	td = document.createElement("td");
-	td.colSpan = '2';
-        div2 = document.createElement("div");
-	div2.id = 'd'+num+'_div';
-	div2.className = 'panel';
-        link = document.createElement("i");
-        link.appendChild(document.createTextNode("Click on a node or edge to get details, or click on graph background to see a full list of nodes and edges for this result"));
-        div2.appendChild(link);
-
-	td.appendChild(div2);
-	tr.appendChild(td);
-
-        table.appendChild(tr);
+	add_graph_to_table(table,num);
 
 	div.appendChild(table);
 	results_fragment.appendChild(div);
@@ -2880,6 +2853,102 @@ function get_css_class_from_reasoner(r) {
 }
 
 
+function add_graph_to_table(table,num) {
+    var tr = document.createElement("tr");
+    var td = document.createElement("td");
+    td.className = 'cytograph_controls';
+
+    var link = document.createElement("a");
+    link.title = 'reset zoom and center';
+    link.setAttribute('onclick', 'cyobj['+num+'].reset();');
+    link.appendChild(document.createTextNode("\u21BB"));
+    td.appendChild(link);
+    td.appendChild(document.createElement("br"));
+    tr.appendChild(td);
+
+    link = document.createElement("a");
+    link.title = 'breadthfirst layout';
+    link.setAttribute('onclick', 'cylayout('+num+',"breadthfirst");');
+    link.appendChild(document.createTextNode("B"));
+    td.appendChild(link);
+    td.appendChild(document.createElement("br"));
+
+    link = document.createElement("a");
+    link.title = 'force-directed layout';
+    link.setAttribute('onclick', 'cylayout('+num+',"cose");');
+    link.appendChild(document.createTextNode("F"));
+    td.appendChild(link);
+    td.appendChild(document.createElement("br"));
+
+    link = document.createElement("a");
+    link.title = 'circle layout';
+    link.setAttribute('onclick', 'cylayout('+num+',"circle");');
+    link.appendChild(document.createTextNode("C"));
+    td.appendChild(link);
+    td.appendChild(document.createElement("br"));
+
+    link = document.createElement("a");
+    link.title = 'random layout';
+    link.setAttribute('onclick', 'cylayout('+num+',"random");');
+    link.appendChild(document.createTextNode("R"));
+    td.appendChild(link);
+    td.appendChild(document.createElement("br"));
+
+    link = document.createElement("a");
+    link.style.marginTop = "80px";
+    link.title = 'small graph';
+    link.setAttribute('onclick', 'cyresize('+num+',"s");');
+    link.appendChild(document.createTextNode("s"));
+    td.appendChild(link);
+    td.appendChild(document.createElement("br"));
+
+    link = document.createElement("a");
+    link.title = 'medium-sized graph';
+    link.setAttribute('onclick', 'cyresize('+num+',"m");');
+    link.appendChild(document.createTextNode("M"));
+    td.appendChild(link);
+    td.appendChild(document.createElement("br"));
+
+    link = document.createElement("a");
+    link.style.fontWeight = "bold";
+    link.style.fontSize = "larger";
+    link.title = 'Large graph';
+    link.setAttribute('onclick', 'cyresize('+num+',"L");');
+    link.appendChild(document.createTextNode("L"));
+    td.appendChild(link);
+    td.appendChild(document.createElement("br"));
+
+    tr.appendChild(td);
+
+    td = document.createElement("td");
+    td.className = 'cytograph';
+    var div = document.createElement("div");
+    div.id = 'cy'+num;
+    div.style.height = '100%';
+    div.style.width  = '100%';
+    td.appendChild(div);
+    tr.appendChild(td);
+    table.appendChild(tr);
+
+    tr = document.createElement("tr");
+
+    td = document.createElement("td");
+    td.colSpan = '2';
+    div = document.createElement("div");
+    div.id = 'd'+num+'_div';
+    div.className = 'panel';
+    link = document.createElement("i");
+    link.appendChild(document.createTextNode("Click on a node or edge to get details, or click on graph background to see a full list of nodes and edges for this result"));
+    div.appendChild(link);
+
+    td.appendChild(div);
+    tr.appendChild(td);
+
+    table.appendChild(tr);
+}
+
+
+
 function add_cyto(i,dataid) {
     // once rendered, data is set to null so as to only do this once per graph
     // //////if (cytodata[i] == null) return;
@@ -2898,16 +2967,16 @@ function add_cyto(i,dataid) {
 		'border-width' : '2',
 		'width': '20',
 		'height': '20',
-		'content': function(ele) { return ele.data().name ? ele.data().name : ele.data().id; }
+		'content': function(ele) { return ele.data().idname ? ele.data().idname : ele.data().name ? ele.data().name : ele.data().id; }
 	    })
 	    .selector('edge')
 	    .css({
 		'curve-style' : 'bezier',
 		'font-size' : '12',
-		'line-color': function(ele) { return mapEdgeColor(ele); } ,
+		'line-color': function(ele) { return mapEdgeColor(ele,num); } ,
 		'line-style': function(ele) { return mapEdgeLineStyle(ele); } ,
 		'width': function(ele) { if (ele.data().weight) { return ele.data().weight; } return 2; },
-		'target-arrow-color': function(ele) { return mapEdgeColor(ele); } ,
+		'target-arrow-color': function(ele) { return mapEdgeColor(ele,num); } ,
 		'target-arrow-shape': 'triangle',
 		'opacity': 0.8,
 		'content': function(ele) {
@@ -3585,9 +3654,22 @@ function mapEdgeLineStyle(ele) {
     return 'solid';
 }
 
-function mapEdgeColor(ele) {
+function mapEdgeColor(ele,num) {
     if (ele.data().qualifiers)
 	return '#291';
+
+    if (num == 88888 && ele.data().sources) {
+        for (var src of ele.data().sources) {
+	    if (src["resource_role"] && src["resource_role"] == "primary_knowledge_source") {
+		if (src["resource_id"] == "infores:arax")
+		    return '#aaa';
+		if (src["resource_id"] == "infores:sri-node-normalizer")
+		    return '#8250df';
+		return '#5596d0';
+	    }
+	}
+    }
+
     return "#aaf";
 
     // old:
