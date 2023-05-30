@@ -42,7 +42,7 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.3.0'
+trapi_version = '1.4.0'
 
 
 Base = declarative_base()
@@ -318,7 +318,7 @@ class ResponseCache:
                         else:
                             envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': {} }
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
                     if 'logs' not in envelope or envelope['logs'] is None:
@@ -517,7 +517,7 @@ class ResponseCache:
                         else:
                             envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages }
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': {} }
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
 
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
@@ -529,7 +529,7 @@ class ResponseCache:
                         envelope['description'] = ''
                     envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'TRAPI validator crashed with error: ' + str(error) + ' --- ' + envelope['description'] }
 
-                #### Try to add the reasoner_id
+                #### Try to add the resource_id
                 if 'name' in response_dict['fields'] and response_dict['fields']['name'] is not None:
                     #eprint(json.dumps(response_dict,indent=2,sort_keys=True))
                     actor = str(response_dict['fields']['name'])
@@ -537,10 +537,10 @@ class ResponseCache:
                         #eprint(f"INFO: Attempting to inject {actor_name_lookup[actor]} into results")
                         if 'message' in envelope and 'results' in envelope['message'] and envelope['message']['results'] is not None:
                             for result in envelope['message']['results']:
-                                if 'reasoner_id' in result and result['reasoner_id'] is not None:
+                                if 'resource_id' in result and result['resource_id'] is not None:
                                     pass
                                 else:
-                                    result['reasoner_id'] = actor_name_lookup[actor]
+                                    result['resource_id'] = actor_name_lookup[actor]
 
                 elif 'actor' in response_dict['fields'] and response_dict['fields']['actor'] is not None:
                     #eprint(json.dumps(response_dict,indent=2,sort_keys=True))
@@ -548,10 +548,10 @@ class ResponseCache:
                     if actor in actor_lookup:
                         if 'message' in envelope and 'results' in envelope['message'] and envelope['message']['results'] is not None:
                             for result in envelope['message']['results']:
-                                if 'reasoner_id' in result and result['reasoner_id'] is not None:
+                                if 'resource_id' in result and result['resource_id'] is not None:
                                     pass
                                 else:
-                                    result['reasoner_id'] = actor_lookup[actor]
+                                    result['resource_id'] = actor_lookup[actor]
 
                 if 'message' in envelope and 'knowledge_graph' in envelope['message'] and envelope['message']['knowledge_graph'] is not None:
                     n_nodes = None

@@ -23,6 +23,7 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.qualifier import Qualifier
+from openapi_server.models.retrieval_source import RetrievalSource
 
 
 class KG2Querier:
@@ -222,25 +223,22 @@ class KG2Querier:
         return node
 
     def _convert_kg2c_plover_edge_to_trapi_edge(self, edge_tuple: list) -> Edge:
-        edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2], attributes=[])
-        knowledge_sources = edge_tuple[3]
+        edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2])
+        primary_knowledge_source = edge_tuple[3]
         qualified_predicate = edge_tuple[4]
         qualified_object_direction = edge_tuple[5]
         qualified_object_aspect = edge_tuple[6]
 
-        # Indicate that this edge came from the KG2 KP
-        edge.attributes.append(Attribute(attribute_type_id="biolink:aggregator_knowledge_source",
-                                         value=self.kg2_infores_curie,
-                                         value_type_id="biolink:InformationResource",
-                                         attribute_source=self.kg2_infores_curie))
+        sources = list()
+        # Add this edge's primary knowledge source
+        sources.append(RetrievalSource(resource_id=primary_knowledge_source,
+                                       resource_role="primary_knowledge_source"))
 
-        # Create knowledge source attributes for each of this edge's knowledge sources
-        knowledge_source_attributes = [Attribute(attribute_type_id="biolink:primary_knowledge_source",
-                                                 value=infores_curie,
-                                                 value_type_id="biolink:InformationResource",
-                                                 attribute_source=self.kg2_infores_curie)
-                                       for infores_curie in knowledge_sources]
-        edge.attributes += knowledge_source_attributes
+        # Indicate that this edge came from the KG2 KP
+        sources.append(RetrievalSource(resource_id=self.kg2_infores_curie,
+                                       resource_role="aggregator_knowledge_source",
+                                       upstream_resource_ids=[primary_knowledge_source]))
+        edge.sources = sources
 
         # Add any qualifiers as appropriate
         qualifiers = []

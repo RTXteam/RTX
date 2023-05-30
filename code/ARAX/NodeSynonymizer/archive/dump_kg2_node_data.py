@@ -16,7 +16,6 @@ import re
 from neo4j import GraphDatabase
 
 import numpy as np
-np.warnings.filterwarnings('ignore')
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration

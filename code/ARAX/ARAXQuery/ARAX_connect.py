@@ -415,7 +415,9 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                         qnode_pair[2] = True
             if not added_connection:
                 #FW: may want to change this to an error
-                self.response.warning(f"Could not connect the nodes {qnode_pair[0]} and {qnode_pair[1]} with a max path length of {self.parameters['max_path_length']}.") 
+                self.response.warning(f"Could not connect the nodes {qnode_pair[0]} and {qnode_pair[1]} with a max path length of {self.parameters['max_path_length']}.")
+        if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
+            self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
         return self.response
 
 

@@ -26,6 +26,12 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.result import Result
 from openapi_server.models.message import Message
+from openapi_server.models.retrieval_source import RetrievalSource
+
+DIABETES_CURIE = "MONDO:0005015"
+TYPE_1_DIABETES_CURIE = "MONDO:0005147"
+INSULIN_CURIE = "PUBCHEM.COMPOUND:16137271"
+HEART_DISEASE_CURIE = "MONDO:0005267"
 
 
 def _slim_kg(kg: KnowledgeGraph) -> KnowledgeGraph:
@@ -54,7 +60,9 @@ def _create_edges(kg_edge_info: Iterable[Dict[str, any]]) -> Dict[str, Edge]:
     for kg_edge in kg_edge_info:
         edge = Edge(subject=kg_edge["subject"],
                     object=kg_edge["object"],
-                    predicate=kg_edge.get("predicate"))
+                    predicate=kg_edge.get("predicate", "biolink:related_to"),
+                    sources=[RetrievalSource(resource_id="infores:arax",
+                                             resource_role="aggregator_knowledge_source")])
         edge.qedge_keys = kg_edge["qedge_keys"]
         edges_dict[kg_edge["edge_key"]] = edge
     return edges_dict
@@ -81,7 +89,7 @@ def _print_results_for_debug(message: Message):
             print(f"  qnode {qnode_key}{f' (option group {qnode.option_group_id})' if qnode.option_group_id else ''}:")
             for node_binding in node_bindings_list:
                 print(f"    {node_binding.id} {kg.nodes[node_binding.id].name}")
-        for qedge_key, edge_bindings_list in result.edge_bindings.items():
+        for qedge_key, edge_bindings_list in result.analyses[0].edge_bindings.items():
             qedge = qg.edges[qedge_key]
             print(f"  qedge {qedge_key}{f' (option group {qedge.option_group_id})' if qedge.option_group_id else ''}:")
             for edge_binding in edge_bindings_list:
@@ -110,7 +118,7 @@ def _get_result_node_keys_by_qg_key(result: Result) -> Dict[str, Set[str]]:
 
 
 def _get_result_edge_keys_by_qg_key(result: Result) -> Dict[str, Set[str]]:
-    return {qedge_key: {edge_binding.id for edge_binding in result.edge_bindings[qedge_key]} for qedge_key in result.edge_bindings}
+    return {qedge_key: {edge_binding.id for edge_binding in result.analyses[0].edge_bindings[qedge_key]} for qedge_key in result.analyses[0].edge_bindings}
 
 
 def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[ARAXResponse, Message]:
@@ -181,7 +189,11 @@ def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]], shorthand_ed
         for edge_key in edges_list:
             source_node_key = edge_key.split("--")[0]
             target_node_key = edge_key.split("--")[1]
-            edge = edges_dict.get(edge_key, Edge(subject=source_node_key, object=target_node_key))
+            edge = edges_dict.get(edge_key, Edge(subject=source_node_key,
+                                                 object=target_node_key,
+                                                 predicate="biolink:related_to",
+                                                 sources=[RetrievalSource(resource_id="infores:arax",
+                                                                          resource_role="aggregator_knowledge_source")]))
             if not hasattr(edge, "qedge_keys"):
                 edge.qedge_keys = []
             edge.qedge_keys.append(qedge_key)
@@ -934,7 +946,7 @@ def test_issue731b():
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     for result in message.results:
-        found_e01 = result.edge_bindings.get('e1')
+        found_e01 = result.analyses[0].edge_bindings.get('e1')
         assert found_e01
 
 
@@ -973,7 +985,7 @@ def test_issue731c():
 
     kg = KnowledgeGraph(nodes=kg_nodes, edges=kg_edges)
     results = ARAX_resultify._get_results_for_kg_by_qg(kg, qg)
-    indexes_results_with_single_edge = [index for index, result in enumerate(results) if len(result.edge_bindings) == 1]
+    indexes_results_with_single_edge = [index for index, result in enumerate(results) if len(result.analyses[0].edge_bindings) == 1]
     assert len(indexes_results_with_single_edge) == 0
 
 
@@ -1099,8 +1111,8 @@ def test_issue833_extraneous_intermediate_nodes():
     assert response.status == 'OK'
     for result in message.results:
         result_n01_nodes = {node_binding.id for node_binding in result.node_bindings["n01"]}
-        result_e01_edges = {edge_binding.id for edge_binding in result.edge_bindings["e01"]}
-        result_e00_edges = {edge_binding.id for edge_binding in result.edge_bindings["e00"]}
+        result_e01_edges = {edge_binding.id for edge_binding in result.analyses[0].edge_bindings["e01"]}
+        result_e00_edges = {edge_binding.id for edge_binding in result.analyses[0].edge_bindings["e00"]}
         for n01_node_key in result_n01_nodes:
             kg_edges_using_this_node = _get_kg_edge_keys_using_node(n01_node_key, message.knowledge_graph)
             assert result_e01_edges.intersection(kg_edges_using_this_node)
@@ -1230,7 +1242,7 @@ def test_issue1119_b():
     assert message.results
     # Make sure the kryptonite edge and its leaf qnode don't appear in any results
     assert not any(result.node_bindings.get("n03") for result in message.results)
-    assert not any(result.edge_bindings.get("e02") for result in message.results)
+    assert not any(result.analyses[0].edge_bindings.get("e02") for result in message.results)
 
 
 @pytest.mark.slow
@@ -1248,9 +1260,9 @@ def test_issue1119_c():
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert message.results
-    assert all(result.edge_bindings.get("e00") for result in message.results)
+    assert all(result.analyses[0].edge_bindings.get("e00") for result in message.results)
     # Make sure at least one of our results has the "optional" group 1 edge
-    results_with_optional_edge = [result for result in message.results if result.edge_bindings.get("e01")]
+    results_with_optional_edge = [result for result in message.results if result.analyses[0].edge_bindings.get("e01")]
     assert results_with_optional_edge
 
     # Make sure the number of results is the same as if we asked only for the required portion
@@ -1299,13 +1311,13 @@ def test_issue1119_d():
     assert response.status == 'OK'
     assert message.results
     # Make sure every result has a required edge
-    assert all(result.edge_bindings.get("e00") for result in message.results)
-    assert not any(result.edge_bindings.get("e03") for result in message.results)
+    assert all(result.analyses[0].edge_bindings.get("e00") for result in message.results)
+    assert not any(result.analyses[0].edge_bindings.get("e03") for result in message.results)
     # Make sure our "optional" edges appear in one or more results
-    assert any(result for result in message.results if result.edge_bindings.get("e01"))
-    assert any(result for result in message.results if result.edge_bindings.get("e02"))
+    assert any(result for result in message.results if result.analyses[0].edge_bindings.get("e01"))
+    assert any(result for result in message.results if result.analyses[0].edge_bindings.get("e02"))
     # Verify there are some results without any optional portion (happens to be true for this query)
-    assert any(result for result in message.results if not {"e01", "e02"}.issubset(set(result.edge_bindings)))
+    assert any(result for result in message.results if not {"e01", "e02"}.issubset(set(result.analyses[0].edge_bindings)))
 
 
 @pytest.mark.slow
@@ -1328,8 +1340,8 @@ def test_issue1146_a():
     # Make sure every n1 node is connected to an e1 and e0 edge
     for result in message.results:
         result_n1_nodes = {node_binding.id for node_binding in result.node_bindings["n1"]}
-        result_e1_edges = {edge_binding.id for edge_binding in result.edge_bindings["e1"]}
-        result_e0_edges = {edge_binding.id for edge_binding in result.edge_bindings["e0"]}
+        result_e1_edges = {edge_binding.id for edge_binding in result.analyses[0].edge_bindings["e1"]}
+        result_e0_edges = {edge_binding.id for edge_binding in result.analyses[0].edge_bindings["e0"]}
         for n1_node in result_n1_nodes:
             kg_edges_using_this_node = _get_kg_edge_keys_using_node(n1_node, message.knowledge_graph)
             assert result_e1_edges.intersection(kg_edges_using_this_node)
@@ -1439,10 +1451,9 @@ def test_issue_1848():
 
 
 def test_node_binding_query_id_one_hop_single_input_curie():
-    diabetes_curie = "MONDO:0005015"
-    type_1_diabetes_curie = "MONDO:0005147"
+
     actions = [
-        f"add_qnode(ids={diabetes_curie}, key=n00)",
+        f"add_qnode(ids={DIABETES_CURIE}, key=n00)",
         f"add_qnode(categories=biolink:Drug, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
         "expand(kp=infores:rtx-kg2)",
@@ -1454,8 +1465,8 @@ def test_node_binding_query_id_one_hop_single_input_curie():
     assert len(message.results) > 1
     kg = response.envelope.message.knowledge_graph
     # Make the input curie and one of its children appear somewhere in the results
-    assert diabetes_curie in kg.nodes
-    assert type_1_diabetes_curie in kg.nodes
+    assert DIABETES_CURIE in kg.nodes
+    assert TYPE_1_DIABETES_CURIE in kg.nodes
     # Make sure node bindings do/don't have 'query_id' filled out as appropriate
     for result in message.results:
         for node_binding in result.node_bindings["n00"]:
@@ -1463,18 +1474,15 @@ def test_node_binding_query_id_one_hop_single_input_curie():
             assert node_binding.query_id is None
         for node_binding in result.node_bindings["n01"]:
             assert node_binding.query_id is None
-    # Make sure we have some results with subclass self-edges (Expand assigns such qedges keys like 'subclass:n00-n00')
-    assert any(qedge_key.startswith("subclass")
-               for result in message.results
-               for qedge_key in result.edge_bindings)
-    insulin_results = [result for result in message.results if result.essence == "Insulin"]
+    # Make sure we have some subclass edges
+    assert any(edge.predicate == "biolink:subclass_of" for edge in message.knowledge_graph.edges.values())
+    insulin_results = [result for result in message.results if any([node_binding.id == INSULIN_CURIE
+                                                                    for node_binding in result.node_bindings["n01"]])]
     assert len(insulin_results) == 1
 
 
 def test_node_binding_query_id_one_hop_multiple_input_curies():
-    diabetes_curie = "MONDO:0005015"
-    type_1_diabetes_curie = "MONDO:0005147"
-    parent_query_ids = {diabetes_curie, type_1_diabetes_curie}
+    parent_query_ids = {DIABETES_CURIE, TYPE_1_DIABETES_CURIE}
     actions = [
         f"add_qnode(ids=[{','.join(parent_query_ids)}], key=n00)",
         f"add_qnode(categories=biolink:Drug, key=n01)",
@@ -1488,7 +1496,7 @@ def test_node_binding_query_id_one_hop_multiple_input_curies():
     assert len(message.results) > 1
     kg = response.envelope.message.knowledge_graph
     # Make sure both input curies appear somewhere in the results
-    assert diabetes_curie in kg.nodes
+    assert DIABETES_CURIE in kg.nodes
     # TODO: Do the below check after we've figured out the multiple query IDs problem (nodes could fulfill either
     #  diabetes or type 1 diabetes), but can only have 1 n00 parent specified
     # assert type_1_diabetes_curie in kg.nodes
@@ -1502,20 +1510,17 @@ def test_node_binding_query_id_one_hop_multiple_input_curies():
         for node_binding in result.node_bindings["n01"]:
             assert node_binding.query_id is None
     # Make sure we have some results with subclass self-edges (Expand assigns such qedges keys like 'subclass:n00-n00')
-    assert any(qedge_key.startswith("subclass")
-               for result in message.results
-               for qedge_key in result.edge_bindings)
-    insulin_results = [result for result in message.results if result.essence == "Insulin"]
+    assert any(edge.predicate == "biolink:subclass_of" for edge in message.knowledge_graph.edges.values())
+    insulin_results = [result for result in message.results if any([node_binding.id == INSULIN_CURIE
+                                                                    for node_binding in result.node_bindings["n01"]])]
     assert len(insulin_results) in range(1, 3)
 
 
 @pytest.mark.slow
 def test_node_binding_query_id_two_hop_double_pinned():
-    diabetes_curie = "MONDO:0005015"
-    heart_disease_curie = "MONDO:0005267"
     actions = [
-        f"add_qnode(ids={diabetes_curie}, key=n00)",
-        f"add_qnode(ids={heart_disease_curie}, key=n01)",
+        f"add_qnode(ids={DIABETES_CURIE}, key=n00)",
+        f"add_qnode(ids={HEART_DISEASE_CURIE}, key=n01)",
         f"add_qnode(categories=biolink:Drug, key=n02)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:related_to, key=e00)",
         "add_qedge(subject=n01, object=n02, predicates=biolink:treats, key=e01)",
@@ -1528,8 +1533,8 @@ def test_node_binding_query_id_two_hop_double_pinned():
     assert len(message.results) > 1
     kg = response.envelope.message.knowledge_graph
     # Make the input curie and one of its children appear somewhere in the results
-    assert diabetes_curie in kg.nodes
-    assert heart_disease_curie in kg.nodes
+    assert DIABETES_CURIE in kg.nodes
+    assert HEART_DISEASE_CURIE in kg.nodes
     # Make sure node bindings do/don't have 'query_id' filled out as appropriate
     for result in message.results:
         for node_binding in result.node_bindings["n00"]:
@@ -1542,20 +1547,10 @@ def test_node_binding_query_id_two_hop_double_pinned():
     dabigatran_results = [result for result in message.results if result.essence == "DABIGATRAN"]
     assert len(dabigatran_results) == 1
     dabigatran_result = dabigatran_results[0]
-    edge_keys_that_should_be_filled = {"e00", "e01", "subclass:n00--n00", "subclass:n01--n01"}
-    assert set(dabigatran_result.edge_bindings) == edge_keys_that_should_be_filled
+    edge_keys_that_should_be_filled = {"e00", "e01"}
+    assert set(dabigatran_result.analyses[0].edge_bindings) == edge_keys_that_should_be_filled
     for edge_key in edge_keys_that_should_be_filled:
-        assert len(dabigatran_result.edge_bindings[edge_key])
-    # Make sure we have some results with BOTH subclass self-edges
-    num_results_with_both_subclass_qedges = 0
-    for result in message.results:
-        subclass_qedges_present = set()
-        for qedge_key in result.edge_bindings:
-            if qedge_key.startswith("subclass"):
-                subclass_qedges_present.add(qedge_key)
-        if len(subclass_qedges_present) > 1:
-            num_results_with_both_subclass_qedges += 1
-    assert num_results_with_both_subclass_qedges > 1
+        assert len(dabigatran_result.analyses[0].edge_bindings[edge_key])
 
 
 @pytest.mark.external
@@ -1574,7 +1569,7 @@ def test_missing_chp_results():
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert len(message.results) > 20
-    assert any(result for result in message.results if "subclass:n1--n1" in result.edge_bindings)
+    assert any(edge.predicate == "biolink:subclass_of" for edge in message.knowledge_graph.edges.values())
 
 
 @pytest.mark.slow

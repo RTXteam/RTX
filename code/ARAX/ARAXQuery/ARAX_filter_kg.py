@@ -633,12 +633,12 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                 if type(x) == str:
                                     known_values.add(x)
             known_attributes = set()
-            provided_by_attributes = {'biolink:knowledge_source',
-                                            'biolink:primary_knowledge_source',
-                                            'biolink:original_knowledge_source',
-                                            'biolink:aggregator_knowledge_source',
-                                            'biolink:supporting_data_source',
-                                            'biolink:original_source',
+            provided_by_attributes = {'knowledge_source',
+                                            'primary_knowledge_source',
+                                            'original_knowledge_source',
+                                            'aggregator_knowledge_source',
+                                            'supporting_data_source',
+                                            'original_source',
                                             'provided_by'}
             for edge in message.knowledge_graph.edges.values():
                 if hasattr(edge, 'attributes'):
@@ -1509,7 +1509,7 @@ def main():
     #### If successful, show the result
     # print(response.show(level=ARAXResponse.DEBUG))
     # response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
-    #    'reasoner_id': message.reasoner_id, 'tool_version': message.tool_version }
+    #    'resource_id': message.resource_id, 'tool_version': message.tool_version }
     # response.data['message_stats']['confidence_scores'] = []
     # for result in message.results:
     #    response.data['message_stats']['confidence_scores'].append(result.confidence)

@@ -30,11 +30,11 @@ class ARAXAttributeParser:
         provenance_information = { 'n_sources': 0, 'provenance_counts': {}, 'predicate_counts': {} }
         sources = {}
         information_type_ids = {
-            'biolink:knowledge_source' : True,
-            'biolink:original_knowledge_source': True,
-            'biolink:aggregator_knowledge_source': True,
-            'biolink:primary_knowledge_source': True,
-            'biolink:supporting_data_source': True
+            'knowledge_source' : True,
+            'original_knowledge_source': True,
+            'aggregator_knowledge_source': True,
+            'primary_knowledge_source': True,
+            'supporting_data_source': True
         }
  
         #### If message is in dict form, just work with that instead of converting it first

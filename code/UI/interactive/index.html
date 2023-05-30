@@ -39,7 +39,7 @@
 &nbsp;Output<br>
 <div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
 <div id="provenanceMenu" onclick="openSection('provenance');" class="menuleftitem" title="List of Knowledge Providers that were invoked when answering this query">Provenance</div>
-<div id="kgMenu" onclick="openSection('kg');add_cyto(0);" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
+<div id="kgMenu" onclick="openSection('kg');add_cyto(0,'KG');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
 <div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
 <div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
 <hr>
@@ -58,7 +58,7 @@
 <div class="banner" banner-bg-text="ARAX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
-<a id="menuapiurl" href="api/arax/v1.3/ui/">TRAPI 1.3.0</a>
+<a id="menuapiurl" href="api/arax/v1.4/ui/">TRAPI 1.4.0</a>
 <a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
@@ -67,9 +67,9 @@
 <div class="page">
 <br><br><br><br>
 
-<!-- div class="statushead">TRAPI 1.3</div>
+<!-- div class="statushead">TRAPI 1.4</div>
 <div id="topnotice" class="status">
-  <h3 style="display:inline-block;">This is the interface based on <b>TRAPI 1.3</b>.</h3> Click <a href="/legacy">here to go to the TRAPI 1.1-based interface</a>
+  <h3 style="display:inline-block;">This is the interface based on <b>TRAPI 1.4</b>.</h3> Click <a href="/legacy">here to go to the TRAPI 1.3-based interface</a>
 </div><br><br -->
 
 <div class="pagesection" id="historyDiv">
@@ -458,7 +458,9 @@
 
 
 <div class="pagesection" style="overflow:visible;" id="recentqsDiv">
-  <div class="statushead">Recent ARAX System Activity</div>
+  <div class="statushead">Recent ARAX System Activity
+    <span style="float:right;" id="recentqsLink"></span>
+  </div>
   <div class="status">
     <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentQs();"/>
     <input type="text" class="questionBox" id="qftime" onkeydown="submit_on_enter(this);" value="24" size="3" maxlength="3"/>hours (max.200)
@@ -469,7 +471,9 @@
 </div>
 
 <div class="pagesection" style="overflow:visible;" id="kpinfoDiv">
-  <div class="statushead">SmartAPI Information</div>
+  <div class="statushead">SmartAPI Information
+    <span style="float:right;"><a href="?smartapi=1">[ Direct link to this page ]</a></span>
+  </div>
   <div class="status">
     <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveKPInfo();"/>
     <span style="margin-left:50px;" id="kpinfo_wait"></span>
@@ -511,11 +515,11 @@
     <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
     <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
     <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
-    <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.3');"/>
+    <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.4');"/>
     <input type="button" class="qprob p1" value="ICEES-Asthma" onClick="update_url('EXT','https://icees.renci.org:16339');"/>
     <input type="button" class="qprob p1" value="ICEES-DILI" onClick="update_url('EXT','https://icees.renci.org:16341');"/>
-    <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.3');"/>
-    <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.3');"/>
+    <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.4');"/>
+    <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.4');"/>
     <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
     <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
     <br><br>

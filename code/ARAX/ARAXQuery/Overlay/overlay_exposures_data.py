@@ -19,6 +19,7 @@ from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
+from openapi_server.models.retrieval_source import RetrievalSource
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
@@ -216,13 +217,19 @@ class OverlayExposuresData:
             #EdgeAttribute(original_attribute_name="is_defined_by", value="ARAX", attribute_type_id="biolink:Unknown"),
             EdgeAttribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
             # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-            EdgeAttribute(original_attribute_name=None, value="infores:icees", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-            EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
+            # EdgeAttribute(original_attribute_name=None, value="infores:icees", attribute_type_id="primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+            # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
             EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
             #EdgeAttribute(name="qedge_ids", value=[self.virtual_relation_label])
         ]
+        retrieval_source = [
+                                        RetrievalSource(resource_id="infores:icees", resource_role="primary_knowledge_source"),
+                                        RetrievalSource(resource_id="infores:arax",
+                                                        resource_role="aggregator_knowledge_source",
+                                                        upstream_resource_ids=["infores:icees"])
+                    ]
         edge = Edge(predicate=self.icees_edge_type, subject=subject_curie, object=object_curie,
-                        attributes=edge_attribute_list)
+                        attributes=edge_attribute_list,sources=retrieval_source)
         edge.qedge_keys=[self.virtual_relation_label]
         return id, edge
 

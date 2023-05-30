@@ -29,6 +29,7 @@ from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
 from openapi_server.models.attribute import Attribute
+from openapi_server.models.retrieval_source import RetrievalSource
 
 
 class TRAPIQuerier:
@@ -36,13 +37,17 @@ class TRAPIQuerier:
     def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, kp_timeout: Optional[int],
                  kp_selector: KPSelector = KPSelector(), force_local: bool = False):
         self.log = response_object
-        self.kp_name = kp_name
+        self.kp_infores_curie = kp_name
         self.user_specified_kp = user_specified_kp
         self.kp_timeout = kp_timeout
         self.force_local = force_local
         self.kp_selector = kp_selector
         self.kp_endpoint = f"{kp_selector.get_kp_endpoint_url(kp_name)}"
         self.qnodes_with_single_id = dict()  # This is set during the processing of each query
+        self.arax_infores_curie = "infores:arax"
+        self.arax_retrieval_source = RetrievalSource(resource_id=self.arax_infores_curie,
+                                                     resource_role="aggregator_knowledge_source",
+                                                     upstream_resource_ids=[self.kp_infores_curie])
 
     async def answer_one_hop_query_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -58,25 +63,25 @@ class TRAPIQuerier:
         self.qnodes_with_single_id = {qnode_key: qnode.ids[0] for qnode_key, qnode in query_graph.nodes.items()
                                       if qnode.ids and len(qnode.ids) == 1}
         if self.qnodes_with_single_id:
-            self.log.debug(f"{self.kp_name}: Qnodes with an implied parent query ID are: {self.qnodes_with_single_id}")
+            self.log.debug(f"{self.kp_infores_curie}: Qnodes with an implied parent query ID are: {self.qnodes_with_single_id}")
 
         self._verify_is_one_hop_query_graph(qg_copy)
         if log.status != 'OK':
             return final_kg
 
         # Verify that the KP accepts these predicates/categories/prefixes
-        if self.kp_name != "infores:rtx-kg2":
+        if self.kp_infores_curie != "infores:rtx-kg2":
             if self.user_specified_kp:  # This is already done if expand chose the KP itself
-                if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_name):
-                    log.error(f"{self.kp_name} cannot answer queries with the specified categories/predicates",
+                if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_infores_curie):
+                    log.error(f"{self.kp_infores_curie} cannot answer queries with the specified categories/predicates",
                               error_code="UnsupportedQG")
                     return final_kg
 
         # Convert the QG so that it uses curies with prefixes the KP likes
-        qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_name, log)
+        qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_infores_curie, log)
         if not qg_copy:  # Means no equivalent curies with supported prefixes were found
             skipped_message = f"No equivalent curies with supported prefixes found"
-            log.update_query_plan(qedge_key, self.kp_name, "Skipped", skipped_message)
+            log.update_query_plan(qedge_key, self.kp_infores_curie, "Skipped", skipped_message)
             return final_kg
 
         # Answer the query using the KP and load its answers into our object model
@@ -102,18 +107,18 @@ class TRAPIQuerier:
             return final_kg
 
         # Verify that the KP accepts these predicates/categories/prefixes
-        if self.kp_name != "infores:rtx-kg2":
+        if self.kp_infores_curie != "infores:rtx-kg2":
             if self.user_specified_kp:  # This is already done if expand chose the KP itself
-                if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_name):
-                    log.error(f"{self.kp_name} cannot answer queries with the specified categories/predicates",
+                if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_infores_curie):
+                    log.error(f"{self.kp_infores_curie} cannot answer queries with the specified categories/predicates",
                               error_code="UnsupportedQG")
                     return final_kg
 
         # Convert the QG so that it uses curies with prefixes the KP likes
-        qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_name, log)
+        qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_infores_curie, log)
         if not qg_copy:  # Means no equivalent curies with supported prefixes were found
             skipped_message = f"No equivalent curies with supported prefixes found"
-            log.update_query_plan(qedge_key, self.kp_name, "Skipped", skipped_message)
+            log.update_query_plan(qedge_key, self.kp_infores_curie, "Skipped", skipped_message)
             return final_kg
 
         # Answer the query using the KP and load its answers into our object model
@@ -178,9 +183,9 @@ class TRAPIQuerier:
                         if node_binding.query_id in query_node_ids:
                             kg_id_to_parent_query_id_map[kg_id].add(node_binding.query_id)
                         else:
-                            self.log.warning(f"{self.kp_name} returned a NodeBinding.query_id ({node_binding.query_id})"
+                            self.log.warning(f"{self.kp_infores_curie} returned a NodeBinding.query_id ({node_binding.query_id})"
                                              f" for {qnode_key} that is not in {qnode_key}'s ids in the QG sent "
-                                             f"to {self.kp_name}. This is invalid TRAPI. Skipping this binding.")
+                                             f"to {self.kp_infores_curie}. This is invalid TRAPI. Skipping this binding.")
                     # Handle case where KP does NOT return a query_id (may or may not be valid TRAPI)
                     else:
                         if qnode_key in qnodes_with_single_id:
@@ -191,17 +196,20 @@ class TRAPIQuerier:
                                 implied_parent_id = kg_id
                                 kg_id_to_parent_query_id_map[kg_id].add(implied_parent_id)
                             else:
-                                self.log.warning(f"{self.kp_name} returned a node binding for {qnode_key} that does "
+                                self.log.warning(f"{self.kp_infores_curie} returned a node binding for {qnode_key} that does "
                                                  f"not include a query_id, and {qnode_key} has multiple ids in the "
-                                                 f"query sent to {self.kp_name}, none of which are the KG ID ({kg_id})."
+                                                 f"query sent to {self.kp_infores_curie}, none of which are the KG ID ({kg_id})."
                                                  f" This is invalid TRAPI. Skipping this binding.")
 
-            for qedge_key, edge_bindings in result.edge_bindings.items():
-                for edge_binding in edge_bindings:
-                    kg_id = edge_binding.id
-                    qedge_key_mappings[kg_id].add(qedge_key)
+            for analysis in result.analyses:  # TODO: Do we need to worry about extracting supporting_graphs from KPs?
+                if not analysis.edge_bindings:
+                    continue
+                for qedge_key, edge_bindings in analysis.edge_bindings.items():
+                    for edge_binding in edge_bindings:
+                        kg_id = edge_binding.id
+                        qedge_key_mappings[kg_id].add(qedge_key)
 
-        if not self.kp_name == "infores:rtx-kg2":
+        if not self.kp_infores_curie == "infores:rtx-kg2":
             # Convert parent curie mappings back to canonical form (we send KPs synonyms sometimes..)
             raw_parent_query_ids = {parent_curie for kg_id, query_ids in kg_id_to_parent_query_id_map.items()
                                     for parent_curie in query_ids}
@@ -223,13 +231,13 @@ class TRAPIQuerier:
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
         num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in query_graph.nodes.values()])
         waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
-        self.log.update_query_plan(qedge_key, self.kp_name, "Waiting", waiting_message, query=query_sent)
+        self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Waiting", waiting_message, query=query_sent)
         start = time.time()
-        if self.force_local and self.kp_name == 'infores:rtx-kg2':
+        if self.force_local and self.kp_infores_curie == 'infores:rtx-kg2':
             json_response = self._answer_query_force_local(request_body)
         # Otherwise send the query graph to the KP's TRAPI API
         else:
-            self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API ({self.kp_endpoint})")
+            self.log.debug(f"{self.kp_infores_curie}: Sending query to {self.kp_infores_curie} API ({self.kp_endpoint})")
             async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
                 try:
                     async with session.post(f"{self.kp_endpoint}/query",
@@ -241,25 +249,25 @@ class TRAPIQuerier:
                         else:
                             wait_time = round(time.time() - start)
                             http_error_message = f"Returned HTTP error {response.status} after {wait_time} seconds"
-                            self.log.warning(f"{self.kp_name}: {http_error_message}. Query sent to KP was: {request_body}")
-                            self.log.update_query_plan(qedge_key, self.kp_name, "Error", http_error_message)
+                            self.log.warning(f"{self.kp_infores_curie}: {http_error_message}. Query sent to KP was: {request_body}")
+                            self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", http_error_message)
                             return QGOrganizedKnowledgeGraph()
                 except asyncio.exceptions.TimeoutError:
                     timeout_message = f"Query timed out after {query_timeout} seconds"
-                    self.log.warning(f"{self.kp_name}: {timeout_message}")
-                    self.log.update_query_plan(qedge_key, self.kp_name, "Timed out", timeout_message)
+                    self.log.warning(f"{self.kp_infores_curie}: {timeout_message}")
+                    self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Timed out", timeout_message)
                     return QGOrganizedKnowledgeGraph()
                 except Exception as ex:
                     wait_time = round(time.time() - start)
                     exception_message = f"Request threw exception after {wait_time} seconds: {type(ex)}"
-                    self.log.warning(f"{self.kp_name}: {exception_message}")
-                    self.log.update_query_plan(qedge_key, self.kp_name, "Error", exception_message)
+                    self.log.warning(f"{self.kp_infores_curie}: {exception_message}")
+                    self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", exception_message)
                     return QGOrganizedKnowledgeGraph()
 
         wait_time = round(time.time() - start)
         answer_kg = self._load_kp_json_response(json_response, query_graph)
         done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {wait_time} seconds"
-        self.log.update_query_plan(qedge_key, self.kp_name, "Done", done_message)
+        self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Done", done_message)
         return answer_kg
 
     def _answer_query_using_kp(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -268,11 +276,11 @@ class TRAPIQuerier:
         query_timeout = self._get_query_timeout_length()
 
         # Avoid calling the KG2 TRAPI endpoint if the 'force_local' flag is set (used only for testing/dev work)
-        if self.force_local and self.kp_name == 'infores:rtx-kg2':
+        if self.force_local and self.kp_infores_curie == 'infores:rtx-kg2':
             json_response = self._answer_query_force_local(request_body)
         # Otherwise send the query graph to the KP's TRAPI API
         else:
-            self.log.debug(f"{self.kp_name}: Sending query to {self.kp_name} API ({self.kp_endpoint})")
+            self.log.debug(f"{self.kp_infores_curie}: Sending query to {self.kp_infores_curie} API ({self.kp_endpoint})")
             try:
                 with requests_cache.disabled():
                     start = time.time()
@@ -283,11 +291,11 @@ class TRAPIQuerier:
                     self.log.wait_time = round(time.time() - start)
             except Exception:
                 timeout_message = f"Query timed out after {query_timeout} seconds"
-                self.log.warning(f"{self.kp_name}: {timeout_message}")
+                self.log.warning(f"{self.kp_infores_curie}: {timeout_message}")
                 self.log.timed_out = query_timeout
                 return QGOrganizedKnowledgeGraph()
             if kp_response.status_code != 200:
-                self.log.warning(f"{self.kp_name} API returned response of {kp_response.status_code}. "
+                self.log.warning(f"{self.kp_infores_curie} API returned response of {kp_response.status_code}. "
                                  f"Response from KP was: {kp_response.text}")
                 self.log.http_error = f"HTTP {kp_response.status_code}"
                 return QGOrganizedKnowledgeGraph()
@@ -312,14 +320,14 @@ class TRAPIQuerier:
         # Load the query into a JSON Query object
         json_qg = {'nodes': stripped_qnodes, 'edges': stripped_qedges}
         body = {'message': {'query_graph': json_qg}}
-        if self.kp_name == "infores:rtx-kg2":
+        if self.kp_infores_curie == "infores:rtx-kg2":
             body['submitter'] = "infores:arax"
             body['return_minimal_metadata'] = True  # Don't want KG2 attributes because ARAX adds them later (faster)
             # TODO: Later add submitter for all KP queries (isn't yet supported by all KPs - part of TRAPI 1.2.1) #1654
         return body
 
     def _answer_query_force_local(self, request_body: dict) -> dict:
-        self.log.debug(f"{self.kp_name}: Pretending to send query to KG2 API (really it will be run locally)")
+        self.log.debug(f"{self.kp_infores_curie}: Pretending to send query to KG2 API (really it will be run locally)")
         arax_query = ARAXQuery()
         kg2_araxquery_response = arax_query.query(request_body, mode='RTXKG2')
         json_response = kg2_araxquery_response.envelope.to_dict()
@@ -329,19 +337,19 @@ class TRAPIQuerier:
         # Load the results into the object model
         answer_kg = QGOrganizedKnowledgeGraph()
         if not json_response.get("message"):
-            self.log.warning(f"{self.kp_name}: No 'message' was included in the response from {self.kp_name}. "
+            self.log.warning(f"{self.kp_infores_curie}: No 'message' was included in the response from {self.kp_infores_curie}. "
                              f"Response was: {json.dumps(json_response, indent=4)}")
             return answer_kg
         elif not json_response["message"].get("results"):
-            self.log.debug(f"{self.kp_name}: No 'results' were returned.")
+            self.log.debug(f"{self.kp_infores_curie}: No 'results' were returned.")
             json_response["message"]["results"] = []  # Setting this to empty list helps downstream processing
             return answer_kg
         else:
-            self.log.debug(f"{self.kp_name}: Got results from {self.kp_name}.")
+            self.log.debug(f"{self.kp_infores_curie}: Got results from {self.kp_infores_curie}.")
             kp_message = ARAXMessenger().from_dict(json_response["message"])
 
         # Work around genetics provider's curie whitespace bug for now  TODO: remove once they've fixed it
-        if self.kp_name == "infores:genetics-data-provider":
+        if self.kp_infores_curie == "infores:genetics-data-provider":
             self._remove_whitespace_from_curies(kp_message)
 
         # Build a map that indicates which qnodes/qedges a given node/edge fulfills
@@ -351,19 +359,18 @@ class TRAPIQuerier:
         returned_edge_keys_missing_qg_bindings = set()
         for returned_edge_key, returned_edge in kp_message.knowledge_graph.edges.items():
             arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
-            if not returned_edge.attributes:
-                returned_edge.attributes = []
-            # Put in a placeholder for missing required attribute fields to try to keep our answer TRAPI-compliant
-            for attribute in returned_edge.attributes:
-                if not attribute.attribute_type_id:
-                    attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
 
-            # Check if KPs are properly indicating that these edges came from them (indicate it ourselves if not)
-            attribute_has_kp_name = lambda value, kp_name: (type(value) is list and kp_name in value) or (value == kp_name)
-            if not any(attribute_has_kp_name(attribute.value, self.kp_name) for attribute in returned_edge.attributes):
-                returned_edge.attributes.append(eu.get_kp_source_attribute(self.kp_name))
-            # Add an attribute to indicate that this edge passed through ARAX
-            returned_edge.attributes.append(eu.get_arax_source_attribute())
+            # Put in a placeholder for missing required attribute fields to try to keep our answer TRAPI-compliant
+            if returned_edge.attributes:
+                for attribute in returned_edge.attributes:
+                    if not attribute.attribute_type_id:
+                        attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_infores_curie})"
+
+            # Indicate that this edge passed through ARAX
+            if returned_edge.sources:
+                returned_edge.sources.append(self.arax_retrieval_source)
+            else:
+                returned_edge.sources = [self.arax_retrieval_source]
 
             if returned_edge_key in kg_to_qg_mappings['edges']:
                 for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
@@ -371,7 +378,7 @@ class TRAPIQuerier:
             else:
                 returned_edge_keys_missing_qg_bindings.add(returned_edge_key)
         if returned_edge_keys_missing_qg_bindings:
-            self.log.warning(f"{self.kp_name}: {len(returned_edge_keys_missing_qg_bindings)} edges in the KP's answer "
+            self.log.warning(f"{self.kp_infores_curie}: {len(returned_edge_keys_missing_qg_bindings)} edges in the KP's answer "
                              f"KG have no bindings to the QG: {returned_edge_keys_missing_qg_bindings}")
 
         returned_node_keys_missing_qg_bindings = set()
@@ -384,9 +391,9 @@ class TRAPIQuerier:
             if returned_node.attributes:
                 for attribute in returned_node.attributes:
                     if not attribute.attribute_type_id:
-                        attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_name})"
+                        attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_infores_curie})"
         if returned_node_keys_missing_qg_bindings:
-            self.log.warning(f"{self.kp_name}: {len(returned_node_keys_missing_qg_bindings)} nodes in the KP's answer "
+            self.log.warning(f"{self.kp_infores_curie}: {len(returned_node_keys_missing_qg_bindings)} nodes in the KP's answer "
                              f"KG have no bindings to the QG: {returned_node_keys_missing_qg_bindings}")
 
         # Fill out our unofficial node.query_ids property
@@ -411,12 +418,14 @@ class TRAPIQuerier:
         qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
         qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
         qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
-        edge_key = f"{self.kp_name}:{edge.subject}--{edge.predicate}--{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}--{edge.object}"
+        qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+        primary_ks = eu.get_primary_knowledge_source(edge)
+        edge_key = f"{self.kp_infores_curie}:{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_ks}"
         return edge_key
 
     def _get_query_timeout_length(self) -> int:
         # Returns the number of seconds we should wait for a response
-        if self.kp_name == "infores:rtx-kg2":
+        if self.kp_infores_curie == "infores:rtx-kg2":
             return 600
         elif self.kp_timeout:
             return self.kp_timeout
@@ -441,16 +450,21 @@ class TRAPIQuerier:
                 for parent_query_id in parent_query_ids:
                     if parent_query_id is not None and parent_query_id != node_key:
                         subclass_edge = Edge(subject=node_key, object=parent_query_id, predicate="biolink:subclass_of")
+
                         # Add provenance info to this edge so it's clear where the assertion came from
-                        kp_source_attribute = Attribute(attribute_type_id="biolink:primary_knowledge_source",
-                                                        value=self.kp_name,
-                                                        value_type_id="biolink:InformationResource",
-                                                        attribute_source="infores:arax",
-                                                        description=f"ARAX created this edge to represent the fact "
-                                                                    f"that {self.kp_name} fulfilled {subclass_edge.object}"
-                                                                    f" (for {qnode_key}) with {subclass_edge.subject}.")
-                        arax_source_attribute = eu.get_arax_source_attribute()
-                        subclass_edge.attributes = [kp_source_attribute, arax_source_attribute]
+                        kp_retrieval_source = RetrievalSource(resource_id=self.kp_infores_curie,
+                                                              resource_role="primary_knowledge_source")
+                        subclass_edge.sources = [kp_retrieval_source, self.arax_retrieval_source]
+
+                        # Further describe in plain english where this edge comes from
+                        edge_note = Attribute(attribute_type_id="biolink:description",
+                                              value=f"ARAX created this edge to represent the fact "
+                                                    f"that {self.kp_infores_curie} fulfilled {subclass_edge.object}"
+                                                    f" (for {qnode_key}) with {subclass_edge.subject}.",
+                                              value_type_id="metatype:String",
+                                              attribute_source=self.arax_infores_curie)
+                        subclass_edge.attributes = [edge_note]
+
                         subclass_edges.append(subclass_edge)
                 if subclass_edges:
                     for edge in subclass_edges:
@@ -470,8 +484,8 @@ class TRAPIQuerier:
             final_edge_count = sum([len(edges) for edges in answer_kg.edges_by_qg_id.values()])
             num_edges_added = final_edge_count - initial_edge_count
             if num_edges_added:
-                self.log.debug(f"{self.kp_name}: Added {num_edges_added} subclass_of edges to the KG based on "
-                               f"query ID mappings {self.kp_name} returned")
+                self.log.debug(f"{self.kp_infores_curie}: Added {num_edges_added} subclass_of edges to the KG based on "
+                               f"query ID mappings {self.kp_infores_curie} returned")
         return answer_kg
 
     @staticmethod

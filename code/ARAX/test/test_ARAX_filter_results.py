@@ -188,7 +188,7 @@ def test_sort_by_score():
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert len(message.results) == 20
-    result_scores = [x.score for x in message.results]
+    result_scores = [x.analyses[0].score for x in message.results]
     assert result_scores == sorted(result_scores)
     assert max(result_scores) < 1
 

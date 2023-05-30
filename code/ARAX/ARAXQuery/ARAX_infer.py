@@ -354,6 +354,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         message = self.message
         parameters = self.parameters
         XDTD = ExplainableDTD()
+        iu = InferUtilities()
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
@@ -421,42 +422,50 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         if self.response.status != 'OK':
             return self.response
 
-        normalized_curie = self.synonymizer.get_canonical_curies(self.parameters['node_curie'])[self.parameters['node_curie']]
-        if normalized_curie:
-            preferred_curie = normalized_curie['preferred_curie']
-            self.response.debug(f"Get a preferred sysnonym {preferred_curie} from Node Synonymizer for {self.parameters['node_curie']}")
-        else:
-            self.response.warning(f"Could not get a preferred sysnonym for disease {self.parameters['node_curie']}")
-
-        try:
-            top_drugs = XDTD.get_top_drugs_for_disease(disease_ids=preferred_curie)
-            top_paths = XDTD.get_top_paths_for_disease(disease_ids=preferred_curie)
-        except:
-            self.response.error(f"Could not get top drugs and paths for disease {preferred_curie}", error_code="ValueError")
-            return self.response
-
-        if len(top_drugs) == 0:
-            self.response.error(f"Could not get predicted drugs for disease {preferred_curie}. Likely the model was not trained with this disease.", error_code="ValueError")
-            return self.response
-        if len(top_paths) == 0:
-            self.response.warning(f"Could not get any predicted paths for disease {preferred_curie}. Likely the model considers there is no reasonable path for this disease.")
-
-        # FW: temp fix to use the pickle fil for dev work rather than recomputing
-        # Comment out the following 3 lines and uncomment the above for prod deploy
-        # top_drugs = pd.read_csv(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"top_n_drugs.csv"]))
-        # with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
-        #     top_paths = pickle.load(fid)
+        # normalized_curie = self.synonymizer.get_canonical_curies(self.parameters['node_curie'])[self.parameters['node_curie']]
+        # if normalized_curie:
+        #     preferred_curie = normalized_curie['preferred_curie']
+        #     self.response.debug(f"Get a preferred sysnonym {preferred_curie} from Node Synonymizer for {self.parameters['node_curie']}")
+        # else:
+        #     self.response.warning(f"Could not get a preferred sysnonym for disease {self.parameters['node_curie']}")
+        #     return self.response
         
-        ## Limit the number of drugs and paths to the top n
-        top_drugs = top_drugs.iloc[:self.parameters['n_drugs'],:].reset_index(drop=True)
-        top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:self.parameters['n_paths']] for row in top_drugs.to_numpy()}
+        #FIXME: Considering kg2 version is changed frequently but xdtd training is time consuming, 
+        # to make it more robust to the different version of kg2, we temporarily utlize all equivalent curies.
+        all_equivalent_curies = self.synonymizer.get_equivalent_nodes(self.parameters['node_curie'])[self.parameters['node_curie']]
+        if all_equivalent_curies:
+            self.response.debug(f"Get equivalent curies {all_equivalent_curies} from Node Synonymizer for {self.parameters['node_curie']}")
+        else:
+            self.response.warning(f"Could not get equivalent curies for disease {self.parameters['node_curie']}")
+            return self.response
+        
+        for preferred_curie in all_equivalent_curies:
+            try:
+                top_drugs = XDTD.get_top_drugs_for_disease(disease_ids=preferred_curie)
+                top_paths = XDTD.get_top_paths_for_disease(disease_ids=preferred_curie)
+            except:
+                self.response.warning(f"Could not get top drugs and paths for disease {preferred_curie}")
+                continue
 
-        # TRAPI-ifies the results of the model
-        iu = InferUtilities()
-        qedge_id = self.parameters.get('qedge_id')
+            if len(top_drugs) == 0:
+                self.response.warning(f"Could not get predicted drugs for disease {preferred_curie}. Likely the model was not trained with this disease.")
+                continue
+            if len(top_paths) == 0:
+                self.response.warning(f"Could not get any predicted paths for disease {preferred_curie}. Likely the model considers there is no reasonable path for this disease.")
 
+            # FW: temp fix to use the pickle fil for dev work rather than recomputing
+            # Comment out the following 3 lines and uncomment the above for prod deploy
+            # top_drugs = pd.read_csv(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"top_n_drugs.csv"]))
+            # with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
+            #     top_paths = pickle.load(fid)
+            
+            ## Limit the number of drugs and paths to the top n
+            top_drugs = top_drugs.iloc[:self.parameters['n_drugs'],:].reset_index(drop=True)
+            top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:self.parameters['n_paths']] for row in top_drugs.to_numpy() if (row[0], row[2]) in top_paths}
 
-        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_drugs, top_paths, qedge_id, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
+            # TRAPI-ifies the results of the model
+            qedge_id = self.parameters.get('qedge_id')
+            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_drugs, top_paths, qedge_id, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
 
         return self.response
 
