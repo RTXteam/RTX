@@ -73,9 +73,10 @@ If the machine you'll be using has never previously built a KG2c, you need to do
 1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
     1. Create a copy of `config_secrets.json` that contains the proper secrets for your own KG2pre Neo4j endpoint
 
-To run the build:
+To run the build:  
+    The build requires ~200GB of RAM and 2-11 hours depending on your settings in **kg2c_config.json**
 
-1. Make sure you have the **latest code** from whatever branch you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
+1. Make sure you have the **latest code** from whatever branch of the **RTX** repo you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
 2. Locally modify the KG2c build **config file** (`RTX/code/kg2c/kg2c_config.json`) for your particular needs:
     - `kg2pre_version`: Specify the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
     - `biolink_version`: Should match the Biolink version used by the KG2pre you specified (e.g., 1.8.1)
@@ -116,8 +117,8 @@ config file once again:
 And then once again run `python3 RTX/code/kg2c/build_kg2c.py`.
 
 ### Host KG2canonicalized in Neo4j
-
-These instructions assume Neo4j is not already installed and that you are hosting Neo4j on an AWS instance.
+The Neo4j instance is usually present on the AWS EC2 instance `KG2canonicalized.rtx.ai`.  
+These instructions assume Neo4j is not already installed and that you are hosting Neo4j on an AWS **Ubuntu 18** EC2 instance. (You are expected to have AWS credentials to access the instance).
 
 (1) Clone the `RTX` repo into the instance's home directory (if you haven't already):
 ```
@@ -135,7 +136,7 @@ python3 RTX/code/kg2c/setup_for_neo4j.py
 bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
 ```
 
-### Upload KG2C to KGE (Knowledge Graph Exchange)
+### Upload KG2C to KGE (Knowledge Graph Exchange) (Deprecated)
 ##### Generate TSV files
 
 The following should be run in the build system, typically `buildkg2c.rtx.ai`, in the folder where the files `nodes_c.tsv` and `edges_c.tsv` are stored. 
@@ -157,7 +158,7 @@ python3.7 kg2c_tsv_to_kgx_tsv.py
 bash -x kgx-validation-and-metagraph.sh
 ```
 
-##### Upload to KGE 
+##### Upload to KGE
 
 (4) Upload `edges.tsv`, `nodes.tsv`, and `content_metadata.json` to a public S3 bucket. 
 ```
@@ -175,3 +176,4 @@ aws s3 sp content_metadata.json s3://rtx-kg2-public
 # Contact
 ## Maintainer
 - Amy Glen, Oregon State University (glena@oregonstate.edu)
+- Sundareswar Pullela, Oregon State University (pullelas@oregonstate.edu)
