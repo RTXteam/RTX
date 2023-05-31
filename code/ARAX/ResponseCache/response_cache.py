@@ -339,9 +339,86 @@ class ResponseCache:
             else:
                 return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
+
+        #### Otherwise, see if it is a URL
+        if response_id.startswith('CQ') or response_id.startswith('$$') or response_id.startswith('http'):
+            debug = True
+            url = 'xx'
+
+            if response_id.startswith('http'):
+                url = response_id.replace('$', '/')
+
+            if response_id.startswith('$$'):
+                url = 'https:' + response_id.replace('$', '/')
+
+            if response_id.startswith('CQ'):
+                url = f"https://peptideatlas.org/tmp/{response_id}"
+
+            with requests_cache.disabled():
+                if debug:
+                    eprint(f"Trying {url}...")
+                try:
+                    response_content = requests.get(url, headers={'accept': 'application/json'})
+                except Exception as e:
+                    return( { "status": 404, "title": f"Remote URL {url} unavailable", "detail": f"Connection attempts to {url} triggered an exception: {e}", "type": "about:blank" }, 404)
+            status_code = response_content.status_code
+            if debug:
+                eprint(f"--- Fetch of {url} yielded {status_code}")
+
+            if status_code != 200:
+                if debug:
+                    eprint("Cannot fetch url "+str(url))
+                    eprint(str(response_content.content))
+                return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+            if True:
+            #try:
+                envelope = json.loads(response_content.content)
+            else:
+            #except:
+                eprint(f"ERROR: Unable to convert {url} to JSON")
+                return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+
+            #### Perform a validation on it
+            enable_validation = False
+            schema_version = trapi_version
+            if 'schema_version' in envelope:
+                schema_version = envelope['schema_version']
+            try:
+                if enable_validation:
+                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+                    validator.check_compliance_of_trapi_response(envelope)
+                    messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                    if len(messages['errors']) == 0:
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages }
+                    else:
+                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
+                else:
+                    envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
+            except Exception as error:
+                timestamp = str(datetime.now().isoformat())
+                if 'logs' not in envelope or envelope['logs'] is None:
+                    envelope['logs'] = []
+                envelope['logs'].append( { "code": 'ValidatorFailed', "level": "ERROR", "message": "TRAPI validator crashed with error: " + str(error),
+                    "timestamp": timestamp } )
+                if 'description' not in envelope or envelope['description'] is None:
+                    envelope['description'] = ''
+                envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'TRAPI validator crashed with error: ' + str(error) + ' --- ' + envelope['description'] }
+
+            #### Count provenance information
+            attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
+            envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
+
+            return envelope
+
+
+
+
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
             debug = False
+
             ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
@@ -364,6 +441,7 @@ class ResponseCache:
                     eprint("Cannot fetch from ARS a response corresponding to response_id="+str(response_id))
                     eprint(str(response_content.content))
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
 
             content_size = len(response_content.content)
             if content_size < 1000:
