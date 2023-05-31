@@ -40,7 +40,7 @@ jobs:
         echo "http://localhost:5008/api/rtxkg2/v1.4" > /mnt/config/kg2_url_override.txt
 
     - name: Append code dir to GITHUB_PATH                # Causing RTXConfiguration import error
-      run: echo "::add-path::./RTX/code"
+      run: echo "$HOME/RTX" >> $GITHUB_PATH
 
     - name: Download databases as needed
       run: python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
