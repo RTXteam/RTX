@@ -24,7 +24,8 @@ from openapi_server.models.attribute import Attribute
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
                                        kg_should_be_incomplete=False, debug=False, should_throw_error=False,
-                                       error_code: Optional[str] = None, timeout: Optional[int] = None) -> Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
+                                       error_code: Optional[str] = None, timeout: Optional[int] = None,
+                                       return_message: bool = False) -> tuple:
     # Run the query
     araxq = ARAXQuery()
     assert actions or json_query  # Must provide some sort of query to run
@@ -56,7 +57,7 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
     check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     check_property_format(nodes_by_qg_id, edges_by_qg_id)
 
-    return nodes_by_qg_id, edges_by_qg_id
+    return (nodes_by_qg_id, edges_by_qg_id, message) if return_message else (nodes_by_qg_id, edges_by_qg_id)
 
 
 def print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -1108,7 +1109,15 @@ def test_xdtd_expand():
                 }
             }
         }
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    nodes_by_qg_id, edges_by_qg_id, message = _run_query_and_do_standard_testing(json_query=query, return_message=True)
+    assert message.auxiliary_graphs
+    for edge in edges_by_qg_id["t_edge"].values():
+        assert edge.attributes
+        support_graph_attributes = [attribute for attribute in edge.attributes if attribute.attribute_type_id == "biolink:support_graphs"]
+        assert support_graph_attributes
+        assert len(support_graph_attributes) == 1
+        support_graph_attribute = support_graph_attributes[0]
+        assert support_graph_attribute.value[0] in message.auxiliary_graphs
 
 
 @pytest.mark.slow
