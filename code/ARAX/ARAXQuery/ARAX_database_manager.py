@@ -10,6 +10,8 @@ import argparse
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+print(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+print(sys.path)
 from RTXConfiguration import RTXConfiguration
 
 knowledge_sources_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
