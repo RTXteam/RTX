@@ -60,15 +60,6 @@ servers:
 - description: ARAX TRAPI 1.3 endpoint - production
   url: https://arax.transltr.io/api/arax/v1.3
   x-maturity: production
-- description: ARAX TRAPI 1.3 endpoint - testing
-  url: https://arax.test.transltr.io/api/arax/v1.3
-  x-maturity: testing
-- description: ARAX TRAPI 1.3 endpoint - staging
-  url: https://arax.ncats.io/beta/api/arax/v1.3
-  x-maturity: staging
-- description: ARAX TRAPI 1.3 endpoint - development
-  url: https://arax.ncats.io/beta/api/arax/v1.3
-  x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web
     service. KPs MUST provide all subject category - predicate - object category triplets
