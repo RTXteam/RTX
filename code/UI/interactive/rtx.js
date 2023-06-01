@@ -2775,22 +2775,21 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		    kmne.qualifiers = null;
 		if (edge.attributes)
 		    kmne.edge_binding_attributes = edge.attributes;
-		var tmpdata = { "data" : kmne };
-		cytodata['R'+num+'A0'].push(tmpdata);
 
                 if (kmne.attributes) {
 		    for (var att of kmne.attributes) {
 			if (att.attribute_type_id == "biolink:support_graphs" && att.value && att.value.length > 0) {
 			    for (var sgid of att.value) {
 				//console.log("edge aux::"+sgid);
+				kmne.__has_sgs = true;
 				add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
 			    }
 			}
 		    }
 		}
 
-
-
+		var tmpdata = { "data" : kmne };
+		cytodata['R'+num+'A0'].push(tmpdata);
 	    }
 	}
 
@@ -3004,7 +3003,7 @@ function add_cyto(i,dataid) {
 		'opacity': 0.8,
 		'content': function(ele) {
 		    if ((ele.data().parentdivnum > 0) && ele.data().type) {
-			return ele.data().type + (ele.data().qualifiers ? ' [q]':'');
+			return ele.data().type + (ele.data().qualifiers ? ' [q]': ele.data().__has_sgs ? ' [sg]' : '');
 		    }
 		    return '';
 		}
@@ -3106,6 +3105,8 @@ function add_cyto(i,dataid) {
 		    link.dataset.ee = nodedges[e].id();
 		    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
 		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+		    if (nodedges[e].data('__has_sgs'))
+			link.appendChild(document.createTextNode(' [sg]'));
 		    if (nodedges[e].data('qualifiers')) {
 			link.appendChild(document.createTextNode(' [q]'));
 			link.title = 'View QUALIFIED edge details';
@@ -3133,7 +3134,9 @@ function add_cyto(i,dataid) {
 		    link.dataset.ee = nodedges[e].id();
                     link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
 		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
-                    if (nodedges[e].data('qualifiers')) {
+                    if (nodedges[e].data('__has_sgs'))
+			link.appendChild(document.createTextNode(' [sg]'));
+		    if (nodedges[e].data('qualifiers')) {
 			link.appendChild(document.createTextNode(' [q]'));
 			link.title = 'View QUALIFIED edge details';
 		    }
