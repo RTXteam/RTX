@@ -7,6 +7,8 @@ from ARAX_response import ARAXResponse
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.auxiliary_graph import AuxiliaryGraph
+from openapi_server.models.attribute import Attribute
+
 
 
 class ResultTransformer:
@@ -55,11 +57,49 @@ class ResultTransformer:
                     ordered_edge_keys = sorted(list(group_edge_keys))
                     aux_graph_id_str = ";".join(ordered_edge_keys) if len(ordered_edge_keys) < 5 else f"{len(message.auxiliary_graphs)}"
                     aux_graph_key = f"aux_graph_{aux_graph_id_str}{group_id_str}"
-                    # Refer to this aux graph from the current result
-                    result.analyses[0].support_graphs.append(aux_graph_key)
                     # Create and save the aux graph in the central location (on Message), if it doesn't yet exist
                     if aux_graph_key not in message.auxiliary_graphs:
                         message.auxiliary_graphs[aux_graph_key] = AuxiliaryGraph(edges=list(group_edge_keys))
+
+                    # Refer to this aux graph from the current Result or Edge (if this is an Infer support graph)
+                    if group_id and (group_id.startswith("creative_DTD_") or group_id.startswith("creative_CRG_")):
+                        # Create an attribute for the support graph that we'll tack onto the treats edge for this result
+                        support_graph_attribute = Attribute(attribute_type_id="biolink:support_graphs",
+                                                            value=[aux_graph_key],
+                                                            attribute_source="infores:arax")
+                        # Find the 'treats' edge that this result is all about
+                        inferred_qedge_keys = [qedge_key for qedge_key, qedge in response.original_query_graph.edges.items()
+                                               if qedge.knowledge_type == "inferred"]
+                        if not len(inferred_qedge_keys):
+                            response.error(f"Result contains a {group_id} option group, but the query graph has no "
+                                           f"inferred qedge! {result}", error_code="InvalidResult")
+                            return
+                        elif len(inferred_qedge_keys) > 1:
+                            response.error(f"Query graph contains multiple 'inferred' qedges; don't know how to "
+                                           f"properly form support graphs!", error_code="UnsupportedQG")
+                            return
+                        else:
+                            inferred_qedge_key = inferred_qedge_keys[0]
+                            inferred_edge_keys = {edge_binding.id for edge_binding in
+                                                  result.analyses[0].edge_bindings[inferred_qedge_key]}
+                            # Refer to the support graph from the proper edge(s)
+                            for inferred_edge_key in inferred_edge_keys:
+                                inferred_edge = message.knowledge_graph.edges[inferred_edge_key]
+                                if inferred_edge.attributes:
+                                    support_graph_attributes = [attribute for attribute in inferred_edge.attributes
+                                                                if attribute.attribute_type_id == "biolink:support_graphs"]
+                                    if support_graph_attributes:
+                                        # Refer to this support graph from the first existing support graph attribute
+                                        existing_support_graph_attribute = support_graph_attributes[0]
+                                        if aux_graph_key not in existing_support_graph_attribute.value:
+                                            existing_support_graph_attribute.value.append(aux_graph_key)
+                                    else:
+                                        inferred_edge.attributes.append(support_graph_attribute)
+                                else:
+                                    inferred_edge.attributes = [support_graph_attribute]
+                    else:
+                        # Tack the support graph onto the result
+                        result.analyses[0].support_graphs.append(aux_graph_key)
 
                 # Delete virtual edges (since we moved them to supporting_graphs)
                 for virtual_qedge_key in virtual_qedge_keys:

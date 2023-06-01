@@ -1074,7 +1074,11 @@ function sendId(is_ars_refresh) {
 	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
     }
 
-    if (id.startsWith("http"))
+    if (id.startsWith("http")) {
+	var urlid = id.replace(/\//g,"$");
+        retrieve_response(providers["ARAX"].url+"/response/"+urlid,urlid,"all");
+    }
+    else if (0) // previous!
 	retrieve_response(id,id,"all");
     else
 	retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
@@ -2627,7 +2631,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
         div.id = 'h'+num+'_div';
 	div.title = 'Click to expand / collapse result '+num;
         div.className = 'accordion';
-	div.setAttribute('onclick', 'add_cyto('+num+',"R'+num+'");sesame(this,a'+num+'_div);');
+	div.setAttribute('onclick', 'add_cyto('+num+',"R'+num+'A0");sesame(this,a'+num+'_div);');
 	div.appendChild(document.createTextNode("Result "+num));
 	if (ess)
 	    div.innerHTML += " :: <b>"+ess+"</b>"; // meh...
@@ -2673,7 +2677,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		link.style.fontSize = "larger";
 		link.style.marginRight = "20px";
 		link.title = 'View Main Result Graph';
-		link.setAttribute('onclick', 'add_cyto('+num+',"R'+num+'");');
+		link.setAttribute('onclick', 'add_cyto('+num+',"R'+num+'A'+ranal+'");');
 		link.appendChild(document.createTextNode("Result Graph"));
 		td.appendChild(link);
 
@@ -2739,7 +2743,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	div.appendChild(table);
 	results_fragment.appendChild(div);
 
-        cytodata['R'+num] = [];
+        cytodata['R'+num+'A0'] = [];
 	//console.log("=================== CYTO num:"+num+"  #nb:"+result.node_bindings.length);
 
         for (var nbid in result.node_bindings) {
@@ -2751,7 +2755,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		if (node.attributes)
 		    kmne.node_binding_attributes = node.attributes;
 		var tmpdata = { "data" : kmne };
-		cytodata['R'+num].push(tmpdata);
+		cytodata['R'+num+'A0'].push(tmpdata);
 	    }
 	}
 
@@ -2772,7 +2776,21 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		if (edge.attributes)
 		    kmne.edge_binding_attributes = edge.attributes;
 		var tmpdata = { "data" : kmne };
-		cytodata['R'+num].push(tmpdata);
+		cytodata['R'+num+'A0'].push(tmpdata);
+
+                if (kmne.attributes) {
+		    for (var att of kmne.attributes) {
+			if (att.attribute_type_id == "biolink:support_graphs" && att.value && att.value.length > 0) {
+			    for (var sgid of att.value) {
+				//console.log("edge aux::"+sgid);
+				add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+			    }
+			}
+		    }
+		}
+
+
+
 	    }
 	}
 
@@ -2780,46 +2798,51 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
             for (var sg in result.analyses[0].support_graphs) {
 		var sgid = result.analyses[0].support_graphs[sg];
-		cytodata['AUX'+sgid] = [];
-		var nodes = {};
-
-		for (var edgeid of aux[sgid]["edges"]) {
-                    var kmne = Object.create(kg.edges[edgeid]);
-		    kmne.parentdivnum = num;
-		    kmne.trapiversion = trapi;
-		    kmne.id = edgeid;
-		    kmne.source = kmne.subject;
-		    kmne.target = kmne.object;
-		    nodes[kmne.subject] = 1;
-		    nodes[kmne.object] = 1;
-		    if (kmne.predicate)
-			kmne.type = kmne.predicate;
-		    if (kmne.qualifiers && kmne.qualifiers.length == 0)
-			kmne.qualifiers = null;
-		    //if (edge.attributes)
-		    //kmne.edge_binding_attributes = edge.attributes;
-		    var tmpdata = { "data" : kmne };
-                    cytodata['AUX'+sgid].push(tmpdata);
-		}
-
-		for (var nodeid in nodes) {
-                    var kmne = Object.create(kg.nodes[nodeid]);
-		    kmne.parentdivnum = num;
-		    kmne.trapiversion = trapi;
-		    kmne.id = nodeid;
-		    //if (node.attributes)
-		    //kmne.node_binding_attributes = node.attributes;
-		    var tmpdata = { "data" : kmne };
-                    cytodata['AUX'+sgid].push(tmpdata);
-		}
+		add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
 	    }
 	}
-
 
     }
 
     document.getElementById("result_container").appendChild(results_fragment);
 }
+
+function add_aux_graph(kg,sgid,auxedges,parentnum,trapi) {
+    cytodata['AUX'+sgid] = [];
+    var nodes = {};
+
+    for (var edgeid of auxedges) {
+	var kmne = Object.create(kg.edges[edgeid]);
+	kmne.parentdivnum = parentnum;
+	kmne.trapiversion = trapi;
+	kmne.id = edgeid;
+	kmne.source = kmne.subject;
+	kmne.target = kmne.object;
+	nodes[kmne.subject] = 1;
+	nodes[kmne.object] = 1;
+	if (kmne.predicate)
+	    kmne.type = kmne.predicate;
+	if (kmne.qualifiers && kmne.qualifiers.length == 0)
+	    kmne.qualifiers = null;
+	//if (edge.attributes)
+	//kmne.edge_binding_attributes = edge.attributes;
+	var tmpdata = { "data" : kmne };
+	cytodata['AUX'+sgid].push(tmpdata);
+    }
+
+    for (var nodeid in nodes) {
+        //console.log("---- aux node::"+nodeid);
+	var kmne = Object.create(kg.nodes[nodeid]);
+	kmne.parentdivnum = parentnum;
+	kmne.trapiversion = trapi;
+	kmne.id = nodeid;
+	//if (node.attributes)
+	//kmne.node_binding_attributes = node.attributes;
+	var tmpdata = { "data" : kmne };
+	cytodata['AUX'+sgid].push(tmpdata);
+    }
+}
+
 
 function get_css_class_from_reasoner(r) {
     try {
@@ -3158,10 +3181,10 @@ function add_cyto(i,dataid) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(div, this.data('attributes'),null,"value");
+	show_attributes(i,div, this.data('attributes'),null,"value");
         if (this.data('node_binding_attributes')) {
 	    div.appendChild(document.createElement("br"));
-	    show_attributes(div, this.data('node_binding_attributes'),"Node Binding Attributes:","value");
+	    show_attributes(i,div, this.data('node_binding_attributes'),"Node Binding Attributes:","value");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -3230,14 +3253,14 @@ function add_cyto(i,dataid) {
 			cyobj[i].nodes("[id='"+this.data('target')+"']").data('name')
 		       );
 
-	show_attributes(div, this.data('attributes'),null,"value");
+	show_attributes(i,div, this.data('attributes'),null,"value");
 	if (this.data('edge_binding_attributes')) {
             div.appendChild(document.createElement("br"));
-            show_attributes(div, this.data('edge_binding_attributes'),"Edge Binding Attributes:","value");
+            show_attributes(i,div, this.data('edge_binding_attributes'),"Edge Binding Attributes:","value");
 	}
 	if (this.data('sources')) {
             div.appendChild(document.createElement("br"));
-            show_attributes(div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
+            show_attributes(i,div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -3372,7 +3395,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 }
 
 
-function show_attributes(html_div, atts, title, mainvalue) {
+function show_attributes(num,html_div, atts, title, mainvalue) {
     if (atts == null)  { return; }
 
     var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
@@ -3393,13 +3416,13 @@ function show_attributes(html_div, atts, title, mainvalue) {
     }
 
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
-	display_attribute(atts_table, att, semmeddb_sentences, mainvalue);
+	display_attribute(num,atts_table, att, semmeddb_sentences, mainvalue);
     }
 
     html_div.appendChild(atts_table);
 }
 
-function display_attribute(tab, att, semmeddb, mainvalue) {
+function display_attribute(num,tab, att, semmeddb, mainvalue) {
     var row = document.createElement("tr");
     var cell = document.createElement("td");
 
@@ -3507,6 +3530,17 @@ function display_attribute(tab, att, semmeddb, mainvalue) {
 		    a.innerHTML = val;
 		    cell.appendChild(a);
 		}
+
+		else if (att.attribute_type_id == "biolink:support_graphs") {
+                    var a = document.createElement("a");
+                    a.className = 'attvalue';
+                    a.style.cursor = "pointer";
+		    a.title = 'View Aux Graph: '+ val;
+		    a.setAttribute('onclick', 'add_cyto('+num+',"AUX'+val+'");');
+                    a.innerHTML = val;
+		    cell.appendChild(a);
+		}
+
 		else {
                     cell.appendChild(document.createTextNode(val));
 		}
@@ -3573,7 +3607,7 @@ function display_attribute(tab, att, semmeddb, mainvalue) {
 	subatts_table.className = 't100';
 
 	for (var sub_att of sub_atts)
-	    display_attribute(subatts_table, sub_att, semmeddb, mainvalue);
+	    display_attribute(num,subatts_table, sub_att, semmeddb, mainvalue);
 
 	cell.appendChild(subatts_table);
         row.appendChild(cell);

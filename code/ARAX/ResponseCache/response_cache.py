@@ -33,7 +33,7 @@ from sqlalchemy import desc
 from sqlalchemy import inspect
 
 #sys.path = ['/mnt/data/python/TestValidator'] + sys.path
-#from reasoner_validator import TRAPIResponseValidator
+from reasoner_validator import TRAPIResponseValidator
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
@@ -42,7 +42,7 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.4.0'
+trapi_version = '1.4.0-beta4'
 
 
 Base = declarative_base()
@@ -197,7 +197,7 @@ class ResponseCache:
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
             servername = 'arax.ncats.io'
-        envelope.id = f"https://{servername}/api/arax/v1.2/response/{response_id}"
+        envelope.id = f"https://{servername}/api/arax/v1.4/response/{response_id}"
 
         #### New system to store the responses in an S3 bucket
         rtx_config = RTXConfiguration()
@@ -304,15 +304,34 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
-                enable_validation = False
+                enable_validation = True
                 schema_version = trapi_version
                 if 'schema_version' in envelope:
                     schema_version = envelope['schema_version']
                 try:
                     if enable_validation:
+
+                        #### Save the query_graph because the validator seems to muck with it
+                        saved_query_graph = copy.deepcopy(envelope['message']['query_graph'])
+
+                        #### Hack to work around a schema problem. FIXME
+                        try:
+                            for key,edge in envelope['message']['knowledge_graph']['edges'].items():
+                                for source in edge['sources']:
+                                    if 'source_record_urls' not in source or source['source_record_urls'] is None:
+                                        source['source_record_urls'] = []
+                                    if 'upstream_resource_ids' not in source or source['upstream_resource_ids'] is None:
+                                        source['upstream_resource_ids'] = []
+                        except:
+                            pass
+
+                        #### Perform the validation
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
                         validator.check_compliance_of_trapi_response(envelope)
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                        #### Restore corrupted query_graph
+                        envelope['message']['query_graph'] = saved_query_graph
+
                         if len(messages['errors']) == 0:
                             envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages }
                         else:
@@ -339,9 +358,104 @@ class ResponseCache:
             else:
                 return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
+
+        #### Otherwise, see if it is a URL
+        if response_id.startswith('CQ') or response_id.startswith('$$') or response_id.startswith('http'):
+            debug = True
+            url = 'xx'
+
+            if response_id.startswith('http'):
+                url = response_id.replace('$', '/')
+
+            if response_id.startswith('$$'):
+                url = 'https:' + response_id.replace('$', '/')
+
+            if response_id.startswith('CQ'):
+                url = f"https://peptideatlas.org/tmp/{response_id}"
+
+            with requests_cache.disabled():
+                if debug:
+                    eprint(f"Trying {url}...")
+                try:
+                    response_content = requests.get(url, headers={'accept': 'application/json'})
+                except Exception as e:
+                    return( { "status": 404, "title": f"Remote URL {url} unavailable", "detail": f"Connection attempts to {url} triggered an exception: {e}", "type": "about:blank" }, 404)
+            status_code = response_content.status_code
+            if debug:
+                eprint(f"--- Fetch of {url} yielded {status_code}")
+
+            if status_code != 200:
+                if debug:
+                    eprint("Cannot fetch url "+str(url))
+                    eprint(str(response_content.content))
+                return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+            if True:
+            #try:
+                envelope = json.loads(response_content.content)
+            else:
+            #except:
+                eprint(f"ERROR: Unable to convert {url} to JSON")
+                return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+
+            #### Perform a validation on it
+            enable_validation = True
+            schema_version = trapi_version
+            if 'schema_version' in envelope:
+                schema_version = envelope['schema_version']
+            try:
+                if enable_validation:
+
+                    #### Save the query_graph because the validator seems to muck with it
+                    saved_query_graph = copy.deepcopy(envelope['message']['query_graph'])
+
+                    #### Hack to work around a schema problem. FIXME
+                    try:
+                        for key,edge in envelope['message']['knowledge_graph']['edges'].items():
+                            for source in edge['sources']:
+                                if 'source_record_urls' not in source or source['source_record_urls'] is None:
+                                    source['source_record_urls'] = []
+                                if 'upstream_resource_ids' not in source or source['upstream_resource_ids'] is None:
+                                    source['upstream_resource_ids'] = []
+                    except:
+                        pass
+
+                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+                    validator.check_compliance_of_trapi_response(envelope)
+                    messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                    #### Restore corrupted query_graph
+                    envelope['message']['query_graph'] = saved_query_graph
+
+                    if len(messages['errors']) == 0:
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages }
+                    else:
+                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
+                else:
+                    envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
+            except Exception as error:
+                timestamp = str(datetime.now().isoformat())
+                if 'logs' not in envelope or envelope['logs'] is None:
+                    envelope['logs'] = []
+                envelope['logs'].append( { "code": 'ValidatorFailed', "level": "ERROR", "message": "TRAPI validator crashed with error: " + str(error),
+                    "timestamp": timestamp } )
+                if 'description' not in envelope or envelope['description'] is None:
+                    envelope['description'] = ''
+                envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'TRAPI validator crashed with error: ' + str(error) + ' --- ' + envelope['description'] }
+
+            #### Count provenance information
+            attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
+            envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
+
+            return envelope
+
+
+
+
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
             debug = False
+
             ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
@@ -364,6 +478,7 @@ class ResponseCache:
                     eprint("Cannot fetch from ARS a response corresponding to response_id="+str(response_id))
                     eprint(str(response_content.content))
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
 
             content_size = len(response_content.content)
             if content_size < 1000:
@@ -503,15 +618,34 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
-                enable_validation = False
+                enable_validation = True
                 schema_version = trapi_version
                 if 'schema_version' in envelope:
                     schema_version = envelope['schema_version']
                 try:
                     if enable_validation:
+
+                        #### Save the query_graph because the validator seems to muck with it
+                        saved_query_graph = copy.deepcopy(envelope['message']['query_graph'])
+
+                        #### Hack to work around a schema problem. FIXME
+                        try:
+                            for key,edge in envelope['message']['knowledge_graph']['edges'].items():
+                                for source in edge['sources']:
+                                    if 'source_record_urls' not in source or source['source_record_urls'] is None:
+                                        source['source_record_urls'] = []
+                                    if 'upstream_resource_ids' not in source or source['upstream_resource_ids'] is None:
+                                        source['upstream_resource_ids'] = []
+                        except:
+                            pass
+
+                        #### Perform the validation
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
                         validator.check_compliance_of_trapi_response(envelope)
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                        #### Restore corrupted query_graph
+                        envelope['message']['query_graph'] = saved_query_graph
+
                         if len(messages['errors']) == 0:
                             envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages }
                         else:
