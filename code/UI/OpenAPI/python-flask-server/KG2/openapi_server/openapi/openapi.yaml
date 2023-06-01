@@ -33,6 +33,9 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
+- description: RTX-KG2 TRAPI 1.4 endpoint - testing
+  url: https://kg2.test.transltr.io/api/rtxkg2/v1.4
+  x-maturity: testing
 - description: RTX-KG2 TRAPI 1.4 endpoint - staging
   url: https://kg2.ci.transltr.io/api/rtxkg2/v1.4
   x-maturity: staging
