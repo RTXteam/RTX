@@ -23,6 +23,11 @@ info:
   x-trapi:
     version: 1.4.0
     asyncquery: false
+    test_data_location:
+      default:
+        url: https://raw.githubusercontent.com/RTXteam/RTX/production/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json
+      development:
+        url: https://raw.githubusercontent.com/RTXteam/RTX/kg2integration/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json
     operations:
     - lookup
     externalDocs:
