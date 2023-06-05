@@ -82,11 +82,9 @@ def create_match_edges_kg2pre(all_kg2pre_node_ids: Set[str]):
     edges_tsv_path = f"{KG2PRE_TSV_DIR}/edges.tsv"
     edges_tsv_header_path = f"{KG2PRE_TSV_DIR}/edges_header.tsv"
     edges_header_df = pd.read_table(edges_tsv_header_path)
-    edge_column_names = [column_name.split(":")[0] if not column_name.startswith(":") else column_name
-                         for column_name in edges_header_df.columns]
     columns_to_keep = ["id", "subject", "predicate", "object", PRIMARY_KNOWLEDGE_SOURCE_PROPERTY_NAME]
     edges_df_all_predicates = pd.read_table(edges_tsv_path,
-                                            names=edge_column_names,
+                                            names=list(edges_header_df.columns),
                                             usecols=columns_to_keep,
                                             index_col="id",
                                             dtype={"id": str,
