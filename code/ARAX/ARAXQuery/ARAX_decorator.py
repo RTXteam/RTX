@@ -44,7 +44,7 @@ class ARAXDecorator:
                                       value_type_id="biolink:Uriorcurie"),
             "publications_info": Attribute(attribute_type_id="bts:sentence",
                                            value_type_id=None),
-            "kg2_ids": Attribute(attribute_type_id="biolink:original_edge_information",
+            "kg2_ids": Attribute(attribute_type_id="biolink:original_predicate",
                                  value_type_id="metatype:String",
                                  description="The IDs of the original RTX-KG2pre edge(s) corresponding to this edge "
                                              "prior to any synonymization or remapping.")
