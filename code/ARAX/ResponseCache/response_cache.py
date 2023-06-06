@@ -328,14 +328,16 @@ class ResponseCache:
                         #### Perform the validation
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
                         validator.check_compliance_of_trapi_response(envelope)
+                        validation_messages_text = validator.dump()
+                        validation_messages_text = f"text={validation_messages_text}"
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
                         #### Restore corrupted query_graph
                         envelope['message']['query_graph'] = saved_query_graph
 
                         if len(messages['errors']) == 0:
-                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages }
+                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                         else:
-                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
+                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                     else:
                         envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
                 except Exception as error:
@@ -643,13 +645,14 @@ class ResponseCache:
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
                         validator.check_compliance_of_trapi_response(envelope)
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                        validation_messages_text = validator.dump()
                         #### Restore corrupted query_graph
                         envelope['message']['query_graph'] = saved_query_graph
 
                         if len(messages['errors']) == 0:
-                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages }
+                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                         else:
-                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages }
+                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                     else:
                         envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
 
