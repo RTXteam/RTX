@@ -326,7 +326,7 @@ class ResponseCache:
                             pass
 
                         #### Perform the validation
-                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.8")
                         validator.check_compliance_of_trapi_response(envelope)
                         validation_messages_text = validator.dump()
                         validation_messages_text = f"text={validation_messages_text}"
@@ -423,7 +423,7 @@ class ResponseCache:
                     except:
                         pass
 
-                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.8")
                     validator.check_compliance_of_trapi_response(envelope)
                     messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
                     #### Restore corrupted query_graph
@@ -642,7 +642,7 @@ class ResponseCache:
                             pass
 
                         #### Perform the validation
-                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.8")
                         validator.check_compliance_of_trapi_response(envelope)
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
                         validation_messages_text = validator.dump()
