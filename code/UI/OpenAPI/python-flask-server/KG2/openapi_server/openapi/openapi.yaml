@@ -27,7 +27,7 @@ info:
       default:
         url: https://raw.githubusercontent.com/RTXteam/RTX/production/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json
       development:
-        url: https://raw.githubusercontent.com/RTXteam/RTX/kg2integration/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json
+        url: https://raw.githubusercontent.com/RTXteam/RTX/master/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json
     operations:
     - lookup
     externalDocs:
