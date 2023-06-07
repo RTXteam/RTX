@@ -641,7 +641,7 @@ class ARAXQuery:
                 optionsDict[option] = 1
 
         # Save the original input query for later reference
-        if mode != "RTXKG2" and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
+        if mode != "RTXKG2" and response.envelope.message.query_graph and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
             response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
             response.debug(f"Saving original query graph (has qnodes {set(response.original_query_graph.nodes)} "
                            f"and qedges {set(response.original_query_graph.edges)})..")
