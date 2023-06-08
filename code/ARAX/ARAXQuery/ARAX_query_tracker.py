@@ -318,7 +318,7 @@ class ARAXQueryTracker:
         ongoing_queries_by_remote_address = self.check_ongoing_queries()
 
         remote_address = attributes['remote_address']
-        if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > 1 and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
+        if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > 2 and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
             try:
                 start_datetime = datetime.now().isoformat(' ', 'seconds')
                 tracker_entry = ARAXQuery(
