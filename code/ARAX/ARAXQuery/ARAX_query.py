@@ -332,6 +332,11 @@ class ARAXQuery:
                 remote_address = '????'
             attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': remote_address }
             job_id = query_tracker.create_tracker_entry(attributes)
+
+            if job_id == -999:
+                response.error(f"Query could not be run due to exceeded limits", error_code="OverLimit", http_status=429)
+                return response
+
         response.job_id = job_id
 
         try:
