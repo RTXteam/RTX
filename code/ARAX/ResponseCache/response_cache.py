@@ -391,11 +391,11 @@ class ResponseCache:
                     eprint(str(response_content.content))
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
-            if True:
-            #try:
+            #if True:
+            try:
                 envelope = json.loads(response_content.content)
-            else:
-            #except:
+            #else:
+            except:
                 eprint(f"ERROR: Unable to convert {url} to JSON")
                 return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
