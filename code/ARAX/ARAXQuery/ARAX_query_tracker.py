@@ -420,6 +420,8 @@ class ARAXQueryTracker:
 
         for ongoing_query in ongoing_queries:
              pid = ongoing_query.pid
+             if pid == 132:
+                 pid = 9999
              if psutil.pid_exists(pid):
                  status = 'This PID exists'
                  remote_address = ongoing_query.remote_address
