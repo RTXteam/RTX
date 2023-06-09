@@ -269,7 +269,7 @@ class ARAXQueryTracker:
         if len(tracker_entries) > 0:
             tracker_entry = tracker_entries[0]
             for key, value in attributes.items():
-                setattr(ongoing_tracker_entry, key, value)
+                setattr(tracker_entry, key, value)
 
         ongoing_tracker_entries = session.query(ARAXOngoingQuery).filter(ARAXOngoingQuery.query_id==tracker_id).all()
         if len(ongoing_tracker_entries) > 0:
