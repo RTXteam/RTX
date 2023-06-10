@@ -341,18 +341,18 @@ class ARAXQueryTracker:
 
 
     ##################################################################################################
-    def get_entries(self, last_n_hours=24, incomplete_only=False):
+    def get_entries(self, last_n_hours=24, ongoing_queries=False):
         if self.session is None:
             return
 
-        if incomplete_only:
-            return self.session.query(ARAXQuery).filter(
-                text("""status NOT LIKE '%Completed%' 
-                        AND TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
-        else:
+        if ongoing_queries:
             #return self.session.query(ARAXQuery).filter(
-            #    text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
+            #    text("""status NOT LIKE '%Completed%' 
+            #            AND TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
             return self.session.query(ARAXOngoingQuery).all()
+        else:
+            return self.session.query(ARAXQuery).filter(
+                text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
 
 
     ##################################################################################################
@@ -412,7 +412,7 @@ class ARAXQueryTracker:
 
 
     ##################################################################################################
-    def get_status(self, last_n_hours=24, incomplete_only=False, id_=None):
+    def get_status(self, last_n_hours=24, mode=None, id_=None):
         if self.session is None:
             return
         if last_n_hours is None or last_n_hours == 0:
@@ -423,7 +423,11 @@ class ARAXQueryTracker:
 
         self.check_ongoing_queries()
 
-        entries = self.get_entries(last_n_hours=last_n_hours, incomplete_only=incomplete_only)
+        ongoing_queries = False
+        if mode and mode == 'active':
+            ongoing_queries = True
+
+        entries = self.get_entries(last_n_hours=last_n_hours, ongoing_queries=ongoing_queries)
         result = { 'recent_queries': [], 'current_datetime': datetime.now().strftime("%Y-%m-%d %T") }
         if entries is None:
             return result
