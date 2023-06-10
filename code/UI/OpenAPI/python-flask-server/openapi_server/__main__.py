@@ -5,6 +5,11 @@ import logging
 import json
 import openapi_server.encoder
 import os, sys, signal, atexit
+import threading
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../ARAX/ARAXQuery")
+from ARAX_background_tasker import ARAXBackgroundTasker
 
 logging.basicConfig(level=logging.INFO)  # can change this to logging.DEBUG for debuggging
 
@@ -47,9 +52,18 @@ def main():
     except:
         local_config = { "port": 5000 }
 
+    #### Start a thread that will perform basic background tasks independently of traffic.
+    #### It should never return, forever looping in the background.
+    background_tasker = ARAXBackgroundTasker()
+    background_task_thread = threading.Thread(target=background_tasker.run_tasks, args=(local_config,))
+    threading_lock = threading.Lock()
+    local_config['threading_lock'] = threading_lock
+    background_task_thread.start()
+
     #### Start the service
     app.run(port=local_config['port'], threaded=True)
 
 
 if __name__ == '__main__':
     main()
+
