@@ -30,6 +30,7 @@ info:
         url: https://raw.githubusercontent.com/RTXteam/RTX/master/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json
     operations:
     - lookup
+    rate_limit: 4
     externalDocs:
       description: The values for version are restricted according to the regex in
         this external JSON schema. See schema and examples at url
