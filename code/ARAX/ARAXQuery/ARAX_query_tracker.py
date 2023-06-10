@@ -15,6 +15,7 @@ import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, String, DateTime, PickleType
+from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
@@ -130,30 +131,32 @@ class ARAXQueryTracker:
             database_path = os.path.dirname(os.path.abspath(__file__)) + '/' + self.databaseName + '.sqlite'
             engine = create_engine("sqlite:///"+database_path)
 
-        DBSession = sessionmaker(bind=engine)
-        session = DBSession()
+        #DBSession = sessionmaker(bind=engine)
+        #session = DBSession()
+
+        session_factory = sessionmaker(bind=engine)
+        Session = scoped_session(session_factory)
+        session = Session()
+
         self.session = session
         self.engine = engine
 
         #### If the tables don't exist, then create the database
         database_info = sqlalchemy.inspect(engine)
-        if not database_info.has_table(ARAXQuery.__tablename__):
+        if not database_info.has_table(ARAXQuery.__tablename__) or not database_info.has_table(ARAXOngoingQuery.__tablename__):
             eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
-            Base.metadata.create_all(engine)
-        if not database_info.has_table(ARAXOngoingQuery.__tablename__):
-            eprint(f"WARNING: {self.engine_type} OngoingQuery table does not exist; creating it")
             Base.metadata.create_all(engine)
 
 
     ##################################################################################################
     def disconnect(self):
-        session = self.session
-        engine = self.engine
-        session.close()
+        if self.session is None:
+            return
         try:
-            engine.dispose()
+            self.session.close()
+            self.engine.dispose()
         except:
-            pass
+            eprint("ERROR: [ARAX_query_tracker.disconnect] Attempt to close and dispose of session failed")
 
 
     ##################################################################################################
@@ -177,50 +180,6 @@ class ARAXQueryTracker:
         Base.metadata.drop_all(engine)
         Base.metadata.create_all(engine)
         self.connect()
-
-
-    ##################################################################################################
-    #### Create and store a database connection
-    def connect(self):
-
-        # If the engine_type is mysql then connect to the MySQL database
-        if self.engine_type == 'mysql':
-            engine = create_engine("mysql+pymysql://" + self.rtxConfig.mysql_feedback_username + ":" +
-                self.rtxConfig.mysql_feedback_password + "@" + self.rtxConfig.mysql_feedback_host + "/" + self.databaseName)
-
-        # Else just use SQLite
-        else:
-            return
-            database_path = os.path.dirname(os.path.abspath(__file__)) + '/' + self.databaseName + '.sqlite'
-            engine = create_engine("sqlite:///"+database_path)
-
-        DBSession = sessionmaker(bind=engine)
-        session = DBSession()
-        self.session = session
-        self.engine = engine
-
-        #### If the tables don't exist, then create the database
-        database_info = sqlalchemy.inspect(engine)
-        if not database_info.has_table(ARAXQuery.__tablename__):
-            eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
-            Base.metadata.create_all(engine)
-        if not database_info.has_table(ARAXOngoingQuery.__tablename__):
-            eprint(f"WARNING: {self.engine_type} OngoingQuery table does not exist; creating it")
-            Base.metadata.create_all(engine)
-
-
-    ##################################################################################################
-    #### Create and store a database connection
-    def disconnect(self):
-        session = self.session
-        engine = self.engine
-        if session is None:
-            return
-        try:
-            session.close()
-            engine.dispose()
-        except:
-            pass
 
 
     ##################################################################################################
@@ -318,7 +277,7 @@ class ARAXQueryTracker:
         ongoing_queries_by_remote_address = self.check_ongoing_queries()
 
         remote_address = attributes['remote_address']
-        if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > 2 and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
+        if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > 4 and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
             try:
                 start_datetime = datetime.now().isoformat(' ', 'seconds')
                 tracker_entry = ARAXQuery(
@@ -335,7 +294,7 @@ class ARAXQueryTracker:
                     elapsed = 0,
                     message_id = None,
                     message_code = 'OverLimit',
-                    code_description = 'Request has exceeded 2 concurrent query limit. Denied.')
+                    code_description = 'Request has exceeded 4 concurrent query limit. Denied.')
                 session.add(tracker_entry)
                 session.commit()
                 tracker_id = tracker_entry.query_id
@@ -407,21 +366,27 @@ class ARAXQueryTracker:
 
         instance_info = self.get_instance_info()
 
+        #### Enclosing in commits seems to reduce the problem of threads being out of sync
+        self.session.commit()
         ongoing_queries = self.session.query(ARAXOngoingQuery).filter(
             ARAXOngoingQuery.domain == instance_info['domain'],
             ARAXOngoingQuery.hostname == instance_info['hostname'],
             ARAXOngoingQuery.instance_name == instance_info['instance_name']).all()
+        self.session.commit()
 
         n_ongoing_queries = len(ongoing_queries)
-        eprint(f"INFO: There are currently {n_ongoing_queries} ongoing queries in this instance")
+        #eprint(f"INFO: There are currently {n_ongoing_queries} ongoing queries in this instance")
 
         entries_to_delete = []
         ongoing_queries_by_remote_address = {}
 
         for ongoing_query in ongoing_queries:
              pid = ongoing_query.pid
-             if pid == 132:
-                 pid = 9999
+
+             #### A manual way to target the deletion of stuck entries
+             #if pid == 132:
+             #    pid = 9999
+
              if psutil.pid_exists(pid):
                  status = 'This PID exists'
                  remote_address = ongoing_query.remote_address
@@ -562,6 +527,8 @@ class ARAXQueryTracker:
                 description += " but no response_id is available"
             else:
                 description += f" with response_id {response_id}"
+        elif state == 'Died':
+            description = f"Job {job_id} was found to be dead after {elapsed} seconds. Reason unknown."
         else:
             description = f"Job {job_id} has status '{status}' and state '{state}' with pid {pid}"
 
