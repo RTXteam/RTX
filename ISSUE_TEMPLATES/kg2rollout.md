@@ -32,21 +32,18 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
   - [ ] update the KG2pre and KG2c Neo4j endpoints
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
-- [ ] load the new KG2c into Plover (available at http://kg2cplover.rtx.ai:9990)
-  - [ ] in the Plover repo, update `kg_config.json` to point to the new version of the kg2c lite file (in the git lfs repo); push this change to a branch
-  - [ ] make any other changes to Plover code that this KG2 version necessitates (in that same branch)
-  - [ ] build a Plover from the branch
-  - [ ] update `config_dbs.json` in the RTX repo to point to this new Plover **for the 'dev' maturity level**
+- [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-how-tos#to-build-plover-from-a-new-kg2-version))
+- [ ] update `config_dbs.json` in the RTX repo to point to the new Plover **for the 'dev' maturity level**
 
 
 #### 2. Rebuild downstream databases:
 
 The following databases should be rebuilt and copies of them should be put in `/home/rtxconfig/KG2.X.Y` on `arax-databases.rtx.ai`. Please use this kind of naming format: `mydatabase_v1.0_KG2.X.Y.sqlite`.
 
-- [ ] NGD database
+- [ ] NGD database (how-to is [here](https://github.com/RTXteam/RTX/blob/master/code/ARAX/ARAXQuery/Overlay/ngd/README.md))
 - [ ] refreshed DTD @chunyuma
-- [ ] DTD model @chunyuma _(may be skipped - depends on the changes in this KG2 version)
-- [ ] DTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)
+- [ ] DTD model @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
+- [ ] DTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
 - [ ] XDTD database @chunyuma
 
 **NOTE**: As databases are rebuilt, `RTX/code/config_dbs.json` will need to be updated to point to their new paths! Push these changes to the branch for this KG2 version, unless the rollout of this KG2 version has already occurred, in which case you should push to `master` (but first follow the steps described [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#config_dbsjson)). 
