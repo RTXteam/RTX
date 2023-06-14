@@ -360,7 +360,7 @@ def test_cohd_expand():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
-
+@pytest.mark.skip(reason="retire DTD")
 def test_dtd_expand_1():
     actions_list = [
         "add_qnode(name=acetaminophen, key=n0)",
@@ -376,7 +376,8 @@ def test_dtd_expand_1():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
-@pytest.mark.slow
+# @pytest.mark.slow
+@pytest.mark.skip(reason="retire DTD")
 def test_dtd_expand_2():
     actions_list = [
         "add_qnode(name=acetaminophen, key=n0)",

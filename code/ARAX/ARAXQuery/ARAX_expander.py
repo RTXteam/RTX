@@ -91,15 +91,15 @@ class ARAXExpander:
                            f"google distance (NGD) database to expand "
                            "a query graph; it returns edges between nodes with an NGD value below a certain "
                            "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
-                           "configurable/smarter in the future.\n"
-                           "2. DTD: The 'infores:arax-drug-treats-disease' KP uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
-                           "a query graph; it returns edges between nodes with a DTD probability above a certain "
-                           "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
-                           "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
-                           "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
-                           "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
-                           "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true "
-                           "to call DTD model to do a real-time calculation.",
+                           "configurable/smarter in the future.\n",
+                        #    "2. DTD: The 'infores:arax-drug-treats-disease' KP uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
+                        #    "a query graph; it returns edges between nodes with a DTD probability above a certain "
+                        #    "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
+                        #    "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
+                        #    "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
+                        #    "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
+                        #    "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true "
+                        #    "to call DTD model to do a real-time calculation.",
             "parameters": self.get_parameter_info_dict()
         }
         return [command_definition]
@@ -152,26 +152,26 @@ class ARAXExpander:
                 "description": "Whether to omit supporting data on nodes/edges in the results (e.g., publications, "
                                "description, etc.)."
             },
-            "DTD_threshold": {
-                "is_required": False,
-                "examples": [0.8, 0.5],
-                "min": 0,
-                "max": 1,
-                "default": 0.8,
-                "type": "float",
-                "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
-                               "Defines what cut-off/threshold to use for expanding the DTD virtual edges."
-            },
-            "DTD_slow_mode": {
-                "is_required": False,
-                "examples": ["true", "false"],
-                "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-                "default": "false",
-                "type": "boolean",
-                "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
-                               "Specifies whether to call DTD model rather than DTD database to do a real-time "
-                               "calculation for DTD probability."
-            }
+            # "DTD_threshold": {
+            #     "is_required": False,
+            #     "examples": [0.8, 0.5],
+            #     "min": 0,
+            #     "max": 1,
+            #     "default": 0.8,
+            #     "type": "float",
+            #     "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
+            #                    "Defines what cut-off/threshold to use for expanding the DTD virtual edges."
+            # },
+            # "DTD_slow_mode": {
+            #     "is_required": False,
+            #     "examples": ["true", "false"],
+            #     "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+            #     "default": "false",
+            #     "type": "boolean",
+            #     "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
+            #                    "Specifies whether to call DTD model rather than DTD database to do a real-time "
+            #                    "calculation for DTD probability."
+            # }
         }
         return parameter_info_dict
 
@@ -731,8 +731,10 @@ class ARAXExpander:
                 log.update_query_plan(qedge_key, kp_to_use, "Waiting", waiting_message)
                 start = time.time()
                 if kp_to_use == 'infores:arax-drug-treats-disease':
-                    from Expand.DTD_querier import DTDQuerier
-                    kp_querier = DTDQuerier(log)
+                    # from Expand.DTD_querier import DTDQuerier
+                    # kp_querier = DTDQuerier(log)
+                    log.warning(f"DTD KP has been replaced with xDTD and thus is currently disabled.")
+                    return answer_kg, log
                 else:
                     from Expand.ngd_querier import NGDQuerier
                     kp_querier = NGDQuerier(log)
@@ -830,10 +832,10 @@ class ARAXExpander:
 
         # Route this query to the proper place depending on the KP
         try:
-            if kp_to_use == 'infores:arax-drug-treats-disease':
-                from Expand.DTD_querier import DTDQuerier
-                kp_querier = DTDQuerier(log)
-            elif kp_to_use == 'infores:arax-normalized-google-distance':
+            # if kp_to_use == 'infores:arax-drug-treats-disease':
+            #     from Expand.DTD_querier import DTDQuerier
+            #     kp_querier = DTDQuerier(log)
+            if kp_to_use == 'infores:arax-normalized-google-distance':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
             else:
