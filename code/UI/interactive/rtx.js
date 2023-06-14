@@ -177,7 +177,7 @@ function selectInput (input_id) {
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
 
-    for (var s of ['qgraph_input','qjson_input','qdsl_input','qwf_input','qid_input','resp_input']) {
+    for (var s of ['qgraph_input','qjson_input','qdsl_input','qwf_input','qid_input','resp_input','qnew_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
@@ -1195,41 +1195,59 @@ function process_ars_message(ars_msg, level) {
     td.appendChild(link);
     tr.appendChild(td);
 
-    td = document.createElement("td");
-    td.id = "respsize_"+ars_msg.message;
-    td.style.textAlign = "right";
-    tr.appendChild(td);
 
-    td = document.createElement("td");
-    td.id = "istrapi_"+ars_msg.message;
-    td.style.textAlign = "center";
-    tr.appendChild(td);
+    if (ars_msg.actor.agent == 'ars-default-agent') {
+	td = document.createElement("td");
+	td.colSpan = "7";
+	link = document.createElement("a");
+	link.className = "button";
+        link.style.marginLeft = "20px";
+        link.style.padding = "3px 20px";
+        link.style.color = "white";
+	link.title = '(opens a new tab)';
+	var ui_host = ars_msg.ui_host ? ars_msg.ui_host : "ui.ci.transltr.io";
+	link.href = "https://"+ui_host+"/results?l=&t=&q="+ars_msg.message;
+	link.target = '_TxUI';
+	link.innerText = " Open in Translator UI ";
+	td.appendChild(link);
+	tr.appendChild(td);
+    }
+    else {
+	td = document.createElement("td");
+	td.id = "respsize_"+ars_msg.message;
+	td.style.textAlign = "right";
+	tr.appendChild(td);
 
-    td = document.createElement("td");
-    td.id = "numresults_"+ars_msg.message;
-    td.style.textAlign = "center";
-    tr.appendChild(td);
+	td = document.createElement("td");
+	td.id = "istrapi_"+ars_msg.message;
+	td.style.textAlign = "center";
+	tr.appendChild(td);
 
-    td = document.createElement("td");
-    td.id = "nodedges_"+ars_msg.message;
-    td.style.textAlign = "center";
-    tr.appendChild(td);
+	td = document.createElement("td");
+	td.id = "numresults_"+ars_msg.message;
+	td.style.textAlign = "center";
+	tr.appendChild(td);
 
-    td = document.createElement("td");
-    td.id = "nsources_"+ars_msg.message;
-    td.style.textAlign = "center";
-    tr.appendChild(td);
+	td = document.createElement("td");
+	td.id = "nodedges_"+ars_msg.message;
+	td.style.textAlign = "center";
+	tr.appendChild(td);
 
-    td = document.createElement("td");
-    td.id = "numaux_"+ars_msg.message;
-    td.style.textAlign = "center";
-    tr.appendChild(td);
+	td = document.createElement("td");
+	td.id = "nsources_"+ars_msg.message;
+	td.style.textAlign = "center";
+	tr.appendChild(td);
 
-    td = document.createElement("td");
-    td.id = "cachelink_"+ars_msg.message;
-    td.style.textAlign = "right";
-    tr.appendChild(td);
+	td = document.createElement("td");
+	td.id = "numaux_"+ars_msg.message;
+	td.style.textAlign = "center";
+	tr.appendChild(td);
 
+	td = document.createElement("td");
+	td.id = "cachelink_"+ars_msg.message;
+	td.style.textAlign = "right";
+	tr.appendChild(td);
+    }
     table.appendChild(tr);
 
     if (go)
@@ -1274,25 +1292,40 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
         if (type == "all") {
 	    statusdiv.appendChild(document.createElement("br"));
 	    statusdiv.appendChild(document.createTextNode("TRAPI v"+jsonObj2.validation_result.version+" validation: "));
-	    var vares;
+	    var vares  = document.createElement("b");
+            vares.appendChild(document.createTextNode(jsonObj2.validation_result.status));
+	    statusdiv.appendChild(vares);
+
 	    if (jsonObj2.validation_result.validation_messages) {
+		statusdiv.appendChild(document.createTextNode(". View full report: [ "));
 		vares = document.createElement("a");
 		vares.style.fontWeight = "bold";
                 vares.style.cursor = "pointer";
-		vares.title = "Click for full (JSON) report";
+		vares.title = "JSON report";
+		vares.appendChild(document.createTextNode("JSON "));
 		var valink = document.createElement("a");
                 valink.target = '_validator';
                 valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
                 valink.innerHTML = 'Validation Codes Dictionary';
 		vares.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages, valink); };
+		statusdiv.appendChild(vares);
+		statusdiv.appendChild(document.createTextNode(" ] -- [ "));
+
+		vares = document.createElement("a");
+		vares.style.fontWeight = "bold";
+                vares.style.cursor = "pointer";
+		vares.title = "text report";
+                vares.appendChild(document.createTextNode("text "));
+		var valink = document.createElement("a");
+                valink.target = '_validator';
+                valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
+                valink.innerHTML = 'Validation Codes Dictionary';
+		vares.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages_text, valink); };
+		statusdiv.appendChild(vares);
+		statusdiv.appendChild(document.createTextNode(" ]"));
 	    }
-	    else
-		vares = document.createElement("b");
-            vares.appendChild(document.createTextNode(jsonObj2.validation_result.status));
-	    statusdiv.appendChild(vares);
-	    if (vares.title)
-		statusdiv.appendChild(document.createTextNode(" ("+vares.title+")"));
-            statusdiv.appendChild(document.createElement("br"));
+
+	    statusdiv.appendChild(document.createElement("br"));
 	}
 	if (jsonObj2.validation_result.status == "FAIL") {
 	    if (type == "all") {
@@ -1949,6 +1982,7 @@ function render_response(respObj,dispjson) {
 	td.appendChild(document.createTextNode("SEMMEDDB Sub-Counts"));
 	td.colSpan = "3";
 	td.style.textAlign = "left";
+	td.style.borderLeft = "2px solid black";
 	tr.appendChild(td);
 
 
@@ -1981,6 +2015,7 @@ function render_response(respObj,dispjson) {
 
 	    td = document.createElement("td");
 	    td.style.textAlign = "right";
+	    td.style.borderLeft = "2px solid black";
 	    td.appendChild(document.createTextNode(semmeddb_counts[pred]));
 	    tr.appendChild(td);
             // fancy bar bar
@@ -2233,7 +2268,10 @@ function showJSONpopup(wtitle,query,footer) {
     div.style.maxHeight = "70vh";
     var pre = document.createElement("pre");
     pre.style.color = "#000";
-    pre.appendChild(document.createTextNode(JSON.stringify(query,null,2)));
+    if (query && typeof query === 'object' && query.constructor === Object)
+	pre.appendChild(document.createTextNode(JSON.stringify(query,null,2)));
+    else
+	pre.innerText = query;
     div.appendChild(pre);
     popup.appendChild(div);
 
@@ -2594,7 +2632,9 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	}
 
 	var cnf = 'n/a';
-	if (Number(result.score))
+	if (Number(result.normalized_score))
+	    cnf = Number(result.normalized_score).toFixed(3);
+	else if (Number(result.score))
 	    cnf = Number(result.score).toFixed(3);
 	else if (Number(result.confidence))
 	    cnf = Number(result.confidence).toFixed(3);
@@ -2863,7 +2903,8 @@ function get_css_class_from_reasoner(r) {
 	    return "scod";
 	if (r.toUpperCase().includes("ARAX"))
 	    return "srtx";
-	if (r.toUpperCase().includes("BTE"))
+	if (r.toUpperCase().includes("BTE") ||
+	    r.toUpperCase().includes("BIOTHINGS"))
 	    return"sbte";
 	if (r.toUpperCase().includes("CAM"))
 	    return "scam";
@@ -5359,6 +5400,77 @@ function load_meta_knowledge_graph() {
 
 }
 
+
+function retrieveRecentResps() {
+    var recentresps_node = document.getElementById("recent_responses_container");
+    recentresps_node.innerHTML = '';
+    recentresps_node.className = '';
+
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginRight = "10px";
+    recentresps_node.appendChild(wait);
+    recentresps_node.appendChild(document.createTextNode('Loading...'));
+
+
+    var numpks = parseInt(document.getElementById("howmanylatest").value.match(/[\d]+/));
+    if (isNaN(numpks) || numpks < 1 || numpks > 999)
+	numpks = 50;
+    document.getElementById("howmanylatest").value = numpks;
+
+    fetch("https://ars.ci.transltr.io/ars/api/latest_pk/"+numpks)
+        .then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Something went wrong with https://ars.ci.transltr.io/ars/api/latest_pk/'+numpks);
+	})
+        .then(data => {
+            document.title = "ARAX-UI [List of most recent "+numpks+" queries]";
+	    recentresps_node.innerHTML = '';
+
+            var div = document.createElement("div");
+	    div.className = "statushead";
+	    div.appendChild(document.createTextNode("Viewing Last "+numpks+" Queries"));
+	    recentresps_node.appendChild(div);
+
+	    div = document.createElement("div");
+	    div.className = "status";
+            recentresps_node.appendChild(div);
+
+	    table = document.createElement("table");
+	    table.className = 'sumtab';
+
+	    var num = 0;
+	    for (var pk of data["latest_"+numpks+"_pks"]) {
+		num++;
+		var tr = document.createElement("tr");
+	        tr.className = 'hoverable';
+
+	        var td = document.createElement("td");
+		td.innerText = num+'.';
+		tr.appendChild(td);
+
+		td = document.createElement("td");
+		var link = document.createElement("a");
+		link.title = 'view this response';
+		link.style.cursor = "pointer";
+		link.style.fontFamily = "monospace";
+		link.setAttribute('onclick', 'pasteId("'+pk+'");sendId(false);selectInput("qid");');
+		link.appendChild(document.createTextNode(pk));
+		td.appendChild(link);
+		tr.appendChild(td);
+
+		table.appendChild(tr);
+	    }
+
+	    div.appendChild(table);
+	})
+        .catch(error => {
+	    recentresps_node.className = "error";
+	    recentresps_node.innerHTML = "<br>" + error + "<br><br>";
+	});
+
+}
+
+
 function retrieveRecentQs() {
     document.getElementById("recentqsLink").innerHTML = '';
 
@@ -5477,6 +5589,14 @@ function retrieveRecentQs() {
 			else if (query[field] == "Terminated") {
 			    span.innerHTML = '&cross;';
 			    span.className = 'explevel p3';
+			}
+			else if (query[field] == "Denied") {
+			    span.innerHTML = '&cross;';
+			    span.className = 'explevel p1';
+			}
+			else if (query[field] == "Died") {
+			    span.innerHTML = '&cross;';
+			    span.className = 'explevel p0';
 			}
 			else {
 			    span.innerHTML = '&#10140;';
@@ -6724,6 +6844,8 @@ function submit_on_enter(ele) {
             qg_add_predicate_to_qedge(ele.value);
         else if (ele.id == 'qftime')
 	    retrieveRecentQs();
+        else if (ele.id == 'howmanylatest')
+	    retrieveRecentResps();
 	else
 	    console.log("element id not recognized...");
     }
