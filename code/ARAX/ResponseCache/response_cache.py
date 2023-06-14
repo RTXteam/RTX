@@ -528,6 +528,9 @@ class ResponseCache:
                 except:
                     return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
+                response_dict['ars_host'] = ars_host
+                response_dict['ui_host'] = ars_host.replace('ars','ui')
+
                 return response_dict
 
             if not is_parent_pk and 'fields' in response_dict and 'data' in response_dict['fields']:

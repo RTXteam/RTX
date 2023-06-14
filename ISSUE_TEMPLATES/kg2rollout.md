@@ -32,21 +32,18 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
   - [ ] update the KG2pre and KG2c Neo4j endpoints
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
-- [ ] load the new KG2c into Plover (available at http://kg2cplover.rtx.ai:9990)
-  - [ ] in the Plover repo, update `kg_config.json` to point to the new version of the kg2c lite file (in the git lfs repo); push this change to a branch
-  - [ ] make any other changes to Plover code that this KG2 version necessitates (in that same branch)
-  - [ ] build a Plover from the branch
-  - [ ] update `config_dbs.json` in the RTX repo to point to this new Plover **for the 'dev' maturity level**
+- [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-how-tos#to-build-plover-from-a-new-kg2-version))
+- [ ] update `config_dbs.json` in the RTX repo to point to the new Plover **for the 'dev' maturity level**
 
 
 #### 2. Rebuild downstream databases:
 
 The following databases should be rebuilt and copies of them should be put in `/home/rtxconfig/KG2.X.Y` on `arax-databases.rtx.ai`. Please use this kind of naming format: `mydatabase_v1.0_KG2.X.Y.sqlite`.
 
-- [ ] NGD database
+- [ ] NGD database (how-to is [here](https://github.com/RTXteam/RTX/blob/master/code/ARAX/ARAXQuery/Overlay/ngd/README.md))
 - [ ] refreshed DTD @chunyuma
-- [ ] DTD model @chunyuma _(may be skipped - depends on the changes in this KG2 version)
-- [ ] DTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)
+- [ ] DTD model @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
+- [ ] DTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
 - [ ] XDTD database @chunyuma
 
 **NOTE**: As databases are rebuilt, `RTX/code/config_dbs.json` will need to be updated to point to their new paths! Push these changes to the branch for this KG2 version, unless the rollout of this KG2 version has already occurred, in which case you should push to `master` (but first follow the steps described [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#config_dbsjson)). 
@@ -66,13 +63,13 @@ All code changes should **go in the branch for this KG2 version**!
 - [ ] test everything together:
   - [ ] check out the branch and pull to get the latest changes
   - [ ] locally set `force_local = True` in `ARAX_expander.py` (to avoid using the old KG2 API)
-  - [ ] then run the entire ARAX pytest suite
+  - [ ] then run the entire ARAX pytest suite (i.e., `pytest -v`)
   - [ ] address any failing tests
 - [ ] update the KG2 and ARAX version numbers in the appropriate places (in the branch for this KG2 version)
-  - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L12); [local](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml)) in line 12 (`version:`); the major and minor release numbers are kept synchronous with the TRAPI version; just bump the patch release version (least significant digit)
-  - [ ] Bump version for `RTX/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L12); [local](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml)) in line 12 (`version:`); the first three digits are kept synchronous with the KG2 release version
-  - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml#L4); [local](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml)) on line 4 (`version:`); same as for the ARAX `openapi.yaml` file
-  - [ ] Bump version number in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml#L4); [local](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml)) on line 4 (`version:`); same as for the KG2 `openapi.yaml` file
+  - [ ] Bump version on line 12 in `RTX/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L12); [local](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml)); the major and minor release numbers are kept synchronous with the TRAPI version; just bump the patch release version (least significant digit)
+  - [ ] Bump version on line 12 in `RTX/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L12); [local](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml)); the first three digits are kept synchronous with the KG2 release version
+  - [ ] Bump version on line 4 in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml#L4); [local](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_ARAX.yaml)); same as for the ARAX `openapi.yaml` file
+  - [ ] Bump version on line 4 in `RTX/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml#L4); [local](../code/UI/OpenAPI/python-flask-server/RTX_OA3_TRAPI1.4_KG2.yaml)); same as for the KG2 `openapi.yaml` file
   
 
 #### 4. Pre-upload databases:
@@ -111,7 +108,6 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 #### 6. Final items/clean up:
 
-- [ ] generate KGX files and upload them to the KGE Archive @acevedol
 - [ ] turn off the old KG2c version's neo4j instance
 - [ ] turn off the old KG2c version's plover instance
 - [ ] turn off the new KG2pre version's neo4j instance
