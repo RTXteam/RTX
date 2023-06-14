@@ -73,16 +73,16 @@ class ARAXInfer:
         self.xdtd_n_drugs_info = {
             "is_required": False,
             "examples": [5,15,25],
-            "default": 10,
+            "default": 25,
             "type": "integer",
-            "description": "The number of drug nodes to return. If not provided defaults to 10. Considering the response speed, the maximum number of drugs returned is only allowed to be 25."
+            "description": "The number of drug nodes to return. If not provided defaults to 25. Considering the response speed, the maximum number of drugs returned is only allowed to be 25."
         }
         self.xdtd_n_paths_info = {
             "is_required": False,
             "examples": [5,15,25],
-            "default": 10,
+            "default": 25,
             "type": "integer",
-            "description": "The number of paths connecting to each returned node. If not provided defaults to 10. Considering the response speed, the maximum number of paths (if available) returned is only allowed to be 25."
+            "description": "The number of paths connecting to each returned node. If not provided defaults to 25. Considering the response speed, the maximum number of paths (if available) returned is only allowed to be 25."
         }
         self.xcrg_subject_curie_info = {
             "is_required": True,
@@ -367,8 +367,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
                                     'node_curie': {'The node to predict drug treatments for.'},
                                     'qedge_id': {'The edge to place the predicted mechanism of action on. If none is provided, the query graph must be empty and a new one will be inserted.'},
-                                    'n_drugs': {'The number of drugs to return. Defaults to 10. Maxiumum is only allowable to be 25.'},
-                                    'n_paths': {'The number of paths connecting each drug to return. Defaults to 10.  Maxiumum is only allowable to be 25.'}
+                                    'n_drugs': {'The number of drugs to return. Defaults to 25. Maxiumum is only allowable to be 25.'},
+                                    'n_paths': {'The number of paths connecting each drug to return. Defaults to 25.  Maxiumum is only allowable to be 25.'}
                                 }
 
         # A little function to describe what this thing does
@@ -404,7 +404,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 self.response.warning(f"The `n_drugs` value was set to {self.parameters['n_drugs']}, but the maximum allowable value is 25. Setting `n_drugs` to 25.")
                 self.parameters['n_drugs'] = 25
         else:
-            self.parameters['n_drugs'] = 10
+            self.parameters['n_drugs'] = 25
 
         if 'n_paths' in self.parameters:
             try:
@@ -417,7 +417,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 self.response.warning(f"The `n_paths` value was set to {self.parameters['n_paths']}, but the maximum allowable value is 25. Setting `n_paths` to 25.")
                 self.parameters['n_paths'] = 25
         else:
-            self.parameters['n_paths'] = 10
+            self.parameters['n_paths'] = 25
 
         if self.response.status != 'OK':
             return self.response
@@ -580,7 +580,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 f"The `n_result_curies` value must be a positive integer. The provided value was {self.parameters['n_result_curies']}.",
                 error_code="ValueError")
         else:
-            self.parameters['n_result_curies'] = 10
+            self.parameters['n_result_curies'] = 25
 
         if 'n_paths' in self.parameters:
             if isinstance(self.parameters['n_paths'], str):
@@ -593,7 +593,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 f"The `n_paths` value must be a positive integer. The provided value was {self.parameters['n_paths']}.",
                 error_code="ValueError")
         else:
-            self.parameters['n_paths'] = 10
+            self.parameters['n_paths'] = 25
 
         if self.response.status != 'OK':
             return self.response
