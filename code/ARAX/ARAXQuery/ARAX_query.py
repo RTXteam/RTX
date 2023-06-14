@@ -332,6 +332,11 @@ class ARAXQuery:
                 remote_address = '????'
             attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': remote_address }
             job_id = query_tracker.create_tracker_entry(attributes)
+
+            if job_id == -999:
+                response.error(f"Query could not be run due to exceeded limits", error_code="OverLimit", http_status=429)
+                return response
+
         response.job_id = job_id
 
         try:
@@ -641,7 +646,7 @@ class ARAXQuery:
                 optionsDict[option] = 1
 
         # Save the original input query for later reference
-        if mode != "RTXKG2" and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
+        if mode != "RTXKG2" and response.envelope.message.query_graph and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
             response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
             response.debug(f"Saving original query graph (has qnodes {set(response.original_query_graph.nodes)} "
                            f"and qedges {set(response.original_query_graph.edges)})..")

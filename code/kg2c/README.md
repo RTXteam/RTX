@@ -117,8 +117,15 @@ config file once again:
 And then once again run `python3 RTX/code/kg2c/build_kg2c.py`.
 
 ### Host KG2canonicalized in Neo4j
-The Neo4j instance is usually present on the AWS EC2 instance `KG2canonicalized.rtx.ai`.  
-These instructions assume Neo4j is not already installed and that you are hosting Neo4j on an AWS **Ubuntu 18** EC2 instance. (You are expected to have AWS credentials to access the instance).
+The Neo4j instances are usually present on the AWS EC2 instances `KG2canonicalized.rtx.ai` and `KG2canonicalized2.rtx.ai`.  
+Please check the **CNAME** to **ANAME** mapping on **AWS Lightsail** to verify what EC2 instance's Neo4j to update with the latest KG2c version. 
+
+If you are using an already deployed instance, pull the latest code from the `master` branch into the instance and run the following command:  
+**NOTE:** Once the below command is executed, you will not be able to downgrade the KG2c version.  
+```
+bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
+```
+If Neo4j is not already installed and that you are hosting Neo4j on an AWS **Ubuntu 18** EC2 instance. (You are expected to have AWS credentials to access the instance).
 
 (1) Clone the `RTX` repo into the instance's home directory (if you haven't already):
 ```

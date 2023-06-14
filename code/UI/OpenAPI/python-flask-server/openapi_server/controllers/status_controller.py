@@ -34,7 +34,7 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
     if terminate_pid is not None:
         status = query_tracker.terminate_job(terminate_pid, authorization)
     else:
-        status = query_tracker.get_status(last_n_hours=last_n_hours, id_=id_)
+        status = query_tracker.get_status(last_n_hours=last_n_hours, mode=mode, id_=id_)
     return status
 
 

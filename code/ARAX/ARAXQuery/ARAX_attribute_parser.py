@@ -49,7 +49,24 @@ class ARAXAttributeParser:
                 if predicate not in provenance_information['predicate_counts']:
                     provenance_information['predicate_counts'][predicate] = 0
                 provenance_information['predicate_counts'][predicate] += 1
-                if 'attributes' in edge and edge['attributes'] is not None:
+
+                #### TRAPI 1.4 now uses sources[]
+                if 'sources' in edge and edge['sources'] is not None:
+                    for source in edge['sources']:
+                        resource_role = '???'
+                        if 'resource_role' in source and source['resource_role'] is not None:
+                            resource_role = source['resource_role']
+                        resource_id = '??'
+                        if 'resource_id' in source and source['resource_id'] is not None:
+                            resource_id = source['resource_id']
+                        sources[resource_id] = True
+                        label = f"{predicate} --> {resource_role} = {resource_id}"
+                        if label not in provenance_information['provenance_counts']:
+                            provenance_information['provenance_counts'][label] = [ predicate, resource_role, resource_id, 0 ]
+                        provenance_information['provenance_counts'][label][3] += 1
+                        found_provenance = True
+
+                elif 'attributes' in edge and edge['attributes'] is not None:
                     for attribute in edge['attributes']:
                         if 'attribute_type_id' in attribute and attribute['attribute_type_id'] is not None and attribute['attribute_type_id'] in information_type_ids and 'value' in attribute:
                             value = attribute['value']
@@ -61,6 +78,7 @@ class ARAXAttributeParser:
                                 provenance_information['provenance_counts'][label] = [ predicate, attribute['attribute_type_id'], value, 0 ]
                             provenance_information['provenance_counts'][label][3] += 1
                             found_provenance = True
+
                 if not found_provenance:
                     label = f"{predicate} --> no provenance"
                     if label not in provenance_information['provenance_counts']:
@@ -69,6 +87,7 @@ class ARAXAttributeParser:
             provenance_information['n_sources'] = len(sources)
 
         #### Else assume it is objects
+        # FIXME not yet updated for TRAPI 1.4!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
         else:
             for edge_key, edge in self.message.knowledge_graph.edges.items():
                 found_provenance = False
