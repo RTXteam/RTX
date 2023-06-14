@@ -494,16 +494,19 @@ class ARAXExpander:
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
-                    queriable_kps = set(kp_selector.get_kps_for_single_hop_qg(one_hop_qg))
-                    # remove kps if this edge has kp constraints
-                    allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
-                    kps_to_query = queriable_kps - denylist
-                    if allowlist:
-                        kps_to_query = {kp for kp in kps_to_query if kp in allowlist}
+                    if mode == "RTXKG2":
+                        kps_to_query = {"infores:rtx-kg2"}
+                    else:
+                        queriable_kps = set(kp_selector.get_kps_for_single_hop_qg(one_hop_qg))
+                        # remove kps if this edge has kp constraints
+                        allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
+                        kps_to_query = queriable_kps - denylist
+                        if allowlist:
+                            kps_to_query = {kp for kp in kps_to_query if kp in allowlist}
 
-                    for skipped_kp in queriable_kps.difference(kps_to_query):
-                        skipped_message = "This KP was constrained by this edge"
-                        response.update_query_plan(qedge_key, skipped_kp, "Skipped", skipped_message)
+                        for skipped_kp in queriable_kps.difference(kps_to_query):
+                            skipped_message = "This KP was constrained by this edge"
+                            response.update_query_plan(qedge_key, skipped_kp, "Skipped", skipped_message)
 
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
