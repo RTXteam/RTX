@@ -336,8 +336,12 @@ class KPSelector:
     def _load_meta_map(self):
         # This function loads the meta map (created by a background task)
         meta_map_file = pathlib.Path(self.meta_map_path)
+        one_day_ago = datetime.now() - timedelta(hours=24)
         if not meta_map_file.exists():
             self.log.warning(f"No local copy of meta map exists. Creating one.")
+            meta_map = self.refresh_meta_map()
+        elif datetime.fromtimestamp(meta_map_file.stat().st_mtime) < one_day_ago:
+            self.log.info(f"Meta map has not been updated for 24+ hours. Refreshing it.")
             meta_map = self.refresh_meta_map()
         else:
             self.log.debug(f"Loading cached meta map")
