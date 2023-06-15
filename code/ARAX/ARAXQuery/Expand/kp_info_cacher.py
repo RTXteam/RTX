@@ -40,21 +40,29 @@ class KPInfoCacher:
         smart_api_helper = SmartAPI()
         smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
                                                                                      req_maturity=self.rtx_config.maturity)
-        # Transform the info into the format we want
-        allowed_kp_urls = {kp_registration["infores_name"]: self._get_kp_url_from_smartapi_registration(kp_registration)
-                           for kp_registration in smart_api_kp_registrations}
-        # Add entries for our local KPs (that are not web services)
-        allowed_kp_urls["infores:arax-drug-treats-disease"] = None
-        allowed_kp_urls["infores:arax-normalized-google-distance"] = None
+        if not smart_api_kp_registrations:
+            print(f"Didn't get any KP registrations back from SmartAPI!")
+        previous_smart_api_cache_exists = pathlib.Path(self.smart_api_cache_path).exists()
+        if smart_api_kp_registrations or not previous_smart_api_cache_exists:
+            # Transform the info into the format we want
+            allowed_kp_urls = {kp_registration["infores_name"]: self._get_kp_url_from_smartapi_registration(kp_registration)
+                               for kp_registration in smart_api_kp_registrations}
+            # Add entries for our local KPs (that are not web services)
+            allowed_kp_urls["infores:arax-drug-treats-disease"] = None
+            allowed_kp_urls["infores:arax-normalized-google-distance"] = None
 
-        smart_api_cache_contents = {"allowed_kp_urls": allowed_kp_urls,
-                                    "kps_excluded_by_version": smart_api_helper.kps_excluded_by_version,
-                                    "kps_excluded_by_maturity": smart_api_helper.kps_excluded_by_maturity}
+            smart_api_cache_contents = {"allowed_kp_urls": allowed_kp_urls,
+                                        "kps_excluded_by_version": smart_api_helper.kps_excluded_by_version,
+                                        "kps_excluded_by_maturity": smart_api_helper.kps_excluded_by_maturity}
 
-        # Save the SmartAPI info to the proper cache file in a thread-safe way (utilizing a temp file)
-        with open(f"{self.smart_api_cache_path}.tmp", "w+") as smart_api_cache_temp:
-            json.dump(smart_api_cache_contents, smart_api_cache_temp)
-        subprocess.check_call(["mv", f"{self.smart_api_cache_path}.tmp", self.smart_api_cache_path])
+            # Save the SmartAPI info to the proper cache file in a thread-safe way (utilizing a temp file)
+            with open(f"{self.smart_api_cache_path}.tmp", "w+") as smart_api_cache_temp:
+                json.dump(smart_api_cache_contents, smart_api_cache_temp)
+            subprocess.check_call(["mv", f"{self.smart_api_cache_path}.tmp", self.smart_api_cache_path])
+        else:
+            print(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
+            with open(self.smart_api_cache_path, "r") as smart_api_file:
+                smart_api_cache_contents = json.load(smart_api_file)
 
         # Grab KPs' meta map info based off of their /meta_knowledge_graph endpoints
         meta_map = self._build_meta_map(allowed_kps_dict=smart_api_cache_contents["allowed_kp_urls"])
@@ -100,7 +108,7 @@ class KPInfoCacher:
         """
         # TODO: FOR SUNDAR --------------------------------------------------------------------------------
         smart_api_info_is_being_refreshed = False  # TODO: Determine this value based on PID recorded during refresh_kp_info_caches()
-        if smart_api_info_is_being_refreshed:
+        while smart_api_info_is_being_refreshed:
             # TODO: Wait and keep checking to see when it's done being refreshed
             pass
         # TODO: END OF SECTION ----------------------------------------------------------------------------
