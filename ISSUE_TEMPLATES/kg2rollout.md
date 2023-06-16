@@ -108,7 +108,6 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 #### 6. Final items/clean up:
 
-- [ ] generate KGX files and upload them to the KGE Archive @acevedol
 - [ ] turn off the old KG2c version's neo4j instance
 - [ ] turn off the old KG2c version's plover instance
 - [ ] turn off the new KG2pre version's neo4j instance
