@@ -42,7 +42,7 @@ class TRAPIQuerier:
         self.kp_timeout = kp_timeout
         self.force_local = force_local
         self.kp_selector = kp_selector
-        self.kp_endpoint = f"{kp_selector.get_kp_endpoint_url(kp_name)}"
+        self.kp_endpoint = kp_selector.kp_urls[self.kp_infores_curie]
         self.qnodes_with_single_id = dict()  # This is set during the processing of each query
         self.arax_infores_curie = "infores:arax"
         self.arax_retrieval_source = RetrievalSource(resource_id=self.arax_infores_curie,

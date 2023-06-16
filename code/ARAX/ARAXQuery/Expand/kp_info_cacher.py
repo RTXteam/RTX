@@ -24,9 +24,10 @@ from smartapi import SmartAPI
 class KPInfoCacher:
 
     def __init__(self):
-        self.smart_api_cache_path = f"{os.path.dirname(os.path.abspath(__file__))}/smart_api_cache.json"
-        self.meta_map_cache_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
         self.rtx_config = RTXConfiguration()
+        version_string = f"{self.rtx_config.trapi_major_version}--{self.rtx_config.maturity}"
+        self.smart_api_cache_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_smart_api_{version_string}.pkl"
+        self.meta_map_cache_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_meta_map_{version_string}.pkl"
 
     def refresh_kp_info_caches(self):
         """
@@ -56,13 +57,13 @@ class KPInfoCacher:
                                         "kps_excluded_by_maturity": smart_api_helper.kps_excluded_by_maturity}
 
             # Save the SmartAPI info to the proper cache file in a thread-safe way (utilizing a temp file)
-            with open(f"{self.smart_api_cache_path}.tmp", "w+") as smart_api_cache_temp:
-                json.dump(smart_api_cache_contents, smart_api_cache_temp)
+            with open(f"{self.smart_api_cache_path}.tmp", "wb") as smart_api_cache_temp:
+                pickle.dump(smart_api_cache_contents, smart_api_cache_temp)
             subprocess.check_call(["mv", f"{self.smart_api_cache_path}.tmp", self.smart_api_cache_path])
         else:
             print(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
-            with open(self.smart_api_cache_path, "r") as smart_api_file:
-                smart_api_cache_contents = json.load(smart_api_file)
+            with open(self.smart_api_cache_path, "rb") as smart_api_file:
+                smart_api_cache_contents = pickle.load(smart_api_file)
 
         # Grab KPs' meta map info based off of their /meta_knowledge_graph endpoints
         meta_map = self._build_meta_map(allowed_kps_dict=smart_api_cache_contents["allowed_kp_urls"])
@@ -104,12 +105,13 @@ class KPInfoCacher:
     def load_kp_info_caches(self, log: ARAXResponse):
         """
         This method is meant to be used anywhere the meta map or smart API caches need to be used (i.e., by KPSelector).
+        Other modules should NEVER try to load the caches directly! They should only load them via this method.
         It ensures that caches are up to date and that they don't become corrupted while refreshing.
         """
         # TODO: FOR SUNDAR --------------------------------------------------------------------------------
-        smart_api_info_is_being_refreshed = False  # TODO: Determine this value based on PID recorded during refresh_kp_info_caches()
-        while smart_api_info_is_being_refreshed:
-            # TODO: Wait and keep checking to see when it's done being refreshed
+        caches_are_being_refreshed = False  # TODO: Determine this value based on PID recorded during refresh_kp_info_caches()
+        while caches_are_being_refreshed:
+            # TODO: Wait and keep checking to see when they're done being refreshed
             pass
         # TODO: END OF SECTION ----------------------------------------------------------------------------
 
@@ -129,8 +131,8 @@ class KPInfoCacher:
 
         # The caches MUST be up to date at this point, so we just load them
         log.debug(f"Loading cached Smart API info")
-        with open(self.smart_api_cache_path, "r") as smart_api_file:
-            smart_api_info = json.load(smart_api_file)
+        with open(self.smart_api_cache_path, "rb") as smart_api_file:
+            smart_api_info = pickle.load(smart_api_file)
         log.debug(f"Loading cached meta map")
         with open(self.meta_map_cache_path, "rb") as map_file:
             meta_map = pickle.load(map_file)

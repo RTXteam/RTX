@@ -7,7 +7,7 @@ from itertools import product
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
-from kp_cacher import KPInfoCacher
+from kp_info_cacher import KPInfoCacher
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper")
