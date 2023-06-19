@@ -11,7 +11,6 @@ import subprocess
 
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
 
-
 def main():
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(levelname)s: %(message)s',
@@ -29,6 +28,7 @@ def main():
     mem_file_name = "get-system-memory-gb.sh"
     logging.info(f"Getting {mem_file_name} from KG2pre repo")
     subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/{mem_file_name}?raw=true", "-o", f"{KG2C_DIR}/{mem_file_name}"])
+    os.chmod(f"{KG2C_DIR}/{mem_file_name}", 755)
 
     # Get the Neo4j setup script from the KG2 repo
     setup_script_name = "setup-kg2-neo4j.sh"
@@ -37,7 +37,8 @@ def main():
 
     # Now run the Neo4j setup script
     logging.info(f"Running {setup_script_name}")
-    subprocess.check_call(["cd", KG2C_DIR])
+    os.chdir(KG2C_DIR)
+#    subprocess.check_call(["cd", KG2C_DIR]) # Causing issues, replaced with the above chdir command.
     subprocess.check_call(["bash", "-x", setup_script_name])
 
     logging.info("DONE SETTING UP FOR NEO4J")
