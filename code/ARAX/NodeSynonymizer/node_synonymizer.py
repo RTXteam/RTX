@@ -353,18 +353,19 @@ class NodeSynonymizer:
         return list_str
 
     @staticmethod
-    def _convert_to_set_format(some_value: Optional[Union[str, Set[str], List[str]]]) -> set:
-        if some_value:
-            if isinstance(some_value, set):
-                return some_value
-            elif isinstance(some_value, list):
-                return set(some_value)
-            elif isinstance(some_value, str):
-                return {some_value}
-            else:
-                raise ValueError(f"Input is not an allowable data type (list, set, or string)!")
-        else:
+    def _convert_to_set_format(some_value: any) -> set:
+        if isinstance(some_value, set):
+            return some_value
+        elif isinstance(some_value, list):
+            return set(some_value)
+        elif isinstance(some_value, str):
+            return {some_value}
+        elif isinstance(some_value, pd.Series):
+            return set(some_value.values)
+        elif some_value is None:
             return set()
+        else:
+            raise ValueError(f"Input is not an allowable data type (list, set, or string)!")
 
     @staticmethod
     def _add_biolink_prefix(category: Optional[str]) -> Optional[str]:
