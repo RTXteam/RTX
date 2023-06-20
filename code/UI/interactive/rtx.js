@@ -117,7 +117,7 @@ function main() {
     else if (rec) {
 	document.getElementById("qftime").value = rec;
 	tab = "recentqs";
-	retrieveRecentQs();
+	retrieveRecentQs(false);
     }
     else if (sai) {
 	tab = "kpinfo";
@@ -1208,7 +1208,7 @@ function process_ars_message(ars_msg, level) {
 	var ui_host = ars_msg.ui_host ? ars_msg.ui_host : "ui.ci.transltr.io";
 	link.href = "https://"+ui_host+"/results?l=&t=&q="+ars_msg.message;
 	link.target = '_TxUI';
-	link.innerText = " Open in Translator UI ";
+	link.innerText = "Open in Translator UI";
 	td.appendChild(link);
 	tr.appendChild(td);
     }
@@ -1405,7 +1405,8 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 		valink.target = '_validator';
 		valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
 		valink.innerHTML = 'Validation Codes Dictionary';
-                html_node.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages, valink); };
+		var showthis = jsonObj2.validation_result.validation_messages_text ? jsonObj2.validation_result.validation_messages_text : jsonObj2.validation_result.validation_messages;
+                html_node.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, showthis, valink); };
 	    }
             else if (jsonObj2.validation_result.message) {
                 var tnode = document.createElement("span");
@@ -1885,6 +1886,7 @@ function render_response(respObj,dispjson) {
         var tr = document.createElement("tr");
         var td = document.createElement("th");
 	td.colSpan = "2";
+        td.style.fontSize = 'x-large';
 	td.appendChild(document.createTextNode("Provenance Counts"));
 	tr.appendChild(td);
         td = document.createElement("th");
@@ -1970,6 +1972,7 @@ function render_response(respObj,dispjson) {
 	td = document.createElement("th");
 	td.colSpan = "2";
 	td.style.background = '#fff';
+        td.style.fontSize = 'x-large';
 	td.appendChild(document.createTextNode("Predicate Counts"));
 	tr.appendChild(td);
         td = document.createElement("th");
@@ -1979,9 +1982,10 @@ function render_response(respObj,dispjson) {
 
 	td = document.createElement("th");
 	td.style.background = '#fff';
+	td.style.color = '#666';
 	td.appendChild(document.createTextNode("SEMMEDDB Sub-Counts"));
 	td.colSpan = "3";
-	td.style.textAlign = "left";
+	//td.style.textAlign = "left";
 	td.style.borderLeft = "2px solid black";
 	tr.appendChild(td);
 
@@ -2632,8 +2636,11 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	}
 
 	var cnf = 'n/a';
-	if (Number(result.normalized_score))
+	var maxcnf = 1;
+	if (Number(result.normalized_score)) {
 	    cnf = Number(result.normalized_score).toFixed(3);
+	    maxcnf = 100;
+	}
 	else if (Number(result.score))
 	    cnf = Number(result.score).toFixed(3);
 	else if (Number(result.confidence))
@@ -2647,7 +2654,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	    if (maxscore >= 0)
 		cnf = maxscore;
 	}
-	var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
+	var pcl = (cnf>=0.9*maxcnf) ? "p9" : (cnf>=0.7*maxcnf) ? "p7" : (cnf>=0.5*maxcnf) ? "p5" : (cnf>=0.3*maxcnf) ? "p3" : (cnf>0.0) ? "p1" : "p0";
 
         if (result.row_data)
             add_to_summary(result.row_data, num);
@@ -2682,6 +2689,10 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
         var span = document.createElement("span");
         span.className = pcl+' qprob';
 	span.title = "score="+cnf;
+	if (maxcnf == 100) {
+            span.className += ' cytograph_controls';
+            span.title = "NORMALIZED "+span.title;
+	}
         span.appendChild(document.createTextNode(cnf));
 	span100.appendChild(span);
 
@@ -2722,7 +2733,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		td.appendChild(link);
 
                 if (result.analyses[ranal].support_graphs && result.analyses[ranal].support_graphs.length > 0) {
-		    td.appendChild(document.createTextNode(" Support Graphs: "));
+		    td.appendChild(document.createTextNode(" Analysis Support Graphs: "));
 
 		    for (var sg in result.analyses[ranal].support_graphs) {
 			link = document.createElement("a");
@@ -2737,7 +2748,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		    }
 		}
 		else {
-                    td.appendChild(document.createTextNode(" No Support Graphs found"));
+                    td.appendChild(document.createTextNode(" No Analysis Support Graphs found"));
 		}
 
                 var cnf = 'n/a';
@@ -3260,12 +3271,21 @@ function add_cyto(i,dataid) {
 
         a = document.createElement("a");
 	a.className = 'attvalue';
+        a.style.marginRight = "20px";
 	a.title = 'view ARAX synonyms';
 	a.href = "javascript:lookup_synonym('"+this.data('target')+"',true)";
 	a.innerHTML = this.data('target');
 	div.appendChild(a);
 
-        div.appendChild(document.createElement("br"));
+	if (this.data('__has_sgs')) {
+	    UIstate["edgesg"] = 0;
+            span = document.createElement("span");
+	    span.id = 'd'+this.data('parentdivnum')+'_div_edge';
+	    span.appendChild(document.createTextNode(" Edge Support Graphs: "));
+            div.appendChild(span);
+	}
+
+	div.appendChild(document.createElement("br"));
 
 	var fields = [ "relation","id" ];
 	for (var field of fields) {
@@ -3576,13 +3596,24 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		}
 
 		else if (att.attribute_type_id == "biolink:support_graphs") {
+		    UIstate["edgesg"]++;
                     var a = document.createElement("a");
                     a.className = 'attvalue';
                     a.style.cursor = "pointer";
 		    a.title = 'View Aux Graph: '+ val;
 		    a.setAttribute('onclick', 'add_cyto('+num+',"AUX'+val+'");');
-                    a.innerHTML = val;
+                    a.innerText = val;
 		    cell.appendChild(a);
+
+		    a = document.createElement("a");
+                    a.className = 'graphlink';
+		    a.style.fontWeight = "bold";
+		    a.style.fontSize = "larger";
+		    a.style.marginLeft = "20px";
+		    a.title = 'View Aux Graph: '+ val;
+		    a.setAttribute('onclick', 'add_cyto('+num+',"AUX'+val+'");');
+		    a.innerText = UIstate["edgesg"];
+		    document.getElementById('d'+num+'_div_edge').appendChild(a);
 		}
 
 		else {
@@ -5471,7 +5502,7 @@ function retrieveRecentResps() {
 }
 
 
-function retrieveRecentQs() {
+function retrieveRecentQs(active) {
     document.getElementById("recentqsLink").innerHTML = '';
 
     var recents_node = document.getElementById("recent_queries_container");
@@ -5487,15 +5518,23 @@ function retrieveRecentQs() {
 
     document.getElementById("recent_queries_timeline_container").innerHTML = '';
 
-    var hours = parseInt(document.getElementById("qftime").value.match(/[\d]+/));
-    if (isNaN(hours) || hours < 1 || hours > 200)
-	hours = 24;
-    document.getElementById("qftime").value = hours;
+    var apicall = "/status?";
+    var hours = 0;
+    if (active) {
+	apicall += "mode=active";
+    }
+    else {
+	hours = parseInt(document.getElementById("qftime").value.match(/[\d]+/));
+	if (isNaN(hours) || hours < 1 || hours > 200)
+	    hours = 24;
+	document.getElementById("qftime").value = hours;
+        apicall += "last_n_hours="+hours;
+    }
 
-    fetch(providers["ARAX"].url + "/status?last_n_hours="+hours)
+    fetch(providers["ARAX"].url + apicall)
 	.then(response => {
 	    if (response.ok) return response.json();
-	    else throw new Error('Something went wrong with /status?last_n_hours='+hours);
+	    else throw new Error('Something went wrong with '+apicall);
 	})
         .then(data => {
 	    var stats = {};
@@ -5508,12 +5547,14 @@ function retrieveRecentQs() {
 	    stats.instance_name  = {};
 	    stats.remote_address = {};
 
-	    var link = document.createElement("a");
-	    link.target = '_blank';
-	    link.title = 'link to this view';
-	    link.href = "http://"+ window.location.hostname + window.location.pathname + "?recent=" + hours;
-	    link.innerHTML = "[ Direct link to this view ]";
-	    document.getElementById("recentqsLink").appendChild(link);
+	    if (hours > 0) {
+		var link = document.createElement("a");
+		link.target = '_blank';
+		link.title = 'link to this view';
+		link.href = "http://"+ window.location.hostname + window.location.pathname + "?recent=" + hours;
+		link.innerHTML = "[ Direct link to this view ]";
+		document.getElementById("recentqsLink").appendChild(link);
+	    }
 
 	    var timeline = {};
             timeline["ISB_watchdog"] = { "data": [ { "label": 0 , "data": [] , "_qstart": new Date() } ] };
@@ -6843,7 +6884,7 @@ function submit_on_enter(ele) {
         else if (ele.id == 'qedgepredicatebox')
             qg_add_predicate_to_qedge(ele.value);
         else if (ele.id == 'qftime')
-	    retrieveRecentQs();
+	    retrieveRecentQs(false);
         else if (ele.id == 'howmanylatest')
 	    retrieveRecentResps();
 	else

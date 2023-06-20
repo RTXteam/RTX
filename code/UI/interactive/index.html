@@ -472,11 +472,13 @@
     <span style="float:right;" id="recentqsLink"></span>
   </div>
   <div class="status">
-    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentQs();"/>
+    <input type="button" class="questionBox button" name="action" value="Active Queries" onClick="retrieveRecentQs(true);"/>
+    -- or --
+    <input type="button" class="questionBox button" name="action" value="Recent Queries" onClick="retrieveRecentQs(false);"/>
     <input type="text" class="questionBox" id="qftime" onkeydown="submit_on_enter(this);" value="24" size="3" maxlength="3"/>hours (max.200)
     <span style="margin-left:50px;" id="qfilter"></span>
     <div id="recent_queries_timeline_container"></div>
-    <div id="recent_queries_container"><br>Click on the button above to view most recent ARAX services activity<br><br></div>
+    <div id="recent_queries_container"><br>Click on a button above to view/refresh most recent ARAX services activity<br><br></div>
   </div>
 </div>
 
