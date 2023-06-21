@@ -28,8 +28,8 @@ service:
 
 resources:
   requests:
-    memory: 64Gi
-    cpu: 16000m
+    memory: 62Gi
+    cpu: 15000m
   limits:
     memory: 33Gi
     cpu: 9000m
