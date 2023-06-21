@@ -1,6 +1,6 @@
 # Default values for kg2.
 
-replicaCount: 1
+replicaCount: 2
 
 initContainer:
   image:
