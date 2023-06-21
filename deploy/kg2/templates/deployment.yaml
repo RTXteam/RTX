@@ -39,10 +39,8 @@ spec:
           resources:
             requests:
               memory: 62Gi
-              cpu: 15000m
             limits:
               memory: 33Gi
-              cpu: 9000m
           command:
             - "/bin/bash"
             - "/scripts/start_app.sh"
