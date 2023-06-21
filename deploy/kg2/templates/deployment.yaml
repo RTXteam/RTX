@@ -37,7 +37,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
-            {{- toYaml .Values.resources }}
+            {{- toYaml .Values.resources | nindent 8 }}
           command:
             - "/bin/bash"
             - "/scripts/start_app.sh"
