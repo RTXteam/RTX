@@ -26,6 +26,14 @@ service:
   type: LoadBalancer
   port: 80
 
+resources:
+  requests:
+    memory: 64Gi
+    cpu: 16000
+  limits:
+    memory: 33Gi
+    cpu: 9000m
+
 ingress:
   annotations: 
     kubernetes.io/ingress.class: alb
