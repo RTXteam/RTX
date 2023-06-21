@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=13">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=14">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="config.js"></script>
@@ -391,7 +391,14 @@
   <div class="inputsection" id="qnew_input">
     <h3 style="display:inline;">Latest Responses:</h3>
     <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentResps();"/>
-    <input type="text" class="questionBox" id="howmanylatest" onkeydown="submit_on_enter(this);" value="50" size="3" maxlength="3"/>responses (max.999)
+    <input type="text" class="questionBox" id="howmanylatest" onkeydown="submit_on_enter(this);" value="10" size="2" maxlength="2"/>responses (max.50), from:
+    <select id="wherefromlatest">
+      <option value="ars.test.transltr.io">ars.test.transltr.io</option>
+      <option value="ars.ci.transltr.io">ars.ci.transltr.io</option>
+      <option value="ars-dev.transltr.io">ars-dev.transltr.io</option>
+      <option value="ars-prod.transltr.io">ars-prod.transltr.io</option>
+      <option value="ars.transltr.io">ars.transltr.io</option>
+    </select>
     <div id="recent_responses_container"><br>Click on the button above to view a list of the most recent responses<br><br></div>
   </div>
 

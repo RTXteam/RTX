@@ -11,21 +11,24 @@ import requests
 import requests_cache
 import copy
 
+from node_synonymizer import NodeSynonymizer
+
 
 class RecentUUIDManager:
 
     def __init__(self):
-        pass
+        self.synonymizer = None
 
 
-    def get_recent_uuids(self):
+    def get_recent_uuids(self, ars_host='ars.ci.transltr.io', top_n_pks=20):
 
-        debug = True
-        top_n_pks = 5
-        response = {}
+        debug = False
+        #top_n_pks = 20
+        response = { 'agents_list': [], 'pks': {} }
 
-        ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
-        ars_hosts = [ 'ars.ci.transltr.io' ]
+        #ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
+        #ars_hosts = [ 'ars.test.transltr.io' ]
+        ars_hosts = [ ars_host ]
         for ars_host in ars_hosts:
             with requests_cache.disabled():
                 if debug:
@@ -67,12 +70,15 @@ class RecentUUIDManager:
             return( { "status": 404, "title": "Error decoding Response", "detail": f"Cannot decode recent PK list from ARS {ars_host}: cannot find {container_key}", "type": "about:blank" }, 404)
 
         for uuid in response_dict[container_key]:
-            eprint(f"UUID is {uuid}")
+            #eprint(f"UUID is {uuid}")
             uuid_data = self.get_uuid(ars_host, uuid)
             #eprint(json.dumps(uuid_data,indent=2,sort_keys=True))
-            response[uuid] = self.summarize_uuid_data(ars_host, uuid_data)
-            response[uuid]['ars_host'] = ars_host
-            eprint(json.dumps(response,indent=2,sort_keys=True))
+            result = self.summarize_uuid_data(ars_host, uuid_data)
+            response['pks'][uuid] = result
+            response['agents_list'] = result['agents_list']
+            del(result['agents_list'])
+            response['pks'][uuid]['ars_host'] = ars_host
+            #eprint(json.dumps(response,indent=2,sort_keys=True))
 
         return response
 
@@ -80,7 +86,7 @@ class RecentUUIDManager:
     ###################################################################
     def get_uuid(self, ars_host, uuid):
 
-        debug = True
+        debug = False
 
         if debug:
             eprint(f"Trying to fetch {uuid} from {ars_host}...")
@@ -148,7 +154,8 @@ class RecentUUIDManager:
     ###################################################################
     def summarize_uuid_data(self, ars_host, uuid_data):
 
-        summary = {}
+        summary = { 'agents': {} }
+        agents = {}
 
         if 'status' in uuid_data:
             summary['status'] = uuid_data['status']
@@ -164,6 +171,8 @@ class RecentUUIDManager:
                         agent = actor_response['actor']['agent']
                 if not agent.startswith('ara'):
                     continue
+                agent = agent.replace('ara-', '')
+                agents[agent] = True
                 if 'code' in actor_response:
                     code = actor_response['code']
                 if 'status' in actor_response:
@@ -175,7 +184,8 @@ class RecentUUIDManager:
                 code_str = ''
                 if code != 200:
                     code_str = f"={code}"
-                summary[agent] = f"{status}{code_str} ({result_count} results)"
+                #summary[agent] = f"{status}{code_str} ({result_count} results)"
+                summary['agents'][agent] = { 'status': f"{status}{code_str}", 'n_results': result_count }
 
         if 'query_graph' in uuid_data:
             predicate ='?'
@@ -191,7 +201,21 @@ class RecentUUIDManager:
                     if 'ids' in node and node['ids'] is not None and len(node['ids']) > 0:
                         object_id = node['ids'][0]
             predicate = predicate.replace('biolink:', '')
+
+            if self.synonymizer is None:
+                self.synonymizer = NodeSynonymizer()
+            results = self.synonymizer.get_normalizer_results(entities=object_id)
+            try:
+                name = results[object_id]['id']['name']
+                #eprint(json.dumps(results[object_id]['id'], indent=2))
+                if name is not None and len(name) > 1:
+                    object_id = name
+            except:
+                eprint(f"ERROR: Unable to name name for {object_id} from synonymizer")
+
             summary['query'] = f"___ {predicate} {object_id}"
+
+        summary['agents_list'] = sorted(list(agents.keys()))
 
         return summary
 
