@@ -1418,7 +1418,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
                 html_node.appendChild(tnode);
 	    }
 
-	    if (jsonObj2.message["auxiliary_graphs"] && Object.keys(jsonObj2.message["auxiliary_graphs"]).length > 0)
+	    if (jsonObj2.message && jsonObj2.message["auxiliary_graphs"] && Object.keys(jsonObj2.message["auxiliary_graphs"]).length > 0)
 		document.getElementById("numaux_"+jsonObj2.araxui_response).innerHTML = Object.keys(jsonObj2.message["auxiliary_graphs"]).length;
 
 	    if (jsonObj2.validation_result.n_nodes)
@@ -5431,7 +5431,6 @@ function load_meta_knowledge_graph() {
 
 }
 
-
 function retrieveRecentResps() {
     var recentresps_node = document.getElementById("recent_responses_container");
     recentresps_node.innerHTML = '';
@@ -5442,40 +5441,66 @@ function retrieveRecentResps() {
     recentresps_node.appendChild(wait);
     recentresps_node.appendChild(document.createTextNode('Loading...'));
 
-
     var numpks = parseInt(document.getElementById("howmanylatest").value.match(/[\d]+/));
-    if (isNaN(numpks) || numpks < 1 || numpks > 999)
-	numpks = 50;
+    if (isNaN(numpks) || numpks < 1 || numpks > 50)
+	numpks = 10;
     document.getElementById("howmanylatest").value = numpks;
 
-    fetch("https://ars.ci.transltr.io/ars/api/latest_pk/"+numpks)
+    var srcpks = document.getElementById("wherefromlatest").value;
+
+    var apiurl = providers["ARAX"].url + "/status?mode=recent_pks&last_n_hours="+numpks+"&authorization="+srcpks
+
+    fetch(apiurl)
         .then(response => {
 	    if (response.ok) return response.json();
-	    else throw new Error('Something went wrong with https://ars.ci.transltr.io/ars/api/latest_pk/'+numpks);
+	    else throw new Error('Unable to fetch recent PKs from '+srcpks);
 	})
         .then(data => {
-            document.title = "ARAX-UI [List of most recent "+numpks+" queries]";
+            document.title = "ARAX-UI [List of "+numpks+" most recent ARS queries]";
 	    recentresps_node.innerHTML = '';
 
             var div = document.createElement("div");
 	    div.className = "statushead";
-	    div.appendChild(document.createTextNode("Viewing Last "+numpks+" Queries"));
+	    div.appendChild(document.createTextNode("Viewing "+numpks+" Most Recent ARS Queries from "+srcpks));
 	    recentresps_node.appendChild(div);
 
 	    div = document.createElement("div");
 	    div.className = "status";
-            recentresps_node.appendChild(div);
+	    recentresps_node.appendChild(div);
 
-	    table = document.createElement("table");
+	    var table = document.createElement("table");
 	    table.className = 'sumtab';
 
-	    var num = 0;
-	    for (var pk of data["latest_"+numpks+"_pks"]) {
-		num++;
-		var tr = document.createElement("tr");
-	        tr.className = 'hoverable';
+            var tr = document.createElement("tr");
+            var td = document.createElement("th");
+            tr.appendChild(td);
+	    td = document.createElement("th");
+            td.innerText = 'PK';
+	    tr.appendChild(td);
+            td = document.createElement("th");
+            td.innerText = 'Query';
+            tr.appendChild(td);
+            td = document.createElement("th");
+            td.innerText = 'Status';
+            tr.appendChild(td);
 
-	        var td = document.createElement("td");
+            for (var agent of data["agents_list"]) {
+		td = document.createElement("th");
+		td.colSpan = '2';
+		td.style.minWidth = '80px';
+	        td.innerText = agent;
+	        tr.appendChild(td);
+	    }
+
+	    table.appendChild(tr);
+
+	    var num = 0;
+            for (var pk in data["pks"]) {
+		num++;
+		tr = document.createElement("tr");
+		tr.className = 'hoverable';
+
+		td = document.createElement("td");
 		td.innerText = num+'.';
 		tr.appendChild(td);
 
@@ -5489,16 +5514,67 @@ function retrieveRecentResps() {
 		td.appendChild(link);
 		tr.appendChild(td);
 
+                td = document.createElement("td");
+		td.innerText = data["pks"][pk]["query"];
+		tr.appendChild(td);
+
+                td = document.createElement("td");
+                td.style.fontWeight = 'bold';
+		td.innerText = data["pks"][pk]["status"];
+		tr.appendChild(td);
+
+		for (var agent of data["agents_list"]) {
+		    td = document.createElement("td");
+		    td.style.borderLeft = "1px solid black";
+		    td.style.textAlign = 'right';
+                    var span = document.createElement("span");
+		    if (data["pks"][pk]["agents"][agent]) {
+                        if (data["pks"][pk]["agents"][agent]["status"] == "Done") {
+			    span.innerHTML = '&check;';
+			    span.className = 'explevel p9';
+			}
+			else if (data["pks"][pk]["agents"][agent]["status"] == "Running") {
+                            span.innerHTML = '&#10140;';
+			    span.className = 'explevel p7';
+			}
+                        else if (data["pks"][pk]["agents"][agent]["status"].startsWith("Error")) {
+			    span.innerHTML = '&cross;';
+			    span.className = 'explevel p1';
+			}
+                        else if (data["pks"][pk]["agents"][agent]["status"].startsWith("Unknown")) {
+			    span.innerHTML = '?';
+			    span.className = 'explevel p0';
+			}
+			else {
+			    span.innerText = data["pks"][pk]["agents"][agent]["status"];
+			}
+			td.appendChild(span);
+			td.title = data["pks"][pk]["agents"][agent]["status"];
+		    }
+		    else
+			td.innerText = 'n/a';
+		    tr.appendChild(td);
+
+                    td = document.createElement("td");
+		    td.style.textAlign = 'right';
+                    if (data["pks"][pk]["agents"][agent])
+			td.innerText = data["pks"][pk]["agents"][agent]["n_results"];
+		    else
+			td.innerText = 'n/a';
+                    td.title = td.innerText + " results";
+		    tr.appendChild(td);
+		}
+
 		table.appendChild(tr);
 	    }
 
 	    div.appendChild(table);
+            div.appendChild(document.createElement("br"));
 	})
         .catch(error => {
 	    recentresps_node.className = "error";
 	    recentresps_node.innerHTML = "<br>" + error + "<br><br>";
 	});
-
 }
 
 
