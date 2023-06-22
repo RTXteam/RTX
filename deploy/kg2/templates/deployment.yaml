@@ -95,7 +95,8 @@ spec:
     - metadata:
         name: {{ include "kg2.fullname" . }}-pvc
       spec:
-        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: nfs-client
+        accessModes: [ "ReadWriteMany" ]
         resources:
           requests:
             storage: 300Gi
