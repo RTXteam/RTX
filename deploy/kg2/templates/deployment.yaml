@@ -38,11 +38,11 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             requests:
-              memory: 59Gi
-              cpu: 14000m
+              memory: 56Gi
+              cpu: 13000m
             limits:
-              memory: 60Gi
-              cpu: 15000m
+              memory: 58Gi
+              cpu: 14000m
           command:
             - "/bin/bash"
             - "/scripts/start_app.sh"
