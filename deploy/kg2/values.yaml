@@ -78,9 +78,12 @@ storage:
 # database storage size referred by pvc
   database: 300Gi
 
-requests:
-  memory: 56Gi
-  cpu: 13000m
-limits:
-  memory: 58Gi
-  cpu: 14000m
+app:
+  kg2:
+    resources:
+      requests:
+        memory: 56Gi
+        cpu: 13000m
+      limits:
+        memory: 58Gi
+        cpu: 14000m 

@@ -34,15 +34,12 @@ spec:
               mountPath: /databases
       containers:
         - name: {{ .Chart.Name }}
+          {{- with .Values.app.kg2.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          resources:
-            requests:
-              memory: {{ .Values.requests.memory }}
-              cpu: {{ .Values.requests.cpu }}
-            limits:
-              memory: {{ .Values.limits.memory }}
-              cpu: {{ .Values.limits.cpu }}
           command:
             - "/bin/bash"
             - "/scripts/start_app.sh"
