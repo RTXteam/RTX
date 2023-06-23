@@ -41,7 +41,7 @@ spec:
               memory: {{ .Values.requests.memory }}
               cpu: {{ .Values.requests.cpu }}
             limits:
-              memory: {{ .Values.limits.cpu }}
+              memory: {{ .Values.limits.memory }}
               cpu: {{ .Values.limits.cpu }}
           command:
             - "/bin/bash"
