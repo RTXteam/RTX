@@ -34,7 +34,7 @@ spec:
               mountPath: /databases
       containers:
         - name: {{ .Chart.Name }}
-          {{- with .Values.app.kg2.resources }}
+          {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
