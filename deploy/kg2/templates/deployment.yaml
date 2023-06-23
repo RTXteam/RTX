@@ -38,11 +38,11 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           resources:
             requests:
-              memory: 56Gi
-              cpu: 13000m
+              memory: {{ .Values.requests.memory }}
+              cpu: {{ .Values.requests.cpu }}
             limits:
-              memory: 58Gi
-              cpu: 14000m
+              memory: {{ .Values.limits.cpu }}
+              cpu: {{ .Values.limits.cpu }}
           command:
             - "/bin/bash"
             - "/scripts/start_app.sh"
@@ -95,8 +95,8 @@ spec:
     - metadata:
         name: {{ include "kg2.fullname" . }}-pvc
       spec:
-        storageClassName: nfs-client
+        storageClassName: {{ .Values.storageClassName.class }}
         accessModes: [ "ReadWriteMany" ]
         resources:
           requests:
-            storage: 300Gi
+            storage: {{ .Values.storage.database }}
