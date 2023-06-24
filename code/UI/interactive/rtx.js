@@ -91,6 +91,7 @@ function main() {
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
     var rec = getQueryVariable("recent") || null;
+    var pks = getQueryVariable("latest") || null;
     var sai = getQueryVariable("smartapi") || getQueryVariable("smartAPI") || null;
 
     var response_id = getQueryVariable("r") || getQueryVariable("id") || null;
@@ -118,6 +119,17 @@ function main() {
 	document.getElementById("qftime").value = rec;
 	tab = "recentqs";
 	retrieveRecentQs(false);
+    }
+    else if (pks) {
+	document.getElementById("howmanylatest").value = pks;
+	var from = getQueryVariable("from") || 'test';
+	if (!from.startsWith("ars"))
+	    from = 'ars.' + from;
+	if (!from.endsWith(".transltr.io"))
+	    from += '.transltr.io';
+        document.getElementById("wherefromlatest").value = from;
+	selectInput("qnew");
+	retrieveRecentResps();
     }
     else if (sai) {
 	tab = "kpinfo";
@@ -5442,7 +5454,7 @@ function retrieveRecentResps() {
     recentresps_node.appendChild(document.createTextNode('Loading...'));
 
     var numpks = parseInt(document.getElementById("howmanylatest").value.match(/[\d]+/));
-    if (isNaN(numpks) || numpks < 1 || numpks > 50)
+    if (isNaN(numpks) || numpks < 1 || numpks > 40)
 	numpks = 10;
     document.getElementById("howmanylatest").value = numpks;
 
@@ -5462,6 +5474,15 @@ function retrieveRecentResps() {
             var div = document.createElement("div");
 	    div.className = "statushead";
 	    div.appendChild(document.createTextNode("Viewing "+numpks+" Most Recent ARS Queries from "+srcpks));
+
+            var link = document.createElement("a");
+	    link.style.float = 'right';
+	    link.target = '_blank';
+	    link.title = 'link to this view';
+	    link.href = "http://"+ window.location.hostname + window.location.pathname + "?latest=" + numpks + "&from=" + srcpks;
+	    link.innerHTML = "[ Direct link to this view ]";
+	    div.appendChild(link);
+
 	    recentresps_node.appendChild(div);
 
 	    div = document.createElement("div");
@@ -5533,9 +5554,9 @@ function retrieveRecentResps() {
 			    span.innerHTML = '&check;';
 			    span.className = 'explevel p9';
 			}
-			else if (data["pks"][pk]["agents"][agent]["status"] == "Running") {
+			else if (data["pks"][pk]["agents"][agent]["status"].startsWith("Running")) {
                             span.innerHTML = '&#10140;';
-			    span.className = 'explevel p7';
+			    span.className = 'explevel p3';
 			}
                         else if (data["pks"][pk]["agents"][agent]["status"].startsWith("Error")) {
 			    span.innerHTML = '&cross;';
