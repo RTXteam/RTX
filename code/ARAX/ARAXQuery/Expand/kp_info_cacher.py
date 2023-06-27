@@ -4,6 +4,7 @@ import pathlib
 import pickle
 import subprocess
 import sys
+import psutil
 from datetime import datetime, timedelta
 from typing import Set, Dict, Optional
 
@@ -28,7 +29,6 @@ class KPInfoCacher:
         version_string = f"{self.rtx_config.trapi_major_version}--{self.rtx_config.maturity}"
         self.smart_api_cache_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_smart_api_{version_string}.pkl"
         self.meta_map_cache_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_meta_map_{version_string}.pkl"
-
     def refresh_kp_info_caches(self):
         """
         This method is meant to be called periodically by a background task. It refreshes two caches of KP info:
@@ -36,6 +36,8 @@ class KPInfoCacher:
         """
 
         # TODO: FOR SUNDAR: Record here that the current PID has STARTED refreshing the KP info caches
+        self.current_pid = os.getpid()
+        print(f"The process with process ID {self.current_pid} has STARTED refreshing the KP info caches")
 
         # Grab KP registrations from Smart API
         smart_api_helper = SmartAPI()
@@ -74,6 +76,8 @@ class KPInfoCacher:
         subprocess.check_call(["mv", f"{self.meta_map_cache_path}.tmp", self.meta_map_cache_path])
 
         # TODO: FOR SUNDAR: Record here that the current PID is DONE refreshing the KP info caches
+        print(f"The process with process ID {self.current_pid} has FINISHED refreshing the KP info caches")
+        self.currently_refreshing_kp_info = False
 
     def _get_kp_url_from_smartapi_registration(self, kp_smart_api_registration: dict) -> Optional[str]:
         if kp_smart_api_registration.get("servers"):
@@ -109,10 +113,10 @@ class KPInfoCacher:
         It ensures that caches are up to date and that they don't become corrupted while refreshing.
         """
         # TODO: FOR SUNDAR --------------------------------------------------------------------------------
-        caches_are_being_refreshed = False  # TODO: Determine this value based on PID recorded during refresh_kp_info_caches()
+        caches_are_being_refreshed = True if(psutil.pid_exists(self.current_pid)) else False # TODO: Determine this value based on PID recorded during refresh_kp_info_caches()
         while caches_are_being_refreshed:
+            caches_are_being_refreshed = True if(psutil.pid_exists(self.current_pid)) else False
             # TODO: Wait and keep checking to see when they're done being refreshed
-            pass
         # TODO: END OF SECTION ----------------------------------------------------------------------------
 
         # At this point the KP info caches must NOT be in the process of being refreshed, so we create/update if needed.
