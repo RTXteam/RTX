@@ -29,6 +29,7 @@ class KPInfoCacher:
         version_string = f"{self.rtx_config.trapi_major_version}--{self.rtx_config.maturity}"
         self.smart_api_cache_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_smart_api_{version_string}.pkl"
         self.meta_map_cache_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_meta_map_{version_string}.pkl"
+        self.cache_refresh_pid_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_refresh.pid"
     def refresh_kp_info_caches(self):
         """
         This method is meant to be called periodically by a background task. It refreshes two caches of KP info:
@@ -36,8 +37,10 @@ class KPInfoCacher:
         """
 
         # TODO: FOR SUNDAR: Record here that the current PID has STARTED refreshing the KP info caches
-        self.current_pid = os.getpid()
+        current_pid = os.getpid() # This is the PID of the process that is currently refreshing the caches
         print(f"The process with process ID {self.current_pid} has STARTED refreshing the KP info caches")
+        with open(self.cache_refresh_pid_path, "w") as f:
+            f.write(str(current_pid))   # Writing the PID of the process that is currently refreshing the caches to a file
 
         # Grab KP registrations from Smart API
         smart_api_helper = SmartAPI()
@@ -75,9 +78,7 @@ class KPInfoCacher:
             pickle.dump(meta_map, meta_map_cache_temp)
         subprocess.check_call(["mv", f"{self.meta_map_cache_path}.tmp", self.meta_map_cache_path])
 
-        # TODO: FOR SUNDAR: Record here that the current PID is DONE refreshing the KP info caches
-        print(f"The process with process ID {self.current_pid} has FINISHED refreshing the KP info caches")
-        self.currently_refreshing_kp_info = False
+        print(f"The process with process ID {current_pid} has FINISHED refreshing the KP info caches") 
 
     def _get_kp_url_from_smartapi_registration(self, kp_smart_api_registration: dict) -> Optional[str]:
         if kp_smart_api_registration.get("servers"):
@@ -112,12 +113,13 @@ class KPInfoCacher:
         Other modules should NEVER try to load the caches directly! They should only load them via this method.
         It ensures that caches are up to date and that they don't become corrupted while refreshing.
         """
-        # TODO: FOR SUNDAR --------------------------------------------------------------------------------
-        caches_are_being_refreshed = True if(psutil.pid_exists(self.current_pid)) else False # TODO: Determine this value based on PID recorded during refresh_kp_info_caches()
-        while caches_are_being_refreshed:
-            caches_are_being_refreshed = True if(psutil.pid_exists(self.current_pid)) else False
-            # TODO: Wait and keep checking to see when they're done being refreshed
-        # TODO: END OF SECTION ----------------------------------------------------------------------------
+        if(os.path.exists(self.cache_refresh_pid_path)): # Check if the refresher PID file exists
+            with open(self.cache_refresh_pid_path, "r") as f: 
+                refresher_pid = int(f.read()) # Get the PID of the process that is currently refreshing the caches
+                caches_are_being_refreshed = True if(psutil.pid_exists(refresher_pid)) else False # Check if the process is still running
+                while caches_are_being_refreshed: # If the caches are being actively refreshed, wait for it to finish
+                    caches_are_being_refreshed = True if(psutil.pid_exists(refresher_pid)) else False 
+
 
         # At this point the KP info caches must NOT be in the process of being refreshed, so we create/update if needed.
         # In particular, this ensures that the caches will be created/fresh even on dev machines, that don't run the
