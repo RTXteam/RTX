@@ -47,7 +47,7 @@ class ARAXBackgroundTasker:
                     exception_type, exception_value, exception_traceback = sys.exc_info()
                     eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: refresh_kp_info_caches() failed: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}")
             kp_info_cacher_counter += 1
-            if kp_info_cacher_counter > 2:
+            if kp_info_cacher_counter > ( 6 * 10 ):
                 kp_info_cacher_counter = 0
 
             #### Check ongoing queries
