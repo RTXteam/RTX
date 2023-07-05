@@ -170,7 +170,12 @@ class KPInfoCacher:
                     print(f"Ran into a problem getting {kp_infores_curie}'s meta info")
                 else:
                     if kp_response.status_code == 200:
-                        kp_meta_kg = kp_response.json()
+                        try:
+                            kp_meta_kg = kp_response.json()
+                        except:
+                            print(f"Skipping {kp_infores_curie} because they returned invalid JSON")
+                            kp_meta_kg = "Failed"
+
                         if type(kp_meta_kg) != dict:
                             print(f"Skipping {kp_infores_curie} because they returned an invalid meta knowledge graph")
                         else:
