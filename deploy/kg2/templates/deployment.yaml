@@ -34,6 +34,10 @@ spec:
               mountPath: /databases
       containers:
         - name: {{ .Chart.Name }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
@@ -88,7 +92,8 @@ spec:
     - metadata:
         name: {{ include "kg2.fullname" . }}-pvc
       spec:
-        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: {{ .Values.storageClassName.class }}
+        accessModes: [ "ReadWriteMany" ]
         resources:
           requests:
-            storage: 300Gi
+            storage: {{ .Values.storage.database }}

@@ -269,8 +269,10 @@ class ARAXQuery:
             'code_description': self.response.message
         }
 
-        query_tracker.update_tracker_entry(self.response.job_id, attributes)
-
+        if hasattr(self.response, 'job_id'):
+            query_tracker.update_tracker_entry(self.response.job_id, attributes)
+        else:
+            eprint("*******ERROR: self.response has no job_id attr! E275")
 
 
 
