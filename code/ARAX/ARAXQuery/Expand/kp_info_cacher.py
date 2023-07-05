@@ -37,7 +37,7 @@ class KPInfoCacher:
         """
 
         current_pid = os.getpid() # This is the PID of the process that is currently refreshing the caches
-        print(f"The process with process ID {self.current_pid} has STARTED refreshing the KP info caches")
+        print(f"The process with process ID {current_pid} has STARTED refreshing the KP info caches")
         with open(self.cache_refresh_pid_path, "w") as f:
             f.write(str(current_pid))   # Writing the PID of the process that is currently refreshing the caches to a file
 
