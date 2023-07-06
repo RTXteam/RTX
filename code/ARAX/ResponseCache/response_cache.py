@@ -413,8 +413,8 @@ class ResponseCache:
             #### Perform a validation on it
             enable_validation = True
             schema_version = trapi_version
-            if 'schema_version' in envelope:
-                schema_version = envelope['schema_version']
+            #if 'schema_version' in envelope:
+            #    schema_version = envelope['schema_version']
             try:
                 if enable_validation:
 
@@ -643,8 +643,8 @@ class ResponseCache:
                 #### Perform a validation on it
                 enable_validation = True
                 schema_version = trapi_version
-                if 'schema_version' in envelope:
-                    schema_version = envelope['schema_version']
+                #if 'schema_version' in envelope:
+                #    schema_version = envelope['schema_version']
                 try:
                     if enable_validation:
 
