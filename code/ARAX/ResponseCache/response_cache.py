@@ -312,27 +312,11 @@ class ResponseCache:
                 try:
                     if enable_validation:
 
-                        #### Save the query_graph because the validator seems to muck with it
-                        saved_query_graph = copy.deepcopy(envelope['message']['query_graph'])
-
-                        #### Hack to work around a schema problem. FIXME
-                        try:
-                            for key,edge in envelope['message']['knowledge_graph']['edges'].items():
-                                for source in edge['sources']:
-                                    if 'source_record_urls' not in source or source['source_record_urls'] is None:
-                                        source['source_record_urls'] = []
-                                    if 'upstream_resource_ids' not in source or source['upstream_resource_ids'] is None:
-                                        source['upstream_resource_ids'] = []
-                        except:
-                            pass
-
                         #### Perform the validation
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                         validator.check_compliance_of_trapi_response(envelope)
                         validation_messages_text = validator.dumps()
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
-                        #### Restore corrupted query_graph
-                        envelope['message']['query_graph'] = saved_query_graph
 
                         critical_errors = 0
                         errors = 0
@@ -418,25 +402,9 @@ class ResponseCache:
             try:
                 if enable_validation:
 
-                    #### Save the query_graph because the validator seems to muck with it
-                    saved_query_graph = copy.deepcopy(envelope['message']['query_graph'])
-
-                    #### Hack to work around a schema problem. FIXME
-                    try:
-                        for key,edge in envelope['message']['knowledge_graph']['edges'].items():
-                            for source in edge['sources']:
-                                if 'source_record_urls' not in source or source['source_record_urls'] is None:
-                                    source['source_record_urls'] = []
-                                if 'upstream_resource_ids' not in source or source['upstream_resource_ids'] is None:
-                                    source['upstream_resource_ids'] = []
-                    except:
-                        pass
-
                     validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                     validator.check_compliance_of_trapi_response(envelope)
                     messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
-                    #### Restore corrupted query_graph
-                    envelope['message']['query_graph'] = saved_query_graph
 
                     critical_errors = 0
                     errors = 0
@@ -648,27 +616,11 @@ class ResponseCache:
                 try:
                     if enable_validation:
 
-                        #### Save the query_graph because the validator seems to muck with it
-                        saved_query_graph = copy.deepcopy(envelope['message']['query_graph'])
-
-                        #### Hack to work around a schema problem. FIXME
-                        try:
-                            for key,edge in envelope['message']['knowledge_graph']['edges'].items():
-                                for source in edge['sources']:
-                                    if 'source_record_urls' not in source or source['source_record_urls'] is None:
-                                        source['source_record_urls'] = []
-                                    if 'upstream_resource_ids' not in source or source['upstream_resource_ids'] is None:
-                                        source['upstream_resource_ids'] = []
-                        except:
-                            pass
-
                         #### Perform the validation
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                         validator.check_compliance_of_trapi_response(envelope)
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
                         validation_messages_text = validator.dumps()
-                        #### Restore corrupted query_graph
-                        envelope['message']['query_graph'] = saved_query_graph
 
                         critical_errors = 0
                         errors = 0
