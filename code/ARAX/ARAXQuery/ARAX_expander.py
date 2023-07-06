@@ -1208,13 +1208,13 @@ class ARAXExpander:
         if intermediate_results_response.status == "OK":
             # Filter down so we only keep the top X nodes
             results = intermediate_results_response.envelope.message.results
-            results.sort(key=lambda x: x.score, reverse=True)
+            results.sort(key=lambda x: x.analyses[0].score, reverse=True)
             kept_nodes = set()
             scores = []
             counter = 0
             while len(kept_nodes) < prune_threshold and counter < len(results):
                 current_result = intermediate_results_response.envelope.message.results[counter]
-                scores.append(current_result.score)
+                scores.append(current_result.analyses[0].score)
                 kept_nodes.update({binding.id for binding in current_result.node_bindings[qnode_key_to_prune]})
                 counter += 1
             log.info(f"Kept top {len(kept_nodes)} answers for {qnode_key_to_prune}. "

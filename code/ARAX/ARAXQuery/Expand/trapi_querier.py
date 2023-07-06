@@ -201,13 +201,12 @@ class TRAPIQuerier:
                                                  f"query sent to {self.kp_infores_curie}, none of which are the KG ID ({kg_id})."
                                                  f" This is invalid TRAPI. Skipping this binding.")
 
-            for analysis in result.analyses:  # TODO: Do we need to worry about extracting supporting_graphs from KPs?
-                if not analysis.edge_bindings:
-                    continue
-                for qedge_key, edge_bindings in analysis.edge_bindings.items():
-                    for edge_binding in edge_bindings:
-                        kg_id = edge_binding.id
-                        qedge_key_mappings[kg_id].add(qedge_key)
+            for analysis in result.analyses:  # TODO: Maybe later extract Analysis support graphs from KPs?
+                if analysis.edge_bindings:
+                    for qedge_key, edge_bindings in analysis.edge_bindings.items():
+                        for edge_binding in edge_bindings:
+                            kg_id = edge_binding.id
+                            qedge_key_mappings[kg_id].add(qedge_key)
 
         if not self.kp_infores_curie == "infores:rtx-kg2":
             # Convert parent curie mappings back to canonical form (we send KPs synonyms sometimes..)
@@ -323,7 +322,6 @@ class TRAPIQuerier:
         body['submitter'] = "infores:arax"
         if self.kp_infores_curie == "infores:rtx-kg2":
             body['return_minimal_metadata'] = True  # Don't want KG2 attributes because ARAX adds them later (faster)
-            # TODO: Later add submitter for all KP queries (isn't yet supported by all KPs - part of TRAPI 1.2.1) #1654
         return body
 
     def _answer_query_force_local(self, request_body: dict) -> dict:
@@ -371,6 +369,11 @@ class TRAPIQuerier:
                 returned_edge.sources.append(self.arax_retrieval_source)
             else:
                 returned_edge.sources = [self.arax_retrieval_source]
+
+            # Delete any support graph references for now # TODO: Extract such support graphs? #2060
+            if returned_edge.attributes:
+                returned_edge.attributes = [attribute for attribute in returned_edge.attributes
+                                            if attribute.attribute_type_id != "biolink:support_graphs"]
 
             if returned_edge_key in kg_to_qg_mappings['edges']:
                 for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
