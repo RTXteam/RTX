@@ -42,7 +42,8 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.4.0-beta4'
+trapi_version = '1.4.1'
+biolink_version = '3.5.0'
 
 
 Base = declarative_base()
@@ -306,8 +307,8 @@ class ResponseCache:
                 #### Perform a validation on it
                 enable_validation = True
                 schema_version = trapi_version
-                if 'schema_version' in envelope:
-                    schema_version = envelope['schema_version']
+                #if 'schema_version' in envelope:
+                #    schema_version = envelope['schema_version']
                 try:
                     if enable_validation:
 
@@ -326,17 +327,26 @@ class ResponseCache:
                             pass
 
                         #### Perform the validation
-                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.8")
+                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                         validator.check_compliance_of_trapi_response(envelope)
                         validation_messages_text = validator.dumps()
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
                         #### Restore corrupted query_graph
                         envelope['message']['query_graph'] = saved_query_graph
 
-                        if len(messages['errors']) == 0:
-                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                        critical_errors = 0
+                        errors = 0
+                        if 'critical' in messages and len(messages['critical']) > 0:
+                            critical_errors = len(messages['critical'])
+                        if 'errors' in messages and len(messages['errors']) > 0:
+                            errors = len(messages['errors'])
+                        if critical_errors > 0:
+                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                        elif errors > 0:
+                            envelope['validation_result'] = { 'status': 'ERROR', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                         else:
-                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+
                     else:
                         envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
                 except Exception as error:
@@ -422,16 +432,25 @@ class ResponseCache:
                     except:
                         pass
 
-                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.8")
+                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                     validator.check_compliance_of_trapi_response(envelope)
                     messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
                     #### Restore corrupted query_graph
                     envelope['message']['query_graph'] = saved_query_graph
 
-                    if len(messages['errors']) == 0:
-                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages }
+                    critical_errors = 0
+                    errors = 0
+                    if 'critical' in messages and len(messages['critical']) > 0:
+                        critical_errors = len(messages['critical'])
+                    if 'errors' in messages and len(messages['errors']) > 0:
+                       errors = len(messages['errors'])
+                    if critical_errors > 0:
+                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                    elif errors > 0:
+                        envelope['validation_result'] = { 'status': 'ERROR', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+
                 else:
                     envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
             except Exception as error:
@@ -644,17 +663,26 @@ class ResponseCache:
                             pass
 
                         #### Perform the validation
-                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.8")
+                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                         validator.check_compliance_of_trapi_response(envelope)
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
                         validation_messages_text = validator.dumps()
                         #### Restore corrupted query_graph
                         envelope['message']['query_graph'] = saved_query_graph
 
-                        if len(messages['errors']) == 0:
-                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                        critical_errors = 0
+                        errors = 0
+                        if 'critical' in messages and len(messages['critical']) > 0:
+                            critical_errors = len(messages['critical'])
+                        if 'errors' in messages and len(messages['errors']) > 0:
+                            errors = len(messages['errors'])
+                        if critical_errors > 0:
+                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                        elif errors > 0:
+                            envelope['validation_result'] = { 'status': 'ERROR', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                         else:
-                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+
                     else:
                         envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
 
