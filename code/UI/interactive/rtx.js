@@ -1351,6 +1351,18 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    nr.className = 'explevel p1';
 	    nr.title = 'Failed TRAPI 1.4 validation';
 	}
+        else if (jsonObj2.validation_result.status == "ERROR") {
+            if (type == "all") {
+                var span = document.createElement("span");
+                span.className = 'error';
+                span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+                statusdiv.appendChild(span);
+                statusdiv.appendChild(document.createElement("br"));
+	    }
+	    nr.innerHTML = '&#x2755;';
+	    nr.className = 'explevel p3';
+            nr.title = 'There were TRAPI 1.4 validation errors';
+	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all") {
                 var span = document.createElement("span");
@@ -1615,6 +1627,8 @@ function render_response_stats(respObj) {
     else if ( respObj.message["results"] ) {
 	if (respObj.validation_result && respObj.validation_result.status == "FAIL")
 	    nr.className = 'explevel p1';
+	else if (respObj.validation_result && respObj.validation_result.status == "ERROR")
+	    nr.className = 'explevel p3';
 	else if (respObj.message.results.length > 0)
 	    nr.className = 'explevel p9';
 	else
@@ -1777,6 +1791,8 @@ function render_response(respObj,dispjson) {
 		var nr = document.createElement("span");
 		if (respObj.validation_result && respObj.validation_result.status == "FAIL")
 		    nr.className = 'explevel p1';
+		else if (respObj.validation_result && respObj.validation_result.status == "ERROR")
+		    nr.className = 'explevel p3';
 		else if (respObj.message.results.length > 0)
 		    nr.className = 'explevel p9';
 		else
