@@ -78,6 +78,7 @@ class KPInfoCacher:
         subprocess.check_call(["mv", f"{self.meta_map_cache_path}.tmp", self.meta_map_cache_path])
 
         print(f"The process with process ID {current_pid} has FINISHED refreshing the KP info caches") 
+        os.remove(self.cache_refresh_pid_path)
 
     def _get_kp_url_from_smartapi_registration(self, kp_smart_api_registration: dict) -> Optional[str]:
         if kp_smart_api_registration.get("servers"):
