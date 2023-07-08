@@ -1094,7 +1094,7 @@ def test_xdtd_expand():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0004975"]
+                    "ids": ["MONDO:0017979"]
                 },
                 "chemical": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -1125,7 +1125,7 @@ def test_xdtd_different_categories():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0004975"]
+                    "ids": ["MONDO:0005615"]
                 },
                 "chemical": {
                     "categories": ["biolink:Drug"]
@@ -1144,7 +1144,7 @@ def test_xdtd_different_categories():
     query = {
         "nodes": {
             "disease": {
-                "ids": ["MONDO:0004975"],
+                "ids": ["MONDO:0005615"],
                 "categories": ["biolink:Disease"]
             },
             "chemical": {
@@ -1164,7 +1164,7 @@ def test_xdtd_different_categories():
     query = {
         "nodes": {
             "disease": {
-                "ids": ["MONDO:0004975"],
+                "ids": ["MONDO:0005615"],
                 "categories": ["biolink:DiseaseOrPhenotypicFeature"]
             },
             "chemical": {
@@ -1187,7 +1187,7 @@ def test_xdtd_multiple_categories():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0004975"]
+                    "ids": ["UMLS:C5419466"]
                 },
                 "chemical": {
                     "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
@@ -1209,7 +1209,7 @@ def test_xdtd_different_predicates():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["UMLS:C4023597"]
+                    "ids": ["UMLS:C5419466"]
                 },
                 "chemical": {
                     "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
