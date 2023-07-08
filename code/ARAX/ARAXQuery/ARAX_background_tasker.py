@@ -43,6 +43,7 @@ class ARAXBackgroundTasker:
                 eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Running refresh_kp_info_caches()")
                 try:
                     kp_info_cacher.refresh_kp_info_caches()
+                    eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Completed refresh_kp_info_caches()")
                 except Exception as error:
                     exception_type, exception_value, exception_traceback = sys.exc_info()
                     eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: refresh_kp_info_caches() failed: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}")
