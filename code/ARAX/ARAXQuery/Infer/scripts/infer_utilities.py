@@ -263,13 +263,13 @@ class InferUtilities:
             # The x[0] is here since each element consists of the string path and a score we are currently ignoring the score
             split_paths = [x[0].split("->") for x in paths]
             for path in split_paths:
-                drug_name = path[0]
+                drug_curie = path[0]
                 n_elements = len(path)
 
                 edges_info = []
                 flag = False
                 for i in range(0,n_elements-2,2):
-                    edge_info = xdtdmapping.get_edge_info(triple_name=(path[i],path[i+1],path[i+2]))
+                    edge_info = xdtdmapping.get_edge_info(triple_id=(path[i],path[i+1],path[i+2]))
                     if len(edge_info) == 0:
                         flag = True
                     else:
@@ -337,7 +337,9 @@ class InferUtilities:
                 path_added = True
             if path_added:
                 treat_score = top_drugs.loc[top_drugs['drug_id'] == drug]["tp_score"].iloc[0]
-                essence_scores[drug_name] = treat_score
+                drug_node_info = xdtdmapping.get_node_info(node_id=drug_curie)
+                disease_node_info = xdtdmapping.get_node_info(node_id=disease_curie)
+                essence_scores[drug_node_info.name] = treat_score
                 edge_attribute_list = [
                     Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                     Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
@@ -350,8 +352,7 @@ class InferUtilities:
                 edge_predicate = "biolink:treats"
                 if hasattr(message.query_graph.edges[qedge_id], 'predicates') and message.query_graph.edges[qedge_id].predicates:
                     edge_predicate = message.query_graph.edges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?
-                drug_node_info = xdtdmapping.get_node_info(node_name=drug_name)
-                disease_node_info = xdtdmapping.get_node_info(node_name=disease_name)
+                
                 fixed_edge = Edge(predicate=edge_predicate, subject=drug_node_info.id, object=disease_node_info.id,
                                 attributes=edge_attribute_list, sources=retrieval_source)
                 #fixed_edge.qedge_keys = ["treats"]

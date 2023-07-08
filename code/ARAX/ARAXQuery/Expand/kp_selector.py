@@ -1,18 +1,13 @@
 #!/bin/env python3
-import pickle
-from datetime import datetime, timedelta
 import os
-import pathlib
 import sys
-from typing import Set, Dict, List, Optional
+from typing import Set, List, Optional
 from collections import defaultdict
 from itertools import product
 
-import requests
-import requests_cache
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
+from kp_info_cacher import KPInfoCacher
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper")
@@ -21,45 +16,31 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.query_graph import QueryGraph
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-from smartapi import SmartAPI
 
 
 class KPSelector:
 
     def __init__(self, kg2_mode: bool = False, log: ARAXResponse = ARAXResponse()):
-        self.meta_map_path = f"{os.path.dirname(os.path.abspath(__file__))}/meta_map_v2.pickle"
-        self.timeout_record_path = f"{os.path.dirname(os.path.abspath(__file__))}/kp_timeout_record.pickle"
         self.log = log
-        self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self.get_all_kps()
         self.kg2_mode = kg2_mode
+        self.kp_cacher = KPInfoCacher()
+        self.meta_map, self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self._load_cached_kp_info()
         self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else set(self.kp_urls.keys())
-        self.timeout_record = self._load_timeout_record()
-        self.meta_map = self._load_meta_map()
         self.biolink_helper = BiolinkHelper()
 
-    def get_kp_endpoint_url(self, kp_name):
-        if kp_name in self.kp_urls:
-            kp_url = self.kp_urls[kp_name]
-            return kp_url.strip("/") if isinstance(kp_url, str) else kp_url  # Strip any trailing slash
+    def _load_cached_kp_info(self) -> tuple:
+        if self.kg2_mode:
+            # We don't need any KP meta info when in KG2 mode, because there are no KPs to choose from
+            return None, None, None, None
         else:
-            return None
+            # Load cached KP info
+            kp_cacher = KPInfoCacher()
+            smart_api_info, meta_map = kp_cacher.load_kp_info_caches(self.log)
 
-    def get_all_kps(self) -> tuple:
-        smartapi = SmartAPI()
-        minor_version = RTXConfig.trapi_major_version
-        maturity = RTXConfig.maturity
-        kp_info = smartapi.get_kps(version=minor_version,req_maturity=maturity)
+            # Record None URLs for our local KPs
+            allowed_kp_urls = smart_api_info["allowed_kp_urls"]
 
-        allowed_kp_urls = {kp["infores_name"] : kp["servers"][0]["url"] for kp in kp_info}
-        allowed_kp_urls["infores:arax-drug-treats-disease"] = None
-        allowed_kp_urls["infores:arax-normalized-google-distance"] = None
-
-        # use special logic to choose from kg2 server urls based on config
-        kg2_url = self.get_kg2_url(kp_info)
-        if kg2_url:
-            allowed_kp_urls["infores:rtx-kg2"] = kg2_url
-
-        return allowed_kp_urls, smartapi.kps_excluded_by_version, smartapi.kps_excluded_by_maturity
+            return meta_map, allowed_kp_urls, smart_api_info["kps_excluded_by_version"], smart_api_info["kps_excluded_by_maturity"]
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[Set[str]]:
         """
@@ -172,178 +153,6 @@ class KPSelector:
                                  f"{unsupported_curies}; will not send these to KP")
             return list(converted_curies)
 
-    # returns True if at least one possible triple exists in the KP's meta map
-    def _triple_is_in_meta_map(self, kp: str, subject_categories: Set[str], predicates: Set[str], object_categories: Set[str]) -> bool:
-        kp_meta_map = self.meta_map.get(kp)
-        if not kp_meta_map:
-            if kp not in self.valid_kps:
-                self.log.error(f"{kp} does not seem to be a valid KP for ARAX. Valid KPs are: {self.valid_kps}", error_code="InvalidKP")
-            else:
-                self.log.warning(f"Somehow missing meta info for {kp}.")
-            return False
-        else:
-            predicates_map = kp_meta_map["predicates"]
-            # handle potential emptiness of sub, obj, predicate lists
-            if not subject_categories:  # any subject
-                subject_categories = set(predicates_map.keys())
-            if not object_categories:  # any object
-                object_set = set()
-                _ = [object_set.add(obj) for obj_dict in predicates_map.values() for obj in obj_dict.keys()]
-                object_categories = object_set
-            any_predicate = False if predicates or kp == "NGD" else True
-
-            # handle combinations of subject and objects using cross product
-            qg_sub_obj_dict = defaultdict(lambda: set())
-            for sub, obj in list(product(subject_categories, object_categories)):
-                qg_sub_obj_dict[sub].add(obj)
-
-            # check for subjects
-            kp_allowed_subs = set(predicates_map.keys())
-            accepted_subs = kp_allowed_subs.intersection(set(qg_sub_obj_dict.keys()))
-
-            # check for objects
-            for sub in accepted_subs:
-                kp_allowed_objs = set(predicates_map[sub].keys())
-                accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub])
-                if len(accepted_objs) > 0:
-                    # check predicates
-                    for obj in accepted_objs:
-                        if any_predicate or predicates.intersection(predicates_map[sub][obj]):
-                            return True
-            return False
-
-    def _load_meta_map(self):
-        # This function loads the meta map and updates it as needed
-        meta_map_file = pathlib.Path(self.meta_map_path)
-        one_day_ago = datetime.now() - timedelta(hours=24)
-        if not meta_map_file.exists():
-            self.log.debug(f"Creating local copy of meta map for all KPs")
-            meta_map = self._refresh_meta_map()
-        elif datetime.fromtimestamp(meta_map_file.stat().st_mtime) < one_day_ago:
-            self.log.debug(f"Doing a refresh of local meta map for all KPs")
-            meta_map = self._refresh_meta_map()
-        else:
-            self.log.debug(f"Loading meta map (already exists and isn't due for a refresh)")
-            with open(self.meta_map_path, "rb") as map_file:
-                meta_map = pickle.load(map_file)
-            # Check for any missing KPs
-            missing_kps = self.valid_kps.difference(set(meta_map))
-            if missing_kps:
-                self.log.debug(f"Missing meta info for {missing_kps}")
-                meta_map = self._refresh_meta_map(missing_kps, meta_map)
-
-        # Make sure the map doesn't contain any 'stale' KPs
-        stale_kps = set(meta_map).difference(self.valid_kps)
-        if stale_kps and not self.kg2_mode:  # For dev work, we don't want to edit the metamap when in KG2 mode
-            for stale_kp in stale_kps:
-                self.log.debug(f"Detected a stale KP in meta map ({stale_kp}) - deleting it")
-                del meta_map[stale_kp]
-            with open(self.meta_map_path, "wb") as map_file:
-                pickle.dump(meta_map, map_file)  # Save these changes
-
-        return meta_map
-
-    def _refresh_meta_map(self, kps: Optional[Set[str]] = None, meta_map: Optional[Dict[str, dict]] = None):
-        # Create an up to date version of the meta map
-        kps_to_update = kps if kps else self.valid_kps
-
-        if not meta_map:
-            # Load whatever pre-existing meta-map we might already have (could use this info in case an API fails)
-            meta_map_file = pathlib.Path(self.meta_map_path)
-            if meta_map_file.exists():
-                with open(self.meta_map_path, "rb") as existing_meta_map_file:
-                    meta_map = pickle.load(existing_meta_map_file)
-            else:
-                meta_map = dict()
-
-        # Then (try to) get updated meta info from each KP
-        ten_minutes_ago = datetime.now() - timedelta(minutes=10)
-        non_functioning_kps = [kp for kp in kps_to_update if self.timeout_record.get(kp) and
-                               self.timeout_record[kp] > ten_minutes_ago]
-        if non_functioning_kps:
-            self.log.debug(f"Not trying to grab meta info for {non_functioning_kps} because they timed out "
-                           f"within the last 10 minutes")
-        functioning_kps_to_update = set(kps_to_update).difference(set(non_functioning_kps))
-        for kp in functioning_kps_to_update:
-            kp_endpoint = self.get_kp_endpoint_url(kp)
-            if kp_endpoint:
-                try:
-                    self.log.debug(f"Getting meta info from {kp}")
-                    with requests_cache.disabled():
-                        kp_response = requests.get(f"{kp_endpoint}/meta_knowledge_graph", timeout=10)
-                except requests.exceptions.Timeout:
-                    self.log.warning(f"Timed out when trying to hit {kp}'s /meta_knowledge_graph endpoint "
-                                     f"(waited 10 seconds)")
-                    self.timeout_record[kp] = datetime.now()
-                except Exception:
-                    self.log.warning(f"Ran into a problem getting {kp}'s meta info")
-                else:
-                    if kp_response.status_code == 200:
-                        kp_meta_kg = kp_response.json()
-                        if type(kp_meta_kg) != dict:
-                            self.log.warning(f"Skipping {kp} because they returned an invalid meta knowledge graph")
-                        else:
-                            meta_map[kp] = {"predicates": self._convert_to_meta_map(kp_meta_kg),
-                                            "prefixes": {category: meta_node["id_prefixes"]
-                                                         for category, meta_node in kp_meta_kg["nodes"].items()}}
-                    else:
-                        self.log.warning(f"Unable to access {kp}'s /meta_knowledge_graph endpoint (returned status of "
-                                         f"{kp_response.status_code} for URL {kp_endpoint})")
-            elif kp == "infores:arax-drug-treats-disease":
-                meta_map[kp] = {"predicates": self._get_dtd_meta_map(),
-                                "prefixes": dict()}
-            elif kp == "infores:arax-normalized-google-distance":
-                # This is just a placeholder; not really used for KP selection
-                predicates = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:occurs_together_in_literature_with"}}}
-                meta_map[kp] = {"predicates": predicates,
-                                "prefixes": dict()}
-
-        # Save our big combined metamap to a local json file
-        with open(self.meta_map_path, "wb") as map_file:
-            pickle.dump(meta_map, map_file)
-        with open(self.timeout_record_path, "wb") as timeout_file:
-            pickle.dump(self.timeout_record, timeout_file)
-
-        return meta_map
-
-    @staticmethod
-    def _convert_to_meta_map(kp_meta_kg: dict) -> dict:
-        kp_meta_map = dict()
-        for meta_edge in kp_meta_kg["edges"]:
-            subject_category = meta_edge["subject"]
-            object_category = meta_edge["object"]
-            predicate = meta_edge["predicate"]
-            if subject_category not in kp_meta_map:
-                kp_meta_map[subject_category] = dict()
-            if object_category not in kp_meta_map[subject_category]:
-                kp_meta_map[subject_category][object_category] = set()
-            kp_meta_map[subject_category][object_category].add(predicate)
-        return kp_meta_map
-
-    @staticmethod
-    def _get_dtd_meta_map():
-        dtd_predicates = {"biolink:treats", "biolink:treated_by"}
-        drug_ish_dict = {"biolink:Drug": dtd_predicates,
-                         "biolink:SmallMolecule": dtd_predicates}
-        disease_ish_dict = {"biolink:Disease": dtd_predicates,
-                            "biolink:PhenotypicFeature": dtd_predicates,
-                            "biolink:DiseaseOrPhenotypicFeature": dtd_predicates}
-        dtd_meta_map = {"biolink:Drug": disease_ish_dict,
-                        "biolink:SmallMolecule": disease_ish_dict,
-                        "biolink:Disease": drug_ish_dict,
-                        "biolink:PhenotypicFeature": drug_ish_dict,
-                        "biolink:DiseaseOrPhenotypicFeature": drug_ish_dict}
-        return dtd_meta_map
-
-    def _load_timeout_record(self) -> Dict[str, datetime]:
-        self.log.debug(f"Loading record of KP timeouts")
-        timeout_record_file = pathlib.Path(self.timeout_record_path)
-        if not timeout_record_file.exists():
-            return dict()
-        else:
-            with open(self.timeout_record_path, "rb") as timeout_file:
-                return pickle.load(timeout_file)
-
     def make_qg_use_supported_prefixes(self, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
         for qnode_key, qnode in qg.nodes.items():
             if qnode.ids:
@@ -385,30 +194,42 @@ class KPSelector:
                               for prefix in self.meta_map[kp]["prefixes"].get(category, set())}
         return supported_prefixes
 
-    def get_kg2_url(self,kp_info):
-        # return override config url if there is one
-        if RTXConfig.rtx_kg2_url:
-            return RTXConfig.rtx_kg2_url
-
-        kg2_urls = []
-        for entry in kp_info:
-            if entry["infores_name"] == "infores:rtx-kg2":
-                for server in entry["servers"]:
-                    kg2_urls.append(server["url"])
-
-        if len(kg2_urls) == 0:
-            return None
-        kg2_url = kg2_urls[0]
-
-        # choose a url based on whether or not this is an itrb_instance
-        # defaulting to a non-preferred value if we can't find a preferred one
-        if RTXConfig.is_itrb_instance:
-            itrb_urls = [url for url in kg2_urls if "transltr.io" in url]
-            if len(itrb_urls) > 0:
-                kg2_url = itrb_urls[0]
+    def _triple_is_in_meta_map(self, kp: str, subject_categories: Set[str], predicates: Set[str], object_categories: Set[str]) -> bool:
+        # returns True if at least one possible triple exists in the KP's meta map
+        kp_meta_map = self.meta_map.get(kp)
+        if not kp_meta_map:
+            if kp not in self.valid_kps:
+                self.log.error(f"{kp} does not seem to be a valid KP for ARAX. Valid KPs are: {self.valid_kps}", error_code="InvalidKP")
+            else:
+                self.log.warning(f"Somehow missing meta info for {kp}.")
+            return False
         else:
-            non_itrb_urls = [url for url in kg2_urls if "transltr.io" not in url]
-            if len(non_itrb_urls) > 0:
-                kg2_url = non_itrb_urls[0]
+            predicates_map = kp_meta_map["predicates"]
+            # handle potential emptiness of sub, obj, predicate lists
+            if not subject_categories:  # any subject
+                subject_categories = set(predicates_map.keys())
+            if not object_categories:  # any object
+                object_set = set()
+                _ = [object_set.add(obj) for obj_dict in predicates_map.values() for obj in obj_dict.keys()]
+                object_categories = object_set
+            any_predicate = False if predicates or kp == "NGD" else True
 
-        return kg2_url
+            # handle combinations of subject and objects using cross product
+            qg_sub_obj_dict = defaultdict(lambda: set())
+            for sub, obj in list(product(subject_categories, object_categories)):
+                qg_sub_obj_dict[sub].add(obj)
+
+            # check for subjects
+            kp_allowed_subs = set(predicates_map.keys())
+            accepted_subs = kp_allowed_subs.intersection(set(qg_sub_obj_dict.keys()))
+
+            # check for objects
+            for sub in accepted_subs:
+                kp_allowed_objs = set(predicates_map[sub].keys())
+                accepted_objs = kp_allowed_objs.intersection(qg_sub_obj_dict[sub])
+                if len(accepted_objs) > 0:
+                    # check predicates
+                    for obj in accepted_objs:
+                        if any_predicate or predicates.intersection(predicates_map[sub][obj]):
+                            return True
+            return False
