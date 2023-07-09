@@ -234,10 +234,10 @@ class SmartAPI:
 
 
     # @lru_cache(maxsize=None)
-    def get_kps(self, log=None, version=None, req_maturity=None, flexible=False, hierarchy=None, whitelist=None, blacklist=None):
+    def get_all_trapi_kp_registrations(self, log=None, trapi_version=None, req_maturity=None, flexible=False, hierarchy=None, whitelist=None, blacklist=None):
         """Find all endpoints that match a query for TRAPI which are classified as KPs. If req_maturity is given and flexible is false, this will only return KPs and KP servers with maturity levels that match req_maturity. If flexible is true, the hierarchy will be used to find the preferred maturity level if no servers match req_maturity for that KP. If no hierarchy is given, the hierarchy compliant with the standard set by Translator will be used. The whitelist and blacklist should be given as sets of infores_names, which can be used to restrict the list of KPs that are returned. Note that some KPs may not have infores names."""
 
-        endpoints = self.get_trapi_endpoints(version=version, whitelist=whitelist, blacklist=blacklist)
+        endpoints = self.get_trapi_endpoints(version=trapi_version, whitelist=whitelist, blacklist=blacklist)
         all_KPs = [ep for ep in endpoints if ep["component"] == "KP"]
 
         if req_maturity:
@@ -254,7 +254,6 @@ class SmartAPI:
         self.kps_excluded_by_version = {kp for kp in self.kps_excluded_by_version if kp not in self.kps_accepted}
 
         return KPs
-
 
 
 def setup_cli():
@@ -344,7 +343,7 @@ def main():
         if args.hierarchy and args.flexible == None:
             argparser.print_help()
             return
-        output = smartapi.get_kps(version=args.version, req_maturity=args.req_maturity, flexible=args.flexible, hierarchy=args.hierarchy, whitelist=args.whitelist, blacklist=args.blacklist)
+        output = smartapi.get_all_trapi_kp_registrations(trapi_version=args.version, req_maturity=args.req_maturity, flexible=args.flexible, hierarchy=args.hierarchy, whitelist=args.whitelist, blacklist=args.blacklist)
 
     if args.pretty:
         smartapi.collate_and_print(output)
