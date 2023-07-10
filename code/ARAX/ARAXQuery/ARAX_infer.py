@@ -459,6 +459,10 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             # with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
             #     top_paths = pickle.load(fid)
             
+            ## Filter useless nodes
+            filtered_list = ['UMLS:C1611640']
+            top_drugs = top_drugs.loc[~top_drugs['drug_id'].isin(filtered_list),:].reset_index(drop=True)
+            
             ## Limit the number of drugs and paths to the top n
             top_drugs = top_drugs.iloc[:self.parameters['n_drugs'],:].reset_index(drop=True)
             top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:self.parameters['n_paths']] for row in top_drugs.to_numpy() if (row[0], row[2]) in top_paths}
