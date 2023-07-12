@@ -10,8 +10,12 @@
       "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.0.1/ExplainableDTD_v1.3_KG2.8.0.1.db",
 =======
       "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.8.3/curie_to_pmids_v1.0_KG2.8.3.sqlite",
+<<<<<<< HEAD
       "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.0.1/ExplainableDTD_v1.0_KG2.8.0.1.db",
 >>>>>>> 333ae1826 (Updated config_dbs to point to latest curie_to_pmids #2056)
+=======
+      "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.0.1/ExplainableDTD_v1.2_KG2.8.0.1.db",
+>>>>>>> f3290b0dc (Updated config_dbs to use v1.2 xDTD #2056)
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
       "graph_database": "/translator/data/orangeboard/databases/KG2.8.0.1/GRAPH_v1.0_KG2.8.0.1_refreshed.sqlite",
       "dtd_prob": "/translator/data/orangeboard/databases/KG2.8.0.1/DTD_probability_database_v1.0_KG2.8.0.1_refreshed.db",
