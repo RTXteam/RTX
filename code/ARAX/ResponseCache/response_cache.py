@@ -42,7 +42,7 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.4.1'
+trapi_version = '1.4.2'
 biolink_version = '3.5.0'
 
 
@@ -516,7 +516,7 @@ class ResponseCache:
                     return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
                 response_dict['ars_host'] = ars_host
-                response_dict['ui_host'] = ars_host.replace('ars','ui')
+                response_dict['ui_host'] = ars_host.replace('ars','ui').replace('-prod','')
 
                 return response_dict
 

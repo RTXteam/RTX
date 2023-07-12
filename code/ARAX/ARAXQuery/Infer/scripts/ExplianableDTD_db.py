@@ -320,11 +320,11 @@ def main():
         return
 
     print("==== Testing for search for top drugs by disease id ====", flush=True)
-    print(EDTDdb.get_top_drugs_for_disease('MONDO:0008753'))
+    print(EDTDdb.get_top_drugs_for_disease('MONDO:0005148'))
     # print(EDTDdb.get_top_drugs_for_disease(["MONDO:0008753","MONDO:0005148","MONDO:0005155"]))
 
     print("==== Testing for search for top paths by disease id ====", flush=True)
-    print(EDTDdb.get_top_paths_for_disease('MONDO:0008753'))
+    print(EDTDdb.get_top_paths_for_disease('MONDO:0005148'))
     # print(EDTDdb.get_top_paths_for_disease(["MONDO:0008753","MONDO:0005148","MONDO:0005155"]))
 
 ####################################################################################################

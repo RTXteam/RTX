@@ -9,6 +9,7 @@ import json
 import requests
 import json
 import copy
+import timeit
 
 #sys.path = ['/mnt/data/python/TestValidator'] + sys.path
 from reasoner_validator import TRAPIResponseValidator
@@ -58,17 +59,6 @@ def main():
             for key in keys:
                 del(target[key])
                 print(f"Delete {key}")
-
-        #### Compensate for a bug in the TRAPI 1.4.0-beta4 schema
-        if True:
-            for key,edge in response_dict['message']['knowledge_graph']['edges'].items():
-                #if 'qualifiers' not in edge or edge['qualifiers'] is None:
-                #    edge['qualifiers'] = []
-                for source in edge['sources']:
-                    if 'source_record_urls' not in source or source['source_record_urls'] is None:
-                        source['source_record_urls'] = []
-                    if 'upstream_resource_ids' not in source or source['upstream_resource_ids'] is None:
-                        source['upstream_resource_ids'] = []
 
 
     #### If a UUID / PK
@@ -133,17 +123,20 @@ def main():
         del(envelope['validation_result'])
 
     #### Store the TRAPI before
-    #outfile = open('zz_before.json','w')
-    #print(json.dumps(envelope, sort_keys=True, indent=2), file=outfile)
-    #outfile.close()
+    outfile = open('zz_before.json','w')
+    print(json.dumps(envelope, sort_keys=True, indent=2), file=outfile)
+    outfile.close()
 
     #### Perform a validation on it
     if params.verbose:
         print(json.dumps(envelope, sort_keys=True, indent=2))
 
-    validator = TRAPIResponseValidator(trapi_version="1.4.0-beta4", biolink_version="3.2.8")
+    #validator = TRAPIResponseValidator(trapi_version="TranslatorReasonerAPI-1.4.0-beta4.yaml", biolink_version="3.2.8")
+    t0 = timeit.default_timer()
+    validator = TRAPIResponseValidator(trapi_version="1.4.2", biolink_version="3.5.0")
+    t1 = timeit.default_timer()
     validator.check_compliance_of_trapi_response(envelope)
-
+    t2 = timeit.default_timer()
 
     messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
     print(json.dumps(messages, sort_keys=True, indent=2))
@@ -152,9 +145,13 @@ def main():
     validation_output = validator.dumps()
     print(validation_output)
 
-    #outfile = open('zz_after.json','w')
-    #print(json.dumps(envelope, sort_keys=True, indent=2), file=outfile)
-    #outfile.close()
+    outfile = open('zz_after.json','w')
+    print(json.dumps(envelope, sort_keys=True, indent=2), file=outfile)
+    outfile.close()
+
+    print("Object setup time: "+str(t1-t0))
+    print("Validation time: "+str(t2-t1))
+
 
     return
 

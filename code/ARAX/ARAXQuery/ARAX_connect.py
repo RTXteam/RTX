@@ -18,6 +18,7 @@ import copy
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
+from openapi_server.models.knowledge_graph import KnowledgeGraph
 
 class ARAXConnect:
 
@@ -161,6 +162,8 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         #response = ARAXResponse()
         self.response = input_response
         self.message = input_response.envelope.message
+        if self.message.knowledge_graph is None:
+            self.message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
 
         #### Basic checks on arguments
         if not isinstance(input_parameters, dict):
