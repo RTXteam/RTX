@@ -33,6 +33,6 @@
    },
    "neo4j": {
       "KG2pre": "kg2endpoint-kg2-8-3.rtx.ai",
-      "KG2c": "kg2-8-3.rtx.ai"
+      "KG2c": "kg2-8-3c.rtx.ai"
    }
 }
