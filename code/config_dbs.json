@@ -6,7 +6,7 @@
       "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.8.0.1/fda_approved_drugs_v1.0_KG2.8.0.1c.pickle",
       "autocomplete": "/translator/data/orangeboard/databases/KG2.8.0.1/autocomplete_v1.0_KG2.8.0.1.sqlite",
       "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.8.0.1/curie_to_pmids_v1.0_KG2.8.0.1.sqlite",
-      "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.0.1/ExplainableDTD_v1.1_KG2.8.0.1.db",
+      "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.0.1/ExplainableDTD_v1.2_KG2.8.0.1.db",
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
       "graph_database": "/translator/data/orangeboard/databases/KG2.8.0.1/GRAPH_v1.0_KG2.8.0.1_refreshed.sqlite",
       "dtd_prob": "/translator/data/orangeboard/databases/KG2.8.0.1/DTD_probability_database_v1.0_KG2.8.0.1_refreshed.db",
