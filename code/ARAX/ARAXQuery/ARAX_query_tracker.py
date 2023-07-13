@@ -412,6 +412,45 @@ class ARAXQueryTracker:
 
 
     ##################################################################################################
+    def clear_ongoing_queries(self):
+        '''
+        Gets the current list of ongoing queries in the tracking table for this instance
+        and clears them all (to be called at initial launch in case there are leftovers)
+        '''
+        if self.session is None:
+            return
+
+        instance_info = self.get_instance_info()
+
+        #### Enclosing in commits seems to reduce the problem of threads being out of sync
+        self.session.commit()
+        ongoing_queries = self.session.query(ARAXOngoingQuery).filter(
+            ARAXOngoingQuery.domain == instance_info['domain'],
+            ARAXOngoingQuery.hostname == instance_info['hostname'],
+            ARAXOngoingQuery.instance_name == instance_info['instance_name']).all()
+        self.session.commit()
+
+        n_ongoing_queries = len(ongoing_queries)
+
+        entries_to_delete = []
+
+        for ongoing_query in ongoing_queries:
+            entries_to_delete.append(ongoing_query.query_id)
+            eprint(f"  -- query_id {ongoing_query.query_id} found still in table. Clearing.")
+
+        for query_id in entries_to_delete:
+            attributes = {
+                'status': 'Reset',
+                'message_id': None,
+                'message_code': 'Reset',
+                'code_description': 'This query was found in ongoing query list at application relaunch and reset.'
+            }
+            self.update_tracker_entry(query_id, attributes)
+
+        return
+
+
+    ##################################################################################################
     def get_status(self, last_n_hours=24, mode=None, id_=None):
         if self.session is None:
             return
