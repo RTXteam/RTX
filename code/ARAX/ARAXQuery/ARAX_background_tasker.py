@@ -46,16 +46,15 @@ class ARAXBackgroundTasker:
             eprint("Installed packages:")
             for location, modname, flag in pkgutil.iter_modules():
                 location = f"{location}"
-                if 'site' in location:
+                if 'RTX' not in location:
                     try:
                         version_str = version(modname)
                         eprint(f"    {modname} {version_str}")
                     except:
                         eprint(f"    {modname} ???")
-                elif 'RTX' in location:
-                    pass
                 else:
-                    eprint(f"    {modname}                  x {location}")
+                    pass
+                    #eprint(f"    {modname}                  x {location}")
 
         while True:
 
