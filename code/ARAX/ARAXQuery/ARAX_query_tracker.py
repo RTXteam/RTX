@@ -204,7 +204,7 @@ class ARAXQueryTracker:
             tracker_entry.code_description = attributes['code_description'][:254]
         session.commit()
 
-        if 'status' in attributes and attributes['status'] in [ 'Completed', 'Died' ]:
+        if 'status' in attributes and attributes['status'] in [ 'Completed', 'Died', 'Reset' ]:
             try:
                 session.query(ARAXOngoingQuery).filter(ARAXOngoingQuery.query_id==tracker_id).delete()
                 session.commit()
