@@ -35,6 +35,11 @@ class ARAXBackgroundTasker:
         kp_info_cacher = KPInfoCacher()
         kp_info_cacher_counter = 0
 
+        #### Clear the table of existing queries
+        eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Clearing any potential stale queries in ongoing query table")
+        query_tracker.clear_ongoing_queries()
+
+
         while True:
 
             #### Run the KP Info Cacher less frequently
