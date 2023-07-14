@@ -1,6 +1,6 @@
 pandas==1.5.3
 numpy==1.24.2
-requests
+requests==2.31.0
 requests-cache
 psutil
 neo4j-driver>=1.7.0,<=1.7.6
