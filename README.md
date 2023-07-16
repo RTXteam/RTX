@@ -273,7 +273,7 @@ Red Team and the Tatonetti Lab from the NCATS Translator Feasibility
 Assessment Phase) for overlaying clinical health record co-occurrence
 significance information for biomedical concepts in a knowledge graph, 
 via the `overlay` feature (for more information, see `code/ARAX`). ARAX
-accesses COHD via a web API.
+accesses COHD via a web API. 
 
 ## PubMed
 
