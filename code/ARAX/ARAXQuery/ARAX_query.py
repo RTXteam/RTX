@@ -1,4 +1,5 @@
 #!/bin/env python3
+import copy
 import sys
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -31,6 +32,7 @@ from ARAX_messenger import ARAXMessenger
 from ARAX_ranker import ARAXRanker
 from operation_to_ARAXi import WorkflowToARAXi
 from ARAX_query_tracker import ARAXQueryTracker
+from result_transformer import ResultTransformer
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response
@@ -241,7 +243,7 @@ class ARAXQuery:
                 'code_description': 'Query running via /asyncquery'
             }
             query_tracker = ARAXQueryTracker()
-            query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
+            query_tracker.update_tracker_entry(self.response.job_id, attributes)
         else:
             self.track_query_finish()
             #### Switch OK to Success for TRAPI compliance
@@ -267,8 +269,10 @@ class ARAXQuery:
             'code_description': self.response.message
         }
 
-        query_tracker.update_tracker_entry(self.response.tracker_id, attributes)
-
+        if hasattr(self.response, 'job_id'):
+            query_tracker.update_tracker_entry(self.response.job_id, attributes)
+        else:
+            eprint("*******ERROR: self.response has no job_id attr! E275")
 
 
 
@@ -321,7 +325,7 @@ class ARAXQuery:
                 response.envelope.submitter = '?'
 
         #### Create an entry to track this query
-        tracker_id = None
+        job_id = None
         if origin == 'API':
             query_tracker = ARAXQueryTracker()
             if 'remote_address' in query and query['remote_address'] is not None:
@@ -329,8 +333,13 @@ class ARAXQuery:
             else:
                 remote_address = '????'
             attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': remote_address }
-            tracker_id = query_tracker.create_tracker_entry(attributes)
-        response.tracker_id = tracker_id
+            job_id = query_tracker.create_tracker_entry(attributes)
+
+            if job_id == -999:
+                response.error(f"Query could not be run due to exceeded limits", error_code="OverLimit", http_status=429)
+                return response
+
+        response.job_id = job_id
 
         try:
             #### Determine a plan for what to do based on the input
@@ -638,6 +647,11 @@ class ARAXQuery:
                 response.debug(f"   option="+option)
                 optionsDict[option] = 1
 
+        # Save the original input query for later reference
+        if mode != "RTXKG2" and response.envelope.message.query_graph and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
+            response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
+            response.debug(f"Saving original query graph (has qnodes {set(response.original_query_graph.nodes)} "
+                           f"and qedges {set(response.original_query_graph.edges)})..")
 
         #### If there are actions, then fulfill those
         if operations.actions:
@@ -697,7 +711,7 @@ class ARAXQuery:
                     'code_description': 'Query executing via /asyncquery'
                 }
                 query_tracker = ARAXQueryTracker()
-                query_tracker.alter_tracker_entry(self.response.tracker_id, attributes)
+                query_tracker.alter_tracker_entry(self.response.job_id, attributes)
 
 
             #### If there is already a KG with edges, recompute the qg_keys
@@ -745,10 +759,10 @@ class ARAXQuery:
                         filter.apply(response,action['parameters'])
 
                     elif action['command'] == 'resultify':
-                        resultifier.apply(response, action['parameters'])
+                        resultifier.apply(response, action['parameters'], mode=mode)
 
                     elif action['command'] == 'scoreless_resultify':
-                        resultifier.apply(response, action['parameters'])
+                        resultifier.apply(response, action['parameters'], mode=mode)
 
                     elif action['command'] == 'overlay':  # recognize the overlay command
                         overlay.apply(response, action['parameters'])
@@ -823,6 +837,10 @@ class ARAXQuery:
                             self.send_to_callback(callback, response)
                         return response
 
+            if mode != 'RTXKG2':  # KG2 doesn't use virtual edges or edit the QG, so no transformation needed
+                result_transformer = ResultTransformer()
+                result_transformer.transform(response)
+
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'response': 'true', 'store': 'true' } }
             if action is not None and action['command'] == 'return':
@@ -853,10 +871,10 @@ class ARAXQuery:
 
             #response.envelope.operations['actions'] = operations.actions
 
-            # Update the reasoner_id to ARAX if not already present
+            # Update the resource_id to ARAX if not already present
             for result in response.envelope.message.results:
-                if result.reasoner_id is None:
-                    result.reasoner_id = 'ARAX'
+                if result.resource_id is None:
+                    result.resource_id = 'ARAX'
 
             # Store the validation and provenance metadata
             #trapi_version = '1.2.0'

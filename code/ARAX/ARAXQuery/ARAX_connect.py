@@ -18,6 +18,7 @@ import copy
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
+from openapi_server.models.knowledge_graph import KnowledgeGraph
 
 class ARAXConnect:
 
@@ -161,6 +162,8 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         #response = ARAXResponse()
         self.response = input_response
         self.message = input_response.envelope.message
+        if self.message.knowledge_graph is None:
+            self.message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
 
         #### Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -415,7 +418,9 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                         qnode_pair[2] = True
             if not added_connection:
                 #FW: may want to change this to an error
-                self.response.warning(f"Could not connect the nodes {qnode_pair[0]} and {qnode_pair[1]} with a max path length of {self.parameters['max_path_length']}.") 
+                self.response.warning(f"Could not connect the nodes {qnode_pair[0]} and {qnode_pair[1]} with a max path length of {self.parameters['max_path_length']}.")
+        if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
+            self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
         return self.response
 
 

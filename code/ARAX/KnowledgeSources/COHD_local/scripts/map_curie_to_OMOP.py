@@ -88,7 +88,7 @@ class MapCurieToOMOP:
                 self.synonyms_dict = dict()
                 for curie in self.kpdata_dict:
                     if curie_type in self.kpdata_dict[curie]['type']:
-                        res = self.synonymizer.get_normalizer_results(curie, kg_name=self.kg)
+                        res = self.synonymizer.get_normalizer_results(curie)
                         synonym_list = list(set([row['identifier'] for row in res[curie]['equivalent_identifiers']]))
                         self.synonyms_dict[curie] = {'name': self.kpdata_dict[curie]['name'], 'type': self.kpdata_dict[curie]['type'], 'synonyms': synonym_list}
 
@@ -104,7 +104,7 @@ class MapCurieToOMOP:
             self.synonyms_dict = dict()
             for curie in self.kpdata_dict:
                 if len(self.kpdata_dict[curie]['type'].intersection(set(curie_type))) > 0:
-                    res = self.synonymizer.get_normalizer_results(curie, kg_name=self.kg)
+                    res = self.synonymizer.get_normalizer_results(curie)
                     synonym_list = list(set([row['identifier'] for row in res[curie]['equivalent_identifiers']]))
                     self.synonyms_dict[curie] = {'name': self.kpdata_dict[curie]['name'], 'type': self.kpdata_dict[curie]['type'], 'synonyms': synonym_list}
 

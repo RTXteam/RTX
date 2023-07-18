@@ -42,7 +42,7 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     edges_of_interest = []
     values = set()
     for key, edge in message.knowledge_graph.edges.items():
-        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
+        assert 'primary_knowledge_source' in [source.resource_role for source in edge.sources]
         if hasattr(edge, 'edge_attributes'):
             for attr in edge.edge_attributes:
                 if attr.original_attribute_name == attribute_name:
@@ -69,7 +69,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     values = set()
     assert len(edges_of_interest) > 0
     for edge in edges_of_interest:
-        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
+        assert 'primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
         assert hasattr(edge, 'attributes')
         assert edge.attributes
         assert edge.attributes[0].original_attribute_name == attribute_name
@@ -79,28 +79,28 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     assert len(values) >= num_different_values
 
 
-def test_xdtd_infer_alkaptonuria_1():
+def test_xdtd_infer_diabetes_1():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0008753)",
+            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0005148)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) == 1
     assert len(message.results) > 0
 
-def test_xdtd_infer_alkaptonuria_2():
+def test_xdtd_infer_diabetes_2():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0008753,n_drugs=2,n_paths=15)",
+            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0005148,n_drugs=2,n_paths=15)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert message.auxiliary_graphs
     assert len(message.results) > 0
 
 def test_xdtd_with_qg():
@@ -108,7 +108,7 @@ def test_xdtd_with_qg():
         "message": {"query_graph": {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0004975"]
+                    "ids": ["MONDO:0003912"]
                 },
                 "chemical": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -125,7 +125,7 @@ def test_xdtd_with_qg():
         }
         },
         "operations": {"actions": [
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0008753,qedge_id=t_edge)",
+            "infer(action=drug_treatment_graph_expansion,node_curie=test_xdtd_with_qg,qedge_id=t_edge)",
             "return(message=true, store=true)"
         ]}
     }
@@ -141,7 +141,7 @@ def test_xdtd_with_qg2():
         "message": {"query_graph": {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0004975"]
+                    "ids": ["MONDO:0003912"]
                 },
                 "chemical": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -158,14 +158,14 @@ def test_xdtd_with_qg2():
         }
         },
         "operations": {"actions": [
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0004975,qedge_id=t_edge)",
+            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0003912,qedge_id=t_edge)",
             "return(message=true, store=true)"
         ]}
     }
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) == 1
     assert len(message.results) > 0
 
 
@@ -174,7 +174,7 @@ def test_xdtd_with_qg3():
         "message": {"query_graph": {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0004975"]
+                    "ids": ["MONDO:0017979"]
                 },
                 "chemical": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -191,14 +191,14 @@ def test_xdtd_with_qg3():
         }
         },
         "operations": {"actions": [
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0004975,qedge_id=t_edge,n_drugs=10,n_paths=10)",
+            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0017979,qedge_id=t_edge,n_drugs=10,n_paths=10)",
             "return(message=true, store=true)"
         ]}
     }
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert message.auxiliary_graphs
     assert len(message.results) > 0
 
 def test_xdtd_with_only_qg():
@@ -206,7 +206,7 @@ def test_xdtd_with_only_qg():
         "message": {"query_graph": {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0004975"]
+                    "ids": ["MONDO:0003912"]
                 },
                 "chemical": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -226,7 +226,7 @@ def test_xdtd_with_only_qg():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) == 1
     assert len(message.results) > 0
 
 @pytest.mark.slow
@@ -239,7 +239,7 @@ def test_xcrg_infer_bomeol():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) >= 1
     assert len(message.results) > 0
     creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
     if len(creative_mode_edges) != 0:
@@ -287,7 +287,7 @@ def test_xcrg_with_qg1():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 1
+    assert len(message.query_graph.edges) >= 1
     assert len(message.results) > 0
     creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
     if len(creative_mode_edges) != 0:
@@ -337,7 +337,7 @@ def test_xcrg_with_qg2():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) >= 1
     assert len(message.results) > 0
     creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
     if len(creative_mode_edges) != 0:
@@ -382,7 +382,7 @@ def test_xcrg_with_only_qg():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) >= 1
     assert len(message.results) > 0
     creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
     if len(creative_mode_edges) != 0:
@@ -406,7 +406,7 @@ def test_xcrg_infer_dsl():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) > 1
+    assert len(message.query_graph.edges) >= 1
     assert len(message.results) > 0
     creative_mode_edges = [x for x in list(message.knowledge_graph.edges.keys()) if 'creative_CRG_prediction' in x]
     if len(creative_mode_edges) != 0:

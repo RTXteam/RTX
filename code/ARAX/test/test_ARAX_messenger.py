@@ -20,7 +20,7 @@ def test_create_message_basic():
     assert response.status == 'OK'
     message = response.envelope.message
     assert response.envelope.type == 'translator_reasoner_response'
-    assert response.envelope.schema_version == '1.3.0'
+    assert response.envelope.schema_version == '1.4.0'
 
 
 def test_create_message_node_edge_types():
@@ -84,7 +84,7 @@ def test_add_qnode_name():
     assert response.status == 'OK'
     assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.nodes) == 1
-    assert message.query_graph.nodes['n00'].ids[0] == 'CHEMBL.COMPOUND:CHEMBL112'
+    assert message.query_graph.nodes['n00'].ids[0] == 'PUBCHEM.COMPOUND:1983'
 
 
 def test_add_qnode_type():

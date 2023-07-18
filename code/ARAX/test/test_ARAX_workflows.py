@@ -42,7 +42,7 @@ def _attribute_tester(message, attribute_name: str, attribute_type: str, num_dif
     edges_of_interest = []
     values = set()
     for key, edge in message.knowledge_graph.edges.items():
-        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
+        assert 'primary_knowledge_source' in [source.resource_role for source in edge.sources]
         if hasattr(edge, 'edge_attributes'):
             for attr in edge.edge_attributes:
                 if attr.original_attribute_name == attribute_name:
@@ -69,7 +69,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     values = set()
     assert len(edges_of_interest) > 0
     for edge in edges_of_interest:
-        assert 'biolink:primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
+        assert 'primary_knowledge_source' in [source.resource_role for source in edge.sources]
         assert hasattr(edge, 'attributes')
         assert edge.attributes
         assert edge.attributes[0].original_attribute_name == attribute_name
@@ -630,7 +630,7 @@ def test_FET_ranking_2():
     assert response.status == 'OK'
     fet_ranking_value = {}
     for result in message.results:
-        for key, edge_bindings in result.edge_bindings.items():
+        for key, edge_bindings in result.analyses[0].edge_bindings.items():
             if key.startswith('FET'):
                 for edge in edge_bindings:
                     for attribute in message.knowledge_graph.edges[edge.id].attributes:

@@ -8,12 +8,14 @@ import re
 import signal
 import socket
 import json
+import psutil
 
 from datetime import datetime
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, String, DateTime, PickleType
+from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
@@ -27,6 +29,25 @@ Base = declarative_base()
 class ARAXQuery(Base):
     __tablename__ = 'arax_query'
     query_id = Column(Integer, primary_key=True)
+    status = Column(String(255), nullable=False)
+    start_datetime = Column(String(25), nullable=False) ## ISO formatted YYYY-MM-DD HH:mm:ss
+    end_datetime = Column(String(25), nullable=True) ## ISO formatted YYYY-MM-DD HH:mm:ss
+    elapsed = Column(Float, nullable=True) ## seconds
+    pid = Column(Integer, nullable=False)
+    domain = Column(String(255), nullable=True)
+    hostname = Column(String(255), nullable=True)
+    instance_name = Column(String(255), nullable=False)
+    origin = Column(String(255), nullable=False)
+    input_query = Column(PickleType, nullable=False) ## blob object
+    message_id = Column(Integer, nullable=True)
+    message_code = Column(String(255), nullable=True)
+    code_description = Column(String(255), nullable=True)
+    remote_address = Column(String(50), nullable=False)
+
+class ARAXOngoingQuery(Base):
+    __tablename__ = 'arax_ongoing_query'
+    ongoing_query_id = Column(Integer, primary_key=True)
+    query_id = Column(Integer, nullable=False)
     status = Column(String(255), nullable=False)
     start_datetime = Column(String(25), nullable=False) ## ISO formatted YYYY-MM-DD HH:mm:ss
     end_datetime = Column(String(25), nullable=True) ## ISO formatted YYYY-MM-DD HH:mm:ss
@@ -110,33 +131,39 @@ class ARAXQueryTracker:
             database_path = os.path.dirname(os.path.abspath(__file__)) + '/' + self.databaseName + '.sqlite'
             engine = create_engine("sqlite:///"+database_path)
 
-        DBSession = sessionmaker(bind=engine)
-        session = DBSession()
+        #DBSession = sessionmaker(bind=engine)
+        #session = DBSession()
+
+        session_factory = sessionmaker(bind=engine)
+        Session = scoped_session(session_factory)
+        session = Session()
+
         self.session = session
         self.engine = engine
 
         #### If the tables don't exist, then create the database
         database_info = sqlalchemy.inspect(engine)
-        if not database_info.has_table(ARAXQuery.__tablename__):
+        if not database_info.has_table(ARAXQuery.__tablename__) or not database_info.has_table(ARAXOngoingQuery.__tablename__):
             eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
             Base.metadata.create_all(engine)
 
 
     ##################################################################################################
     def disconnect(self):
-        session = self.session
-        engine = self.engine
-        session.close()
+        if self.session is None:
+            return
         try:
-            engine.dispose()
+            self.session.close()
+            self.engine.dispose()
         except:
-            pass
+            eprint("ERROR: [ARAX_query_tracker.disconnect] Attempt to close and dispose of session failed")
 
 
     ##################################################################################################
     #### Delete and create the ResponseStore database. Careful!
     def create_database(self):
         print("Creating database")
+        this = dangerous()
 
         # If the engine_type is mysql then set up the MySQL database
         if self.engine_type == 'mysql':
@@ -156,53 +183,14 @@ class ARAXQueryTracker:
 
 
     ##################################################################################################
-    #### Create and store a database connection
-    def connect(self):
-
-        # If the engine_type is mysql then connect to the MySQL database
-        if self.engine_type == 'mysql':
-            engine = create_engine("mysql+pymysql://" + self.rtxConfig.mysql_feedback_username + ":" +
-                self.rtxConfig.mysql_feedback_password + "@" + self.rtxConfig.mysql_feedback_host + "/" + self.databaseName)
-
-        # Else just use SQLite
-        else:
-            return
-            database_path = os.path.dirname(os.path.abspath(__file__)) + '/' + self.databaseName + '.sqlite'
-            engine = create_engine("sqlite:///"+database_path)
-
-        DBSession = sessionmaker(bind=engine)
-        session = DBSession()
-        self.session = session
-        self.engine = engine
-
-        #### If the tables don't exist, then create the database
-        database_info = sqlalchemy.inspect(engine)
-        if not database_info.has_table(ARAXQuery.__tablename__):
-            eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
-            Base.metadata.create_all(engine)
-
-
-    ##################################################################################################
-    #### Create and store a database connection
-    def disconnect(self):
-        session = self.session
-        engine = self.engine
-        if session is None:
-            return
-        try:
-            session.close()
-            engine.dispose()
-        except:
-            pass
-
-
-    ##################################################################################################
     def update_tracker_entry(self, tracker_id, attributes):
         if tracker_id is None:
+            eprint("ERROR: update_tracker_entry: tracker_id is None")
             return
 
         session = self.session
         if session is None:
+            eprint("ERROR: update_tracker_entry: session is None")
             return
 
         tracker_entries = session.query(ARAXQuery).filter(ARAXQuery.query_id==tracker_id).all()
@@ -218,8 +206,19 @@ class ARAXQueryTracker:
             tracker_entry.code_description = attributes['code_description'][:254]
         session.commit()
 
+        if 'status' in attributes and attributes['status'] in [ 'Completed', 'Died', 'Reset' ]:
+            try:
+                session.query(ARAXOngoingQuery).filter(ARAXOngoingQuery.query_id==tracker_id).delete()
+                session.commit()
+                eprint(f"INFO: Deleted ARAXOngoingQuery.query_id={tracker_id}")
+            except:
+                eprint(f"ERROR: Unable to delete ARAXOngoingQuery.query_id={tracker_id}")
+                session.commit()
+
+
 
     ##################################################################################################
+    #### Alter arbitray values in a tracker entry
     def alter_tracker_entry(self, tracker_id, attributes):
         if tracker_id is None:
             return
@@ -233,14 +232,18 @@ class ARAXQueryTracker:
             tracker_entry = tracker_entries[0]
             for key, value in attributes.items():
                 setattr(tracker_entry, key, value)
+
+        ongoing_tracker_entries = session.query(ARAXOngoingQuery).filter(ARAXOngoingQuery.query_id==tracker_id).all()
+        if len(ongoing_tracker_entries) > 0:
+            ongoing_tracker_entry = ongoing_tracker_entries[0]
+            for key, value in attributes.items():
+                setattr(ongoing_tracker_entry, key, value)
+
         session.commit()
 
 
     ##################################################################################################
-    def create_tracker_entry(self, attributes):
-        session = self.session
-        if session is None:
-            return
+    def get_instance_info(self):
 
         location = os.path.dirname(os.path.abspath(__file__))
         instance_name = '??'
@@ -259,13 +262,57 @@ class ARAXQueryTracker:
 
         hostname = socket.gethostname()
 
+        info = {
+            'instance_name': instance_name,
+            'domain': domain,
+            'hostname': hostname }
+        return info
+
+
+    ##################################################################################################
+    def create_tracker_entry(self, attributes):
+        session = self.session
+        if session is None:
+            return
+
+        instance_info = self.get_instance_info()
+
+        ongoing_queries_by_remote_address = self.check_ongoing_queries()
+
+        remote_address = attributes['remote_address']
+        if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > 4 and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
+            try:
+                start_datetime = datetime.now().isoformat(' ', 'seconds')
+                tracker_entry = ARAXQuery(
+                    status = "Denied",
+                    start_datetime = start_datetime,
+                    pid = os.getpid(),
+                    domain = instance_info['domain'],
+                    hostname = instance_info['hostname'],
+                    instance_name = instance_info['instance_name'],
+                    origin = attributes['submitter'],
+                    input_query = attributes['input_query'],
+                    remote_address = attributes['remote_address'],
+                    end_datetime = start_datetime,
+                    elapsed = 0,
+                    message_id = None,
+                    message_code = 'OverLimit',
+                    code_description = 'Request has exceeded 4 concurrent query limit. Denied.')
+                session.add(tracker_entry)
+                session.commit()
+                tracker_id = tracker_entry.query_id
+            except:
+                tracker_id = 1
+            return -999
+
         try:
-            tracker_entry = ARAXQuery(status="started",
+            tracker_entry = ARAXQuery(
+                status="started",
                 start_datetime=datetime.now().isoformat(' ', 'seconds'),
                 pid=os.getpid(),
-                domain = domain,
-                hostname = hostname,
-                instance_name = instance_name,
+                domain = instance_info['domain'],
+                hostname = instance_info['hostname'],
+                instance_name = instance_info['instance_name'],
                 origin=attributes['submitter'],
                 input_query=attributes['input_query'],
                 remote_address=attributes['remote_address'])
@@ -274,28 +321,140 @@ class ARAXQueryTracker:
             tracker_id = tracker_entry.query_id
         except:
             tracker_id = 1
+
+        try:
+            ongoing_tracker_entry = ARAXOngoingQuery(
+                status="started",
+                query_id = tracker_id,
+                start_datetime=datetime.now().isoformat(' ', 'seconds'),
+                pid=os.getpid(),
+                domain = instance_info['domain'],
+                hostname = instance_info['hostname'],
+                instance_name = instance_info['instance_name'],
+                origin=attributes['submitter'],
+                input_query=attributes['input_query'],
+                remote_address=attributes['remote_address'])
+            session.add(ongoing_tracker_entry)
+            session.commit()
+            ongoing_tracker_id = tracker_entry.ongoing_query_id
+        except:
+            ongoing_tracker_id = 1
+
         return tracker_id
 
+
     ##################################################################################################
-    def get_entries(self, last_n_hours=24, incomplete_only=False):
+    def get_entries(self, last_n_hours=24, ongoing_queries=False):
         if self.session is None:
             return
 
-        if incomplete_only:
-            return self.session.query(ARAXQuery).filter(
-                text("""status NOT LIKE '%Completed%' 
-                        AND TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
+        if ongoing_queries:
+            #return self.session.query(ARAXQuery).filter(
+            #    text("""status NOT LIKE '%Completed%' 
+            #            AND TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
+            return self.session.query(ARAXOngoingQuery).all()
         else:
-            if self.engine_type == "mysql":
-                return self.session.query(ARAXQuery).filter(
-                    text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
-            else:
-                return self.session.query(ARAXQuery).filter(
-                text("""JULIANDAY(start_datetime) - JULIANDAY(datetime('now','localtime')) < :n""")).params(n=last_n_hours/24).all()
+            return self.session.query(ARAXQuery).filter(
+                text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
 
 
     ##################################################################################################
-    def get_status(self, last_n_hours=24, incomplete_only=False, id_=None):
+    def check_ongoing_queries(self):
+        '''
+        Gets the current list of ongoing queries in the tracking table and assesses if any need
+        to be marked as died and computes the final number of active ones.
+        '''
+        if self.session is None:
+            return
+
+        instance_info = self.get_instance_info()
+
+        #### Enclosing in commits seems to reduce the problem of threads being out of sync
+        self.session.commit()
+        ongoing_queries = self.session.query(ARAXOngoingQuery).filter(
+            ARAXOngoingQuery.domain == instance_info['domain'],
+            ARAXOngoingQuery.hostname == instance_info['hostname'],
+            ARAXOngoingQuery.instance_name == instance_info['instance_name']).all()
+        self.session.commit()
+
+        n_ongoing_queries = len(ongoing_queries)
+        #eprint(f"INFO: There are currently {n_ongoing_queries} ongoing queries in this instance")
+
+        entries_to_delete = []
+        ongoing_queries_by_remote_address = {}
+
+        for ongoing_query in ongoing_queries:
+             pid = ongoing_query.pid
+
+             #### A manual way to target the deletion of stuck entries
+             #if pid == 132:
+             #    pid = 9999
+
+             if psutil.pid_exists(pid):
+                 status = 'This PID exists'
+                 remote_address = ongoing_query.remote_address
+                 if remote_address not in ongoing_queries_by_remote_address:
+                     ongoing_queries_by_remote_address[remote_address] = 0
+                 ongoing_queries_by_remote_address[remote_address] += 1
+             else:
+                 status = 'This PID no longer exists'
+                 entries_to_delete.append(ongoing_query.query_id)
+
+             eprint(f"  -- PID {pid} - {status}")
+
+        for query_id in entries_to_delete:
+            attributes = {
+                'status': 'Died',
+                'message_id': None,
+                'message_code': 'FoundDead',
+                'code_description': 'The PID for this query is no longer running. Reason unknown.'
+            }
+            self.update_tracker_entry(query_id, attributes)
+
+        return ongoing_queries_by_remote_address
+
+
+    ##################################################################################################
+    def clear_ongoing_queries(self):
+        '''
+        Gets the current list of ongoing queries in the tracking table for this instance
+        and clears them all (to be called at initial launch in case there are leftovers)
+        '''
+        if self.session is None:
+            return
+
+        instance_info = self.get_instance_info()
+
+        #### Enclosing in commits seems to reduce the problem of threads being out of sync
+        self.session.commit()
+        ongoing_queries = self.session.query(ARAXOngoingQuery).filter(
+            ARAXOngoingQuery.domain == instance_info['domain'],
+            ARAXOngoingQuery.hostname == instance_info['hostname'],
+            ARAXOngoingQuery.instance_name == instance_info['instance_name']).all()
+        self.session.commit()
+
+        n_ongoing_queries = len(ongoing_queries)
+
+        entries_to_delete = []
+
+        for ongoing_query in ongoing_queries:
+            entries_to_delete.append(ongoing_query.query_id)
+            eprint(f"  -- query_id {ongoing_query.query_id} found still in table. Clearing.")
+
+        for query_id in entries_to_delete:
+            attributes = {
+                'status': 'Reset',
+                'message_id': None,
+                'message_code': 'Reset',
+                'code_description': 'This query was found in ongoing query list at application relaunch and reset.'
+            }
+            self.update_tracker_entry(query_id, attributes)
+
+        return
+
+
+    ##################################################################################################
+    def get_status(self, last_n_hours=24, mode=None, id_=None):
         if self.session is None:
             return
         if last_n_hours is None or last_n_hours == 0:
@@ -304,7 +463,13 @@ class ARAXQueryTracker:
         if id_ is not None:
             return self.get_query_by_id(id_)
 
-        entries = self.get_entries(last_n_hours=last_n_hours, incomplete_only=incomplete_only)
+        self.check_ongoing_queries()
+
+        ongoing_queries = False
+        if mode and mode == 'active':
+            ongoing_queries = True
+
+        entries = self.get_entries(last_n_hours=last_n_hours, ongoing_queries=ongoing_queries)
         result = { 'recent_queries': [], 'current_datetime': datetime.now().strftime("%Y-%m-%d %T") }
         if entries is None:
             return result
@@ -408,6 +573,8 @@ class ARAXQueryTracker:
                 description += " but no response_id is available"
             else:
                 description += f" with response_id {response_id}"
+        elif state == 'Died':
+            description = f"Job {job_id} was found to be dead after {elapsed} seconds. Reason unknown."
         else:
             description = f"Job {job_id} has status '{status}' and state '{state}' with pid {pid}"
 

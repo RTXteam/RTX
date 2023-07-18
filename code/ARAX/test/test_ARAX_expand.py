@@ -20,13 +20,12 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.attribute import Attribute
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
-from biolink_helper import BiolinkHelper
 
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
                                        kg_should_be_incomplete=False, debug=False, should_throw_error=False,
-                                       error_code: Optional[str] = None, timeout: Optional[int] = None) -> Tuple[Dict[str, Dict[str, Node]], Dict[str, Dict[str, Edge]]]:
+                                       error_code: Optional[str] = None, timeout: Optional[int] = None,
+                                       return_message: bool = False) -> tuple:
     # Run the query
     araxq = ARAXQuery()
     assert actions or json_query  # Must provide some sort of query to run
@@ -54,12 +53,11 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
         print(response.show(level=ARAXResponse.DEBUG))
 
     # Run standard testing (applies to every test case)
-    assert eu.qg_is_fulfilled(message.query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
+    assert eu.qg_is_fulfilled(response.original_query_graph, dict_kg, enforce_required_only=True) or kg_should_be_incomplete or should_throw_error
     check_for_orphans(nodes_by_qg_id, edges_by_qg_id)
     check_property_format(nodes_by_qg_id, edges_by_qg_id)
-    check_node_categories(message.knowledge_graph.nodes, message.query_graph)
 
-    return nodes_by_qg_id, edges_by_qg_id
+    return (nodes_by_qg_id, edges_by_qg_id, message) if return_message else (nodes_by_qg_id, edges_by_qg_id)
 
 
 def print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
@@ -131,18 +129,6 @@ def _check_attribute(attribute: Attribute):
     assert isinstance(attribute.attribute_source, str) or attribute.attribute_source is None
     assert isinstance(attribute.original_attribute_name, str) or attribute.original_attribute_name is None
     assert isinstance(attribute.description, str) or attribute.description is None
-
-
-def check_node_categories(nodes: Dict[str, Node], query_graph: QueryGraph):
-    bh = BiolinkHelper()
-    qnode_descendant_categories_map = {qnode_key: set(bh.get_descendants(qnode.categories))
-                                       for qnode_key, qnode in query_graph.nodes.items() if qnode.categories}
-    for node in nodes.values():
-        for qnode_key in node.qnode_keys:
-            qnode = query_graph.nodes[qnode_key]
-            if qnode.categories and not qnode.ids:
-                # A node's categories should be only descendants of what was asked for in the QG
-                assert set(node.categories).issubset(qnode_descendant_categories_map[qnode_key])
 
 
 @pytest.mark.slow
@@ -406,6 +392,7 @@ def test_dtd_expand_2():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
+@pytest.mark.skip  # The NGD Expand module has been deprecated...
 def test_ngd_expand():
     actions_list = [
         "add_qnode(name=MONDO:0007156, key=n00)",
@@ -828,7 +815,7 @@ def test_qualified_regulates_query():
                 ],
                 "attribute_constraints": [
                     {
-                        "id": "biolink:knowledge_source",
+                        "id": "knowledge_source",
                         "name": "knowledge source",
                         "value": ["infores:rtx-kg2"],
                         "operator": "==",
@@ -906,7 +893,7 @@ def test_edge_constraints():
                     "subject": "n01",
                     "attribute_constraints": [
                         {
-                            "id": "biolink:knowledge_source",
+                            "id": "knowledge_source",
                             "name": "knowledge source",
                             "value": ["infores:rtx-kg2","infores:arax","infores:drugbank"],
                             "operator": "==",
@@ -1107,7 +1094,7 @@ def test_xdtd_expand():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0004975"]
+                    "ids": ["MONDO:0017979"]
                 },
                 "chemical": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -1122,7 +1109,15 @@ def test_xdtd_expand():
                 }
             }
         }
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    nodes_by_qg_id, edges_by_qg_id, message = _run_query_and_do_standard_testing(json_query=query, return_message=True)
+    assert message.auxiliary_graphs
+    for edge in edges_by_qg_id["t_edge"].values():
+        assert edge.attributes
+        support_graph_attributes = [attribute for attribute in edge.attributes if attribute.attribute_type_id == "biolink:support_graphs"]
+        assert support_graph_attributes
+        assert len(support_graph_attributes) == 1
+        support_graph_attribute = support_graph_attributes[0]
+        assert support_graph_attribute.value[0] in message.auxiliary_graphs
 
 
 @pytest.mark.slow
@@ -1130,7 +1125,7 @@ def test_xdtd_different_categories():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0004975"]
+                    "ids": ["MONDO:0005615"]
                 },
                 "chemical": {
                     "categories": ["biolink:Drug"]
@@ -1149,7 +1144,7 @@ def test_xdtd_different_categories():
     query = {
         "nodes": {
             "disease": {
-                "ids": ["MONDO:0004975"],
+                "ids": ["MONDO:0005615"],
                 "categories": ["biolink:Disease"]
             },
             "chemical": {
@@ -1169,7 +1164,7 @@ def test_xdtd_different_categories():
     query = {
         "nodes": {
             "disease": {
-                "ids": ["MONDO:0004975"],
+                "ids": ["MONDO:0005615"],
                 "categories": ["biolink:DiseaseOrPhenotypicFeature"]
             },
             "chemical": {
@@ -1192,7 +1187,7 @@ def test_xdtd_multiple_categories():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0004975"]
+                    "ids": ["UMLS:C5419466"]
                 },
                 "chemical": {
                     "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
@@ -1214,7 +1209,7 @@ def test_xdtd_different_predicates():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["UMLS:C4023597"]
+                    "ids": ["UMLS:C5419466"]
                 },
                 "chemical": {
                     "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
@@ -1229,25 +1224,6 @@ def test_xdtd_different_predicates():
                 }
             }
         }
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
-    query = {
-        "nodes": {
-            "disease": {
-                "ids": ["UMLS:C4023597"]
-            },
-            "chemical": {
-                "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
-            }
-        },
-        "edges": {
-            "t_edge": {
-                "object": "disease",
-                "subject": "chemical",
-                "predicates": ["biolink:affects"],
-                "knowledge_type": "inferred"
-            }
-        }
-    }
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
 
 
@@ -1386,7 +1362,7 @@ def test_no_query_ids_issue():
                 ],
                 "attribute_constraints": [
                     {
-                        "id": "biolink:knowledge_source",
+                        "id": "knowledge_source",
                         "name": "knowledge source",
                         "value": ["infores:connections-hypothesis"],
                         "operator": "==",
@@ -1466,9 +1442,9 @@ def test_kp_list():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions, timeout=30)
 
 
-def test_missing_semmed_publications():
+def test_missing_epc_attributes():
     actions = [
-        "add_qnode(name=Parkinsons disease, key=n0)",
+        "add_qnode(name=Parkinson's disease, key=n0)",
         "add_qnode(categories=biolink:Drug, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:predisposes)",
         "expand(kp=infores:rtx-kg2)",
@@ -1477,9 +1453,11 @@ def test_missing_semmed_publications():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
-            primary_knowledge_sources = {attribute.value for attribute in edge.attributes
-                                         if attribute.attribute_type_id == "biolink:primary_knowledge_source"}
+            primary_knowledge_sources = {source.resource_id for source in edge.sources
+                                         if source.resource_role == "primary_knowledge_source"}
+            assert primary_knowledge_sources
             if "infores:semmeddb" in primary_knowledge_sources:
+                assert edge.attributes
                 publications = [attribute.value for attribute in edge.attributes
                                 if attribute.attribute_type_id == "biolink:publications"]
                 assert publications

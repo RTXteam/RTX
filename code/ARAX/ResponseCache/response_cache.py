@@ -33,7 +33,7 @@ from sqlalchemy import desc
 from sqlalchemy import inspect
 
 #sys.path = ['/mnt/data/python/TestValidator'] + sys.path
-#from reasoner_validator import TRAPIResponseValidator
+from reasoner_validator import TRAPIResponseValidator
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
@@ -42,7 +42,8 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.3.0'
+trapi_version = '1.4.2'
+biolink_version = '3.5.0'
 
 
 Base = declarative_base()
@@ -197,7 +198,7 @@ class ResponseCache:
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
             servername = 'arax.ncats.io'
-        envelope.id = f"https://{servername}/api/arax/v1.2/response/{response_id}"
+        envelope.id = f"https://{servername}/api/arax/v1.4/response/{response_id}"
 
         #### New system to store the responses in an S3 bucket
         rtx_config = RTXConfiguration()
@@ -304,21 +305,34 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
-                enable_validation = False
+                enable_validation = True
                 schema_version = trapi_version
-                if 'schema_version' in envelope:
-                    schema_version = envelope['schema_version']
+                #if 'schema_version' in envelope:
+                #    schema_version = envelope['schema_version']
                 try:
                     if enable_validation:
-                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+
+                        #### Perform the validation
+                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                         validator.check_compliance_of_trapi_response(envelope)
+                        validation_messages_text = validator.dumps()
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
-                        if len(messages['errors']) == 0:
-                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages }
+
+                        critical_errors = 0
+                        errors = 0
+                        if 'critical' in messages and len(messages['critical']) > 0:
+                            critical_errors = len(messages['critical'])
+                        if 'errors' in messages and len(messages['errors']) > 0:
+                            errors = len(messages['errors'])
+                        if critical_errors > 0:
+                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                        elif errors > 0:
+                            envelope['validation_result'] = { 'status': 'ERROR', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                         else:
-                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages }
+                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': {} }
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
                     if 'logs' not in envelope or envelope['logs'] is None:
@@ -339,9 +353,97 @@ class ResponseCache:
             else:
                 return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
+
+        #### Otherwise, see if it is a URL
+        if response_id.startswith('CQ') or response_id.startswith('$$') or response_id.startswith('http'):
+            debug = True
+            url = 'xx'
+
+            if response_id.startswith('http'):
+                url = response_id.replace('$', '/')
+
+            if response_id.startswith('$$'):
+                url = 'https:' + response_id.replace('$', '/')
+
+            if response_id.startswith('CQ'):
+                url = f"https://peptideatlas.org/tmp/{response_id}"
+
+            with requests_cache.disabled():
+                if debug:
+                    eprint(f"Trying {url}...")
+                try:
+                    response_content = requests.get(url, headers={'accept': 'application/json'})
+                except Exception as e:
+                    return( { "status": 404, "title": f"Remote URL {url} unavailable", "detail": f"Connection attempts to {url} triggered an exception: {e}", "type": "about:blank" }, 404)
+            status_code = response_content.status_code
+            if debug:
+                eprint(f"--- Fetch of {url} yielded {status_code}")
+
+            if status_code != 200:
+                if debug:
+                    eprint("Cannot fetch url "+str(url))
+                    eprint(str(response_content.content))
+                return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+            #if True:
+            try:
+                envelope = json.loads(response_content.content)
+            #else:
+            except:
+                eprint(f"ERROR: Unable to convert {url} to JSON")
+                return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
+
+            #### Perform a validation on it
+            enable_validation = True
+            schema_version = trapi_version
+            #if 'schema_version' in envelope:
+            #    schema_version = envelope['schema_version']
+            try:
+                if enable_validation:
+
+                    validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
+                    validator.check_compliance_of_trapi_response(envelope)
+                    messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+
+                    critical_errors = 0
+                    errors = 0
+                    if 'critical' in messages and len(messages['critical']) > 0:
+                        critical_errors = len(messages['critical'])
+                    if 'errors' in messages and len(messages['errors']) > 0:
+                       errors = len(messages['errors'])
+                    if critical_errors > 0:
+                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                    elif errors > 0:
+                        envelope['validation_result'] = { 'status': 'ERROR', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                    else:
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+
+                else:
+                    envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
+            except Exception as error:
+                timestamp = str(datetime.now().isoformat())
+                if 'logs' not in envelope or envelope['logs'] is None:
+                    envelope['logs'] = []
+                envelope['logs'].append( { "code": 'ValidatorFailed', "level": "ERROR", "message": "TRAPI validator crashed with error: " + str(error),
+                    "timestamp": timestamp } )
+                if 'description' not in envelope or envelope['description'] is None:
+                    envelope['description'] = ''
+                envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'TRAPI validator crashed with error: ' + str(error) + ' --- ' + envelope['description'] }
+
+            #### Count provenance information
+            attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
+            envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
+
+            return envelope
+
+
+
+
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
             debug = False
+
             ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
@@ -364,6 +466,7 @@ class ResponseCache:
                     eprint("Cannot fetch from ARS a response corresponding to response_id="+str(response_id))
                     eprint(str(response_content.content))
                 return( { "status": 404, "title": "Response not found", "detail": "Cannot fetch from ARS a response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+
 
             content_size = len(response_content.content)
             if content_size < 1000:
@@ -411,6 +514,9 @@ class ResponseCache:
                     response_dict = response_content.json()
                 except:
                     return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
+
+                response_dict['ars_host'] = ars_host
+                response_dict['ui_host'] = ars_host.replace('ars','ui').replace('-prod','')
 
                 return response_dict
 
@@ -503,21 +609,34 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
-                enable_validation = False
+                enable_validation = True
                 schema_version = trapi_version
-                if 'schema_version' in envelope:
-                    schema_version = envelope['schema_version']
+                #if 'schema_version' in envelope:
+                #    schema_version = envelope['schema_version']
                 try:
                     if enable_validation:
-                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version="3.2.1")
+
+                        #### Perform the validation
+                        validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                         validator.check_compliance_of_trapi_response(envelope)
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
-                        if len(messages['errors']) == 0:
-                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages }
+                        validation_messages_text = validator.dumps()
+
+                        critical_errors = 0
+                        errors = 0
+                        if 'critical' in messages and len(messages['critical']) > 0:
+                            critical_errors = len(messages['critical'])
+                        if 'errors' in messages and len(messages['errors']) > 0:
+                            errors = len(messages['errors'])
+                        if critical_errors > 0:
+                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                        elif errors > 0:
+                            envelope['validation_result'] = { 'status': 'ERROR', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                         else:
-                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages }
+                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+
                     else:
-                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': {} }
+                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
 
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
@@ -529,7 +648,7 @@ class ResponseCache:
                         envelope['description'] = ''
                     envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'TRAPI validator crashed with error: ' + str(error) + ' --- ' + envelope['description'] }
 
-                #### Try to add the reasoner_id
+                #### Try to add the resource_id
                 if 'name' in response_dict['fields'] and response_dict['fields']['name'] is not None:
                     #eprint(json.dumps(response_dict,indent=2,sort_keys=True))
                     actor = str(response_dict['fields']['name'])
@@ -537,10 +656,10 @@ class ResponseCache:
                         #eprint(f"INFO: Attempting to inject {actor_name_lookup[actor]} into results")
                         if 'message' in envelope and 'results' in envelope['message'] and envelope['message']['results'] is not None:
                             for result in envelope['message']['results']:
-                                if 'reasoner_id' in result and result['reasoner_id'] is not None:
+                                if 'resource_id' in result and result['resource_id'] is not None:
                                     pass
                                 else:
-                                    result['reasoner_id'] = actor_name_lookup[actor]
+                                    result['resource_id'] = actor_name_lookup[actor]
 
                 elif 'actor' in response_dict['fields'] and response_dict['fields']['actor'] is not None:
                     #eprint(json.dumps(response_dict,indent=2,sort_keys=True))
@@ -548,10 +667,10 @@ class ResponseCache:
                     if actor in actor_lookup:
                         if 'message' in envelope and 'results' in envelope['message'] and envelope['message']['results'] is not None:
                             for result in envelope['message']['results']:
-                                if 'reasoner_id' in result and result['reasoner_id'] is not None:
+                                if 'resource_id' in result and result['resource_id'] is not None:
                                     pass
                                 else:
-                                    result['reasoner_id'] = actor_lookup[actor]
+                                    result['resource_id'] = actor_lookup[actor]
 
                 if 'message' in envelope and 'knowledge_graph' in envelope['message'] and envelope['message']['knowledge_graph'] is not None:
                     n_nodes = None

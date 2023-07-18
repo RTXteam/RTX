@@ -1,9 +1,8 @@
-#!/bin/env python3
 """
 This script creates a canonicalized version of KG2 stored in various file formats, including TSVs ready for import
 into Neo4j. Files are created in the directory this script is in. It relies on the options you specify in
-kg2c_config.json; in particular, the KG2c will be built off of the KG2 endpoint you specify in that config file.
-Usage: python3 build_kg2c.py [--test]
+kg2c_config.json.
+Usage: python build_kg2c.py [--test]
 """
 import argparse
 import logging
@@ -22,13 +21,14 @@ from RTXConfiguration import RTXConfiguration
 
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
 CODE_DIR = f"{KG2C_DIR}/.."
+RTX_CONFIG = RTXConfiguration()
 
 
-def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
+def _setup_config_dbs_file(synonymizer_name: str):
     """
-    This function locally modifies config_dbs.json to point to the right KG2pre Neo4j and synonymizer.
+    This function locally modifies config_dbs.json to point to the right synonymizer.
     """
-    logging.info("Creating a config_dbs.json file pointed to the right synonymizer and KG2pre Neo4j..")
+    logging.info("Creating a config_dbs.json file pointed to the right synonymizer..")
     config_dbs_file_path = f"{CODE_DIR}/config_dbs.json"
 
     # Save a copy of any pre-existing config_dbs.json so we don't overwrite it
@@ -40,23 +40,35 @@ def _setup_config_dbs_file(kg2pre_neo4j_endpoint: str, synonymizer_name: str):
     RTXConfiguration()  # Regenerates config_secrets.json with the latest version
     with open(config_dbs_file_path) as config_dbs_file:
         rtx_config_dbs_dict = json.load(config_dbs_file)
-    # Point to the 'right' KG2 Neo4j (the one specified in the KG2c config) and synonymizer (we always use simple name)
-    rtx_config_dbs_dict["neo4j"]["KG2pre"] = kg2pre_neo4j_endpoint
+    # Point to the 'right' synonymizer
     rtx_config_dbs_dict["database_downloads"]["node_synonymizer"] = f"/something/{synonymizer_name}"  # Only need name, not full path
 
     # Save our new config_dbs.json file
     with open(config_dbs_file_path, "w+") as revised_config_dbs_file:
-        json.dump(rtx_config_dbs_dict, revised_config_dbs_file)
+        json.dump(rtx_config_dbs_dict, revised_config_dbs_file, indent=3)
 
 
-def _upload_output_files_to_s3():
+def _upload_output_files_to_s3(is_test: bool):
     logging.info("Uploading KG2c json and TSV files to S3..")
-    tarball_path = f"{KG2C_DIR}/kg2c-tsv.tar.gz"
-    json_lite_file_path = f"{KG2C_DIR}/kg2c_lite.json"
-    subprocess.check_call(["tar", "-czvf", tarball_path, "nodes_c.tsv", "nodes_c_header.tsv", "edges_c.tsv", "edges_c_header.tsv"])
-    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", tarball_path, "s3://rtx-kg2/"])
+    local_tarball_name = "kg2c-tsv.tar.gz"
+    remote_tarball_name = f"{local_tarball_name}_TEST" if is_test else local_tarball_name
+    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{KG2C_DIR}/{local_tarball_name}", f"s3://rtx-kg2/{remote_tarball_name}"])
+
+    local_lite_json_name = "kg2c_lite.json"
+    json_lite_file_path = f"{KG2C_DIR}/{local_lite_json_name}"
     subprocess.check_call(["gzip", "-f", json_lite_file_path])
-    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{json_lite_file_path}.gz", "s3://rtx-kg2/"])
+    remote_lite_json_name = f"{local_lite_json_name}.gz_TEST" if is_test else f"{local_lite_json_name}.gz"
+    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{json_lite_file_path}.gz", f"s3://rtx-kg2/{remote_lite_json_name}"])
+
+
+def _create_kg2pre_tsv_test_files(use_local_kg2pre_tsvs: bool):
+    logging.info(f"Creating test versions of the KG2pre TSVs...")
+
+    if not use_local_kg2pre_tsvs:
+        logging.info(f"Downloading KG2pre TSVs from S3...")
+        subprocess.check_call(["bash", "-x", "download-kg2pre-tsvs.sh"])
+
+    subprocess.check_call(["bash", "-x", "create-kg2pre-test-tsvs.sh"])
 
 
 def main():
@@ -75,28 +87,27 @@ def main():
     with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
         kg2c_config_info = json.load(config_file)
     kg2_version = kg2c_config_info["kg2pre_version"]
-    kg2pre_endpoint = kg2c_config_info["kg2pre_neo4j_endpoint"]
+    kg2c_db_version = kg2c_config_info["kg2c"]["kg2c_db_version"]
     biolink_version = kg2c_config_info["biolink_version"]
     build_kg2c = kg2c_config_info["kg2c"]["build"]
     upload_to_s3 = kg2c_config_info["kg2c"]["upload_to_s3"]
+    use_local_kg2pre_tsvs = kg2c_config_info["kg2c"].get("use_local_kg2pre_tsvs")
     build_synonymizer = kg2c_config_info["synonymizer"]["build"]
-    synonymizer_name = kg2c_config_info["synonymizer"]["name"]
+    synonymizer_db_version = kg2c_config_info["synonymizer"]["synonymizer_db_version"]
+    synonymizer_name = f"node_synonymizer_{synonymizer_db_version}_KG{kg2_version}.sqlite"
     upload_to_arax_databases_rtx_ai = kg2c_config_info["upload_to_arax_databases.rtx.ai"]
-    upload_directory = kg2c_config_info["upload_directory"]
+    upload_directory = f"/home/rtxconfig/KG{kg2_version}"
     logging.info(f"KG2pre version to use is {kg2_version}")
-    logging.info(f"KG2pre neo4j endpoint to use is {kg2pre_endpoint}")
     logging.info(f"Biolink model version to use is {biolink_version}")
-    logging.info(f"Synonymizer to use is {synonymizer_name}")
-    synonymizer_dir = f"{CODE_DIR}/ARAX/NodeSynonymizer"
-    synonymizer_file = pathlib.Path(f"{synonymizer_dir}/{synonymizer_name}")
+    logging.info(f"Synonymizer name is {synonymizer_name}")
+    logging.info(f"Directory to upload files to on arax-databases.rtx.ai is {upload_directory}")
+    arax_synonymizer_dir = f"{CODE_DIR}/ARAX/NodeSynonymizer"
+    synonymizer_file = pathlib.Path(f"{arax_synonymizer_dir}/{synonymizer_name}")
+
     # Make sure synonymizer settings are valid
-    if build_synonymizer and not args.test:
+    if build_synonymizer:
         if not synonymizer_name:
             raise ValueError(f"You must specify the name to give the new synonymizer in kg2c_config.json.")
-        elif synonymizer_file.exists():
-            raise ValueError(f"kg2c_config.json specifies that a new synonymizer should be built, but the "
-                             f"synonymizer name provided already exists in {synonymizer_dir}. You must enter a new "
-                             f"synonymizer name.")
         if upload_to_arax_databases_rtx_ai and not upload_directory:
             raise ValueError(f"You must specify the path of the directory on arax.ncats.io to upload synonymizer "
                              f"artifacts to in kg2c_config.json.")
@@ -105,33 +116,61 @@ def main():
             raise ValueError(f"You must specify the name of the synonymizer to use in kg2c_config.json since you are "
                              f"not building a new synonymizer.")
         elif not synonymizer_file.exists():
-            raise ValueError(f"The synonymizer specified in kg2c_config.json does not exist in {synonymizer_dir}. You "
-                             f"must put a copy of it there or use a different synonymizer.")
+            raise ValueError(f"The synonymizer specified in kg2c_config.json does not exist in {arax_synonymizer_dir}. "
+                             f"You must put a copy of it there, use a different synonymizer, or opt to build a "
+                             f"new synonymizer in kg2c_config.json.")
 
     # Set up an RTX config_local.json file that points to the right KG2 and synonymizer
-    _setup_config_dbs_file(kg2pre_endpoint, synonymizer_name)
+    _setup_config_dbs_file(synonymizer_name)
+
+    # Create KG2pre test TSV files as applicable
+    if args.test:
+        _create_kg2pre_tsv_test_files(use_local_kg2pre_tsvs)
 
     # Build a new node synonymizer, if we're supposed to
-    if build_synonymizer and not args.test:
+    if build_synonymizer:
         logging.info("Building node synonymizer off of specified KG2..")
-        subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/build-synonymizer.sh"])
+        flags = []
+        if args.test:
+            flags.append("--test")
+        elif not use_local_kg2pre_tsvs:
+            flags.append("--downloadkg2pre")
+        subprocess.check_call(["python", f"{KG2C_DIR}/synonymizer_build/build_synonymizer.py", kg2_version] + flags)
+
+        logging.info(f"Regenerating autocomplete database..")
+        subprocess.check_call(["python", f"{KG2C_DIR}/synonymizer_build/dump_autocomplete_node_info.py", kg2_version])
+        subprocess.check_call(["python", f"{CODE_DIR}/autocomplete/create_load_db.py",
+                               "--input", f"{KG2C_DIR}/synonymizer_build/autocomplete_node_info.tsv",
+                               "--output", f"{KG2C_DIR}/synonymizer_build/autocomplete.sqlite"])
+
         if upload_to_arax_databases_rtx_ai:
             logging.info(f"Uploading synonymizer artifacts to arax-databases.rtx.ai:{upload_directory}")
-            subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", RTXConfiguration().db_host, upload_directory, synonymizer_name])
+            subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-synonymizer-artifacts.sh", RTX_CONFIG.db_host,
+                                   upload_directory, synonymizer_db_version, kg2_version, "_TEST" if args.test else ""])
+
+        # Move the new synonymizer into the ARAX NodeSynonymizer directory so it can be queried properly
+        logging.info(f"Moving the new synonymizer into the ARAX NodeSynonymizer directory")
+        subprocess.check_call(["mv", f"{KG2C_DIR}/synonymizer_build/node_synonymizer.sqlite",
+                               f"{arax_synonymizer_dir}/{synonymizer_name}"])
         logging.info("Done building synonymizer.")
 
-    # Actually build KG2c
     if build_kg2c:
+        # Actually build KG2c
         logging.info("Calling create_kg2c_files.py..")
         create_kg2c_files(args.test)
         logging.info("Calling record_kg2c_meta_info.py..")
         record_meta_kg_info(args.test)
-        if not args.test:
-            if upload_to_s3:
-                _upload_output_files_to_s3()
-            if upload_to_arax_databases_rtx_ai:
-                logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
-                subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTXConfiguration().db_host, upload_directory])
+
+        logging.info(f"Creating tarball of KG2c TSVs..")
+        subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/make-kg2c-tarball.sh"])
+
+        # Upload artifacts to the relevant places (done even for test builds, to ensure these processes work)
+        if upload_to_arax_databases_rtx_ai:
+            logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
+            subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTX_CONFIG.db_host,
+                                   kg2c_db_version, kg2_version, upload_directory, "_TEST" if args.test else ""])
+        if upload_to_s3:
+            _upload_output_files_to_s3(args.test)
 
         logging.info(f"DONE WITH {'TEST ' if args.test else ''}KG2c BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours")
 

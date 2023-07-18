@@ -5,9 +5,10 @@ import sys
 from openapi_server import util
 from ARAX_query_tracker import ARAXQueryTracker
 from Expand.smartapi import SmartAPI
+from recent_uuid_manager import RecentUUIDManager
 
 
-def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=None):  # noqa: E501
+def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=None, mode=None):  # noqa: E501
     """Obtain status information about the endpoint
 
      # noqa: E501
@@ -20,9 +21,15 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
     :type terminate_pid: int
     :param authorization: Authorization string required for certain calls to status
     :type authorization: str
+    :param mode: Switch to control the type of returned status information Possible values are: activity: Show query activity on server [default] smartapi: Summarize Translator endpoints at SmartAPI
+    :type mode: str
 
     :rtype: object
     """
+
+    if mode is not None and mode == 'recent_pks':
+        manager = RecentUUIDManager()
+        return manager.get_recent_uuids( ars_host=authorization, top_n_pks=last_n_hours )
 
     if authorization is not None and authorization == 'smartapi':
         smartapi = SmartAPI()
@@ -32,7 +39,7 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
     if terminate_pid is not None:
         status = query_tracker.terminate_job(terminate_pid, authorization)
     else:
-        status = query_tracker.get_status(last_n_hours=last_n_hours, id_=id_)
+        status = query_tracker.get_status(last_n_hours=last_n_hours, mode=mode, id_=id_)
     return status
 
 

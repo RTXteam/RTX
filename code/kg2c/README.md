@@ -1,6 +1,7 @@
 # What is KG2canonicalized?
 
-KG2canonicalized (KG2c) is a version of KG2 in which synonymous nodes have been merged. It is built from the [KG2pre](https://github.com/RTXteam/RTX-KG2) Neo4j endpoint and uses the [ARAX NodeSynonymizer](https://github.com/RTXteam/RTX/tree/master/code/ARAX/NodeSynonymizer) to determine which nodes are equivalent. 
+KG2canonicalized (KG2c) is a version of KG2 in which synonymous nodes have been merged. 
+It is built from [KG2pre](https://github.com/RTXteam/RTX-KG2) and uses the [ARAX NodeSynonymizer](https://github.com/RTXteam/RTX/tree/master/code/ARAX/NodeSynonymizer) to determine which nodes are equivalent. 
 
 ### Schema
 
@@ -43,9 +44,7 @@ In the Neo4j instantiation of KG2c (see [below section](#host-kg2canonicalized-i
   "subject": "UMLS:C4683553",
   "object": "MONDO:0000001",
   "predicate": "biolink:treats",
-  "knowledge_source": [
-    "infores:semmeddb"
-  ],
+  "primary_knowledge_source": "infores:semmeddb"
   "kg2_ids": [
     "UMLS:C4683553---SEMMEDDB:treats---UMLS:C0012634---SEMMEDDB:"
   ],
@@ -74,29 +73,30 @@ If the machine you'll be using has never previously built a KG2c, you need to do
 1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
     1. Create a copy of `config_secrets.json` that contains the proper secrets for your own KG2pre Neo4j endpoint
 
-To run the build:
+To run the build:  
+    The build requires ~200GB of RAM and 2-11 hours depending on your settings in **kg2c_config.json**
 
-1. Make sure you have the **latest code** from whatever branch you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
-1. Locally modify the KG2c build **config file** (`RTX/code/kg2c/kg2c_config.json`) for your particular needs:
+1. Make sure you have the **latest code** from whatever branch of the **RTX** repo you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
+2. Locally modify the KG2c build **config file** (`RTX/code/kg2c/kg2c_config.json`) for your particular needs:
     - `kg2pre_version`: Specify the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
-    - `kg2pre_neo4j_endpoint`: Should point to the Neo4j endpoint for your specified KG2pre version (e.g., `kg2endpoint-kg2-6-7.rtx.ai`); used only for the synonymizer build process
     - `biolink_version`: Should match the Biolink version used by the KG2pre you specified (e.g., 1.8.1)
-    - `upload_to_arax.ncats.io`: Specify whether build artifacts should be uploaded to arax.ncats.io (generally should be `true` unless you're doing a debugging build)
-    - `upload_directory`: The path to the directory on arax.ncats.io where artifacts should be uploaded (e.g., `/translator/data/orangeboard/databases/KG2.6.7`)
-        - **WARNING**: If this is pointing to the wrong directory on arax.ncats.io, data may be overwritten! Be careful.
+    - `upload_to_arax_databases.rtx.ai`: Specify whether build artifacts should be uploaded to arax-databases.rtx.ai (generally should be `true` unless you're doing a debugging build)
+    - `upload_directory`: The path to the directory on arax-databases.rtx.ai where artifacts should be uploaded (e.g., `/home/rtxconfig/KG2.6.7`)
+        - **WARNING**: If this is pointing to the wrong directory, data may be overwritten! Be careful.
     - Under the `synonymizer` slot:
         - `build`: Set this to true if you want to build a **new** synonymizer (from your specified KG2pre version), false otherwise
-        - `name`: The name of the synonymizer to use (if you're building a new synonymizer, it will be given this name)
-            - NOTE: If you're not building a new synonymizer, you must ensure that a synonymizer with the name specified in this slot already exists in the `RTX/code/ARAX/NodeSynonymizer` directory in your clone of the repo
-            - **WARNING**: Always double-check this slot; if an old synonymizer name is specified here, things can get very confusing downstream!
+        - `synonymizer_db_version`: The minor version of the synonymizer to build/use (e.g., "v1.0")
     - Under the `kg2c` slot:
         - `build`: Specify whether you want a KG2c to be built (sometimes it can be useful to build only a synonymizer and not a KG2c)
+        - `kg2c_db_version`: The minor version for this KG2c build (e.g., "v1.0")
         - `use_nlp_to_choose_descriptions`: This should generally be set to `true`, unless you're doing a 'debugging' build that doesn't involve debugging of node descriptions. In that case you may want to set this to `false` because it will shave a few hours off the build time. (When `true`, an NLP method will be used to choose the best node descriptions; when `false`, the longest description under a certain limit will be chosen.)
         - `upload_to_s3`: Indicates whether you want the final output KG2c files (JSON and a tarball of TSVs) to automatically be uploaded to the KG2 S3 bucket (this should generally be `true` unless you're doing a 'debugging' build)
         - `start_from_kg2c_json`: Set to `true` if you want to resume a build starting with the `kg2c.json` in `RTX/code/kg2c`. (Allows partial builds starting from the point after canonicalization is done.)
         - `use_local_kg2pre_tsvs`: Set to `true` if you **don't** want the latest KG2pre TSVs to be downloaded from the `rtx-kg2` S3 bucket; if set to true, you must make sure your four Neo4j-ready KG2pre TSVs are in `RTX/code/kg2c/kg2pre_tsvs/`.
-1. Then do the actual build (should take ~200GB of RAM and 2-11 hours depending on your settings in `kg2c_config.json`):
-    - `python3 RTX/code/kg2c/build_kg2c.py`
+3. Run a test build to make sure things go ok:
+    - `python RTX/code/kg2c/build_kg2c.py --test`
+4. Then do the actual build (should take ~200GB of RAM and 2-11 hours depending on your settings in `kg2c_config.json`):
+    - `python RTX/code/kg2c/build_kg2c.py`
 
 In the end, KG2c will be created and stored in multiple file formats, including TSVs ready for import into Neo4j.
 
@@ -105,10 +105,9 @@ In the end, KG2c will be created and stored in multiple file formats, including 
 If you want to build _only_ an ARAX NodeSynonymizer from your KG2 version, follow the same steps as in the [above section](#build-kg2canonicalized),
 simply making sure to set the `kg2c` --> `build` slot in the config file to `false` and the `synonymizer` --> `build` slot to `true`.
 
-This will build a synonymizer from the KG2pre specified in your `kg2c_config.json` and then halt before building
+This will build a synonymizer off of the KG2pre TSVs and then halt before building
 a KG2c. This can be very useful when debugging conflations or other synonymization issues. In particular, after your
-synonymizer build is done, you may want to inspect the artifact located at `RTX/code/ARAX/NodeSynonymizer/problems.tsv`
-and compare it to that of previous synonymizer builds.
+synonymizer build is done, you may want to inspect the various reports output to the `RTX/code/kg2c/synonymizer_build` directory.
 
 If you build a synonymizer and then decide you want to move forward with a KG2c build using it, just adjust your
 config file once again:
@@ -118,8 +117,18 @@ config file once again:
 And then once again run `python3 RTX/code/kg2c/build_kg2c.py`.
 
 ### Host KG2canonicalized in Neo4j
+The Neo4j instances are usually present on the AWS EC2 instances `KG2canonicalized.rtx.ai` and `KG2canonicalized2.rtx.ai`.  
+Please check the **CNAME** to **ANAME** mapping on **AWS Lightsail** to verify what EC2 instance's Neo4j to update with the latest KG2c version. 
 
-These instructions assume Neo4j is not already installed and that you are hosting Neo4j on an AWS instance.
+If you are using an already deployed instance, pull the latest code from the `master` branch into the instance and run the following command:  
+**NOTE:** Once the below command is executed, you will not be able to downgrade the KG2c version.  
+```
+bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
+```
+If Neo4j is not already installed and that you are hosting Neo4j on an AWS **Ubuntu 18** EC2 instance. (You are expected to have AWS credentials to access the instance).
+
+If this is a brand-new Ubuntu 18.04 instance, you will need to make sure that `gcc`
+is installed (`which gcc`) and if it is not installed, install it using `sudo apt-get install -y gcc`.
 
 (1) Clone the `RTX` repo into the instance's home directory (if you haven't already):
 ```
@@ -127,17 +136,22 @@ cd ~
 git clone https://github.com/RTXteam/RTX.git
 ```
 
-(2) Set up the instance for Neo4j:
+(2) Clone the `RTX-KG2` repo into the instance's `/home/ubuntu` directory:
+```
+git clone https://github.com/RTXteam/RTX-KG2.git
+```
+
+(3) Set up the instance for Neo4j:
 ```
 python3 RTX/code/kg2c/setup_for_neo4j.py
 ```
 
-(3) Load the latest KG2c into Neo4j:
+(4) Load the latest KG2c into Neo4j:
 ```
 bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
 ```
 
-### Upload KG2C to KGE (Knowledge Graph Exchange)
+### Upload KG2C to KGE (Knowledge Graph Exchange) (Deprecated)
 ##### Generate TSV files
 
 The following should be run in the build system, typically `buildkg2c.rtx.ai`, in the folder where the files `nodes_c.tsv` and `edges_c.tsv` are stored. 
@@ -159,7 +173,7 @@ python3.7 kg2c_tsv_to_kgx_tsv.py
 bash -x kgx-validation-and-metagraph.sh
 ```
 
-##### Upload to KGE 
+##### Upload to KGE
 
 (4) Upload `edges.tsv`, `nodes.tsv`, and `content_metadata.json` to a public S3 bucket. 
 ```
@@ -177,3 +191,4 @@ aws s3 sp content_metadata.json s3://rtx-kg2-public
 # Contact
 ## Maintainer
 - Amy Glen, Oregon State University (glena@oregonstate.edu)
+- Sundareswar Pullela, Oregon State University (pullelas@oregonstate.edu)

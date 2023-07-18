@@ -25,6 +25,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-f
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
+from openapi_server.models.retrieval_source import RetrievalSource
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
@@ -144,9 +145,9 @@ class ComputeNGD:
                                 EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="EDAM-OPERATION:0226"),
                                 #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                                 # EdgeAttribute(original_attribute_name=None, value="infores:rtx-kg2", attribute_type_id="biolink:knowledge_source", attribute_source="infores:rtx-kg2", value_type_id="biolink:InformationResource"),
-                                EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                                # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                                 EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
-                                EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
+                                # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
                                 EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                                 #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                                 #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
@@ -167,8 +168,11 @@ class ComputeNGD:
                             #### FIXME temporary hack by EWD
                             #edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
                             #            attributes=edge_attribute_list)
+                            retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
+                            ]
                             edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
-                                        attributes=edge_attribute_list)
+                                        attributes=edge_attribute_list,sources=retrieval_source)
                             #edge.relation = relation
                             #### /end FIXME
 
@@ -176,6 +180,7 @@ class ComputeNGD:
                             self.message.knowledge_graph.edges[id] = edge
 
                             #FW: check if results exist then modify them with the ngd edge
+                            # import pdb;pdb.set_trace()
                             if self.message.results is not None and len(self.message.results) > 0:
                                 ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
 
@@ -255,9 +260,9 @@ class ComputeNGD:
                         EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="EDAM-OPERATION:0226"),
                         #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                         # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                        EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
+                        # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
-                        EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="biolink:aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
+                        # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                         #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                         #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
@@ -278,8 +283,11 @@ class ComputeNGD:
                     #### FIXME temporary hack by EWD
                     #edge = Edge(predicate=edge_type, subject=subject_key, object=object_key, relation=relation,
                     #            attributes=edge_attribute_list)
+                    retrieval_source = [
+                                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
+                            ]
                     edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
-                                attributes=edge_attribute_list)
+                                attributes=edge_attribute_list, sources=retrieval_source)
                     #edge.relation = relation
                     #### /end FIXME
 
@@ -287,6 +295,7 @@ class ComputeNGD:
                     self.message.knowledge_graph.edges[id] = edge
 
                     #FW: check if results exist then modify them with the ngd edge
+                    # import pdb;pdb.set_trace()
                     if self.message.results is not None and len(self.message.results) > 0:
                         ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
 

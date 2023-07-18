@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=13">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=14">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="config.js"></script>
@@ -39,7 +39,7 @@
 &nbsp;Output<br>
 <div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
 <div id="provenanceMenu" onclick="openSection('provenance');" class="menuleftitem" title="List of Knowledge Providers that were invoked when answering this query">Provenance</div>
-<div id="kgMenu" onclick="openSection('kg');add_cyto(0);" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
+<div id="kgMenu" onclick="openSection('kg');add_cyto(0,'KG');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
 <div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
 <div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
 <hr>
@@ -58,7 +58,7 @@
 <div class="banner" banner-bg-text="ARAX User Interface">
 <span class="menulinks">Documentation: 
 <a href="overview.html">Overview</a>
-<a id="menuapiurl" href="api/arax/v1.3/ui/">TRAPI 1.3.0</a>
+<a id="menuapiurl" href="api/arax/v1.4/ui/">TRAPI 1.4.2</a>
 <a href="https://github.com/RTXteam/RTX/wiki/RTX-Home">Resources</a>
 </span>
 </div>
@@ -67,9 +67,9 @@
 <div class="page">
 <br><br><br><br>
 
-<!-- div class="statushead">TRAPI 1.3</div>
+<!-- div class="statushead">TRAPI 1.4</div>
 <div id="topnotice" class="status">
-  <h3 style="display:inline-block;">This is the interface based on <b>TRAPI 1.3</b>.</h3> Click <a href="/legacy">here to go to the TRAPI 1.1-based interface</a>
+  <h3 style="display:inline-block;">This is the interface based on <b>TRAPI 1.4</b>.</h3> Click <a href="/legacy">here to go to the TRAPI 1.3-based interface</a>
 </div><br><br -->
 
 <div class="pagesection" id="historyDiv">
@@ -79,7 +79,7 @@
 
 <div class="pagesection" id="queryDiv">
   <h3 class="stitle">Query</h3>
-  <h3 style="width:210px;" class="stitle">Import</h3>
+  <h3 style="width:320px;" class="stitle">Import</h3>
   <br>&nbsp;
   <img src="qg.png"    class="slink" id="qgraph_link" onclick="selectInput('qgraph');" title="Enter Query Graph"/>
   <img src="qwf.png"   class="slink" id="qwf_link"    onclick="selectInput('qwf');"    title="Enter Query via Workflow"/>
@@ -87,6 +87,7 @@
   <img src="qdsl.png"  class="slink" id="qdsl_link"   onclick="selectInput('qdsl');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
   <img src="qid.png"   class="slink" id="qid_link"    onclick="selectInput('qid');"    title="Retrieve stored response by id"/>
   <img src="resp.png"  class="slink" id="resp_link"   onclick="selectInput('resp');"   title="View/Render Response JSON object"/>
+  <img src="qnew.png"  class="slink" id="qnew_link"   onclick="selectInput('qnew');"   title="View list of most recent queries"/>
 
   <div class="inputsection" id="qgraph_input">
     <h3 style="display:inline;">Query Graph:</h3>
@@ -386,6 +387,22 @@
 	</form>
   </div>
 
+
+  <div class="inputsection" id="qnew_input">
+    <h3 style="display:inline;">Latest Responses:</h3>
+    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentResps();"/>
+    <input type="text" class="questionBox" id="howmanylatest" onkeydown="submit_on_enter(this);" value="10" size="2" maxlength="2"/>responses (max.40), from:
+    <select id="wherefromlatest">
+      <option value="ars.test.transltr.io">ars.test.transltr.io</option>
+      <option value="ars.ci.transltr.io">ars.ci.transltr.io</option>
+      <option value="ars-dev.transltr.io">ars-dev.transltr.io</option>
+      <option value="ars-prod.transltr.io">ars-prod.transltr.io</option>
+      <option value="ars.transltr.io">ars.transltr.io</option>
+    </select>
+    <div id="recent_responses_container"><br>Click on the button above to view a list of the most recent responses<br><br></div>
+  </div>
+
+
   <br><br>
 
   <div id="status_container"></div>
@@ -458,18 +475,24 @@
 
 
 <div class="pagesection" style="overflow:visible;" id="recentqsDiv">
-  <div class="statushead">Recent ARAX System Activity</div>
+  <div class="statushead">Recent ARAX System Activity
+    <span style="float:right;" id="recentqsLink"></span>
+  </div>
   <div class="status">
-    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentQs();"/>
+    <input type="button" class="questionBox button" name="action" value="Active Queries" onClick="retrieveRecentQs(true);"/>
+    -- or --
+    <input type="button" class="questionBox button" name="action" value="Recent Queries" onClick="retrieveRecentQs(false);"/>
     <input type="text" class="questionBox" id="qftime" onkeydown="submit_on_enter(this);" value="24" size="3" maxlength="3"/>hours (max.200)
     <span style="margin-left:50px;" id="qfilter"></span>
     <div id="recent_queries_timeline_container"></div>
-    <div id="recent_queries_container"><br>Click on the button above to view most recent ARAX services activity<br><br></div>
+    <div id="recent_queries_container"><br>Click on a button above to view/refresh most recent ARAX services activity<br><br></div>
   </div>
 </div>
 
 <div class="pagesection" style="overflow:visible;" id="kpinfoDiv">
-  <div class="statushead">SmartAPI Information</div>
+  <div class="statushead">SmartAPI Information
+    <span style="float:right;"><a href="?smartapi=1">[ Direct link to this page ]</a></span>
+  </div>
   <div class="status">
     <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveKPInfo();"/>
     <span style="margin-left:50px;" id="kpinfo_wait"></span>
@@ -511,11 +534,11 @@
     <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
     <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
     <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
-    <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.3');"/>
+    <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.4');"/>
     <input type="button" class="qprob p1" value="ICEES-Asthma" onClick="update_url('EXT','https://icees.renci.org:16339');"/>
     <input type="button" class="qprob p1" value="ICEES-DILI" onClick="update_url('EXT','https://icees.renci.org:16341');"/>
-    <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.3');"/>
-    <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.3');"/>
+    <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.4');"/>
+    <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.4');"/>
     <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
     <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
     <br><br>

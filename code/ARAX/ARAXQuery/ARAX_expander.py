@@ -59,9 +59,9 @@ class ARAXExpander:
         self.bh = BiolinkHelper()
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
         self.supported_qnode_attribute_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
-        self.supported_qedge_attribute_constraints = {"biolink:knowledge_source": {"==": "*"},
-                                                      "biolink:primary_knowledge_source": {"==": "*"},
-                                                      "biolink:aggregator_knowledge_source": {"==": "*"}}
+        self.supported_qedge_attribute_constraints = {"knowledge_source": {"==": "*"},
+                                                      "primary_knowledge_source": {"==": "*"},
+                                                      "aggregator_knowledge_source": {"==": "*"}}
         self.supported_qedge_qualifier_constraints = {"biolink:qualified_predicate", "biolink:object_direction_qualifier",
                                                       "biolink:object_aspect_qualifier"}
 
@@ -185,6 +185,12 @@ class ARAXExpander:
         # this fetches the list of all registered kps with compatible versions
         # Make sure the KG2 API doesn't fetch meta info for other KPs
         kp_selector = KPSelector(kg2_mode=True, log=log) if mode == "RTXKG2" else KPSelector(log=log)
+
+        # Save the original QG, if it hasn't already been saved in ARAXQuery (happens for DSL queries..)
+        if mode != "RTXKG2" and not hasattr(response, "original_query_graph"):
+            response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
+            response.debug(f"Saving original query graph (has qnodes {set(response.original_query_graph.nodes)} "
+                           f"and qedges {set(response.original_query_graph.edges)})..")
 
         # If this is a query for the KG2 API, ignore all option_group_id and exclude properties (only does one-hop)
         if mode == "RTXKG2":
@@ -488,16 +494,19 @@ class ARAXExpander:
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
-                    queriable_kps = set(kp_selector.get_kps_for_single_hop_qg(one_hop_qg))
-                    # remove kps if this edge has kp constraints
-                    allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
-                    kps_to_query = queriable_kps - denylist
-                    if allowlist:
-                        kps_to_query = {kp for kp in kps_to_query if kp in allowlist}
+                    if mode == "RTXKG2":
+                        kps_to_query = {"infores:rtx-kg2"}
+                    else:
+                        queriable_kps = set(kp_selector.get_kps_for_single_hop_qg(one_hop_qg))
+                        # remove kps if this edge has kp constraints
+                        allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
+                        kps_to_query = queriable_kps - denylist
+                        if allowlist:
+                            kps_to_query = {kp for kp in kps_to_query if kp in allowlist}
 
-                    for skipped_kp in queriable_kps.difference(kps_to_query):
-                        skipped_message = "This KP was constrained by this edge"
-                        response.update_query_plan(qedge_key, skipped_kp, "Skipped", skipped_message)
+                        for skipped_kp in queriable_kps.difference(kps_to_query):
+                            skipped_message = "This KP was constrained by this edge"
+                            response.update_query_plan(qedge_key, skipped_kp, "Skipped", skipped_message)
 
                     log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
                 else:
@@ -613,30 +622,28 @@ class ARAXExpander:
                 log.debug(f"Handling any knowledge source constraints")
                 allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
                 log.debug(f"KP allowlist is {allowlist}, denylist is {denylist}")
-                knowledge_source_type_ids = {"biolink:aggregator_knowledge_source", "biolink:knowledge_source",
-                                             "biolink:primary_knowledge_source"}
                 if qedge_key in overarching_kg.edges_by_qg_id:
                     kedges_to_remove = []
                     for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
-                        edge_sources = {knowledge_source for attribute in kedge.attributes
-                                        if attribute.attribute_type_id in knowledge_source_type_ids
-                                        for knowledge_source in eu.convert_to_set(attribute.value)}
-                        # always accept arax as a source
-                        if edge_sources == {"infores:arax"}:
-                            continue
-                        # Don't keep edges that ONLY come from excluded sources
-                        if edge_sources.issubset(denylist):
-                            kedges_to_remove.append(kedge_key)
-                            break
-                        # Only keep edges that come from at least ONE allowed source
-                        elif allowlist and not edge_sources.intersection(allowlist):
-                            kedges_to_remove.append(kedge_key)
-                            break
-                    log.debug(f"Removing {len(kedges_to_remove)} edges because they do not fulfill knowledge_source constraint")
-                    # remove kedges which have been determined to be constrained
-                    for kedge_key in kedges_to_remove:
-                        if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
-                            del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
+                        edge_sources = {retrieval_source.resource_id for retrieval_source in kedge.sources} if kedge.sources else set()
+                        if edge_sources:
+                            # always accept arax as a source
+                            if edge_sources == {"infores:arax"}:
+                                continue
+                            # Don't keep edges that ONLY come from excluded sources
+                            if edge_sources.issubset(denylist):
+                                kedges_to_remove.append(kedge_key)
+                                break
+                            # Only keep edges that come from at least ONE allowed source
+                            elif allowlist and not edge_sources.intersection(allowlist):
+                                kedges_to_remove.append(kedge_key)
+                                break
+                    if kedges_to_remove:
+                        log.debug(f"Removing {len(kedges_to_remove)} edges because they do not fulfill knowledge source constraint")
+                        # remove kedges which have been determined to be constrained
+                        for kedge_key in kedges_to_remove:
+                            if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
+                                del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
 
                 if mode != "RTXKG2":
                     # Apply any kryptonite ("not") qedges
@@ -1204,13 +1211,13 @@ class ARAXExpander:
         if intermediate_results_response.status == "OK":
             # Filter down so we only keep the top X nodes
             results = intermediate_results_response.envelope.message.results
-            results.sort(key=lambda x: x.score, reverse=True)
+            results.sort(key=lambda x: x.analyses[0].score, reverse=True)
             kept_nodes = set()
             scores = []
             counter = 0
             while len(kept_nodes) < prune_threshold and counter < len(results):
                 current_result = intermediate_results_response.envelope.message.results[counter]
-                scores.append(current_result.score)
+                scores.append(current_result.analyses[0].score)
                 kept_nodes.update({binding.id for binding in current_result.node_bindings[qnode_key_to_prune]})
                 counter += 1
             log.info(f"Kept top {len(kept_nodes)} answers for {qnode_key_to_prune}. "

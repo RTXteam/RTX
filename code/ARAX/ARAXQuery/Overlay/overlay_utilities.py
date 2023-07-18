@@ -99,20 +99,23 @@ def determine_virtual_qedge_option_group(subject_qnode_key: str, object_qnode_ke
     else:
         return None
 
-def update_results_with_overlay_edge(subject_knode_key: str, object_knode_key: str, kedge_key: str, message: Message, log: ARAXResponse):
+def update_results_with_overlay_edge(subject_knode_key: str, object_knode_key: str, kedge_key: str, message: Message, log: ARAXResponse, reasoner_id: str="infores:arax"):
     try:
         new_edge_binding = EdgeBinding(id=kedge_key)
         for result in message.results:
-            for qedge_key in result.edge_bindings.keys():
-                if kedge_key not in set([x.id for x in result.edge_bindings[qedge_key]]):
-                    if qedge_key not in message.query_graph.edges:
-                        log.warning(f"Encountered a result edge binding which does not exist in the query graph")
-                        continue
-                    subject_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].subject]]
-                    object_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].object]]
-                    result_nodes = set(subject_nodes).union(set(object_nodes))
-                    if subject_knode_key in result_nodes and object_knode_key in result_nodes:
-                        result.edge_bindings[qedge_key].append(new_edge_binding)
+            for analysis in result.analyses:
+                if reasoner_id != analysis.resource_id:
+                    continue
+                for qedge_key in analysis.edge_bindings.keys():
+                    if kedge_key not in set([x.id for x in analysis.edge_bindings[qedge_key]]):
+                        if qedge_key not in message.query_graph.edges:
+                            log.warning(f"Encountered a result edge binding which does not exist in the query graph")
+                            continue
+                        subject_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].subject]]
+                        object_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].object]]
+                        result_nodes = set(subject_nodes).union(set(object_nodes))
+                        if subject_knode_key in result_nodes and object_knode_key in result_nodes:
+                            analysis.edge_bindings[qedge_key].append(new_edge_binding)
     except:
         tb = traceback.format_exc()
         log.error(f"Error encountered when modifying results with overlay edge (subject_knode_key)-kedge_key-(object_knode_key):\n{tb}",

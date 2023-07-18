@@ -7,10 +7,12 @@ from typing import List, Dict  # noqa: F401
 
 from openapi_server.models.base_model_ import Model
 from openapi_server.models.meta_attribute import MetaAttribute
+from openapi_server.models.meta_qualifier import MetaQualifier
 import re
 from openapi_server import util
 
 from openapi_server.models.meta_attribute import MetaAttribute  # noqa: E501
+from openapi_server.models.meta_qualifier import MetaQualifier  # noqa: E501
 import re  # noqa: E501
 
 class MetaEdge(Model):
@@ -19,7 +21,7 @@ class MetaEdge(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, subject=None, predicate=None, object=None, knowledge_types=None, attributes=None):  # noqa: E501
+    def __init__(self, subject=None, predicate=None, object=None, knowledge_types=None, attributes=None, qualifiers=None, association=None):  # noqa: E501
         """MetaEdge - a model defined in OpenAPI
 
         :param subject: The subject of this MetaEdge.  # noqa: E501
@@ -32,13 +34,19 @@ class MetaEdge(Model):
         :type knowledge_types: List[str]
         :param attributes: The attributes of this MetaEdge.  # noqa: E501
         :type attributes: List[MetaAttribute]
+        :param qualifiers: The qualifiers of this MetaEdge.  # noqa: E501
+        :type qualifiers: List[MetaQualifier]
+        :param association: The association of this MetaEdge.  # noqa: E501
+        :type association: str
         """
         self.openapi_types = {
             'subject': str,
             'predicate': str,
             'object': str,
             'knowledge_types': List[str],
-            'attributes': List[MetaAttribute]
+            'attributes': List[MetaAttribute],
+            'qualifiers': List[MetaQualifier],
+            'association': str
         }
 
         self.attribute_map = {
@@ -46,7 +54,9 @@ class MetaEdge(Model):
             'predicate': 'predicate',
             'object': 'object',
             'knowledge_types': 'knowledge_types',
-            'attributes': 'attributes'
+            'attributes': 'attributes',
+            'qualifiers': 'qualifiers',
+            'association': 'association'
         }
 
         self._subject = subject
@@ -54,6 +64,8 @@ class MetaEdge(Model):
         self._object = object
         self._knowledge_types = knowledge_types
         self._attributes = attributes
+        self._qualifiers = qualifiers
+        self._association = association
 
     @classmethod
     def from_dict(cls, dikt) -> 'MetaEdge':
@@ -194,3 +206,51 @@ class MetaEdge(Model):
         """
 
         self._attributes = attributes
+
+    @property
+    def qualifiers(self):
+        """Gets the qualifiers of this MetaEdge.
+
+        Qualifiers that are possible to be found on this edge type.  # noqa: E501
+
+        :return: The qualifiers of this MetaEdge.
+        :rtype: List[MetaQualifier]
+        """
+        return self._qualifiers
+
+    @qualifiers.setter
+    def qualifiers(self, qualifiers):
+        """Sets the qualifiers of this MetaEdge.
+
+        Qualifiers that are possible to be found on this edge type.  # noqa: E501
+
+        :param qualifiers: The qualifiers of this MetaEdge.
+        :type qualifiers: List[MetaQualifier]
+        """
+
+        self._qualifiers = qualifiers
+
+    @property
+    def association(self):
+        """Gets the association of this MetaEdge.
+
+        Compact URI (CURIE) for a Biolink class, biolink:NamedThing or a child thereof. The CURIE must use the prefix 'biolink:' followed by the PascalCase class name.  # noqa: E501
+
+        :return: The association of this MetaEdge.
+        :rtype: str
+        """
+        return self._association
+
+    @association.setter
+    def association(self, association):
+        """Sets the association of this MetaEdge.
+
+        Compact URI (CURIE) for a Biolink class, biolink:NamedThing or a child thereof. The CURIE must use the prefix 'biolink:' followed by the PascalCase class name.  # noqa: E501
+
+        :param association: The association of this MetaEdge.
+        :type association: str
+        """
+        if association is not None and not re.search(r'^biolink:[A-Z][a-zA-Z]*$', association):  # noqa: E501
+            raise ValueError("Invalid value for `association`, must be a follow pattern or equal to `/^biolink:[A-Z][a-zA-Z]*$/`")  # noqa: E501
+
+        self._association = association

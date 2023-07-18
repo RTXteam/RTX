@@ -73,16 +73,16 @@ class ARAXInfer:
         self.xdtd_n_drugs_info = {
             "is_required": False,
             "examples": [5,15,25],
-            "default": 10,
+            "default": 50,
             "type": "integer",
-            "description": "The number of drug nodes to return. If not provided defaults to 10. Considering the response speed, the maximum number of drugs returned is only allowed to be 25."
+            "description": "The number of drug nodes to return. If not provided defaults to 50. Considering the response speed, the maximum number of drugs returned is only allowed to be 50."
         }
         self.xdtd_n_paths_info = {
             "is_required": False,
             "examples": [5,15,25],
-            "default": 10,
+            "default": 25,
             "type": "integer",
-            "description": "The number of paths connecting to each returned node. If not provided defaults to 10. Considering the response speed, the maximum number of paths (if available) returned is only allowed to be 25."
+            "description": "The number of paths connecting to each returned node. If not provided defaults to 25. Considering the response speed, the maximum number of paths (if available) returned is only allowed to be 25."
         }
         self.xcrg_subject_curie_info = {
             "is_required": True,
@@ -354,6 +354,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         message = self.message
         parameters = self.parameters
         XDTD = ExplainableDTD()
+        iu = InferUtilities()
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
@@ -366,8 +367,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
                                     'node_curie': {'The node to predict drug treatments for.'},
                                     'qedge_id': {'The edge to place the predicted mechanism of action on. If none is provided, the query graph must be empty and a new one will be inserted.'},
-                                    'n_drugs': {'The number of drugs to return. Defaults to 10. Maxiumum is only allowable to be 25.'},
-                                    'n_paths': {'The number of paths connecting each drug to return. Defaults to 10.  Maxiumum is only allowable to be 25.'}
+                                    'n_drugs': {'The number of drugs to return. Defaults to 50. Maxiumum is only allowable to be 50.'},
+                                    'n_paths': {'The number of paths connecting each drug to return. Defaults to 25.  Maxiumum is only allowable to be 25.'}
                                 }
 
         # A little function to describe what this thing does
@@ -399,11 +400,11 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 self.response.error(f"The `n_drugs` value must be a positive integer. The provided value was {self.parameters['n_drugs']}.", error_code="ValueError")
             if self.parameters['n_drugs'] <= 0:
                 self.response.error(f"The `n_drugs` value should be larger than 0. The provided value was {self.parameters['n_drugs']}.", error_code="ValueError")
-            if self.parameters['n_drugs'] > 25:
-                self.response.warning(f"The `n_drugs` value was set to {self.parameters['n_drugs']}, but the maximum allowable value is 25. Setting `n_drugs` to 25.")
-                self.parameters['n_drugs'] = 25
+            if self.parameters['n_drugs'] > 50:
+                self.response.warning(f"The `n_drugs` value was set to {self.parameters['n_drugs']}, but the maximum allowable value is 50. Setting `n_drugs` to 50.")
+                self.parameters['n_drugs'] = 50
         else:
-            self.parameters['n_drugs'] = 10
+            self.parameters['n_drugs'] = 50
 
         if 'n_paths' in self.parameters:
             try:
@@ -416,47 +417,59 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 self.response.warning(f"The `n_paths` value was set to {self.parameters['n_paths']}, but the maximum allowable value is 25. Setting `n_paths` to 25.")
                 self.parameters['n_paths'] = 25
         else:
-            self.parameters['n_paths'] = 10
+            self.parameters['n_paths'] = 25
 
         if self.response.status != 'OK':
             return self.response
 
-        normalized_curie = self.synonymizer.get_canonical_curies(self.parameters['node_curie'])[self.parameters['node_curie']]
-        if normalized_curie:
-            preferred_curie = normalized_curie['preferred_curie']
-            self.response.debug(f"Get a preferred sysnonym {preferred_curie} from Node Synonymizer for {self.parameters['node_curie']}")
-        else:
-            self.response.warning(f"Could not get a preferred sysnonym for disease {self.parameters['node_curie']}")
-
-        try:
-            top_drugs = XDTD.get_top_drugs_for_disease(disease_ids=preferred_curie)
-            top_paths = XDTD.get_top_paths_for_disease(disease_ids=preferred_curie)
-        except:
-            self.response.error(f"Could not get top drugs and paths for disease {preferred_curie}", error_code="ValueError")
-            return self.response
-
-        if len(top_drugs) == 0:
-            self.response.error(f"Could not get predicted drugs for disease {preferred_curie}. Likely the model was not trained with this disease.", error_code="ValueError")
-            return self.response
-        if len(top_paths) == 0:
-            self.response.warning(f"Could not get any predicted paths for disease {preferred_curie}. Likely the model considers there is no reasonable path for this disease.")
-
-        # FW: temp fix to use the pickle fil for dev work rather than recomputing
-        # Comment out the following 3 lines and uncomment the above for prod deploy
-        # top_drugs = pd.read_csv(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"top_n_drugs.csv"]))
-        # with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
-        #     top_paths = pickle.load(fid)
+        # normalized_curie = self.synonymizer.get_canonical_curies(self.parameters['node_curie'])[self.parameters['node_curie']]
+        # if normalized_curie:
+        #     preferred_curie = normalized_curie['preferred_curie']
+        #     self.response.debug(f"Get a preferred sysnonym {preferred_curie} from Node Synonymizer for {self.parameters['node_curie']}")
+        # else:
+        #     self.response.warning(f"Could not get a preferred sysnonym for disease {self.parameters['node_curie']}")
+        #     return self.response
         
-        ## Limit the number of drugs and paths to the top n
-        top_drugs = top_drugs.iloc[:self.parameters['n_drugs'],:].reset_index(drop=True)
-        top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:self.parameters['n_paths']] for row in top_drugs.to_numpy()}
+        #FIXME: Considering kg2 version is changed frequently but xdtd training is time consuming, 
+        # to make it more robust to the different version of kg2, we temporarily utlize all equivalent curies.
+        all_equivalent_curies = self.synonymizer.get_equivalent_nodes(self.parameters['node_curie'])[self.parameters['node_curie']]
+        if all_equivalent_curies:
+            self.response.debug(f"Get equivalent curies {all_equivalent_curies} from Node Synonymizer for {self.parameters['node_curie']}")
+        else:
+            self.response.warning(f"Could not get equivalent curies for disease {self.parameters['node_curie']}")
+            return self.response
+        
+        for preferred_curie in all_equivalent_curies:
+            try:
+                top_drugs = XDTD.get_top_drugs_for_disease(disease_ids=preferred_curie)
+                top_paths = XDTD.get_top_paths_for_disease(disease_ids=preferred_curie)
+            except:
+                self.response.warning(f"Could not get top drugs and paths for disease {preferred_curie}")
+                continue
 
-        # TRAPI-ifies the results of the model
-        iu = InferUtilities()
-        qedge_id = self.parameters.get('qedge_id')
+            if len(top_drugs) == 0:
+                self.response.warning(f"Could not get predicted drugs for disease {preferred_curie}. Likely the model was not trained with this disease. Or No predicted drugs for this disease with score >= 0.5.")
+                continue
+            if len(top_paths) == 0:
+                self.response.warning(f"Could not get any predicted paths for disease {preferred_curie}. Likely the model considers there is no reasonable path for this disease.")
 
+            # FW: temp fix to use the pickle fil for dev work rather than recomputing
+            # Comment out the following 3 lines and uncomment the above for prod deploy
+            # top_drugs = pd.read_csv(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"top_n_drugs.csv"]))
+            # with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
+            #     top_paths = pickle.load(fid)
+            
+            ## Filter useless nodes
+            filtered_list = ['UMLS:C1611640']
+            top_drugs = top_drugs.loc[~top_drugs['drug_id'].isin(filtered_list),:].reset_index(drop=True)
+            
+            ## Limit the number of drugs and paths to the top n
+            top_drugs = top_drugs.iloc[:self.parameters['n_drugs'],:].reset_index(drop=True)
+            top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:self.parameters['n_paths']] for row in top_drugs.to_numpy() if (row[0], row[2]) in top_paths}
 
-        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_drugs, top_paths, qedge_id, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
+            # # TRAPI-ifies the results of the model
+            qedge_id = self.parameters.get('qedge_id')
+            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_drugs, top_paths, qedge_id, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
 
         return self.response
 
@@ -504,8 +517,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                                     'threshold': {"Threshold to filter the prediction probability. If not provided defaults to 0.5."},
                                     'kp': {"KP to use in path extraction. If not provided defaults to 'infores:rtx-kg2'."},
                                     'path_len': {"The length of paths for prediction. If not provided defaults to 2."},
-                                    'n_result_curies': {'The number of top predicted result nodes to return. Defaults to 20.'},
-                                    'n_paths': {'The number of paths connecting to each returned node. Defaults to 20.'}
+                                    'n_result_curies': {'The number of top predicted result nodes to return. Defaults to 10.'},
+                                    'n_paths': {'The number of paths connecting to each returned node. Defaults to 10.'}
                                 }
 
         # A little function to describe what this thing does

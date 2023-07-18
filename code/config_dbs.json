@@ -1,21 +1,21 @@
 {
    "database_downloads": {
-      "node_synonymizer": "/translator/data/orangeboard/databases/KG2.8.0/node_synonymizer_v1.0_KG2.8.0.sqlite",
-      "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.8.0/kg2c_v1.0_KG2.8.0.sqlite",
-      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.8.0/meta_kg_v1.0_KG2.8.0c.json",
-      "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.8.0/fda_approved_drugs_v1.0_KG2.8.0c.pickle",
-      "autocomplete": "/translator/data/orangeboard/databases/KG2.8.0/autocomplete_v1.0_KG2.8.0.sqlite",
-      "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.8.0/curie_to_pmids_v1.0_KG2.8.0.sqlite",
-      "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.0/ExplainableDTD_v1.1_KG2.8.0.db",
+      "node_synonymizer": "/translator/data/orangeboard/databases/KG2.8.0.1/node_synonymizer_v1.1_KG2.8.0.1.sqlite",
+      "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.8.0.1/kg2c_v1.0_KG2.8.0.1.sqlite",
+      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.8.0.1/meta_kg_v1.0_KG2.8.0.1c.json",
+      "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.8.0.1/fda_approved_drugs_v1.0_KG2.8.0.1c.pickle",
+      "autocomplete": "/translator/data/orangeboard/databases/KG2.8.0.1/autocomplete_v1.0_KG2.8.0.1.sqlite",
+      "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.8.0.1/curie_to_pmids_v1.0_KG2.8.0.1.sqlite",
+      "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.0.1/ExplainableDTD_v1.3_KG2.8.0.1.db",
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
-      "graph_database": "/translator/data/orangeboard/databases/KG2.8.0/GRAPH_v1.0_KG2.8.0_refreshed.sqlite",
-      "dtd_prob": "/translator/data/orangeboard/databases/KG2.8.0/DTD_probability_database_v1.0_KG2.8.0_refreshed.db",
+      "graph_database": "/translator/data/orangeboard/databases/KG2.8.0.1/GRAPH_v1.0_KG2.8.0.1_refreshed.sqlite",
+      "dtd_prob": "/translator/data/orangeboard/databases/KG2.8.0.1/DTD_probability_database_v1.0_KG2.8.0.1_refreshed.db",
       "log_model": "/translator/data/orangeboard/databases/KG2.7.6/LogModel_v1.0_KG2.7.6.pkl",
       "rel_max": "/translator/data/orangeboard/databases/KG2.7.6/rel_max_v1.0_KG2.7.6.emb.gz",
       "map_txt": "/translator/data/orangeboard/databases/KG2.7.6/map_v1.0_KG2.7.6.txt",
-      "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.8.0/chemical_gene_embeddings_v1.0.KG2.8.0.npz",
-      "xcrg_increase_model": "/translator/data/orangeboard/databases/KG2.8.0/xcrg_increase_model_v1.0.KG2.8.0.pt",
-      "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.8.0/xcrg_decrease_model_v1.0.KG2.8.0.pt"
+      "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.8.0.1/chemical_gene_embeddings_v1.0.KG2.8.0.1.npz",
+      "xcrg_increase_model": "/translator/data/orangeboard/databases/KG2.8.0.1/xcrg_increase_model_v1.0.KG2.8.0.1.pt",
+      "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.8.0.1/xcrg_decrease_model_v1.0.KG2.8.0.1.pt"
    },
    "plover": {
       "dev": "https://kg2cploverdb.ci.transltr.io",
@@ -23,7 +23,7 @@
       "prod": "https://kg2cploverdb.transltr.io"
    },
    "neo4j": {
-      "KG2pre": "kg2endpoint-kg2-8-0.rtx.ai",
-      "KG2c": "kg2-8-0c.rtx.ai"
+      "KG2pre": "kg2endpoint-kg2-8-0-1.rtx.ai",
+      "KG2c": "kg2-8-0-1.rtx.ai"
    }
 }
