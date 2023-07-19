@@ -185,10 +185,12 @@ class ARAXQueryTracker:
     ##################################################################################################
     def update_tracker_entry(self, tracker_id, attributes):
         if tracker_id is None:
+            eprint("ERROR: update_tracker_entry: tracker_id is None")
             return
 
         session = self.session
         if session is None:
+            eprint("ERROR: update_tracker_entry: session is None")
             return
 
         tracker_entries = session.query(ARAXQuery).filter(ARAXQuery.query_id==tracker_id).all()
@@ -204,13 +206,14 @@ class ARAXQueryTracker:
             tracker_entry.code_description = attributes['code_description'][:254]
         session.commit()
 
-        if 'status' in attributes and attributes['status'] in [ 'Completed', 'Died' ]:
+        if 'status' in attributes and attributes['status'] in [ 'Completed', 'Died', 'Reset' ]:
             try:
                 session.query(ARAXOngoingQuery).filter(ARAXOngoingQuery.query_id==tracker_id).delete()
                 session.commit()
                 eprint(f"INFO: Deleted ARAXOngoingQuery.query_id={tracker_id}")
             except:
                 eprint(f"ERROR: Unable to delete ARAXOngoingQuery.query_id={tracker_id}")
+                session.commit()
 
 
 

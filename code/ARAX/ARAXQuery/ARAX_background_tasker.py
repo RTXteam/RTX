@@ -7,6 +7,8 @@ import time
 import psutil
 import datetime
 import traceback
+import pkgutil
+from importlib.metadata import version
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
@@ -39,6 +41,20 @@ class ARAXBackgroundTasker:
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Clearing any potential stale queries in ongoing query table")
         query_tracker.clear_ongoing_queries()
 
+        #### Print out our packages for debugging
+        if True:
+            eprint("Installed packages:")
+            for location, modname, flag in pkgutil.iter_modules():
+                location = f"{location}"
+                if 'RTX' not in location:
+                    try:
+                        version_str = version(modname)
+                        eprint(f"    {modname} {version_str}")
+                    except:
+                        eprint(f"    {modname} ???")
+                else:
+                    pass
+                    #eprint(f"    {modname}                  x {location}")
 
         while True:
 
