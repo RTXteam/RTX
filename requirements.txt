@@ -29,7 +29,7 @@ PyYAML==6.0
 ujson==5.4.0
 treelib==1.6.1
 asyncio==3.4.3
-aiohttp==3.8.4
+aiohttp==3.8.5
 boto3==1.24.59
 tornado==6.3.2
 MarkupSafe==2.1.2
