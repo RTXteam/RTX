@@ -8,7 +8,7 @@ It is built from [KG2pre](https://github.com/RTXteam/RTX-KG2) and uses the [ARAX
 ###### Example KG2c node:
 ```
 {
-  "id": "CHEMBL.COMPOUND:CHEMBL3349001",
+  "id": "CHEMBL.COMPOUND:CHEMBL3349001", 
   "name": "AVN-944",
   "category": "biolink:SmallMolecule",
   "iri": "https://identifiers.org/chembl.compound:CHEMBL3349001",
