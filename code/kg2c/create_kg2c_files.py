@@ -58,7 +58,8 @@ PROPERTIES_LOOKUP = {
         "publications_info": {"type": dict, "in_kg2pre": True, "in_kg2c_lite": False},
         "qualified_predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_object_aspect": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True}
+        "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "domain_range_exclusion" : {"type": bool, "in_kg2pre": True, "in_kg2c_lite": True}
     }
 }
 
@@ -280,7 +281,7 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
 
 def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_source: str, publications: List[str],
                  publications_info: Dict[str, any], kg2_ids: List[str],
-                 qualified_predicate, qualified_object_aspect, qualified_object_direction) -> Dict[str, any]:
+                 qualified_predicate, qualified_object_aspect, qualified_object_direction, domain_range_exclusion) -> Dict[str, any]:
     edge_properties_lookup = PROPERTIES_LOOKUP["edges"]
     assert isinstance(subject, edge_properties_lookup["subject"]["type"])
     assert isinstance(object, edge_properties_lookup["object"]["type"])
@@ -292,6 +293,7 @@ def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_so
     assert isinstance(qualified_predicate, edge_properties_lookup["qualified_predicate"]["type"])
     assert isinstance(qualified_object_aspect, edge_properties_lookup["qualified_object_aspect"]["type"])
     assert isinstance(qualified_object_direction, edge_properties_lookup["qualified_object_direction"]["type"])
+    assert isinstance(domain_range_exclusion, edge_properties_lookup["domain_range_exclusion"]["type"])
 
     
     return {
@@ -304,7 +306,8 @@ def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_so
         "kg2_ids": kg2_ids,
         "qualified_predicate": qualified_predicate, 
         "qualified_object_aspect": qualified_object_aspect,
-        "qualified_object_direction": qualified_object_direction
+        "qualified_object_direction": qualified_object_direction,
+        "domain_range_exclusion": domain_range_exclusion
     }
 
 
