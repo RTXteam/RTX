@@ -10,6 +10,7 @@ from typing import Set, Dict, Optional
 
 import requests
 import requests_cache
+import time
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 rtx_index = pathlist.index("RTX")
@@ -21,6 +22,9 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.sep.join([*pathlist[:(rtx_index + 1)], 'code', 'ARAX', 'ARAXQuery', 'Expand']))
 from smartapi import SmartAPI
 
+
+MAX_TOTAL_WAIT_FOR_CACHE_SEC = 60.0
+WAIT_LOOP_SEC = 0.1
 
 class KPInfoCacher:
 
@@ -109,21 +113,46 @@ class KPInfoCacher:
 
     def load_kp_info_caches(self, log: ARAXResponse):
         """
-        This method is meant to be used anywhere the meta map or smart API caches need to be used (i.e., by KPSelector).
-        Other modules should NEVER try to load the caches directly! They should only load them via this method.
-        It ensures that caches are up to date and that they don't become corrupted while refreshing.
+        This method is meant to be used anywhere the meta map or smart API
+        caches need to be used (i.e., by KPSelector).  Other modules should
+        NEVER try to load the caches directly! They should only load them via
+        this method.  It ensures that caches are up to date and that they don't
+        become corrupted while refreshing.
         """
-        if(os.path.exists(self.cache_refresh_pid_path)): # Check if the refresher PID file exists
-            with open(self.cache_refresh_pid_path, "r") as f: 
-                refresher_pid = int(f.read()) # Get the PID of the process that is currently refreshing the caches
-                caches_are_being_refreshed = True if(psutil.pid_exists(refresher_pid)) else False # Check if the process is still running
-                while caches_are_being_refreshed: # If the caches are being actively refreshed, wait for it to finish
-                    caches_are_being_refreshed = True if(psutil.pid_exists(refresher_pid)) else False 
+        if not (os.path.exists(self.smart_api_cache_path) and
+                os.path.exists(self.meta_map_cache_path)):
+            # if either pickled cache file is missing, then check if they are
+            # being generated (on the other hand, if both exist, just move on
+            # since we will use the cache files); see RTX issue 2072
+            if (os.path.exists(self.cache_refresh_pid_path)):
+                # Check if the refresher PID file exists
+                with open(self.cache_refresh_pid_path, "r") as f:
+                    refresher_pid = int(f.read())
+                    # Get the PID of the process that is currently refreshing
+                    # the caches
+                    caches_are_being_refreshed = True if \
+                        (psutil.pid_exists(refresher_pid)) else False
+                    # Check if the process is still running
+                    iter_ctr = 0
+                    while caches_are_being_refreshed:
+                        # if the caches are being actively refreshed, wait for
+                        # it to finish
+                        time.sleep(0.1)
+                        iter_ctr += 1
+                        caches_are_being_refreshed = True if \
+                            (psutil.pid_exists(refresher_pid)) else False
+                        if WAIT_LOOP_SEC * iter_ctr > \
+                           MAX_TOTAL_WAIT_FOR_CACHE_SEC:
+                            raise Exception("Timed out waiting for SmartAPI " +
+                                            "cache creation; perhaps " +
+                                            "MAX_TOTAL_WAIT_FOR_CACHE_SEC " +
+                                            "value was too small: " +
+                                            f"{MAX_TOTAL_WAIT_FOR_CACHE_SEC}")
 
-
-        # At this point the KP info caches must NOT be in the process of being refreshed, so we create/update if needed.
-        # In particular, this ensures that the caches will be created/fresh even on dev machines, that don't run the
-        # background refresh task.
+        # At this point the KP info caches must NOT be in the process of being
+        # refreshed, so we create/update if needed.  In particular, this ensures
+        # that the caches will be created/fresh even on dev machines, that don't
+        # run the background refresh task.
         one_day_ago = datetime.now() - timedelta(hours=24)
         smart_api_info_cache_pathlib_path = pathlib.Path(self.smart_api_cache_path)
         meta_map_cache_pathlib_path = pathlib.Path(self.meta_map_cache_path)
