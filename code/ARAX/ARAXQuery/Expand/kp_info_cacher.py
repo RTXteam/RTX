@@ -196,10 +196,10 @@ class KPInfoCacher:
                     with requests_cache.disabled():
                         kp_response = requests.get(f"{kp_endpoint_url}/meta_knowledge_graph", timeout=10)
                 except requests.exceptions.Timeout:
-                    eprint(f"Timed out when trying to hit {kp_infores_curie}'s /meta_knowledge_graph endpoint "
+                    eprint(f"      Timed out when trying to hit {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                           f"(waited 10 seconds)")
                 except Exception:
-                    eprint(f"Ran into a problem getting {kp_infores_curie}'s meta info")
+                    eprint(f"      Ran into a problem getting {kp_infores_curie}'s meta info")
                 else:
                     if kp_response.status_code == 200:
                         try:
