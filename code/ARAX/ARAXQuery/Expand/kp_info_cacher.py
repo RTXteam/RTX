@@ -12,6 +12,8 @@ import requests
 import requests_cache
 import time
 
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 rtx_index = pathlist.index("RTX")
 
@@ -41,7 +43,7 @@ class KPInfoCacher:
         """
 
         current_pid = os.getpid() # This is the PID of the process that is currently refreshing the caches
-        print(f"The process with process ID {current_pid} has STARTED refreshing the KP info caches")
+        eprint(f"The process with process ID {current_pid} has STARTED refreshing the KP info caches")
         with open(self.cache_refresh_pid_path, "w") as f:
             f.write(str(current_pid))   # Writing the PID of the process that is currently refreshing the caches to a file
 
@@ -69,7 +71,7 @@ class KPInfoCacher:
                 pickle.dump(smart_api_cache_contents, smart_api_cache_temp)
             subprocess.check_call(["mv", f"{self.smart_api_cache_path}.tmp", self.smart_api_cache_path])
         else:
-            print(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
+            eprint(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
             with open(self.smart_api_cache_path, "rb") as smart_api_file:
                 smart_api_cache_contents = pickle.load(smart_api_file)
 
@@ -81,7 +83,7 @@ class KPInfoCacher:
             pickle.dump(meta_map, meta_map_cache_temp)
         subprocess.check_call(["mv", f"{self.meta_map_cache_path}.tmp", self.meta_map_cache_path])
 
-        print(f"The process with process ID {current_pid} has FINISHED refreshing the KP info caches") 
+        eprint(f"The process with process ID {current_pid} has FINISHED refreshing the KP info caches") 
         os.remove(self.cache_refresh_pid_path)
 
     def _get_kp_url_from_smartapi_registration(self, kp_smart_api_registration: dict) -> Optional[str]:
@@ -190,30 +192,30 @@ class KPInfoCacher:
         for kp_infores_curie, kp_endpoint_url in allowed_kps_dict.items():
             if kp_endpoint_url:
                 try:
-                    print(f"Getting meta info from {kp_infores_curie}")
+                    eprint(f"  - Getting meta info from {kp_infores_curie}")
                     with requests_cache.disabled():
                         kp_response = requests.get(f"{kp_endpoint_url}/meta_knowledge_graph", timeout=10)
                 except requests.exceptions.Timeout:
-                    print(f"Timed out when trying to hit {kp_infores_curie}'s /meta_knowledge_graph endpoint "
+                    eprint(f"Timed out when trying to hit {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                           f"(waited 10 seconds)")
                 except Exception:
-                    print(f"Ran into a problem getting {kp_infores_curie}'s meta info")
+                    eprint(f"Ran into a problem getting {kp_infores_curie}'s meta info")
                 else:
                     if kp_response.status_code == 200:
                         try:
                             kp_meta_kg = kp_response.json()
                         except:
-                            print(f"Skipping {kp_infores_curie} because they returned invalid JSON")
+                            eprint(f"Skipping {kp_infores_curie} because they returned invalid JSON")
                             kp_meta_kg = "Failed"
 
                         if type(kp_meta_kg) != dict:
-                            print(f"Skipping {kp_infores_curie} because they returned an invalid meta knowledge graph")
+                            eprint(f"Skipping {kp_infores_curie} because they returned an invalid meta knowledge graph")
                         else:
                             meta_map[kp_infores_curie] = {"predicates": self._convert_meta_kg_to_meta_map(kp_meta_kg),
                                                           "prefixes": {category: meta_node["id_prefixes"]
                                                                        for category, meta_node in kp_meta_kg["nodes"].items()}}
                     else:
-                        print(f"Unable to access {kp_infores_curie}'s /meta_knowledge_graph endpoint "
+                        eprint(f"Unable to access {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                               f"(returned status of {kp_response.status_code} for URL {kp_endpoint_url})")
             elif kp_infores_curie == "infores:arax-drug-treats-disease":
                 meta_map[kp_infores_curie] = {"predicates": self._get_dtd_meta_map(),
@@ -228,7 +230,7 @@ class KPInfoCacher:
         stale_kps = set(meta_map).difference(allowed_kps_dict)
         if stale_kps:  # For dev work, we don't want to edit the metamap when in KG2 mode
             for stale_kp in stale_kps:
-                print(f"Detected a stale KP in meta map ({stale_kp}) - deleting it")
+                eprint(f"Detected a stale KP in meta map ({stale_kp}) - deleting it")
                 del meta_map[stale_kp]
 
         return meta_map
