@@ -59,7 +59,7 @@ PROPERTIES_LOOKUP = {
         "qualified_predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_object_aspect": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "domain_range_exclusion" : {"type": bool, "in_kg2pre": True, "in_kg2c_lite": True}
+        "domain_range_exclusion" : {"type": str, "in_kg2pre": True, "in_kg2c_lite": True}
     }
 }
 
