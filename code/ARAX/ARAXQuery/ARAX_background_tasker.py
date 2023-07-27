@@ -5,6 +5,7 @@ import os
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 import time
 import psutil
+import subprocess
 import datetime
 import traceback
 import pkgutil
@@ -54,7 +55,6 @@ class ARAXBackgroundTasker:
                         eprint(f"    {modname} ???")
                 else:
                     pass
-                    #eprint(f"    {modname}                  x {location}")
 
         while True:
 
@@ -85,6 +85,41 @@ class ARAXBackgroundTasker:
             for client,n_queries in ongoing_queries_by_remote_address.items():
                 n_clients += 1
                 n_ongoing_queries += n_queries
+
+            #### Check in on the NodeSynonymizer database, which sometimes gets corrupted
+            node_synonymizer_path = os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer"
+            files = os.listdir(node_synonymizer_path)
+            already_printed_header = False
+            link_counter = 0
+            file_counter = 0
+            for file in files:
+                if file.startswith('node_syn') and file.endswith('.sqlite'):
+                    file_counter += 1
+                    filepath = node_synonymizer_path + "/" + file
+                    fileinfo = '??'
+                    if os.path.islink(filepath):
+                        fileinfo = '(symlink)'
+                        link_counter += 1
+                    else:
+                        fileinfo = os.path.getsize(filepath)
+                    if file_counter != 1 or link_counter != 1:
+                        if not already_printed_header:
+                            eprint("Strange files in NodeSynonymizer directory:")
+                            already_printed_header = True
+                        eprint(f"    {fileinfo}   {file}")
+                        eprint(f"    Deleting file {filepath}")
+                        try:
+                            os.unlink(filepath)
+                        except Exception as error:
+                            eprint(f"ERROR: Unable to delete file with error {error}")
+
+            if file_counter != 1 or link_counter != 1:
+                eprint(f"ERROR: NodeSynonymizer state is weird. Running the database manager")
+                try:
+                    subprocess.check_call( [ 'python3', node_synonymizer_path + "/../ARAXQuery/ARAX_database_manager.py" ] )
+                except Exception as error:
+                    eprint(f"ERROR: Attempt to run database manager failed with {error}")
+
 
             load_tuple = psutil.getloadavg()
 
