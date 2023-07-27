@@ -538,6 +538,7 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
         edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if kg2pre_edge.get('qualified_predicate') else ""
         edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if kg2pre_edge.get('qualified_object_aspect') else ""
         edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if kg2pre_edge.get('qualified_object_direction') else ""
+        edge_domain_range_exclusion = kg2pre_edge['domain_range_exclusion']
 
         '''Patch for lack of qualified_predicate when qualified_object_direction is present'''
         predicate = kg2pre_edge['predicate']
@@ -569,7 +570,8 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
                                                       kg2_ids=[kg2_edge_id],
                                                       qualified_predicate=edge_qualified_predicate,
                                                       qualified_object_aspect=edge_qualified_object_aspect,
-                                                      qualified_object_direction=edge_qualified_object_direction)
+                                                      qualified_object_direction=edge_qualified_object_direction,
+                                                      domain_range_exclusion=edge_domain_range_exclusion)
                 canonicalized_edges[canonicalized_edge_key] = new_canonicalized_edge
     logging.info(f"Number of KG2pre edges was reduced to {len(canonicalized_edges)} "
                  f"({round((len(canonicalized_edges) / len(kg2pre_edges)) * 100)}%)")
