@@ -1,12 +1,12 @@
 {
    "database_downloads": {
-      "node_synonymizer": "/translator/data/orangeboard/databases/KG2.8.0.1/node_synonymizer_v1.1_KG2.8.0.1.sqlite",
-      "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.8.0.1/kg2c_v1.0_KG2.8.0.1.sqlite",
-      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.8.0.1/meta_kg_v1.0_KG2.8.0.1c.json",
-      "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.8.0.1/fda_approved_drugs_v1.0_KG2.8.0.1c.pickle",
-      "autocomplete": "/translator/data/orangeboard/databases/KG2.8.0.1/autocomplete_v1.0_KG2.8.0.1.sqlite",
-      "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.8.0.1/curie_to_pmids_v1.0_KG2.8.0.1.sqlite",
-      "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.0.1/ExplainableDTD_v1.2_KG2.8.0.1.db",
+      "node_synonymizer": "/translator/data/orangeboard/databases/KG2.8.3/node_synonymizer_v1.0_KG2.8.3.sqlite",
+      "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.8.3/kg2c_v1.0_KG2.8.3.sqlite",
+      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.8.3/meta_kg_v1.0_KG2.8.3c.json",
+      "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.8.3/fda_approved_drugs_v1.0_KG2.8.3c.pickle",
+      "autocomplete": "/translator/data/orangeboard/databases/KG2.8.3/autocomplete_v1.0_KG2.8.3.sqlite",
+      "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.8.3/curie_to_pmids_v1.0_KG2.8.3.sqlite",
+      "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.0.1/ExplainableDTD_v1.3_KG2.8.0.1.db",
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
       "graph_database": "/translator/data/orangeboard/databases/KG2.8.0.1/GRAPH_v1.0_KG2.8.0.1_refreshed.sqlite",
       "dtd_prob": "/translator/data/orangeboard/databases/KG2.8.0.1/DTD_probability_database_v1.0_KG2.8.0.1_refreshed.db",
@@ -18,12 +18,12 @@
       "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.8.0.1/xcrg_decrease_model_v1.0.KG2.8.0.1.pt"
    },
    "plover": {
-      "dev": "https://kg2cploverdb.ci.transltr.io",
+      "dev": "http://kg2cplover.rtx.ai:9990",
       "test": "https://kg2cploverdb.test.transltr.io",
       "prod": "https://kg2cploverdb.transltr.io"
    },
    "neo4j": {
-      "KG2pre": "kg2endpoint-kg2-8-0-1.rtx.ai",
-      "KG2c": "kg2-8-0-1.rtx.ai"
+      "KG2pre": "kg2endpoint-kg2-8-3.rtx.ai",
+      "KG2c": "kg2-8-3c.rtx.ai"
    }
 }

@@ -2940,7 +2940,8 @@ function get_css_class_from_reasoner(r) {
 	    return "sgen";
 	if (r.toUpperCase().includes("COHD"))
 	    return "scod";
-	if (r.toUpperCase().includes("ARAX"))
+	if (r.toUpperCase().includes("ARAX") ||
+	    r.toUpperCase().includes("RTX"))
 	    return "srtx";
 	if (r.toUpperCase().includes("BTE") ||
 	    r.toUpperCase().includes("BIOTHINGS"))
@@ -6153,9 +6154,9 @@ function retrieveKPInfo() {
 			    item["version"] = '--NULL--';
 			    text.className = "qprob p0";
 			}
-			else if (item["version"].startsWith("1.3"))
-			    text.className = "qprob p9";
 			else if (item["version"] == "1.4.0")
+			    text.className = "qprob p9";
+			else if (item["version"] == "1.5.0")
 			    text.className = "qprob schp";
 			else
 			    text.className = "qprob p1";
