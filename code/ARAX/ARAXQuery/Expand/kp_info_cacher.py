@@ -10,6 +10,9 @@ from typing import Set, Dict, Optional
 
 import requests
 import requests_cache
+import time
+
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 rtx_index = pathlist.index("RTX")
@@ -21,6 +24,9 @@ from ARAX_response import ARAXResponse
 sys.path.append(os.path.sep.join([*pathlist[:(rtx_index + 1)], 'code', 'ARAX', 'ARAXQuery', 'Expand']))
 from smartapi import SmartAPI
 
+
+MAX_TOTAL_WAIT_FOR_CACHE_SEC = 60.0
+WAIT_LOOP_SEC = 0.1
 
 class KPInfoCacher:
 
@@ -37,7 +43,7 @@ class KPInfoCacher:
         """
 
         current_pid = os.getpid() # This is the PID of the process that is currently refreshing the caches
-        print(f"The process with process ID {current_pid} has STARTED refreshing the KP info caches")
+        eprint(f"The process with process ID {current_pid} has STARTED refreshing the KP info caches")
         with open(self.cache_refresh_pid_path, "w") as f:
             f.write(str(current_pid))   # Writing the PID of the process that is currently refreshing the caches to a file
 
@@ -65,7 +71,7 @@ class KPInfoCacher:
                 pickle.dump(smart_api_cache_contents, smart_api_cache_temp)
             subprocess.check_call(["mv", f"{self.smart_api_cache_path}.tmp", self.smart_api_cache_path])
         else:
-            print(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
+            eprint(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
             with open(self.smart_api_cache_path, "rb") as smart_api_file:
                 smart_api_cache_contents = pickle.load(smart_api_file)
 
@@ -77,7 +83,7 @@ class KPInfoCacher:
             pickle.dump(meta_map, meta_map_cache_temp)
         subprocess.check_call(["mv", f"{self.meta_map_cache_path}.tmp", self.meta_map_cache_path])
 
-        print(f"The process with process ID {current_pid} has FINISHED refreshing the KP info caches") 
+        eprint(f"The process with process ID {current_pid} has FINISHED refreshing the KP info caches") 
         os.remove(self.cache_refresh_pid_path)
 
     def _get_kp_url_from_smartapi_registration(self, kp_smart_api_registration: dict) -> Optional[str]:
@@ -109,21 +115,46 @@ class KPInfoCacher:
 
     def load_kp_info_caches(self, log: ARAXResponse):
         """
-        This method is meant to be used anywhere the meta map or smart API caches need to be used (i.e., by KPSelector).
-        Other modules should NEVER try to load the caches directly! They should only load them via this method.
-        It ensures that caches are up to date and that they don't become corrupted while refreshing.
+        This method is meant to be used anywhere the meta map or smart API
+        caches need to be used (i.e., by KPSelector).  Other modules should
+        NEVER try to load the caches directly! They should only load them via
+        this method.  It ensures that caches are up to date and that they don't
+        become corrupted while refreshing.
         """
-        if(os.path.exists(self.cache_refresh_pid_path)): # Check if the refresher PID file exists
-            with open(self.cache_refresh_pid_path, "r") as f: 
-                refresher_pid = int(f.read()) # Get the PID of the process that is currently refreshing the caches
-                caches_are_being_refreshed = True if(psutil.pid_exists(refresher_pid)) else False # Check if the process is still running
-                while caches_are_being_refreshed: # If the caches are being actively refreshed, wait for it to finish
-                    caches_are_being_refreshed = True if(psutil.pid_exists(refresher_pid)) else False 
+        if not (os.path.exists(self.smart_api_cache_path) and
+                os.path.exists(self.meta_map_cache_path)):
+            # if either pickled cache file is missing, then check if they are
+            # being generated (on the other hand, if both exist, just move on
+            # since we will use the cache files); see RTX issue 2072
+            if (os.path.exists(self.cache_refresh_pid_path)):
+                # Check if the refresher PID file exists
+                with open(self.cache_refresh_pid_path, "r") as f:
+                    refresher_pid = int(f.read())
+                    # Get the PID of the process that is currently refreshing
+                    # the caches
+                    caches_are_being_refreshed = True if \
+                        (psutil.pid_exists(refresher_pid)) else False
+                    # Check if the process is still running
+                    iter_ctr = 0
+                    while caches_are_being_refreshed:
+                        # if the caches are being actively refreshed, wait for
+                        # it to finish
+                        time.sleep(0.1)
+                        iter_ctr += 1
+                        caches_are_being_refreshed = True if \
+                            (psutil.pid_exists(refresher_pid)) else False
+                        if WAIT_LOOP_SEC * iter_ctr > \
+                           MAX_TOTAL_WAIT_FOR_CACHE_SEC:
+                            raise Exception("Timed out waiting for SmartAPI " +
+                                            "cache creation; perhaps " +
+                                            "MAX_TOTAL_WAIT_FOR_CACHE_SEC " +
+                                            "value was too small: " +
+                                            f"{MAX_TOTAL_WAIT_FOR_CACHE_SEC}")
 
-
-        # At this point the KP info caches must NOT be in the process of being refreshed, so we create/update if needed.
-        # In particular, this ensures that the caches will be created/fresh even on dev machines, that don't run the
-        # background refresh task.
+        # At this point the KP info caches must NOT be in the process of being
+        # refreshed, so we create/update if needed.  In particular, this ensures
+        # that the caches will be created/fresh even on dev machines, that don't
+        # run the background refresh task.
         one_day_ago = datetime.now() - timedelta(hours=24)
         smart_api_info_cache_pathlib_path = pathlib.Path(self.smart_api_cache_path)
         meta_map_cache_pathlib_path = pathlib.Path(self.meta_map_cache_path)
@@ -161,30 +192,30 @@ class KPInfoCacher:
         for kp_infores_curie, kp_endpoint_url in allowed_kps_dict.items():
             if kp_endpoint_url:
                 try:
-                    print(f"Getting meta info from {kp_infores_curie}")
+                    eprint(f"  - Getting meta info from {kp_infores_curie}")
                     with requests_cache.disabled():
                         kp_response = requests.get(f"{kp_endpoint_url}/meta_knowledge_graph", timeout=10)
                 except requests.exceptions.Timeout:
-                    print(f"Timed out when trying to hit {kp_infores_curie}'s /meta_knowledge_graph endpoint "
+                    eprint(f"      Timed out when trying to hit {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                           f"(waited 10 seconds)")
                 except Exception:
-                    print(f"Ran into a problem getting {kp_infores_curie}'s meta info")
+                    eprint(f"      Ran into a problem getting {kp_infores_curie}'s meta info")
                 else:
                     if kp_response.status_code == 200:
                         try:
                             kp_meta_kg = kp_response.json()
                         except:
-                            print(f"Skipping {kp_infores_curie} because they returned invalid JSON")
+                            eprint(f"Skipping {kp_infores_curie} because they returned invalid JSON")
                             kp_meta_kg = "Failed"
 
                         if type(kp_meta_kg) != dict:
-                            print(f"Skipping {kp_infores_curie} because they returned an invalid meta knowledge graph")
+                            eprint(f"Skipping {kp_infores_curie} because they returned an invalid meta knowledge graph")
                         else:
                             meta_map[kp_infores_curie] = {"predicates": self._convert_meta_kg_to_meta_map(kp_meta_kg),
                                                           "prefixes": {category: meta_node["id_prefixes"]
                                                                        for category, meta_node in kp_meta_kg["nodes"].items()}}
                     else:
-                        print(f"Unable to access {kp_infores_curie}'s /meta_knowledge_graph endpoint "
+                        eprint(f"Unable to access {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                               f"(returned status of {kp_response.status_code} for URL {kp_endpoint_url})")
             elif kp_infores_curie == "infores:arax-drug-treats-disease":
                 meta_map[kp_infores_curie] = {"predicates": self._get_dtd_meta_map(),
@@ -199,7 +230,7 @@ class KPInfoCacher:
         stale_kps = set(meta_map).difference(allowed_kps_dict)
         if stale_kps:  # For dev work, we don't want to edit the metamap when in KG2 mode
             for stale_kp in stale_kps:
-                print(f"Detected a stale KP in meta map ({stale_kp}) - deleting it")
+                eprint(f"Detected a stale KP in meta map ({stale_kp}) - deleting it")
                 del meta_map[stale_kp]
 
         return meta_map
