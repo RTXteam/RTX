@@ -1,7 +1,7 @@
 {
   "kg2pre_version": "2.8.4",
   "biolink_version": "3.1.2",
-  "upload_to_arax_databases.rtx.ai": false,
+  "upload_to_arax_databases.rtx.ai": true,
   "synonymizer": {
     "build": true,
     "synonymizer_db_version": "v1.0"
@@ -9,8 +9,8 @@
   "kg2c": {
     "build": true,
     "kg2c_db_version": "v1.0",
-    "use_nlp_to_choose_descriptions": false,
-    "upload_to_s3": false,
+    "use_nlp_to_choose_descriptions": true,
+    "upload_to_s3": true,
     "start_from_kg2c_json": false,
     "use_local_kg2pre_tsvs": false
   }
