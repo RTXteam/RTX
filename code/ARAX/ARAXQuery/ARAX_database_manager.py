@@ -205,6 +205,7 @@ class ARAXDatabaseManager:
         }
 
     def update_databases(self, debug = True, response = None):
+        debug = True
         # First ensure we have a db versions file if we're in a docker container (since host has dbs predownloaded)
         if os.path.exists(self.docker_databases_dir_path) and not os.path.exists(versions_path):
             self.write_db_versions_file(debug=True)
@@ -285,6 +286,8 @@ class ARAXDatabaseManager:
         return f"{self.docker_databases_dir_path}/{database_subpath}"
 
     def check_versions(self, debug=True):
+        debug = True
+        eprint("ARAX_database_manager is performing check_versions()")
         download_flag = False
         if os.path.exists(versions_path):
             with open(versions_path,"r") as fid:
@@ -307,7 +310,7 @@ class ARAXDatabaseManager:
                         eprint(f"Local version of {database_name} matches the remote version")
         else:
             if debug:
-                eprint("No local verson json file present")
+                eprint("No local version {versions_path}")
             download_flag = True
         return download_flag
 
