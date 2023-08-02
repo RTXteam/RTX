@@ -279,7 +279,6 @@ class InferUtilities:
                     continue
                 
                 path_idx = len(edges_info)-1
-                new_edge_list = []
 
                 for i in range(path_idx+1):
                     subject_qnode_key = path_keys[path_idx]["qnode_pairs"][i][0]
@@ -306,6 +305,7 @@ class InferUtilities:
                     break_flag = False 
                     for edge_info in edges_info[i]:
                         primary_knowledge_source = edge_info.primary_knowledge_source if edge_info.primary_knowledge_source is not None else "infores:arax"
+                        
                         # Handle the self-loop relation
                         if predicate == "SELF_LOOP_RELATION":
                             ## remove self-loop relation requested by issue #2081
@@ -313,7 +313,6 @@ class InferUtilities:
                             break
                             # self.response.warning(f"Self-loop relation detected: {subject_name}--{predicate}--{object_name}, replacing with placeholder 'biolink:self_loop_relation'")
                             # predicate = "biolink:self_loop_relation"
-                        new_edge_list += [(subject_curie, predicate, object_curie, primary_knowledge_source)]
                         new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[], sources=[])
                         ## add attributes to the path-based edge
                         edge_attribute_list = [
@@ -342,7 +341,6 @@ class InferUtilities:
                         message.knowledge_graph.edges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
                     if break_flag:
                         break
-                print(f"############################## {new_edge_list}", flush=True)
                 path_added = True
             if path_added:
                 treat_score = top_drugs.loc[top_drugs['drug_id'] == drug]["tp_score"].iloc[0]
