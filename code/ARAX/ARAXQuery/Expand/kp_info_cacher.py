@@ -263,3 +263,7 @@ class KPInfoCacher:
                         "biolink:PhenotypicFeature": drug_ish_dict,
                         "biolink:DiseaseOrPhenotypicFeature": drug_ish_dict}
         return dtd_meta_map
+
+
+if __name__ == "__main__":
+    KPInfoCacher().refresh_kp_info_caches()
