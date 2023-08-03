@@ -46,7 +46,7 @@ pipeline {
       stage('Build and Push Docker Image') {
           when { expression { return env.BUILD == 'true' }}
           environment {
-            ENV_BUILD_BRANCH= sh (returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+            ENV_BUILD_BRANCH='itrb-test'
           }
           steps {
               script {
@@ -81,10 +81,5 @@ pipeline {
                 }
            }
        }
-      stage('Clean Up') {
-          steps {
-              cleanWs()
-          }
-      }
     }
 }
