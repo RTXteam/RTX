@@ -25,7 +25,7 @@ sys.path.append(os.path.sep.join([*pathlist[:(rtx_index + 1)], 'code', 'ARAX', '
 from smartapi import SmartAPI
 
 
-MAX_TOTAL_WAIT_FOR_CACHE_SEC = 180.0
+MAX_TOTAL_WAIT_FOR_CACHE_SEC = 60.0
 WAIT_LOOP_SEC = 0.1
 
 class KPInfoCacher:
