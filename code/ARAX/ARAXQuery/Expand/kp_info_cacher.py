@@ -47,43 +47,48 @@ class KPInfoCacher:
         with open(self.cache_refresh_pid_path, "w") as f:
             f.write(str(current_pid))   # Writing the PID of the process that is currently refreshing the caches to a file
 
-        # Grab KP registrations from Smart API
-        smart_api_helper = SmartAPI()
-        smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
-                                                                                     req_maturity=self.rtx_config.maturity)
-        if not smart_api_kp_registrations:
-            print(f"Didn't get any KP registrations back from SmartAPI!")
-        previous_smart_api_cache_exists = pathlib.Path(self.smart_api_cache_path).exists()
-        if smart_api_kp_registrations or not previous_smart_api_cache_exists:
-            # Transform the info into the format we want
-            allowed_kp_urls = {kp_registration["infores_name"]: self._get_kp_url_from_smartapi_registration(kp_registration)
-                               for kp_registration in smart_api_kp_registrations}
-            # Add entries for our local KPs (that are not web services)
-            allowed_kp_urls["infores:arax-drug-treats-disease"] = None
-            allowed_kp_urls["infores:arax-normalized-google-distance"] = None
+        try:
+            # Grab KP registrations from Smart API
+            smart_api_helper = SmartAPI()
+            smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
+                                                                                         req_maturity=self.rtx_config.maturity)
+            if not smart_api_kp_registrations:
+                print(f"Didn't get any KP registrations back from SmartAPI!")
+            previous_smart_api_cache_exists = pathlib.Path(self.smart_api_cache_path).exists()
+            if smart_api_kp_registrations or not previous_smart_api_cache_exists:
+                # Transform the info into the format we want
+                allowed_kp_urls = {kp_registration["infores_name"]: self._get_kp_url_from_smartapi_registration(kp_registration)
+                                   for kp_registration in smart_api_kp_registrations}
+                # Add entries for our local KPs (that are not web services)
+                allowed_kp_urls["infores:arax-drug-treats-disease"] = None
+                allowed_kp_urls["infores:arax-normalized-google-distance"] = None
 
-            smart_api_cache_contents = {"allowed_kp_urls": allowed_kp_urls,
-                                        "kps_excluded_by_version": smart_api_helper.kps_excluded_by_version,
-                                        "kps_excluded_by_maturity": smart_api_helper.kps_excluded_by_maturity}
+                smart_api_cache_contents = {"allowed_kp_urls": allowed_kp_urls,
+                                            "kps_excluded_by_version": smart_api_helper.kps_excluded_by_version,
+                                            "kps_excluded_by_maturity": smart_api_helper.kps_excluded_by_maturity}
 
-            # Save the SmartAPI info to the proper cache file in a thread-safe way (utilizing a temp file)
-            with open(f"{self.smart_api_cache_path}.tmp", "wb") as smart_api_cache_temp:
-                pickle.dump(smart_api_cache_contents, smart_api_cache_temp)
-            subprocess.check_call(["mv", f"{self.smart_api_cache_path}.tmp", self.smart_api_cache_path])
-        else:
-            eprint(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
-            with open(self.smart_api_cache_path, "rb") as smart_api_file:
-                smart_api_cache_contents = pickle.load(smart_api_file)
+                # Save the SmartAPI info to the proper cache file in a thread-safe way (utilizing a temp file)
+                with open(f"{self.smart_api_cache_path}.tmp", "wb") as smart_api_cache_temp:
+                    pickle.dump(smart_api_cache_contents, smart_api_cache_temp)
+                subprocess.check_call(["mv", f"{self.smart_api_cache_path}.tmp", self.smart_api_cache_path])
+            else:
+                eprint(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
+                with open(self.smart_api_cache_path, "rb") as smart_api_file:
+                    smart_api_cache_contents = pickle.load(smart_api_file)
 
-        # Grab KPs' meta map info based off of their /meta_knowledge_graph endpoints
-        meta_map = self._build_meta_map(allowed_kps_dict=smart_api_cache_contents["allowed_kp_urls"])
+            # Grab KPs' meta map info based off of their /meta_knowledge_graph endpoints
+            meta_map = self._build_meta_map(allowed_kps_dict=smart_api_cache_contents["allowed_kp_urls"])
 
-        # Save the meta map to the proper cache file in a thread-safe way (utilizing a temp file)
-        with open(f"{self.meta_map_cache_path}.tmp", "wb") as meta_map_cache_temp:
-            pickle.dump(meta_map, meta_map_cache_temp)
-        subprocess.check_call(["mv", f"{self.meta_map_cache_path}.tmp", self.meta_map_cache_path])
+            # Save the meta map to the proper cache file in a thread-safe way (utilizing a temp file)
+            with open(f"{self.meta_map_cache_path}.tmp", "wb") as meta_map_cache_temp:
+                pickle.dump(meta_map, meta_map_cache_temp)
+            subprocess.check_call(["mv", f"{self.meta_map_cache_path}.tmp", self.meta_map_cache_path])
 
-        eprint(f"The process with process ID {current_pid} has FINISHED refreshing the KP info caches") 
+            eprint(f"The process with process ID {current_pid} has FINISHED refreshing the KP info caches")
+
+        except Exception as e:
+            os.remove(self.cache_refresh_pid_path)
+            raise e
         os.remove(self.cache_refresh_pid_path)
 
     def _get_kp_url_from_smartapi_registration(self, kp_smart_api_registration: dict) -> Optional[str]:
@@ -121,35 +126,39 @@ class KPInfoCacher:
         this method.  It ensures that caches are up to date and that they don't
         become corrupted while refreshing.
         """
-        if not (os.path.exists(self.smart_api_cache_path) and
-                os.path.exists(self.meta_map_cache_path)):
+        if (not (os.path.exists(self.smart_api_cache_path) and
+                 os.path.exists(self.meta_map_cache_path))) and \
+                os.path.exists(self.cache_refresh_pid_path):
             # if either pickled cache file is missing, then check if they are
             # being generated (on the other hand, if both exist, just move on
             # since we will use the cache files); see RTX issue 2072
-            if (os.path.exists(self.cache_refresh_pid_path)):
-                # Check if the refresher PID file exists
-                with open(self.cache_refresh_pid_path, "r") as f:
-                    refresher_pid = int(f.read())
-                    # Get the PID of the process that is currently refreshing
-                    # the caches
-                    caches_are_being_refreshed = True if \
-                        (psutil.pid_exists(refresher_pid)) else False
-                    # Check if the process is still running
-                    iter_ctr = 0
-                    while caches_are_being_refreshed:
-                        # if the caches are being actively refreshed, wait for
-                        # it to finish
-                        time.sleep(0.1)
-                        iter_ctr += 1
-                        caches_are_being_refreshed = True if \
-                            (psutil.pid_exists(refresher_pid)) else False
-                        if WAIT_LOOP_SEC * iter_ctr > \
-                           MAX_TOTAL_WAIT_FOR_CACHE_SEC:
-                            raise Exception("Timed out waiting for SmartAPI " +
-                                            "cache creation; perhaps " +
-                                            "MAX_TOTAL_WAIT_FOR_CACHE_SEC " +
-                                            "value was too small: " +
-                                            f"{MAX_TOTAL_WAIT_FOR_CACHE_SEC}")
+            # Check if the refresher PID file exists
+            with open(self.cache_refresh_pid_path, "r") as f:
+                refresher_pid = int(f.read())
+                assert refresher_pid != os.getpid()
+                # Get the PID of the process that is currently refreshing
+                # the caches
+                caches_are_being_refreshed = psutil.pid_exists(refresher_pid)
+                # Check if the process is still running
+                iter_ctr = 0
+                while caches_are_being_refreshed:
+                    # if the caches are being actively refreshed, wait for
+                    # it to finish
+                    time.sleep(WAIT_LOOP_SEC)
+                    iter_ctr += 1
+                    caches_are_being_refreshed = psutil.pid_exists(refresher_pid)
+                    if WAIT_LOOP_SEC * iter_ctr > \
+                       MAX_TOTAL_WAIT_FOR_CACHE_SEC:
+                        raise Exception("Timed out waiting for SmartAPI " +
+                                        "cache creation; perhaps " +
+                                        "MAX_TOTAL_WAIT_FOR_CACHE_SEC " +
+                                        "value was too small: " +
+                                        f"{MAX_TOTAL_WAIT_FOR_CACHE_SEC}")
+                    if os.path.exists(self.smart_api_cache_path) and \
+                       os.path.exists(self.meta_map_cache_path):
+                        eprint("Exiting even though KP info cache-writing " +
+                               f"process still running; PID {refresher_pid}")
+                        break
 
         # At this point the KP info caches must NOT be in the process of being
         # refreshed, so we create/update if needed.  In particular, this ensures
