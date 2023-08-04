@@ -793,8 +793,7 @@ def test_qualified_regulates_query():
     query = {
         "nodes": {
             "n0": {
-                "ids": ["NCBIGene:7157"]
-                # "ids": ["NCBIGene:375"]
+                "ids": ["NCBIGene:375"]
             },
             "n1": {
                 "categories": ["biolink:Gene"]
@@ -829,6 +828,7 @@ def test_qualified_regulates_query():
         }
     }
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
 
 def test_1516_single_quotes_in_ids():
     actions = [
