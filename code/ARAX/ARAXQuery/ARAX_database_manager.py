@@ -6,6 +6,7 @@ import datetime
 import json
 import time
 import argparse
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -203,7 +204,8 @@ class ARAXDatabaseManager:
             }
         }
 
-    def update_databases(self, debug = False, response = None):
+    def update_databases(self, debug = True, response = None):
+        debug = True
         # First ensure we have a db versions file if we're in a docker container (since host has dbs predownloaded)
         if os.path.exists(self.docker_databases_dir_path) and not os.path.exists(versions_path):
             self.write_db_versions_file(debug=True)
@@ -215,14 +217,14 @@ class ARAXDatabaseManager:
 
             # Download databases to a persistent central location if this is a docker instance (like arax.ncats.io)
             if os.path.exists(self.docker_databases_dir_path):
-                print(f"Downloading any missing databases from arax-databases.rtx.ai to {self.docker_databases_dir_path}")
+                eprint(f"Downloading any missing databases from arax-databases.rtx.ai to {self.docker_databases_dir_path}")
                 self.download_to_mnt(debug=debug, skip_if_exists=True, remove_unused=False)
 
             # Check that each database exists locally (or a symlink to it does, in the case of a docker host machine)
             for database_name, local_path in self.local_paths.items(): # iterate through all databases
                 if database_name not in local_versions: # if database is not present locally
                     if debug:
-                        print(f"{database_name} not present locally, downloading or symlinking now...")
+                        eprint(f"{database_name} ({local_path}) not present locally, downloading or symlinking now...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.download_database(remote_location=self.remote_locations[database_name],
@@ -231,8 +233,8 @@ class ARAXDatabaseManager:
                                            debug=debug)
                 elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']: # If database is present but wrong version
                     if debug:
-                        print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
-                        print("downloading remote version...")
+                        eprint(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
+                        eprint("downloading remote version...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.download_database(remote_location=self.remote_locations[database_name],
@@ -241,28 +243,28 @@ class ARAXDatabaseManager:
                                            debug=debug)
                     if os.path.exists(self.local_paths[database_name]): # check that download worked if so remove old version
                         if debug:
-                            print("Download successful. Removing local version...")
+                            eprint("Download successful. Removing local version...")
                         if os.path.exists(local_versions[database_name]['path']):
                             os.system(f"rm {local_versions[database_name]['path']}") 
                     else:
                         if debug:
-                            print(f"Error downloading {database_name} leaving local copy.")
+                            eprint(f"Error downloading {database_name} leaving local copy.")
                         if response is not None:
                             response.warning(f"Error downloading {database_name} reverting to using local copy.") 
                         self.db_versions[database_name] = local_versions[database_name]
                 elif not os.path.exists(self.local_paths[database_name]): # If database file is missing
                     if debug:
-                        print(f"{database_name} not present locally, downloading or symlinking now......")
+                        eprint(f"{database_name} ({self.local_paths[database_name]}) not present locally, downloading or symlinking now......")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
                     self.download_database(remote_location=self.remote_locations[database_name], local_destination_path=self.local_paths[database_name], local_symlink_target_path=self.docker_central_paths[database_name], debug=debug)
                 else:
                     if debug:
-                        print(f"Local version of {database_name} matches the remote version, skipping...")
+                        eprint(f"Local version of {database_name} ({local_path}) matches the remote version, skipping...")
             self.write_db_versions_file()
         else: # If database manager has never been run download all databases
             if debug:
-                print("No local verson json file present. Downloading all databases...")
+                eprint("No local verson json file present. Downloading all databases...")
             if response is not None:
                 response.debug(f"No local verson json file present. Downloading all databases...")
             self.force_download_all(debug=debug)
@@ -283,7 +285,9 @@ class ARAXDatabaseManager:
         database_subpath = self.database_subpaths[database_shortname]
         return f"{self.docker_databases_dir_path}/{database_subpath}"
 
-    def check_versions(self, debug=False):
+    def check_versions(self, debug=True):
+        debug = True
+        eprint("ARAX_database_manager is performing check_versions()")
         download_flag = False
         if os.path.exists(versions_path):
             with open(versions_path,"r") as fid:
@@ -291,22 +295,22 @@ class ARAXDatabaseManager:
             for database_name, local_path in self.local_paths.items():
                 if database_name not in local_versions:
                     if debug:
-                        print(f"{database_name} not present locally")
+                        eprint(f"{database_name} ({local_path}) not present locally")
                     download_flag = True
                 elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']:
                     if debug:
-                        print(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
+                        eprint(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
                     download_flag = True
                 elif not os.path.exists(local_path):
                     if debug:
-                        print(f"{database_name} not present locally")
+                        eprint(f"{database_name} ({local_path}) not present locally")
                     download_flag = True
                 else:
                     if debug:
-                        print(f"Local version of {database_name} matches the remote version")
+                        eprint(f"Local version of {database_name} matches the remote version")
         else:
             if debug:
-                print("No local verson json file present")
+                eprint("No local version {versions_path}")
             download_flag = True
         return download_flag
 
@@ -335,7 +339,8 @@ class ARAXDatabaseManager:
         verbose = ""
         if debug:
             verbose = "vv"
-        os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
+        #os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
+        eprint(f"ERROR: Wanted to run the following rsync, but it isn't going to work anyway. Skipping: rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
 
     def download_to_mnt(self, debug=False, skip_if_exists=False, remove_unused=False):
         """
