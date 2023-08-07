@@ -807,10 +807,12 @@ def test_qualified_regulates_query():
                     {"qualifier_set": [
                         {"qualifier_type_id": "biolink:qualified_predicate",
                          "qualifier_value": "biolink:causes"},
-                        {"qualifier_type_id": "biolink:object_direction_qualifier",
-                         "qualifier_value": "decreased"},
+                        # {"qualifier_type_id": "biolink:object_direction_qualifier",
+                        #  "qualifier_value": "decreased"}, # for RTX issue 2068
+                        #                                   # see also RTX-KG2 issue 339
+                        #                                   # Uncomment to test in KG2.8.5
                         {"qualifier_type_id": "biolink:object_aspect_qualifier",
-                         "qualifier_value": "activity_or_abundance"}
+                         "qualifier_value": "activity"}
                     ]}
                 ],
                 "attribute_constraints": [
