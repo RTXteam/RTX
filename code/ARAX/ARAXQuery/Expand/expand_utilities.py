@@ -555,51 +555,6 @@ def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
         if qedge_key in edge.qedge_keys:
             del kg.edges[edge_key]
 
-def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph, log: ARAXResponse):
-        publication_threshold = 4
-        edge_keys = set(kg.edges)
-        edges_removed_counter = 0
-        removed_nodes = set()
-        connected_nodes = set()
-        try:
-            for edge_key in edge_keys:
-                edge = kg.edges[edge_key]
-                if not (edge.sources and any(retrieval_source.resource_id == 'infores:semmeddb' and
-                                                                    retrieval_source.resource_role == "primary_knowledge_source"
-                                                                    for retrieval_source in edge.sources)):
-                    connected_nodes.add(edge.subject)
-                    connected_nodes.add(edge.object)
-                    continue
-                if not edge.attributes:
-                    removed_nodes.add(edge.subject)
-                    removed_nodes.add(edge.object)
-                    del kg.edges[edge_key]
-                    edges_removed_counter += 1
-                    continue
-                n_publications = 0
-                for attribute in edge.attributes:
-                    if attribute.attribute_type_id == 'biolink:publications':
-                        if isinstance(attribute.value, list):
-                            n_publications = len(attribute.value)
-                if n_publications < publication_threshold:
-                    removed_nodes.add(edge.subject)
-                    removed_nodes.add(edge.object)
-                    del kg.edges[edge_key]
-                    edges_removed_counter += 1
-                else:
-                    connected_nodes.add(edge.subject)
-                    connected_nodes.add(edge.object)
-            orphaned_nodes = removed_nodes - connected_nodes
-            for node_key in orphaned_nodes:
-                del kg.nodes[node_key]
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            log.error(tb, error_code=error_type.__name__)
-            log.error(f"Something went wrong removing semmeddb edges from the knowledge graph")
-        else:
-            log.info(f"{edges_removed_counter} Semmeddb Edges with low publications successfully removed")
-
 
 def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool:
     """
