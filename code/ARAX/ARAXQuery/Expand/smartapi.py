@@ -109,6 +109,9 @@ class SmartAPI:
                 title = None
 
             servers = []
+            if "servers" not in hit:
+                print(f"No 'servers' element found in {title}!")
+                continue
             for server in hit["servers"]:
                 try:
                     url = server["url"]
