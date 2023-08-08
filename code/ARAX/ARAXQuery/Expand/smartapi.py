@@ -4,7 +4,10 @@ import requests
 import requests_cache
 import json
 import re
+import sys
 from functools import lru_cache
+
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 class SmartAPI:
     """SmartAPI."""
@@ -110,7 +113,7 @@ class SmartAPI:
 
             servers = []
             if "servers" not in hit:
-                print(f"No 'servers' element found in {title}!")
+                eprint(f"No 'servers' element found in {title}!")
                 continue
             for server in hit["servers"]:
                 try:
