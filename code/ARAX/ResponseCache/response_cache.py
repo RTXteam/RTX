@@ -33,7 +33,7 @@ from sqlalchemy import desc
 from sqlalchemy import inspect
 
 #sys.path = ['/mnt/data/python/TestValidator'] + sys.path
-from reasoner_validator import TRAPIResponseValidator
+from reasoner_validator.validator import TRAPIResponseValidator
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
