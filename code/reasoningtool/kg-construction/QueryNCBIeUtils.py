@@ -457,7 +457,7 @@ class QueryNCBIeUtils:
                 else:
                     counts += QueryNCBIeUtils.multi_pubmed_hits_count(name_decorated, n_terms=1)
 
-        N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
+        N = 3.5e+7 * 20  # From PubMed home page there are 35 million articles (based on the information on https://pubmed.ncbi.nlm.nih.gov/ on 08/09/2023); avg 20 MeSH terms per article
         if None in counts:
             return math.nan
         if 0 in counts:
