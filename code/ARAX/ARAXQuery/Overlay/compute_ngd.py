@@ -50,7 +50,7 @@ class ComputeNGD:
         self.ngd_database_name = RTXConfig.curie_to_pmids_path.split('/')[-1]
         self.connection, self.cursor = self._setup_ngd_database()
         self.curie_to_pmids_map = dict()
-        self.ngd_normalizer = 2.2e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article
+        self.ngd_normalizer = 2.7e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article
         self.first_ngd_log = True
 
     def compute_ngd(self):
@@ -76,7 +76,7 @@ class ComputeNGD:
         ngd_description = """
         Normalized google distance is a metric based on edge subject/object node co-occurrence in abstracts of all [PubMed](https://pubmed.ncbi.nlm.nih.gov/) articles. 
         The formula can be found here on [wikipedia.](https://en.wikipedia.org/wiki/Normalized_Google_distance) 
-        Where in this case f(x,y) is the number of PubMed abstracts both concepts apear in, f(x)/f(y) are the number of abstracts individual concepts apear in, and N is the number of pubmed articles times the average numbver of search terms per article (27 million * 20).
+        Where in this case f(x,y) is the number of PubMed abstracts both concepts apear in, f(x)/f(y) are the number of abstracts individual concepts apear in, and N is the number of pubmed articles times the average number of search terms per article (27 million * 20).
         """
         
         # if you want to add virtual edges, identify the subject/objects, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
