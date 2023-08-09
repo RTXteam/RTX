@@ -50,7 +50,7 @@ class ComputeNGD:
         self.ngd_database_name = RTXConfig.curie_to_pmids_path.split('/')[-1]
         self.connection, self.cursor = self._setup_ngd_database()
         self.curie_to_pmids_map = dict()
-        self.ngd_normalizer = 2.7e+7 * 20  # From PubMed home page there are 27 million articles; avg 20 MeSH terms per article
+        self.ngd_normalizer = 3.5e+7 * 20  # From PubMed home page there are 35 million articles (based on the information on https://pubmed.ncbi.nlm.nih.gov/ on 08/09/2023); avg 20 MeSH terms per article
         self.first_ngd_log = True
 
     def compute_ngd(self):
