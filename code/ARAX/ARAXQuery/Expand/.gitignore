@@ -3,3 +3,4 @@
 *.tsv
 *.yaml
 *.log
+cache*.pkl

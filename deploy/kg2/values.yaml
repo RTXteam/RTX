@@ -1,6 +1,6 @@
 # Default values for kg2.
 
-replicaCount: 1
+replicaCount: 2
 
 initContainer:
   image:
@@ -71,4 +71,17 @@ affinity:
           - kg2
       topologyKey: "kubernetes.io/hostname"
 
+storageClassName:
+  class: nfs-client
 
+storage:
+# database storage size referred by pvc
+  database: 300Gi
+
+resources:
+  requests:
+    memory: 56Gi
+    cpu: 13000m
+  limits:
+    memory: 58Gi
+    cpu: 14000m 

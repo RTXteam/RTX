@@ -9,13 +9,13 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2 - TRAPI 1.4.0
-  version: 2.8.3
+  version: 2.8.0.0
   x-translator:
     component: KP
     team:
     - Expander Agent
     infores: infores:rtx-kg2
-    biolink-version: 3.1.2
+    biolink-version: 3.0.3
     externalDocs:
       description: The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
@@ -23,8 +23,14 @@ info:
   x-trapi:
     version: 1.4.0
     asyncquery: false
+    test_data_location:
+      default:
+        url: https://raw.githubusercontent.com/RTXteam/RTX/production/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json
+      development:
+        url: https://raw.githubusercontent.com/RTXteam/RTX/master/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json
     operations:
     - lookup
+    rate_limit: 4
     externalDocs:
       description: The values for version are restricted according to the regex in
         this external JSON schema. See schema and examples at url
@@ -33,8 +39,20 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: RTX-KG2 TRAPI 1.4 endpoint - development
+- description: RTX-KG2 TRAPI 1.4 endpoint - ITRB production
+  url: https://kg2.transltr.io/api/rtxkg2/v1.4
+  x-maturity: production
+- description: RTX-KG2 TRAPI 1.4 endpoint - production
   url: https://arax.ncats.io/api/rtxkg2/v1.4
+  x-maturity: production
+- description: RTX-KG2 TRAPI 1.4 endpoint - testing
+  url: https://kg2.test.transltr.io/api/rtxkg2/v1.4
+  x-maturity: testing
+- description: RTX-KG2 TRAPI 1.4 endpoint - staging
+  url: https://kg2.ci.transltr.io/api/rtxkg2/v1.4
+  x-maturity: staging
+- description: RTX-KG2 TRAPI 1.4 endpoint - development
+  url: https://arax.ncats.io/beta/api/rtxkg2/v1.4
   x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web

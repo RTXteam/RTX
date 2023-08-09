@@ -8,7 +8,7 @@ It is built from [KG2pre](https://github.com/RTXteam/RTX-KG2) and uses the [ARAX
 ###### Example KG2c node:
 ```
 {
-  "id": "CHEMBL.COMPOUND:CHEMBL3349001",
+  "id": "CHEMBL.COMPOUND:CHEMBL3349001", 
   "name": "AVN-944",
   "category": "biolink:SmallMolecule",
   "iri": "https://identifiers.org/chembl.compound:CHEMBL3349001",
@@ -127,18 +127,26 @@ bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
 ```
 If Neo4j is not already installed and that you are hosting Neo4j on an AWS **Ubuntu 18** EC2 instance. (You are expected to have AWS credentials to access the instance).
 
+If this is a brand-new Ubuntu 18.04 instance, you will need to make sure that `gcc`
+is installed (`which gcc`) and if it is not installed, install it using `sudo apt-get install -y gcc`.
+
 (1) Clone the `RTX` repo into the instance's home directory (if you haven't already):
 ```
 cd ~
 git clone https://github.com/RTXteam/RTX.git
 ```
 
-(2) Set up the instance for Neo4j:
+(2) Clone the `RTX-KG2` repo into the instance's `/home/ubuntu` directory:
+```
+git clone https://github.com/RTXteam/RTX-KG2.git
+```
+
+(3) Set up the instance for Neo4j:
 ```
 python3 RTX/code/kg2c/setup_for_neo4j.py
 ```
 
-(3) Load the latest KG2c into Neo4j:
+(4) Load the latest KG2c into Neo4j:
 ```
 bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
 ```

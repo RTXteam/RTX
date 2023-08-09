@@ -562,6 +562,16 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     results: List[Result] = []
 
+    # Make sure the QG (the expanded portion) was fulfilled
+    for qnode_key in qg.nodes:
+        if not kg_node_keys_by_qg_key.get(qnode_key):
+            log.debug(f"QG was not fulfilled - no results.")
+            return results
+    for qedge_key, qedge in qg.edges.items():
+        if not _is_subclass_self_qedge(qedge) and not kg_edge_keys_by_qg_key.get(qedge_key):
+            log.debug(f"QG was not fulfilled - no results.")
+            return results
+
     subclass_clusters, child_to_parent_map = _get_subclass_clusters(kg_edge_keys_by_qg_key, kg_node_keys_by_qg_key, kg, qg, log)
     subclass_self_qedges = {qedge_key: qedge for qedge_key, qedge in qg.edges.items() if _is_subclass_self_qedge(qedge)}
     subclass_qnode_keys = set(subclass_clusters)

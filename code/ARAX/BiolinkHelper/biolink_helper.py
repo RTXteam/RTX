@@ -24,7 +24,7 @@ class BiolinkHelper:
         self.root_predicate = "biolink:related_to"
         self.root_imaginary = "ROOT"
         biolink_helper_dir = os.path.dirname(os.path.abspath(__file__))
-        self.biolink_lookup_map_path = f"{biolink_helper_dir}/biolink_lookup_map_{self.biolink_version}_v3.pickle"
+        self.biolink_lookup_map_path = f"{biolink_helper_dir}/biolink_lookup_map_{self.biolink_version}_v4.pickle"
         self.biolink_lookup_map = self._load_biolink_lookup_map(is_test=is_test)
         protein_like_categories = {"biolink:Protein", "biolink:Gene"}
         disease_like_categories = {"biolink:Disease", "biolink:PhenotypicFeature", "biolink:DiseaseOrPhenotypicFeature"}
@@ -389,9 +389,9 @@ class BiolinkHelper:
         aspect_enum_field_name = "gene_or_gene_product_or_chemical_entity_aspect_enum" if self.biolink_version.startswith("3.0") else "GeneOrGeneProductOrChemicalEntityAspectEnum"
         parent_to_child_dict = defaultdict(set)
         for aspect_name_english, info in biolink_model["enums"][aspect_enum_field_name]["permissible_values"].items():
-            aspect_name_trapi = self._convert_english_snakecase_to_trapi_format(aspect_name_english)
+            aspect_name_trapi = self._convert_english_snakecase_to_trapi_format(aspect_name_english, add_biolink_prefix=False)
             parent_name_english = info.get("is_a", self.root_imaginary) if info else self.root_imaginary
-            parent_name_trapi = self._convert_english_snakecase_to_trapi_format(parent_name_english)
+            parent_name_trapi = self._convert_english_snakecase_to_trapi_format(parent_name_english, add_biolink_prefix=False)
             parent_to_child_dict[parent_name_trapi].add(aspect_name_trapi)
 
         # Recursively build the tree starting with the root
@@ -405,9 +405,9 @@ class BiolinkHelper:
         direction_enum_field_name = "direction_qualifier_enum" if self.biolink_version.startswith("3.0") else "DirectionQualifierEnum"
         parent_to_child_dict = defaultdict(set)
         for direction_name_english, info in biolink_model["enums"][direction_enum_field_name]["permissible_values"].items():
-            direction_name_trapi = self._convert_english_snakecase_to_trapi_format(direction_name_english)
+            direction_name_trapi = self._convert_english_snakecase_to_trapi_format(direction_name_english, add_biolink_prefix=False)
             parent_name_english = info.get("is_a", self.root_imaginary) if info else self.root_imaginary
-            parent_name_trapi = self._convert_english_snakecase_to_trapi_format(parent_name_english)
+            parent_name_trapi = self._convert_english_snakecase_to_trapi_format(parent_name_english, add_biolink_prefix=False)
             parent_to_child_dict[parent_name_trapi].add(direction_name_trapi)
 
         # Recursively build the tree starting with the root
@@ -432,11 +432,15 @@ class BiolinkHelper:
         descendants = {node.identifier for node in sub_tree.all_nodes()}
         return descendants
 
-    def _convert_english_snakecase_to_trapi_format(self, english_snakecase_term: str):
+    def _convert_english_snakecase_to_trapi_format(self, english_snakecase_term: str, add_biolink_prefix: bool = True):
         if english_snakecase_term == self.root_imaginary:
             return self.root_imaginary
         else:
-            return f"biolink:{english_snakecase_term.replace(' ', '_')}"
+            snakecase_term = english_snakecase_term.replace(' ', '_')
+            if add_biolink_prefix:
+                return f"biolink:{snakecase_term}"
+            else:
+                return snakecase_term
 
     @staticmethod
     def _convert_english_category_to_trapi_format(english_category: str):
@@ -540,12 +544,12 @@ def main():
     assert biolink_version >= "2.1.0"
 
     # Test aspects
-    assert "biolink:molecular_modification" in bh.get_ancestors("biolink:ribosylation")
-    assert "biolink:activity" in bh.get_descendants("biolink:activity_or_abundance")
+    assert "molecular_modification" in bh.get_ancestors("ribosylation")
+    assert "activity" in bh.get_descendants("activity_or_abundance")
 
     # Test directions
-    assert "biolink:increased" in bh.get_ancestors("biolink:upregulated")
-    assert "biolink:downregulated" in bh.get_descendants("biolink:decreased")
+    assert "increased" in bh.get_ancestors("upregulated")
+    assert "downregulated" in bh.get_descendants("decreased")
 
     print("All BiolinkHelper tests passed!")
 
