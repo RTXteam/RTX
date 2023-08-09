@@ -793,7 +793,7 @@ def test_qualified_regulates_query():
     query = {
         "nodes": {
             "n0": {
-                "ids": ["NCBIGene:375"]
+                 "ids": ["NCBIGene:7157"]
             },
             "n1": {
                 "categories": ["biolink:Gene"]
