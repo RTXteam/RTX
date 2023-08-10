@@ -660,17 +660,59 @@ class ARAXQueryTracker:
 ##################################################################################################
 def main():
 
+    #### Parse command line options
+    import argparse
+    argparser = argparse.ArgumentParser(description='ARAX Query Tracker System')
+    argparser.add_argument('--verbose', action='count', help='If set, print more information about ongoing processing' )
+    argparser.add_argument('--show_ongoing', action='count', help='Show all ongoing queries')
+    argparser.add_argument('--reset_job', action='count', help='Reset the specified job_id(s)')
+    argparser.add_argument('--job_ids', type=str, help='Job IDs to show (comma separated list)')
+    params = argparser.parse_args()
+
+    #### Set verbose
+    verbose = params.verbose
+    if verbose is None: verbose = 1
+
     query_tracker = ARAXQueryTracker()
 
-    job_ids = [ 883683, 883764, 999999, 'XXX' ]
-    for job_id in job_ids:
-        eprint(f"INFO: Getting status for job {job_id}")
-        response = query_tracker.get_job_status(job_id)
-        print(response)
+    #### Check ongoing queries
+    if params.show_ongoing:
+        entries = query_tracker.get_entries(ongoing_queries=True)
+        for entry in entries:
+            #print(entry.__dict__)
+            print(f"{entry.query_id}\t{entry.pid}\t{entry.start_datetime}\t{entry.instance_name}\t{entry.hostname}\t{entry.status}\t{entry.elapsed}\t{entry.origin}\t{entry.message_id}\t{entry.message_code}\t{entry.code_description}")
+        return
 
+    #### Extract job_ids
+    job_ids = []
+    if params.job_ids:
+        job_ids = params.job_ids.split(',')
+
+    #### If the request is to reset jobs, do it
+    if params.reset_job and len(job_ids) > 0:
+        for job_id in job_ids:
+            attributes = {
+                'status': 'Reset',
+                'message_id': None,
+                'message_code': 'Reset',
+                'code_description': 'Query job_id entry was manually reset by admin'
+            }
+            try:
+                query_tracker.update_tracker_entry(job_id, attributes)
+                eprint(f"Reset job_id {job_id}")
+            except:
+                eprint(f"ERROR: Unable to reset job_id {job_id}")
+        return
+
+    if len(job_ids) > 0:
+        for job_id in job_ids:
+            eprint(f"INFO: Getting status for job {job_id}")
+            response = query_tracker.get_job_status(job_id)
+            print(response)
+        return
+
+    print("Insufficient parameters to know what to do. use --help")
     return
-
-    #query_tracker.create_database()
 
     if False:
         attributes = { 'origin': 'local_dev', 'input_query': { 'query_graph': { 'nodes': [], 'edges': [] } }, 'remote_address': 'test_address' }
@@ -688,3 +730,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
