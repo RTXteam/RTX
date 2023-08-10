@@ -384,7 +384,11 @@ class ARAXQueryTracker:
         ongoing_queries_by_remote_address = {}
 
         for ongoing_query in ongoing_queries:
-             pid = ongoing_query.pid
+             try:
+                 pid = ongoing_query.pid
+             except:
+                 eprint("WARNING: ongoing query probably deleted by another thread")
+                 continue
 
              #### A manual way to target the deletion of stuck entries
              #if pid == 132:
