@@ -19,6 +19,7 @@ import requests
 import requests_cache
 from flask import Flask,redirect
 import copy
+import multiprocessing
 
 import boto3
 import timeit
@@ -44,6 +45,16 @@ from openapi_server.models.response import Response as Envelope
 
 trapi_version = '1.4.2'
 biolink_version = '3.5.3'
+
+
+def validate_envelope(process_params):
+    validator = process_params['validator']
+    envelope = process_params['envelope']
+    try:
+        validator.check_compliance_of_trapi_response(envelope)
+        return(True)
+    except:
+        return(False)
 
 
 Base = declarative_base()
@@ -616,9 +627,19 @@ class ResponseCache:
                 try:
                     if enable_validation:
 
-                        #### Perform the validation
+                        #### Set up the validator
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
-                        validator.check_compliance_of_trapi_response(envelope)
+
+                        #### Enable multiprocessing to allow parallel processing of multiple envelopes when the GUI sends a bunch at once
+                        #### There's only ever one here, but the GUI sends a bunch of requests which are all subject to the same GIL
+                        enable_multiprocessing = True
+                        if enable_multiprocessing:
+                            pool = multiprocessing.Pool()
+                            eprint("INFO: Launching validator via multiprocessing")
+                            pool_results = pool.map(validate_envelope, [ { 'validator': validator, 'envelope': envelope} ] )
+                        else:
+                            validator.check_compliance_of_trapi_response(envelope)
+
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
                         validation_messages_text = validator.dumps()
 
