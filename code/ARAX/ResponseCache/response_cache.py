@@ -52,9 +52,9 @@ def validate_envelope(process_params):
     envelope = process_params['envelope']
     try:
         validator.check_compliance_of_trapi_response(envelope)
-        return(True)
     except:
-        return(False)
+        eprint(f"ERROR: Validator crashed")
+    return(validator)
 
 
 Base = declarative_base()
@@ -637,6 +637,7 @@ class ResponseCache:
                             pool = multiprocessing.Pool()
                             eprint("INFO: Launching validator via multiprocessing")
                             pool_results = pool.map(validate_envelope, [ { 'validator': validator, 'envelope': envelope} ] )
+                            validator = pool_results[0]
                         else:
                             validator.check_compliance_of_trapi_response(envelope)
 
