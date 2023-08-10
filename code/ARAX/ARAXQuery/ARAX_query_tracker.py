@@ -221,25 +221,36 @@ class ARAXQueryTracker:
     #### Alter arbitray values in a tracker entry
     def alter_tracker_entry(self, tracker_id, attributes):
         if tracker_id is None:
-            return
+            return("ERROR: tracker_id is None")
 
         session = self.session
         if session is None:
-            return
+            return("ERROR: session is None")
+
+        return_value = ''
 
         tracker_entries = session.query(ARAXQuery).filter(ARAXQuery.query_id==tracker_id).all()
         if len(tracker_entries) > 0:
             tracker_entry = tracker_entries[0]
             for key, value in attributes.items():
                 setattr(tracker_entry, key, value)
+        else:
+            return_value += 'ERROR: No tracker_entries  '
 
         ongoing_tracker_entries = session.query(ARAXOngoingQuery).filter(ARAXOngoingQuery.query_id==tracker_id).all()
         if len(ongoing_tracker_entries) > 0:
             ongoing_tracker_entry = ongoing_tracker_entries[0]
             for key, value in attributes.items():
                 setattr(ongoing_tracker_entry, key, value)
+        else:
+            return_value += 'ERROR: No ongoing_tracker_entries  '
 
         session.commit()
+
+        if len(return_value) == 0:
+            return_value = 'OK'
+
+        return(return_value)
 
 
     ##################################################################################################
