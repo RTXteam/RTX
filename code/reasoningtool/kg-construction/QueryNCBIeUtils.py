@@ -348,7 +348,7 @@ class QueryNCBIeUtils:
                                                                                          mesh2=mesh2_str_decorated))
                 ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
                 nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
-        N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
+        N = 3.5e+7 * 20  # From PubMed home page there are 35 million articles (based on the information on https://pubmed.ncbi.nlm.nih.gov/ on 08/09/2023); avg 20 MeSH terms per article
         if ni is None or nj is None or nij is None:
             return math.nan
         if ni == 0 or nj == 0 or nij == 0:
@@ -457,7 +457,7 @@ class QueryNCBIeUtils:
                 else:
                     counts += QueryNCBIeUtils.multi_pubmed_hits_count(name_decorated, n_terms=1)
 
-        N = 2.7e+7 * 20  # from PubMed home page there are 27 million articles; avg 20 MeSH terms per article
+        N = 3.5e+7 * 20  # From PubMed home page there are 35 million articles (based on the information on https://pubmed.ncbi.nlm.nih.gov/ on 08/09/2023); avg 20 MeSH terms per article
         if None in counts:
             return math.nan
         if 0 in counts:

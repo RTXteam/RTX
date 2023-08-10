@@ -43,7 +43,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.response import Response as Envelope
 
 trapi_version = '1.4.2'
-biolink_version = '3.5.0'
+biolink_version = '3.5.3'
 
 
 Base = declarative_base()
