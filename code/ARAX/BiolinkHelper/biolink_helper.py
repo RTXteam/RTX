@@ -6,6 +6,7 @@ Usage:  python biolink_helper.py [biolink version number, e.g. 3.0.3]
 import argparse
 import json
 import os
+import sys
 import pathlib
 import pickle
 from collections import defaultdict
@@ -15,10 +16,12 @@ import requests
 import yaml
 from treelib import Tree
 
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 class BiolinkHelper:
 
     def __init__(self, biolink_version: Optional[str] = None, is_test: bool = False):
+        eprint("DEBUG: In BiolinkHelper init")
         self.biolink_version = biolink_version if biolink_version else self.get_current_arax_biolink_version()
         self.root_category = "biolink:NamedThing"
         self.root_predicate = "biolink:related_to"
@@ -112,7 +115,7 @@ class BiolinkHelper:
         valid_predicates = input_predicate_set.intersection(self.biolink_lookup_map["predicates"])
         invalid_predicates = input_predicate_set.difference(valid_predicates)
         if invalid_predicates:
-            print(f"WARNING: Provided predicate(s) {invalid_predicates} do not exist in Biolink {self.biolink_version}")
+            eprint(f"WARNING: Provided predicate(s) {invalid_predicates} do not exist in Biolink {self.biolink_version}")
         canonical_predicates = {self.biolink_lookup_map["predicates"][predicate]["canonical_predicate"]
                                 for predicate in valid_predicates}
         canonical_predicates.update(invalid_predicates)  # Go ahead and include those we don't have canonical info for
@@ -185,7 +188,12 @@ class BiolinkHelper:
 
     def _load_biolink_lookup_map(self, is_test: bool = False):
         lookup_map_file = pathlib.Path(self.biolink_lookup_map_path)
+
         if is_test or not lookup_map_file.exists():
+            if is_test:
+                eprint(f"DEBUG: in test mode")
+            else:
+                eprint(f"DEBUG: lookup map not here! {lookup_map_file}")
             # Parse the relevant Biolink yaml file and create/save local indexes
             return self._create_biolink_lookup_map()
         else:
@@ -195,8 +203,8 @@ class BiolinkHelper:
             return biolink_lookup_map
 
     def _create_biolink_lookup_map(self) -> Dict[str, Dict[str, Dict[str, Union[str, List[str], bool]]]]:
-        print(f"INFO: Building local Biolink {self.biolink_version} ancestor/descendant lookup map because one "
-              f"doesn't yet exist")
+        eprint(f"INFO: Building local Biolink {self.biolink_version} ancestor/descendant lookup map because one "
+               f"doesn't yet exist")
         biolink_lookup_map = {"predicates": dict(), "categories": dict(),
                               "predicate_mixins": dict(), "category_mixins": dict(),
                               "aspects": dict(), "directions": dict()}

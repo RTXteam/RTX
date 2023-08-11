@@ -537,8 +537,7 @@ class ARAXQuery:
 
         #### Connect to the message store just once, even if we won't use it
         response.debug(f"Connecting to ResponseCache")
-        response_cache = ResponseCache()
-        response_cache.connect()
+        response_cache = ResponseCache()  #  also calls connect
 
         #### Create a messenger object for basic message processing
         response.debug(f"Creating ARAXMessenger instance")
