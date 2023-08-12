@@ -8,9 +8,7 @@ chmod -R 777 /mnt/data/orangeboard/databases/
 chown -R rt:rt /mnt/data/orangeboard/databases/
 
 # the instructions below are from the deployment wiki at https://github.com/RTXteam/RTX/wiki/ARAX-Docker-Deployment
-su rt 
-cd /mnt/data/orangeboard/production/RTX 
-python3 code/ARAX/ARAXQuery/ARAX_database_manager.py
+su - rt -c 'cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'
 
 sudo service apache2 start
 sudo service RTX_OpenAPI_production start
