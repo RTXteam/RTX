@@ -790,6 +790,7 @@ class ARAXExpander:
     
     def _filter_response_domain_range_exclusion(self, response):
         print(type(response))
+        return response
 
 
     def _expand_edge_kg2_local(self, one_hop_qg: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
