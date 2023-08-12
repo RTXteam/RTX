@@ -176,7 +176,7 @@ class ARAXExpander:
         return parameter_info_dict
 
     def apply(self, response, input_parameters, mode: str = "ARAX"):
-        force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
+        force_local = True  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
@@ -490,6 +490,7 @@ class ARAXExpander:
                             # Re-formulate the QG for this edge now that the KG has been slimmed down
                             one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
                 if log.status != 'OK':
+                    response = self._filter_response_domain_range_exclusion(response)
                     return response
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
@@ -786,6 +787,10 @@ class ARAXExpander:
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, log)
 
         return answer_kg, log
+    
+    def _filter_response_domain_range_exclusion(self, response):
+        print(type(response))
+
 
     def _expand_edge_kg2_local(self, one_hop_qg: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         qedge_key = next(qedge_key for qedge_key in one_hop_qg.edges)
