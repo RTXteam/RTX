@@ -798,9 +798,8 @@ class ARAXExpander:
     
     def _filter_response_domain_range_exclusion(self, response, log):
         #How to print the response in human readable format?
-        #print(json.dumps(response, indent=2))
-        #print(response)
-        print(response['message']['results'][0]['result_graph']['edge_bindings'][0]['kg_id'])        
+        response.show()
+           
         return response
 
 
