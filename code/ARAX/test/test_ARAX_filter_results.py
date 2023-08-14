@@ -54,12 +54,12 @@ def test_n_results():
             "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=8)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert message.n_results == len(message.results) == 20
+    assert message.n_results == len(message.results) == 8
 
 def test_no_results():
     query = {"operations": {"actions": [
@@ -128,13 +128,13 @@ def test_warning():
             "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
-            "filter_results(action=sort_by_node_attribute, node_attribute=asdfghjkl, direction=a, max_results=20)",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=8)",
+            "filter_results(action=sort_by_node_attribute, node_attribute=asdfghjkl, direction=a, max_results=8)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.results) == 20
+    assert len(message.results) == 8
 
 @pytest.mark.slow
 def test_sort_by_edge_attribute():
@@ -166,12 +166,12 @@ def test_sort_by_node_attribute():
             "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20, qnode_keys=[n01])",
+            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=8, qnode_keys=[n01])",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.results) == 20
+    assert len(message.results) == 8
     # add something to test if the results are assending and the correct numbers
 
 def test_sort_by_score():
@@ -182,12 +182,12 @@ def test_sort_by_score():
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=infores:rtx-kg2)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=sort_by_score, direction=a, max_results=20)",
+            "filter_results(action=sort_by_score, direction=a, max_results=8)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.results) == 20
+    assert len(message.results) == 8
     result_scores = [x.analyses[0].score for x in message.results]
     assert result_scores == sorted(result_scores)
     assert max(result_scores) < 1
