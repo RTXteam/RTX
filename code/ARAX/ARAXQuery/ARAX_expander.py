@@ -490,7 +490,7 @@ class ARAXExpander:
                             # Re-formulate the QG for this edge now that the KG has been slimmed down
                             one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
                 if log.status != 'OK':
-                    # response = self._filter_response_domain_range_exclusion(response)
+                    response = self._filter_response_domain_range_exclusion(response, log)
                     return response
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
@@ -790,8 +790,8 @@ class ARAXExpander:
 
         return answer_kg, log
     
-    def _filter_response_domain_range_exclusion(self, response):
-        print(type(response))
+    def _filter_response_domain_range_exclusion(self, response, log):
+        log.debug("The response is", response)
         return response
 
 
