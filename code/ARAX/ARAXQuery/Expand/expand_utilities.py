@@ -598,7 +598,7 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph, lo
             log.error(tb, error_code=error_type.__name__)
             log.error(f"Something went wrong removing semmeddb edges from the knowledge graph")
         else:
-            log.info(f"{edges_removed_counter} Semmeddb Edges with low publications successfully removed")
+            log.info(f"{edges_removed_counter} Semmeddb Edges with low publication count successfully removed")
 
 
 def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool:

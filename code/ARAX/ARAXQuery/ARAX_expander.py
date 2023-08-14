@@ -694,10 +694,14 @@ class ARAXExpander:
 
             # Override node types to only include descendants of what was asked for in the QG (where applicable) #1360
             self._override_node_categories(message.knowledge_graph, message.query_graph, log)
+        elif mode == "RTXKG2":
+            decorator = ARAXDecorator()
+            decorator.decorate_edges(response, kind="SEMMEDDB")
+
 
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
-        if mode != "RTXKG2":    
+        if mode == "RTXKG2":
             eu.remove_semmeddb_edges_and_nodes_with_low_publications(message.knowledge_graph, response)
             overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
         # Return the response and done
