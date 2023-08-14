@@ -797,7 +797,10 @@ class ARAXExpander:
         return answer_kg, log
     
     def _filter_response_domain_range_exclusion(self, response, log):
-        log.debug("The response is", response)
+        #How to print the response in human readable format?
+        #print(json.dumps(response, indent=2))
+        #print(response)
+        print(response['message']['results'][0]['result_graph']['edge_bindings'][0]['kg_id'])        
         return response
 
 
