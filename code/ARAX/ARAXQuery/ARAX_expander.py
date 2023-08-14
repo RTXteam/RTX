@@ -797,7 +797,7 @@ class ARAXExpander:
         return answer_kg, log
     
     def _filter_response_domain_range_exclusion(self, response, log):
-        #How to print the response in human readable format?
+        log.debug("Applying domain/range exclusion to response")
         response.show()
            
         return response
