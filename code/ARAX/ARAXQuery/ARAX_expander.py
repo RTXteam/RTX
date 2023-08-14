@@ -697,8 +697,9 @@ class ARAXExpander:
 
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
-        eu.remove_semmeddb_edges_and_nodes_with_low_publications(message.knowledge_graph, response)
-        overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
+        if mode != "RTXKG2":    
+            eu.remove_semmeddb_edges_and_nodes_with_low_publications(message.knowledge_graph, response)
+            overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
         # Return the response and done
         kg = message.knowledge_graph
         log.info(f"After Expand, the KG has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
