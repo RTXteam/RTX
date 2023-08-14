@@ -220,9 +220,16 @@ function pasteExample(type) {
     if (type == "DSL") {
 	document.getElementById("dslText").value = '# This program creates two query nodes and a query edge between them, looks for matching edges in the KG,\n# overlays NGD metrics, and returns the top 30 results\nadd_qnode(name=acetaminophen, key=n0)\nadd_qnode(categories=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand()\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
     }
-    else {
+    else if (type == "JSON1") {
 	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicates": ["biolink:physically_interacts_with"]\n      }\n   },\n   "nodes": {\n      "n00": {\n         "ids":        ["CHEMBL.COMPOUND:CHEMBL112"]\n      },\n      "n01": {\n         "categories":  ["biolink:Protein"]\n      }\n   }\n}\n';
     }
+    else if (type == "JSON2") {
+	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "attribute_constraints": [],\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:treats"\n      ],\n      "qualifier_constraints": [],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Disease"\n      ],\n      "constraints": [],\n      "ids": [\n        "MONDO:0015564"\n      ],\n      "is_set": false\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ],\n      "constraints": [],\n      "is_set": false\n    }\n  }\n}\n';
+    }
+    else if (type == "JSON3") {
+	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:affects"\n      ],\n      "qualifier_constraints": [\n        {\n          "qualifier_set": [\n            {\n              "qualifier_type_id": "biolink:object_aspect_qualifier",\n              "qualifier_value": "activity_or_abundance"\n            },\n            {\n              "qualifier_type_id": "biolink:object_direction_qualifier",\n              "qualifier_value": "increased"\n            }\n          ]\n        }\n      ],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Gene"\n      ],\n      "ids": [\n        "NCBIGene:51341"\n      ]\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ]\n    }\n  }\n}\n';
+    }
+
 }
 
 function reset_vars() {
@@ -295,7 +302,7 @@ function postQuery(qtype,agent) {
     else if (qtype == "WorkFlow") {
         statusdiv.innerHTML = "Posting Workflow JSON.  Awaiting response...";
 	statusdiv.appendChild(document.createElement("br"));
-
+	update_wfjson();
 	queryObj = workflow;
     }
     else if (qtype == "JSON") {
@@ -1523,6 +1530,8 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    checkRefreshARS();
 	}
     }
+    else if (!jsonObj2.message)
+        update_response_stats_on_error(jsonObj2.araxui_response,'&nsub;',true);
 
     if (document.getElementById("arsresultsdiv"))
 	document.getElementById("arsresultsdiv").style.height = document.getElementById("arsresultsdiv").scrollHeight + "px";
@@ -1622,7 +1631,7 @@ function render_response_stats(respObj) {
 
     if ( !respObj.message ) {
         nr.className = 'explevel p0';
-	nr.innerHTML = '&nbsp;N/A&nbsp;';
+	nr.innerHTML = '&nbsp;&nsub;&nbsp;';
     }
     else if ( respObj.message["results"] ) {
 	if (respObj.validation_result && respObj.validation_result.status == "FAIL")
@@ -1703,7 +1712,7 @@ function render_response(respObj,dispjson) {
 	nr.appendChild(document.createTextNode("Response contains no message, and hence no results."));
 	statusdiv.appendChild(nr);
 	sesame('openmax',statusdiv);
-        update_response_stats_on_error(respObj.araxui_response,'N/A',false);
+        update_response_stats_on_error(respObj.araxui_response,'&nsub;',false);
 	return;
     }
 
@@ -6851,10 +6860,14 @@ function display_cache() {
     var listId = 'CACHE';
     var listhtml = '';
     var numitems = 0;
+    var totbytes = 0;
 
     for (var pid in response_cache) {
         numitems++;
-        listhtml += "<tr><td>"+numitems+".</td><td style='font-family:monospace;'>"+pid+"</td><td><a href='javascript:remove_from_cache(\"" + pid +"\");'/>Remove</a></td></tr>";
+	var size = new TextEncoder().encode(JSON.stringify(response_cache[pid])).length;
+	totbytes += size;
+	size = human_readable_size(size);
+        listhtml += "<tr><td>"+numitems+".</td><td style='font-family:monospace;'>"+pid+"</td><td>"+size+"</td><td><a href='javascript:remove_from_cache(\"" + pid +"\");'/>Remove</a></td></tr>";
 	if (document.getElementById("cachelink_"+pid))
 	    document.getElementById("cachelink_"+pid).innerHTML = "<a href='javascript:remove_from_cache(\"" + pid +"\");'/>Clear</a>";
     }
@@ -6863,14 +6876,29 @@ function display_cache() {
         listhtml = "<br>A list of cached responses will be displayed here. It can be edited or re-set.<br><br>";
     }
     else {
-        listhtml = "<table class='sumtab'><tr><th></th><th>Response Id</th><th>Action</th></tr>" + listhtml;
-        listhtml += "<tr style='background-color:unset;'><td style='border-bottom:0;'></td><td style='border-bottom:0;'></td><td style='border-bottom:0;'><a href='javascript:delete_cache();'/> Delete All Cached Responses </a></td></tr>";
+        listhtml = "<table class='sumtab'><tr><th></th><th>Response Id</th><th>Size</th><th>Action</th></tr>" + listhtml;
+        listhtml += "<tr style='background-color:unset;'><td style='border-bottom:0;'></td><td style='border-bottom:0;'></td><td style='border-bottom:0;'>"+human_readable_size(totbytes)+"</td><td style='border-bottom:0;'><a href='javascript:delete_cache();'/> Delete All Cached Responses </a></td></tr>";
         listhtml += "</table><br><br>";
     }
 
     document.getElementById("numlistitems"+listId).innerHTML = numitems;
     document.getElementById("listdiv"+listId).innerHTML = listhtml;
 }
+
+function human_readable_size(what) {
+    var units = " bytes";
+    if (what > 512) {
+	what /= 1024;
+	units = " kB";
+	if (what > 512) {
+	    what /= 1024;
+	    units = " MB";
+	}
+	what = Number(what).toFixed(2);
+    }
+    return what+units;
+}
+
 
 function remove_from_cache(item) {
     delete response_cache[item];

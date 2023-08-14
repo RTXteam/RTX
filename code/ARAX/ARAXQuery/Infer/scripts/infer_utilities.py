@@ -302,12 +302,17 @@ class InferUtilities:
                     elif object_qnode_key not in message.knowledge_graph.nodes[object_curie].qnode_keys:
                         message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
                     predicate = edges_info[i][0].predicate
+                    break_flag = False 
                     for edge_info in edges_info[i]:
                         primary_knowledge_source = edge_info.primary_knowledge_source if edge_info.primary_knowledge_source is not None else "infores:arax"
+                        
                         # Handle the self-loop relation
                         if predicate == "SELF_LOOP_RELATION":
-                            self.response.warning(f"Self-loop relation detected: {subject_name}--{predicate}--{object_name}, replacing with placeholder 'biolink:self_loop_relation'")
-                            predicate = "biolink:self_loop_relation"
+                            ## remove self-loop relation requested by issue #2081
+                            break_flag = True
+                            break
+                            # self.response.warning(f"Self-loop relation detected: {subject_name}--{predicate}--{object_name}, replacing with placeholder 'biolink:self_loop_relation'")
+                            # predicate = "biolink:self_loop_relation"
                         new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[], sources=[])
                         ## add attributes to the path-based edge
                         edge_attribute_list = [
@@ -334,6 +339,8 @@ class InferUtilities:
                         new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source=primary_knowledge_source, kp=kp)
                         message.knowledge_graph.edges[new_edge_key] = new_edge
                         message.knowledge_graph.edges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
+                    if break_flag:
+                        break
                 path_added = True
             if path_added:
                 treat_score = top_drugs.loc[top_drugs['drug_id'] == drug]["tp_score"].iloc[0]

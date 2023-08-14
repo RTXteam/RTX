@@ -19,6 +19,7 @@ import requests
 import requests_cache
 from flask import Flask,redirect
 import copy
+import multiprocessing
 
 import boto3
 import timeit
@@ -33,7 +34,7 @@ from sqlalchemy import desc
 from sqlalchemy import inspect
 
 #sys.path = ['/mnt/data/python/TestValidator'] + sys.path
-from reasoner_validator import TRAPIResponseValidator
+from reasoner_validator.validator import TRAPIResponseValidator
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
@@ -43,7 +44,17 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.response import Response as Envelope
 
 trapi_version = '1.4.2'
-biolink_version = '3.5.0'
+biolink_version = '3.5.3'
+
+
+def validate_envelope(process_params):
+    validator = process_params['validator']
+    envelope = process_params['envelope']
+    try:
+        validator.check_compliance_of_trapi_response(envelope)
+    except:
+        eprint(f"ERROR: Validator crashed")
+    return(validator)
 
 
 Base = declarative_base()
@@ -616,9 +627,20 @@ class ResponseCache:
                 try:
                     if enable_validation:
 
-                        #### Perform the validation
+                        #### Set up the validator
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
-                        validator.check_compliance_of_trapi_response(envelope)
+
+                        #### Enable multiprocessing to allow parallel processing of multiple envelopes when the GUI sends a bunch at once
+                        #### There's only ever one here, but the GUI sends a bunch of requests which are all subject to the same GIL
+                        enable_multiprocessing = True
+                        if enable_multiprocessing:
+                            pool = multiprocessing.Pool()
+                            eprint("INFO: Launching validator via multiprocessing")
+                            pool_results = pool.map(validate_envelope, [ { 'validator': validator, 'envelope': envelope} ] )
+                            validator = pool_results[0]
+                        else:
+                            validator.check_compliance_of_trapi_response(envelope)
+
                         messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
                         validation_messages_text = validator.dumps()
 

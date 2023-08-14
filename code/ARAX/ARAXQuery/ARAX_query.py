@@ -240,7 +240,7 @@ class ARAXQuery:
                 'status': 'Running Async',
                 'message_id': None,
                 'message_code': 'Running',
-                'code_description': 'Query running via /asyncquery'
+                'code_description': 'Query running via /asyncquery (parent)'
             }
             query_tracker = ARAXQueryTracker()
             query_tracker.update_tracker_entry(self.response.job_id, attributes)
@@ -536,10 +536,11 @@ class ARAXQuery:
         operations = Operations.from_dict(input_operations_dict["operations"])
 
         #### Connect to the message store just once, even if we won't use it
-        response_cache = ResponseCache()
-        response_cache.connect()
+        response.debug(f"Connecting to ResponseCache")
+        response_cache = ResponseCache()  #  also calls connect
 
         #### Create a messenger object for basic message processing
+        response.debug(f"Creating ARAXMessenger instance")
         messenger = ARAXMessenger()
 
         #### If there are URIs provided, try to load them
@@ -636,7 +637,7 @@ class ARAXQuery:
 
         #### Multiple messages unsupported
         else:
-            response.debug(f"Multiple Messages were uploaded or imported by reference. However, proper merging code has not been implmented yet! Will use just the first Message for now.")
+            response.warning(f"Multiple Messages were uploaded or imported by reference. However, proper merging code has not been implemented yet! Will use just the first Message for now.")
             message = messages[0]
 
         #### Examine the options that were provided and act accordingly
@@ -695,6 +696,10 @@ class ARAXQuery:
             #### and the child continues to work on the query, eventually to finish and exit()
             if mode == 'asynchronous':
                 callback = input_operations_dict['callback']
+                if callback.startswith('http://localhost'):
+                    response.error(f"ERROR: A callback to localhost ({callback}) does not work. Please specify a resolvable callback URL")
+                    return response
+
                 response.info(f"Everything seems in order to begin processing the query asynchronously. Processing will continue and Response will be posted to {callback}")
                 newpid = os.fork()
                 #### The parent returns to tell the caller that work will proceed
@@ -704,14 +709,19 @@ class ARAXQuery:
                     return response
                 #### The child continues
                 #### The child loses the MySQL connection of the parent, so need to reconnect
+                time.sleep(1)
                 response_cache.connect()
                 time.sleep(1)
+
+                child_pid = os.getpid()
+                response.debug(f"Child continues running. Child PID is {child_pid}. Record with alter_tracker_entry()")
                 attributes = {
-                    'pid': os.getpid(),
-                    'code_description': 'Query executing via /asyncquery'
+                    'pid': child_pid,
+                    'code_description': 'Query executing via /asyncquery (child)'
                 }
                 query_tracker = ARAXQueryTracker()
-                query_tracker.alter_tracker_entry(self.response.job_id, attributes)
+                alter_result = query_tracker.alter_tracker_entry(self.response.job_id, attributes)
+                response.debug(f"Child PID {child_pid} recorded with result {alter_result}")
 
 
             #### If there is already a KG with edges, recompute the qg_keys
