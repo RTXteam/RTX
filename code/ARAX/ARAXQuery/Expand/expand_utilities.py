@@ -603,7 +603,10 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph, lo
 def filter_response_domain_range_exclusion(kg: QGOrganizedKnowledgeGraph, log: ARAXResponse):
         log.debug("Applying domain range exclusion to response")
         log.debug(kg.edges.items())
-        edge_keys_to_filter = {edge_id for edge_id, edge in kg.edges.items() if edge.domain_range_exclusion == "True"}
+        edges = kg.edges
+        log.debug(edges)
+        edge_keys_to_filter = {edge_id for edge_id, edge in kg.edges.items() if edge == "True"}
+        
         
 
         
