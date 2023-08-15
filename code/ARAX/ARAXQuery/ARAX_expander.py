@@ -176,7 +176,7 @@ class ARAXExpander:
         return parameter_info_dict
 
     def apply(self, response, input_parameters, mode: str = "ARAX"):
-        force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
+        force_local = True  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
@@ -441,9 +441,10 @@ class ARAXExpander:
         # Expand any specified edges
         if qedge_keys_to_expand:
             query_sub_graph = self._extract_query_subgraph(qedge_keys_to_expand, query_graph, log)
-            if inferred_qedge_keys and len(query_graph.edges) == 1:
-                for edge in query_sub_graph.edges.keys():
-                    query_sub_graph.edges[edge].knowledge_type = 'lookup'
+            if mode != "RTXKG2":
+                if inferred_qedge_keys and len(query_graph.edges) == 1:
+                    for edge in query_sub_graph.edges.keys():
+                        query_sub_graph.edges[edge].knowledge_type = 'lookup'
             if log.status != 'OK':
                 return response
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
@@ -479,9 +480,10 @@ class ARAXExpander:
 
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
-                if inferred_qedge_keys and len(query_graph.edges) == 1:
-                    for edge in one_hop_qg.edges.keys():
-                        one_hop_qg.edges[edge].knowledge_type = 'lookup'
+                if mode != "RTXKG2":
+                    if inferred_qedge_keys and len(query_graph.edges) == 1:
+                        for edge in one_hop_qg.edges.keys():
+                            one_hop_qg.edges[edge].knowledge_type = 'lookup'
                 # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
                 if parameters.get("prune_threshold"):
                     pre_prune_threshold = parameters["prune_threshold"]
