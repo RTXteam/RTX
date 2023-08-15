@@ -625,8 +625,29 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         #print(float(len(ranks_list)))
         result_scores = sum(ranks_list)/float(len(ranks_list))
         #print(result_scores)
+
+        # Replace Inferred Results Score with Probability score calculated by xDTD model
+        inferred_qedge_keys = [qedge_key for qedge_key, qedge in message.query_graph.edges.items() 
+                               if qedge.knowledge_type == "inferred"]
         for result, score in zip(results, result_scores):
             result.analyses[0].score = score  # For now we only ever have one Analysis per Result
+            if inferred_qedge_keys:
+                inferred_qedge_key = inferred_qedge_keys[0]
+                edge_bindings =  result.analyses[0].edge_bindings
+                inferred_edge_bindings = []
+                if edge_bindings:
+                    inferred_edge_bindings = edge_bindings.get(inferred_qedge_key,[])
+                for edge_name in inferred_edge_bindings:
+                    edge_id = edge_name.id
+                    edge_attributes = message.knowledge_graph.edges[edge_id].attributes
+                    if edge_attributes is not None:
+                        for edge_attribute in edge_attributes:
+                            if edge_attribute.original_attribute_name == 'probability_treats' and edge_attribute.value is not None:
+                                result.analyses[0].score = float(edge_attribute.value)
+
+
+                    
+                  
 
         # for result in message.results:
         #     self.result_confidence_maker(result)
