@@ -439,7 +439,6 @@ class ARAXExpander:
         if qedge_keys_to_expand:
             query_sub_graph = self._extract_query_subgraph(qedge_keys_to_expand, query_graph, log)
             if log.status != 'OK':
-                response = self._filter_response_domain_range_exclusion(response=response, log=log)
                 return response
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
@@ -491,7 +490,6 @@ class ARAXExpander:
                             # Re-formulate the QG for this edge now that the KG has been slimmed down
                             one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
                 if log.status != 'OK':
-                    response = self._filter_response_domain_range_exclusion(response, log)
                     return response
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
@@ -579,7 +577,6 @@ class ARAXExpander:
                                 kp_log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
                             log.merge(kp_log)
                             if response.status != 'OK':
-                                response = self._filter_response_domain_range_exclusion(response=response, log=log)
                                 return response
                 else:
                     log.error(f"Expand could not find any KPs to answer {qedge_key} with.", error_code="NoResults")
@@ -597,7 +594,6 @@ class ARAXExpander:
                     else:
                         self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, query_graph, mode, response)
                     if response.status != 'OK':
-                        response = self._filter_response_domain_range_exclusion(response=response, log=log)
                         return response
                 log.debug(f"After merging KPs' answers, total KG counts are: {eu.get_printable_counts_by_qg_id(overarching_kg)}")
 
@@ -656,7 +652,6 @@ class ARAXExpander:
                     # Remove any paths that are now dead-ends
                     overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
                     if response.status != 'OK':
-                        response = self._filter_response_domain_range_exclusion(response=response, log=log)
                         return response
 
                 # Declare that we are done expanding this qedge
@@ -667,7 +662,6 @@ class ARAXExpander:
                 if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
                     log.warning(f"No paths were found in any KPs satisfying qedge {qedge_key}. KPs used were: "
                                 f"{kps_to_query}")
-                    response = self._filter_response_domain_range_exclusion(response=response, log=log)
                     return response
 
         # Expand any specified nodes
@@ -680,7 +674,6 @@ class ARAXExpander:
                     return response
                 self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, query_graph, mode, log)
                 if log.status != 'OK':
-                    response = self._filter_response_domain_range_exclusion(response=response, log=log)
                     return response
 
         # Get rid of any lingering expand-added subclass self-qedges that are no longer relevant (edges pruned)
@@ -797,7 +790,11 @@ class ARAXExpander:
         return answer_kg, log
     
     def _filter_response_domain_range_exclusion(self, response, log):
-        log.debug("Applying domain/range exclusion to response")
+        log.debug("Applying domain range exclusion to response")
+        kg = response.envelope.message.knowledge_graph
+        edge_keys_to_filter = {edge_id for edge_id, edge in kg.edges.items() if edge.domain_range_exclusion == "True"}
+        print(edge_keys_to_filter)
+
         response.show()
            
         return response
