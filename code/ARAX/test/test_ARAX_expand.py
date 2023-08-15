@@ -1114,12 +1114,18 @@ def test_xdtd_expand():
     nodes_by_qg_id, edges_by_qg_id, message = _run_query_and_do_standard_testing(json_query=query, return_message=True)
     assert message.auxiliary_graphs
     for edge in edges_by_qg_id["t_edge"].values():
-        assert edge.attributes
-        support_graph_attributes = [attribute for attribute in edge.attributes if attribute.attribute_type_id == "biolink:support_graphs"]
-        assert support_graph_attributes
-        assert len(support_graph_attributes) == 1
-        support_graph_attribute = support_graph_attributes[0]
-        assert support_graph_attribute.value[0] in message.auxiliary_graphs
+        inferred_edge = False
+        for source in edge.sources:
+            if source.resource_role == "primary_knowledge_source" and source.resource_id == "infores:arax":
+                inferred_edge = True
+        # Perform Tests only for inferred edges
+        if inferred_edge:
+            assert edge.attributes
+            support_graph_attributes = [attribute for attribute in edge.attributes if attribute.attribute_type_id == "biolink:support_graphs"]
+            assert support_graph_attributes
+            assert len(support_graph_attributes) == 1
+            support_graph_attribute = support_graph_attributes[0]
+            assert support_graph_attribute.value[0] in message.auxiliary_graphs
 
 
 @pytest.mark.slow
