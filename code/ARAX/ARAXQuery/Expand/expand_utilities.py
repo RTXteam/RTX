@@ -600,6 +600,14 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph, lo
         else:
             log.info(f"{edges_removed_counter} Semmeddb Edges with low publications successfully removed")
 
+def filter_response_domain_range_exclusion(kg: QGOrganizedKnowledgeGraph, log: ARAXResponse):
+        log.debug("Applying domain range exclusion to response")
+        log.debug(kg.edges.items())
+        edge_keys_to_filter = {edge_id for edge_id, edge in kg.edges.items() if edge.domain_range_exclusion == "True"}
+        
+
+        
+           
 
 def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool:
     """
