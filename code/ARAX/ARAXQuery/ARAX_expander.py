@@ -792,10 +792,11 @@ class ARAXExpander:
     def _filter_response_domain_range_exclusion(self, response, log):
         log.debug("Applying domain range exclusion to response")
         kg = response.envelope.message.knowledge_graph
+        log.debog(kg.edges.items() )
         edge_keys_to_filter = {edge_id for edge_id, edge in kg.edges.items() if edge.domain_range_exclusion == "True"}
         print(edge_keys_to_filter)
 
-        response.show()
+        
            
         return response
 
