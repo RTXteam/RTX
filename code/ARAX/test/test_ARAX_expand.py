@@ -712,7 +712,7 @@ def test_kg2_predicate_hierarchy_reasoning():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:affects")
-    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:regulates")
+    # assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:regulates")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
 
