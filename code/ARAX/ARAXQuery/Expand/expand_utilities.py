@@ -602,7 +602,7 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph, lo
 
 def filter_response_domain_range_exclusion(plover_answer, log: ARAXResponse):
         log.debug("Applying domain range exclusion to plover response")
-        log.debug(plover_answer.edges.keys())
+        log.debug(plover_answer.items())
         filtered_count = 0
         
         edge_keys_to_filter = {edge_id for edge_id, edge in plover_answer.edges.items() if edge.domain_range_exclusion == "True"}
