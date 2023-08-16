@@ -69,6 +69,7 @@ function main() {
     UIstate["version"] = checkUIversion(false);
     UIstate["scorestep"] = 0.1;
     UIstate["maxresults"] = 1000;
+    UIstate["prevtimestampobj"] = null;
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
     load_meta_knowledge_graph();
@@ -2348,11 +2349,37 @@ function there_was_an_error() {
     document.getElementById("menunumresults").classList.remove("numold");
 }
 
+
+function calc_timespan(obj) {
+    if (!obj.dataset.timestamp)
+	return;
+
+    obj.style.background = "#ff0";
+
+    if (UIstate["prevtimestampobj"]) {
+	let units = " seconds";
+	let diff = Math.abs(obj.dataset.timestamp - UIstate["prevtimestampobj"].dataset.timestamp)/1000;
+	if (diff>66) {
+	    diff/=60;
+	    units = " minutes";
+	}
+	showJSONpopup("Elapsed Time","Elapsed time is: "+diff+units,false);
+
+	obj.style.background = null;
+	UIstate["prevtimestampobj"].style.background = null;
+	UIstate["prevtimestampobj"] = null;
+    }
+    else {
+	UIstate["prevtimestampobj"] = obj;
+    }
+}
+
 function process_log(logarr) {
     var status = {};
     for (var s of ["ERROR","WARNING","INFO","DEBUG"]) {
 	status[s] = 0;
     }
+    let starttime = null;
     for (var msg of logarr) {
 	if (msg.prefix) { // upconvert TRAPI 0.9.3 --> 1.0
 	    msg.level = msg.level_str;
@@ -2362,7 +2389,14 @@ function process_log(logarr) {
 	status[msg.level]++;
 
 	var span = document.createElement("span");
+	span.title = "Click to display elapsed time between two events";
 	span.className = "hoverable msg " + msg.level;
+	span.dataset.timestamp = Date.parse(msg.timestamp);
+	span.setAttribute('onclick', 'calc_timespan(this);');
+
+	if (!starttime)
+	    starttime = Date.parse(msg.timestamp);
+	span.dataset.timestamp = Date.parse(msg.timestamp);
 
         if (msg.level == "DEBUG") { span.style.display = 'none'; }
 
@@ -2372,23 +2406,36 @@ function process_log(logarr) {
 	span2.appendChild(document.createTextNode('\u00A0'));
         span.appendChild(span2);
 
-	span.appendChild(document.createTextNode('\u00A0'));
-
-	span.appendChild(document.createTextNode(msg.timestamp+" "+msg.level+": "));
+        span2 = document.createElement("span");
+	span2.appendChild(document.createTextNode('\u00A0'));
+	span2.appendChild(document.createTextNode(msg.timestamp+" "+msg.level+": "));
 	if (msg.code)
-	    span.appendChild(document.createTextNode("["+msg.code+"] "));
+	    span2.appendChild(document.createTextNode("["+msg.code+"] "));
 
-	span.appendChild(document.createTextNode('\u00A0'));
-	span.appendChild(document.createTextNode('\u00A0'));
-	span.appendChild(document.createTextNode('\u00A0'));
-	span.appendChild(document.createTextNode(msg.message));
-	span.appendChild(document.createElement("br"));
+	span2.appendChild(document.createTextNode('\u00A0'));
+	span2.appendChild(document.createTextNode('\u00A0'));
+	span2.appendChild(document.createTextNode('\u00A0'));
+	span2.appendChild(document.createTextNode(msg.message));
+        span.appendChild(span2);
+
+        let units = " s";
+	let diff = Math.abs(span.dataset.timestamp - starttime)/1000;
+	if (diff>66) {
+	    diff/=60;
+	    units = " m";
+	}
+	span2 = document.createElement("span");
+	span2.style.float = 'right';
+        span2.appendChild(document.createTextNode(diff+units));
+        span.appendChild(span2);
 
 	document.getElementById("logdiv").appendChild(span);
     }
     document.getElementById("menunummessages").innerHTML = logarr.length;
-    if (status.ERROR > 0) document.getElementById("menunummessages").classList.add('numnew','msgERROR');
-    else if (status.WARNING > 0) document.getElementById("menunummessages").classList.add('numnew','msgWARNING');
+    if (status.ERROR > 0)
+	document.getElementById("menunummessages").classList.add('numnew','msgERROR');
+    else if (status.WARNING > 0)
+	document.getElementById("menunummessages").classList.add('numnew','msgWARNING');
     for (var s of ["ERROR","WARNING","INFO","DEBUG"]) {
 	document.getElementById("count_"+s).innerHTML += ": "+status[s];
     }

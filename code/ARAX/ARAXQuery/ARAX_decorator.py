@@ -112,7 +112,7 @@ class ARAXDecorator:
         """
         kg = response.envelope.message.knowledge_graph
         response.debug(f"Decorating edges with EPC info from KG2c")
-        supported_kinds = {"RTX-KG2", "NGD"}
+        supported_kinds = {"RTX-KG2", "NGD", "SEMMEDDB"}
         if kind not in supported_kinds:
             response.error(f"Supported values for ARAXDecorator.decorate_edges()'s 'kind' parameter are: "
                            f"{supported_kinds}")
@@ -123,6 +123,11 @@ class ARAXDecorator:
             edge_keys_to_decorate = {edge_id for edge_id, edge in kg.edges.items()
                                      if edge.sources and any(retrieval_source.resource_id == self.kg2_infores_curie and
                                                              retrieval_source.resource_role == "aggregator_knowledge_source"
+                                                             for retrieval_source in edge.sources)}
+        elif kind == "SEMMEDDB":
+            edge_keys_to_decorate = {edge_id for edge_id, edge in kg.edges.items()
+                                     if edge.sources and any(retrieval_source.resource_id == "infores:semmeddb" and
+                                                             retrieval_source.resource_role == "primary_knowledge_source"
                                                              for retrieval_source in edge.sources)}
         else:
             edge_keys_to_decorate = {edge_id for edge_id, edge in kg.edges.items()
@@ -206,7 +211,7 @@ class ARAXDecorator:
                 existing_attribute_type_ids = {attribute.attribute_type_id for attribute in bare_edge.attributes} if bare_edge.attributes else set()
                 new_attributes = []
                 # Create KG2 edge-specific attributes
-                if kind == "RTX-KG2":
+                if kind == "RTX-KG2" or kind == "SEMMEDDB":
                     if attribute_type_id_map["kg2_ids"] not in existing_attribute_type_ids:
                         new_attributes.append(self.create_attribute("kg2_ids", list(joined_kg2_ids)))
                     if joined_publications and attribute_type_id_map["publications"] not in existing_attribute_type_ids:
