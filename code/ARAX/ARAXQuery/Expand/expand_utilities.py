@@ -600,17 +600,19 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph, lo
         else:
             log.info(f"{edges_removed_counter} Semmeddb Edges with low publications successfully removed")
 
-def filter_response_domain_range_exclusion(kg: QGOrganizedKnowledgeGraph, log: ARAXResponse):
-        log.debug("Applying domain range exclusion to response")
-        log.debug(kg.edges.items())
+def filter_response_domain_range_exclusion(plover_answer, log: ARAXResponse):
+        log.debug("Applying domain range exclusion to plover response")
+        log.debug(plover_answer.edges.keys())
         filtered_count = 0
         
-        edge_keys_to_filter = {edge_id for edge_id, edge in kg.edges.items() if edge.domain_range_exclusion == "True"}
-        for edge in kg.edges:
+        edge_keys_to_filter = {edge_id for edge_id, edge in plover_answer.edges.items() if edge.domain_range_exclusion == "True"}
+        for edge in plover_answer.edges:
             if edge in edge_keys_to_filter:
                 filtered_count += 1
-                del kg.edges[edge]
+                del plover_answer.edges[edge]
         log.info(f"Filtered out {filtered_count} edges from response due to domain range exclusion")
+
+        return plover_answer
 
         
 
