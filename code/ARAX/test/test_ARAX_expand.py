@@ -714,7 +714,7 @@ def test_kg2_predicate_hierarchy_reasoning():
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:affects")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
-@pytest.mark.skip
+@pytest.mark.skip(reason="Dev testing for domain range exclusion")
 def test_domain_range_exclusion():
     actions_list = [
         "add_qnode(ids=UMLS:C1510438, key=n00)",
