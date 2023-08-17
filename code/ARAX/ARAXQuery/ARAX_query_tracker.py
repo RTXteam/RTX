@@ -67,7 +67,7 @@ class ARAXQueryTracker:
 
    #### Constructor
     def __init__(self):
-        timestamp = str(datetime.datetime.now().isoformat())
+        timestamp = str(datetime.now().isoformat())
         eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker init")
 
         self.rtxConfig = RTXConfiguration()
@@ -80,7 +80,7 @@ class ARAXQueryTracker:
             self.databaseName = "ResponseCache"
             self.engine_type = 'mysql'
         self.connect()
-        timestamp = str(datetime.datetime.now().isoformat())
+        timestamp = str(datetime.now().isoformat())
         eprint(f"{timestamp}: DEBUG: ARAXQueryTracker initialized")
 
     def __del__(self):
@@ -125,7 +125,7 @@ class ARAXQueryTracker:
     ##################################################################################################
     #### Create and store a database connection
     def connect(self):
-        timestamp = str(datetime.datetime.now().isoformat())
+        timestamp = str(datetime.now().isoformat())
         eprint(f"{timestamp}: DEBUG: ARAXQueryTracker initiating DB connection")
 
         # If the engine_type is mysql then connect to the MySQL database
@@ -141,7 +141,7 @@ class ARAXQueryTracker:
         #DBSession = sessionmaker(bind=engine)
         #session = DBSession()
 
-        timestamp = str(datetime.datetime.now().isoformat())
+        timestamp = str(datetime.now().isoformat())
         eprint(f"{timestamp}: DEBUG: ARAXQueryTracker establishing session")
         session_factory = sessionmaker(bind=engine)
         Session = scoped_session(session_factory)
