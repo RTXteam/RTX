@@ -598,7 +598,7 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph, lo
             log.error(tb, error_code=error_type.__name__)
             log.error(f"Something went wrong removing semmeddb edges from the knowledge graph")
         else:
-            log.info(f"{edges_removed_counter} Semmeddb Edges with low publications successfully removed")
+            log.info(f"{edges_removed_counter} Semmeddb Edges with low publication count successfully removed")
 
 def filter_response_domain_range_exclusion(plover_answer, qg, log: ARAXResponse):
         log.debug("Applying domain range exclusion to plover response")

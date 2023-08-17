@@ -11,7 +11,7 @@ from typing import Optional
 import yaml
 from pygit2 import Repository, discover_repository
 
-DEBUG = False
+DEBUG = True
 
 class RTXConfiguration:
 
