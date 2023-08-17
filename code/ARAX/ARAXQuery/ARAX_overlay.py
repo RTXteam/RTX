@@ -30,7 +30,7 @@ class ARAXOverlay:
             'overlay_clinical_info',
             'compute_jaccard',
             'add_node_pmids',
-            'predict_drug_treats_disease',
+            # 'predict_drug_treats_disease',
             'fisher_exact_test',
             'overlay_exposures_data'
         }
@@ -291,37 +291,37 @@ either labeling in the metadata or has the MeSH term occurring in the abstract o
                     'max_num': self.max_num_info
                 }
             },
-            "predict_drug_treats_disease": {
-                "dsl_command": "overlay(action=predict_drug_treats_disease)",
-                "description": """
-`predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
-For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
-Use cases include:
+#             "predict_drug_treats_disease": {
+#                 "dsl_command": "overlay(action=predict_drug_treats_disease)",
+#                 "description": """
+# `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
+# For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
+# The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
+# You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+# If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
+# Use cases include:
 
-* Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-* For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
-* Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
+# * Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
+# * For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
+# * Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
 
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    """,
-                'brief_description': """
-predict_drug_treats_disease utilizes a machine learning model (trained on KP RTX-KG2C) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
-For more information about how this model was trained and how it performs, please see this publication (https://doi.org/10.1101/765305) for the version trained on KG1 which used node2vec for its
-embeddings. The current version uses KG2C; publication in preparation.
-The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name 'probability_treats').
-You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-                    """,
-                "parameters": {
-                    'virtual_relation_label': self.virtual_relation_label_info,
-                    'subject_qnode_key': self.subject_qnode_key_info,
-                    'object_qnode_key': self.object_qnode_key_info,
-                    'threshold': self.dtd_threshold_info,
-                    'slow_mode': self.dtd_slow_mode_info
-                }
-            },
+# This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+#                     """,
+#                 'brief_description': """
+# predict_drug_treats_disease utilizes a machine learning model (trained on KP RTX-KG2C) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
+# For more information about how this model was trained and how it performs, please see this publication (https://doi.org/10.1101/765305) for the version trained on KG1 which used node2vec for its
+# embeddings. The current version uses KG2C; publication in preparation.
+# The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name 'probability_treats').
+# You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
+#                     """,
+#                 "parameters": {
+#                     'virtual_relation_label': self.virtual_relation_label_info,
+#                     'subject_qnode_key': self.subject_qnode_key_info,
+#                     'object_qnode_key': self.object_qnode_key_info,
+#                     'threshold': self.dtd_threshold_info,
+#                     'slow_mode': self.dtd_slow_mode_info
+#                 }
+#             },
             "fisher_exact_test": {
                 "dsl_command": "overlay(action=fisher_exact_test)",
                 "description": """
@@ -799,66 +799,66 @@ This information is included in edge attributes with the name 'icees_p-value'.
         response = JAC.compute_jaccard()
         return response
 
-    def __predict_drug_treats_disease(self, describe=False):
-        """
-        Utilizes a machine learning model to predict if a given chemical_substance treats a disease or phenotypic_feature
-        Allowable parameters:
-        :return:
-        """
-        message = self.message
-        parameters = self.parameters
-        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
-            qg_nodes = message.query_graph.nodes
-            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {
-                self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
-                                    # 'subject_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if x.category == "chemical_substance"]),
-                                    'subject_qnode_key': set([node_key for node_key in qg_nodes.keys()]),
-                                    # allow any query node type, will be handled by predict_drug_treats_disease.py
-                                    # 'object_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if (x.category == "disease" or x.category == "phenotypic_feature")])
-                                    'object_qnode_key': set([node_key for node_key in qg_nodes.keys()]),
-                                    'threshold': [None, int(), float()],
-                                    # allow any query node type, will be handled by predict_drug_treats_disease.py
-                                    'slow_mode': ["true", "false", "True", "False", "t", "f", "T", "F"]
-                                    }
-        else:
-            allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {
-                'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'subject_qnode_key': {
-                                        'optional: a specific subject query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'object_qnode_key': {
-                                        'optional: a specific object query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
-                                    'threshold': {
-                                        'optional: What cut-off/threshold to use for DTD probability (default is 0.8)'},
-                                    'slow_mode': {
-                                        'optional: Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability (default is False)'}
-                                    }
+    # def __predict_drug_treats_disease(self, describe=False):
+    #     """
+    #     Utilizes a machine learning model to predict if a given chemical_substance treats a disease or phenotypic_feature
+    #     Allowable parameters:
+    #     :return:
+    #     """
+    #     message = self.message
+    #     parameters = self.parameters
+    #     # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+    #     if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+    #         qg_nodes = message.query_graph.nodes
+    #         allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {
+    #             self.parameters['virtual_relation_label'] if 'virtual_relation_label' in self.parameters else None},
+    #                                 # 'subject_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if x.category == "chemical_substance"]),
+    #                                 'subject_qnode_key': set([node_key for node_key in qg_nodes.keys()]),
+    #                                 # allow any query node type, will be handled by predict_drug_treats_disease.py
+    #                                 # 'object_qnode_key': set([k for k, x in self.message.query_graph.nodes.items() if (x.category == "disease" or x.category == "phenotypic_feature")])
+    #                                 'object_qnode_key': set([node_key for node_key in qg_nodes.keys()]),
+    #                                 'threshold': [None, int(), float()],
+    #                                 # allow any query node type, will be handled by predict_drug_treats_disease.py
+    #                                 'slow_mode': ["true", "false", "True", "False", "t", "f", "T", "F"]
+    #                                 }
+    #     else:
+    #         allowable_parameters = {'action': {'predict_drug_treats_disease'}, 'virtual_relation_label': {
+    #             'optional: any string label that identifies the virtual edges added (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+    #                                 'subject_qnode_key': {
+    #                                     'optional: a specific subject query node id corresponding to a disease query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+    #                                 'object_qnode_key': {
+    #                                     'optional: a specific object query node id corresponding to a disease or phenotypic_feature query node (otherwise applied to all drug->disease and drug->phenotypic_feature edges)'},
+    #                                 'threshold': {
+    #                                     'optional: What cut-off/threshold to use for DTD probability (default is 0.8)'},
+    #                                 'slow_mode': {
+    #                                     'optional: Whether to call DTD model rather than DTD database to do a real-time calculation for DTD probability (default is False)'}
+    #                                 }
 
-        # A little function to describe what this thing does
-        if describe:
-            description_dict = self.command_definitions['predict_drug_treats_disease']
-            return description_dict
+    #     # A little function to describe what this thing does
+    #     if describe:
+    #         description_dict = self.command_definitions['predict_drug_treats_disease']
+    #         return description_dict
 
-        # Make sure only allowable parameters and values have been passed
-        self.check_params(allowable_parameters)
-        # return if bad parameters have been passed
-        if self.response.status != 'OK':
-            return self.response
-        # Check if all virtual edge params have been provided properly
-        # self.check_virtual_edge_params(allowable_parameters)
-        # FW: changing this to only check if subject_qnode_key or object_qnode_key is present
-        if 'subject_qnode_key' in parameters or 'object_qnode_key' in parameters:
-            self.check_virtual_edge_params(allowable_parameters)
-        if self.response.status != 'OK':
-            return self.response
+    #     # Make sure only allowable parameters and values have been passed
+    #     self.check_params(allowable_parameters)
+    #     # return if bad parameters have been passed
+    #     if self.response.status != 'OK':
+    #         return self.response
+    #     # Check if all virtual edge params have been provided properly
+    #     # self.check_virtual_edge_params(allowable_parameters)
+    #     # FW: changing this to only check if subject_qnode_key or object_qnode_key is present
+    #     if 'subject_qnode_key' in parameters or 'object_qnode_key' in parameters:
+    #         self.check_virtual_edge_params(allowable_parameters)
+    #     if self.response.status != 'OK':
+    #         return self.response
 
-        # now do the call out to NGD
-        from Overlay.predict_drug_treats_disease import PredictDrugTreatsDisease
-        PDTD = PredictDrugTreatsDisease(self.response, self.message, parameters)
-        if PDTD.response.status != 'OK':
-            return PDTD.response
-        response = PDTD.predict_drug_treats_disease()
-        return response
+    #     # now do the call out to NGD
+    #     from Overlay.predict_drug_treats_disease import PredictDrugTreatsDisease
+    #     PDTD = PredictDrugTreatsDisease(self.response, self.message, parameters)
+    #     if PDTD.response.status != 'OK':
+    #         return PDTD.response
+    #     response = PDTD.predict_drug_treats_disease()
+    #     return response
 
     def __fisher_exact_test(self, describe=False):
 
@@ -1025,8 +1025,7 @@ def main():
         # "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_edge_type=J1)",
         # "overlay(action=add_node_pmids)",
         # "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-        # "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, subject_qnode_key=n00, object_qnode_key=n01)",
-        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n01, object_qnode_key=n00, virtual_edge_type=P1)",
+        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, virtual_edge_type=P1, subject_qnode_key=n00, object_qnode_key=n01)"
         "return(message=true,store=false)"
     ]
 

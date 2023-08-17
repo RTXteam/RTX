@@ -4,6 +4,7 @@ Usage:  python biolink_helper.py [biolink version number, e.g. 3.0.3]
 """
 
 import argparse
+import datetime
 import json
 import os
 import sys
@@ -21,14 +22,22 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 class BiolinkHelper:
 
     def __init__(self, biolink_version: Optional[str] = None, is_test: bool = False):
-        eprint("DEBUG: In BiolinkHelper init")
+        timestamp = str(datetime.datetime.now().isoformat())
+        eprint(f"{timestamp}: DEBUG: In BiolinkHelper init")
+
         self.biolink_version = biolink_version if biolink_version else self.get_current_arax_biolink_version()
         self.root_category = "biolink:NamedThing"
         self.root_predicate = "biolink:related_to"
         self.root_imaginary = "ROOT"
         biolink_helper_dir = os.path.dirname(os.path.abspath(__file__))
         self.biolink_lookup_map_path = f"{biolink_helper_dir}/biolink_lookup_map_{self.biolink_version}_v4.pickle"
+
+        timestamp = str(datetime.datetime.now().isoformat())
+        eprint(f"{timestamp}: DEBUG: Loading BL lookup map...")
         self.biolink_lookup_map = self._load_biolink_lookup_map(is_test=is_test)
+        timestamp = str(datetime.datetime.now().isoformat())
+        eprint(f"{timestamp}: DEBUG: Done loading BL lookup map")
+
         protein_like_categories = {"biolink:Protein", "biolink:Gene"}
         disease_like_categories = {"biolink:Disease", "biolink:PhenotypicFeature", "biolink:DiseaseOrPhenotypicFeature"}
         self.arax_conflations = {
@@ -188,23 +197,26 @@ class BiolinkHelper:
 
     def _load_biolink_lookup_map(self, is_test: bool = False):
         lookup_map_file = pathlib.Path(self.biolink_lookup_map_path)
+        timestamp = str(datetime.datetime.now().isoformat())
 
         if is_test or not lookup_map_file.exists():
             if is_test:
-                eprint(f"DEBUG: in test mode")
+                eprint(f"{timestamp}: DEBUG: in test mode")
             else:
-                eprint(f"DEBUG: lookup map not here! {lookup_map_file}")
+                eprint(f"{timestamp}: DEBUG: lookup map not here! {lookup_map_file}")
             # Parse the relevant Biolink yaml file and create/save local indexes
             return self._create_biolink_lookup_map()
         else:
             # A local file already exists for this Biolink version, so just load it
+            eprint(f"{timestamp}: DEBUG: Loading pickle file: {self.biolink_lookup_map_path}")
             with open(self.biolink_lookup_map_path, "rb") as biolink_map_file:
                 biolink_lookup_map = pickle.load(biolink_map_file)
             return biolink_lookup_map
 
     def _create_biolink_lookup_map(self) -> Dict[str, Dict[str, Dict[str, Union[str, List[str], bool]]]]:
-        eprint(f"INFO: Building local Biolink {self.biolink_version} ancestor/descendant lookup map because one "
-               f"doesn't yet exist")
+        timestamp = str(datetime.datetime.now().isoformat())
+        eprint(f"{timestamp}: INFO: Building local Biolink {self.biolink_version} ancestor/descendant lookup map "
+               f"because one doesn't yet exist")
         biolink_lookup_map = {"predicates": dict(), "categories": dict(),
                               "predicate_mixins": dict(), "category_mixins": dict(),
                               "aspects": dict(), "directions": dict()}

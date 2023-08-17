@@ -79,10 +79,10 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     assert len(values) >= num_different_values
 
 
-def test_xdtd_infer_diabetes_1():
+def test_xdtd_infer_castleman_disease_1():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0005148)",
+            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0015564)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -91,10 +91,10 @@ def test_xdtd_infer_diabetes_1():
     assert len(message.query_graph.edges) == 1
     assert len(message.results) > 0
 
-def test_xdtd_infer_diabetes_2():
+def test_xdtd_infer_castleman_disease_2():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0005148,n_drugs=2,n_paths=15)",
+            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0015564,n_drugs=2,n_paths=15)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -141,7 +141,7 @@ def test_xdtd_with_qg2():
         "message": {"query_graph": {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0003912"]
+                    "ids": ["MONDO:0015564"]
                 },
                 "chemical": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -158,7 +158,7 @@ def test_xdtd_with_qg2():
         }
         },
         "operations": {"actions": [
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0003912,qedge_id=t_edge)",
+            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0015564,qedge_id=t_edge)",
             "return(message=true, store=true)"
         ]}
     }
@@ -174,7 +174,7 @@ def test_xdtd_with_qg3():
         "message": {"query_graph": {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0017979"]
+                    "ids": ["MONDO:0015564"]
                 },
                 "chemical": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -191,7 +191,7 @@ def test_xdtd_with_qg3():
         }
         },
         "operations": {"actions": [
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0017979,qedge_id=t_edge,n_drugs=10,n_paths=10)",
+            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0015564,qedge_id=t_edge,n_drugs=10,n_paths=10)",
             "return(message=true, store=true)"
         ]}
     }
@@ -206,7 +206,7 @@ def test_xdtd_with_only_qg():
         "message": {"query_graph": {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0003912"]
+                    "ids": ["MONDO:0015564"]
                 },
                 "chemical": {
                     "categories": ["biolink:ChemicalEntity"]

@@ -125,7 +125,7 @@ def test_example_2():
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_keys=[n02])",
         "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=provided_by, value=Pharos)",
-        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1, threshold=0)",
+        # "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1, threshold=0)",
         "resultify(ignore_edge_direction=true)",
         "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
         "return(message=true, store=false)",
@@ -134,7 +134,7 @@ def test_example_2():
     assert response.status == 'OK'
     assert len(message.results) > 0  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
     assert message.results[0].essence is not None
-    _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM-DATA:0951', 2)
+    # _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM-DATA:0951', 2)
     _virtual_tester(message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM-DATA:1772', 2)
 
 
@@ -514,7 +514,7 @@ def test_two_hop_based_on_types_1():
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
             "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C3)",
-            "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
+            # "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
             "filter_results(action=limit_number_of_results, max_results=50)",
@@ -546,7 +546,7 @@ def test_one_hop_based_on_types_1():
             "expand(edge_key=e00, infores:rtx-kg2)",
             "expand(edge_key=e00, kp=infores:biothings-explorer)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-            "overlay(action=predict_drug_treats_disease)",
+            # "overlay(action=predict_drug_treats_disease)",
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_keys=[n01])",
             "overlay(action=compute_ngd)",
             "resultify(ignore_edge_direction=true)",
@@ -573,7 +573,7 @@ def test_one_hop_kitchen_sink_BTE_1():
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         "overlay(action=overlay_clinical_info, chi_square=true)",
-        "overlay(action=predict_drug_treats_disease)",
+        # "overlay(action=predict_drug_treats_disease)",
         "overlay(action=compute_ngd)",
         "resultify(ignore_edge_direction=true)",
         "filter_results(action=limit_number_of_results, max_results=50)",
@@ -602,7 +602,7 @@ def test_one_hop_kitchen_sink_BTE_2():
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
         "overlay(action=overlay_clinical_info, chi_square=true)",
-        "overlay(action=predict_drug_treats_disease)",
+        # "overlay(action=predict_drug_treats_disease)",
         "overlay(action=compute_ngd)",
         "resultify(ignore_edge_direction=true)",
         "filter_results(action=limit_number_of_results, max_results=50)",
@@ -685,7 +685,7 @@ def test_ranker_float_error_ex1():
         "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
         "overlay(action=fisher_exact_test,subject_qnode_key=n0,virtual_relation_label=F1,object_qnode_key=n1)",
         "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
-        "overlay(action=predict_drug_treats_disease,virtual_relation_label=P1,subject_qnode_key=n0,object_qnode_key=n1,threshold=0.8,slow_mode=false)",
+        # "overlay(action=predict_drug_treats_disease,virtual_relation_label=P1,subject_qnode_key=n0,object_qnode_key=n1,threshold=0.8,slow_mode=false)",
         "resultify()",
         "filter_results(action=limit_number_of_results, max_results=30)",
         "return(message=true, store=false)"
