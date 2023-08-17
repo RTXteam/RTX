@@ -714,6 +714,15 @@ def test_kg2_predicate_hierarchy_reasoning():
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:affects")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
+def test_domain_range_exclusion():
+    actions_list = [
+        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, categories=biolink:ChemicalEntity, key=n00)",
+        "add_qnode(categories=biolink:Protein, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:affects)",
+        "expand(kp=infores:rtx-kg2)",
+        "return(message=true, store=false)"
+    ]
+    assert False
 
 @pytest.mark.slow
 def test_issue_1373_pinned_curies():
