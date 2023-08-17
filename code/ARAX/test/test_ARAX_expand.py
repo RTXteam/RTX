@@ -716,9 +716,9 @@ def test_kg2_predicate_hierarchy_reasoning():
 
 def test_domain_range_exclusion():
     actions_list = [
-        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, categories=biolink:ChemicalEntity, key=n00)",
-        "add_qnode(categories=biolink:Protein, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:affects)",
+        "add_qnode(ids=PUBCHEM.COMPOUND:446220, categories=biolink:SmallMolecule, key=n00)",
+        "add_qnode(categories=biolink:Disease, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:treats)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
