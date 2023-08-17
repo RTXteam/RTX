@@ -722,6 +722,7 @@ def test_domain_range_exclusion():
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert False
 
 @pytest.mark.slow
