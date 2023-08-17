@@ -606,7 +606,7 @@ def filter_response_domain_range_exclusion(plover_answer, qg, log: ARAXResponse)
         qg_edge_keys = qg.edges.keys()
         for qg_edge_key in qg_edge_keys:
             for edge_id, edge in plover_answer['edges'][qg_edge_key].items():
-                log.debug(edge[6])
+                log.debug(edge[7])
             edge_keys_to_filter = {edge_id for edge_id, edge in plover_answer['edges'][qg_edge_key].items() if edge[6] == "True"}
             for edge_key in edge_keys_to_filter:
                 del plover_answer['edges'][qg_edge_key][edge_key]
