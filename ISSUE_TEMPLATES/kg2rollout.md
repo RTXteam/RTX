@@ -98,14 +98,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `devLM`
 - [ ] to roll `master` out to a specific endpoint `/EEE`, you would do the following steps:
   - [ ] If you are offsite, log into your office VPN (there are strict IP address block restrictions on client IPs that can ssh into `arax.ncats.io`)
-  - [ ] Log in to `arax.ncats.io`: `ssh arax.ncats.io` (you previously need to have set up your username, etc. in `~/.ssh/config`), like this: 
-```
-Host arax.ncats.io
-    User stephenr
-    ProxyCommand ssh -i ~/.ssh/id_rsa_long -W %h:%p stephenr@35.87.194.254
-    IdentityFile ~/.ssh/id_rsa_long
-    Hostname 172.31.53.16
-```
+  - [ ] Log in to `arax.ncats.io`: `ssh arax.ncats.io` (you previously need to have set up your username, etc. in `~/.ssh/config`; see bottom of this issue template for an example)
   - [ ] Enter the `rtx1` container: `sudo docker exec -it rtx1 bash`
   - [ ] Become user `rt`: `su - rt`
   - [ ] Go to the directory of the code repo for the `EEE` endpoint: `cd /mnt/data/orangeboard/EEE/RTX`
@@ -148,7 +141,33 @@ Host arax.ncats.io
 - [ ] upgrade the ITRB Plover endpoint (https://kg2cploverdb.ci.transltr.io) to this KG2 version and make the KG2 API start using it (instead of our self-hosted endpoint): 
     - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)
     - [ ] wait about 60 minutes for the endpoint to rebuild and then run Plover tests to verify it's working
-    - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in (locally change the URL in `config_dbs.json` and set `force_local = True` in Expand)
-    - [ ] if all tests pass, update `config_dbs.json` in `master` to point to the ITRB Plover endpoints (all maturity levels)
-    - [ ] roll `master` out to the various endpoints on arax.ncats.io
-    - [ ] turn off the self-hosted plover endpoint for the new version of KG2c and verify once more that ARAX is still working ok
+    - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in (locally change the URL in `RTX/code/config_dbs.json` and set `force_local = True` in Expand)
+    - [ ] if all tests pass, update `config_dbs.json` in `master` to point to the ITRB Plover endpoints (all maturity levels): (`dev`: `kg2cploverdb.ci.transltr.io`; `test`: `kg2cploverdb.test.transltr.io`; `prod`: `kg2cploverdb.transltr.io`)
+    - [ ] push latest `master` branch code to the various endpoints on `arax.ncats.io` that you previously updated (to get the changed `config_dbs.json` file) and restart services
+    - [ ] turn off the self-hosted plover endpoint for the new version of KG2c
+      - [ ] message the `#deployment` channel to notify people what you are about to do
+      - [ ] `ssh ubuntu@kg2cploverM.rtx.ai`
+      - [ ] `sudo docker container ls -a` (gives you the name of the container)
+      - [ ] `sudo docker stop plovercontainer2.X.Y`
+    - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
+
+#### 7. Roll-out to ITRB TEST 
+- [ ] Merge `master` to `itrb-test`.
+- [ ] Put in request to Sarah Stemann to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB test
+- [ ] Track roll-out to ensure that the build and deployment succeeded
+- [ ] Test out the updated services in ITRB test to verify they are working correctly
+
+#### 8. Roll-out to ITRB PRODUCTION
+- [ ] Merge `master` to `production`
+- [ ] Put in request to Sarah Stemann to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB production
+- [ ] Track roll-out to ensure that the build and deployment succeeded
+- [ ] Test out the updated services in ITRB test to verify they are working correctly
+
+#### Example ssh config for setting up login into `arax.ncats.io`:
+```
+Host arax.ncats.io
+    User stephenr
+    ProxyCommand ssh -i ~/.ssh/id_rsa_long -W %h:%p stephenr@35.87.194.254
+    IdentityFile ~/.ssh/id_rsa_long
+    Hostname 172.31.53.16
+```
