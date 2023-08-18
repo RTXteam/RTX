@@ -91,15 +91,15 @@ class ARAXExpander:
                            f"google distance (NGD) database to expand "
                            "a query graph; it returns edges between nodes with an NGD value below a certain "
                            "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
-                           "configurable/smarter in the future.\n"
-                           "2. DTD: The 'infores:arax-drug-treats-disease' KP uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
-                           "a query graph; it returns edges between nodes with a DTD probability above a certain "
-                           "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
-                           "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
-                           "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
-                           "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
-                           "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true "
-                           "to call DTD model to do a real-time calculation.",
+                           "configurable/smarter in the future.\n",
+                        #    "2. DTD: The 'infores:arax-drug-treats-disease' KP uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
+                        #    "a query graph; it returns edges between nodes with a DTD probability above a certain "
+                        #    "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
+                        #    "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
+                        #    "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
+                        #    "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
+                        #    "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true "
+                        #    "to call DTD model to do a real-time calculation.",
             "parameters": self.get_parameter_info_dict()
         }
         return [command_definition]
@@ -152,26 +152,26 @@ class ARAXExpander:
                 "description": "Whether to omit supporting data on nodes/edges in the results (e.g., publications, "
                                "description, etc.)."
             },
-            "DTD_threshold": {
-                "is_required": False,
-                "examples": [0.8, 0.5],
-                "min": 0,
-                "max": 1,
-                "default": 0.8,
-                "type": "float",
-                "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
-                               "Defines what cut-off/threshold to use for expanding the DTD virtual edges."
-            },
-            "DTD_slow_mode": {
-                "is_required": False,
-                "examples": ["true", "false"],
-                "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-                "default": "false",
-                "type": "boolean",
-                "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
-                               "Specifies whether to call DTD model rather than DTD database to do a real-time "
-                               "calculation for DTD probability."
-            }
+            # "DTD_threshold": {
+            #     "is_required": False,
+            #     "examples": [0.8, 0.5],
+            #     "min": 0,
+            #     "max": 1,
+            #     "default": 0.8,
+            #     "type": "float",
+            #     "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
+            #                    "Defines what cut-off/threshold to use for expanding the DTD virtual edges."
+            # },
+            # "DTD_slow_mode": {
+            #     "is_required": False,
+            #     "examples": ["true", "false"],
+            #     "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
+            #     "default": "false",
+            #     "type": "boolean",
+            #     "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
+            #                    "Specifies whether to call DTD model rather than DTD database to do a real-time "
+            #                    "calculation for DTD probability."
+            # }
         }
         return parameter_info_dict
 
@@ -388,7 +388,10 @@ class ARAXExpander:
                         infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': object_curie, 'qedge_id': inferred_qedge_key}
                         inferer = ARAXInfer()
                         infer_response = inferer.apply(response, infer_input_parameters)
-                        return infer_response
+                        # return infer_response
+                        response = infer_response
+                        overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
+
                     elif set(['biolink:regulates']).intersection(set(qedge.predicates)): # Figure out if this is a "regulates" query, then use call XCRG models
                         # Call XCRG models and simply return whatever it returns
                         # Get the subject and object of this edge
@@ -425,7 +428,8 @@ class ARAXExpander:
                             infer_input_parameters = {"action": "chemical_gene_regulation_graph_expansion", 'object_qnode_id' : qedge.object, 'object_curie': object_curie, 'qedge_id': inferred_qedge_key, 'regulation_type': regulation_type}
                         inferer = ARAXInfer()
                         infer_response = inferer.apply(response, infer_input_parameters)
-                        return infer_response
+                        response = infer_response
+                        overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
                     else:
                         log.info(f"Qedge {inferred_qedge_key} has knowledge_type == inferred, but the query is not "
                                  f"DTD-related (e.g., 'biolink:ameliorates', 'biolink:treats') or CRG-related ('biolink:regulates') according to the specified predicate. Will answer using the normal 'fill' strategy (not creative mode).")
@@ -434,10 +438,13 @@ class ARAXExpander:
                                 f"the qedges has knowledge_type == inferred. Will answer using the normal 'fill' strategy "
                                 f"(not creative mode).")
 
-
         # Expand any specified edges
         if qedge_keys_to_expand:
             query_sub_graph = self._extract_query_subgraph(qedge_keys_to_expand, query_graph, log)
+            if mode != "RTXKG2":
+                if inferred_qedge_keys and len(query_graph.edges) == 1:
+                    for edge in query_sub_graph.edges.keys():
+                        query_sub_graph.edges[edge].knowledge_type = 'lookup'
             if log.status != 'OK':
                 return response
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
@@ -473,7 +480,10 @@ class ARAXExpander:
 
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
-
+                if mode != "RTXKG2":
+                    if inferred_qedge_keys and len(query_graph.edges) == 1:
+                        for edge in one_hop_qg.edges.keys():
+                            one_hop_qg.edges[edge].knowledge_type = 'lookup'
                 # Figure out the prune threshold (use what user provided or otherwise do something intelligent)
                 if parameters.get("prune_threshold"):
                     pre_prune_threshold = parameters["prune_threshold"]
@@ -486,7 +496,10 @@ class ARAXExpander:
                     for qnode_key in fulfilled_qnode_keys:
                         num_kg_nodes = len(overarching_kg.nodes_by_qg_id[qnode_key])
                         if num_kg_nodes > pre_prune_threshold:
-                            overarching_kg = self._prune_kg(qnode_key, pre_prune_threshold, overarching_kg, query_graph, log)
+                            if inferred_qedge_keys and len(inferred_qedge_keys) == 1:
+                                overarching_kg = self._prune_kg(qnode_key, pre_prune_threshold, overarching_kg, message.query_graph, log)
+                            else:
+                                overarching_kg = self._prune_kg(qnode_key, pre_prune_threshold, overarching_kg, query_graph, log)
                             # Re-formulate the QG for this edge now that the KG has been slimmed down
                             one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
                 if log.status != 'OK':
@@ -650,7 +663,10 @@ class ARAXExpander:
                     self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                      message.encountered_kryptonite_edges_info, response)
                     # Remove any paths that are now dead-ends
-                    overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
+                    if inferred_qedge_keys and len(inferred_qedge_keys) == 1:
+                        overarching_kg = self._remove_dead_end_paths(message.query_graph, overarching_kg, response)
+                    else:
+                        overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
                     if response.status != 'OK':
                         return response
 
@@ -694,17 +710,21 @@ class ARAXExpander:
 
             # Override node types to only include descendants of what was asked for in the QG (where applicable) #1360
             self._override_node_categories(message.knowledge_graph, message.query_graph, log)
+        elif mode == "RTXKG2":
+            decorator = ARAXDecorator()
+            decorator.decorate_edges(response, kind="SEMMEDDB")
+
 
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
-        if mode != "RTXKG2":    
+        if mode == "RTXKG2":
             eu.remove_semmeddb_edges_and_nodes_with_low_publications(message.knowledge_graph, response)
             overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
         # Return the response and done
         kg = message.knowledge_graph
         log.info(f"After Expand, the KG has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
                  f"({eu.get_printable_counts_by_qg_id(overarching_kg)})")
-
+        
         return response
 
     async def _expand_edge_async(self, edge_qg: QueryGraph, kp_to_use: str, input_parameters: Dict[str, any],
@@ -736,8 +756,10 @@ class ARAXExpander:
                 log.update_query_plan(qedge_key, kp_to_use, "Waiting", waiting_message)
                 start = time.time()
                 if kp_to_use == 'infores:arax-drug-treats-disease':
-                    from Expand.DTD_querier import DTDQuerier
-                    kp_querier = DTDQuerier(log)
+                    # from Expand.DTD_querier import DTDQuerier
+                    # kp_querier = DTDQuerier(log)
+                    log.warning(f"DTD KP has been replaced with xDTD and thus is currently disabled.")
+                    return answer_kg, log
                 else:
                     from Expand.ngd_querier import NGDQuerier
                     kp_querier = NGDQuerier(log)
@@ -786,6 +808,8 @@ class ARAXExpander:
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, log)
 
         return answer_kg, log
+    
+
 
     def _expand_edge_kg2_local(self, one_hop_qg: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         qedge_key = next(qedge_key for qedge_key in one_hop_qg.edges)
@@ -835,10 +859,10 @@ class ARAXExpander:
 
         # Route this query to the proper place depending on the KP
         try:
-            if kp_to_use == 'infores:arax-drug-treats-disease':
-                from Expand.DTD_querier import DTDQuerier
-                kp_querier = DTDQuerier(log)
-            elif kp_to_use == 'infores:arax-normalized-google-distance':
+            # if kp_to_use == 'infores:arax-drug-treats-disease':
+            #     from Expand.DTD_querier import DTDQuerier
+            #     kp_querier = DTDQuerier(log)
+            if kp_to_use == 'infores:arax-normalized-google-distance':
                 from Expand.ngd_querier import NGDQuerier
                 kp_querier = NGDQuerier(log)
             else:

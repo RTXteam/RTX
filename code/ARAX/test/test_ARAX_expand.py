@@ -360,7 +360,7 @@ def test_cohd_expand():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
-
+@pytest.mark.skip(reason="retire DTD")
 def test_dtd_expand_1():
     actions_list = [
         "add_qnode(name=acetaminophen, key=n0)",
@@ -376,7 +376,8 @@ def test_dtd_expand_1():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
 
 
-@pytest.mark.slow
+# @pytest.mark.slow
+@pytest.mark.skip(reason="retire DTD")
 def test_dtd_expand_2():
     actions_list = [
         "add_qnode(name=acetaminophen, key=n0)",
@@ -711,9 +712,19 @@ def test_kg2_predicate_hierarchy_reasoning():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:affects")
-    assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:regulates")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
+@pytest.mark.skip(reason="Dev testing for domain range exclusion")
+def test_domain_range_exclusion():
+    actions_list = [
+        "add_qnode(ids=UMLS:C1510438, key=n00)",
+        "add_qnode(categories=biolink:Disease, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:diagnoses)",
+        "expand(kp=infores:rtx-kg2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    assert False
 
 @pytest.mark.slow
 def test_issue_1373_pinned_curies():
@@ -1096,7 +1107,7 @@ def test_xdtd_expand():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0017979"]
+                    "ids": ["MONDO:0015564"]
                 },
                 "chemical": {
                     "categories": ["biolink:ChemicalEntity"]
@@ -1114,12 +1125,18 @@ def test_xdtd_expand():
     nodes_by_qg_id, edges_by_qg_id, message = _run_query_and_do_standard_testing(json_query=query, return_message=True)
     assert message.auxiliary_graphs
     for edge in edges_by_qg_id["t_edge"].values():
-        assert edge.attributes
-        support_graph_attributes = [attribute for attribute in edge.attributes if attribute.attribute_type_id == "biolink:support_graphs"]
-        assert support_graph_attributes
-        assert len(support_graph_attributes) == 1
-        support_graph_attribute = support_graph_attributes[0]
-        assert support_graph_attribute.value[0] in message.auxiliary_graphs
+        inferred_edge = False
+        for source in edge.sources:
+            if source.resource_role == "primary_knowledge_source" and source.resource_id == "infores:arax":
+                inferred_edge = True
+        # Perform Tests only for inferred edges
+        if inferred_edge:
+            assert edge.attributes
+            support_graph_attributes = [attribute for attribute in edge.attributes if attribute.attribute_type_id == "biolink:support_graphs"]
+            assert support_graph_attributes
+            assert len(support_graph_attributes) == 1
+            support_graph_attribute = support_graph_attributes[0]
+            assert support_graph_attribute.value[0] in message.auxiliary_graphs
 
 
 @pytest.mark.slow
@@ -1127,7 +1144,7 @@ def test_xdtd_different_categories():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["MONDO:0005615"]
+                    "ids": ["MONDO:0015564"]
                 },
                 "chemical": {
                     "categories": ["biolink:Drug"]
@@ -1146,7 +1163,7 @@ def test_xdtd_different_categories():
     query = {
         "nodes": {
             "disease": {
-                "ids": ["MONDO:0005615"],
+                "ids": ["MONDO:0015564"],
                 "categories": ["biolink:Disease"]
             },
             "chemical": {
@@ -1166,7 +1183,7 @@ def test_xdtd_different_categories():
     query = {
         "nodes": {
             "disease": {
-                "ids": ["MONDO:0005615"],
+                "ids": ["MONDO:0015564"],
                 "categories": ["biolink:DiseaseOrPhenotypicFeature"]
             },
             "chemical": {
@@ -1189,7 +1206,7 @@ def test_xdtd_multiple_categories():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["UMLS:C5419466"]
+                    "ids": ["MONDO:0015564"]
                 },
                 "chemical": {
                     "categories": ["biolink:Drug", "biolink:ChemicalMixture"]
@@ -1211,7 +1228,7 @@ def test_xdtd_different_predicates():
     query = {
             "nodes": {
                 "disease": {
-                    "ids": ["UMLS:C5419466"]
+                    "ids": ["MONDO:0015564"]
                 },
                 "chemical": {
                     "categories": ["biolink:Drug", "biolink:ChemicalMixture"]

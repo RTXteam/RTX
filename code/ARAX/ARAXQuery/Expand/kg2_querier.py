@@ -79,7 +79,8 @@ class KG2Querier:
             query_graph.nodes[input_qnode_key].ids = curie_batch
             plover_answer, response_status = self._answer_query_using_plover(query_graph, log)
             if response_status == 200:
-                batch_kg = self._load_plover_answer_into_object_model(plover_answer, log)
+                filtered_plover_answer = eu.filter_response_domain_range_exclusion(plover_answer, query_graph, log)
+                batch_kg = self._load_plover_answer_into_object_model(filtered_plover_answer, log)
                 final_kg = eu.merge_two_kgs(batch_kg, final_kg)
                 # Prune down highly-connected input curies if we're over the max number of allowed edges
                 if final_kg.edges_by_qg_id.get(qedge_key):

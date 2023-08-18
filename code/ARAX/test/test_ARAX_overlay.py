@@ -458,7 +458,8 @@ def test_chi_square_attribute():
 
 
 # CM: I changed 'MONDO:0004992' to 'DOID:0080909' for a more specific disease
-@pytest.mark.slow
+# @pytest.mark.slow
+@pytest.mark.skip(reason="retire DTD")
 def test_predict_drug_treats_disease_virtual():
     query = {"operations": {"actions": [
         "create_message",
@@ -477,7 +478,8 @@ def test_predict_drug_treats_disease_virtual():
 
 
 # CM: I changed 'MONDO:0004992' to 'DOID:0080909' for a more specific disease
-@pytest.mark.slow
+# @pytest.mark.slow
+@pytest.mark.skip(reason="retire DTD")
 def test_predict_drug_treats_disease_attribute():
     query = {"operations": {"actions": [
         "create_message",
@@ -496,7 +498,8 @@ def test_predict_drug_treats_disease_attribute():
 
 
 # CM: I changed 'MONDO:0004992' to 'DOID:0080909' for a more specific disease
-@pytest.mark.slow
+# @pytest.mark.slow
+@pytest.mark.skip(reason="retire DTD")
 def test_issue_832():
     query = {"operations": {"actions": [
         "create_message",
@@ -514,7 +517,8 @@ def test_issue_832():
     _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM-DATA:0951', 2)
 
 
-@pytest.mark.slow
+# @pytest.mark.slow
+@pytest.mark.skip(reason="retire DTD")
 def test_issue_832_non_drug():
     query = {"operations": {"actions": [
         "create_message",
@@ -607,8 +611,9 @@ def test_issue_840_non_drug():
             assert attribute.original_attribute_name != 'paired_concept_frequency'
 
 
-@pytest.mark.external
-@pytest.mark.slow
+# @pytest.mark.external
+# @pytest.mark.slow
+@pytest.mark.skip(reason="retire DTD")
 def test_issue_892():
     query = {"operations": {"actions": [
         "add_qnode(ids=DOID:11830, categories=biolink:Disease, key=n00)",
