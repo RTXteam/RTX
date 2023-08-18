@@ -87,7 +87,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 
 #### 5. Do the rollout:
-
+- [ ] Notify the `#deployment` channel in the `ARAXTeam` Slack workspace that you are rolling out a new version of KG2c to the various `arax.ncats.io` development endpoints.
 - [ ] merge `master` into the branch for this KG2 version
 - [ ] merge the branch into `master`
 - [ ] roll `master` out to the various `arax.ncats.io` development endpoints. Usually in this order:
@@ -131,7 +131,6 @@ Host arax.ncats.io
   - [ ] `exit`
   - [ ] `~/venv3.9/bin/python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused`
 
-
 #### 6. Final items/clean up:
 
 - [ ] turn off the old KG2c version's neo4j instance
@@ -152,4 +151,4 @@ Host arax.ncats.io
     - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in (locally change the URL in `config_dbs.json` and set `force_local = True` in Expand)
     - [ ] if all tests pass, update `config_dbs.json` in `master` to point to the ITRB Plover endpoints (all maturity levels)
     - [ ] roll `master` out to the various endpoints on arax.ncats.io
-    - [ ] turn off our plover endpoint and verify once more that ARAX is still working ok
+    - [ ] turn off the self-hosted plover endpoint for the new version of KG2c and verify once more that ARAX is still working ok
