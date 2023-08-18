@@ -295,6 +295,9 @@ class ARAXQueryTracker:
         if session is None:
             return
 
+        timestamp = str(datetime.now().isoformat())
+        eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker create_tracker_entry")
+
         instance_info = self.get_instance_info()
 
         ongoing_queries_by_remote_address = self.check_ongoing_queries()
@@ -326,6 +329,9 @@ class ARAXQueryTracker:
             return -999
 
         try:
+            timestamp = str(datetime.now().isoformat())
+            eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker creating ARAXQuery record")
+
             tracker_entry = ARAXQuery(
                 status="started",
                 start_datetime=datetime.now().isoformat(' ', 'seconds'),
@@ -343,6 +349,9 @@ class ARAXQueryTracker:
             tracker_id = 1
 
         try:
+            timestamp = str(datetime.now().isoformat())
+            eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker creating ARAXOngoingQuery record")
+
             ongoing_tracker_entry = ARAXOngoingQuery(
                 status="started",
                 query_id = tracker_id,
