@@ -4,6 +4,7 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
 **THE ARAX-DATABASES.RTX.AI DIRECTORY FOR THIS ROLLOUT IS: `/home/rtxconfig/KG2_____`**
 
 #### Prerequisites
+##### ssh access
 To complete this workflow, you will need `ssh` access to:
 - [ ] `arax-databases.rtx.ai`
 - [ ] the self-hosted ARAX/KG2 instance, `arax.ncats.io` (see example configuration information below)
@@ -13,8 +14,17 @@ To complete this workflow, you will need `ssh` access to:
 - [ ] the webserver for downloading of the KG2c "lite" JSON file, `kg2webhost.rtx.ai`
 - [ ] write access to the `RTXteam/PloverDB` project area
 - [ ] write access to the `RTXteam/RTX` project area
+
+##### AWS access
+You will need:
 - [ ] access to the AWS Console (you'll need an IAM username; ask Stephen Ramsey about getting one)
+- [ ] IAM permission to start and stop instances in EC2 via the AWS Console
 - [ ] access to the S3 bucket `s3://rtx-kg2/` (ask Stephen Ramsey for access)
+
+##### Slack workspaces
+You will also need access to the following Slack workspaces:
+- [ ] ARAXTeam (subscribe to #deployment)
+- [ ] NCATSTranslator (subscribe to `#devops-teamexpanderagent)
 
 #### Example ssh config for setting up login into `arax.ncats.io`:
 ```
