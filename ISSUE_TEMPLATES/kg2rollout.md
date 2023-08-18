@@ -12,8 +12,11 @@ To complete this workflow, you will need `ssh` access to:
 - [ ] the self-hosted Neo4j instances for KG2c, `kg2canoncalizedN.rtx.ai`
 - [ ] the self-hosted CI/CD instance, `cicd.rtx.ai`
 - [ ] the webserver for downloading of the KG2c "lite" JSON file, `kg2webhost.rtx.ai`
+
+##### GitHub access
 - [ ] write access to the `RTXteam/PloverDB` project area
 - [ ] write access to the `RTXteam/RTX` project area
+- [ ] write access to the `ncats/translator-lfs-artifacts` project area (not critical, but needed for some final archiving steps; Amy Glen has access)
 
 ##### AWS access
 You will need:
