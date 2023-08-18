@@ -113,7 +113,9 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] Test the endpoint via the web browser interface to make sure it is working
   - [ ] Query the KG2c version by entering this TRAPI query JSON into the browser UI: `{"nodes": {"n00": {"ids": ["RTX:KG2c"]}}, "edges": {}}` (it should return 1 result and the name of that node gives the KG2c version that is installed in the PloverDB that is being queried by the endpoint)
   - [ ] look up `RTX:KG2` in the Synonyms tab in the UI
-- [ ] run the pytest suite on the various endpoints
+- [ ] inside the Docker `rtx1` container, run the pytest suite on the various endpoints:
+  - [ ] `cd /mnt/data/orangeboard/EEE/RTX/code/ARAX/test`
+  - [ ] `pytest -v`
 - [ ] update our CI/CD testing instance with the new databases:
   - [ ] `ssh ubuntu@cicd.rtx.ai`
   - [ ] `cd RTX`
@@ -152,16 +154,20 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
     - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
 
 #### 7. Roll-out to ITRB TEST 
-- [ ] Merge `master` to `itrb-test`.
+- [ ] In GitHub, merge `master` to `itrb-test`. Record this issue number in the merge message.
 - [ ] Via a message in the `#devops-teamexpanderagent` channel in the `NCATSTranslator` Slack workspace, put in a request to `@Sarah Stemann` to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB test
-- [ ] Track roll-out to ensure that the build and deployment succeeded
-- [ ] Test out the updated services in ITRB test to verify they are working correctly
+- [ ] Monitor the `#devops-teamexpanderagent` channel to follow (i.e., to see if there are any errors reported by ITRB) the roll-out of the updated services in ITRB test
+- [ ] Check proper functioning of `kg2cploverdb.test.transltr.io`
+- [ ] Check proper functioning of `kg2.test.transltr.io` (look at messages log `debug` mesages to verify that it is indeed querying `kg2cploverdb.test.transltr.io`)
+- [ ] Check proper functioning of `arax.test.transltr.io` (look at messages log `debug` mesages to verify that ARAX-Expand is indeed querying `kg2.test.transltr.io`)
 
 #### 8. Roll-out to ITRB PRODUCTION
-- [ ] Merge `master` to `production`
-- [ ] Put in request to Sarah Stemann to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB production
-- [ ] Track roll-out to ensure that the build and deployment succeeded
-- [ ] Test out the updated services in ITRB test to verify they are working correctly
+- [ ] In GitHub, merge `master` to `production`. Record this issue number in the merge message.
+- [ ] Via a message in the `#devops-teamexpanderagent` channel in the `NCATSTranslator` Slack workspace, put in a request to `@Sarah Stemann` to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB production
+- [ ] Monitor the `#devops-teamexpanderagent` channel to follow (i.e., to see if there are any errors reported by ITRB) the roll-out of the updated services in ITRB production (this could take several days, as there is a formal approval process for deployments to ITRB production)
+- [ ] Check proper functioning of `kg2cploverdb.transltr.io`
+- [ ] Check proper functioning of `kg2.transltr.io` (look at messages log `debug` mesages to verify that it is indeed querying `kg2cploverdb.transltr.io`)
+- [ ] Check proper functioning of `arax.transltr.io` (look at messages log `debug` mesages to verify that ARAX-Expand is indeed querying `kg2.transltr.io`)
 
 #### Example ssh config for setting up login into `arax.ncats.io`:
 ```
