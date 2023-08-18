@@ -153,7 +153,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 #### 7. Roll-out to ITRB TEST 
 - [ ] Merge `master` to `itrb-test`.
-- [ ] Put in request to Sarah Stemann to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB test
+- [ ] Via a message in the `#devops-teamexpanderagent` channel in the `NCATSTranslator` Slack workspace, put in a request to `@Sarah Stemann` to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB test
 - [ ] Track roll-out to ensure that the build and deployment succeeded
 - [ ] Test out the updated services in ITRB test to verify they are working correctly
 
