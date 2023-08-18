@@ -5,7 +5,7 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
 
 #### 1. Build and load KG2c:
 
-- [ ] merge `master` into the branch being used for this KG2 version
+- [ ] merge `master` into the branch being used for this KG2 version (which would typically be named like `KG2.X.Yc`).
 - [ ] update the four hardcoded biolink version numbers in the branch (as needed):
   - [ ] in `code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml))
   - [ ] in `code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml))
@@ -90,30 +90,65 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 - [ ] merge `master` into the branch for this KG2 version
 - [ ] merge the branch into `master`
-- [ ] roll `master` out to the various `arax.ncats.io` endpoints
-- [ ] run the database manager
-- [ ] run the pytest suite on the various endpoints
-- [ ] verify the new KG2 version is actually being used
-  - [ ] run this JSON query in the ARAX/KG2 UIs: `{"nodes": {"n00": {"ids": ["RTX:KG2c"]}}, "edges": {}}`
+- [ ] roll `master` out to the various `arax.ncats.io` development endpoints. Usually in this order:
+  - [ ] `devED`
+  - [ ] `kg2beta`
+  - [ ] `beta`
+  - [ ] `test`
+  - [ ] `devLM`
+- [ ] to roll `master` out to a specific endpoint `/EEE`, you would do the following steps:
+  - [ ] If you are offsite, log into your office VPN (there are strict IP address block restrictions on client IPs that can ssh into `arax.ncats.io`)
+  - [ ] Log in to `arax.ncats.io`: `ssh arax.ncats.io` (you previously need to have set up your username, etc. in `~/.ssh/config`), like this: 
+```
+Host arax.ncats.io
+    User stephenr
+    ProxyCommand ssh -i ~/.ssh/id_rsa_long -W %h:%p stephenr@35.87.194.254
+    IdentityFile ~/.ssh/id_rsa_long
+    Hostname 172.31.53.16
+```
+  - [ ] Enter the `rtx1` container: `sudo docker exec -it rtx1 bash`
+  - [ ] Become user `rt`: `su - rt`
+  - [ ] Go to the directory of the code repo for the `EEE` endpoint: `cd /mnt/data/orangeboard/EEE/RTX`
+  - [ ] Make sure it is on the master branch: `git branch` (should show `* master`)
+  - [ ] Stash any updated files (this is IMPORTANT): `git stash`
+  - [ ] Update the code: `git pull origin master`
+  - [ ] Restore updated files: `git stash pop`
+  - [ ] If there have been changes to `requirements.txt`, make sure to do `pip3 install -r code/requirements.txt`
+  - [ ] Become superuser: `exit` (exiting out of your shell session as user `rt` should return you to a `root` user session)
+  - [ ] Restart the service: `service RTX_OpenAPI_EEE restart`
+  - [ ] View the STDERR logfile as the service starts up: `tail -f /tmp/RTX_OpenAPI_EEE.elog`
+  - [ ] Test the endpoint via the web browser interface to make sure it is working
+  - [ ] Query the KG2c version by entering this TRAPI query JSON into the browser UI: `{"nodes": {"n00": {"ids": ["RTX:KG2c"]}}, "edges": {}}` (it should return 1 result and the name of that node gives the KG2c version that is installed in the PloverDB that is being queried by the endpoint)
   - [ ] look up `RTX:KG2` in the Synonyms tab in the UI
+- [ ] run the pytest suite on the various endpoints
 - [ ] update our CI/CD testing instance with the new databases:
   - [ ] `ssh ubuntu@cicd.rtx.ai`
   - [ ] `cd RTX`
   - [ ] `git pull origin master`
-  - [ ] `sudo bash`
+  - [ ] If there have been changes to `requirements.txt`, make sure to do `~/venv3.9/bin/pip3 install -r code/requirements.txt`
+  - [ ]  `sudo bash`
   - [ ] `mkdir -m 777 /mnt/data/orangeboard/databases/KG2.X.Y`
   - [ ] `exit`
-  - [ ] `python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused`
+  - [ ] `~/venv3.9/bin/python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused`
 
 
 #### 6. Final items/clean up:
 
 - [ ] turn off the old KG2c version's neo4j instance
+  - [ ] determine what is the DNS A record hostname for `kg2-X-Zc.rtx.ai` (where `Z` is one less than the new minor release version): run `nslookup kg2-X-Zc.rtx.ai` (it will return either `kg2canonicalized.rtx.ai` or `kg2canonicalized2.rtx.ai`; we'll call it `kg2canonicalizedN.rtx.ai`).
+  - [ ] message the `#deployment` channel in the `ARAXTeam` Slack workspace that you will be stopping the `kg2canonicalizedN.rtx.ai` Neo4j endpoint
+  - [ ] `ssh ubuntu@kg2-X-Zc.rtx.ai` 
+  - [ ] `sudo service neo4j stop`
+  - [ ] In the AWS console, stop the instance `kg2canonicalizedN.rtx.ai`
 - [ ] turn off the old KG2c version's plover instance
-- [ ] turn off the new KG2pre version's neo4j instance
+  - [ ] Determine what is the DNS A record hostname for `kg2-X-Zcplover.rtx.ai` (where `Z` is one less than the new minor release version): run `nslookup kg2-X-Zploverc.rtx.ai` (it will return either `kg2cplover.rtx.ai`, `kg2cplover2.rtx.ai`, or `kg2cplover3.rtx.ai`; we'll call it `kg2cploverN.rtx.ai`).
+  - [ ] message the `#deployment` channel in the `ARAXTeam` Slack workspace that you will be stopping the `kg2-X-Zcplover.rtx.ai` PloverDB service
+  - [ ] Log into `kg2cploverN.rtx.ai`: `ssh ubuntu@kg2cploverN.rtx.ai`
+  - [ ] Stop the PloverDB container: `sudo docker stop plovercontainer2.X.Z` (if you are not sure of the container name, try `sudo docker container ls -a`).
+- [ ] turn off the new KG2pre version's neo4j instance (Coordinate with the KG2pre team before doing this)
 - [ ] upgrade the ITRB Plover endpoint (https://kg2cploverdb.ci.transltr.io) to this KG2 version and make the KG2 API start using it (instead of our self-hosted endpoint): 
     - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)
-    - [ ] wait about 45 minutes for the endpoint to rebuild and then run Plover tests to verify it's working
+    - [ ] wait about 60 minutes for the endpoint to rebuild and then run Plover tests to verify it's working
     - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in (locally change the URL in `config_dbs.json` and set `force_local = True` in Expand)
     - [ ] if all tests pass, update `config_dbs.json` in `master` to point to the ITRB Plover endpoints (all maturity levels)
     - [ ] roll `master` out to the various endpoints on arax.ncats.io
