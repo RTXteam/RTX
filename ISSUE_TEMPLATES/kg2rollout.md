@@ -3,6 +3,28 @@ _NOTE: To create a new issue based on this template, simply go to: https://githu
 **THE BRANCH FOR THIS ROLLOUT IS: `________`**
 **THE ARAX-DATABASES.RTX.AI DIRECTORY FOR THIS ROLLOUT IS: `/home/rtxconfig/KG2_____`**
 
+#### Prerequisites
+To complete this workflow, you will need `ssh` access to:
+- [ ] `arax-databases.rtx.ai`
+- [ ] the self-hosted ARAX/KG2 instance, `arax.ncats.io` (see example configuration information below)
+- [ ] the self-hosted PloverDB instances, `kg2cploverN.rtx.ai`
+- [ ] the self-hosted Neo4j instances for KG2c, `kg2canoncalizedN.rtx.ai`
+- [ ] the self-hosted CI/CD instance, `cicd.rtx.ai`
+- [ ] the webserver for downloading of the KG2c "lite" JSON file, `kg2webhost.rtx.ai`
+- [ ] write access to the `RTXteam/PloverDB` project area
+- [ ] write access to the `RTXteam/RTX` project area
+- [ ] access to the AWS Console (you'll need an IAM username; ask Stephen Ramsey about getting one)
+- [ ] access to the S3 bucket `s3://rtx-kg2/` (ask Stephen Ramsey for access)
+
+#### Example ssh config for setting up login into `arax.ncats.io`:
+```
+Host arax.ncats.io
+    User stephenr
+    ProxyCommand ssh -i ~/.ssh/id_rsa_long -W %h:%p stephenr@35.87.194.254
+    IdentityFile ~/.ssh/id_rsa_long
+    Hostname 172.31.53.16
+```
+
 #### 1. Build and load KG2c:
 
 - [ ] merge `master` into the branch being used for this KG2 version (which would typically be named like `KG2.X.Yc`).
@@ -96,7 +118,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `devLM`
 - [ ] to roll `master` out to a specific endpoint `/EEE`, you would do the following steps:
   - [ ] If you are offsite, log into your office VPN (there are strict IP address block restrictions on client IPs that can ssh into `arax.ncats.io`)
-  - [ ] Log in to `arax.ncats.io`: `ssh arax.ncats.io` (you previously need to have set up your username, etc. in `~/.ssh/config`; see bottom of this issue template for an example)
+  - [ ] Log in to `arax.ncats.io`: `ssh arax.ncats.io` (you previously need to have set up your username, etc. in `~/.ssh/config`; see the top of this issue template for an example)
   - [ ] Enter the `rtx1` container: `sudo docker exec -it rtx1 bash`
   - [ ] Become user `rt`: `su - rt`
   - [ ] Go to the directory of the code repo for the `EEE` endpoint: `cd /mnt/data/orangeboard/EEE/RTX`
@@ -170,11 +192,3 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 - [ ] Check proper functioning of `kg2.transltr.io` (look at messages log `debug` mesages to verify that it is indeed querying `kg2cploverdb.transltr.io`)
 - [ ] Check proper functioning of `arax.transltr.io` (look at messages log `debug` mesages to verify that ARAX-Expand is indeed querying `kg2.transltr.io`)
 
-#### Example ssh config for setting up login into `arax.ncats.io`:
-```
-Host arax.ncats.io
-    User stephenr
-    ProxyCommand ssh -i ~/.ssh/id_rsa_long -W %h:%p stephenr@35.87.194.254
-    IdentityFile ~/.ssh/id_rsa_long
-    Hostname 172.31.53.16
-```
