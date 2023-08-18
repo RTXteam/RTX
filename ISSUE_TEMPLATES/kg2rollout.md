@@ -120,13 +120,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 - [ ] Notify the `#deployment` channel in the `ARAXTeam` Slack workspace that you are rolling out a new version of KG2c to the various `arax.ncats.io` development endpoints.
 - [ ] merge `master` into the branch for this KG2 version
 - [ ] merge this KG2 version branch back into `master`
-- [ ] roll `master` out to the various `arax.ncats.io` development endpoints. Usually in this order:
-  - [ ] `devED`
-  - [ ] `kg2beta`
-  - [ ] `beta`
-  - [ ] `test`
-  - [ ] `devLM`
-- [ ] to roll `master` out to a specific endpoint `/EEE`, you would do the following steps:
+- [ ] to roll `master` out to a specific ARAX or KG2 endpoint named `/EEE`, you would do the following steps:
   - [ ] If you are offsite, log into your office VPN (there are strict IP address block restrictions on client IPs that can ssh into `arax.ncats.io`)
   - [ ] Log in to `arax.ncats.io`: `ssh arax.ncats.io` (you previously need to have set up your username, etc. in `~/.ssh/config`; see the top of this issue template for an example)
   - [ ] Enter the `rtx1` container: `sudo docker exec -it rtx1 bash`
@@ -143,6 +137,12 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] Test the endpoint via the web browser interface to make sure it is working
   - [ ] Query the KG2c version by entering this TRAPI query JSON into the browser UI: `{"nodes": {"n00": {"ids": ["RTX:KG2c"]}}, "edges": {}}` (it should return 1 result and the name of that node gives the KG2c version that is installed in the PloverDB that is being queried by the endpoint)
   - [ ] look up `RTX:KG2` in the Synonyms tab in the UI
+- [ ] roll `master` out to the various `arax.ncats.io` development endpoints. Usually in this order:
+  - [ ] `devED`
+  - [ ] `kg2beta`
+  - [ ] `beta`
+  - [ ] `test`
+  - [ ] `devLM`
 - [ ] inside the Docker `rtx1` container, run the pytest suite on the various endpoints:
   - [ ] `cd /mnt/data/orangeboard/EEE/RTX/code/ARAX/test && pytest -v`
 - [ ] update our CI/CD testing instance with the new databases:
