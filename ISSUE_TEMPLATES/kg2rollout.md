@@ -86,7 +86,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 
 
-#### 5. Do the rollout:
+#### 5. Rollout new KG2c version to `arax.ncats.io` development endpoints
 - [ ] Notify the `#deployment` channel in the `ARAXTeam` Slack workspace that you are rolling out a new version of KG2c to the various `arax.ncats.io` development endpoints.
 - [ ] merge `master` into the branch for this KG2 version
 - [ ] merge the branch into `master`
