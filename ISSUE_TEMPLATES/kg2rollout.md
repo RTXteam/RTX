@@ -111,7 +111,7 @@ All code changes should **go in the branch for this KG2 version**!
 
 Before rolling out, we need to pre-upload the new databases (referenced in `config_dbs.json`) to `arax.ncats.io` and the ITRB SFTP server. These steps can be done well in advance of the rollout; it doesn't hurt anything to do them early.
 
-- [ ] make sure `arax.ncats.io` has at least 100G of disk space free; delete old KG2 databases to free up space as needed (warn the team on slack first)
+- [ ] make sure `arax.ncats.io` has at least 100G of disk space free; delete old KG2 databases to free up space as needed (before doing this, warn the team on the `#deployment` Slack channel on the `ARAXTeam` workspace)
 - [ ] copy the new databases from `arax-databases.rtx.ai` to `arax.ncats.io:/data/orangeboard/databases/KG2.X.Y`; example for KG2.8.0:
   - [ ] `ssh myuser@arax.ncats.io`
   - [ ] `cd /data/orangeboard/databases/`
@@ -121,8 +121,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 #### 5. Rollout new KG2c version to `arax.ncats.io` development endpoints
 - [ ] Notify the `#deployment` channel in the `ARAXTeam` Slack workspace that you are rolling out a new version of KG2c to the various `arax.ncats.io` development endpoints.
-- [ ] merge `master` into the branch for this KG2 version
-- [ ] merge this KG2 version branch back into `master`
+- [ ] for the `RTXteam/RTX` project, merge the `master` branch into the branch for this KG2 version.
+- [ ] for the `RTXteam/RTX` project, merge this KG2 version's branch back into the `master` branch.
 - [ ] to roll `master` out to a specific ARAX or KG2 endpoint named `/EEE`, you would do the following steps:
   - [ ] If you are offsite, log into your office VPN (there are strict IP address block restrictions on client IPs that can ssh into `arax.ncats.io`)
   - [ ] Log in to `arax.ncats.io`: `ssh arax.ncats.io` (you previously need to have set up your username, etc. in `~/.ssh/config`; see the top of this issue template for an example)
@@ -191,7 +191,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 #### 7. Roll-out to ITRB TEST 
 - [ ] In GitHub, merge `master` to `itrb-test`. Record this issue number in the merge message.
 - [ ] Via a message in the `#devops-teamexpanderagent` channel in the `NCATSTranslator` Slack workspace, put in a request to `@Sarah Stemann` to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB test
-- [ ] Monitor the `#devops-teamexpanderagent` channel to follow (i.e., to see if there are any errors reported by ITRB) the roll-out of the updated services in ITRB test
+- [ ] Monitor the `#devops-teamexpanderagent` channel to follow the roll-out of the updated services in ITRB test (i.e., to see if there are any errors reported by ITRB) 
 - [ ] Check proper functioning of `kg2cploverdb.test.transltr.io`
   - [ ] from any git checkout of `RTXteam/PloverDB` project's `master` branch, do : `cd PloverDB && pytest -v test/test.py --endpoint https://kg2cploverdb.test.transltr.io`
 - [ ] Check proper functioning of `kg2.test.transltr.io` (look at messages log `debug` mesages to verify that it is indeed querying `kg2cploverdb.test.transltr.io`)
