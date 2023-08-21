@@ -1189,6 +1189,29 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
     - This is a required parameter and must be included.
 
     - `chemical_substance` and `disease` are examples of valid inputs.
+    
+### filter_kg(action=remove_general_concept_nodes)
+
+`remove_general_concept_nodes` removes nodes from the knowledge graph (KG) That are general concepts.
+Use cases include:
+* To remove generic therapeutics from final results.
+* etc.
+This can be applied to an arbitrary knowledge graph.
+                    
+
+#### parameters: 
+
+* ##### perform_action
+
+    - Indicate whether or not to remove general concept nodes
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be True. 
 
 ### filter_kg(action=remove_nodes_by_property)
 
