@@ -23,6 +23,7 @@
     - [filter_kg(action=remove_edges_by_percentile)](#filter_kgactionremove_edges_by_percentile)
     - [filter_kg(action=remove_edges_by_top_n)](#filter_kgactionremove_edges_by_top_n)
     - [filter_kg(action=remove_nodes_by_category)](#filter_kgactionremove_nodes_by_category)
+    - [filter_kg(action=remove_general_concept_nodes)](#filter_kgactionremove_general_concept_nodes)
     - [filter_kg(action=remove_nodes_by_property)](#filter_kgactionremove_nodes_by_property)
     - [filter_kg(action=remove_orphaned_nodes)](#filter_kgactionremove_orphaned_nodes)
   - [ARAX_filter_results](#arax_filter_results)
