@@ -178,7 +178,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
     - [ ] run Plover tests to verify it's working: `cd PloverDB && pytest -v test/test.py --endpoint https://kg2cploverdb.ci.transltr.io`
     - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in (locally change the URL in `RTX/code/config_dbs.json` and set `force_local = True` in Expand)
     - [ ] if all tests pass, update `RTX/code/config_dbs.json` in the `master` branch to point to the ITRB Plover endpoints (all maturity levels): (`dev`: `kg2cploverdb.ci.transltr.io`; `test`: `kg2cploverdb.test.transltr.io`; `prod`: `kg2cploverdb.transltr.io`)
-    - [ ] push the latest `master` branch code commit to the various endpoints on `arax.ncats.io` that you previously updated (this is in order to get the changed `config_dbs.json` file) and restart ARAX and KG2 services
+    - [ ] push the latest `master` branch code commit to the various endpoints on `arax.ncats.io` that you previously updated (this is in order to get the changed `config_dbs.json` file) and restart ARAX and KG2 services; also push that same commit to the `RTX` code-base in `/mnt/data/orangeboard` on `cicd.rtx.ai`, so that the CI/CD system is using the same PloverDB service `kg2cploverdb.ci.translator.io`.
     - [ ] turn off the self-hosted plover endpoint for the new version of KG2c
       - [ ] message the `#deployment` channel to notify people what you are about to do
       - [ ] `ssh ubuntu@kg2cploverM.rtx.ai`
