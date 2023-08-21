@@ -66,8 +66,8 @@ Host arax.ncats.io
   - [ ] update the kg2c sqlite version number/path
   - [ ] update the KG2pre and KG2c Neo4j endpoints
 - [ ] copy the `kg2c_lite_2.X.Y.json.gz` file (which you can get from the S3 bucket `s3://rtx-kg2/kg2c_lite.json.gz` (but CHECK THE DATE AND MD5 HASH TO BE SURE YOU ARE NOT GETTING AN OLD FILE) to the directory `/home/ubuntu/nginx-document-root/` on `kg2webhost.rtx.ai`
-- [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-how-tos#to-build-plover-from-a-new-kg2-version)).
-- [ ] start the new PloverDB:
+- [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-how-tos#to-build-plover-from-a-new-kg2-version))
+- [ ] start the new self-hosted PloverDB on `kg2cploverN.rtx.ai`:
   - [ ] `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] `cd PloverDB && git pull origin kg2.X.Yc`
   - [ ] `./run.sh ploverimage2.X.Y plovercontainer2.X.Y "sudo docker"`
@@ -173,7 +173,9 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] Log into `kg2cploverN.rtx.ai`: `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] Stop the PloverDB container: `sudo docker stop plovercontainer2.X.Z` (if you are not sure of the container name, use `sudo docker container ls -a` to get the container name).
 - [ ] turn off the new KG2pre version's neo4j instance (Coordinate with the KG2pre team before doing this)
-- [ ] upgrade the config file pointer for the ITRB Plover endpoint so that it points to the ITRB CI PloverDB service (https://kg2cploverdb.ci.transltr.io) and make the KG2 API start using it (instead of our self-hosted endpoint): 
+- [ ] deploy new PloverDB service into ITRB CI that is backed by the new KG2c database: 
+    - [ ] merge PloverDB `main` branch into `kg2.X.Yc` branch (if `main` has any commits ahead of `kg2.X.Yc`)
+    - [ ] merge PloverDB `kg2.X.Yc` branch into `main` branch
     - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)
     - [ ] wait about 60 minutes for Jenkins to build the PloverDB project and deploy it to `kg2cploverdb.ci.transltr.io`
     - [ ] run Plover tests to verify it's working: `cd PloverDB && pytest -v test/test.py --endpoint https://kg2cploverdb.ci.transltr.io`
