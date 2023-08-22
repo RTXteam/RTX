@@ -179,8 +179,10 @@ class RemoveNodes:
                 if block_list_synonyms.intersection([synonym.lower() for synonym in synonyms if synonym]) \
                          or block_list_curies.intersection([curie.lower() for curie in curies if curie]):
                     nodes_to_remove.add(key)
+
             for key in nodes_to_remove:
                 del self.message.knowledge_graph.nodes[key]
+            self.response.info(f"Removed {len(nodes_to_remove)} nodes from the knowledge graph which are general concepts")
             edges_to_remove = set()
             # iterate over edges find edges connected to the nodes
             for key, edge in self.message.knowledge_graph.edges.items():
