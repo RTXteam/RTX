@@ -884,7 +884,7 @@ class ARAXQuery:
             # Update the resource_id to ARAX if not already present
             for result in response.envelope.message.results:
                 if result.resource_id is None:
-                    result.resource_id = 'ARAX'
+                    result.resource_id = 'infores:arax'
 
             # Store the validation and provenance metadata
             #trapi_version = '1.2.0'
