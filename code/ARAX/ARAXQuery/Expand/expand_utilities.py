@@ -614,7 +614,7 @@ def filter_response_domain_range_exclusion(plover_answer, qg, log: ARAXResponse)
             
             log.info(f"Filtered out {filtered_count} edges from response due to domain range exclusion")
         except:
-            log.error("Plover response does not have domain_range_exclusion key.")
+            log.warning("Plover response does not have domain_range_exclusion key.")
 
         
         return plover_answer
