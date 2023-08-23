@@ -40,7 +40,7 @@ Host arax.ncats.io
 
 #### 1. Build and load KG2c:
 
-- [ ] merge `master` into the branch being used for this KG2 version (which would typically be named like `KG2.X.Yc`).
+- [ ] merge `master` into the branch being used for this KG2 version (which would typically be named like `KG2.X.Yc`).  Record this issue number in the merge message.
 - [ ] update the four hardcoded biolink version numbers in the branch (as needed):
   - [ ] in `code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml))
   - [ ] in `code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml))
@@ -121,8 +121,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 #### 5. Rollout new KG2c version to `arax.ncats.io` development endpoints
 - [ ] Notify the `#deployment` channel in the `ARAXTeam` Slack workspace that you are rolling out a new version of KG2c to the various `arax.ncats.io` development endpoints.
-- [ ] for the `RTXteam/RTX` project, merge the `master` branch into the branch for this KG2 version.
-- [ ] for the `RTXteam/RTX` project, merge this KG2 version's branch back into the `master` branch.
+- [ ] for the `RTXteam/RTX` project, merge the `master` branch into the branch for this KG2 version.  Record this issue number in the merge message.
+- [ ] for the `RTXteam/RTX` project, merge this KG2 version's branch back into the `master` branch.  Record this issue number in the merge message.
 - [ ] to roll `master` out to a specific ARAX or KG2 endpoint named `/EEE`, you would do the following steps:
   - [ ] If you are offsite, log into your office VPN (there are strict IP address block restrictions on client IPs that can ssh into `arax.ncats.io`)
   - [ ] Log in to `arax.ncats.io`: `ssh arax.ncats.io` (you previously need to have set up your username, etc. in `~/.ssh/config`; see the top of this issue template for an example)
@@ -144,8 +144,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `devED`
   - [ ] `kg2beta`
   - [ ] `beta`
-  - [ ] `test`
   - [ ] `kg2test`
+  - [ ] `test`
   - [ ] `devLM`
 - [ ] inside the Docker `rtx1` container, run the pytest suite on the various endpoints:
   - [ ] `cd /mnt/data/orangeboard/EEE/RTX/code/ARAX/test && pytest -v`
@@ -158,7 +158,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `mkdir -m 777 /mnt/data/orangeboard/databases/KG2.X.Y`
   - [ ] `exit`
   - [ ] `~/venv3.9/bin/python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused`
-  - [ ] run a [Test Build](https://github.com/RTXteam/RTX/actions/workflows/pytest.yml) through GitHub, to ensure that the CI/CD is working with the updated databases
+  - [ ] run a [Test Build](https://github.com/RTXteam/RTX/actions/workflows/pytest.yml) through GitHub Actions, to ensure that the CI/CD is working with the updated databases; all of the pytest tests that are not skipped, should pass
 
 #### 6. Final items/clean up:
 
@@ -175,15 +175,15 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] Stop the PloverDB container: `sudo docker stop plovercontainer2.X.Z` (if you are not sure of the container name, use `sudo docker container ls -a` to get the container name).
 - [ ] turn off the new KG2pre version's neo4j instance (Coordinate with the KG2pre team before doing this)
 - [ ] deploy new PloverDB service into ITRB CI that is backed by the new KG2c database: 
-    - [ ] merge PloverDB `main` branch into `kg2.X.Yc` branch (if `main` has any commits ahead of `kg2.X.Yc`)
-    - [ ] merge PloverDB `kg2.X.Yc` branch into `main` branch
+    - [ ] merge PloverDB `main` branch into `kg2.X.Yc` branch (if `main` has any commits ahead of `kg2.X.Yc`). Reference this issue (via its full GitHub URL) in the merge message.
+    - [ ] merge PloverDB `kg2.X.Yc` branch into `main` branch. Reference this issue (via its full GitHub URL) in the merge message.
     - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)
     - [ ] wait about 60 minutes for Jenkins to build the PloverDB project and deploy it to `kg2cploverdb.ci.transltr.io`
     - [ ] run Plover tests to verify it's working: `cd PloverDB && pytest -v test/test.py --endpoint https://kg2cploverdb.ci.transltr.io`
     - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in (locally change the URL in `RTX/code/config_dbs.json` and set `force_local = True` in Expand)
     - [ ] if all tests pass, update `RTX/code/config_dbs.json` in the `master` branch to point to the ITRB Plover endpoints (all maturity levels): (`dev`: `kg2cploverdb.ci.transltr.io`; `test`: `kg2cploverdb.test.transltr.io`; `prod`: `kg2cploverdb.transltr.io`)
     - [ ] push the latest `master` branch code commit to the various endpoints on `arax.ncats.io` that you previously updated (this is in order to get the changed `config_dbs.json` file) and restart ARAX and KG2 services
-    - [ ] check the [Test Build](https://github.com/RTXteam/RTX/actions/workflows/pytest.yml) (CI/CD tests) to make sure all tests have passed
+    - [ ] check the [Test Build](https://github.com/RTXteam/RTX/actions/workflows/pytest.yml) (CI/CD tests) to make sure all non-skipped pytest tests have passed
     - [ ] turn off the self-hosted plover endpoint for the new version of KG2c
       - [ ] message the `#deployment` channel to notify people what you are about to do
       - [ ] `ssh ubuntu@kg2cploverM.rtx.ai`
