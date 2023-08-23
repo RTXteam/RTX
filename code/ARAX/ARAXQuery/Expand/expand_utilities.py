@@ -604,15 +604,19 @@ def filter_response_domain_range_exclusion(plover_answer, qg, log: ARAXResponse)
         log.debug("Applying domain range exclusion to plover response")
         filtered_count = 0
         qg_edge_keys = qg.edges.keys()
-        for qg_edge_key in qg_edge_keys:
+        try:
+            for qg_edge_key in qg_edge_keys:
 
-            edge_keys_to_filter = {edge_id for edge_id, edge in plover_answer['edges'][qg_edge_key].items() if edge[7] == "True"}
-            for edge_key in edge_keys_to_filter:
-                del plover_answer['edges'][qg_edge_key][edge_key]
-                filtered_count += 1
+                edge_keys_to_filter = {edge_id for edge_id, edge in plover_answer['edges'][qg_edge_key].items() if edge[7] == "True"}
+                for edge_key in edge_keys_to_filter:
+                    del plover_answer['edges'][qg_edge_key][edge_key]
+                    filtered_count += 1
+            
+            log.info(f"Filtered out {filtered_count} edges from response due to domain range exclusion")
+        except:
+            log.error("Plover response does not have domain_range_exclusion key.")
+
         
-        log.info(f"Filtered out {filtered_count} edges from response due to domain range exclusion")
-
         return plover_answer
 
         
