@@ -145,6 +145,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `kg2beta`
   - [ ] `beta`
   - [ ] `test`
+  - [ ] `kg2test`
   - [ ] `devLM`
 - [ ] inside the Docker `rtx1` container, run the pytest suite on the various endpoints:
   - [ ] `cd /mnt/data/orangeboard/EEE/RTX/code/ARAX/test && pytest -v`
