@@ -29,6 +29,7 @@ class ARAXFilterKG:
             'remove_nodes_by_category',
             'remove_edges_by_discrete_attribute',
             'remove_orphaned_nodes',
+            'remove_general_concept_nodes'
         }
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
@@ -150,6 +151,13 @@ class ARAXFilterKG:
             "examples": ["chemical_substance", "disease"],
             "type": "ARAXnode",
             "description": "The name of the node category to filter by."
+        }
+        self.general_concept_flag = {
+            "is_required": False,
+            "enum": ['true', 'false', 'True', 'False', 't', 'f', 'T', 'F'],
+            "type": "boolean",
+            "description": "Indicate whether or not to remove general concept nodes",
+            "default": "True"
         }
         self.node_type_info = {
             "is_required": False,
@@ -388,6 +396,22 @@ remove_node_by_category removes nodes from the knowledge graph (KG) based on a g
                     """,
                 "parameters": {
                     "node_category": self.node_type_required_info
+                }
+            },
+            "remove_general_concept_nodes": {
+                "dsl_command": "filter_kg(action=remove_general_concept_nodes)",
+                "description": """
+`remove_general_concept_nodes` removes nodes from the knowledge graph (KG) That are general concepts.
+Use cases include:
+* To remove generic therapeutics from final results.
+* etc.
+This can be applied to an arbitrary knowledge graph.
+                    """,
+                'brief_description': """
+remove_general_concept_nodes removes nodes from the knowledge graph (KG) that are general concepts.
+                    """,
+                "parameters": {
+                    "perform_action": self.general_concept_flag
                 }
             },
             "remove_nodes_by_property": {
@@ -1391,6 +1415,38 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
         response = RN.remove_nodes_by_property()
+        return response
+    
+    def __remove_general_concept_nodes(self, describe=False):
+        """
+        Removes nodes from the KG.
+        Allowable parameters: {perform_action': boolean}
+        :return:
+        """
+        message = self.message
+        parameters = self.parameters
+        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+        allowable_parameters = {'action': {'remove_general_concept_nodes'},
+                                    'perform_action': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
+                                   }
+
+        # A little function to describe what this thing does
+        if describe:
+            brief_description = self.command_definitions['remove_general_concept_nodes']
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        # Make sure only allowable parameters and values have been passed
+        resp = self.check_params(allowable_parameters)
+        # return if bad parameters have been passed
+        if self.response.status != 'OK' or resp == -1:
+            return self.response
+
+        node_params = self.parameters
+        # now do the call out to NGD
+        from Filter_KG.remove_nodes import RemoveNodes
+        RN = RemoveNodes(self.response, self.message, node_params)
+        response = RN.remove_general_concept_nodes()        
         return response
 
     def __remove_orphaned_nodes(self, describe=False):

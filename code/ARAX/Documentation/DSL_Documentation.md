@@ -23,6 +23,7 @@
     - [filter_kg(action=remove_edges_by_percentile)](#filter_kgactionremove_edges_by_percentile)
     - [filter_kg(action=remove_edges_by_top_n)](#filter_kgactionremove_edges_by_top_n)
     - [filter_kg(action=remove_nodes_by_category)](#filter_kgactionremove_nodes_by_category)
+    - [filter_kg(action=remove_general_concept_nodes)](#filter_kgactionremove_general_concept_nodes)
     - [filter_kg(action=remove_nodes_by_property)](#filter_kgactionremove_nodes_by_property)
     - [filter_kg(action=remove_orphaned_nodes)](#filter_kgactionremove_orphaned_nodes)
   - [ARAX_filter_results](#arax_filter_results)
@@ -1189,6 +1190,29 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
     - This is a required parameter and must be included.
 
     - `chemical_substance` and `disease` are examples of valid inputs.
+    
+### filter_kg(action=remove_general_concept_nodes)
+
+`remove_general_concept_nodes` removes nodes from the knowledge graph (KG) That are general concepts.
+Use cases include:
+* To remove generic therapeutics from final results.
+* etc.
+This can be applied to an arbitrary knowledge graph.
+                    
+
+#### parameters: 
+
+* ##### perform_action
+
+    - Indicate whether or not to remove general concept nodes
+
+    - Acceptable input types: boolean.
+
+    - This is not a required parameter and may be omitted.
+
+    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+
+    - If not specified the default input will be True. 
 
 ### filter_kg(action=remove_nodes_by_property)
 

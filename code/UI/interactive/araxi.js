@@ -1399,6 +1399,27 @@ var araxi_commands = {
     },
     "description": "\nremove_edges_by_continuous_attribute removes edges from the knowledge graph (KG) based on a a certain edge attribute.\nEdge attributes are a list of additional attributes for an edge.\nThis action interacts particularly well with overlay() as overlay() frequently adds additional edge attributes.\n                    "
   },
+  "filter_kg(action=remove_general_concept_nodes)": {
+    "parameters": {
+      "perform_action": {
+        "is_required": false,
+        "enum": [
+          "true",
+          "false",
+          "True",
+          "False",
+          "t",
+          "f",
+          "T",
+          "F"
+        ],
+        "type": "boolean",
+        "description": "Indicate whether or not to remove general concept nodes",
+        "default": "True"
+      }
+    },
+    "description": "\nremove_general_concept_nodes removes nodes from the knowledge graph (KG) that are general concepts.\n                    "
+  },
   "filter_kg(action=remove_edges_by_discrete_attribute)": {
     "parameters": {
       "edge_attribute": {
