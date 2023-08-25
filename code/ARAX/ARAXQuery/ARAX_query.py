@@ -243,7 +243,8 @@ class ARAXQuery:
                 'code_description': 'Query running via /asyncquery (parent)'
             }
             query_tracker = ARAXQueryTracker()
-            query_tracker.update_tracker_entry(self.response.job_id, attributes)
+            if hasattr(self.response, 'job_id'):
+                query_tracker.update_tracker_entry(self.response.job_id, attributes)
         else:
             self.track_query_finish()
             #### Switch OK to Success for TRAPI compliance
