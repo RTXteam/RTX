@@ -202,28 +202,30 @@ class ARAXQueryTracker:
             eprint("ERROR: update_tracker_entry: session is None")
             return
 
-        tracker_entries = session.query(ARAXQuery).filter(ARAXQuery.query_id==tracker_id).all()
-        if len(tracker_entries) > 0:
-            tracker_entry = tracker_entries[0]
-            end_datetime = datetime.now()
-            elapsed = end_datetime - datetime.fromisoformat(tracker_entry.start_datetime)
-            tracker_entry.end_datetime = end_datetime.isoformat(' ', 'seconds')
-            tracker_entry.elapsed = elapsed.seconds
-            tracker_entry.status = attributes['status'][:254]
-            tracker_entry.message_id = attributes['message_id']
-            tracker_entry.message_code = attributes['message_code'][:254]
-            tracker_entry.code_description = attributes['code_description'][:254]
-        session.commit()
+        try:
+            tracker_entries = session.query(ARAXQuery).filter(ARAXQuery.query_id==tracker_id).all()
+            if len(tracker_entries) > 0:
+                tracker_entry = tracker_entries[0]
+                end_datetime = datetime.now()
+                elapsed = end_datetime - datetime.fromisoformat(tracker_entry.start_datetime)
+                tracker_entry.end_datetime = end_datetime.isoformat(' ', 'seconds')
+                tracker_entry.elapsed = elapsed.seconds
+                tracker_entry.status = attributes['status'][:254]
+                tracker_entry.message_id = attributes['message_id']
+                tracker_entry.message_code = attributes['message_code'][:254]
+                tracker_entry.code_description = attributes['code_description'][:254]
+            session.commit()
 
-        if 'status' in attributes and attributes['status'] in [ 'Completed', 'Died', 'Reset' ]:
-            try:
-                session.query(ARAXOngoingQuery).filter(ARAXOngoingQuery.query_id==tracker_id).delete()
-                session.commit()
-                eprint(f"INFO: Deleted ARAXOngoingQuery.query_id={tracker_id}")
-            except:
-                eprint(f"ERROR: Unable to delete ARAXOngoingQuery.query_id={tracker_id}")
-                session.commit()
-
+            if 'status' in attributes and attributes['status'] in [ 'Completed', 'Died', 'Reset' ]:
+                try:
+                    session.query(ARAXOngoingQuery).filter(ARAXOngoingQuery.query_id==tracker_id).delete()
+                    session.commit()
+                    eprint(f"INFO: Deleted ARAXOngoingQuery.query_id={tracker_id}")
+                except:
+                    eprint(f"ERROR: Unable to delete ARAXOngoingQuery.query_id={tracker_id}")
+                    session.commit()
+        except:
+            eprint("ERROR: Unable to update_tracker_entry, probably due to MySQL connection flakiness")
 
 
     ##################################################################################################
