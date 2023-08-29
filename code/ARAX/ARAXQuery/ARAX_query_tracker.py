@@ -10,7 +10,7 @@ import socket
 import json
 import psutil
 
-from datetime import datetime
+from datetime import datetime, timezone
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -687,6 +687,7 @@ def main():
     argparser.add_argument('--show_ongoing', action='count', help='Show all ongoing queries')
     argparser.add_argument('--reset_job', action='count', help='Reset the specified job_id(s)')
     argparser.add_argument('--job_ids', type=str, help='Job IDs to show (comma separated list)')
+    argparser.add_argument('--prune_jobs', action='count', help='Simply prune very stale jobs from the active query table')
     params = argparser.parse_args()
 
     #### Set verbose
@@ -695,18 +696,30 @@ def main():
 
     query_tracker = ARAXQueryTracker()
 
+    #### If pruning, then also show
+    if params.prune_jobs:
+        params.show_ongoing = True
+        params.reset_job = True
+    prune_job_ids = []
+
     #### Check ongoing queries
     if params.show_ongoing:
         entries = query_tracker.get_entries(ongoing_queries=True)
         for entry in entries:
             #print(entry.__dict__)
-            print(f"{entry.query_id}\t{entry.pid}\t{entry.start_datetime}\t{entry.instance_name}\t{entry.hostname}\t{entry.status}\t{entry.elapsed}\t{entry.origin}\t{entry.message_id}\t{entry.message_code}\t{entry.code_description}")
-        return
+            now = datetime.now(timezone.utc)
+            now = now.replace(tzinfo=None)
+            elapsed = now - datetime.fromisoformat(entry.start_datetime)
+            elapsed = elapsed.seconds + elapsed.days * 24 * 60 * 60
+            print(f"{entry.query_id}\t{entry.start_datetime}\t{elapsed}\t{entry.instance_name}\t{entry.hostname}\t{entry.status}\t{entry.origin}\t{entry.pid}\t{entry.message_id}\t{entry.message_code}\t{entry.code_description}")
+            if params.prune_jobs and elapsed > 70000: 
+                prune_job_ids.append(entry.query_id)
 
     #### Extract job_ids
     job_ids = []
     if params.job_ids:
         job_ids = params.job_ids.split(',')
+    job_ids.extend(prune_job_ids)
 
     #### If the request is to reset jobs, do it
     if params.reset_job and len(job_ids) > 0:
