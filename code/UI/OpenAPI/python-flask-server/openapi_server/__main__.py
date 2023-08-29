@@ -60,12 +60,12 @@ def main():
 
     dbmanager = ARAXDatabaseManager()
     try:
-        logging.debug("Checking for complete databases")
+        logging.info("Checking for complete databases")
         if dbmanager.check_versions():
             logging.warning("Databases incomplete; running update_databases")
             dbmanager.update_databases()
         else:
-            logging.debug("Databases seem to be complete")
+            logging.info("Databases seem to be complete")
     except Exception as e:
         logging.error(traceback.format_exc())
         raise e
