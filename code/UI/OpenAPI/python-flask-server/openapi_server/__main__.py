@@ -58,6 +58,13 @@ def main():
     signal.signal(signal.SIGCHLD, receive_sigchld)
     signal.signal(signal.SIGPIPE, receive_sigpipe)
 
+    # Read any load configuration details for this instance
+    try:
+        with open('openapi_server/flask_config.json') as infile:
+            local_config = json.load(infile)
+    except Exception:
+        local_config = {"port": 5000}
+
     dbmanager = ARAXDatabaseManager()
     try:
         logging.info("Checking for complete databases")
@@ -69,13 +76,6 @@ def main():
     except Exception as e:
         logging.error(traceback.format_exc())
         raise e
-
-    # Read any load configuration details for this instance
-    try:
-        with open('openapi_server/flask_config.json') as infile:
-            local_config = json.load(infile)
-    except Exception:
-        local_config = {"port": 5000}
 
     # Start a thread that will perform basic background tasks independently
     # of traffic.  It should never return, forever looping in the background.
@@ -92,4 +92,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
