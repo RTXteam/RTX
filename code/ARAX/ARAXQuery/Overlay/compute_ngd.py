@@ -442,37 +442,20 @@ class ComputeNGD:
             return canonical_curies_map
 
     def _setup_ngd_database(self):
-        # Download the ngd database if there isn't already a local copy or if a newer version is available
-        #db_path_local = f"{os.path.dirname(os.path.abspath(__file__))}/ngd/{self.ngd_database_name}"
-        #db_path_remote = f"/data/orangeboard/databases/KG2.3.4/{self.ngd_database_name}"
-        ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
+        ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)],
+                                         'code',
+                                         'ARAX',
+                                         'KnowledgeSources',
+                                         'NormalizedGoogleDistance'])
         db_path_local = f"{ngd_filepath}{os.path.sep}{self.ngd_database_name}"
-        db_path_remote = RTXConfig.curie_to_pmids_path
-        # FW: Removed in favor of using the DBmanager but just commenting out in case there is some reason to keep this
-        # if not os.path.exists(f"{db_path_local}"):
-        #     self.response.debug(f"Downloading fast NGD database because no copy exists... (will take a few minutes)")
-        #     #os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
-        #     os.system(f"scp {RTXConfig.curie_to_pmids_username}@{RTXConfig.curie_to_pmids_host}:{RTXConfig.curie_to_pmids_path} {db_path_local}")
-        # else:
-        #     last_modified_local = int(os.path.getmtime(db_path_local))
-        #     last_modified_remote_byte_str = subprocess.check_output(f"ssh rtxconfig@arax.ncats.io 'stat -c %Y {db_path_remote}'", shell=True)
-        #     last_modified_remote = int(str(last_modified_remote_byte_str, 'utf-8'))
-        #     if last_modified_local < last_modified_remote:
-        #         self.response.debug(f"Downloading new version of fast NGD database... (will take a few minutes)")
-        #         #os.system(f"scp rtxconfig@arax.ncats.io:{db_path_remote} {db_path_local}")
-        #         os.system(f"scp {RTXConfig.curie_to_pmids_username}@{RTXConfig.curie_to_pmids_host}:{RTXConfig.curie_to_pmids_path} {db_path_local}")
-        #     else:
-        #         self.response.debug(f"Confirmed local NGD database is current")
-        DBmanager = ARAXDatabaseManager()
-        if DBmanager.check_versions():
-            self.response.debug(f"Downloading databases because mismatch in local versions and remote versions was found... (will take a few minutes)")
-            self.response = DBmanager.update_databases(response=self.response)
         # Set up a connection to the database so it's ready for use
         try:
             connection = sqlite3.connect(db_path_local)
             cursor = connection.cursor()
         except Exception:
-            self.response.error(f"Encountered an error connecting to ngd sqlite database", error_code="DatabaseSetupIssue")
+            self.response.error("Encountered an error connecting "
+                                "to ngd sqlite database",
+                                error_code="DatabaseSetupIssue")
             return None, None
         else:
             return connection, cursor
@@ -482,4 +465,3 @@ class ComputeNGD:
             self.cursor.close()
         if self.connection:
             self.connection.close()
-
