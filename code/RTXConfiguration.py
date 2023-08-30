@@ -17,8 +17,24 @@ class RTXConfiguration:
 
     _GET_FILE_CMD = "scp araxconfig@araxconfig.rtx.ai:config_secrets.json "
 
+    _instance = None
+    _initialized = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._private_init()
+            print(cls._instance._version)
+        return cls._instance
+
     # ### Constructor
-    def __init__(self):
+    def _private_init(self):
+        print("in private_init")
+        assert self._instance is not None
+        if self._initialized:
+            return
+
+        self._initialized = True
 
         t0 = timeit.default_timer()
         file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -329,23 +345,28 @@ class RTXConfiguration:
 def main():
     t0 = timeit.default_timer()
     rtxConfig = RTXConfiguration()
-    print("RTX Version string: " + rtxConfig.version)
-    print("neo4j KG2 version: %s" % rtxConfig.neo4j_kg2)
-    print("neo4j bolt: %s" % rtxConfig.neo4j_bolt)
-    print("neo4j database: %s" % rtxConfig.neo4j_database)
-    print("neo4j username: %s" % rtxConfig.neo4j_username)
-    print("neo4j password: %s" % rtxConfig.neo4j_password)
-    print("plover url: %s" % rtxConfig.plover_url)
-    print("rtx-kg2 url: %s" % rtxConfig.rtx_kg2_url)
-    print("mysql feedback host: %s" % rtxConfig.mysql_feedback_host)
-    print("mysql feedback port: %s" % rtxConfig.mysql_feedback_port)
-    print("mysql feedback username: %s" % rtxConfig.mysql_feedback_username)
-    print("mysql feedback password: %s" % rtxConfig.mysql_feedback_password)
-    print(f"maturity: {rtxConfig.maturity}")
-    print(f"current branch: {rtxConfig.current_branch_name}")
-    print(f"is_itrb_instance: {rtxConfig.is_itrb_instance}")
     t1 = timeit.default_timer()
+    # print("RTX Version string: " + rtxConfig.version)
+    # print("neo4j KG2 version: %s" % rtxConfig.neo4j_kg2)
+    # print("neo4j bolt: %s" % rtxConfig.neo4j_bolt)
+    # print("neo4j database: %s" % rtxConfig.neo4j_database)
+    # print("neo4j username: %s" % rtxConfig.neo4j_username)
+    # print("neo4j password: %s" % rtxConfig.neo4j_password)
+    # print("plover url: %s" % rtxConfig.plover_url)
+    # print("rtx-kg2 url: %s" % rtxConfig.rtx_kg2_url)
+    # print("mysql feedback host: %s" % rtxConfig.mysql_feedback_host)
+    # print("mysql feedback port: %s" % rtxConfig.mysql_feedback_port)
+    # print("mysql feedback username: %s" % rtxConfig.mysql_feedback_username)
+    # print("mysql feedback password: %s" % rtxConfig.mysql_feedback_password)
+    # print(f"maturity: {rtxConfig.maturity}")
+    # print(f"current branch: {rtxConfig.current_branch_name}")
+    # print(f"is_itrb_instance: {rtxConfig.is_itrb_instance}")
     print(f"Total elapsed time: {(t1-t0)*1000:.2f} ms")
+    t2 = timeit.default_timer()
+    rtxConfig = RTXConfiguration()
+    t3 = timeit.default_timer()
+    print(rtxConfig.version)
+    print(f"Total elapsed time: {(t3-t2)*1000:.2f} ms")
 
 
 if __name__ == "__main__":
