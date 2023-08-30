@@ -48,9 +48,11 @@ graph = graph.set_index([0])
 
 ## Connect to neo4j database
 #rtxc = RTXConfiguration()
-# added RTXConfig at top and set to 'KG2C'
-RTXConfig.neo4j_kg2 = "KG2c"
-driver = GraphDatabase.driver(RTXConfig.neo4j_bolt, auth=(RTXConfig.neo4j_username, RTXConfig.neo4j_password))
+# added RTXConfig at top and set to 'KG2c'
+kg2_neo4j_info = RTXConfig.get_neo4j_info("KG2c")
+driver = GraphDatabase.driver(kg2_neo4j_info['bolt'],
+                              auth=(kg2_neo4j_info['username'],
+                                    kg2_neo4j_info['password']))
 session = driver.session()
 
 ## Pulls a dataframe of all of the graph drug-associated nodes

@@ -15,8 +15,13 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../../../../ARAX/ARAXQuery")
+
 from ARAX_background_tasker import ARAXBackgroundTasker
 from ARAX_database_manager import ARAXDatabaseManager
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
+                "/../../../..")
+from RTXConfiguration import RTXConfiguration
 
 # can change this to logging.DEBUG for debuggging
 logging.basicConfig(level=logging.INFO)
@@ -64,6 +69,8 @@ def main():
             local_config = json.load(infile)
     except Exception:
         local_config = {"port": 5008}
+
+    RTXConfiguration()
 
     dbmanager = ARAXDatabaseManager()
     try:
