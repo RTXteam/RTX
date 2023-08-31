@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+# NOTE: this module is only to be used either as a CLI script or in the
+# __main__.py Flask application at application start-up. Please do not
+# instantiate this class and call `check_databases` at query time. -SAR
+
 import os
 import sys
 import datetime

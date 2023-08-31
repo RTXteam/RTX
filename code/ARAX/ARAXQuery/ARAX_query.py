@@ -954,17 +954,28 @@ class ARAXQuery:
 
     ############################################################################################
     def send_to_callback(self, callback, response):
-        response.info(f"Attempting to send to callback URL: {callback}")
+        response.info(f"Attempting to send response to callback URL: {callback}")
         envelope_dict = response.envelope.to_dict()
-        try:
-            post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'})
-            status_code = post_response_content.status_code
-            response.info(f"Response from POST to callback URL was {status_code}")
-            if status_code not in [ 200, 201 ]:
-                response.error(f"Response from POST to callback URL was {status_code}", error_code="UnreachableCallback")
+        post_succeeded = False
+        send_attempts = 0
 
-        except:
-            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost", error_code="UnreachableCallback")
+        while send_attempts < 3 and post_succeeded == False:
+            try:
+                post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'}, timeout=60)
+                status_code = post_response_content.status_code
+                if status_code in [ 200, 201 ]:
+                    response.info(f"POST to callback URL succeeded with status code {status_code}")
+                    post_succeeded = True
+                else:
+                    response.warning(f"POST to callback URL failed with status code {status_code}")
+
+            except Exception as error:
+                response.warning(f"Unable to make a connection to callback URL {callback} with error {error}")
+            send_attempts += 1
+
+        if post_succeeded == False:
+            response.error(f"Unable to send the Response to callback URL {callback} after {send_attempts} tries. Work is lost", error_code="UnreachableCallback")
+
         self.track_query_finish()
         os._exit(0)
 
