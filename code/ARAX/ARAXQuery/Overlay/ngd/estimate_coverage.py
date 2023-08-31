@@ -126,7 +126,6 @@ def estimate_percent_nodes_covered_by_backup_method(kg: str):
 def estimate_percent_nodes_covered_by_ultrafast_ngd(kg: str):
     print(f"Estimating the percent of {kg} nodes covered by the local NGD system..")
     rtxc = RTXConfiguration()
-    rtxc.neo4j_kg2 = "KG2pre"
     #curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
     curie_to_pmids_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
     curie_to_pmid_db = SqliteDict(f"{curie_to_pmids_path}{os.path.sep}{rtxc.curie_to_pmids_path.split('/')[-1]}")
@@ -175,7 +174,6 @@ def report_on_curies_missed_by_local_ngd(kg: str):
     synonymizer = NodeSynonymizer()
     #curie_to_pmid_db = SqliteDict(f"./curie_to_pmids.sqlite")
     rtxc = RTXConfiguration()
-    rtxc.neo4j_kg2 = "KG2pre"
     curie_to_pmids_path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
     curie_to_pmid_db = SqliteDict(f"{curie_to_pmids_path}{os.path.sep}{rtxc.curie_to_pmids_path.sep('/')[-1]}")
     batch_size = 50
