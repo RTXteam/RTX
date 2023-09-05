@@ -93,6 +93,7 @@ function main() {
     var syn = getQueryVariable("term") || null;
     var rec = getQueryVariable("recent") || null;
     var pks = getQueryVariable("latest") || null;
+    var sys = getQueryVariable("systest") || null;
     var sai = getQueryVariable("smartapi") || getQueryVariable("smartAPI") || null;
 
     var response_id = getQueryVariable("r") || getQueryVariable("id") || null;
@@ -135,6 +136,10 @@ function main() {
     else if (sai) {
 	tab = "kpinfo";
 	retrieveKPInfo();
+    }
+    else if (sys) {
+	tab = "systest";
+	retrieveSysTestResults();
     }
     openSection(tab);
     dragElement(document.getElementById('nodeeditor'));
@@ -2395,8 +2400,7 @@ function process_log(logarr) {
 	span.setAttribute('onclick', 'calc_timespan(this);');
 
 	if (!starttime)
-	    starttime = Date.parse(msg.timestamp);
-	span.dataset.timestamp = Date.parse(msg.timestamp);
+	    starttime = span.dataset.timestamp;
 
         if (msg.level == "DEBUG") { span.style.display = 'none'; }
 
@@ -5533,7 +5537,7 @@ function retrieveRecentResps() {
 
     var srcpks = document.getElementById("wherefromlatest").value;
 
-    var apiurl = providers["ARAX"].url + "/status?mode=recent_pks&last_n_hours="+numpks+"&authorization="+srcpks
+    var apiurl = providers["ARAX"].url + "/status?mode=recent_pks&last_n_hours="+numpks+"&authorization="+srcpks;
 
     fetch(apiurl)
         .then(response => {
@@ -6377,6 +6381,281 @@ function retrieveKPInfo() {
 	    console.error(error);
 	});
 
+}
+
+
+function retrieveSysTestResults() {
+    var systest_node = document.getElementById("systest_container");
+    systest_node.innerHTML = '';
+    systest_node.className = '';
+
+    var wspan = document.getElementById("systest_wait");
+    wspan.innerHTML = '';
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginRight = "10px";
+    wspan.appendChild(wait);
+    wspan.appendChild(document.createTextNode('Loading...'));
+
+    //var pk = document.getElementById("pktest").value || null;
+    //document.getElementById("pktest").value = pk;
+
+    //var srcpks = document.getElementById("wherefromtest").value; // prod/test/ci/etc...LATER
+
+    var apiurl = 'https://utility.ci.transltr.io/arstest/api/latest_report';
+
+    fetch(apiurl)
+        .then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Unable to fetch ARS Translator system test results from '+apiurl);
+	})
+        .then(data => {
+	    document.title = "ARAX-UI [Most recent ARS Translator system test results]";
+            wspan.innerHTML = '';
+	    systest_node.innerHTML = '';
+
+	    for (var test in data) {
+		var div = document.createElement("div");
+		div.className = "statushead";
+		div.appendChild(document.createTextNode("Viewing: "+ test));
+
+		systest_node.appendChild(div);
+
+		div = document.createElement("div");
+		div.className = "status";
+		systest_node.appendChild(div);
+
+		if (test.startsWith("Load"))
+		    div.appendChild(generateLoadTimeTestResults(data[test]));
+		else
+		    div.appendChild(generateSmokeTestResults(data[test]));
+
+		div.appendChild(document.createElement("br"));
+	    }
+
+	    systest_node.appendChild(document.createElement("br"));
+	    systest_node.appendChild(document.createElement("br"));
+        })
+        .catch(error => {
+            wspan.innerHTML = '';
+	    systest_node.className = "error";
+	    systest_node.innerHTML = "<br>" + error + "<br><br>";
+            console.error(error);
+	});
+
+}
+
+
+function generateSmokeTestResults(smoketestdata) {
+    var all_agents = {};
+    for (var queryname in smoketestdata['data']) {
+	for (var type of ['allow','deny'])
+	    if (smoketestdata['data'][queryname][type])
+		for (var mol in smoketestdata['data'][queryname][type])
+		    for (var obj of smoketestdata['data'][queryname][type][mol])
+			all_agents[obj[0]] = 1;
+    }
+
+    var table = document.createElement("table");
+    table.className = 'sumtab';
+
+    for (var queryname in smoketestdata['data']) {
+	var tr = document.createElement("tr");
+        tr.style.background = "initial";
+	var td = document.createElement("th");
+        td.colSpan = '3';
+        td.appendChild(document.createElement("br"));
+
+	var link = document.createElement("a");
+	link.title = 'view this response';
+        link.style.fontFamily = "monospace";
+	link.style.textTransform = 'initial';
+	link.style.cursor = "pointer";
+	link.setAttribute('onclick', 'pasteId("'+smoketestdata['data'][queryname]['parent_pk']+'");sendId(false);selectInput("qid");');
+	link.appendChild(document.createTextNode(queryname));
+	td.appendChild(link);
+	tr.appendChild(td);
+
+	for (var agent of Object.keys(all_agents).sort()) {
+	    td = document.createElement("th");
+	    td.style.minWidth = '80px';
+            td.appendChild(document.createElement("br"));
+            td.appendChild(document.createTextNode(agent.replace(/ara-|kp-/,"")));
+	    tr.appendChild(td);
+	}
+        table.appendChild(tr);
+
+	var num = 0;
+        for (var type of ['allow','deny']) {
+            for (var mol in smoketestdata['data'][queryname][type]) {
+		num++;
+		entities[mol] = {};
+                entities[mol].checkHTML = '--';
+
+		tr = document.createElement("tr");
+		tr.className = 'hoverable';
+
+		td = document.createElement("td");
+		td.innerText = num+'.';
+		tr.appendChild(td);
+
+		td = document.createElement("td");
+		td.id = queryname+"_entityname_"+mol
+		td.title = mol;
+		td.innerText = mol;
+		tr.appendChild(td);
+
+		td = document.createElement("td");
+		td.className = type == 'allow' ? 'numnew':'p1 qprob cytograph_controls';
+		td.innerText = type;
+		tr.appendChild(td);
+
+		for (var agent of Object.keys(all_agents).sort()) {
+		    td = document.createElement("td");
+		    td.style.borderLeft = "1px solid black";
+		    td.style.textAlign = 'right';
+
+		    var done = false;
+		    for (var obj of smoketestdata['data'][queryname][type][mol]) {
+			if (obj[0] == agent) {
+			    if (done)
+				//td.innerText += "*";
+				td.appendChild(document.createTextNode("*"));
+			    else {
+				//td.innerText = Number(obj[1]).toFixed(2);
+				var cnf = Number(obj[1]).toFixed(2);
+				var pcl = (cnf>=90) ? "p9" : (cnf>=70) ? "p7" : (cnf>=50) ? "p5" : (cnf>=30) ? "p3" : (cnf>0.0) ? "p1" : "p0";
+
+				var span = document.createElement("span");
+				span.className = pcl+' qprob cytograph_controls';
+				span.appendChild(document.createTextNode(cnf));
+				td.appendChild(span);
+
+				td.title = obj[1];
+				done = true;
+			    }
+			}
+		    }
+		    tr.appendChild(td);
+		}
+
+		table.appendChild(tr);
+	    }
+	}
+
+    }
+    check_entities_batch(99);
+    return table;
+}
+
+function generateLoadTimeTestResults(loadtestdata) {
+    var all_agents = {};
+    for (var obj of loadtestdata['data']) {
+	if (obj['stragglers'])
+	    for (var actor of obj['stragglers'])
+		all_agents[actor] = 1;
+
+	var queryname = Object.keys(obj).filter(i => { return i.endsWith('json') });
+	for (var actor in obj[queryname]['actors'])
+            all_agents[actor] = 1;
+    }
+
+    var table = document.createElement("table");
+    table.className = 'sumtab';
+
+    var tr = document.createElement("tr");
+    var td = document.createElement("th");
+    tr.appendChild(td);
+    //td = document.createElement("th");
+    //td.innerText = 'PK';
+    //tr.appendChild(td);
+    td = document.createElement("th");
+    td.innerText = 'Query';
+    tr.appendChild(td);
+    td = document.createElement("th");
+    td.innerText = 'Time';
+    tr.appendChild(td);
+
+    for (var agent of Object.keys(all_agents).sort()) {
+	td = document.createElement("th");
+	td.colSpan = '2';
+	td.style.minWidth = '80px';
+	td.innerText = agent.replace(/ara-|kp-/,"");
+	tr.appendChild(td);
+    }
+    table.appendChild(tr);
+
+    var num = 0;
+    for (var obj of loadtestdata['data']) {
+        num++;
+	tr = document.createElement("tr");
+        tr.className = 'hoverable';
+
+	td = document.createElement("td");
+        td.innerText = num+'.';
+	tr.appendChild(td);
+
+	var queryname = Object.keys(obj).filter(i => { return i.endsWith('json') }); // meh
+
+        td = document.createElement("td");
+	var link = document.createElement("a");
+	link.title = 'view this response';
+	link.style.cursor = "pointer";
+	link.style.fontFamily = "monospace";
+	link.setAttribute('onclick', 'pasteId("'+obj['parent_pk']+'");sendId(false);selectInput("qid");');
+	link.appendChild(document.createTextNode(queryname));
+	td.appendChild(link);
+	tr.appendChild(td);
+
+
+        td = document.createElement("td");
+	td.style.fontWeight = 'bold';
+        td.style.textAlign = 'right';
+	td.innerText = Number(obj["completion_time"]).toFixed(1);
+	td.title = obj["completion_time"] + " seconds";
+	tr.appendChild(td);
+
+	for (var agent of Object.keys(all_agents).sort()) {
+	    td = document.createElement("td");
+            td.style.borderLeft = "1px solid black";
+	    td.style.textAlign = 'right';
+	    var span = document.createElement("span");
+
+            if (obj[queryname]['actors'][agent]) {
+		if (obj[queryname]['actors'][agent][0] == "Done") {
+		    span.innerHTML = '&check;';
+		    span.className = 'explevel p9';
+		}
+                else if (obj[queryname]['actors'][agent][0] == "Error") {
+                    span.innerHTML = '&cross;';
+		    span.className = 'explevel p1';
+		}
+                else {
+		    span.innerText = obj[queryname]['actors'][agent][0];
+		}
+                td.appendChild(span);
+		td.title = obj[queryname]['actors'][agent][0];
+	    }
+            else
+		td.innerText = 'n/a';
+	    tr.appendChild(td);
+
+            td = document.createElement("td");
+	    td.style.textAlign = 'right';
+            if (obj[queryname]['actors'][agent] && obj[queryname]['actors'][agent][1])
+		td.innerText = Number(obj[queryname]['actors'][agent][1]).toFixed(3);
+            else if (obj[queryname]['actors'][agent] && obj[queryname]['actors'][agent][0] == "Error")
+		td.innerText = 'E';
+	    else
+		td.innerText = 'n/a';
+	    td.title = (obj[queryname]['actors'][agent][2] ? obj[queryname]['actors'][agent][2] : "No") + " results";
+
+	    tr.appendChild(td);
+	}
+
+	table.appendChild(tr);
+    }
+
+    return table;
 }
 
 
