@@ -46,13 +46,16 @@ from RTXConfiguration import RTXConfiguration
 
 def run_neo4j_query(cypher, kg_name, data_type):
     rtx_config = RTXConfiguration()
-    rtx_config.neo4j_kg2 = kg_name
-    driver = GraphDatabase.driver(rtx_config.neo4j_bolt, auth=(rtx_config.neo4j_username, rtx_config.neo4j_password))
+    kg2_neo4j_info = rtx_config.get_neo4j_info(kg_name)
+    driver = GraphDatabase.driver(kg2_neo4j_info['bolt'],
+                                  auth=(kg2_neo4j_info['username'],
+                                        kg2_neo4j_info['password']))
     with driver.session() as session:
         start = time.time()
         print(f"Grabbing {data_type} from {kg_name} neo4j...")
         results = session.run(cypher).data()
-        print(f"...done. Query took {round((time.time() - start) / 60, 2)} minutes.")
+        elapsed_time = time.time() - start
+        print(f"...done. Query took {round(elapsed_time / 60, 2)} minutes.")
     driver.close()
     return results
 
