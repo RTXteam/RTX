@@ -13,7 +13,6 @@
       "log_model": "/translator/data/orangeboard/databases/KG2.7.6/LogModel_v1.0_KG2.7.6.pkl",
       "rel_max": "/translator/data/orangeboard/databases/KG2.7.6/rel_max_v1.0_KG2.7.6.emb.gz",
       "map_txt": "/translator/data/orangeboard/databases/KG2.7.6/map_v1.0_KG2.7.6.txt",
-      "test_txt": "/translator/data/orangeboard/databases/KG2.7.6/test_v1.0_KG2.7.6.txt",
       "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.8.0.1/chemical_gene_embeddings_v1.0.KG2.8.0.1.npz",
       "xcrg_increase_model": "/translator/data/orangeboard/databases/KG2.8.0.1/xcrg_increase_model_v1.0.KG2.8.0.1.pt",
       "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.8.0.1/xcrg_decrease_model_v1.0.KG2.8.0.1.pt"
