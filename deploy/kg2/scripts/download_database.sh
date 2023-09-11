@@ -124,6 +124,18 @@ do
       printf 'Downloading from "%s" to "%s"...\n' "$file2download" "$file2download_localpath"
       sftp -i $sftp_key -o StrictHostKeyChecking=no -p $file2download $file2download_localpath
       printf '\n'
+
+      file1="$sftp_url${temp/.md5/}"
+      file2="${file2download/$sftp_url/}"
+      if cmp -s "$file1" "$file2"; then
+          printf 'The file "%s" is the same as "%s"\n' "$file1" "$file2"
+      else
+          printf 'The file "%s" is different from "%s"\n' "$file1" "$file2"
+          printf 'Downloading from "%s" to "%s"...\n' "$file2download" "$file2download_localpath"
+          sftp -i $sftp_key -o StrictHostKeyChecking=no -p $file2download $file2download_localpath
+          printf '\n'
+      fi
+
     fi
 done
 
