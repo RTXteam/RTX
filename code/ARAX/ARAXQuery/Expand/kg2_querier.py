@@ -7,6 +7,8 @@ from collections import defaultdict
 from typing import Dict, Tuple, Union, Set
 import requests
 import traceback
+import urllib3
+import json
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
@@ -184,21 +186,26 @@ class KG2Querier:
         # Then send the actual query
         log.debug(f"Sending query to {rtxc.plover_url}")
         try:
-            response = requests.post(f"{rtxc.plover_url}/query",
-                                     json=dict_qg,
-                                     timeout=60,
-                                     headers={'accept': 'application/json'})
+            response = urllib3.PoolManager(timeout=60).request("POST",
+                                                               f"{rtxc.plover_url}/query",
+                                                               body=json.dumps(dict_qg),
+                                                               headers={'accept': 'application/json',
+                                                                        'content-type': 'application/json'})
+#            response = requests.post(f"{rtxc.plover_url}/query",
+#                                     json=dict_qg,
+#                                     timeout=60,
+#                                     headers={'accept': 'application/json'})
         except Exception as e:
             log.error(f"Error querying PloverDB: {e} "
                       f"TRACE {traceback.format_exc()}")
             raise e
-        if response.status_code == 200:
-            log.debug(f"Plover returned status code {response.status_code}")
-            return response.json(), response.status_code
+        if response.status == 200:
+            log.debug(f"Plover returned status code {response.status}")
+            return json.loads(response.data), response.status
         else:
-            log.warning(f"Plover returned status code {response.status_code}."
-                        f" Response was: {response.text}")
-            return dict(), response.status_code
+            log.warning(f"Plover returned status code {response.status}."
+                        f" Response was: {response.data}")
+            return dict(), response.status
 
     def _load_plover_answer_into_object_model(self, plover_answer: Dict[str, Dict[str, Union[set, dict]]],
                                               log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
