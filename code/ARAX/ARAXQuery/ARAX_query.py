@@ -50,6 +50,8 @@ from openapi_server.models.message import Message
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool/QuestionAnswering")
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
 
