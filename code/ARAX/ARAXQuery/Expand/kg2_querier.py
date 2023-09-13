@@ -184,7 +184,7 @@ class KG2Querier:
         # Then send the actual query
         log.debug(f"Sending query to {rtxc.plover_url}")
         try:
-            response = requests.post(f"{rtxc.plover_url}/query/",
+            response = requests.post(f"{rtxc.plover_url}/query",
                                      json=dict_qg,
                                      timeout=60,
                                      headers={'accept': 'application/json'})
