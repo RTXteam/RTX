@@ -164,6 +164,8 @@ class ARAXQueryTracker:
         try:
             self.session.close()
             self.engine.dispose()
+            timestamp = str(datetime.now().isoformat())
+            eprint(f"{timestamp}: DEBUG: ARAXQueryTracker disconnecting session")
         except:
             eprint("ERROR: [ARAX_query_tracker.disconnect] Attempt to close and dispose of session failed")
 
