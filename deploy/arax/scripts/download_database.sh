@@ -131,8 +131,9 @@ do
       if cmp -s "$file2download" "$file2download_localpath"; then
           printf 'The file "%s" is the same as "%s"\n' "$file1" "$file2"
       else
-          printf 'Download has failed and the file "%s" is different from "%s"\n' "$file1" "$file2"
-          printf 'Downloading from "%s" to "%s"...\n' "$file2download" "$file2download_localpath"
+          printf 'The file "%s" is different from "%s"\n' "$file1" "$file2"
+          printf 'The 1st download failed' 
+          printf 'The 2nd try, downloading from "%s" to "%s"...\n' "$file2download" "$file2download_localpath"
           sftp -i $sftp_key -o StrictHostKeyChecking=no -p $file2download $file2download_localpath
           printf '\n'
       fi
