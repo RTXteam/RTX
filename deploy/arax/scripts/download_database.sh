@@ -27,7 +27,7 @@ echo "
       ################################################################################
       #                                                                              #
       #                                                                              #
-      #                      ARAX Database Download Utility                          #
+      #                      KG2 Database Download Utility                           #
       #                                                                              #
       #                                                                              #
       ################################################################################"
@@ -124,6 +124,20 @@ do
       printf 'Downloading from "%s" to "%s"...\n' "$file2download" "$file2download_localpath"
       sftp -i $sftp_key -o StrictHostKeyChecking=no -p $file2download $file2download_localpath
       printf '\n'
+
+      # comparing the downloaded file with the original file and retry if there are not the same
+      #file1="$sftp_url${temp/.md5/}"
+      #file2="${file2download/$sftp_url/}"
+      if cmp -s "$file2download" "$file2download_localpath"; then
+          printf 'The file "%s" is the same as "%s"\n' "$file1" "$file2"
+      else
+          printf 'The file "%s" is different from "%s"\n' "$file1" "$file2"
+          printf 'The 1st download failed' 
+          printf 'The 2nd try, downloading from "%s" to "%s"...\n' "$file2download" "$file2download_localpath"
+          sftp -i $sftp_key -o StrictHostKeyChecking=no -p $file2download $file2download_localpath
+          printf '\n'
+      fi
+
     fi
 done
 
