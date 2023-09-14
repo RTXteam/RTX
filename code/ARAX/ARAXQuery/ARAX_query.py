@@ -62,6 +62,7 @@ null_context_manager = contextlib.nullcontext()
 
 query_tracker_reset = ARAXQueryTracker()
 query_tracker_reset.clear_unfinished_entries()
+del query_tracker_reset
 
 class response_locking(ARAXResponse):
     def __init__(self, lock: threading.Lock):
