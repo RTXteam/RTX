@@ -9,7 +9,6 @@ import os
 import sys
 import signal
 import atexit
-import threading
 import traceback
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -83,18 +82,25 @@ def main():
     except Exception as e:
         logging.error(traceback.format_exc())
         raise e
+    del dbmanager
 
-    # Start a thread that will perform basic background tasks independently
-    # of traffic.  It should never return, forever looping in the background.
-    bg_tasker = ARAXBackgroundTasker()
-    background_task_thread = threading.Thread(target=bg_tasker.run_tasks,
-                                              args=(local_config,))
-    threading_lock = threading.Lock()
-    local_config['threading_lock'] = threading_lock
-    background_task_thread.start()
+    pid = os.fork()
+    if pid == 0:  # I am the child process
+        sys.stdout = open('/dev/null', 'w')
+        sys.stdin = open('/dev/null', 'w')
 
-    # Start the service
-    app.run(port=local_config['port'], threaded=True)
+        # Start a thread that will perform basic background tasks independently
+        # of traffic.  It should never return, forever looping in the
+        # background.
+        logging.info("Starting background tasker in a child process")
+        ARAXBackgroundTasker().run_tasks(local_config)
+    elif pid > 0:  # I am the parent process
+        # Start the service
+        logging.info("Starting flask application in the parent process")
+        app.run(port=local_config['port'], threaded=True)
+    else:
+        logging.error("[__main__]: fork() unsuccessful")
+        assert False, "****** fork() unsuccessful in __main__"
 
 
 if __name__ == '__main__':
