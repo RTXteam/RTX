@@ -215,7 +215,6 @@ class ARAXQuery:
 
         self.response = ARAXResponse()
         response = self.response
-        print("in query_return_message - printing", file=sys.stderr)
         response.debug("in query_return_message")
 
         self.query(query, mode=mode, origin='API')
