@@ -87,15 +87,13 @@ def main():
     pid = os.fork()
     if pid == 0:  # I am the child process
         sys.stdout = open('/dev/null', 'w')
-        sys.stdin = open('/dev/null', 'w')
+        sys.stdin = open('/dev/null', 'r')
 
-        # Start a thread that will perform basic background tasks independently
-        # of traffic.  It should never return, forever looping in the
-        # background.
         logging.info("Starting background tasker in a child process")
         ARAXBackgroundTasker().run_tasks(local_config)
     elif pid > 0:  # I am the parent process
         # Start the service
+        logging.info(f"Background tasker is running in child process {pid}")
         logging.info("Starting flask application in the parent process")
         app.run(port=local_config['port'], threaded=True)
     else:
