@@ -973,7 +973,7 @@ class ARAXQuery:
                 response.warning(f"Unable to make a connection to callback URL {callback} with error {error}")
             send_attempts += 1
 
-        if post_succeeded == False:
+        if not post_succeeded:
             response.error(f"Unable to send the Response to callback URL {callback} after {send_attempts} tries. Work is lost", error_code="UnreachableCallback")
 
         self.track_query_finish()

@@ -7,13 +7,13 @@ from collections import defaultdict
 from typing import Dict, Tuple, Union, Set
 import requests
 import traceback
+import json
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
-# sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # ARAX directory
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
@@ -74,7 +74,10 @@ class KG2Querier:
         for curie_batch in curie_batches:
             log.debug(f"Sending batch {batch_num} to Plover (has {len(curie_batch)} input curies)")
             query_graph.nodes[input_qnode_key].ids = curie_batch
-            plover_answer, response_status = self._answer_query_using_plover(query_graph, log, self.plover_url)
+            plover_answer, response_status = \
+                KG2Querier._answer_query_using_plover(query_graph,
+                                                      log,
+                                                      self.plover_url)
             if response_status == 200:
                 filtered_plover_answer = eu.filter_response_domain_range_exclusion(plover_answer, query_graph, log)
                 batch_kg = self._load_plover_answer_into_object_model(filtered_plover_answer, log)
@@ -113,7 +116,11 @@ class KG2Querier:
             qnode.categories = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         # Send request to plover
-        plover_answer, response_status = self._answer_query_using_plover(single_node_qg, log, self.plover_url)
+        plover_answer, \
+            response_status = \
+            KG2Querier._answer_query_using_plover(single_node_qg,
+                                                  log,
+                                                  self.plover_url)
         if response_status == 200:
             final_kg = self._load_plover_answer_into_object_model(plover_answer, log)
         else:
@@ -190,13 +197,16 @@ class KG2Querier:
             log.error(f"Error querying PloverDB: {e} "
                       f"TRACE {traceback.format_exc()}")
             raise e
-        if response.status_code == 200:
-            log.debug(f"Plover returned status code {response.status_code}")
-            return response.json(), response.status_code
+        status_code = response.status_code
+        response_text = response.text
+        del response
+        if status_code == 200:
+            log.debug(f"Plover returned status code {status_code}")
+            return json.loads(response_text), status_code
         else:
-            log.warning(f"Plover returned status code {response.status_code}."
-                        f" Response was: {response.text}")
-            return dict(), response.status_code
+            log.warning(f"Plover returned status code {status_code}."
+                        f" Response was: {response_text}")
+            return dict(), status_code
 
     def _load_plover_answer_into_object_model(self, plover_answer: Dict[str, Dict[str, Union[set, dict]]],
                                               log: ARAXResponse) -> QGOrganizedKnowledgeGraph:

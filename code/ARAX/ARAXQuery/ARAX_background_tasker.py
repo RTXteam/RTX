@@ -16,6 +16,8 @@ from ARAX_query_tracker import ARAXQueryTracker
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand")
 from kp_info_cacher import KPInfoCacher
 
+FREQ_KP_INFO_CACHER_SEC = 3600
+FREQ_CHECK_ONGOING_SEC = 60
 
 class ARAXBackgroundTasker:
 
@@ -124,15 +126,10 @@ class ARAXBackgroundTasker:
                     exception_type, exception_value, exception_traceback = sys.exc_info()
                     eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: refresh_kp_info_caches() failed: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}")
             kp_info_cacher_counter += 1
-            if kp_info_cacher_counter > ( 6 * 10 ):
+            if kp_info_cacher_counter * FREQ_CHECK_ONGOING_SEC > \
+               FREQ_KP_INFO_CACHER_SEC:
                 kp_info_cacher_counter = 0
 
-            #### Check ongoing queries
-            #eprint(f"{timestamp}: INFO: ARAXBackgroundTasker initiating query_tracker.check_ongoing_queries")
-            # if 'threading_lock' in config and config['threading_lock'] is not None:
-            #     with config['threading_lock']:
-            #         ongoing_queries_by_remote_address = query_tracker.check_ongoing_queries()
-            # else:
             ongoing_queries_by_remote_address = query_tracker.check_ongoing_queries()
             n_ongoing_queries = 0
             n_clients = 0
@@ -144,7 +141,7 @@ class ARAXBackgroundTasker:
 
             timestamp = str(datetime.datetime.now().isoformat())
             eprint(f"{timestamp}: INFO: ARAXBackgroundTasker status: waiting. Current load is {load_tuple}, n_clients={n_clients}, n_ongoing_queries={n_ongoing_queries}")
-            time.sleep(60)
+            time.sleep(FREQ_CHECK_ONGOING_SEC)
 
 
 
