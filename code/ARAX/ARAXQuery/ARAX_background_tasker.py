@@ -85,11 +85,14 @@ class ARAXBackgroundTasker:
                         eprint(f"ERROR: Unable to delete file with error {error}")
 
         if file_counter != 1 or link_counter != 1:
-            eprint(f"ERROR: NodeSynonymizer state is weird. Running the database manager")
-            try:
-                subprocess.check_call( [ 'python3', node_synonymizer_path + "/../ARAXQuery/ARAX_database_manager.py" ] )
-            except Exception as error:
-                eprint(f"ERROR: Attempt to run database manager failed with {error}")
+            eprint("ERROR: NodeSynonymizer state is weird. "
+                   f"file_counter: {file_counter} "
+                   f"link_counter: {link_counter} "
+                   "Recommend running the database_manager and restarting")
+            # try:
+            #     subprocess.check_call( [ 'python3', node_synonymizer_path + "/../ARAXQuery/ARAX_database_manager.py" ] )
+            # except Exception as error:
+            #     eprint(f"ERROR: Attempt to run database manager failed with {error}")
 
 
         #### Check in on the databases directory
@@ -128,24 +131,20 @@ class ARAXBackgroundTasker:
 
             #### Check ongoing queries
             #eprint(f"{timestamp}: INFO: ARAXBackgroundTasker initiating query_tracker.check_ongoing_queries")
-            timestamp = str(datetime.datetime.now().isoformat())
-            if 'threading_lock' in config and config['threading_lock'] is not None:
-                with config['threading_lock']:
-                    ongoing_queries_by_remote_address = query_tracker.check_ongoing_queries()
-            else:
-                ongoing_queries_by_remote_address = query_tracker.check_ongoing_queries()
+            # if 'threading_lock' in config and config['threading_lock'] is not None:
+            #     with config['threading_lock']:
+            #         ongoing_queries_by_remote_address = query_tracker.check_ongoing_queries()
+            # else:
+            ongoing_queries_by_remote_address = query_tracker.check_ongoing_queries()
             n_ongoing_queries = 0
             n_clients = 0
-            for client,n_queries in ongoing_queries_by_remote_address.items():
+            for client, n_queries in ongoing_queries_by_remote_address.items():
                 n_clients += 1
                 n_ongoing_queries += n_queries
 
-
-
-
-
             load_tuple = psutil.getloadavg()
 
+            timestamp = str(datetime.datetime.now().isoformat())
             eprint(f"{timestamp}: INFO: ARAXBackgroundTasker status: waiting. Current load is {load_tuple}, n_clients={n_clients}, n_ongoing_queries={n_ongoing_queries}")
             time.sleep(10)
 

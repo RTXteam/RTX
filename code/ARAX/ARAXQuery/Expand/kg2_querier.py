@@ -13,8 +13,7 @@ import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # ARAX directory
-from biolink_helper import BiolinkHelper
+# sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # ARAX directory
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -30,11 +29,11 @@ class KG2Querier:
 
     def __init__(self, response_object: ARAXResponse):
         self.response = response_object
-        self.biolink_helper = BiolinkHelper()
         self.kg2_infores_curie = "infores:rtx-kg2"
         self.max_allowed_edges = 1000000
         self.max_edges_per_input_curie = 1000
         self.curie_batch_size = 100
+        self.plover_url = RTXConfiguration().plover_url
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """
@@ -77,7 +76,7 @@ class KG2Querier:
         for curie_batch in curie_batches:
             log.debug(f"Sending batch {batch_num} to Plover (has {len(curie_batch)} input curies)")
             query_graph.nodes[input_qnode_key].ids = curie_batch
-            plover_answer, response_status = self._answer_query_using_plover(query_graph, log)
+            plover_answer, response_status = self._answer_query_using_plover(query_graph, log, self.plover_url)
             if response_status == 200:
                 filtered_plover_answer = eu.filter_response_domain_range_exclusion(plover_answer, query_graph, log)
                 batch_kg = self._load_plover_answer_into_object_model(filtered_plover_answer, log)
@@ -116,7 +115,7 @@ class KG2Querier:
             qnode.categories = None  # Important to clear this to avoid discrepancies in types for particular concepts
 
         # Send request to plover
-        plover_answer, response_status = self._answer_query_using_plover(single_node_qg, log)
+        plover_answer, response_status = self._answer_query_using_plover(single_node_qg, log, self.plover_url)
         if response_status == 200:
             final_kg = self._load_plover_answer_into_object_model(plover_answer, log)
         else:
@@ -170,8 +169,9 @@ class KG2Querier:
         return kg
 
     @staticmethod
-    def _answer_query_using_plover(qg: QueryGraph, log: ARAXResponse) -> Tuple[Dict[str, Dict[str, Union[set, dict]]], int]:
-        rtxc = RTXConfiguration()
+    def _answer_query_using_plover(qg: QueryGraph,
+                                   log: ARAXResponse,
+                                   url: str) -> Tuple[Dict[str, Dict[str, Union[set, dict]]], int]:
         # First prep the query graph (requires some minor additions for Plover)
         dict_qg = qg.to_dict()
         dict_qg["include_metadata"] = True  # Ask plover to return node/edge objects (not just IDs)
@@ -182,9 +182,9 @@ class KG2Querier:
                 if "allow_subclasses" not in qnode or qnode["allow_subclasses"] is None:
                     qnode["allow_subclasses"] = True
         # Then send the actual query
-        log.debug(f"Sending query to {rtxc.plover_url}")
+        log.debug(f"Sending query to {url}")
         try:
-            response = requests.post(f"{rtxc.plover_url}/query",
+            response = requests.post(f"{url}/query",
                                      json=dict_qg,
                                      timeout=60,
                                      headers={'accept': 'application/json'})
