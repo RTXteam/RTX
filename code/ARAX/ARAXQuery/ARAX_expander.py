@@ -811,7 +811,7 @@ class ARAXExpander:
                      user_specified_kp: bool,
                      kp_timeout: Optional[int],
                      force_local: bool,
-                     log: ARAXResponse
+                     log: ARAXResponse,
                      url: str) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider (for now only KG2 is supported)
         log.debug(f"Expanding node {qnode_key} using {kps_to_use}")
