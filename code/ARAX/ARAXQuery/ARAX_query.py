@@ -60,9 +60,6 @@ ARAXResponse.output = 'STDERR'
 
 null_context_manager = contextlib.nullcontext()
 
-query_tracker_reset = ARAXQueryTracker()
-query_tracker_reset.clear_unfinished_entries()
-del query_tracker_reset
 
 class response_locking(ARAXResponse):
     def __init__(self, lock: threading.Lock):
@@ -89,6 +86,12 @@ class ARAXQuery:
         print("[asynchronous_query]: " + repr(e), file=sys.stderr)
         with self.lock if self.lock is not None else null_context_manager:
             self.response.error("ARAX ran out of memory during query processing; no results will be returned for this query")
+
+    @staticmethod
+    def query_tracker_reset():
+        query_tracker_reset = ARAXQueryTracker()
+        query_tracker_reset.clear_unfinished_entries()
+        del query_tracker_reset
 
 
     def query_return_stream(self, query, mode='ARAX'):
