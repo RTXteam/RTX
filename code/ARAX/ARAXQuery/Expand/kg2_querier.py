@@ -14,8 +14,6 @@ from expand_utilities import QGOrganizedKnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 # sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # ARAX directory
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")  # code directory
-from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
@@ -27,13 +25,13 @@ from openapi_server.models.retrieval_source import RetrievalSource
 
 class KG2Querier:
 
-    def __init__(self, response_object: ARAXResponse):
+    def __init__(self, response_object: ARAXResponse, plover_url: str):
         self.response = response_object
         self.kg2_infores_curie = "infores:rtx-kg2"
         self.max_allowed_edges = 1000000
         self.max_edges_per_input_curie = 1000
         self.curie_batch_size = 100
-        self.plover_url = RTXConfiguration().plover_url
+        self.plover_url = plover_url
 
     def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         """

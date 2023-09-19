@@ -53,6 +53,7 @@ class ARAXExpander:
     def __init__(self):
         self.logger = logging.getLogger('log')
         self.bh = BiolinkHelper()
+        self.rtxc = RTXConfiguration()
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
         self.supported_qnode_attribute_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
         self.supported_qedge_attribute_constraints = {"knowledge_source": {"==": "*"},
@@ -777,7 +778,7 @@ class ARAXExpander:
         log.debug(f"Expanding {qedge_key} by querying Plover directly")
         answer_kg = QGOrganizedKnowledgeGraph()
 
-        kg2_querier = KG2Querier(log)
+        kg2_querier = KG2Querier(log, self.rtxc.plover_url)
         try:
             answer_kg = kg2_querier.answer_one_hop_query(one_hop_qg)
         except Exception:
