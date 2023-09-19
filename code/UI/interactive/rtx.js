@@ -6410,7 +6410,7 @@ function retrieveSysTestResults() {
 	})
         .then(data => {
 	    document.title = "ARAX-UI [Most recent ARS Translator system test results]";
-            wspan.innerHTML = '';
+            wspan.innerHTML = 'Report source: '+apiurl;
 	    systest_node.innerHTML = '';
 
 	    for (var test in data) {
@@ -6451,8 +6451,8 @@ function generateSmokeTestResults(smoketestdata) {
 	for (var type of ['allow','deny'])
 	    if (smoketestdata['data'][queryname][type])
 		for (var mol in smoketestdata['data'][queryname][type])
-		    for (var obj of smoketestdata['data'][queryname][type][mol])
-			all_agents[obj[0]] = 1;
+		    for (var ara in smoketestdata['data'][queryname][type][mol])
+			all_agents[ara] = 1;
     }
 
     var table = document.createElement("table");
@@ -6515,22 +6515,24 @@ function generateSmokeTestResults(smoketestdata) {
 		    td.style.textAlign = 'right';
 
 		    var done = false;
-		    for (var obj of smoketestdata['data'][queryname][type][mol]) {
-			if (obj[0] == agent) {
+		    for (var ara in smoketestdata['data'][queryname][type][mol]) {
+			if (ara == agent) {
 			    if (done)
 				//td.innerText += "*";
 				td.appendChild(document.createTextNode("*"));
 			    else {
+				var obj = smoketestdata['data'][queryname][type][mol][ara];
 				//td.innerText = Number(obj[1]).toFixed(2);
-				var cnf = Number(obj[1]).toFixed(2);
-				var pcl = (cnf>=90) ? "p9" : (cnf>=70) ? "p7" : (cnf>=50) ? "p5" : (cnf>=30) ? "p3" : (cnf>0.0) ? "p1" : "p0";
+				var cnf = Number(obj['score']).toFixed(2);
+				//var pcl = (cnf>=90) ? "p9" : (cnf>=70) ? "p7" : (cnf>=50) ? "p5" : (cnf>=30) ? "p3" : (cnf>0.0) ? "p1" : "p0";
+				var pcl = obj['drug_report'] == "pass" ? "p9" : "p1";
 
 				var span = document.createElement("span");
 				span.className = pcl+' qprob cytograph_controls';
 				span.appendChild(document.createTextNode(cnf));
 				td.appendChild(span);
 
-				td.title = obj[1];
+				td.title = obj['drug_report'];
 				done = true;
 			    }
 			}
@@ -6549,13 +6551,13 @@ function generateSmokeTestResults(smoketestdata) {
 
 function generateLoadTimeTestResults(loadtestdata) {
     var all_agents = {};
-    for (var obj of loadtestdata['data']) {
+    for (var q in loadtestdata['data']) {
+	var obj = loadtestdata['data'][q];
 	if (obj['stragglers'])
 	    for (var actor of obj['stragglers'])
 		all_agents[actor] = 1;
 
-	var queryname = Object.keys(obj).filter(i => { return i.endsWith('json') });
-	for (var actor in obj[queryname]['actors'])
+	for (var actor in obj['actors'])
             all_agents[actor] = 1;
     }
 
@@ -6585,7 +6587,8 @@ function generateLoadTimeTestResults(loadtestdata) {
     table.appendChild(tr);
 
     var num = 0;
-    for (var obj of loadtestdata['data']) {
+    for (var q in loadtestdata['data']) {
+        var obj = loadtestdata['data'][q];
         num++;
 	tr = document.createElement("tr");
         tr.className = 'hoverable';
@@ -6594,18 +6597,15 @@ function generateLoadTimeTestResults(loadtestdata) {
         td.innerText = num+'.';
 	tr.appendChild(td);
 
-	var queryname = Object.keys(obj).filter(i => { return i.endsWith('json') }); // meh
-
         td = document.createElement("td");
 	var link = document.createElement("a");
 	link.title = 'view this response';
 	link.style.cursor = "pointer";
 	link.style.fontFamily = "monospace";
 	link.setAttribute('onclick', 'pasteId("'+obj['parent_pk']+'");sendId(false);selectInput("qid");');
-	link.appendChild(document.createTextNode(queryname));
+	link.appendChild(document.createTextNode(q));
 	td.appendChild(link);
 	tr.appendChild(td);
-
 
         td = document.createElement("td");
 	td.style.fontWeight = 'bold';
@@ -6620,20 +6620,23 @@ function generateLoadTimeTestResults(loadtestdata) {
 	    td.style.textAlign = 'right';
 	    var span = document.createElement("span");
 
-            if (obj[queryname]['actors'][agent]) {
-		if (obj[queryname]['actors'][agent][0] == "Done") {
+            if (obj['actors'][agent]) {
+		if (obj['actors'][agent]['status'] == "Done") {
 		    span.innerHTML = '&check;';
-		    span.className = 'explevel p9';
+		    if (obj['actors'][agent]['n_results'] > 0)
+			span.className = 'explevel p9';
+		    else
+			span.className = 'explevel p0';
 		}
-                else if (obj[queryname]['actors'][agent][0] == "Error") {
+                else if (obj['actors'][agent]['status'] == "Error") {
                     span.innerHTML = '&cross;';
 		    span.className = 'explevel p1';
 		}
                 else {
-		    span.innerText = obj[queryname]['actors'][agent][0];
+		    span.innerText = obj['actors'][agent]['status'];
 		}
                 td.appendChild(span);
-		td.title = obj[queryname]['actors'][agent][0];
+		td.title = obj['actors'][agent]['status'];
 	    }
             else
 		td.innerText = 'n/a';
@@ -6641,13 +6644,13 @@ function generateLoadTimeTestResults(loadtestdata) {
 
             td = document.createElement("td");
 	    td.style.textAlign = 'right';
-            if (obj[queryname]['actors'][agent] && obj[queryname]['actors'][agent][1])
-		td.innerText = Number(obj[queryname]['actors'][agent][1]).toFixed(3);
-            else if (obj[queryname]['actors'][agent] && obj[queryname]['actors'][agent][0] == "Error")
+            if (obj['actors'][agent] && obj['actors'][agent]['completion_time'])
+		td.innerText = Number(obj['actors'][agent]['completion_time']).toFixed(3);
+            else if (obj['actors'][agent] && obj['actors'][agent]['status'] == "Error")
 		td.innerText = 'E';
 	    else
 		td.innerText = 'n/a';
-	    td.title = (obj[queryname]['actors'][agent][2] ? obj[queryname]['actors'][agent][2] : "No") + " results";
+	    td.title = (obj['actors'][agent]['n_results'] ? obj['actors'][agent]['n_results'] : "No") + " results";
 
 	    tr.appendChild(td);
 	}
