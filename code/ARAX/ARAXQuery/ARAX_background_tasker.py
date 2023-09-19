@@ -11,8 +11,6 @@ import traceback
 import pkgutil
 from importlib.metadata import version
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
-from RTXConfiguration import RTXConfiguration
 from ARAX_query_tracker import ARAXQueryTracker
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand")
@@ -25,7 +23,6 @@ class ARAXBackgroundTasker:
     def __init__(self):
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker created")
-        self.rtxConfig = RTXConfiguration()
 
 
     def run_tasks(self, config):
@@ -98,7 +95,7 @@ class ARAXBackgroundTasker:
         #### Check in on the databases directory
         node_synonymizer_path = os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer"
         files = os.listdir(node_synonymizer_path)
-        eprint("INFO: Current contents of the databases area")
+        eprint("INFO: Current contents of the databases area:")
 
         for file in files:
             if file.startswith('node_syn') and file.endswith('.sqlite'):
@@ -109,6 +106,7 @@ class ARAXBackgroundTasker:
                     eprint(f"  {resolved_path}")
                     result = subprocess.run(['ls', '-l', resolved_path], stdout=subprocess.PIPE)
                     eprint(result.stdout.decode('utf-8'))
+        eprint("INFO: End listing databases area contents")
 
 
 
@@ -146,7 +144,7 @@ class ARAXBackgroundTasker:
 
             timestamp = str(datetime.datetime.now().isoformat())
             eprint(f"{timestamp}: INFO: ARAXBackgroundTasker status: waiting. Current load is {load_tuple}, n_clients={n_clients}, n_ongoing_queries={n_ongoing_queries}")
-            time.sleep(10)
+            time.sleep(60)
 
 
 
