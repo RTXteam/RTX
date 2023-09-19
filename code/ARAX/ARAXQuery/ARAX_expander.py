@@ -174,7 +174,9 @@ class ARAXExpander:
         return parameter_info_dict
 
     def apply(self, response, input_parameters, mode: str = "ARAX"):
-        force_local = False  # Flip this to make your machine act as the KG2 'API' (do not commit! for local use only)
+        force_local = False  # Flip this to `True` in order to make your machine
+                             # act as the KG2 'API' (do not commit that edit!
+                             # `force_local = True` is for local use only)
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
