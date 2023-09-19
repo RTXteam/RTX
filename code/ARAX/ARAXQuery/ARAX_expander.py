@@ -643,8 +643,15 @@ class ARAXExpander:
         if qnode_keys_to_expand:
             kps_to_use = eu.convert_to_list(parameters["kp"]) if user_specified_kp else ["infores:rtx-kg2"]  # Only KG2 does single-node queries
             for qnode_key in qnode_keys_to_expand:
-                answer_kg = self._expand_node(qnode_key, kps_to_use, query_graph, mode, user_specified_kp, kp_timeout,
-                                              force_local, log)
+                answer_kg = self._expand_node(qnode_key,
+                                              kps_to_use,
+                                              query_graph,
+                                              mode,
+                                              user_specified_kp,
+                                              kp_timeout,
+                                              force_local,
+                                              log,
+                                              self.plover_url)
                 if log.status != 'OK':
                     return response
                 self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, query_graph, mode, log)
@@ -804,7 +811,8 @@ class ARAXExpander:
                      user_specified_kp: bool,
                      kp_timeout: Optional[int],
                      force_local: bool,
-                     log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+                     log: ARAXResponse
+                     url: str) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider (for now only KG2 is supported)
         log.debug(f"Expanding node {qnode_key} using {kps_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -819,7 +827,7 @@ class ARAXExpander:
         # Answer the query using the proper KP (only our own KP answers single-node queries for now)
         if kps_to_use == ["infores:rtx-kg2"]:
             if mode == 'RTXKG2':
-                kp_querier = KG2Querier(log)
+                kp_querier = KG2Querier(log, url)
             else:
                 kp_querier = TRAPIQuerier(response_object=log,
                                           kp_name=kps_to_use[0],
