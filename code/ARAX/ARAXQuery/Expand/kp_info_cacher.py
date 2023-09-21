@@ -71,7 +71,8 @@ class KPInfoCacher:
                 # Save the SmartAPI info to the proper cache file in a thread-safe way (utilizing a temp file)
                 with open(f"{self.smart_api_cache_path}.tmp", "wb") as smart_api_cache_temp:
                     pickle.dump(smart_api_cache_contents, smart_api_cache_temp)
-                subprocess.check_call(["mv", f"{self.smart_api_cache_path}.tmp", self.smart_api_cache_path])
+                os.rename(f"{self.smart_api_cache_path}.tmp",
+                          self.smart_api_cache_path)
             else:
                 eprint(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
                 with open(self.smart_api_cache_path, "rb") as smart_api_file:
@@ -83,14 +84,20 @@ class KPInfoCacher:
             # Save the meta map to the proper cache file in a thread-safe way (utilizing a temp file)
             with open(f"{self.meta_map_cache_path}.tmp", "wb") as meta_map_cache_temp:
                 pickle.dump(meta_map, meta_map_cache_temp)
-            subprocess.check_call(["mv", f"{self.meta_map_cache_path}.tmp", self.meta_map_cache_path])
-
+            os.rename(f"{self.meta_map_cache_path}.tmp",
+                      self.meta_map_cache_path)
             eprint(f"The process with process ID {current_pid} has FINISHED refreshing the KP info caches")
 
         except Exception as e:
-            os.remove(self.cache_refresh_pid_path)
+            try:
+                os.remove(self.cache_refresh_pid_path)
+            except Exception:
+                pass
             raise e
-        os.remove(self.cache_refresh_pid_path)
+        try:
+            os.remove(self.cache_refresh_pid_path)
+        except Exception:
+            pass
 
     def _get_kp_url_from_smartapi_registration(self, kp_smart_api_registration: dict) -> Optional[str]:
         if kp_smart_api_registration.get("servers"):
