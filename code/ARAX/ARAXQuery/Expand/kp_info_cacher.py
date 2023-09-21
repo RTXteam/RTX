@@ -25,7 +25,7 @@ sys.path.append(os.path.sep.join([*pathlist[:(rtx_index + 1)], 'code', 'ARAX', '
 from smartapi import SmartAPI
 
 
-MAX_TOTAL_WAIT_FOR_CACHE_SEC = 60.0
+MAX_TOTAL_WAIT_FOR_CACHE_SEC = 180.0
 WAIT_LOOP_SEC = 0.1
 
 class KPInfoCacher:
@@ -36,6 +36,7 @@ class KPInfoCacher:
         self.smart_api_cache_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_smart_api_{version_string}.pkl"
         self.meta_map_cache_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_meta_map_{version_string}.pkl"
         self.cache_refresh_pid_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_refresh.pid"
+
     def refresh_kp_info_caches(self):
         """
         This method is meant to be called periodically by a background task. It refreshes two caches of KP info:
@@ -118,6 +119,10 @@ class KPInfoCacher:
         else:
             return None
 
+    def both_caches_are_present(self):
+        return os.path.exists(self.smart_api_cache_path) and \
+            os.path.exists(self.meta_map_cache_path)
+
     def load_kp_info_caches(self, log: ARAXResponse):
         """
         This method is meant to be used anywhere the meta map or smart API
@@ -126,40 +131,49 @@ class KPInfoCacher:
         this method.  It ensures that caches are up to date and that they don't
         become corrupted while refreshing.
         """
-        if (not (os.path.exists(self.smart_api_cache_path) and
-                 os.path.exists(self.meta_map_cache_path))) and \
-                os.path.exists(self.cache_refresh_pid_path):
+        if (not self.both_caches_are_present()) or \
+           os.path.exists(self.cache_refresh_pid_path):
+            log.info("the KP info cache is being refreshed; waiting for it")
             # if either pickled cache file is missing, then check if they are
             # being generated (on the other hand, if both exist, just move on
             # since we will use the cache files); see RTX issue 2072
             # Check if the refresher PID file exists
-            with open(self.cache_refresh_pid_path, "r") as f:
-                refresher_pid = int(f.read())
-                assert refresher_pid != os.getpid()
-                # Get the PID of the process that is currently refreshing
-                # the caches
-                caches_are_being_refreshed = psutil.pid_exists(refresher_pid)
-                # Check if the process is still running
-                iter_ctr = 0
-                while caches_are_being_refreshed:
-                    # if the caches are being actively refreshed, wait for
-                    # it to finish
-                    time.sleep(WAIT_LOOP_SEC)
-                    iter_ctr += 1
-                    caches_are_being_refreshed = psutil.pid_exists(refresher_pid)
-                    if WAIT_LOOP_SEC * iter_ctr > \
-                       MAX_TOTAL_WAIT_FOR_CACHE_SEC:
-                        raise Exception("Timed out waiting for SmartAPI " +
-                                        "cache creation; perhaps " +
-                                        "MAX_TOTAL_WAIT_FOR_CACHE_SEC " +
-                                        "value was too small: " +
-                                        f"{MAX_TOTAL_WAIT_FOR_CACHE_SEC}")
-                    if caches_are_being_refreshed and \
-                       os.path.exists(self.smart_api_cache_path) and \
-                       os.path.exists(self.meta_map_cache_path):
-                        eprint("Exiting even though KP info cache-writing " +
-                               f"process still running; PID {refresher_pid}")
-                        break
+            try:
+                with open(self.cache_refresh_pid_path, "r") as f:
+                    refresher_pid = int(f.read())
+                    assert refresher_pid != os.getpid()
+                    # Get the PID of the process that is currently refreshing
+                    # the caches
+                    # Check if the process is still running
+                    iter_ctr = 0
+                    while True:
+                        # if the caches are being actively refreshed, wait for
+                        # it to finish
+                        time.sleep(WAIT_LOOP_SEC)
+                        iter_ctr += 1
+                        caches_being_refreshed = psutil.pid_exists(refresher_pid) and \
+                            (os.path.exists(self.cache_refresh_pid_path) or
+                             (not self.both_caches_are_present()))
+
+                        if not caches_being_refreshed:
+                            if not self.both_caches_are_present():
+                                raise Exception("kp_info_cacher files are missing")
+                            else:
+                                break
+
+                        if WAIT_LOOP_SEC * iter_ctr > \
+                           MAX_TOTAL_WAIT_FOR_CACHE_SEC:
+                            raise Exception("Timed out waiting for SmartAPI " +
+                                            "cache creation; perhaps " +
+                                            "MAX_TOTAL_WAIT_FOR_CACHE_SEC " +
+                                            "value was too small: " +
+                                            f"{MAX_TOTAL_WAIT_FOR_CACHE_SEC}")
+
+            except FileNotFoundError as e:
+                # handle case where cache is already refreshed before we started the loop
+                if not self.both_caches_are_present():
+                    raise Exception("cache refresher PID file missing but cache file missing")
+
 
         # At this point the KP info caches must NOT be in the process of being
         # refreshed, so we create/update if needed.  In particular, this ensures
