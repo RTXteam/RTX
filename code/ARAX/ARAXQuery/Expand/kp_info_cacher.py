@@ -154,7 +154,8 @@ class KPInfoCacher:
                                         "MAX_TOTAL_WAIT_FOR_CACHE_SEC " +
                                         "value was too small: " +
                                         f"{MAX_TOTAL_WAIT_FOR_CACHE_SEC}")
-                    if os.path.exists(self.smart_api_cache_path) and \
+                    if caches_are_being_refreshed and \
+                       os.path.exists(self.smart_api_cache_path) and \
                        os.path.exists(self.meta_map_cache_path):
                         eprint("Exiting even though KP info cache-writing " +
                                f"process still running; PID {refresher_pid}")
