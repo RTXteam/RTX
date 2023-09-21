@@ -88,12 +88,12 @@ class KPInfoCacher:
 
         except Exception as e:
             try:
-                os.remove(self.cache_refresh_pid_path)
+                os.unlink(self.cache_refresh_pid_path)
             except Exception:
                 pass
             raise e
         try:
-            os.remove(self.cache_refresh_pid_path)
+            os.unlink(self.cache_refresh_pid_path)
         except Exception:
             pass
 
