@@ -28,12 +28,18 @@ logging.basicConfig(level=logging.INFO)
 child_pid = None
 
 
+def receive_sigterm():
+    if child_pid is not None:
+        os.kill(child_pid, signal.SIGKKILL)
+        sys.exit(0)
+    else:
+        sys._exit(0)
+
+
 @atexit.register
 def ignore_sigchld():
     logging.debug("Setting SIGCHLD to SIG_IGN before exiting")
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-    if child_pid is not None:
-        os.kill(child_pid, signal.SIGKKILL)
 
 
 def receive_sigchld(signal_number, frame):
@@ -65,6 +71,7 @@ def main():
     flask_cors.CORS(app.app)
     signal.signal(signal.SIGCHLD, receive_sigchld)
     signal.signal(signal.SIGPIPE, receive_sigpipe)
+    signal.signal(signal.SIGTERM, receive_sigterm)
 
     # Read any load configuration details for this instance
     try:
