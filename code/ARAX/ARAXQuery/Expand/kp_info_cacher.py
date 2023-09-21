@@ -151,15 +151,26 @@ class KPInfoCacher:
                         # it to finish
                         time.sleep(WAIT_LOOP_SEC)
                         iter_ctr += 1
-                        caches_being_refreshed = psutil.pid_exists(refresher_pid) and \
-                            (os.path.exists(self.cache_refresh_pid_path) or
-                             (not self.both_caches_are_present()))
+
+                        refresher_is_running = psutil.pid_exists(refresher_pid)
+                        cache_files_present = self.both_caches_are_present()
+                        refresher_pid_exists = os.path.exists(self.cache_refresh_pid_path)
+
+                        caches_being_refreshed = refresher_is_running and \
+                            (refresher_pid_exists or (not cache_files_present))
 
                         if not caches_being_refreshed:
-                            if not self.both_caches_are_present():
-                                raise Exception("kp_info_cacher files are missing")
-                            else:
+                            if not refresher_is_running and \
+                               refresher_pid_exists:
+                                log.warning("Removing KP info cache refresher "
+                                            "PID file")
+                                os.unlink(self.cache_refresh_pid_path)
+
+                            if cache_files_present:
+                                # the cache files have been updated
                                 break
+                            else:
+                                raise Exception("kp_info_cacher file(s) are missing")
 
                         if WAIT_LOOP_SEC * iter_ctr > \
                            MAX_TOTAL_WAIT_FOR_CACHE_SEC:
