@@ -28,12 +28,13 @@ logging.basicConfig(level=logging.INFO)
 child_pid = None
 
 
-def receive_sigterm():
-    if child_pid is not None:
-        os.kill(child_pid, signal.SIGKKILL)
-        sys.exit(0)
-    else:
-        sys._exit(0)
+def receive_sigterm(signal_number, frame):
+    if signal_number == signal.SIGTERM:
+        if child_pid is not None:
+            os.kill(child_pid, signal.SIGKKILL)
+            sys.exit(0)
+        else:
+            sys._exit(0)
 
 
 @atexit.register
