@@ -131,8 +131,11 @@ class KPInfoCacher:
         this method.  It ensures that caches are up to date and that they don't
         become corrupted while refreshing.
         """
-        if (not self.both_caches_are_present()) or \
-           os.path.exists(self.cache_refresh_pid_path):
+
+        refresher_pid_exists = os.path.exists(self.cache_refresh_pid_path)
+
+        if refresher_pid_exists:
+            # KP info cache is probably being regenerated
             log.info("the KP info cache is being refreshed; waiting for it")
             # if either pickled cache file is missing, then check if they are
             # being generated (on the other hand, if both exist, just move on
@@ -154,8 +157,6 @@ class KPInfoCacher:
 
                         refresher_is_running = psutil.pid_exists(refresher_pid)
                         cache_files_present = self.both_caches_are_present()
-                        refresher_pid_exists = os.path.exists(self.cache_refresh_pid_path)
-
                         caches_being_refreshed = refresher_is_running and \
                             (refresher_pid_exists or (not cache_files_present))
 
