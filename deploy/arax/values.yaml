@@ -44,8 +44,8 @@ ingress:
 # With the following two sections, we can restrict the deployment on and only on the specific node
 # toleration to node taint such that this deployment can be scheduled on the tainted node while others without the toleration can not
 tolerations: 
-- key      : "rtx"
-  value    : "arax"
+- key      : "transltr"
+  value    : "managed-app"`
   operator : "Equal"
   effect   : "NoSchedule"
 
@@ -59,7 +59,7 @@ affinity:
         - key: application
           operator: In
           values:
-          - arax
+          - managed-app
   # this ensures only ONE pod will run on each node
   podAntiAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -68,7 +68,15 @@ affinity:
         - key: app.kubernetes.io/name
           operator: In
           values:
-          - arax
+          - managed-app
       topologyKey: "kubernetes.io/hostname"
+
+resources:
+  requests:
+    memory: 56Gi
+    cpu: 13000m
+  limits:
+    memory: 58Gi
+    cpu: 14000m 
 
 
