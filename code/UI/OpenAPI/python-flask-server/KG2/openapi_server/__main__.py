@@ -72,7 +72,6 @@ def main():
     flask_cors.CORS(app.app)
     signal.signal(signal.SIGCHLD, receive_sigchld)
     signal.signal(signal.SIGPIPE, receive_sigpipe)
-    signal.signal(signal.SIGTERM, receive_sigterm)
 
     # Read any load configuration details for this instance
     try:
@@ -108,6 +107,7 @@ def main():
         logging.info(f"Background tasker is running in child process {pid}")
         global child_pid
         child_pid = pid
+        signal.signal(signal.SIGTERM, receive_sigterm)
         logging.info("Starting flask application in the parent process")
         app.run(port=local_config['port'], threaded=True)
     else:
