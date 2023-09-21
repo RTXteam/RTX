@@ -25,11 +25,15 @@ from RTXConfiguration import RTXConfiguration
 # can change this to logging.DEBUG for debuggging
 logging.basicConfig(level=logging.INFO)
 
+child_pid = None
+
 
 @atexit.register
 def ignore_sigchld():
     logging.debug("Setting SIGCHLD to SIG_IGN before exiting")
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+    if child_pid is not None:
+        os.kill(child_pid, signal.SIGKKILL)
 
 
 def receive_sigchld(signal_number, frame):
@@ -94,6 +98,8 @@ def main():
     elif pid > 0:  # I am the parent process
         # Start the service
         logging.info(f"Background tasker is running in child process {pid}")
+        global child_pid
+        child_pid = pid
         logging.info("Starting flask application in the parent process")
         app.run(port=local_config['port'], threaded=True)
     else:
