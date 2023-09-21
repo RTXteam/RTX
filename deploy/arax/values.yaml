@@ -45,7 +45,7 @@ ingress:
 # toleration to node taint such that this deployment can be scheduled on the tainted node while others without the toleration can not
 tolerations: 
 - key      : "transltr"
-  value    : "managed-app"`
+  value    : "managed-app"
   operator : "Equal"
   effect   : "NoSchedule"
 
