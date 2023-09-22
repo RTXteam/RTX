@@ -70,6 +70,12 @@ affinity:
           values:
           - managed-app
       topologyKey: "kubernetes.io/hostname"
-
+resources:
+  requests:
+    memory: 56Gi
+    cpu: 13000m
+  limits:
+    memory: 58Gi
+    cpu: 14000m 
 
 

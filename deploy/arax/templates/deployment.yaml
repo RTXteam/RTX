@@ -34,6 +34,10 @@ spec:
               mountPath: /databases
       containers:
         - name: {{ .Chart.Name }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
@@ -80,7 +84,7 @@ spec:
           configMap:
             name: {{ include "arax.fullname" . }}-scripts
             defaultMode: 0755
-        - name: {{ include "arax.fullname" . }}-configs-volume
+        - name: {{ include "arax.fullname" . }}-configs-volumez
           configMap:
             name: {{ include "arax.fullname" . }}-configs
             defaultMode: 0755
