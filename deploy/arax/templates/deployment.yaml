@@ -80,7 +80,7 @@ spec:
           configMap:
             name: {{ include "arax.fullname" . }}-scripts
             defaultMode: 0755
-        - name: {{ include "arax.fullname" . }}-configs-volumez
+        - name: {{ include "arax.fullname" . }}-configs-volume
           configMap:
             name: {{ include "arax.fullname" . }}-configs
             defaultMode: 0755
