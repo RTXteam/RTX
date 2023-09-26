@@ -2365,7 +2365,7 @@ function calc_timespan(obj) {
 	let units = " seconds";
 	let diff = Math.abs(obj.dataset.timestamp - UIstate["prevtimestampobj"].dataset.timestamp)/1000;
 	if (diff>66) {
-	    diff/=60;
+	    diff = (diff/60).toFixed(4);
 	    units = " minutes";
 	}
 	showJSONpopup("Elapsed Time","Elapsed time is: "+diff+units,false);
@@ -2425,7 +2425,7 @@ function process_log(logarr) {
         let units = " s";
 	let diff = Math.abs(span.dataset.timestamp - starttime)/1000;
 	if (diff>66) {
-	    diff/=60;
+            diff = (diff/60).toFixed(4);
 	    units = " m";
 	}
 	span2 = document.createElement("span");
@@ -6236,7 +6236,15 @@ function retrieveKPInfo() {
 			text.innerHTML = item["title"];
 			td.appendChild(text);
 			td.appendChild(document.createElement("br"));
-                        td.appendChild(document.createTextNode(item["infores_name"]));
+
+                        if (was_seen.includes(item["infores_name"])) {
+                            td.className = "error";
+                            td.appendChild(document.createTextNode('\u274C\u00A0'));
+			    td.title = "This is a DUPLICATE infores entry";
+			}
+			else
+			    was_seen.push(item["infores_name"]);
+			td.appendChild(document.createTextNode(item["infores_name"]));
 
 			tr.appendChild(td);
 
@@ -6446,6 +6454,8 @@ function retrieveSysTestResults() {
 
 
 function generateSmokeTestResults(smoketestdata) {
+    var tdiv = document.createElement("div");
+
     var all_agents = {};
     for (var queryname in smoketestdata['data']) {
 	for (var type of ['allow','deny'])
@@ -6455,6 +6465,19 @@ function generateSmokeTestResults(smoketestdata) {
 			all_agents[ara] = 1;
     }
 
+    if (smoketestdata['parameters']) {
+	tdiv.appendChild(document.createTextNode("Parameters::"));
+	for (var param in smoketestdata['parameters']) {
+	    var span = document.createElement("span");
+	    span.style.fontWeight = "bold";
+	    span.style.marginLeft = '10px';
+	    span.appendChild(document.createTextNode(param+": "));
+	    tdiv.appendChild(span);
+	    tdiv.appendChild(document.createTextNode(smoketestdata['parameters'][param]));
+	}
+	tdiv.appendChild(document.createElement("br"));
+    }
+
     var table = document.createElement("table");
     table.className = 'sumtab';
 
@@ -6462,7 +6485,7 @@ function generateSmokeTestResults(smoketestdata) {
 	var tr = document.createElement("tr");
         tr.style.background = "initial";
 	var td = document.createElement("th");
-        td.colSpan = '3';
+        td.colSpan = '2';
         td.appendChild(document.createElement("br"));
 
 	var link = document.createElement("a");
@@ -6475,6 +6498,15 @@ function generateSmokeTestResults(smoketestdata) {
 	td.appendChild(link);
 	tr.appendChild(td);
 
+	td = document.createElement("th");
+        td.appendChild(document.createElement("br"));
+	td.appendChild(document.createTextNode('NN name'));
+	tr.appendChild(td);
+	td = document.createElement("th");
+        td.appendChild(document.createElement("br"));
+	td.appendChild(document.createTextNode('Expect'));
+	tr.appendChild(td);
+
 	for (var agent of Object.keys(all_agents).sort()) {
 	    td = document.createElement("th");
 	    td.style.minWidth = '80px';
@@ -6485,12 +6517,10 @@ function generateSmokeTestResults(smoketestdata) {
         table.appendChild(tr);
 
 	var num = 0;
+	var checknames = false;
         for (var type of ['allow','deny']) {
             for (var mol in smoketestdata['data'][queryname][type]) {
 		num++;
-		entities[mol] = {};
-                entities[mol].checkHTML = '--';
-
 		tr = document.createElement("tr");
 		tr.className = 'hoverable';
 
@@ -6499,13 +6529,26 @@ function generateSmokeTestResults(smoketestdata) {
 		tr.appendChild(td);
 
 		td = document.createElement("td");
-		td.id = queryname+"_entityname_"+mol
 		td.title = mol;
 		td.innerText = mol;
 		tr.appendChild(td);
 
+                td = document.createElement("td");
+		td.id = queryname+"_entityname_"+mol
+		td.title = mol;
+		if (entities[mol])
+		    td.innerText = entities[mol].name;
+		else {
+		    checknames = true;
+		    entities[mol] = {};
+                    entities[mol].checkHTML = '--';
+		    td.innerText = '(looking up name...)';
+		}
+		tr.appendChild(td);
+
 		td = document.createElement("td");
 		td.className = type == 'allow' ? 'numnew':'p1 qprob cytograph_controls';
+                td.style.borderRadius = "initial";
 		td.innerText = type;
 		tr.appendChild(td);
 
@@ -6517,19 +6560,15 @@ function generateSmokeTestResults(smoketestdata) {
 		    var done = false;
 		    for (var ara in smoketestdata['data'][queryname][type][mol]) {
 			if (ara == agent) {
-			    if (done)
-				//td.innerText += "*";
+			    if (done) // no longer relevant...?
 				td.appendChild(document.createTextNode("*"));
 			    else {
 				var obj = smoketestdata['data'][queryname][type][mol][ara];
-				//td.innerText = Number(obj[1]).toFixed(2);
-				var cnf = Number(obj['score']).toFixed(2);
-				//var pcl = (cnf>=90) ? "p9" : (cnf>=70) ? "p7" : (cnf>=50) ? "p5" : (cnf>=30) ? "p3" : (cnf>0.0) ? "p1" : "p0";
 				var pcl = obj['drug_report'] == "pass" ? "p9" : "p1";
 
 				var span = document.createElement("span");
 				span.className = pcl+' qprob cytograph_controls';
-				span.appendChild(document.createTextNode(cnf));
+				span.appendChild(document.createTextNode(Number(obj['score']).toFixed(2)));
 				td.appendChild(span);
 
 				td.title = obj['drug_report'];
@@ -6545,11 +6584,32 @@ function generateSmokeTestResults(smoketestdata) {
 	}
 
     }
-    check_entities_batch(99);
-    return table;
+    if (checknames)
+	check_entities_batch(99);
+
+    tdiv.appendChild(table);
+    tdiv.appendChild(document.createElement("br"));
+    tdiv.appendChild(document.createElement("br"));
+    tdiv.appendChild(document.createTextNode("Legend:"));
+    var span = document.createElement("span");
+    span.className = 'p9 qprob cytograph_controls';
+    span.style.marginLeft = '10px';
+    span.appendChild(document.createTextNode("Pass"));
+    tdiv.appendChild(span);
+    span = document.createElement("span");
+    span.className = 'p1 qprob cytograph_controls';
+    span.style.marginLeft = '10px';
+    span.style.marginRight = '10px';
+    span.appendChild(document.createTextNode("Fail"));
+    tdiv.appendChild(span);
+    tdiv.appendChild(document.createTextNode("Number within bubble is ARS-normalized Score"));
+
+    return tdiv;
 }
 
 function generateLoadTimeTestResults(loadtestdata) {
+    var tdiv = document.createElement("div");
+
     var all_agents = {};
     for (var q in loadtestdata['data']) {
 	var obj = loadtestdata['data'][q];
@@ -6559,6 +6619,20 @@ function generateLoadTimeTestResults(loadtestdata) {
 
 	for (var actor in obj['actors'])
             all_agents[actor] = 1;
+    }
+
+    if (loadtestdata['parameters']) {
+	tdiv.appendChild(document.createTextNode("Parameters::"));
+	for (var param in loadtestdata['parameters']) {
+	    var span = document.createElement("span");
+	    span.style.fontWeight = "bold";
+	    span.style.marginLeft = '10px';
+	    span.appendChild(document.createTextNode(param+": "));
+            tdiv.appendChild(span);
+            tdiv.appendChild(document.createTextNode(loadtestdata['parameters'][param]));
+	}
+	tdiv.appendChild(document.createElement("br"));
+	tdiv.appendChild(document.createElement("br"));
     }
 
     var table = document.createElement("table");
@@ -6621,6 +6695,8 @@ function generateLoadTimeTestResults(loadtestdata) {
 	    var span = document.createElement("span");
 
             if (obj['actors'][agent]) {
+		if (obj['stragglers'].includes(agent))
+		    td.appendChild(document.createTextNode("\u{1F422}"));
 		if (obj['actors'][agent]['status'] == "Done") {
 		    span.innerHTML = '&check;';
 		    if (obj['actors'][agent]['n_results'] > 0)
@@ -6637,6 +6713,9 @@ function generateLoadTimeTestResults(loadtestdata) {
 		}
                 td.appendChild(span);
 		td.title = obj['actors'][agent]['status'];
+                if (obj['stragglers'].includes(agent))
+		    td.title += " (straggler)";
+
 	    }
             else
 		td.innerText = 'n/a';
@@ -6658,7 +6737,32 @@ function generateLoadTimeTestResults(loadtestdata) {
 	table.appendChild(tr);
     }
 
-    return table;
+    tdiv.appendChild(table);
+    tdiv.appendChild(document.createElement("br"));
+    tdiv.appendChild(document.createElement("br"));
+    tdiv.appendChild(document.createTextNode("Legend:"));
+    var span = document.createElement("span");
+    span.className = 'explevel p9';
+    span.style.marginLeft = '10px';
+    span.innerHTML = '&check;';
+    tdiv.appendChild(span);
+    tdiv.appendChild(document.createTextNode(" Done (mouse-over to see number of results)"));
+    span = document.createElement("span");
+    span.className = 'explevel p0';
+    span.style.marginLeft = '10px';
+    span.innerHTML = '&check;';
+    tdiv.appendChild(span);
+    tdiv.appendChild(document.createTextNode(" Done, with ZERO results"));
+    span = document.createElement("span");
+    span.className = 'explevel p1';
+    span.style.marginLeft = '10px';
+    span.innerHTML = '&cross;';
+    tdiv.appendChild(span);
+    tdiv.appendChild(document.createTextNode(" Error"));
+    tdiv.appendChild(document.createTextNode("\u00A0\u00A0\u00A0\u{1F422} Straggler"))
+    tdiv.appendChild(document.createTextNode("\u00A0\u00A0\u00A0Number is completion time (sec)"));
+
+    return tdiv;
 }
 
 
@@ -7017,7 +7121,7 @@ function check_entities_batch(batchsize) {
 
 			entities[entity].isvalid   = true;
 			entities[entity].checkHTML = "<span class='explevel p9'>&check;</span>&nbsp;";
-			document.getElementById("devdiv").innerHTML += data[entity].id.type+"<br>";
+			document.getElementById("devdiv").innerHTML += data[entity].id.category+"<br>";
 		    }
 		    else if (entities[entity]) {
 			entities[entity].curie = "<span class='error'>unknown</span>";
@@ -7062,7 +7166,7 @@ function check_entities() {
 
 		    entities[entity].isvalid   = true;
 		    entities[entity].checkHTML = "<span class='explevel p9'>&check;</span>&nbsp;";
-		    document.getElementById("devdiv").innerHTML += data[entity].id.type+"<br>";
+		    document.getElementById("devdiv").innerHTML += data[entity].id.category+"<br>";
 		}
 		else {
 		    entities[entity].curie = "<span class='error'>unknown</span>";
