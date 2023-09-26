@@ -555,74 +555,73 @@ def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
         if qedge_key in edge.qedge_keys:
             del kg.edges[edge_key]
 
-def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph, log: ARAXResponse):
-        publication_threshold = 4
-        edge_keys = set(kg.edges)
-        edges_removed_counter = 0
-        removed_nodes = set()
-        connected_nodes = set()
-        try:
-            for edge_key in edge_keys:
-                edge = kg.edges[edge_key]
-                if not (edge.sources and any(retrieval_source.resource_id == 'infores:semmeddb' and
-                                                                    retrieval_source.resource_role == "primary_knowledge_source"
-                                                                    for retrieval_source in edge.sources)):
-                    connected_nodes.add(edge.subject)
-                    connected_nodes.add(edge.object)
-                    continue
-                if not edge.attributes:
-                    removed_nodes.add(edge.subject)
-                    removed_nodes.add(edge.object)
-                    del kg.edges[edge_key]
-                    edges_removed_counter += 1
-                    continue
-                n_publications = 0
-                for attribute in edge.attributes:
-                    if attribute.attribute_type_id == 'biolink:publications':
-                        if isinstance(attribute.value, list):
-                            n_publications = len(attribute.value)
-                if n_publications < publication_threshold:
-                    removed_nodes.add(edge.subject)
-                    removed_nodes.add(edge.object)
-                    del kg.edges[edge_key]
-                    edges_removed_counter += 1
-                else:
-                    connected_nodes.add(edge.subject)
-                    connected_nodes.add(edge.object)
-            orphaned_nodes = removed_nodes - connected_nodes
-            for node_key in orphaned_nodes:
-                del kg.nodes[node_key]
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            log.error(tb, error_code=error_type.__name__)
-            log.error(f"Something went wrong removing semmeddb edges from the knowledge graph")
-        else:
-            log.info(f"{edges_removed_counter} Semmeddb Edges with low publication count successfully removed")
+
+def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph,
+                                                          log: ARAXResponse):
+    publication_threshold = 4
+    edge_keys = set(kg.edges)
+    edges_removed_counter = 0
+    removed_nodes = set()
+    connected_nodes = set()
+    try:
+        for edge_key in edge_keys:
+            edge = kg.edges[edge_key]
+            if not (edge.sources and any(retrieval_source.resource_id == 'infores:semmeddb' and
+                                                                retrieval_source.resource_role == "primary_knowledge_source"
+                                                                for retrieval_source in edge.sources)):
+                connected_nodes.add(edge.subject)
+                connected_nodes.add(edge.object)
+                continue
+            if not edge.attributes:
+                removed_nodes.add(edge.subject)
+                removed_nodes.add(edge.object)
+                del kg.edges[edge_key]
+                edges_removed_counter += 1
+                continue
+            n_publications = 0
+            for attribute in edge.attributes:
+                if attribute.attribute_type_id == 'biolink:publications':
+                    if isinstance(attribute.value, list):
+                        n_publications = len(attribute.value)
+            if n_publications < publication_threshold:
+                removed_nodes.add(edge.subject)
+                removed_nodes.add(edge.object)
+                del kg.edges[edge_key]
+                edges_removed_counter += 1
+            else:
+                connected_nodes.add(edge.subject)
+                connected_nodes.add(edge.object)
+        orphaned_nodes = removed_nodes - connected_nodes
+        for node_key in orphaned_nodes:
+            del kg.nodes[node_key]
+    except:
+        tb = traceback.format_exc()
+        error_type, error, _ = sys.exc_info()
+        log.error(tb, error_code=error_type.__name__)
+        log.error(f"Something went wrong removing semmeddb edges from the knowledge graph")
+    else:
+        log.info(f"{edges_removed_counter} Semmeddb Edges with low publication count successfully removed")
+
 
 def filter_response_domain_range_exclusion(plover_answer, qg, log: ARAXResponse):
-        log.debug("Applying domain range exclusion to plover response")
-        filtered_count = 0
-        qg_edge_keys = qg.edges.keys()
-        try:
-            for qg_edge_key in qg_edge_keys:
+    log.debug("Applying domain range exclusion to plover response")
+    filtered_count = 0
+    qg_edge_keys = qg.edges.keys()
+    try:
+        for qg_edge_key in qg_edge_keys:
 
-                edge_keys_to_filter = {edge_id for edge_id, edge in plover_answer['edges'][qg_edge_key].items() if edge[7] == "True"}
-                for edge_key in edge_keys_to_filter:
-                    del plover_answer['edges'][qg_edge_key][edge_key]
-                    filtered_count += 1
-            
-            log.info(f"Filtered out {filtered_count} edges from response due to domain range exclusion")
-        except:
-            log.warning("Plover response does not have domain_range_exclusion key.")
+            edge_keys_to_filter = {edge_id for edge_id, edge in plover_answer['edges'][qg_edge_key].items() if edge[7] == "True"}
+            for edge_key in edge_keys_to_filter:
+                del plover_answer['edges'][qg_edge_key][edge_key]
+                filtered_count += 1
 
-        
-        return plover_answer
+        log.info(f"Filtered out {filtered_count} edges from response due to domain range exclusion")
+    except:
+        log.warning("Plover response does not have domain_range_exclusion key.")
 
-        
 
-        
-           
+    return plover_answer
+
 
 def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool:
     """

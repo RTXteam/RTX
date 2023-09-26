@@ -60,9 +60,6 @@ ARAXResponse.output = 'STDERR'
 
 null_context_manager = contextlib.nullcontext()
 
-query_tracker_reset = ARAXQueryTracker()
-query_tracker_reset.clear_unfinished_entries()
-del query_tracker_reset
 
 class response_locking(ARAXResponse):
     def __init__(self, lock: threading.Lock):
@@ -89,6 +86,12 @@ class ARAXQuery:
         print("[asynchronous_query]: " + repr(e), file=sys.stderr)
         with self.lock if self.lock is not None else null_context_manager:
             self.response.error("ARAX ran out of memory during query processing; no results will be returned for this query")
+
+    @staticmethod
+    def query_tracker_reset():
+        query_tracker_reset = ARAXQueryTracker()
+        query_tracker_reset.clear_unfinished_entries()
+        del query_tracker_reset
 
 
     def query_return_stream(self, query, mode='ARAX'):
@@ -215,7 +218,6 @@ class ARAXQuery:
 
         self.response = ARAXResponse()
         response = self.response
-        print("in query_return_message - printing", file=sys.stderr)
         response.debug("in query_return_message")
 
         self.query(query, mode=mode, origin='API')
@@ -974,7 +976,7 @@ class ARAXQuery:
                 response.warning(f"Unable to make a connection to callback URL {callback} with error {error}")
             send_attempts += 1
 
-        if post_succeeded == False:
+        if not post_succeeded:
             response.error(f"Unable to send the Response to callback URL {callback} after {send_attempts} tries. Work is lost", error_code="UnreachableCallback")
 
         self.track_query_finish()
