@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 # import graph_tool.all as gt
 from tqdm import tqdm, trange
-
+import json 
 pathlist = os.getcwd().split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
@@ -51,21 +51,30 @@ def build_DSL_command(start_n: str, end_n: str, interm_len: int, M: int = 10, kp
     interm_names = [None]*interm_len if not interm_names else interm_names
     interm_categories = [None]*interm_len if not interm_categories else interm_categories
     ## build actions
+    path_list = os.path.realpath(__file__).split(os.path.sep)
+    rtx_index = path_list.index("RTX")
+    tf_file= os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources','transcription_factors.json'])
+    with open(tf_file) as fp:
+        tf_list = json.loads(fp.read())["tf"]
     action_list.append(f"add_qnode(ids={start_n}, key=n00)")
-    for index, param_set in enumerate(zip(interm_ids, interm_names, interm_categories)):
-        command_line = "add_qnode("
-        if param_set[0]:
-            command_line += f"ids={param_set[0]},"
-        if param_set[1]:
-            command_line += f"name={param_set[1]},"
-        if param_set[2]:
-            command_line += f"categories={param_set[2]},"
-        command_line += f"key=n0{index+1})"
-        action_list.append(command_line)
-        temp_action_list.append(f"add_qedge(subject=n0{index}, object=n0{index+1}, key=e0{index})")
-    action_list.append(f"add_qnode(ids={end_n}, key=n0{index+2})")
-    temp_action_list.append(f"add_qedge(subject=n0{index+1}, object=n0{index+2}, key=e0{index+1})")
-    action_list += temp_action_list
+    # for index, param_set in enumerate(zip(interm_ids, interm_names, interm_categories)):
+    #     command_line = "add_qnode("
+    #     if param_set[0]:
+    #         command_line += f"ids={param_set[0]},"
+    #     if param_set[1]:
+    #         command_line += f"name={param_set[1]},"
+    #     if param_set[2]:
+    #         command_line += f"categories={param_set[2]},"
+    #     command_line += f"key=n0{index+1})"
+    #     action_list.append(command_line)
+    #     temp_action_list.append(f"add_qedge(subject=n0{index}, object=n0{index+1}, key=e0{index})")
+    command_line = f"add_qnode(ids={str(tf_list)},key=n01)"
+    action_list.append(command_line)
+    action_list.append(f"add_qedge(subject=n00, object=n01, key=e00")
+    action_list.append(f"add_qnode(ids={end_n}, key=n02)")
+    action_list.append(f"add_qedge(subject=n01, object=n02, key=e01")
+    # temp_action_list.append(f"add_qedge(subject=n0{index+1}, object=n0{index+2}, key=e0{index+1})")
+    # action_list += temp_action_list
     if kp:
         action_list.append(f"expand(kp={kp})")
     else:
