@@ -654,10 +654,12 @@ class ARAXQueryTracker:
 
         instance_name = self.get_instance_name()
 
+        eprint(f"Clearing unfinished entries for this instances")
         entries = self.session.query(ARAXQuery).filter(ARAXQuery.instance_name == instance_name).filter( (ARAXQuery.elapsed == None) | (ARAXQuery.status == 'Running Async') )
+        eprint(f" - found {len(entries)} entries")
 
         for entry in entries:
-            eprint(f" - {entry.query_id}, {entry.instance_name}, {entry.elapsed}")
+            eprint(f" - Clearing {entry.query_id}, {entry.instance_name}, {entry.elapsed}")
             now = datetime.now()
             then = datetime.strptime(entry.start_datetime, '%Y-%m-%d %H:%M:%S')
             delta = now - then
@@ -667,6 +669,7 @@ class ARAXQueryTracker:
             entry.code_description = 'Query was terminated by a process restart'
             entry.elapsed = elapsed
         self.session.commit()
+        eprint(f" - Clearing finished")
 
 
     ##################################################################################################
