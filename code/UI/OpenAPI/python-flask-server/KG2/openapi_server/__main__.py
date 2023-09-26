@@ -31,10 +31,14 @@ child_pid = None
 def receive_sigterm(signal_number, frame):
     if signal_number == signal.SIGTERM:
         if child_pid is not None:
-            os.kill(child_pid, signal.SIGKILL)
+            try:
+                os.kill(child_pid, signal.SIGKILL)
+            except ProcessLookupError:
+                logging.debug(f"child process {child_pid} is already gone; "
+                              "exiting now")
             sys.exit(0)
         else:
-            sys._exit(0)
+            assert False, "should not ever have child_pid be None here"
 
 
 @atexit.register
