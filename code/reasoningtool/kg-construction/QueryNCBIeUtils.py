@@ -57,6 +57,9 @@ class QueryNCBIeUtils:
     :param retmax: int to specify the maximum number of records to return (default here 
                    is 1000, which is more useful than the NCBI default of 20)
     '''
+
+    # res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
+                                            #  'db=mesh&term=' +  urllib.parse.quote(mesh_term, safe=''))
     @staticmethod
     @CachedMethods.register
     def send_query_get(handler, url_suffix, retmax=1000, retry_flag = True):
@@ -290,15 +293,14 @@ class QueryNCBIeUtils:
                     res_int = [res_int]
                     if 'errorlist' in res.json()['esearchresult'].keys():
                         if 'phrasesnotfound' in res.json()['esearchresult']['errorlist'].keys():
-                                if len(res.json()['esearchresult']['errorlist']['phrasesnotfound']) == 1:
-                                    res_int += 2*res.json()['esearchresult']['errorlist']['phrasesnotfound']
-                                else:
-                                    res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
-                    else:
-                        res_int += [int(res.json()['esearchresult']['translationstack'][0]['count'])]
-                        res_int += [int(res.json()['esearchresult']['translationstack'][1]['count'])]
+                            if len(res.json()['esearchresult']['errorlist']['phrasesnotfound']) == 1:
+                                res_int += 2*res.json()['esearchresult']['errorlist']['phrasesnotfound']
+                            else:
+                                res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
             else:
                 print('HTTP response status code: ' + str(status_code) + ' for query term string {term}'.format(term=term_str))
+        if len(res_int) == 1:
+            res_int += [-1, -1]
         return res_int
 
     @staticmethod
@@ -331,23 +333,25 @@ class QueryNCBIeUtils:
                     mesh1_str_decorated = ni[:-12]
                 if mesh2_str_decorated == nj:
                     mesh2_str_decorated = nj[:-12]
-                [nij, ni, nj] = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                [nij, _a, _b] = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
                                                                                          mesh2=mesh2_str_decorated), joint=True)
+                [ni,_a,_b] = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
+                [nj,_a,_b] = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
 
         else:
-            nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+            [nij,ni,nj] = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
                                                                                          mesh2=mesh2_str_decorated))
-            ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
-            nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
+            [ni,_a,_b] = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
+            [nj,_a,_b] = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
             if (ni == 0 and mesh1) or (nj == 0 and mesh2):
                 if (ni == 0 and mesh1):
                     mesh1_str_decorated = mesh1_str
                 if (nj == 0 and mesh2):
                     mesh2_str_decorated = mesh2_str
-                nij = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
+                [nij,_a,_b] = QueryNCBIeUtils.get_pubmed_hits_count('({mesh1}) AND ({mesh2})'.format(mesh1=mesh1_str_decorated,
                                                                                          mesh2=mesh2_str_decorated))
-                ni = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
-                nj = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
+                [ni,_a,_b] = QueryNCBIeUtils.get_pubmed_hits_count('{mesh1}'.format(mesh1=mesh1_str_decorated))
+                [nj,_a,_b] = QueryNCBIeUtils.get_pubmed_hits_count('{mesh2}'.format(mesh2=mesh2_str_decorated))
         N = 3.5e+7 * 20  # From PubMed home page there are 35 million articles (based on the information on https://pubmed.ncbi.nlm.nih.gov/ on 08/09/2023); avg 20 MeSH terms per article
         if ni is None or nj is None or nij is None:
             return math.nan
@@ -364,6 +368,7 @@ class QueryNCBIeUtils:
         This is almost the same as the above get_pubmed_hit_counts but is made to work with multi_normalized_google_distance
         '''
         term_str_encoded = urllib.parse.quote(term_str, safe='')
+        # term_str_encoded = term_str_encoded = '%28acetaminophen%5BMeSH%20Terms%5D%29%20AND%20%28PTGS2%5BMeSH%20Terms%5D%29'
         res = QueryNCBIeUtils.send_query_get('esearch.fcgi',
                                              'db=pubmed&term=' + term_str_encoded)
         if res is None:
@@ -385,22 +390,6 @@ class QueryNCBIeUtils:
                                 if 'phrasesnotfound' in res.json()['esearchresult']['errorlist'].keys():
                                     if res.json()['esearchresult']['errorlist']['phrasesnotfound'] != []:
                                         res_int += res.json()['esearchresult']['errorlist']['phrasesnotfound']
-                                    elif 'translationstack' in res.json()['esearchresult'].keys():
-                                        for a in range(len(res.json()['esearchresult']['translationstack'])):
-                                            if type(res.json()['esearchresult']['translationstack'][a]) == dict:
-                                                res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
-                                            elif res.json()['esearchresult']['translationstack'][a] == 'OR':
-                                                res_int = [res_int[0]]
-                                                res_int += ['null_flag']
-                                                return res_int
-                            else:
-                                for a in range(len(res.json()['esearchresult']['translationstack'])):
-                                    if type(res.json()['esearchresult']['translationstack'][a]) == dict:
-                                        res_int += [int(res.json()['esearchresult']['translationstack'][a]['count'])]
-                                    elif res.json()['esearchresult']['translationstack'][a] == 'OR':
-                                        res_int = [res_int[0]]
-                                        res_int += ['null_flag']
-                                        return res_int
                     else:
                         return [0]*n_terms
             else:
@@ -444,18 +433,39 @@ class QueryNCBIeUtils:
                     name += "[MeSH Terms]"
                 counts += QueryNCBIeUtils.multi_pubmed_hits_count(name, n_terms = 1)
 
-        if type(counts[1]) == str:
-            if counts[1] == 'null_flag':
-                missed_names = [name + '[MeSH Terms]' for name in name_list]
-            else:
-                missed_names = counts[1:]
-            counts = [counts[0]]
-            for name in name_list:
+        missed_names = []
+        if len(counts) > 0:
+            missed_names = counts[1:]
+        if missed_names:
+            search_string='('
+            for index,name in enumerate(name_list):
                 name_decorated = name + '[MeSH Terms]'
                 if name_decorated in missed_names:
-                    counts += QueryNCBIeUtils.multi_pubmed_hits_count(name, n_terms=1)
+                    search_string += name
                 else:
-                    counts += QueryNCBIeUtils.multi_pubmed_hits_count(name_decorated, n_terms=1)
+                    search_string += name_decorated
+                    name = name_decorated
+                if index < len(name_list)-1:
+                        search_string += ') AND ('
+                
+            search_string += ')'
+            counts = []
+            counts = QueryNCBIeUtils.multi_pubmed_hits_count(search_string, n_terms=len(name_list))
+        for name in name_list:
+            counts += QueryNCBIeUtils.multi_pubmed_hits_count(name, n_terms=1)
+
+        # if type(counts[1]) == str:
+        #     if counts[1] == 'null_flag':
+        #         missed_names = [name + '[MeSH Terms]' for name in name_list]
+        #     else:
+        #         missed_names = counts[1:]
+        #     counts = [counts[0]]
+        #     for name in name_list:
+        #         name_decorated = name + '[MeSH Terms]'
+        #         if name_decorated in missed_names:
+        #             counts += QueryNCBIeUtils.multi_pubmed_hits_count(name, n_terms=1)
+        #         else:
+        #             counts += QueryNCBIeUtils.multi_pubmed_hits_count(name_decorated, n_terms=1)
 
         N = 3.5e+7 * 20  # From PubMed home page there are 35 million articles (based on the information on https://pubmed.ncbi.nlm.nih.gov/ on 08/09/2023); avg 20 MeSH terms per article
         if None in counts:
