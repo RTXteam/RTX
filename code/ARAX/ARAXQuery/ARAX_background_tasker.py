@@ -113,6 +113,7 @@ class ARAXBackgroundTasker:
 
 
         #### Loop forever doing various things
+        my_pid = os.getpid()
         while True:
 
             #### Run the KP Info Cacher less frequently
@@ -140,7 +141,7 @@ class ARAXBackgroundTasker:
             load_tuple = psutil.getloadavg()
 
             timestamp = str(datetime.datetime.now().isoformat())
-            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker status: waiting. Current load is {load_tuple}, n_clients={n_clients}, n_ongoing_queries={n_ongoing_queries}")
+            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker (PID {my_pid}) status: waiting. Current load is {load_tuple}, n_clients={n_clients}, n_ongoing_queries={n_ongoing_queries}")
             time.sleep(FREQ_CHECK_ONGOING_SEC)
 
 
