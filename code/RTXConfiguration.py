@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+# NOTE: this is a singleton class. Please do not mutate class variables.
+# For more information, see RTXteam/RTX issue 2121.
+
 import os
 import datetime
 import json
@@ -10,6 +13,7 @@ from typing import Optional
 
 import yaml
 from pygit2 import Repository, discover_repository
+import pprint
 
 DEBUG = True
 
@@ -17,8 +21,23 @@ class RTXConfiguration:
 
     _GET_FILE_CMD = "scp araxconfig@araxconfig.rtx.ai:config_secrets.json "
 
+    _instance = None
+    _initialized = False
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._private_init()
+        return cls._instance
+
     # ### Constructor
-    def __init__(self):
+    def _private_init(self):
+        print("in private_init")
+        assert self._instance is not None
+        if self._initialized:
+            return
+
+        self._initialized = True
 
         t0 = timeit.default_timer()
         file_dir = os.path.dirname(os.path.abspath(__file__))
@@ -176,6 +195,8 @@ class RTXConfiguration:
         self.xcrg_increase_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
         self.xcrg_decrease_model_path = database_downloads["xcrg_decrease_model"]
         self.xcrg_decrease_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
+        self.rel_max_path = database_downloads["rel_max"]
+        self.map_txt_path = database_downloads["map_txt"]
 
         # Set up mysql feedback
         self.mysql_feedback_host = self.config_secrets["mysql_feedback"]["host"]
@@ -224,117 +245,29 @@ class RTXConfiguration:
         else:
             return None
 
-    # ### Define attribute version
-    @property
-    def version(self) -> str:
-        return self._version
 
-    @version.setter
-    def version(self, version: str):
-        self._version = version
-
-    @property
-    def neo4j_kg2(self) -> str:
-        return self._neo4j_kg2
-
-    @neo4j_kg2.setter
-    def neo4j_kg2(self, neo4j_kg2: str):
-        self._neo4j_kg2 = neo4j_kg2
-
-        if self.neo4j_kg2 not in self.config_dbs["neo4j"].keys():
-            self.neo4j_bolt = None
-            self.neo4j_database = None
-            self.neo4j_username = None
-            self.neo4j_password = None
+    def get_neo4j_info(self, kg2_type: str) -> dict:
+        if kg2_type not in self.config_dbs["neo4j"].keys():
+            return {'bolt': None,
+                    'database': None,
+                    'username': None,
+                    'password': None}
         else:
-            neo4j_instance = self.config_dbs["neo4j"][self.neo4j_kg2]
-            self.neo4j_bolt = f"bolt://{neo4j_instance}:7687"
-            self.neo4j_database = f"{neo4j_instance}:7474/db/data"
-            self.neo4j_username = self.config_secrets["neo4j"][self.neo4j_kg2]["username"]
-            self.neo4j_password = self.config_secrets["neo4j"][self.neo4j_kg2]["password"]
-
-    @property
-    def neo4j_bolt(self) -> str:
-        return self._neo4j_bolt
-
-    @neo4j_bolt.setter
-    def neo4j_bolt(self, bolt: str):
-        self._neo4j_bolt = bolt
-
-    @property
-    def neo4j_database(self) -> str:
-        return self._neo4j_database
-
-    @neo4j_database.setter
-    def neo4j_database(self, database: str):
-        self._neo4j_database = database
-
-    @property
-    def neo4j_username(self) -> str:
-        return self._neo4j_username
-
-    @neo4j_username.setter
-    def neo4j_username(self, username: str):
-        self._neo4j_username = username
-
-    @property
-    def neo4j_password(self) -> str:
-        return self._neo4j_password
-
-    @neo4j_password.setter
-    def neo4j_password(self, password: str):
-        self._neo4j_password = password
-
-    @property
-    def plover_url(self) -> str:
-        return self._plover_url
-
-    @plover_url.setter
-    def plover_url(self, url: str):
-        self._plover_url = url
-
-    @property
-    def mysql_feedback_host(self) -> str:
-        return self._mysql_feedback_host
-
-    @mysql_feedback_host.setter
-    def mysql_feedback_host(self, host: str):
-        self._mysql_feedback_host = host
-
-    @property
-    def mysql_feedback_port(self) -> str:
-        return self._mysql_feedback_port
-
-    @mysql_feedback_port.setter
-    def mysql_feedback_port(self, port: str):
-        self._mysql_feedback_port = port
-
-    @property
-    def mysql_feedback_username(self) -> str:
-        return self._mysql_feedback_username
-
-    @mysql_feedback_username.setter
-    def mysql_feedback_username(self, username: str):
-        self._mysql_feedback_username = username
-
-    @property
-    def mysql_feedback_password(self) -> str:
-        return self._mysql_feedback_password
-
-    @mysql_feedback_password.setter
-    def mysql_feedback_password(self, password: str):
-        self._mysql_feedback_password = password
+            neo4j_instance = self.config_dbs["neo4j"][kg2_type]
+            config_secrets = self.config_secrets
+            return {'bolt': f"bolt://{neo4j_instance}:7687",
+                    'database': f"{neo4j_instance}:7474/db/data",
+                    'username': config_secrets["neo4j"][kg2_type]["username"],
+                    'password': config_secrets["neo4j"][kg2_type]["password"]}
 
 
 def main():
     t0 = timeit.default_timer()
     rtxConfig = RTXConfiguration()
+    t1 = timeit.default_timer()
     print("RTX Version string: " + rtxConfig.version)
-    print("neo4j KG2 version: %s" % rtxConfig.neo4j_kg2)
-    print("neo4j bolt: %s" % rtxConfig.neo4j_bolt)
-    print("neo4j database: %s" % rtxConfig.neo4j_database)
-    print("neo4j username: %s" % rtxConfig.neo4j_username)
-    print("neo4j password: %s" % rtxConfig.neo4j_password)
+    kg2_info = rtxConfig.get_neo4j_info("KG2c")
+    pprint.pprint(kg2_info)
     print("plover url: %s" % rtxConfig.plover_url)
     print("rtx-kg2 url: %s" % rtxConfig.rtx_kg2_url)
     print("mysql feedback host: %s" % rtxConfig.mysql_feedback_host)
@@ -342,10 +275,15 @@ def main():
     print("mysql feedback username: %s" % rtxConfig.mysql_feedback_username)
     print("mysql feedback password: %s" % rtxConfig.mysql_feedback_password)
     print(f"maturity: {rtxConfig.maturity}")
+    print(f"log_model_path: {rtxConfig.log_model_path}")
     print(f"current branch: {rtxConfig.current_branch_name}")
     print(f"is_itrb_instance: {rtxConfig.is_itrb_instance}")
-    t1 = timeit.default_timer()
     print(f"Total elapsed time: {(t1-t0)*1000:.2f} ms")
+    t2 = timeit.default_timer()
+    rtxConfig = RTXConfiguration()
+    t3 = timeit.default_timer()
+    print(rtxConfig.version)
+    print(f"Total elapsed time: {(t3-t2)*1000:.2f} ms")
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ import sys
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 import datetime
+import os
 
 
 class ARAXResponse:
@@ -129,11 +130,12 @@ class ARAXResponse:
         """
 
         timestamp = str(datetime.datetime.now().isoformat())
+        pid = os.getpid()
         self.messages.append( { 'timestamp': timestamp, 'level': self.level_names[level], 'code': code, 'message': message } )
         self.n_messages += 1
 
         # Create a pretty printable message prefix
-        prefix = f"{timestamp} {self.level_names[level]}: "
+        prefix = f"{timestamp} {self.level_names[level]}: ({pid}) "
         if code is not None:
             prefix += f"[{code}] "
 

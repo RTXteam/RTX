@@ -1,4 +1,8 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
+
+# NOTE: this module is only to be used either as a CLI script or in the
+# __main__.py Flask application at application start-up. Please do not
+# instantiate this class and call `check_databases` at query time. -SAR
 
 import os
 import sys
@@ -426,7 +430,7 @@ class ARAXDatabaseManager:
                         print(f"Removing unused db file {db_file_path}")
                         os.system(f"rm -f {db_file_path}")
 
-        
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-c", "--check_local", action='store_true')
@@ -455,7 +459,9 @@ def main():
     elif arguments.force_download:
         DBManager.force_download_all(debug=True)
     elif arguments.mnt:
-        DBManager.download_to_mnt(debug=True, skip_if_exists=arguments.skip_if_exists, remove_unused=arguments.remove_unused)
+        DBManager.download_to_mnt(debug=True,
+                                  skip_if_exists=arguments.skip_if_exists,
+                                  remove_unused=arguments.remove_unused)
     elif arguments.generate_versions_file:
         DBManager.write_db_versions_file(debug=True)
     else:

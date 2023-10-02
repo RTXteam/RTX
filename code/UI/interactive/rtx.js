@@ -93,6 +93,7 @@ function main() {
     var syn = getQueryVariable("term") || null;
     var rec = getQueryVariable("recent") || null;
     var pks = getQueryVariable("latest") || null;
+    var sys = getQueryVariable("systest") || null;
     var sai = getQueryVariable("smartapi") || getQueryVariable("smartAPI") || null;
 
     var response_id = getQueryVariable("r") || getQueryVariable("id") || null;
@@ -135,6 +136,10 @@ function main() {
     else if (sai) {
 	tab = "kpinfo";
 	retrieveKPInfo();
+    }
+    else if (sys) {
+	tab = "systest";
+	retrieveSysTestResults();
     }
     openSection(tab);
     dragElement(document.getElementById('nodeeditor'));
@@ -2360,7 +2365,7 @@ function calc_timespan(obj) {
 	let units = " seconds";
 	let diff = Math.abs(obj.dataset.timestamp - UIstate["prevtimestampobj"].dataset.timestamp)/1000;
 	if (diff>66) {
-	    diff/=60;
+	    diff = (diff/60).toFixed(4);
 	    units = " minutes";
 	}
 	showJSONpopup("Elapsed Time","Elapsed time is: "+diff+units,false);
@@ -2395,8 +2400,7 @@ function process_log(logarr) {
 	span.setAttribute('onclick', 'calc_timespan(this);');
 
 	if (!starttime)
-	    starttime = Date.parse(msg.timestamp);
-	span.dataset.timestamp = Date.parse(msg.timestamp);
+	    starttime = span.dataset.timestamp;
 
         if (msg.level == "DEBUG") { span.style.display = 'none'; }
 
@@ -2421,7 +2425,7 @@ function process_log(logarr) {
         let units = " s";
 	let diff = Math.abs(span.dataset.timestamp - starttime)/1000;
 	if (diff>66) {
-	    diff/=60;
+            diff = (diff/60).toFixed(4);
 	    units = " m";
 	}
 	span2 = document.createElement("span");
@@ -5533,7 +5537,7 @@ function retrieveRecentResps() {
 
     var srcpks = document.getElementById("wherefromlatest").value;
 
-    var apiurl = providers["ARAX"].url + "/status?mode=recent_pks&last_n_hours="+numpks+"&authorization="+srcpks
+    var apiurl = providers["ARAX"].url + "/status?mode=recent_pks&last_n_hours="+numpks+"&authorization="+srcpks;
 
     fetch(apiurl)
         .then(response => {
@@ -6232,7 +6236,15 @@ function retrieveKPInfo() {
 			text.innerHTML = item["title"];
 			td.appendChild(text);
 			td.appendChild(document.createElement("br"));
-                        td.appendChild(document.createTextNode(item["infores_name"]));
+
+                        if (was_seen.includes(item["infores_name"])) {
+                            td.className = "error";
+                            td.appendChild(document.createTextNode('\u274C\u00A0'));
+			    td.title = "This is a DUPLICATE infores entry";
+			}
+			else
+			    was_seen.push(item["infores_name"]);
+			td.appendChild(document.createTextNode(item["infores_name"]));
 
 			tr.appendChild(td);
 
@@ -6377,6 +6389,380 @@ function retrieveKPInfo() {
 	    console.error(error);
 	});
 
+}
+
+
+function retrieveSysTestResults() {
+    var systest_node = document.getElementById("systest_container");
+    systest_node.innerHTML = '';
+    systest_node.className = '';
+
+    var wspan = document.getElementById("systest_wait");
+    wspan.innerHTML = '';
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginRight = "10px";
+    wspan.appendChild(wait);
+    wspan.appendChild(document.createTextNode('Loading...'));
+
+    //var pk = document.getElementById("pktest").value || null;
+    //document.getElementById("pktest").value = pk;
+
+    //var srcpks = document.getElementById("wherefromtest").value; // prod/test/ci/etc...LATER
+
+    var apiurl = 'https://utility.ci.transltr.io/arstest/api/latest_report';
+
+    fetch(apiurl)
+        .then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Unable to fetch ARS Translator system test results from '+apiurl);
+	})
+        .then(data => {
+	    document.title = "ARAX-UI [Most recent ARS Translator system test results]";
+            wspan.innerHTML = 'Report source: '+apiurl;
+	    systest_node.innerHTML = '';
+
+	    for (var test in data) {
+		var div = document.createElement("div");
+		div.className = "statushead";
+		div.appendChild(document.createTextNode("Viewing: "+ test));
+
+		systest_node.appendChild(div);
+
+		div = document.createElement("div");
+		div.className = "status";
+		systest_node.appendChild(div);
+
+		if (test.startsWith("Load"))
+		    div.appendChild(generateLoadTimeTestResults(data[test]));
+		else
+		    div.appendChild(generateSmokeTestResults(data[test]));
+
+		div.appendChild(document.createElement("br"));
+	    }
+
+	    systest_node.appendChild(document.createElement("br"));
+	    systest_node.appendChild(document.createElement("br"));
+        })
+        .catch(error => {
+            wspan.innerHTML = '';
+	    systest_node.className = "error";
+	    systest_node.innerHTML = "<br>" + error + "<br><br>";
+            console.error(error);
+	});
+
+}
+
+
+function generateSmokeTestResults(smoketestdata) {
+    var tdiv = document.createElement("div");
+
+    var all_agents = {};
+    for (var queryname in smoketestdata['data']) {
+	for (var type of ['allow','deny'])
+	    if (smoketestdata['data'][queryname][type])
+		for (var mol in smoketestdata['data'][queryname][type])
+		    for (var ara in smoketestdata['data'][queryname][type][mol])
+			all_agents[ara] = 1;
+    }
+
+    if (smoketestdata['parameters']) {
+	tdiv.appendChild(document.createTextNode("Parameters::"));
+	for (var param in smoketestdata['parameters']) {
+	    var span = document.createElement("span");
+	    span.style.fontWeight = "bold";
+	    span.style.marginLeft = '10px';
+	    span.appendChild(document.createTextNode(param+": "));
+	    tdiv.appendChild(span);
+	    tdiv.appendChild(document.createTextNode(smoketestdata['parameters'][param]));
+	}
+	tdiv.appendChild(document.createElement("br"));
+    }
+
+    var table = document.createElement("table");
+    table.className = 'sumtab';
+
+    for (var queryname in smoketestdata['data']) {
+	var tr = document.createElement("tr");
+        tr.style.background = "initial";
+	var td = document.createElement("th");
+        td.colSpan = '2';
+        td.appendChild(document.createElement("br"));
+
+	var link = document.createElement("a");
+	link.title = 'view this response';
+        link.style.fontFamily = "monospace";
+	link.style.textTransform = 'initial';
+	link.style.cursor = "pointer";
+	link.setAttribute('onclick', 'pasteId("'+smoketestdata['data'][queryname]['parent_pk']+'");sendId(false);selectInput("qid");');
+	link.appendChild(document.createTextNode(queryname));
+	td.appendChild(link);
+	tr.appendChild(td);
+
+	td = document.createElement("th");
+        td.appendChild(document.createElement("br"));
+	td.appendChild(document.createTextNode('NN name'));
+	tr.appendChild(td);
+	td = document.createElement("th");
+        td.appendChild(document.createElement("br"));
+	td.appendChild(document.createTextNode('Expect'));
+	tr.appendChild(td);
+
+	for (var agent of Object.keys(all_agents).sort()) {
+	    td = document.createElement("th");
+	    td.style.minWidth = '80px';
+            td.appendChild(document.createElement("br"));
+            td.appendChild(document.createTextNode(agent.replace(/ara-|kp-/,"")));
+	    tr.appendChild(td);
+	}
+        table.appendChild(tr);
+
+	var num = 0;
+	var checknames = false;
+        for (var type of ['allow','deny']) {
+            for (var mol in smoketestdata['data'][queryname][type]) {
+		num++;
+		tr = document.createElement("tr");
+		tr.className = 'hoverable';
+
+		td = document.createElement("td");
+		td.innerText = num+'.';
+		tr.appendChild(td);
+
+		td = document.createElement("td");
+		td.title = mol;
+		td.innerText = mol;
+		tr.appendChild(td);
+
+                td = document.createElement("td");
+		td.id = queryname+"_entityname_"+mol
+		td.title = mol;
+		if (entities[mol])
+		    td.innerText = entities[mol].name;
+		else {
+		    checknames = true;
+		    entities[mol] = {};
+                    entities[mol].checkHTML = '--';
+		    td.innerText = '(looking up name...)';
+		}
+		tr.appendChild(td);
+
+		td = document.createElement("td");
+		td.className = type == 'allow' ? 'numnew':'p1 qprob cytograph_controls';
+                td.style.borderRadius = "initial";
+		td.innerText = type;
+		tr.appendChild(td);
+
+		for (var agent of Object.keys(all_agents).sort()) {
+		    td = document.createElement("td");
+		    td.style.borderLeft = "1px solid black";
+		    td.style.textAlign = 'right';
+
+		    var done = false;
+		    for (var ara in smoketestdata['data'][queryname][type][mol]) {
+			if (ara == agent) {
+			    if (done) // no longer relevant...?
+				td.appendChild(document.createTextNode("*"));
+			    else {
+				var obj = smoketestdata['data'][queryname][type][mol][ara];
+				var pcl = obj['drug_report'] == "pass" ? "p9" : "p1";
+
+				var span = document.createElement("span");
+				span.className = pcl+' qprob cytograph_controls';
+				span.appendChild(document.createTextNode(Number(obj['score']).toFixed(2)));
+				td.appendChild(span);
+
+				td.title = obj['drug_report'];
+				done = true;
+			    }
+			}
+		    }
+		    tr.appendChild(td);
+		}
+
+		table.appendChild(tr);
+	    }
+	}
+
+    }
+    if (checknames)
+	check_entities_batch(99);
+
+    tdiv.appendChild(table);
+    tdiv.appendChild(document.createElement("br"));
+    tdiv.appendChild(document.createElement("br"));
+    tdiv.appendChild(document.createTextNode("Legend:"));
+    var span = document.createElement("span");
+    span.className = 'p9 qprob cytograph_controls';
+    span.style.marginLeft = '10px';
+    span.appendChild(document.createTextNode("Pass"));
+    tdiv.appendChild(span);
+    span = document.createElement("span");
+    span.className = 'p1 qprob cytograph_controls';
+    span.style.marginLeft = '10px';
+    span.style.marginRight = '10px';
+    span.appendChild(document.createTextNode("Fail"));
+    tdiv.appendChild(span);
+    tdiv.appendChild(document.createTextNode("Number within bubble is ARS-normalized Score"));
+
+    return tdiv;
+}
+
+function generateLoadTimeTestResults(loadtestdata) {
+    var tdiv = document.createElement("div");
+
+    var all_agents = {};
+    for (var q in loadtestdata['data']) {
+	var obj = loadtestdata['data'][q];
+	if (obj['stragglers'])
+	    for (var actor of obj['stragglers'])
+		all_agents[actor] = 1;
+
+	for (var actor in obj['actors'])
+            all_agents[actor] = 1;
+    }
+
+    if (loadtestdata['parameters']) {
+	tdiv.appendChild(document.createTextNode("Parameters::"));
+	for (var param in loadtestdata['parameters']) {
+	    var span = document.createElement("span");
+	    span.style.fontWeight = "bold";
+	    span.style.marginLeft = '10px';
+	    span.appendChild(document.createTextNode(param+": "));
+            tdiv.appendChild(span);
+            tdiv.appendChild(document.createTextNode(loadtestdata['parameters'][param]));
+	}
+	tdiv.appendChild(document.createElement("br"));
+	tdiv.appendChild(document.createElement("br"));
+    }
+
+    var table = document.createElement("table");
+    table.className = 'sumtab';
+
+    var tr = document.createElement("tr");
+    var td = document.createElement("th");
+    tr.appendChild(td);
+    //td = document.createElement("th");
+    //td.innerText = 'PK';
+    //tr.appendChild(td);
+    td = document.createElement("th");
+    td.innerText = 'Query';
+    tr.appendChild(td);
+    td = document.createElement("th");
+    td.innerText = 'Time';
+    tr.appendChild(td);
+
+    for (var agent of Object.keys(all_agents).sort()) {
+	td = document.createElement("th");
+	td.colSpan = '2';
+	td.style.minWidth = '80px';
+	td.innerText = agent.replace(/ara-|kp-/,"");
+	tr.appendChild(td);
+    }
+    table.appendChild(tr);
+
+    var num = 0;
+    for (var q in loadtestdata['data']) {
+        var obj = loadtestdata['data'][q];
+        num++;
+	tr = document.createElement("tr");
+        tr.className = 'hoverable';
+
+	td = document.createElement("td");
+        td.innerText = num+'.';
+	tr.appendChild(td);
+
+        td = document.createElement("td");
+	var link = document.createElement("a");
+	link.title = 'view this response';
+	link.style.cursor = "pointer";
+	link.style.fontFamily = "monospace";
+	link.setAttribute('onclick', 'pasteId("'+obj['parent_pk']+'");sendId(false);selectInput("qid");');
+	link.appendChild(document.createTextNode(q));
+	td.appendChild(link);
+	tr.appendChild(td);
+
+        td = document.createElement("td");
+	td.style.fontWeight = 'bold';
+        td.style.textAlign = 'right';
+	td.innerText = Number(obj["completion_time"]).toFixed(1);
+	td.title = obj["completion_time"] + " seconds";
+	tr.appendChild(td);
+
+	for (var agent of Object.keys(all_agents).sort()) {
+	    td = document.createElement("td");
+            td.style.borderLeft = "1px solid black";
+	    td.style.textAlign = 'right';
+	    var span = document.createElement("span");
+
+            if (obj['actors'][agent]) {
+		if (obj['stragglers'].includes(agent))
+		    td.appendChild(document.createTextNode("\u{1F422}"));
+		if (obj['actors'][agent]['status'] == "Done") {
+		    span.innerHTML = '&check;';
+		    if (obj['actors'][agent]['n_results'] > 0)
+			span.className = 'explevel p9';
+		    else
+			span.className = 'explevel p0';
+		}
+                else if (obj['actors'][agent]['status'] == "Error") {
+                    span.innerHTML = '&cross;';
+		    span.className = 'explevel p1';
+		}
+                else {
+		    span.innerText = obj['actors'][agent]['status'];
+		}
+                td.appendChild(span);
+		td.title = obj['actors'][agent]['status'];
+                if (obj['stragglers'].includes(agent))
+		    td.title += " (straggler)";
+
+	    }
+            else
+		td.innerText = 'n/a';
+	    tr.appendChild(td);
+
+            td = document.createElement("td");
+	    td.style.textAlign = 'right';
+            if (obj['actors'][agent] && obj['actors'][agent]['completion_time'])
+		td.innerText = Number(obj['actors'][agent]['completion_time']).toFixed(3);
+            else if (obj['actors'][agent] && obj['actors'][agent]['status'] == "Error")
+		td.innerText = 'E';
+	    else
+		td.innerText = 'n/a';
+	    td.title = (obj['actors'][agent]['n_results'] ? obj['actors'][agent]['n_results'] : "No") + " results";
+
+	    tr.appendChild(td);
+	}
+
+	table.appendChild(tr);
+    }
+
+    tdiv.appendChild(table);
+    tdiv.appendChild(document.createElement("br"));
+    tdiv.appendChild(document.createElement("br"));
+    tdiv.appendChild(document.createTextNode("Legend:"));
+    var span = document.createElement("span");
+    span.className = 'explevel p9';
+    span.style.marginLeft = '10px';
+    span.innerHTML = '&check;';
+    tdiv.appendChild(span);
+    tdiv.appendChild(document.createTextNode(" Done (mouse-over to see number of results)"));
+    span = document.createElement("span");
+    span.className = 'explevel p0';
+    span.style.marginLeft = '10px';
+    span.innerHTML = '&check;';
+    tdiv.appendChild(span);
+    tdiv.appendChild(document.createTextNode(" Done, with ZERO results"));
+    span = document.createElement("span");
+    span.className = 'explevel p1';
+    span.style.marginLeft = '10px';
+    span.innerHTML = '&cross;';
+    tdiv.appendChild(span);
+    tdiv.appendChild(document.createTextNode(" Error"));
+    tdiv.appendChild(document.createTextNode("\u00A0\u00A0\u00A0\u{1F422} Straggler"))
+    tdiv.appendChild(document.createTextNode("\u00A0\u00A0\u00A0Number is completion time (sec)"));
+
+    return tdiv;
 }
 
 
@@ -6735,7 +7121,7 @@ function check_entities_batch(batchsize) {
 
 			entities[entity].isvalid   = true;
 			entities[entity].checkHTML = "<span class='explevel p9'>&check;</span>&nbsp;";
-			document.getElementById("devdiv").innerHTML += data[entity].id.type+"<br>";
+			document.getElementById("devdiv").innerHTML += data[entity].id.category+"<br>";
 		    }
 		    else if (entities[entity]) {
 			entities[entity].curie = "<span class='error'>unknown</span>";
@@ -6780,7 +7166,7 @@ function check_entities() {
 
 		    entities[entity].isvalid   = true;
 		    entities[entity].checkHTML = "<span class='explevel p9'>&check;</span>&nbsp;";
-		    document.getElementById("devdiv").innerHTML += data[entity].id.type+"<br>";
+		    document.getElementById("devdiv").innerHTML += data[entity].id.category+"<br>";
 		}
 		else {
 		    entities[entity].curie = "<span class='error'>unknown</span>";
