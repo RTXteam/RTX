@@ -762,7 +762,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     qnodes_with_multiple_ids = {qnode_key for qnode_key, qnode in qg.nodes.items()
                                 if qnode.ids and len(qnode.ids) > 1}
 
-    resource_id = "infores:arax" if mode == "ARAX" else "infores:rtx-kg2"
+    resource_id = "infores:rtx-kg2" if mode == "RTXKG2" else "infores:arax"
     results = []
     for result_graph in final_result_graphs:
         node_bindings = dict()
