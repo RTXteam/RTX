@@ -957,14 +957,15 @@ class ARAXQuery:
 
     ############################################################################################
     def send_to_callback(self, callback, response):
-        response.info(f"Attempting to send response to callback URL: {callback}")
         envelope_dict = response.envelope.to_dict()
         post_succeeded = False
         send_attempts = 0
+        timeout = 300
 
-        while send_attempts < 3 and post_succeeded == False:
+        while send_attempts < 3 and not post_succeeded:
+            response.info(f"Attempting to send (with timeout {timeout}) the Response to callback URL: {callback}")
             try:
-                post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'}, timeout=60)
+                post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'}, timeout=timeout)
                 status_code = post_response_content.status_code
                 if status_code in [ 200, 201 ]:
                     response.info(f"POST to callback URL succeeded with status code {status_code}")
@@ -973,11 +974,19 @@ class ARAXQuery:
                     response.warning(f"POST to callback URL failed with status code {status_code}")
 
             except Exception as error:
-                response.warning(f"Unable to make a connection to callback URL {callback} with error {error}")
+                if 'Read timed out' in f"{error}":
+                    response.warning(f"Attempt to send Response to callback URL {callback} timed out after {timeout} seconds. We will assume that it was received but just not acknowledged")
+                    post_succeeded = True
+                else:
+                    response.warning(f"Unable to make a connection to callback URL {callback} with error {error}")
+
             send_attempts += 1
+            if not post_succeeded:
+                response.info(f"Wait 10 seconds before trying again")
+                time.sleep(10)
 
         if not post_succeeded:
-            response.error(f"Unable to send the Response to callback URL {callback} after {send_attempts} tries. Work is lost", error_code="UnreachableCallback")
+            response.error(f"Did not received a positive acknowledgement from sending the Response to callback URL {callback} after {send_attempts} tries. Work may be lost", error_code="UnreachableCallback")
 
         self.track_query_finish()
         os._exit(0)

@@ -302,12 +302,14 @@ class ARAXQueryTracker:
         timestamp = str(datetime.now().isoformat())
         eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker create_tracker_entry")
 
+        MAX_CONCURRENT_FROM_REMOTE = 10
+
         instance_info = self.get_instance_info()
 
         ongoing_queries_by_remote_address = self.check_ongoing_queries()
 
         remote_address = attributes['remote_address']
-        if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > 4 and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
+        if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > MAX_CONCURRENT_FROM_REMOTE and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
             try:
                 start_datetime = datetime.now().isoformat(' ', 'seconds')
                 tracker_entry = ARAXQuery(
@@ -417,27 +419,21 @@ class ARAXQueryTracker:
         ongoing_queries_by_remote_address = {}
 
         for ongoing_query in ongoing_queries:
-             try:
-                 pid = ongoing_query.pid
-             except:
-                 eprint("WARNING: ongoing query probably deleted by another thread")
-                 continue
+            try:
+                pid = ongoing_query.pid
+            except:
+                eprint("WARNING: ongoing query probably deleted by another thread")
+                continue
 
-             #### A manual way to target the deletion of stuck entries
-             #if pid == 132:
-             #    pid = 9999
-
-             if psutil.pid_exists(pid):
-                 status = 'This PID exists'
-                 remote_address = ongoing_query.remote_address
-                 if remote_address not in ongoing_queries_by_remote_address:
-                     ongoing_queries_by_remote_address[remote_address] = 0
-                 ongoing_queries_by_remote_address[remote_address] += 1
-             else:
-                 status = 'This PID no longer exists'
-                 entries_to_delete.append(ongoing_query.query_id)
-
-             eprint(f"  -- PID {pid} - {status}")
+            if psutil.pid_exists(pid):
+                status = 'This PID exists'
+                remote_address = ongoing_query.remote_address
+                if remote_address not in ongoing_queries_by_remote_address:
+                    ongoing_queries_by_remote_address[remote_address] = 0
+                ongoing_queries_by_remote_address[remote_address] += 1
+            else:
+                status = 'This PID no longer exists'
+                entries_to_delete.append(ongoing_query.query_id)
 
         for query_id in entries_to_delete:
             attributes = {
@@ -557,8 +553,6 @@ class ARAXQueryTracker:
         except:
             eprint(f"ERROR: Attempt to terminate pid={terminate_pid} failed")
             return { 'status': 'ERROR', 'description': f"ERROR: Attempt to terminate pid={terminate_pid} failed" }
-
-
 
         return { 'status': 'OK', 'description': f"Process {terminate_pid} terminated" }
 
@@ -701,7 +695,7 @@ def main():
 
     query_tracker = ARAXQueryTracker()
 
-    #### If pruning, then also show
+    #### If pruning, then also set the --show_ongoing and --reset_job flags
     if params.prune_jobs:
         params.show_ongoing = True
         params.reset_job = True
@@ -717,7 +711,7 @@ def main():
             elapsed = now - datetime.fromisoformat(entry.start_datetime)
             elapsed = elapsed.seconds + elapsed.days * 24 * 60 * 60
             print(f"{entry.query_id}\t{entry.start_datetime}\t{elapsed}\t{entry.instance_name}\t{entry.hostname}\t{entry.status}\t{entry.origin}\t{entry.pid}\t{entry.message_id}\t{entry.message_code}\t{entry.code_description}")
-            if params.prune_jobs and elapsed > 70000: 
+            if params.prune_jobs and elapsed > 10000: 
                 prune_job_ids.append(entry.query_id)
 
     #### Extract job_ids
