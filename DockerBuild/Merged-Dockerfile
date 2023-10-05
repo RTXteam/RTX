@@ -76,12 +76,15 @@ RUN chown -R rt.rt /mnt/data/orangeboard/kg2
 RUN su rt && cd /mnt/data/orangeboard/kg2 && git clone https://github.com/RTXteam/RTX.git
 RUN su rt && cd /mnt/data/orangeboard/kg2/RTX && git checkout itrb-test
 RUN chown -R rt.rt /mnt/data/orangeboard/kg2/RTX
+COPY kg2-config.js /mnt/data/orangeboard/kg2/RTX/code/UI/interactive/config.js
 
 # setup KG2 services
 RUN export DEVAREA=kg2
 RUN cat /mnt/data/orangeboard/kg2/RTX/code/UI/OpenAPI/python-flask-server/KG2/RTX_OpenAPI_kg2 > /etc/init.d/RTX_OpenAPI_kg2
 RUN chmod 700 /etc/init.d/RTX_OpenAPI_kg2
 RUN update-rc.d RTX_OpenAPI_kg2 defaults
+RUN ln -s /mnt/data/orangeboard/kg2/RTX/code/UI/interactive /var/www/html/kg2
 
 # setup config.domain
 RUN su rt && cd /mnt/data/orangeboard/kg2/RTX/code/ && echo "Github actions ARAX test suite" > config.domain
+
