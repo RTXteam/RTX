@@ -291,6 +291,8 @@ class NodeSynonymizer:
         # Trim down to minimal output, if requested
         if output_format == "minimal":
             for normalizer_info in results_dict.values():
+                if normalizer_info is None:
+                    continue
                 keys_to_delete = set(normalizer_info.keys()).difference({"id"})
                 for dict_key in keys_to_delete:
                     del normalizer_info[dict_key]
