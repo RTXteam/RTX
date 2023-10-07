@@ -11,13 +11,13 @@ import traceback
 import pkgutil
 from importlib.metadata import version
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
-from RTXConfiguration import RTXConfiguration
 from ARAX_query_tracker import ARAXQueryTracker
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand")
 from kp_info_cacher import KPInfoCacher
 
+FREQ_KP_INFO_CACHER_SEC = 3600
+FREQ_CHECK_ONGOING_SEC = 60
 
 class ARAXBackgroundTasker:
 
@@ -25,7 +25,6 @@ class ARAXBackgroundTasker:
     def __init__(self):
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker created")
-        self.rtxConfig = RTXConfiguration()
 
 
     def run_tasks(self, config):
@@ -85,17 +84,20 @@ class ARAXBackgroundTasker:
                         eprint(f"ERROR: Unable to delete file with error {error}")
 
         if file_counter != 1 or link_counter != 1:
-            eprint(f"ERROR: NodeSynonymizer state is weird. Running the database manager")
-            try:
-                subprocess.check_call( [ 'python3', node_synonymizer_path + "/../ARAXQuery/ARAX_database_manager.py" ] )
-            except Exception as error:
-                eprint(f"ERROR: Attempt to run database manager failed with {error}")
+            eprint("ERROR: NodeSynonymizer state is weird. "
+                   f"file_counter: {file_counter} "
+                   f"link_counter: {link_counter} "
+                   "Recommend running the database_manager and restarting")
+            # try:
+            #     subprocess.check_call( [ 'python3', node_synonymizer_path + "/../ARAXQuery/ARAX_database_manager.py" ] )
+            # except Exception as error:
+            #     eprint(f"ERROR: Attempt to run database manager failed with {error}")
 
 
         #### Check in on the databases directory
         node_synonymizer_path = os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer"
         files = os.listdir(node_synonymizer_path)
-        eprint("INFO: Current contents of the databases area")
+        eprint("INFO: Current contents of the databases area:")
 
         for file in files:
             if file.startswith('node_syn') and file.endswith('.sqlite'):
@@ -106,10 +108,12 @@ class ARAXBackgroundTasker:
                     eprint(f"  {resolved_path}")
                     result = subprocess.run(['ls', '-l', resolved_path], stdout=subprocess.PIPE)
                     eprint(result.stdout.decode('utf-8'))
+        eprint("INFO: End listing databases area contents")
 
 
 
         #### Loop forever doing various things
+        my_pid = os.getpid()
         while True:
 
             #### Run the KP Info Cacher less frequently
@@ -123,31 +127,22 @@ class ARAXBackgroundTasker:
                     exception_type, exception_value, exception_traceback = sys.exc_info()
                     eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: refresh_kp_info_caches() failed: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}")
             kp_info_cacher_counter += 1
-            if kp_info_cacher_counter > ( 6 * 10 ):
+            if kp_info_cacher_counter * FREQ_CHECK_ONGOING_SEC > \
+               FREQ_KP_INFO_CACHER_SEC:
                 kp_info_cacher_counter = 0
 
-            #### Check ongoing queries
-            #eprint(f"{timestamp}: INFO: ARAXBackgroundTasker initiating query_tracker.check_ongoing_queries")
-            timestamp = str(datetime.datetime.now().isoformat())
-            if 'threading_lock' in config and config['threading_lock'] is not None:
-                with config['threading_lock']:
-                    ongoing_queries_by_remote_address = query_tracker.check_ongoing_queries()
-            else:
-                ongoing_queries_by_remote_address = query_tracker.check_ongoing_queries()
+            ongoing_queries_by_remote_address = query_tracker.check_ongoing_queries()
             n_ongoing_queries = 0
             n_clients = 0
-            for client,n_queries in ongoing_queries_by_remote_address.items():
+            for client, n_queries in ongoing_queries_by_remote_address.items():
                 n_clients += 1
                 n_ongoing_queries += n_queries
 
-
-
-
-
             load_tuple = psutil.getloadavg()
 
-            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker status: waiting. Current load is {load_tuple}, n_clients={n_clients}, n_ongoing_queries={n_ongoing_queries}")
-            time.sleep(10)
+            timestamp = str(datetime.datetime.now().isoformat())
+            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker (PID {my_pid}) status: waiting. Current load is {load_tuple}, n_clients={n_clients}, n_ongoing_queries={n_ongoing_queries}")
+            time.sleep(FREQ_CHECK_ONGOING_SEC)
 
 
 

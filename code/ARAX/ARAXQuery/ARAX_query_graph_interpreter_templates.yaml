@@ -25,6 +25,7 @@ templates:
       - n00(ids)
     DSL:
       - expand(node_key=n00)
+      - filter_kg(action=remove_general_concept_nodes,perform_action=True)
       - resultify()
 
   one_node_with_categories:
@@ -57,6 +58,7 @@ templates:
     DSL:
       - expand()
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - filter_kg(action=remove_general_concept_nodes,perform_action=True)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=500)
 
@@ -71,6 +73,7 @@ templates:
     DSL:
       - expand()
       - overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n00, object_qnode_key=n01)
+      - filter_kg(action=remove_general_concept_nodes,perform_action=True)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=500)
 
@@ -84,6 +87,7 @@ templates:
       - n01(ids)
     DSL:
       - expand()
+      - filter_kg(action=remove_general_concept_nodes,perform_action=True)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=500)
 
@@ -97,6 +101,7 @@ templates:
       - n01()
     DSL:
       - expand()
+      - filter_kg(action=remove_general_concept_nodes,perform_action=True)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=500)
 
@@ -111,6 +116,7 @@ templates:
     DSL:
       - expand()
       - overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)
+      - filter_kg(action=remove_general_concept_nodes,perform_action=True)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=500)
 
@@ -126,6 +132,7 @@ templates:
       - expand()
       - overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=CP1)
       - overlay(action=predict_drug_treats_disease, subject_qnode_key=n01, object_qnode_key=n00, virtual_relation_label=P1)
+      - filter_kg(action=remove_general_concept_nodes,perform_action=True)
       - filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_key=n01)
       - overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)
       - resultify(ignore_edge_direction=true)
@@ -303,6 +310,7 @@ templates:
       - overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n01, object_qnode_key=n02)
       - overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n02, object_qnode_key=n03)
       - overlay(action=compute_ngd, virtual_relation_label=N4, subject_qnode_key=n03, object_qnode_key=n04)
+      - filter_kg(action=remove_general_concept_nodes,perform_action=True)
       - resultify()
       - filter_results(action=limit_number_of_results, max_results=500)
 

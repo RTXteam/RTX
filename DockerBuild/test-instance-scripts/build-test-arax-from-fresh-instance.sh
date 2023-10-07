@@ -7,25 +7,17 @@ set -o nounset -o pipefail -o errexit
 arax_base=/mnt/data/orangeboard
 
 port_number=${1:-80}
-echo "Port Number: ${port_number}"
+echo "Port Number: ${port_number}"  # use 8080 if installing on arax2.rtx.ai
 
 sudo apt-get update
 
 # --------------------------------------------------------------------------------------------------
 # the following are optional; they are just for convenience in testing and debugging in the instance:
-sudo apt-get install -y emacs  # convenience for Steve
-sudo apt-get install -y netcat # useful for debugging
+# sudo apt-get install -y emacs  # convenience for Steve
+# sudo apt-get install -y netcat # useful for debugging
 # --------------------------------------------------------------------------------------------------
 
 sudo apt-get install -y docker.io
-
-# install python3.7 (with pip) into the host OS, using the Ubuntu packages
-sudo apt-get install -y apt-utils python3 python3-pip
-sudo apt-get install -y software-properties-common
-sudo add-apt-repository -y ppa:deadsnakes/ppa
-sudo apt-get update
-sudo apt-get install -y python3.7 python3.7-dev python3.7-venv
-python3.7 -m pip install wheel
 
 # clone the ARAX software repo from GitHub (master branch)
 rm -r -f RTX
@@ -48,17 +40,17 @@ scp araxconfig@araxconfig.rtx.ai:config_secrets.json RTX/code
 echo "http://localhost:5008/api/rtxkg2/v1.2" > RTX/code/kg2_url_override.txt
 
 # download the database files (this step takes a long time)
-python3.7 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
+python3 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
 
 # copy the dockerfile to the CWD so we can modify it in-place
 cp RTX/DockerBuild/Merged-Dockerfile .
 
 # --------------------------------------------------------------------------------------------------
 # the following are optional; they are just for convenience in testing and debugging inside the container:
-echo <<EOF >> ./Merged-Dockerfile
-RUN apt-get install -y netcat 
-RUN apt-get install -y emacs
-EOF
+# cat >./Merged-Dockerfile <<EOF 
+# RUN apt-get install -y netcat 
+# RUN apt-get install -y emacs
+# EOF
 # --------------------------------------------------------------------------------------------------
 
 sed -i 's/checkout production/checkout master/g' ./Merged-Dockerfile  # for issue 1740; temporary fix during code freeze until commit `ffbd287` can be merged to `production` branch
@@ -78,8 +70,8 @@ sudo docker start arax
 
 for devarea in kg2 production
 do
-    sudo docker cp RTX/code/config_local.json arax:${arax_base}/${devarea}/RTX/code
-    sudo docker exec arax chown rt.rt ${arax_base}/${devarea}/RTX/code/config_local.json
+    sudo docker cp RTX/code/config_secrets.json arax:${arax_base}/${devarea}/RTX/code
+    sudo docker exec arax chown rt.rt ${arax_base}/${devarea}/RTX/code/config_secrets.json
     # create the required symbolic links for ARAX/KG2 database files, inside the container
     sudo docker exec arax bash -c "sudo -u rt bash -c 'cd ${arax_base}/${devarea}/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
 done

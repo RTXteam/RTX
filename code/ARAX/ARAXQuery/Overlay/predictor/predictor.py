@@ -22,7 +22,6 @@ RTXConfig = RTXConfiguration()
 class predictor():
     def __init__(self, DTD_prob_file=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.dtd_prob_path.split('/')[-1]]), model_file=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.log_model_path.split('/')[-1]]), use_prob_db=True, live = None):
         if live is not None:
-            RTXConfig.live = live
             model_file = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.log_model_path.split('/')[-1]])
             DTD_prob_file = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.dtd_prob_path.split('/')[-1]])
         self.use_prob_db = use_prob_db
@@ -79,7 +78,6 @@ class predictor():
         #graph = pd.read_csv(graph_file, sep=' ', skiprows=1, header=None, index_col=None)
         #self.graph = graph.sort_values(0).reset_index(drop=True)
         if live is not None:
-            RTXConfig.live = live
             graph_database = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.graph_database_path.split('/')[-1]])
         
         if self.use_prob_db is not True:

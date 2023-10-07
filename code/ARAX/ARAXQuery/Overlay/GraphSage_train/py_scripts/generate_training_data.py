@@ -1,12 +1,10 @@
 ## This script is used to generate the training data of mychem, ndf and semmed for training the model.
-import sys, os
+import sys
+import os
 import pandas as pd
 import requests
 import time
 import numpy
-import urllib
-import ast
-import subprocess
 import gzip
 import csv
 import numpy as np
@@ -163,9 +161,11 @@ class DataGeneration:
     def __init__(self):
         ## Connect to neo4j database
         rtxc = RTXConfiguration()
-        rtxc.neo4j_kg2 = 'KG2c'
-        print(f"You're using '{rtxc.neo4j_bolt}'", flush=True)
-        self.driver = GraphDatabase.driver(rtxc.neo4j_bolt, auth=(rtxc.neo4j_username, rtxc.neo4j_password))
+        kg2_neo4j_info = rtxc.get_neo4j_info("KG2c")
+        self.driver = GraphDatabase.driver(kg2_neo4j_info['bolt'],
+                                           auth=(kg2_neo4j_info['username'],
+                                                 kg2_neo4j_info['password']))
+        print(f"You're using '{kg2_neo4j_info['bolt']}'", flush=True)
 
     def get_drug_curies_from_graph(self):
         ## Pulls a dataframe of all of the graph drug-associated nodes

@@ -49,6 +49,7 @@
 <br><br>
 <div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">System Activity</div>
 <div id="kpinfoMenu" onclick="openSection('kpinfo');" class="menuleftitem">SmartAPI Info</div>
+<div id="systestMenu" onclick="openSection('systest');" class="menuleftitem">Translator Testing</div>
 <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
 <hr>
 <div title="ARAX UI version" class="tiny" id="uiversionstring">version...</div>
@@ -497,6 +498,17 @@
     <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveKPInfo();"/>
     <span style="margin-left:50px;" id="kpinfo_wait"></span>
     <div id="kpinfo_container"><br>Click on the button above to view SmartAPI info table<br><br></div>
+  </div>
+</div>
+
+<div class="pagesection" style="overflow:visible;" id="systestDiv">
+  <div class="statushead">Translator Testing
+    <span style="float:right;"><a href="?systest=1">[ Direct link to this page ]</a></span>
+  </div>
+  <div class="status">
+    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveSysTestResults();"/>
+    <span style="margin-left:50px;" id="systest_wait"></span>
+    <div id="systest_container"><br>Click on the button above to view Translator system test results tables<br><br></div>
   </div>
 </div>
 

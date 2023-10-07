@@ -55,16 +55,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../reasoningtool
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache
 
-from ARAX_database_manager import ARAXDatabaseManager
-#from reasoner_validator import validate
-#from jsonschema.exceptions import ValidationError
 
 ARAXResponse.output = 'STDERR'
 
 null_context_manager = contextlib.nullcontext()
 
-query_tracker_reset = ARAXQueryTracker()
-query_tracker_reset.clear_unfinished_entries()
 
 class response_locking(ARAXResponse):
     def __init__(self, lock: threading.Lock):
@@ -82,13 +77,7 @@ class ARAXQuery:
         self.response = None
         self.message = None
         self.rtxConfig = RTXConfiguration()
-        self.DBManager = ARAXDatabaseManager()
         self.lock = None
-        if self.DBManager.check_versions():
-            self.response = ARAXResponse()
-            self.response.debug(f"At least one database file is either missing or out of date. Updating now... (This may take a while)")
-            self.response = self.DBManager.update_databases(True, response=self.response)
-
 
     def handle_memory_error(self, e):
         with self.lock if self.lock is not None else null_context_manager:
@@ -97,6 +86,12 @@ class ARAXQuery:
         print("[asynchronous_query]: " + repr(e), file=sys.stderr)
         with self.lock if self.lock is not None else null_context_manager:
             self.response.error("ARAX ran out of memory during query processing; no results will be returned for this query")
+
+    @staticmethod
+    def query_tracker_reset():
+        query_tracker_reset = ARAXQueryTracker()
+        query_tracker_reset.clear_unfinished_entries()
+        del query_tracker_reset
 
 
     def query_return_stream(self, query, mode='ARAX'):
@@ -223,7 +218,6 @@ class ARAXQuery:
 
         self.response = ARAXResponse()
         response = self.response
-        print("in query_return_message - printing", file=sys.stderr)
         response.debug("in query_return_message")
 
         self.query(query, mode=mode, origin='API')
@@ -243,7 +237,8 @@ class ARAXQuery:
                 'code_description': 'Query running via /asyncquery (parent)'
             }
             query_tracker = ARAXQueryTracker()
-            query_tracker.update_tracker_entry(self.response.job_id, attributes)
+            if hasattr(self.response, 'job_id'):
+                query_tracker.update_tracker_entry(self.response.job_id, attributes)
         else:
             self.track_query_finish()
             #### Switch OK to Success for TRAPI compliance
@@ -884,7 +879,7 @@ class ARAXQuery:
             # Update the resource_id to ARAX if not already present
             for result in response.envelope.message.results:
                 if result.resource_id is None:
-                    result.resource_id = 'ARAX'
+                    result.resource_id = 'infores:arax'
 
             # Store the validation and provenance metadata
             #trapi_version = '1.2.0'
@@ -962,17 +957,37 @@ class ARAXQuery:
 
     ############################################################################################
     def send_to_callback(self, callback, response):
-        response.info(f"Attempting to send to callback URL: {callback}")
         envelope_dict = response.envelope.to_dict()
-        try:
-            post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'})
-            status_code = post_response_content.status_code
-            response.info(f"Response from POST to callback URL was {status_code}")
-            if status_code not in [ 200, 201 ]:
-                response.error(f"Response from POST to callback URL was {status_code}", error_code="UnreachableCallback")
+        post_succeeded = False
+        send_attempts = 0
+        timeout = 300
 
-        except:
-            response.error(f"Unable to make a connection to URL {callback} at all. Work is lost", error_code="UnreachableCallback")
+        while send_attempts < 3 and not post_succeeded:
+            response.info(f"Attempting to send (with timeout {timeout}) the Response to callback URL: {callback}")
+            try:
+                post_response_content = requests.post(callback, json=envelope_dict, headers={'accept': 'application/json'}, timeout=timeout)
+                status_code = post_response_content.status_code
+                if status_code in [ 200, 201 ]:
+                    response.info(f"POST to callback URL succeeded with status code {status_code}")
+                    post_succeeded = True
+                else:
+                    response.warning(f"POST to callback URL failed with status code {status_code}")
+
+            except Exception as error:
+                if 'Read timed out' in f"{error}":
+                    response.warning(f"Attempt to send Response to callback URL {callback} timed out after {timeout} seconds. We will assume that it was received but just not acknowledged")
+                    post_succeeded = True
+                else:
+                    response.warning(f"Unable to make a connection to callback URL {callback} with error {error}")
+
+            send_attempts += 1
+            if not post_succeeded:
+                response.info(f"Wait 10 seconds before trying again")
+                time.sleep(10)
+
+        if not post_succeeded:
+            response.error(f"Did not received a positive acknowledgement from sending the Response to callback URL {callback} after {send_attempts} tries. Work may be lost", error_code="UnreachableCallback")
+
         self.track_query_finish()
         os._exit(0)
 

@@ -10,7 +10,7 @@ import socket
 import json
 import psutil
 
-from datetime import datetime
+from datetime import datetime, timezone
 import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -164,6 +164,8 @@ class ARAXQueryTracker:
         try:
             self.session.close()
             self.engine.dispose()
+            timestamp = str(datetime.now().isoformat())
+            eprint(f"{timestamp}: DEBUG: ARAXQueryTracker disconnecting session")
         except:
             eprint("ERROR: [ARAX_query_tracker.disconnect] Attempt to close and dispose of session failed")
 
@@ -202,28 +204,30 @@ class ARAXQueryTracker:
             eprint("ERROR: update_tracker_entry: session is None")
             return
 
-        tracker_entries = session.query(ARAXQuery).filter(ARAXQuery.query_id==tracker_id).all()
-        if len(tracker_entries) > 0:
-            tracker_entry = tracker_entries[0]
-            end_datetime = datetime.now()
-            elapsed = end_datetime - datetime.fromisoformat(tracker_entry.start_datetime)
-            tracker_entry.end_datetime = end_datetime.isoformat(' ', 'seconds')
-            tracker_entry.elapsed = elapsed.seconds
-            tracker_entry.status = attributes['status'][:254]
-            tracker_entry.message_id = attributes['message_id']
-            tracker_entry.message_code = attributes['message_code'][:254]
-            tracker_entry.code_description = attributes['code_description'][:254]
-        session.commit()
+        try:
+            tracker_entries = session.query(ARAXQuery).filter(ARAXQuery.query_id==tracker_id).all()
+            if len(tracker_entries) > 0:
+                tracker_entry = tracker_entries[0]
+                end_datetime = datetime.now()
+                elapsed = end_datetime - datetime.fromisoformat(tracker_entry.start_datetime)
+                tracker_entry.end_datetime = end_datetime.isoformat(' ', 'seconds')
+                tracker_entry.elapsed = elapsed.seconds
+                tracker_entry.status = attributes['status'][:254]
+                tracker_entry.message_id = attributes['message_id']
+                tracker_entry.message_code = attributes['message_code'][:254]
+                tracker_entry.code_description = attributes['code_description'][:254]
+            session.commit()
 
-        if 'status' in attributes and attributes['status'] in [ 'Completed', 'Died', 'Reset' ]:
-            try:
-                session.query(ARAXOngoingQuery).filter(ARAXOngoingQuery.query_id==tracker_id).delete()
-                session.commit()
-                eprint(f"INFO: Deleted ARAXOngoingQuery.query_id={tracker_id}")
-            except:
-                eprint(f"ERROR: Unable to delete ARAXOngoingQuery.query_id={tracker_id}")
-                session.commit()
-
+            if 'status' in attributes and attributes['status'] in [ 'Completed', 'Died', 'Reset' ]:
+                try:
+                    session.query(ARAXOngoingQuery).filter(ARAXOngoingQuery.query_id==tracker_id).delete()
+                    session.commit()
+                    eprint(f"INFO: Deleted ARAXOngoingQuery.query_id={tracker_id}")
+                except:
+                    eprint(f"ERROR: Unable to delete ARAXOngoingQuery.query_id={tracker_id}")
+                    session.commit()
+        except:
+            eprint("ERROR: Unable to update_tracker_entry, probably due to MySQL connection flakiness")
 
 
     ##################################################################################################
@@ -298,12 +302,14 @@ class ARAXQueryTracker:
         timestamp = str(datetime.now().isoformat())
         eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker create_tracker_entry")
 
+        MAX_CONCURRENT_FROM_REMOTE = 10
+
         instance_info = self.get_instance_info()
 
         ongoing_queries_by_remote_address = self.check_ongoing_queries()
 
         remote_address = attributes['remote_address']
-        if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > 4 and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
+        if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > MAX_CONCURRENT_FROM_REMOTE and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
             try:
                 start_datetime = datetime.now().isoformat(' ', 'seconds')
                 tracker_entry = ARAXQuery(
@@ -413,27 +419,21 @@ class ARAXQueryTracker:
         ongoing_queries_by_remote_address = {}
 
         for ongoing_query in ongoing_queries:
-             try:
-                 pid = ongoing_query.pid
-             except:
-                 eprint("WARNING: ongoing query probably deleted by another thread")
-                 continue
+            try:
+                pid = ongoing_query.pid
+            except:
+                eprint("WARNING: ongoing query probably deleted by another thread")
+                continue
 
-             #### A manual way to target the deletion of stuck entries
-             #if pid == 132:
-             #    pid = 9999
-
-             if psutil.pid_exists(pid):
-                 status = 'This PID exists'
-                 remote_address = ongoing_query.remote_address
-                 if remote_address not in ongoing_queries_by_remote_address:
-                     ongoing_queries_by_remote_address[remote_address] = 0
-                 ongoing_queries_by_remote_address[remote_address] += 1
-             else:
-                 status = 'This PID no longer exists'
-                 entries_to_delete.append(ongoing_query.query_id)
-
-             eprint(f"  -- PID {pid} - {status}")
+            if psutil.pid_exists(pid):
+                status = 'This PID exists'
+                remote_address = ongoing_query.remote_address
+                if remote_address not in ongoing_queries_by_remote_address:
+                    ongoing_queries_by_remote_address[remote_address] = 0
+                ongoing_queries_by_remote_address[remote_address] += 1
+            else:
+                status = 'This PID no longer exists'
+                entries_to_delete.append(ongoing_query.query_id)
 
         for query_id in entries_to_delete:
             attributes = {
@@ -554,8 +554,6 @@ class ARAXQueryTracker:
             eprint(f"ERROR: Attempt to terminate pid={terminate_pid} failed")
             return { 'status': 'ERROR', 'description': f"ERROR: Attempt to terminate pid={terminate_pid} failed" }
 
-
-
         return { 'status': 'OK', 'description': f"Process {terminate_pid} terminated" }
 
 
@@ -650,10 +648,12 @@ class ARAXQueryTracker:
 
         instance_name = self.get_instance_name()
 
+        eprint(f"Clearing unfinished entries for this instances")
         entries = self.session.query(ARAXQuery).filter(ARAXQuery.instance_name == instance_name).filter( (ARAXQuery.elapsed == None) | (ARAXQuery.status == 'Running Async') )
+        eprint(f" - found {len(entries)} entries")
 
         for entry in entries:
-            eprint(f" - {entry.query_id}, {entry.instance_name}, {entry.elapsed}")
+            eprint(f" - Clearing {entry.query_id}, {entry.instance_name}, {entry.elapsed}")
             now = datetime.now()
             then = datetime.strptime(entry.start_datetime, '%Y-%m-%d %H:%M:%S')
             delta = now - then
@@ -663,6 +663,7 @@ class ARAXQueryTracker:
             entry.code_description = 'Query was terminated by a process restart'
             entry.elapsed = elapsed
         self.session.commit()
+        eprint(f" - Clearing finished")
 
 
     ##################################################################################################
@@ -685,6 +686,7 @@ def main():
     argparser.add_argument('--show_ongoing', action='count', help='Show all ongoing queries')
     argparser.add_argument('--reset_job', action='count', help='Reset the specified job_id(s)')
     argparser.add_argument('--job_ids', type=str, help='Job IDs to show (comma separated list)')
+    argparser.add_argument('--prune_jobs', action='count', help='Simply prune very stale jobs from the active query table')
     params = argparser.parse_args()
 
     #### Set verbose
@@ -693,18 +695,30 @@ def main():
 
     query_tracker = ARAXQueryTracker()
 
+    #### If pruning, then also set the --show_ongoing and --reset_job flags
+    if params.prune_jobs:
+        params.show_ongoing = True
+        params.reset_job = True
+    prune_job_ids = []
+
     #### Check ongoing queries
     if params.show_ongoing:
         entries = query_tracker.get_entries(ongoing_queries=True)
         for entry in entries:
             #print(entry.__dict__)
-            print(f"{entry.query_id}\t{entry.pid}\t{entry.start_datetime}\t{entry.instance_name}\t{entry.hostname}\t{entry.status}\t{entry.elapsed}\t{entry.origin}\t{entry.message_id}\t{entry.message_code}\t{entry.code_description}")
-        return
+            now = datetime.now(timezone.utc)
+            now = now.replace(tzinfo=None)
+            elapsed = now - datetime.fromisoformat(entry.start_datetime)
+            elapsed = elapsed.seconds + elapsed.days * 24 * 60 * 60
+            print(f"{entry.query_id}\t{entry.start_datetime}\t{elapsed}\t{entry.instance_name}\t{entry.hostname}\t{entry.status}\t{entry.origin}\t{entry.pid}\t{entry.message_id}\t{entry.message_code}\t{entry.code_description}")
+            if params.prune_jobs and elapsed > 10000: 
+                prune_job_ids.append(entry.query_id)
 
     #### Extract job_ids
     job_ids = []
     if params.job_ids:
         job_ids = params.job_ids.split(',')
+    job_ids.extend(prune_job_ids)
 
     #### If the request is to reset jobs, do it
     if params.reset_job and len(job_ids) > 0:
