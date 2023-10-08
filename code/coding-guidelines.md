@@ -1,5 +1,5 @@
 Here are some coding guidelines for working on ARAX and
-[https://github.com/RTXteam/RTX-KG2](RTX-KG2).
+[RTX-KG2](https://github.com/RTXteam/RTX-KG2).
 
 # Caveat
 
