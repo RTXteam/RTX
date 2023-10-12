@@ -265,6 +265,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                     error_code="UnknownParameter")
                 return -1
             elif type(item) == list or type(item) == set:
+                    if key == 'drug_curie':
+                        continue 
                     for item_val in item:
                         if item_val not in allowable_parameters[key]:
                             self.response.error(
@@ -278,6 +280,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 elif any([x is None for x in allowable_parameters[key]]):
                     continue
                 elif key == "node_curie":  #FIXME: For now, if it's a node curie, just accept it as it is
+                    continue
+                elif key == "drug_curie":
                     continue
                 elif key == "subject_curie": #FIXME: same as above
                     continue
@@ -345,7 +349,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
     def __drug_treatment_graph_expansion(self, describe=False):
         """
         Run "drug_treatment_graph_expansion" action.
-        Allowable parameters: {'node_curie': str, 
+        Allowable parameters: {'node_curie': str,
+                                'drug_curie': list 
                                 'qedge_id': str,
                                 'n_drugs': int
                                 'n_paths': int}
@@ -359,6 +364,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
                                     'node_curie': {str()},
+                                    'drug_curie': {str()},
                                     'qedge_id': set([key for key in self.message.query_graph.edges.keys()]),
                                     'n_drugs': {int()},
                                     'n_paths': {int()}
@@ -366,6 +372,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         else:
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
                                     'node_curie': {'The node to predict drug treatments for.'},
+                                    'drug_curie': {'This node contains a list of drug curies for which xDTD will try to find the path for between node_curie and itself'},
                                     'qedge_id': {'The edge to place the predicted mechanism of action on. If none is provided, the query graph must be empty and a new one will be inserted.'},
                                     'n_drugs': {'The number of drugs to return. Defaults to 50. Maxiumum is only allowable to be 50.'},
                                     'n_paths': {'The number of paths connecting each drug to return. Defaults to 25.  Maxiumum is only allowable to be 25.'}
@@ -422,6 +429,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         if self.response.status != 'OK':
             return self.response
 
+        if 'drug_curie' not in self.parameters:
+            self.parameters['drug_curie'] = None
         # normalized_curie = self.synonymizer.get_canonical_curies(self.parameters['node_curie'])[self.parameters['node_curie']]
         # if normalized_curie:
         #     preferred_curie = normalized_curie['preferred_curie']
@@ -438,7 +447,21 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         else:
             self.response.warning(f"Could not get equivalent curies for disease {self.parameters['node_curie']}")
             return self.response
-        
+        if self.parameters['drug_curie']:
+            
+            drug_equivalent_curies_dict = self.synonymizer.get_equivalent_nodes(self.parameters['drug_curie'])
+            drug_equivalent_curies = []
+            for key,value in drug_equivalent_curies_dict.items():
+                if not value:
+                    continue
+                drug_equivalent_curies += list(value)
+
+            [self.parameters['drug_curie']]
+            if drug_equivalent_curies:
+                    self.response.debug(f"Get equivalent curies for Drug Curie {drug_equivalent_curies} from Node Synonymizer for {self.parameters['drug_curie']}")
+            else:
+                self.response.warning(f"Could not get equivalent curies for Drug {self.parameters['drug_curie']}")
+                return self.response
         for preferred_curie in all_equivalent_curies:
             try:
                 top_drugs = XDTD.get_top_drugs_for_disease(disease_ids=preferred_curie)
@@ -466,6 +489,14 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             ## Limit the number of drugs and paths to the top n
             top_drugs = top_drugs.iloc[:self.parameters['n_drugs'],:].reset_index(drop=True)
             top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:self.parameters['n_paths']] for row in top_drugs.to_numpy() if (row[0], row[2]) in top_paths}
+            if self.parameters['drug_curie']:
+                drugs_set = set(top_drugs['drug_id'])
+                intersecting_drug_curies = list(drugs_set.intersection(drug_equivalent_curies))
+                if not intersecting_drug_curies:
+                    continue
+                top_drugs = top_drugs[top_drugs['drug_id'].isin(intersecting_drug_curies)].reset_index(drop=True)
+                
+                top_paths = {pair:path for pair,path in top_paths.items() if pair[0] in intersecting_drug_curies}
 
             # # TRAPI-ifies the results of the model
             qedge_id = self.parameters.get('qedge_id')

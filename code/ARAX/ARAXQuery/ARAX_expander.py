@@ -383,9 +383,13 @@ class ARAXExpander:
                                       f" object qnode has 'ids' specified", error_code="NoCURIEs")
                             #raise Exception(f"No CURIEs found for {object_qnode.name}")
                             return response
+                        if subject_qnode.ids and len(subject_qnode.ids) >= 1:
+                            subject_curie = subject_qnode.ids  #FIXME: will need a way to handle multiple IDs
+                        else:
+                            subject_curie = None
                         log.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {object_curie}")
                         from ARAX_infer import ARAXInfer
-                        infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': object_curie, 'qedge_id': inferred_qedge_key}
+                        infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': object_curie, 'qedge_id': inferred_qedge_key,'drug_curie': subject_curie}
                         inferer = ARAXInfer()
                         infer_response = inferer.apply(response, infer_input_parameters)
                         # return infer_response
