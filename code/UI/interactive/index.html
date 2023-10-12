@@ -506,9 +506,15 @@
     <span style="float:right;"><a href="?systest=1">[ Direct link to this page ]</a></span>
   </div>
   <div class="status">
+    Select Test Report to view: 
+    <select id="whichsystest">
+      <option value="LATEST">Latest Report</option>
+    </select>
     <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveSysTestResults();"/>
     <span style="margin-left:50px;" id="systest_wait"></span>
-    <div id="systest_container"><br>Click on the button above to view Translator system test results tables<br><br></div>
+    <br>
+    (tests prior to 9/15 [Load] and 9/27 [Smoke] cannot be displayed)
+    <div id="systest_container"><br>Click on the button above to view Translator system test results<br><br></div>
   </div>
 </div>
 
