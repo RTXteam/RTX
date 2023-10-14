@@ -36,6 +36,10 @@ on feedback from the team.
    features should be avoided or used with utmost caution (i.e., only if you
    fully understand the implications of that choice for deployment).
 
+7. Only LF (i.e., `\n`) line termination for text files in the repo. Please do
+   not commit text files with Windows line termination (CRLF) unless you have
+   configured git to automatically convert them to LF line termination.
+
 # Performance considerations
 
 1. Don't parse YAML files at query time. In fact, try to avoid reading any
