@@ -7,7 +7,7 @@ Usage:
 
 import sys
 import os
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Optional
 
 import pytest
 
@@ -18,7 +18,6 @@ import Expand.expand_utilities as eu
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
-from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.attribute import Attribute
 
 
@@ -360,6 +359,7 @@ def test_cohd_expand():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
+
 @pytest.mark.skip(reason="retire DTD")
 def test_dtd_expand_1():
     actions_list = [
@@ -391,18 +391,6 @@ def test_dtd_expand_2():
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].original_attribute_name == "probability_treats" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].attribute_type_id == "EDAM-DATA:0951" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
     assert all([edges_by_qg_id[qedge_key][edge_key].attributes[0].value_url == "https://doi.org/10.1101/765305" for qedge_key in edges_by_qg_id for edge_key in edges_by_qg_id[qedge_key]])
-
-
-@pytest.mark.skip  # The NGD Expand module has been deprecated...
-def test_ngd_expand():
-    actions_list = [
-        "add_qnode(name=MONDO:0007156, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=infores:arax-normalized-google-distance)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
 @pytest.mark.external
@@ -714,6 +702,7 @@ def test_kg2_predicate_hierarchy_reasoning():
     assert any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:affects")
     assert not any(edge for edge in edges_by_qg_id["e00"].values() if edge.predicate == "biolink:related_to")
 
+
 @pytest.mark.skip(reason="Dev testing for domain range exclusion")
 def test_domain_range_exclusion():
     actions_list = [
@@ -725,6 +714,7 @@ def test_domain_range_exclusion():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert False
+
 
 @pytest.mark.slow
 def test_issue_1373_pinned_curies():
@@ -1295,7 +1285,7 @@ def test_xdtd_with_other_edges():
             }
         }
     }
-    #FIXME: this test is failing since the ability to mix inferred with lookup edges is not yet implemented
+    # FIXME: this test is failing since the ability to mix inferred with lookup edges is not yet implemented
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query, should_throw_error=True)
 
 

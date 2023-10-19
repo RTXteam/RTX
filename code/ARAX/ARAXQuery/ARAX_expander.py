@@ -28,7 +28,6 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute_constraint import AttributeConstraint
 from Expand.kg2_querier import KG2Querier
-from Expand.ngd_querier import NGDQuerier
 from Expand.trapi_querier import TRAPIQuerier
 
 
@@ -68,26 +67,22 @@ class ARAXExpander:
         :return:
         """
         kp_selector = KPSelector()
-        all_kps = sorted(list(kp_selector.valid_kps))    # TODO: Should we include with any maturity here? any TRAPI version?
+        all_kps = sorted(list(kp_selector.valid_kps))
         rtxc = RTXConfiguration()
         command_definition = {
             "dsl_command": "expand()",
             "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
-                           f"fashion, intelligently selecting which KPs to use for each edge. It selects KPs from the SmartAPI Registry "
-                           f"based on the meta information provided by their TRAPI APIs (when available), whether they "
-                           f"have an endpoint running a matching TRAPI version, and whether they have an endpoint with matching "
-                           f"maturity. For each QEdge, it queries the selected KPs in parallel; it will "
-                           f"timeout for a particular KP if it decides it's taking too long to respond. You may also "
-                           f"optionally specify a particular KP to use via the 'kp' parameter (described below).\n\n"
-                           f"Current candidate KPs include (for TRAPI {rtxc.trapi_major_version}, maturity '{rtxc.maturity}'): \n"
+                           f"fashion, intelligently selecting which KPs to use for each edge. It selects KPs from "
+                           f"the SmartAPI Registry based on the meta information provided by their TRAPI APIs, "
+                           f"whether they have an endpoint running a matching TRAPI version, and whether they have "
+                           f"an endpoint with matching maturity. For each QEdge, it queries the selected KPs "
+                           f"concurrently; it will timeout for a particular KP if it decides it's taking too long "
+                           f"to respond (this KP timeout can be controlled by the user). You may also optionally "
+                           f"specify a particular KP to use via the 'kp' parameter (described below).\n\n"
+                           f"Current candidate KPs include (for TRAPI {rtxc.trapi_major_version}, "
+                           f"maturity '{rtxc.maturity}'): \n"
                            f"{', '.join(all_kps)}. \n"
-                           f"\n(Note that this list of KPs may change unexpectedly based on the SmartAPI registry.)"
-                           f"\n\n**Notes specific to usage of ARAX's internal KPs:**\n "
-                           f"1. NGD: The 'infores:arax-normalized-google-distance' KP uses ARAX's in-house normalized "
-                           f"google distance (NGD) database to expand "
-                           "a query graph; it returns edges between nodes with an NGD value below a certain "
-                           "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
-                           "configurable/smarter in the future.\n",
+                           f"\n(Note that this list of KPs may change unexpectedly based on the SmartAPI registry.)",
             "parameters": self.get_parameter_info_dict()
         }
         return [command_definition]
@@ -440,7 +435,6 @@ class ARAXExpander:
                     asyncio.set_event_loop(loop)
                     tasks = [self._expand_edge_async(one_hop_qg,
                                                      kp_to_use,
-                                                     input_parameters,
                                                      user_specified_kp,
                                                      kp_timeout,
                                                      force_local,
@@ -723,7 +717,6 @@ class ARAXExpander:
 
     async def _expand_edge_async(self, edge_qg: QueryGraph,
                                  kp_to_use: str,
-                                 input_parameters: Dict[str, any],
                                  user_specified_kp: bool,
                                  kp_timeout: Optional[int],
                                  force_local: bool,
@@ -747,33 +740,15 @@ class ARAXExpander:
                       error_code="InvalidKP")
             return answer_kg, log
 
-        # Route this query to the proper place depending on the KP
+        # Route this query to the KP's TRAPI API
         try:
-            use_custom_querier = kp_to_use in {'infores:arax-normalized-google-distance'}
-            if use_custom_querier:
-                num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in edge_qg.nodes.values()])
-                waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
-                log.update_query_plan(qedge_key, kp_to_use, "Waiting", waiting_message)
-                start = time.time()
-                if kp_to_use == 'infores:arax-normalized-google-distance':
-                    kp_querier = NGDQuerier(log)
-                answer_kg = kp_querier.answer_one_hop_query(edge_qg)
-                wait_time = round(time.time() - start)
-                if log.status == 'OK':
-                    done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {wait_time} seconds"
-                    log.update_query_plan(qedge_key, kp_to_use, "Done", done_message)
-                else:
-                    log.update_query_plan(qedge_key, kp_to_use, "Error", f"Process error-ed out with {log.status} after {wait_time} seconds")
-                    return answer_kg, log
-            else:
-                # This is a general purpose querier for use with any KPs that we query via their TRAPI API
-                kp_querier = TRAPIQuerier(response_object=log,
-                                          kp_name=kp_to_use,
-                                          user_specified_kp=user_specified_kp,
-                                          kp_timeout=kp_timeout,
-                                          kp_selector=kp_selector,
-                                          force_local=force_local)
-                answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
+            kp_querier = TRAPIQuerier(response_object=log,
+                                      kp_name=kp_to_use,
+                                      user_specified_kp=user_specified_kp,
+                                      kp_timeout=kp_timeout,
+                                      kp_selector=kp_selector,
+                                      force_local=force_local)
+            answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
