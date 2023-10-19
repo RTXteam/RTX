@@ -87,12 +87,7 @@ class ARAXBackgroundTasker:
             eprint("ERROR: NodeSynonymizer state is weird. "
                    f"file_counter: {file_counter} "
                    f"link_counter: {link_counter} "
-                   "Recommend running the database_manager and restarting")
-            # try:
-            #     subprocess.check_call( [ 'python3', node_synonymizer_path + "/../ARAXQuery/ARAX_database_manager.py" ] )
-            # except Exception as error:
-            #     eprint(f"ERROR: Attempt to run database manager failed with {error}")
-
+                   "Recommend restarting, which will rerun the database manager")
 
         #### Check in on the databases directory
         node_synonymizer_path = os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer"

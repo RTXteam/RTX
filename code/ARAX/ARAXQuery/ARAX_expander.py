@@ -1,7 +1,6 @@
 #!/bin/env python3
 import asyncio
 import copy
-import logging
 import pickle
 import sys
 import os
@@ -51,7 +50,6 @@ def trim_to_size(input_list, length):
 class ARAXExpander:
 
     def __init__(self):
-        self.logger = logging.getLogger('log')
         self.bh = BiolinkHelper()
         self.rtxc = RTXConfiguration()
         self.plover_url = self.rtxc.plover_url

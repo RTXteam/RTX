@@ -2,7 +2,6 @@
 
 import connexion
 import flask_cors
-import logging
 import json
 import openapi_server.encoder
 import os
@@ -10,6 +9,9 @@ import sys
 import signal
 import atexit
 import traceback
+import setproctitle
+
+
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
@@ -22,9 +24,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../../..")
 from RTXConfiguration import RTXConfiguration
 
-# can change this to logging.DEBUG for debuggging
-logging.basicConfig(level=logging.INFO)
-
 child_pid = None
 
 
@@ -34,8 +33,8 @@ def receive_sigterm(signal_number, frame):
             try:
                 os.kill(child_pid, signal.SIGKILL)
             except ProcessLookupError:
-                logging.debug(f"child process {child_pid} is already gone; "
-                              "exiting now")
+                eprint(f"child process {child_pid} is already gone; "
+                       "exiting now")
             sys.exit(0)
         else:
             assert False, "should not ever have child_pid be None here"
@@ -43,7 +42,6 @@ def receive_sigterm(signal_number, frame):
 
 @atexit.register
 def ignore_sigchld():
-    logging.debug("Setting SIGCHLD to SIG_IGN before exiting")
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
 
@@ -52,19 +50,19 @@ def receive_sigchld(signal_number, frame):
         while True:
             try:
                 pid, _ = os.waitpid(-1, os.WNOHANG)
-                logging.debug(f"PID returned from call to os.waitpid: {pid}")
+                eprint(f"PID returned from call to os.waitpid: {pid}")
                 if pid == 0:
                     break
             except ChildProcessError as e:
-                logging.debug(repr(e) +
-                              "; this is expected if there are "
-                              "no more child processes to reap")
+                eprint(repr(e) +
+                       "; this is expected if there are "
+                       "no more child processes to reap")
                 break
 
 
 def receive_sigpipe(signal_number, frame):
     if signal_number == signal.SIGPIPE:
-        logging.error("pipe error")
+        eprint("pipe error")
 
 
 def main():
@@ -74,8 +72,6 @@ def main():
                 arguments={'title': 'RTX KG2 Translator KP'},
                 pythonic_params=True)
     flask_cors.CORS(app.app)
-    signal.signal(signal.SIGCHLD, receive_sigchld)
-    signal.signal(signal.SIGPIPE, receive_sigpipe)
 
     # Read any load configuration details for this instance
     try:
@@ -88,14 +84,14 @@ def main():
 
     dbmanager = ARAXDatabaseManager(allow_downloads=True)
     try:
-        logging.info("Checking for complete databases")
+        eprint("Checking for complete databases")
         if dbmanager.check_versions():
-            logging.warning("Databases incomplete; running update_databases")
+            eprint("Databases incomplete; running update_databases")
             dbmanager.update_databases()
         else:
-            logging.info("Databases seem to be complete")
+            eprint("Databases seem to be complete")
     except Exception as e:
-        logging.error(traceback.format_exc())
+        eprint(traceback.format_exc())
         raise e
     del dbmanager
 
@@ -103,19 +99,27 @@ def main():
     if pid == 0:  # I am the child process
         sys.stdout = open('/dev/null', 'w')
         sys.stdin = open('/dev/null', 'r')
-
-        logging.info("Starting background tasker in a child process")
-        ARAXBackgroundTasker().run_tasks(local_config)
+        setproctitle.setproctitle("python3 ARAX_background_tasker::run_tasks")        
+        eprint("Starting background tasker in a child process")
+        try:
+            ARAXBackgroundTasker().run_tasks(local_config)
+        except Exception as e:
+            eprint("Error in ARAXBackgroundTasker.run_tasks()")
+            eprint(traceback.format_exc())
+            raise e
+        eprint("Background tasker child process ended unexpectedly")
     elif pid > 0:  # I am the parent process
         # Start the service
-        logging.info(f"Background tasker is running in child process {pid}")
+        eprint(f"Background tasker is running in child process {pid}")
         global child_pid
         child_pid = pid
+        signal.signal(signal.SIGCHLD, receive_sigchld)
+        signal.signal(signal.SIGPIPE, receive_sigpipe)
         signal.signal(signal.SIGTERM, receive_sigterm)
-        logging.info("Starting flask application in the parent process")
+        eprint("Starting flask application in the parent process")
         app.run(port=local_config['port'], threaded=True)
     else:
-        logging.error("[__main__]: fork() unsuccessful")
+        eprint("[__main__]: fork() unsuccessful")
         assert False, "****** fork() unsuccessful in __main__"
 
 

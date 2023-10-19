@@ -1,10 +1,17 @@
-import connexion, flask
+import connexion
+import flask
 import json
-import os, sys, signal
+import os
+import sys
+import signal
 import resource
-import logging
 import traceback
 from typing import Iterable, Callable
+import setproctitle
+
+
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
 
 rlimit_child_process_bytes = 34359738368  # 32 GiB
 
@@ -17,15 +24,19 @@ import response
 
 def child_receive_sigpipe(signal_number, frame):
     if signal_number == signal.SIGPIPE:
-        logging.info("[query_controller]: child process detected a SIGPIPE; exiting python")
+        eprint("[query_controller]: child process detected a "
+               "SIGPIPE; exiting python")
         os._exit(0)
+
 
 def run_query_dict_in_child_process(query_dict: dict,
                                     query_runner: Callable) -> Iterable[str]:
-    logging.debug("[query_controller]: Creating pipe and forking a child to handle the query")
+    eprint("[query_controller]: Creating pipe and "
+           "forking a child to handle the query")
     read_fd, write_fd = os.pipe()
 
-    # always flush stdout and stderr before calling fork(); someone could have turned off auto-flushing and we don't want double-output
+    # always flush stdout and stderr before calling fork(); someone could have
+    # turned off auto-flushing and we don't want double-output
     sys.stderr.flush()
     sys.stdout.flush()
 
@@ -34,7 +45,8 @@ def run_query_dict_in_child_process(query_dict: dict,
     if pid == 0: # I am the child process
         sys.stdout = open('/dev/null', 'w')         # parent and child process should not share the same stdout stream object
         sys.stdin = open('/dev/null', 'r')          # parent and child process should not share the same stdin stream object
-        os.close(read_fd)                   # child doesn't read from the pipe, it writes to it 
+        os.close(read_fd)                   # child doesn't read from the pipe, it writes to it
+        setproctitle.setproctitle("python3 query_controller::run_query_dict_in_child_process")       
         resource.setrlimit(resource.RLIMIT_AS, (rlimit_child_process_bytes, rlimit_child_process_bytes))  # set a virtual memory limit for the child process
         signal.signal(signal.SIGPIPE, child_receive_sigpipe) # get rid of signal handler so we don't double-print to the log on SIGPIPE error
         signal.signal(signal.SIGCHLD, signal.SIG_IGN) # disregard any SIGCHLD signal in the child process
@@ -50,10 +62,10 @@ def run_query_dict_in_child_process(query_dict: dict,
         os._exit(0)
     elif pid > 0: # I am the parent process
         os.close(write_fd)  # the parent does not write to the pipe, it reads from it
-        logging.debug(f"[query_controller]: child process pid={pid}")
+        eprint(f"[query_controller]: child process pid={pid}")
         read_fo = os.fdopen(read_fd, "r")
     else:
-        logging.error("[query_controller]: fork() unsuccessful")
+        eprint("[query_controller]: fork() unsuccessful")
         assert False, "********** fork() unsuccessful; something went very wrong *********"
     return read_fo
 
