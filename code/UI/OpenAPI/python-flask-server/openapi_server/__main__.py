@@ -86,7 +86,7 @@ def main():
 
     RTXConfiguration()
 
-    dbmanager = ARAXDatabaseManager()
+    dbmanager = ARAXDatabaseManager(allow_downloads=True)
     try:
         logging.info("Checking for complete databases")
         if dbmanager.check_versions():
