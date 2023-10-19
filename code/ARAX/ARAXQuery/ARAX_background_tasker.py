@@ -19,30 +19,33 @@ from kp_info_cacher import KPInfoCacher
 FREQ_KP_INFO_CACHER_SEC = 3600
 FREQ_CHECK_ONGOING_SEC = 60
 
+
 class ARAXBackgroundTasker:
 
-
-    def __init__(self):
+    def __init__(self, run_kp_info_cacher=True):
+        self.run_kp_info_cacher = run_kp_info_cacher
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker created")
 
-
-    def run_tasks(self, config):
+    def run_tasks(self):
 
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker starting")
 
-        #### Set up the query tracker
+        # Set up the query tracker
         query_tracker = ARAXQueryTracker()
-        kp_info_cacher = KPInfoCacher()
-        kp_info_cacher_counter = 0
 
-        #### Clear the table of existing queries
-        eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Clearing any potential stale queries in ongoing query table")
+        if self.run_kp_info_cacher:
+            kp_info_cacher = KPInfoCacher()
+            kp_info_cacher_counter = 0
+
+        # Clear the table of existing queries
+        eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Clearing any "
+               "potential stale queries in ongoing query table")
         query_tracker.clear_ongoing_queries()
 
-        #### Print out our packages for debugging
-        if True:
+        # Print out our packages for debugging
+        if False:  # set to true to print out the packages
             eprint("Installed packages:")
             for location, modname, flag in pkgutil.iter_modules():
                 location = f"{location}"
@@ -50,14 +53,15 @@ class ARAXBackgroundTasker:
                     try:
                         version_str = version(modname)
                         eprint(f"    {modname} {version_str}")
-                    except:
+                    except Exception:
                         eprint(f"    {modname} ???")
                 else:
                     pass
 
-
-        #### Check in on the NodeSynonymizer database, which sometimes gets corrupted
-        node_synonymizer_path = os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer"
+        # Check in on the NodeSynonymizer database, which sometimes gets
+        # corrupted
+        node_synonymizer_path = os.path.dirname(os.path.abspath(__file__)) + \
+            "/../NodeSynonymizer"
         files = os.listdir(node_synonymizer_path)
         already_printed_header = False
         link_counter = 0
@@ -81,16 +85,19 @@ class ARAXBackgroundTasker:
                     try:
                         os.unlink(filepath)
                     except Exception as error:
-                        eprint(f"ERROR: Unable to delete file with error {error}")
+                        eprint("ERROR: Unable to delete file with error "
+                               f"{error}")
 
         if file_counter != 1 or link_counter != 1:
             eprint("ERROR: NodeSynonymizer state is weird. "
                    f"file_counter: {file_counter} "
                    f"link_counter: {link_counter} "
-                   "Recommend restarting, which will rerun the database manager")
+                   "Recommend restarting, which will rerun the database "
+                   "manager")
 
-        #### Check in on the databases directory
-        node_synonymizer_path = os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer"
+        # Check in on the databases directory
+        node_synonymizer_path = os.path.dirname(os.path.abspath(__file__)) + \
+            "/../NodeSynonymizer"
         files = os.listdir(node_synonymizer_path)
         eprint("INFO: Current contents of the databases area:")
 
@@ -101,53 +108,59 @@ class ARAXBackgroundTasker:
                 if os.path.islink(filepath):
                     resolved_path = os.path.dirname(os.readlink(filepath))
                     eprint(f"  {resolved_path}")
-                    result = subprocess.run(['ls', '-l', resolved_path], stdout=subprocess.PIPE)
+                    result = subprocess.run(['ls', '-l', resolved_path],
+                                            stdout=subprocess.PIPE)
                     eprint(result.stdout.decode('utf-8'))
         eprint("INFO: End listing databases area contents")
 
-
-
-        #### Loop forever doing various things
+        # Loop forever doing various things
         my_pid = os.getpid()
         while True:
 
-            #### Run the KP Info Cacher less frequently
-            timestamp = str(datetime.datetime.now().isoformat())
-            if kp_info_cacher_counter == 0:
-                eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Running refresh_kp_info_caches()")
-                try:
-                    kp_info_cacher.refresh_kp_info_caches()
-                    eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Completed refresh_kp_info_caches()")
-                except Exception as error:
-                    exception_type, exception_value, exception_traceback = sys.exc_info()
-                    eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: refresh_kp_info_caches() failed: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}")
-            kp_info_cacher_counter += 1
-            if kp_info_cacher_counter * FREQ_CHECK_ONGOING_SEC > \
-               FREQ_KP_INFO_CACHER_SEC:
-                kp_info_cacher_counter = 0
+            # Run the KP Info Cacher less frequently
+            if self.run_kp_info_cacher:
+                if kp_info_cacher_counter == 0:
+                    timestamp = str(datetime.datetime.now().isoformat())
+                    eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Running "
+                           "refresh_kp_info_caches()")
+                    try:
+                        kp_info_cacher.refresh_kp_info_caches()
+                        eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
+                               "Completed refresh_kp_info_caches()")
+                    except Exception as error:
+                        e_type, e_value, e_traceback =\
+                            sys.exc_info()
+                        err_str = repr(traceback.format_exception(e_type,
+                                                                  e_value,
+                                                                  e_traceback))
+                        eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
+                               "refresh_kp_info_caches() failed: "
+                               f"{error}: {err_str}")
+                kp_info_cacher_counter += 1
+                if kp_info_cacher_counter * FREQ_CHECK_ONGOING_SEC > \
+                   FREQ_KP_INFO_CACHER_SEC:
+                    kp_info_cacher_counter = 0
 
-            ongoing_queries_by_remote_address = query_tracker.check_ongoing_queries()
+            ongoing_queries_by_addr = query_tracker.check_ongoing_queries()
             n_ongoing_queries = 0
             n_clients = 0
-            for client, n_queries in ongoing_queries_by_remote_address.items():
+            for client, n_queries in ongoing_queries_by_addr.items():
                 n_clients += 1
                 n_ongoing_queries += n_queries
 
             load_tuple = psutil.getloadavg()
 
             timestamp = str(datetime.datetime.now().isoformat())
-            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker (PID {my_pid}) status: waiting. Current load is {load_tuple}, n_clients={n_clients}, n_ongoing_queries={n_ongoing_queries}")
+            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker "
+                   f"(PID {my_pid}) status: waiting. Current "
+                   f"load is {load_tuple}, n_clients={n_clients}, "
+                   f"n_ongoing_queries={n_ongoing_queries}")
             time.sleep(FREQ_CHECK_ONGOING_SEC)
 
 
-
-##################################################################################################
 def main():
-
     background_tasker = ARAXBackgroundTasker()
-
-    config = {}
-    background_tasker.run_tasks( config )
+    background_tasker.run_tasks()
 
 
 if __name__ == "__main__":
