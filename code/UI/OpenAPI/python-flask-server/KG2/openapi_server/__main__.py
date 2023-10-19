@@ -16,27 +16,27 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../../../../ARAX/ARAXQuery")
 
-# from ARAX_background_tasker import ARAXBackgroundTasker
+from ARAX_background_tasker import ARAXBackgroundTasker
 from ARAX_database_manager import ARAXDatabaseManager
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../../..")
 from RTXConfiguration import RTXConfiguration
 
-# child_pid = None
+child_pid = None
 
 
-# def receive_sigterm(signal_number, frame):
-#     if signal_number == signal.SIGTERM:
-#         if child_pid is not None:
-#             try:
-#                 os.kill(child_pid, signal.SIGKILL)
-#             except ProcessLookupError:
-#                 eprint(f"child process {child_pid} is already gone; "
-#                        "exiting now")
-#             sys.exit(0)
-#         else:
-#             assert False, "should not ever have child_pid be None here"
+def receive_sigterm(signal_number, frame):
+    if signal_number == signal.SIGTERM:
+        if child_pid is not None:
+            try:
+                os.kill(child_pid, signal.SIGKILL)
+            except ProcessLookupError:
+                eprint(f"child process {child_pid} is already gone; "
+                       "exiting now")
+            sys.exit(0)
+        else:
+            assert False, "should not ever have child_pid be None here"
 
 
 @atexit.register
@@ -71,8 +71,6 @@ def main():
                 arguments={'title': 'RTX KG2 Translator KP'},
                 pythonic_params=True)
     flask_cors.CORS(app.app)
-    signal.signal(signal.SIGCHLD, receive_sigchld)
-    signal.signal(signal.SIGPIPE, receive_sigpipe)
 
     # Read any load configuration details for this instance
     try:
@@ -96,24 +94,31 @@ def main():
         raise e
     del dbmanager
 
-#    pid = os.fork()
-#    if pid == 0:  # I am the child process
-#        sys.stdout = open('/dev/null', 'w')
-#        sys.stdin = open('/dev/null', 'r')
-#        eprint("Starting background tasker in a child process")
-#        ARAXBackgroundTasker().run_tasks(local_config)
-#    elif pid > 0:  # I am the parent process
-# # Start the service
-#        eprint(f"Background tasker is running in child process {pid}")
-#        global child_pid
-#        child_pid = pid
-#        signal.signal(signal.SIGTERM, receive_sigterm)
-#        eprint("Starting flask application in the parent process")
-    eprint("Starting flask application")
-    app.run(port=local_config['port'], threaded=True)
-#    else:
-#        eprint("[__main__]: fork() unsuccessful")
-#        assert False, "****** fork() unsuccessful in __main__"
+    pid = os.fork()
+    if pid == 0:  # I am the child process
+        sys.stdout = open('/dev/null', 'w')
+        sys.stdin = open('/dev/null', 'r')
+        eprint("Starting background tasker in a child process")
+        try:
+            ARAXBackgroundTasker().run_tasks(local_config)
+        except Exception as e:
+            eprint("Error in ARAXBackgroundTasker.run_tasks()")
+            eprint(traceback.format_exc())
+            raise e
+        eprint("Background tasker child process ended unexpectedly")
+    elif pid > 0:  # I am the parent process
+        # Start the service
+        eprint(f"Background tasker is running in child process {pid}")
+        global child_pid
+        child_pid = pid
+        signal.signal(signal.SIGCHLD, receive_sigchld)
+        signal.signal(signal.SIGPIPE, receive_sigpipe)
+        signal.signal(signal.SIGTERM, receive_sigterm)
+        eprint("Starting flask application in the parent process")
+        app.run(port=local_config['port'], threaded=True)
+    else:
+        eprint("[__main__]: fork() unsuccessful")
+        assert False, "****** fork() unsuccessful in __main__"
 
 
 if __name__ == '__main__':
