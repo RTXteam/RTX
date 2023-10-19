@@ -1,77 +1,27 @@
 #!/usr/bin/env python3
 
-import connexion
-import flask_cors
-import json
-import openapi_server.encoder
-import os
 import sys
-import signal
-import atexit
+import os
 import traceback
-import setproctitle
+import json
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
+                "/../../../../../ARAX/ARAXQuery")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
+                "/../../../..")
+
+from RTXConfiguration import RTXConfiguration
+from ARAX_database_manager import ARAXDatabaseManager
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
-                "/../../../../../ARAX/ARAXQuery")
-
-from ARAX_background_tasker import ARAXBackgroundTasker
-from ARAX_database_manager import ARAXDatabaseManager
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
-                "/../../../..")
-from RTXConfiguration import RTXConfiguration
 
 child_pid = None
-
-
-def receive_sigterm(signal_number, frame):
-    if signal_number == signal.SIGTERM:
-        if child_pid is not None:
-            try:
-                os.kill(child_pid, signal.SIGKILL)
-            except ProcessLookupError:
-                eprint(f"child process {child_pid} is already gone; "
-                       "exiting now")
-            sys.exit(0)
-        else:
-            assert False, "should not ever have child_pid be None here"
-
-
-@atexit.register
-def ignore_sigchld():
-    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-
-
-def receive_sigchld(signal_number, frame):
-    if signal_number == signal.SIGCHLD:
-        while True:
-            try:
-                pid, _ = os.waitpid(-1, os.WNOHANG)
-                eprint(f"PID returned from call to os.waitpid: {pid}")
-                if pid == 0:
-                    break
-            except ChildProcessError as e:
-                eprint(repr(e) +
-                       "; this is expected if there are "
-                       "no more child processes to reap")
-                break
-
-
-def receive_sigpipe(signal_number, frame):
-    if signal_number == signal.SIGPIPE:
-        eprint("pipe error")
+parent_pid = None
 
 
 def main():
-    app = connexion.App(__name__, specification_dir='./openapi/')
-    app.app.json_encoder = openapi_server.encoder.JSONEncoder
-    app.add_api('openapi.yaml',
-                arguments={'title': 'RTX KG2 Translator KP'},
-                pythonic_params=True)
-    flask_cors.CORS(app.app)
 
     # Read any load configuration details for this instance
     try:
@@ -97,9 +47,11 @@ def main():
 
     pid = os.fork()
     if pid == 0:  # I am the child process
+        import setproctitle
+        from ARAX_background_tasker import ARAXBackgroundTasker
         sys.stdout = open('/dev/null', 'w')
         sys.stdin = open('/dev/null', 'r')
-        setproctitle.setproctitle("python3 ARAX_background_tasker::run_tasks")        
+        setproctitle.setproctitle("python3 ARAX_background_tasker::run_tasks")
         eprint("Starting background tasker in a child process")
         try:
             ARAXBackgroundTasker().run_tasks(local_config)
@@ -109,10 +61,59 @@ def main():
             raise e
         eprint("Background tasker child process ended unexpectedly")
     elif pid > 0:  # I am the parent process
+        import signal
+        import atexit
+
+        def receive_sigterm(signal_number, frame):
+            if signal_number == signal.SIGTERM:
+                if parent_pid == os.getpid():
+                    try:
+                        os.kill(child_pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        eprint(f"child process {child_pid} is already gone; "
+                               "exiting now")
+                    os.exit(0)
+                else:
+                    # handle exit gracefully in the child process
+                    os._exit(0)
+
+        @atexit.register
+        def ignore_sigchld():
+            signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
+        def receive_sigchld(signal_number, frame):
+            if signal_number == signal.SIGCHLD:
+                while True:
+                    try:
+                        pid, _ = os.waitpid(-1, os.WNOHANG)
+                        eprint(f"PID returned from call to os.waitpid: {pid}")
+                        if pid == 0:
+                            break
+                    except ChildProcessError as e:
+                        eprint(repr(e) +
+                               "; this is expected if there are "
+                               "no more child processes to reap")
+                        break
+
+        def receive_sigpipe(signal_number, frame):
+            if signal_number == signal.SIGPIPE:
+                eprint("pipe error")
+        import connexion
+        import flask_cors
+        import openapi_server.encoder
+        app = connexion.App(__name__, specification_dir='./openapi/')
+        app.app.json_encoder = openapi_server.encoder.JSONEncoder
+        app.add_api('openapi.yaml',
+                    arguments={'title': 'ARAX KG2 Translator KP'},
+                    pythonic_params=True)
+        flask_cors.CORS(app.app)
+
         # Start the service
         eprint(f"Background tasker is running in child process {pid}")
         global child_pid
         child_pid = pid
+        global parent_pid
+        parent_pid = os.getpid()
         signal.signal(signal.SIGCHLD, receive_sigchld)
         signal.signal(signal.SIGPIPE, receive_sigpipe)
         signal.signal(signal.SIGTERM, receive_sigterm)
