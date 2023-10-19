@@ -40,15 +40,9 @@ class NodeSynonymizer:
         self.sri_nn_infores_curie = "infores:sri-node-normalizer"
         self.arax_infores_curie = "infores:arax"
 
-        # If the database doesn't seem to exist, try running the DatabaseManager
         if not pathlib.Path(self.database_path).exists():
-            print(f"Synonymizer not present at {self.database_path}; attempting to download with database manager..")
-            db_manager = ARAXDatabaseManager()
-            db_manager.update_databases()
-
-        if not pathlib.Path(self.database_path).exists():
-            raise ValueError(f"Synonymizer specified in config_dbs file does not exist locally, even after "
-                             f"running the database manager! It should be at: {self.database_path}")
+            raise ValueError(f"Synonymizer specified in config_dbs file does not exist locally."
+                             f" It should be at: {self.database_path}")
         else:
             self.db_connection = sqlite3.connect(self.database_path)
 
