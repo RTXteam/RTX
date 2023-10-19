@@ -48,7 +48,7 @@ def main():
         setproctitle.setproctitle("python3 ARAX_background_tasker::run_tasks")
         eprint("Starting background tasker in a child process")
         try:
-            ARAXBackgroundTasker(run_kp_info_cacher=False).run_tasks()
+            ARAXBackgroundTasker().run_tasks()
         except Exception as e:
             eprint("Error in ARAXBackgroundTasker.run_tasks()")
             eprint(traceback.format_exc())
