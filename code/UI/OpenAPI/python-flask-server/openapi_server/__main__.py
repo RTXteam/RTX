@@ -17,18 +17,12 @@ from ARAX_database_manager import ARAXDatabaseManager
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 
+FLASK_DEFAULT_TCP_PORT = 5000
 child_pid = None
 parent_pid = None
 
 
 def main():
-
-    # Read any load configuration details for this instance
-    try:
-        with open('openapi_server/flask_config.json') as infile:
-            local_config = json.load(infile)
-    except Exception:
-        local_config = {"port": 5000}
 
     RTXConfiguration()
 
@@ -54,7 +48,7 @@ def main():
         setproctitle.setproctitle("python3 ARAX_background_tasker::run_tasks")
         eprint("Starting background tasker in a child process")
         try:
-            ARAXBackgroundTasker().run_tasks(local_config)
+            ARAXBackgroundTasker().run_tasks()
         except Exception as e:
             eprint("Error in ARAXBackgroundTasker.run_tasks()")
             eprint(traceback.format_exc())
@@ -117,6 +111,14 @@ def main():
         signal.signal(signal.SIGCHLD, receive_sigchld)
         signal.signal(signal.SIGPIPE, receive_sigpipe)
         signal.signal(signal.SIGTERM, receive_sigterm)
+
+        # Read any load configuration details for this instance
+        try:
+            with open('openapi_server/flask_config.json') as infile:
+                local_config = json.load(infile)
+        except Exception:
+            local_config = {"port": FLASK_DEFAULT_TCP_PORT}
+
         eprint("Starting flask application in the parent process")
         app.run(port=local_config['port'], threaded=True)
     else:
