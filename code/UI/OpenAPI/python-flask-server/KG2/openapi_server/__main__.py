@@ -8,7 +8,7 @@ import json
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../../../../ARAX/ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
-                "/../../../..")
+                "/../../../../..")
 
 from RTXConfiguration import RTXConfiguration
 from ARAX_database_manager import ARAXDatabaseManager
