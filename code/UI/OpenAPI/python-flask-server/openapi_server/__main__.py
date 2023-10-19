@@ -9,6 +9,7 @@ import sys
 import signal
 import atexit
 import traceback
+import setproctitle
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -99,6 +100,7 @@ def main():
     if pid == 0:  # I am the child process
         sys.stdout = open('/dev/null', 'w')
         sys.stdin = open('/dev/null', 'r')
+        setproctitle.setproctitle("python3 ARAX_background_tasker::run_tasks")        
         eprint("Starting background tasker in a child process")
         try:
             ARAXBackgroundTasker().run_tasks(local_config)
