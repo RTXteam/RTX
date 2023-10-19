@@ -7,6 +7,7 @@ import signal
 import resource
 import traceback
 from typing import Iterable, Callable
+import setproctitle
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -45,6 +46,7 @@ def run_query_dict_in_child_process(query_dict: dict,
         sys.stdout = open('/dev/null', 'w')         # parent and child process should not share the same stdout stream object
         sys.stdin = open('/dev/null', 'r')          # parent and child process should not share the same stdin stream object
         os.close(read_fd)                   # child doesn't read from the pipe, it writes to it 
+        setproctitle.setproctitle("python3 query_controller::run_query_dict_in_child_process")       
         resource.setrlimit(resource.RLIMIT_AS, (rlimit_child_process_bytes, rlimit_child_process_bytes))  # set a virtual memory limit for the child process
         signal.signal(signal.SIGPIPE, child_receive_sigpipe) # get rid of signal handler so we don't double-print to the log on SIGPIPE error
         signal.signal(signal.SIGCHLD, signal.SIG_IGN) # disregard any SIGCHLD signal in the child process
