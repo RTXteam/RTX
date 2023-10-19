@@ -348,8 +348,7 @@ class ARAXDatabaseManager:
         verbose = ""
         if debug:
             verbose = "vv"
-        #os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
-        eprint(f"ERROR: Wanted to run the following rsync, but it isn't going to work anyway. Skipping: rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
+        os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
 
     def _download_to_mnt(self, debug=False, skip_if_exists=False, remove_unused=False):
         """
@@ -390,7 +389,7 @@ class ARAXDatabaseManager:
     def check_all(self, max_days=31, debug=False):
         update_flag = False
         for database_name, file_path in self.local_paths.items():
-            if os.path.exists(file_path):
+            if os.path.exitss(file_path):
                 if debug:
                     now_time = datetime.datetime.now()
                     modified_time = time.localtime(os.stat(file_path).st_mtime)
