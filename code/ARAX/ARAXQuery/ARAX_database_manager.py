@@ -2,7 +2,7 @@
 
 # NOTE: this module is only to be used either as a CLI script or in the
 # __main__.py Flask application at application start-up. Please do not
-# instantiate this class and call `check_databases` at query time. -SAR
+# instantiate this class and call `update_databases` at query time. -SAR
 
 import os
 import sys
@@ -22,9 +22,9 @@ versions_path = os.path.sep.join([knowledge_sources_filepath, 'db_versions.json'
 
 
 class ARAXDatabaseManager:
-    def __init__(self):
+    def __init__(self, allow_downloads=False):
         self.RTXConfig = RTXConfiguration()
-
+        self.allow_downloads = allow_downloads
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")
 
@@ -209,10 +209,12 @@ class ARAXDatabaseManager:
         }
 
     def update_databases(self, debug = True, response = None):
+        if not self.allow_downloads:
+            raise ValueError("in ARAXDatabaseManager, update_databases called with self.allow_downloads=False")
         debug = True
         # First ensure we have a db versions file if we're in a docker container (since host has dbs predownloaded)
         if os.path.exists(self.docker_databases_dir_path) and not os.path.exists(versions_path):
-            self.write_db_versions_file(debug=True)
+            self._write_db_versions_file(debug=True)
 
         # Then ensure each database/symlink is up to date
         if os.path.exists(versions_path):
@@ -222,7 +224,7 @@ class ARAXDatabaseManager:
             # Download databases to a persistent central location if this is a docker instance (like arax.ncats.io)
             if os.path.exists(self.docker_databases_dir_path):
                 eprint(f"Downloading any missing databases from arax-databases.rtx.ai to {self.docker_databases_dir_path}")
-                self.download_to_mnt(debug=debug, skip_if_exists=True, remove_unused=False)
+                self._download_to_mnt(debug=debug, skip_if_exists=True, remove_unused=False)
 
             # Check that each database exists locally (or a symlink to it does, in the case of a docker host machine)
             for database_name, local_path in self.local_paths.items(): # iterate through all databases
@@ -231,20 +233,20 @@ class ARAXDatabaseManager:
                         eprint(f"{database_name} ({local_path}) not present locally, downloading or symlinking now...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
-                    self.download_database(remote_location=self.remote_locations[database_name],
-                                           local_destination_path=self.local_paths[database_name],
-                                           local_symlink_target_path=self.docker_central_paths[database_name],
-                                           debug=debug)
+                    self._download_database(remote_location=self.remote_locations[database_name],
+                                            local_destination_path=self.local_paths[database_name],
+                                            local_symlink_target_path=self.docker_central_paths[database_name],
+                                            debug=debug)
                 elif local_versions[database_name]['version'] != self.db_versions[database_name]['version']: # If database is present but wrong version
                     if debug:
                         eprint(f"{database_name} has a local version, '{local_versions[database_name]['version']}', which does not match the remote version, '{self.db_versions[database_name]['version']}'.")
                         eprint("downloading remote version...")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
-                    self.download_database(remote_location=self.remote_locations[database_name],
-                                           local_destination_path=self.local_paths[database_name],
-                                           local_symlink_target_path=self.docker_central_paths[database_name],
-                                           debug=debug)
+                    self._download_database(remote_location=self.remote_locations[database_name],
+                                            local_destination_path=self.local_paths[database_name],
+                                            local_symlink_target_path=self.docker_central_paths[database_name],
+                                            debug=debug)
                     if os.path.exists(self.local_paths[database_name]): # check that download worked if so remove old version
                         if debug:
                             eprint("Download successful. Removing local version...")
@@ -261,18 +263,21 @@ class ARAXDatabaseManager:
                         eprint(f"{database_name} ({self.local_paths[database_name]}) not present locally, downloading or symlinking now......")
                     if response is not None:
                         response.debug(f"Updating the local file for {database_name}...")
-                    self.download_database(remote_location=self.remote_locations[database_name], local_destination_path=self.local_paths[database_name], local_symlink_target_path=self.docker_central_paths[database_name], debug=debug)
+                    self._download_database(remote_location=self.remote_locations[database_name],
+                                            local_destination_path=self.local_paths[database_name],
+                                            local_symlink_target_path=self.docker_central_paths[database_name],
+                                            debug=debug)
                 else:
                     if debug:
                         eprint(f"Local version of {database_name} ({local_path}) matches the remote version, skipping...")
-            self.write_db_versions_file()
+            self._write_db_versions_file()
         else: # If database manager has never been run download all databases
             if debug:
                 eprint("No local verson json file present. Downloading all databases...")
             if response is not None:
                 response.debug(f"No local verson json file present. Downloading all databases...")
-            self.force_download_all(debug=debug)
-            self.write_db_versions_file()
+            self._force_download_all(debug=debug)
+            self._write_db_versions_file()
         return response
 
     @staticmethod
@@ -330,7 +335,7 @@ class ARAXDatabaseManager:
         else:
             return True
 
-    def download_database(self, remote_location, local_destination_path, local_symlink_target_path, debug=False):
+    def _download_database(self, remote_location, local_destination_path, local_symlink_target_path, debug=False):
         if local_symlink_target_path is not None and os.path.exists(local_symlink_target_path): # if on the server symlink instead of downloading
             self.symlink_database(symlink_path=local_destination_path, target_path=local_symlink_target_path)
         else:
@@ -346,7 +351,7 @@ class ARAXDatabaseManager:
         #os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
         eprint(f"ERROR: Wanted to run the following rsync, but it isn't going to work anyway. Skipping: rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
 
-    def download_to_mnt(self, debug=False, skip_if_exists=False, remove_unused=False):
+    def _download_to_mnt(self, debug=False, skip_if_exists=False, remove_unused=False):
         """
         This method downloads databases to the docker host machine in a central location.
         """
@@ -355,7 +360,7 @@ class ARAXDatabaseManager:
         for database_name in self.remote_locations.keys():
             database_dir = os.path.sep.join(self.docker_central_paths[database_name].split('/')[:-1])
             if debug:
-                print(f"On database {database_name} in download_to_mnt()")
+                print(f"On database {database_name} in _download_to_mnt()")
             if not os.path.exists(database_dir):
                 if debug:
                     print(f"Creating directory {database_dir}...")
@@ -366,18 +371,21 @@ class ARAXDatabaseManager:
                 if debug:
                     print(f"Initiating download from location {remote_location}; "
                           f"saving to {docker_host_local_path}")
-                self.download_database(remote_location=remote_location,
-                                       local_destination_path=docker_host_local_path,
-                                       local_symlink_target_path=None,
-                                       debug=debug)
+                self._download_database(remote_location=remote_location,
+                                        local_destination_path=docker_host_local_path,
+                                        local_symlink_target_path=None,
+                                        debug=debug)
             else:
                 print(f"  Database already exists, no need to download") if debug else None
-                
-    def force_download_all(self, debug=False):
+       
+    def _force_download_all(self, debug=False):
         for database_name in self.remote_locations.keys():
             if debug:
                 print(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
-            self.download_database(remote_location=self.remote_locations[database_name], local_destination_path=self.local_paths[database_name], local_symlink_target_path=self.docker_central_paths[database_name], debug=debug)
+            self._download_database(remote_location=self.remote_locations[database_name],
+                                    local_destination_path=self.local_paths[database_name],
+                                    local_symlink_target_path=self.docker_central_paths[database_name],
+                                    debug=debug)
 
     def check_all(self, max_days=31, debug=False):
         update_flag = False
@@ -402,14 +410,7 @@ class ARAXDatabaseManager:
                     return True
         return update_flag
 
-    def update_databases_by_date(self, max_days=31, debug=False):
-        for database_name, local_path in self.local_paths.items():
-            if self.check_date(local_path, max_days=max_days):
-                if debug:
-                    print(f"{database_name} not present or older than {max_days} days. Updating file...")
-                self.download_database(remote_location=self.remote_locations[database_name], local_destination_path=local_path, local_symlink_target_path=self.docker_central_paths[database_name], debug=debug)
-
-    def write_db_versions_file(self, debug=False):
+    def _write_db_versions_file(self, debug=False):
         print(f"saving new version file to {versions_path}") if debug else None
         with open(versions_path, "w") as fid:
             json.dump(self.db_versions, fid)
@@ -441,7 +442,7 @@ def main():
     parser.add_argument("-r", "--remove_unused", action='store_true', dest='remove_unused', required=False, help="for -m mode only, remove database files under /mnt databases directory that are NOT used in config_dbs.json")
 
     arguments = parser.parse_args()
-    DBManager = ARAXDatabaseManager()
+    DBManager = ARAXDatabaseManager(allow_downloads=True)
 
     print(f"Local paths:")
     for db_name, path in DBManager.local_paths.items():
@@ -457,13 +458,13 @@ def main():
         if not DBManager.check_versions(debug=True):
             print("All local versions are up to date")
     elif arguments.force_download:
-        DBManager.force_download_all(debug=True)
+        DBManager._force_download_all(debug=True)
     elif arguments.mnt:
-        DBManager.download_to_mnt(debug=True,
-                                  skip_if_exists=arguments.skip_if_exists,
-                                  remove_unused=arguments.remove_unused)
+        DBManager._download_to_mnt(debug=True,
+                                   skip_if_exists=arguments.skip_if_exists,
+                                   remove_unused=arguments.remove_unused)
     elif arguments.generate_versions_file:
-        DBManager.write_db_versions_file(debug=True)
+        DBManager._write_db_versions_file(debug=True)
     else:
         DBManager.update_databases(debug=True)
 
