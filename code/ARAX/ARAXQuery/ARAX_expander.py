@@ -624,7 +624,7 @@ class ARAXExpander:
                     else:
                         subject_curie = None
                     response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {object_curie}")
-                    response.update_query_plan(inferred_qedge_key, "infores:arax-xdtd",
+                    response.update_query_plan(inferred_qedge_key, "arax-xdtd",
                                                "Waiting", f"Waiting for response")
                     start = time.time()
 
@@ -642,9 +642,9 @@ class ARAXExpander:
                     if response.status == "OK":
                         done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, dict()))} " \
                                        f"edges in {wait_time} seconds"
-                        response.update_query_plan(inferred_qedge_key, "infores:arax-xdtd", "Done", done_message)
+                        response.update_query_plan(inferred_qedge_key, "arax-xdtd", "Done", done_message)
                     else:
-                        response.update_query_plan(inferred_qedge_key, "infores:arax-xdtd", "Error",
+                        response.update_query_plan(inferred_qedge_key, "arax-xdtd", "Error",
                                                    f"Process error-ed out with {response.status} after {wait_time} seconds")
 
                 elif set(['biolink:regulates']).intersection(set(qedge.predicates)):  # Figure out if this is a "regulates" query, then use call XCRG models
@@ -681,7 +681,7 @@ class ARAXExpander:
                                        error_code="InvalidCURIEs")
                         return response, overarching_kg
                     response.info(f"Calling XCRG from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
-                    response.update_query_plan(inferred_qedge_key, "infores:arax-xcrg",
+                    response.update_query_plan(inferred_qedge_key, "arax-xcrg",
                                                "Waiting", f"Waiting for response")
                     start = time.time()
 
@@ -705,9 +705,9 @@ class ARAXExpander:
                     if response.status == "OK":
                         done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, dict()))} " \
                                        f"edges in {wait_time} seconds"
-                        response.update_query_plan(inferred_qedge_key, "infores:arax-xcrg", "Done", done_message)
+                        response.update_query_plan(inferred_qedge_key, "arax-xcrg", "Done", done_message)
                     else:
-                        response.update_query_plan(inferred_qedge_key, "infores:arax-xcrg", "Error",
+                        response.update_query_plan(inferred_qedge_key, "arax-xcrg", "Error",
                                                    f"Process error-ed out with {response.status} after {wait_time} seconds")
                 else:
                     response.info(f"Qedge {inferred_qedge_key} has knowledge_type == inferred, but the query is not "
