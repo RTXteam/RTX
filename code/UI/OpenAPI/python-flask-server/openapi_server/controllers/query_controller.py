@@ -50,6 +50,7 @@ def run_query_dict_in_child_process(query_dict: dict,
         resource.setrlimit(resource.RLIMIT_AS, (rlimit_child_process_bytes, rlimit_child_process_bytes))  # set a virtual memory limit for the child process
         signal.signal(signal.SIGPIPE, child_receive_sigpipe) # get rid of signal handler so we don't double-print to the log on SIGPIPE error
         signal.signal(signal.SIGCHLD, signal.SIG_IGN) # disregard any SIGCHLD signal in the child process
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         try:
             with os.fdopen(write_fd, "w") as write_fo:  # child process needs to get a stream object for the file descriptor `write_fd`
                 json_string_generator = query_runner(query_dict)
