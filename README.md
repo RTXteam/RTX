@@ -8,7 +8,6 @@
 - [How does ARAX work?](#how-does-arax-work)
 - [The Reasoners Standard Application Programming Interface](#the-reasoners-standard-application-programming-interface)
 - [What knowledge providers does ARAX use?](#what-knowledge-providers-does-arax-use)
-  - [RTX-KG1](#rtx-kg1)
   - [RTX-KG2](#rtx-kg2)
   - [Columbia Open Health Data (COHD)](#columbia-open-health-data-cohd)
   - [PubMed](#pubmed)
