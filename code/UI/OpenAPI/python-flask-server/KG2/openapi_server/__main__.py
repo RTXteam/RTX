@@ -4,6 +4,7 @@ import sys
 import os
 import traceback
 import json
+import setproctitle
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../../../../ARAX/ARAXQuery")
@@ -41,7 +42,6 @@ def main():
 
     pid = os.fork()
     if pid == 0:  # I am the child process
-        import setproctitle
         from ARAX_background_tasker import ARAXBackgroundTasker
         sys.stdout = open('/dev/null', 'w')
         sys.stdin = open('/dev/null', 'r')
@@ -120,6 +120,8 @@ def main():
             local_config = {"port": FLASK_DEFAULT_TCP_PORT}
 
         eprint("Starting flask application in the parent process")
+        setproctitle.setproctitle(setproctitle.getproctitle() +
+                                  f" [port={local_config['port']}]")
         app.run(port=local_config['port'], threaded=True)
     else:
         eprint("[__main__]: fork() unsuccessful")
