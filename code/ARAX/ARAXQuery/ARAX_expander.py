@@ -416,7 +416,7 @@ class ARAXExpander:
                             skipped_message = "This KP was constrained by this edge"
                             response.update_query_plan(qedge_key, skipped_kp, "Skipped", skipped_message)
 
-                    log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
+                    log.info(f"Expand decided to use {len(kps_to_query)} KPs to answer {qedge_key}: {kps_to_query}")
                 else:
                     kps_to_query = set(eu.convert_to_list(parameters["kp"]))
                     for kp in kp_selector.valid_kps.difference(kps_to_query):
