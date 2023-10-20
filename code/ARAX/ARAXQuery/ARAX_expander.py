@@ -350,7 +350,7 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicate_details)
                 for kp in kp_selector.valid_kps:
-                    response.update_query_plan(qedge_key, kp, 'Waiting', f'Waiting for processing of {qedge_key} to begin')
+                    response.update_query_plan(qedge_key, kp, 'Waiting', f'Waiting for processing to begin')
 
             # Get any inferred results from ARAX Infer
             if mode != "RTXKG2" and inferred_qedge_keys:
