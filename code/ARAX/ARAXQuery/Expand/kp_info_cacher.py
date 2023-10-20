@@ -58,8 +58,6 @@ class KPInfoCacher:
                 # Transform the info into the format we want
                 allowed_kp_urls = {kp_registration["infores_name"]: self._get_kp_url_from_smartapi_registration(kp_registration)
                                    for kp_registration in smart_api_kp_registrations}
-                # Add entries for our local KPs (that are not web services)
-                allowed_kp_urls["infores:arax-normalized-google-distance"] = None
 
                 smart_api_cache_contents = {"allowed_kp_urls": allowed_kp_urls,
                                             "kps_excluded_by_version": smart_api_helper.kps_excluded_by_version,
@@ -256,12 +254,7 @@ class KPInfoCacher:
                                                                        for category, meta_node in kp_meta_kg["nodes"].items()}}
                     else:
                         eprint(f"Unable to access {kp_infores_curie}'s /meta_knowledge_graph endpoint "
-                              f"(returned status of {kp_response.status_code} for URL {kp_endpoint_url})")
-            elif kp_infores_curie == "infores:arax-normalized-google-distance":
-                # This is just a placeholder; not really used for KP selection
-                predicates = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:occurs_together_in_literature_with"}}}
-                meta_map[kp_infores_curie] = {"predicates": predicates,
-                                              "prefixes": dict()}
+                               f"(returned status of {kp_response.status_code} for URL {kp_endpoint_url})")
 
         # Make sure the map doesn't contain any 'stale' KPs (KPs that used to be in SmartAPI but no longer are)
         stale_kps = set(meta_map).difference(allowed_kps_dict)

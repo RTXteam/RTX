@@ -212,7 +212,7 @@ class KPSelector:
                 object_set = set()
                 _ = [object_set.add(obj) for obj_dict in predicates_map.values() for obj in obj_dict.keys()]
                 object_categories = object_set
-            any_predicate = False if predicates or kp == "NGD" else True
+            any_predicate = False if predicates else True
 
             # handle combinations of subject and objects using cross product
             qg_sub_obj_dict = defaultdict(lambda: set())
