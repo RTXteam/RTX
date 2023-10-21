@@ -1,12 +1,12 @@
 import tornado.ioloop
 import tornado.web
 import os
-#import sqlite3
 import json
 import sys
 import rtxcomplete
 import traceback
 import re
+import setproctitle
 
 root = os.path.dirname(os.path.abspath(__file__))
 rtxcomplete.load()
@@ -148,6 +148,9 @@ def make_redirect_app():
 if __name__ == "__main__":
     print("root: " + root)
 
+    proc_title = setproctitle.getproctitle()
+    setproctitle.setproctitle(proc_title.replace('server.py',
+                                                 'autocomplete/server.py'))
     if True: #FW/EWD: clean this up later
         http_app = make_https_app()
         http_server = tornado.httpserver.HTTPServer(http_app)
