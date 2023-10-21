@@ -160,6 +160,9 @@ class RecentUUIDManager:
         if 'status' in uuid_data:
             summary['status'] = uuid_data['status']
 
+        if 'timestamp' in uuid_data:
+            summary['timestamp'] = uuid_data['timestamp']
+
         if 'children' in uuid_data:
             for actor_response in uuid_data['children']:
                 code = '-'
