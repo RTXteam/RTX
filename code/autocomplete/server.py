@@ -11,6 +11,7 @@ import setproctitle
 root = os.path.dirname(os.path.abspath(__file__))
 rtxcomplete.load()
 
+SERVER_TCP_PORT = 4999
 
 #### Sanitize the client-provided callback function name
 def sanitize_callback(callback):
@@ -150,11 +151,12 @@ if __name__ == "__main__":
 
     proc_title = setproctitle.getproctitle()
     setproctitle.setproctitle(proc_title.replace('server.py',
-                                                 'autocomplete/server.py'))
+                                                 "autocomplete/server.py" +
+                                                 f" [port={SERVER_TCP_PORT}]"))
     if True: #FW/EWD: clean this up later
         http_app = make_https_app()
         http_server = tornado.httpserver.HTTPServer(http_app)
-        http_server.listen(4999)
+        http_server.listen(SERVER_TCP_PORT)
 
     else:
         redirect_app = make_redirect_app()
