@@ -3413,7 +3413,8 @@ function add_cyto(i,dataid) {
 	}
 	if (this.data('sources')) {
             div.appendChild(document.createElement("br"));
-            show_attributes(i,div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
+            show_attributes(i,div, this.data('sources'),"Edge Sources:","resource_id");
+            //show_attributes(i,div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -5593,7 +5594,7 @@ function retrieveRecentResps() {
 	    table.appendChild(tr);
 
 	    var num = 0;
-            for (var pk in data["pks"]) {
+            for (var pk of data["sorted_pk_list"].reverse()) {
 		num++;
 		tr = document.createElement("tr");
 		tr.className = 'hoverable';
@@ -5604,11 +5605,16 @@ function retrieveRecentResps() {
 
 		td = document.createElement("td");
 		var link = document.createElement("a");
-		link.title = 'view this response';
+		link.title = 'view response: '+pk;
 		link.style.cursor = "pointer";
 		link.style.fontFamily = "monospace";
 		link.setAttribute('onclick', 'pasteId("'+pk+'");sendId(false);selectInput("qid");');
-		link.appendChild(document.createTextNode(pk));
+
+                if (data["pks"][pk]["timestamp"])
+		    link.appendChild(document.createTextNode(convertUTCToLocal(data["pks"][pk]["timestamp"])));
+		else
+		    link.appendChild(document.createTextNode(pk));
+
 		td.appendChild(link);
 		tr.appendChild(td);
 
@@ -6508,6 +6514,7 @@ function generateSmokeTestResults(smoketestdata) {
 
     var checknames = false;
     if (smoketestdata['parameters']) {
+	smoketestdata['parameters']['Environment'] = smoketestdata['environment'];
 	tdiv.appendChild(document.createTextNode("Parameters::"));
 	for (var param in smoketestdata['parameters']) {
 	    var span = document.createElement("span");
@@ -6515,24 +6522,32 @@ function generateSmokeTestResults(smoketestdata) {
 	    span.style.marginLeft = '10px';
 	    span.appendChild(document.createTextNode(param+": "));
 	    tdiv.appendChild(span);
-	    tdiv.appendChild(document.createTextNode(smoketestdata['parameters'][param]));
 	    if (param.includes("curie")) {
-		var mol = smoketestdata['parameters'][param];
-		tdiv.appendChild(document.createTextNode(" ("));
-		span = document.createElement("span");
-		span.id = queryname+"_entityname_"+mol;
-		span.title = mol;
-		if (entities[mol])
-		    span.innerText = entities[mol].name;
-		else {
-		    checknames = true;
-		    entities[mol] = {};
-		    entities[mol].checkHTML = '--';
-		    span.innerText = ' --- ';
+		if (!Array.isArray(smoketestdata['parameters'][param]))
+		    smoketestdata['parameters'][param] = [ smoketestdata['parameters'][param] ];
+
+		var comma = '';
+		for (var mol of smoketestdata['parameters'][param]) {
+		    tdiv.appendChild(document.createTextNode(comma+mol+" ("));
+		    span = document.createElement("span");
+		    span.id = queryname+"_entityname_"+mol;
+		    span.title = mol;
+		    if (entities[mol])
+			span.innerText = entities[mol].name;
+		    else {
+			checknames = true;
+			entities[mol] = {};
+			entities[mol].checkHTML = '--';
+			span.innerText = ' --- ';
+		    }
+		    tdiv.appendChild(span);
+		    tdiv.appendChild(document.createTextNode(") "));
+		    comma = ', ';
 		}
-		tdiv.appendChild(span);
-		tdiv.appendChild(document.createTextNode(") "));
 	    }
+	    else
+		tdiv.appendChild(document.createTextNode(smoketestdata['parameters'][param]));
+
 	}
 	tdiv.appendChild(document.createElement("br"));
 	tdiv.appendChild(document.createElement("br"));
@@ -6581,14 +6596,13 @@ function generateSmokeTestResults(smoketestdata) {
 		    span.className = pcl+' qprob cytograph_controls';
 		    span.appendChild(document.createTextNode(Number(obj['score']).toFixed(2)));
 		    td.appendChild(span);
-
 		    td.title = obj['drug_report'];
-		    tr.appendChild(td);
 		}
 	    }
+	    tr.appendChild(td);
 	}
+	table.appendChild(tr);
     }
-    table.appendChild(tr);
 
     if (checknames)
 	check_entities_batch(99);
@@ -6634,6 +6648,7 @@ function generateLoadTimeTestResults(loadtestdata) {
     }
 
     if (loadtestdata['parameters']) {
+	loadtestdata['parameters']['Environment'] = loadtestdata['environment'];
 	tdiv.appendChild(document.createTextNode("Parameters::"));
 	for (var param in loadtestdata['parameters']) {
 	    var span = document.createElement("span");
@@ -7590,4 +7605,11 @@ function hashCode(s) {
 	h = 31 * h + s.charCodeAt(i++);
     //return h;
     return new Uint32Array([h])[0].toString(36);
+}
+
+
+// from https://askjavascript.com/how-to-convert-gmt-to-local-time-in-javascript/
+function convertUTCToLocal(date) {
+    var gmtDate = new Date(date);
+    return gmtDate.toLocaleString("en-US",{dateStyle:"medium",timeStyle:"long"});
 }

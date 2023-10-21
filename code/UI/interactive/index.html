@@ -393,13 +393,13 @@
     <h3 style="display:inline;">Latest Responses:</h3>
     <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveRecentResps();"/>
     <input type="text" class="questionBox" id="howmanylatest" onkeydown="submit_on_enter(this);" value="10" size="2" maxlength="2"/>responses (max.40), from:
-    <select id="wherefromlatest">
+    <span class="qgselect"><select id="wherefromlatest">
       <option value="ars.test.transltr.io">ars.test.transltr.io</option>
       <option value="ars.ci.transltr.io">ars.ci.transltr.io</option>
       <option value="ars-dev.transltr.io">ars-dev.transltr.io</option>
       <option value="ars-prod.transltr.io">ars-prod.transltr.io</option>
       <option value="ars.transltr.io">ars.transltr.io</option>
-    </select>
+    </select></span>
     <div id="recent_responses_container"><br>Click on the button above to view a list of the most recent responses<br><br></div>
   </div>
 
@@ -507,9 +507,9 @@
   </div>
   <div class="status">
     Select Test Report to view: 
-    <select id="whichsystest">
+    <span class="qgselect"><select id="whichsystest">
       <option value="LATEST">Latest Report</option>
-    </select>
+    </select></span>
     <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveSysTestResults();"/>
     <span style="margin-left:50px;" id="systest_wait"></span>
     <br>
