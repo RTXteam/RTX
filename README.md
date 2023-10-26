@@ -8,7 +8,6 @@
 - [How does ARAX work?](#how-does-arax-work)
 - [The Reasoners Standard Application Programming Interface](#the-reasoners-standard-application-programming-interface)
 - [What knowledge providers does ARAX use?](#what-knowledge-providers-does-arax-use)
-  - [RTX-KG1](#rtx-kg1)
   - [RTX-KG2](#rtx-kg2)
   - [Columbia Open Health Data (COHD)](#columbia-open-health-data-cohd)
   - [PubMed](#pubmed)
@@ -210,49 +209,18 @@ development process for the Reasoners Standard API.
 Currently, ARAX/RTX directly accesses four main knowledge providers in order to
 handle queries, along with several additional APIs for identifier mapping.
 
-## RTX-KG1
-
-RTX-KG1 is a knowledge graph comprising 130k nodes and 3.5M relationships that
-is built by integrating concepts and concept-predicate-concept triples obtained
-from 17 different knowledge providers by way of their web APIs:
-
-1. Pathway Commons 2
-2. Disease Ontology
-3. Monarch Project Biolink API
-4. Drug-Gene Interactions Database
-5. KEGG
-6. UniProtKB
-7. DisGeNet
-8. OMIM
-9. ChEMBL
-10. SIDER
-11. Pharos
-12. MyChem.info
-13. miRGate
-14. Gene Ontology
-15. Monarch SciGraph API
-16. Reactome
-17. PubChem
-
-RTX-KG1 complies with the Biolink model-based Translator Knowledge Graph object
-model standard. RTX-KG1 is hosted in a Neo4j graph database server and can be
-accessed at [kg1endpoint.rtx.ai:7474](http://kg1endpoint.rtx.ai:7474) (username
-is `neo4j`; contact Team Expander Agent for the password). Alternatively, a
-Neo4j dump file (in gzipped tar archive format) of KG1 can be downloaded without
-password from the [kg1endpoint server](http://kg1endpoint.rtx.ai).
-
 ## RTX-KG2
 
-RTX-KG2 is a knowledge graph comprising 7.5M nodes and 34.3M relationships
+RTX-KG2 (GitHub project area is [RTXteam/RTX-KG2](https://github.com/RTXteam/RTX-KG2)) 
+is a knowledge graph comprising 7.5M nodes and 34.3M relationships
 that is built by integrating concepts and concept-predicate-concept triples
 obtained from:
 
-1. *All of the KG1 knowledge providers*
-2. Unified Medical Language System (UMLS; including SNOMED CT)
-3. NCBI Genes
-4. Ensembl Genes
-5. UniChem
-6. Semantic Medline Database (SemMedDB)
+1. Unified Medical Language System (UMLS; including SNOMED CT)
+2. NCBI Genes
+3. Ensembl Genes
+4. UniChem
+5. Semantic Medline Database (SemMedDB)
 
 RTX-KG2 complies with the Biomedical Data Translator Knowledge Graph object
 model standard, which is based on the Biolink model. RTX-KG2 is hosted in a

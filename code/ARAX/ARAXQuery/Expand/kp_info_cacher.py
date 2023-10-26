@@ -58,9 +58,6 @@ class KPInfoCacher:
                 # Transform the info into the format we want
                 allowed_kp_urls = {kp_registration["infores_name"]: self._get_kp_url_from_smartapi_registration(kp_registration)
                                    for kp_registration in smart_api_kp_registrations}
-                # Add entries for our local KPs (that are not web services)
-                allowed_kp_urls["infores:arax-drug-treats-disease"] = None
-                allowed_kp_urls["infores:arax-normalized-google-distance"] = None
 
                 smart_api_cache_contents = {"allowed_kp_urls": allowed_kp_urls,
                                             "kps_excluded_by_version": smart_api_helper.kps_excluded_by_version,
@@ -257,15 +254,7 @@ class KPInfoCacher:
                                                                        for category, meta_node in kp_meta_kg["nodes"].items()}}
                     else:
                         eprint(f"Unable to access {kp_infores_curie}'s /meta_knowledge_graph endpoint "
-                              f"(returned status of {kp_response.status_code} for URL {kp_endpoint_url})")
-            elif kp_infores_curie == "infores:arax-drug-treats-disease":
-                meta_map[kp_infores_curie] = {"predicates": self._get_dtd_meta_map(),
-                                              "prefixes": dict()}
-            elif kp_infores_curie == "infores:arax-normalized-google-distance":
-                # This is just a placeholder; not really used for KP selection
-                predicates = {"biolink:NamedThing": {"biolink:NamedThing": {"biolink:occurs_together_in_literature_with"}}}
-                meta_map[kp_infores_curie] = {"predicates": predicates,
-                                              "prefixes": dict()}
+                               f"(returned status of {kp_response.status_code} for URL {kp_endpoint_url})")
 
         # Make sure the map doesn't contain any 'stale' KPs (KPs that used to be in SmartAPI but no longer are)
         stale_kps = set(meta_map).difference(allowed_kps_dict)
@@ -289,21 +278,6 @@ class KPInfoCacher:
                 kp_meta_map[subject_category][object_category] = set()
             kp_meta_map[subject_category][object_category].add(predicate)
         return kp_meta_map
-
-    @staticmethod
-    def _get_dtd_meta_map():
-        dtd_predicates = {"biolink:treats", "biolink:treated_by"}
-        drug_ish_dict = {"biolink:Drug": dtd_predicates,
-                         "biolink:SmallMolecule": dtd_predicates}
-        disease_ish_dict = {"biolink:Disease": dtd_predicates,
-                            "biolink:PhenotypicFeature": dtd_predicates,
-                            "biolink:DiseaseOrPhenotypicFeature": dtd_predicates}
-        dtd_meta_map = {"biolink:Drug": disease_ish_dict,
-                        "biolink:SmallMolecule": disease_ish_dict,
-                        "biolink:Disease": drug_ish_dict,
-                        "biolink:PhenotypicFeature": drug_ish_dict,
-                        "biolink:DiseaseOrPhenotypicFeature": drug_ish_dict}
-        return dtd_meta_map
 
 
 if __name__ == "__main__":

@@ -3413,7 +3413,8 @@ function add_cyto(i,dataid) {
 	}
 	if (this.data('sources')) {
             div.appendChild(document.createElement("br"));
-            show_attributes(i,div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
+            show_attributes(i,div, this.data('sources'),"Edge Sources:","resource_id");
+            //show_attributes(i,div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -5593,7 +5594,7 @@ function retrieveRecentResps() {
 	    table.appendChild(tr);
 
 	    var num = 0;
-            for (var pk in data["pks"]) {
+            for (var pk of data["sorted_pk_list"].reverse()) {
 		num++;
 		tr = document.createElement("tr");
 		tr.className = 'hoverable';
@@ -5604,11 +5605,16 @@ function retrieveRecentResps() {
 
 		td = document.createElement("td");
 		var link = document.createElement("a");
-		link.title = 'view this response';
+		link.title = 'view response: '+pk;
 		link.style.cursor = "pointer";
 		link.style.fontFamily = "monospace";
 		link.setAttribute('onclick', 'pasteId("'+pk+'");sendId(false);selectInput("qid");');
-		link.appendChild(document.createTextNode(pk));
+
+                if (data["pks"][pk]["timestamp"])
+		    link.appendChild(document.createTextNode(convertUTCToLocal(data["pks"][pk]["timestamp"])));
+		else
+		    link.appendChild(document.createTextNode(pk));
+
 		td.appendChild(link);
 		tr.appendChild(td);
 
@@ -6391,6 +6397,35 @@ function retrieveKPInfo() {
 
 }
 
+function retrieveSysTestResultsList(num) {
+    var apiurl = 'https://utility.ci.transltr.io/arstest/api/latest_pk/'+num;
+    fetch(apiurl)
+        .then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Unable to fetch ARS Translator system test results list from '+apiurl);
+	})
+        .then(data => {
+	    var menu = document.getElementById("whichsystest");
+	    for (let i=0; i<menu.length; i++) {
+		if (menu.options[i].value != 'LATEST') {
+		    menu.remove(i);
+		    i--;
+		}
+	    }
+
+	    for (var test of data['latest_pks']) {
+		var opt = document.createElement('option');
+		opt.value = test['pk'];
+                opt.innerHTML = test['time'] +" -- "+test['test_type'] +" ("+test['env']+")";
+		menu.appendChild(opt);
+	    }
+	})
+        .catch(error => {
+	    div.appendChild(document.createTextNode("ERROR: "+error));
+	    console.error(error);
+	});
+
+}
 
 function retrieveSysTestResults() {
     var systest_node = document.getElementById("systest_container");
@@ -6404,12 +6439,12 @@ function retrieveSysTestResults() {
     wspan.appendChild(wait);
     wspan.appendChild(document.createTextNode('Loading...'));
 
-    //var pk = document.getElementById("pktest").value || null;
-    //document.getElementById("pktest").value = pk;
-
-    //var srcpks = document.getElementById("wherefromtest").value; // prod/test/ci/etc...LATER
-
-    var apiurl = 'https://utility.ci.transltr.io/arstest/api/latest_report';
+    var apiurl = 'https://utility.ci.transltr.io/arstest/api/';
+    var test_pk = document.getElementById("whichsystest").value;
+    if (test_pk == "LATEST")
+	apiurl += 'latest_report';
+    else
+	apiurl += 'report/'+test_pk;
 
     fetch(apiurl)
         .then(response => {
@@ -6417,11 +6452,16 @@ function retrieveSysTestResults() {
 	    else throw new Error('Unable to fetch ARS Translator system test results from '+apiurl);
 	})
         .then(data => {
-	    document.title = "ARAX-UI [Most recent ARS Translator system test results]";
-            wspan.innerHTML = 'Report source: '+apiurl;
+            wspan.innerHTML = '<b>Report source:</b> '+apiurl;
 	    systest_node.innerHTML = '';
 
-	    for (var test in data) {
+	    var tests = {};
+	    if ('fields' in data)
+		tests[data['fields']['test_type']+"_["+data['fields']['timestamp']+"]"] = data;
+	    else
+		tests = data;
+
+	    for (var test in tests) {
 		var div = document.createElement("div");
 		div.className = "statushead";
 		div.appendChild(document.createTextNode("Viewing: "+ test));
@@ -6433,15 +6473,19 @@ function retrieveSysTestResults() {
 		systest_node.appendChild(div);
 
 		if (test.startsWith("Load"))
-		    div.appendChild(generateLoadTimeTestResults(data[test]));
+		    div.appendChild(generateLoadTimeTestResults(tests[test]['fields']));
 		else
-		    div.appendChild(generateSmokeTestResults(data[test]));
+		    div.appendChild(generateSmokeTestResults(tests[test]['fields']));
 
 		div.appendChild(document.createElement("br"));
 	    }
 
 	    systest_node.appendChild(document.createElement("br"));
 	    systest_node.appendChild(document.createElement("br"));
+
+	    if (test_pk == "LATEST")
+		retrieveSysTestResultsList(100);
+
         })
         .catch(error => {
             wspan.innerHTML = '';
@@ -6454,18 +6498,23 @@ function retrieveSysTestResults() {
 
 
 function generateSmokeTestResults(smoketestdata) {
+    if (smoketestdata['data'] == null) {
+	var h2 = document.createElement("h2");
+        h2.appendChild(document.createTextNode("-- No Data --"));
+	return h2;
+    }
+
     var tdiv = document.createElement("div");
 
     var all_agents = {};
     for (var queryname in smoketestdata['data']) {
-	for (var type of ['allow','deny'])
-	    if (smoketestdata['data'][queryname][type])
-		for (var mol in smoketestdata['data'][queryname][type])
-		    for (var ara in smoketestdata['data'][queryname][type][mol])
-			all_agents[ara] = 1;
+	for (var actor in smoketestdata['data'][queryname]['actors'])
+	    all_agents[actor] = 1;
     }
 
+    var checknames = false;
     if (smoketestdata['parameters']) {
+	smoketestdata['parameters']['Environment'] = smoketestdata['environment'];
 	tdiv.appendChild(document.createTextNode("Parameters::"));
 	for (var param in smoketestdata['parameters']) {
 	    var span = document.createElement("span");
@@ -6473,20 +6522,55 @@ function generateSmokeTestResults(smoketestdata) {
 	    span.style.marginLeft = '10px';
 	    span.appendChild(document.createTextNode(param+": "));
 	    tdiv.appendChild(span);
-	    tdiv.appendChild(document.createTextNode(smoketestdata['parameters'][param]));
+	    if (param.includes("curie")) {
+		if (!Array.isArray(smoketestdata['parameters'][param]))
+		    smoketestdata['parameters'][param] = [ smoketestdata['parameters'][param] ];
+
+		var comma = '';
+		for (var mol of smoketestdata['parameters'][param]) {
+		    tdiv.appendChild(document.createTextNode(comma+mol+" ("));
+		    span = document.createElement("span");
+		    span.id = queryname+"_entityname_"+mol;
+		    span.title = mol;
+		    if (entities[mol])
+			span.innerText = entities[mol].name;
+		    else {
+			checknames = true;
+			entities[mol] = {};
+			entities[mol].checkHTML = '--';
+			span.innerText = ' --- ';
+		    }
+		    tdiv.appendChild(span);
+		    tdiv.appendChild(document.createTextNode(") "));
+		    comma = ', ';
+		}
+	    }
+	    else
+		tdiv.appendChild(document.createTextNode(smoketestdata['parameters'][param]));
+
 	}
+	tdiv.appendChild(document.createElement("br"));
 	tdiv.appendChild(document.createElement("br"));
     }
 
     var table = document.createElement("table");
     table.className = 'sumtab';
 
+    var tr = document.createElement("tr");
+    var td = document.createElement("th");
+    td.appendChild(document.createTextNode('Query'));
+    tr.appendChild(td);
+    for (var agent of Object.keys(all_agents).sort()) {
+	td = document.createElement("th");
+	td.style.minWidth = '80px';
+        td.appendChild(document.createTextNode(agent.replace(/ara-|kp-/,"")));
+	tr.appendChild(td);
+    }
+    table.appendChild(tr);
+
     for (var queryname in smoketestdata['data']) {
-	var tr = document.createElement("tr");
-        tr.style.background = "initial";
-	var td = document.createElement("th");
-        td.colSpan = '2';
-        td.appendChild(document.createElement("br"));
+	tr = document.createElement("tr");
+	td = document.createElement("td");
 
 	var link = document.createElement("a");
 	link.title = 'view this response';
@@ -6498,92 +6582,28 @@ function generateSmokeTestResults(smoketestdata) {
 	td.appendChild(link);
 	tr.appendChild(td);
 
-	td = document.createElement("th");
-        td.appendChild(document.createElement("br"));
-	td.appendChild(document.createTextNode('NN name'));
-	tr.appendChild(td);
-	td = document.createElement("th");
-        td.appendChild(document.createElement("br"));
-	td.appendChild(document.createTextNode('Expect'));
-	tr.appendChild(td);
-
 	for (var agent of Object.keys(all_agents).sort()) {
-	    td = document.createElement("th");
-	    td.style.minWidth = '80px';
-            td.appendChild(document.createElement("br"));
-            td.appendChild(document.createTextNode(agent.replace(/ara-|kp-/,"")));
+	    td = document.createElement("td");
+	    td.style.borderLeft = "1px solid black";
+	    td.style.textAlign = 'right';
+
+	    for (var ara in smoketestdata['data'][queryname]['actors']) {
+		if (ara == agent) {
+		    var obj = smoketestdata['data'][queryname]['actors'][ara];
+		    var pcl = obj['drug_report'] == "pass" ? "p9" : "p1";
+
+		    var span = document.createElement("span");
+		    span.className = pcl+' qprob cytograph_controls';
+		    span.appendChild(document.createTextNode(Number(obj['score']).toFixed(2)));
+		    td.appendChild(span);
+		    td.title = obj['drug_report'];
+		}
+	    }
 	    tr.appendChild(td);
 	}
-        table.appendChild(tr);
-
-	var num = 0;
-	var checknames = false;
-        for (var type of ['allow','deny']) {
-            for (var mol in smoketestdata['data'][queryname][type]) {
-		num++;
-		tr = document.createElement("tr");
-		tr.className = 'hoverable';
-
-		td = document.createElement("td");
-		td.innerText = num+'.';
-		tr.appendChild(td);
-
-		td = document.createElement("td");
-		td.title = mol;
-		td.innerText = mol;
-		tr.appendChild(td);
-
-                td = document.createElement("td");
-		td.id = queryname+"_entityname_"+mol
-		td.title = mol;
-		if (entities[mol])
-		    td.innerText = entities[mol].name;
-		else {
-		    checknames = true;
-		    entities[mol] = {};
-                    entities[mol].checkHTML = '--';
-		    td.innerText = '(looking up name...)';
-		}
-		tr.appendChild(td);
-
-		td = document.createElement("td");
-		td.className = type == 'allow' ? 'numnew':'p1 qprob cytograph_controls';
-                td.style.borderRadius = "initial";
-		td.innerText = type;
-		tr.appendChild(td);
-
-		for (var agent of Object.keys(all_agents).sort()) {
-		    td = document.createElement("td");
-		    td.style.borderLeft = "1px solid black";
-		    td.style.textAlign = 'right';
-
-		    var done = false;
-		    for (var ara in smoketestdata['data'][queryname][type][mol]) {
-			if (ara == agent) {
-			    if (done) // no longer relevant...?
-				td.appendChild(document.createTextNode("*"));
-			    else {
-				var obj = smoketestdata['data'][queryname][type][mol][ara];
-				var pcl = obj['drug_report'] == "pass" ? "p9" : "p1";
-
-				var span = document.createElement("span");
-				span.className = pcl+' qprob cytograph_controls';
-				span.appendChild(document.createTextNode(Number(obj['score']).toFixed(2)));
-				td.appendChild(span);
-
-				td.title = obj['drug_report'];
-				done = true;
-			    }
-			}
-		    }
-		    tr.appendChild(td);
-		}
-
-		table.appendChild(tr);
-	    }
-	}
-
+	table.appendChild(tr);
     }
+
     if (checknames)
 	check_entities_batch(99);
 
@@ -6608,6 +6628,12 @@ function generateSmokeTestResults(smoketestdata) {
 }
 
 function generateLoadTimeTestResults(loadtestdata) {
+    if (loadtestdata['data'] == null) {
+	var h2 = document.createElement("h2");
+	h2.appendChild(document.createTextNode("-- No Data --"));
+	return h2;
+    }
+
     var tdiv = document.createElement("div");
 
     var all_agents = {};
@@ -6622,6 +6648,7 @@ function generateLoadTimeTestResults(loadtestdata) {
     }
 
     if (loadtestdata['parameters']) {
+	loadtestdata['parameters']['Environment'] = loadtestdata['environment'];
 	tdiv.appendChild(document.createTextNode("Parameters::"));
 	for (var param in loadtestdata['parameters']) {
 	    var span = document.createElement("span");
@@ -6695,7 +6722,7 @@ function generateLoadTimeTestResults(loadtestdata) {
 	    var span = document.createElement("span");
 
             if (obj['actors'][agent]) {
-		if (obj['stragglers'].includes(agent))
+		if (obj['stragglers'] && obj['stragglers'].includes(agent))
 		    td.appendChild(document.createTextNode("\u{1F422}"));
 		if (obj['actors'][agent]['status'] == "Done") {
 		    span.innerHTML = '&check;';
@@ -6713,7 +6740,7 @@ function generateLoadTimeTestResults(loadtestdata) {
 		}
                 td.appendChild(span);
 		td.title = obj['actors'][agent]['status'];
-                if (obj['stragglers'].includes(agent))
+                if (obj['stragglers'] && obj['stragglers'].includes(agent))
 		    td.title += " (straggler)";
 
 	    }
@@ -7578,4 +7605,11 @@ function hashCode(s) {
 	h = 31 * h + s.charCodeAt(i++);
     //return h;
     return new Uint32Array([h])[0].toString(36);
+}
+
+
+// from https://askjavascript.com/how-to-convert-gmt-to-local-time-in-javascript/
+function convertUTCToLocal(date) {
+    var gmtDate = new Date(date);
+    return gmtDate.toLocaleString("en-US",{dateStyle:"medium",timeStyle:"long"});
 }

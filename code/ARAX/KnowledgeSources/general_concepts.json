@@ -673,6 +673,7 @@
         "rna, untranslated",
         "secondary",
         "uterotonics",
-        "radiotherapy"
+        "radiotherapy",
+        "pharmacolog.*"
     ]
 }

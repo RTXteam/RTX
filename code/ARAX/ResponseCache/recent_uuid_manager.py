@@ -69,16 +69,28 @@ class RecentUUIDManager:
         if container_key not in response_dict:
             return( { "status": 404, "title": "Error decoding Response", "detail": f"Cannot decode recent PK list from ARS {ars_host}: cannot find {container_key}", "type": "about:blank" }, 404)
 
+        have_timestamps = True
+        uuid_list = []
         for uuid in response_dict[container_key]:
             #eprint(f"UUID is {uuid}")
             uuid_data = self.get_uuid(ars_host, uuid)
             #eprint(json.dumps(uuid_data,indent=2,sort_keys=True))
             result = self.summarize_uuid_data(ars_host, uuid_data)
+            if 'timestamp' not in result:
+                have_timestamps = False
+            else:
+                uuid_list.append( { 'pk': uuid, 'timestamp': result['timestamp'] } )
             response['pks'][uuid] = result
             response['agents_list'] = result['agents_list']
             del(result['agents_list'])
             response['pks'][uuid]['ars_host'] = ars_host
             #eprint(json.dumps(response,indent=2,sort_keys=True))
+
+        if have_timestamps:
+            uuid_list.sort(key=lambda x: x['timestamp'])
+            response['sorted_pk_list'] = []
+            for item in uuid_list:
+                response['sorted_pk_list'].append(item['pk'])
 
         return response
 
@@ -159,6 +171,9 @@ class RecentUUIDManager:
 
         if 'status' in uuid_data:
             summary['status'] = uuid_data['status']
+
+        if 'timestamp' in uuid_data:
+            summary['timestamp'] = uuid_data['timestamp']
 
         if 'children' in uuid_data:
             for actor_response in uuid_data['children']:
