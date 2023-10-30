@@ -5,7 +5,7 @@ import os
 import traceback
 import json
 import numpy as np
-
+import re
 
 class RemoveNodes:
 
@@ -176,9 +176,14 @@ class RemoveNodes:
                         synonyms += attribute.get('value',[])
                 if node_dict['name']:
                      synonyms.append(node_dict['name'].lower())
-                if block_list_synonyms.intersection([synonym.lower() for synonym in synonyms if synonym]) \
-                         or block_list_curies.intersection([curie.lower() for curie in curies if curie]):
+                if block_list_curies.intersection([curie.lower() for curie in curies if curie]):
                     nodes_to_remove.add(key)
+                    continue
+                for synonym in synonyms:
+                    for block_list_synonym in block_list_synonyms:
+                        if re.match(block_list_synonym, synonym,re.IGNORECASE):
+                            nodes_to_remove.add(key)
+
 
             for key in nodes_to_remove:
                 del self.message.knowledge_graph.nodes[key]

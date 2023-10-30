@@ -1,7 +1,6 @@
 #!/bin/env python3
 import asyncio
 import copy
-import logging
 import pickle
 import sys
 import os
@@ -29,7 +28,6 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute_constraint import AttributeConstraint
 from Expand.kg2_querier import KG2Querier
-from Expand.ngd_querier import NGDQuerier
 from Expand.trapi_querier import TRAPIQuerier
 
 
@@ -51,7 +49,6 @@ def trim_to_size(input_list, length):
 class ARAXExpander:
 
     def __init__(self):
-        self.logger = logging.getLogger('log')
         self.bh = BiolinkHelper()
         self.rtxc = RTXConfiguration()
         self.plover_url = self.rtxc.plover_url
@@ -70,34 +67,22 @@ class ARAXExpander:
         :return:
         """
         kp_selector = KPSelector()
-        all_kps = sorted(list(kp_selector.valid_kps))    # TODO: Should we include with any maturity here? any TRAPI version?
+        all_kps = sorted(list(kp_selector.valid_kps))
         rtxc = RTXConfiguration()
         command_definition = {
             "dsl_command": "expand()",
             "description": f"This command will expand (aka, answer/fill) your query graph in an edge-by-edge "
-                           f"fashion, intelligently selecting which KPs to use for each edge. It selects KPs from the SmartAPI Registry "
-                           f"based on the meta information provided by their TRAPI APIs (when available), whether they "
-                           f"have an endpoint running a matching TRAPI version, and whether they have an endpoint with matching "
-                           f"maturity. For each QEdge, it queries the selected KPs in parallel; it will "
-                           f"timeout for a particular KP if it decides it's taking too long to respond. You may also "
-                           f"optionally specify a particular KP to use via the 'kp' parameter (described below).\n\n"
-                           f"Current candidate KPs include (for TRAPI {rtxc.trapi_major_version}, maturity '{rtxc.maturity}'): \n"
+                           f"fashion, intelligently selecting which KPs to use for each edge. It selects KPs from "
+                           f"the SmartAPI Registry based on the meta information provided by their TRAPI APIs, "
+                           f"whether they have an endpoint running a matching TRAPI version, and whether they have "
+                           f"an endpoint with matching maturity. For each QEdge, it queries the selected KPs "
+                           f"concurrently; it will timeout for a particular KP if it decides it's taking too long "
+                           f"to respond (this KP timeout can be controlled by the user). You may also optionally "
+                           f"specify a particular KP to use via the 'kp' parameter (described below).\n\n"
+                           f"Current candidate KPs include (for TRAPI {rtxc.trapi_major_version}, "
+                           f"maturity '{rtxc.maturity}'): \n"
                            f"{', '.join(all_kps)}. \n"
-                           f"\n(Note that this list of KPs may change unexpectedly based on the SmartAPI registry.)"
-                           f"\n\n**Notes specific to usage of ARAX's internal KPs:**\n "
-                           f"1. NGD: The 'infores:arax-normalized-google-distance' KP uses ARAX's in-house normalized "
-                           f"google distance (NGD) database to expand "
-                           "a query graph; it returns edges between nodes with an NGD value below a certain "
-                           "threshold. This threshold is currently hardcoded as 0.5, though this will be made "
-                           "configurable/smarter in the future.\n",
-                        #    "2. DTD: The 'infores:arax-drug-treats-disease' KP uses ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model) to expand "
-                        #    "a query graph; it returns edges between nodes with a DTD probability above a certain "
-                        #    "threshold. The default threshold is currently set to 0.8. If you set this threshold below 0.8, you should also "
-                        #    "set DTD_slow_mode=True otherwise a warninig will occur. This is because the current DTD database only stores the pre-calcualted "
-                        #    "DTD probability above or equal to 0.8. Therefore, if an user set threshold below 0.8, it will automatically switch to call DTD model "
-                        #    "to do a real-time calculation and this will be quite time-consuming. In addition, if you call DTD database, your query node type would be checked.  "
-                        #    "In other words, the query node has to have a sysnonym which is drug or disease. If you don't want to check node type, set DTD_slow_mode=true "
-                        #    "to call DTD model to do a real-time calculation.",
+                           f"\n(Note that this list of KPs may change unexpectedly based on the SmartAPI registry.)",
             "parameters": self.get_parameter_info_dict()
         }
         return [command_definition]
@@ -149,27 +134,7 @@ class ARAXExpander:
                 "type": "boolean",
                 "description": "Whether to omit supporting data on nodes/edges in the results (e.g., publications, "
                                "description, etc.)."
-            },
-            # "DTD_threshold": {
-            #     "is_required": False,
-            #     "examples": [0.8, 0.5],
-            #     "min": 0,
-            #     "max": 1,
-            #     "default": 0.8,
-            #     "type": "float",
-            #     "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
-            #                    "Defines what cut-off/threshold to use for expanding the DTD virtual edges."
-            # },
-            # "DTD_slow_mode": {
-            #     "is_required": False,
-            #     "examples": ["true", "false"],
-            #     "enum": ["true", "false", "True", "False", "t", "f", "T", "F"],
-            #     "default": "false",
-            #     "type": "boolean",
-            #     "description": "Applicable only when the 'infores:arax-drug-treats-disease' KP is used. "
-            #                    "Specifies whether to call DTD model rather than DTD database to do a real-time "
-            #                    "calculation for DTD probability."
-            # }
+            }
         }
         return parameter_info_dict
 
@@ -361,92 +326,11 @@ class ARAXExpander:
                     # Default to related_to if no predicate was specified
                     qedge.predicates = [self.bh.get_root_predicate()]
 
-        # Send ARAXInfer any one-hop, "inferred", "treats" queries (temporary way of making creative mode work)
-        if mode != "RTXKG2":
-            inferred_qedge_keys = [qedge_key for qedge_key, qedge in query_graph.edges.items() if qedge.knowledge_type == "inferred"]
-            if inferred_qedge_keys:
-                log.debug(f"knowledge_type='inferred' qedges were detected ({', '.join(inferred_qedge_keys)}); "
-                          f"will determine which model to consult based on the category of source qnode and object qnode, as well as predicate.")
-                if len(query_graph.edges) == 1:
-                    inferred_qedge_key = inferred_qedge_keys[0]
-                    qedge = query_graph.edges[inferred_qedge_key]
-                    # treats_ancestors = self.bh.get_ancestors("biolink:treats") ## we don't consider the ancestor because both "biolink:treats" and "biolink:regulates" share the same ancestors
-                    if set(['biolink:ameliorates', 'biolink:treats']).intersection(set(qedge.predicates)): # Figure out if this is a "treats" query, then use call XDTD
-                        # Call XDTD and simply return whatever it returns
-                        # Get the subject and object of this edge
-                        subject_qnode = query_graph.nodes[qedge.subject]  # drug
-                        object_qnode = query_graph.nodes[qedge.object]  # disease
-                        if object_qnode.ids and len(object_qnode.ids) >= 1:
-                            object_curie = object_qnode.ids[0]  #FIXME: will need a way to handle multiple IDs
-                        else:
-                            log.error(f"No CURIEs found for qnode {qedge.object}; ARAXInfer/XDTD requires that the"
-                                      f" object qnode has 'ids' specified", error_code="NoCURIEs")
-                            #raise Exception(f"No CURIEs found for {object_qnode.name}")
-                            return response
-                        log.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {object_curie}")
-                        from ARAX_infer import ARAXInfer
-                        infer_input_parameters = {"action": "drug_treatment_graph_expansion",'node_curie': object_curie, 'qedge_id': inferred_qedge_key}
-                        inferer = ARAXInfer()
-                        infer_response = inferer.apply(response, infer_input_parameters)
-                        # return infer_response
-                        response = infer_response
-                        overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
-
-                    elif set(['biolink:regulates']).intersection(set(qedge.predicates)): # Figure out if this is a "regulates" query, then use call XCRG models
-                        # Call XCRG models and simply return whatever it returns
-                        # Get the subject and object of this edge
-                        subject_qnode = query_graph.nodes[qedge.subject] # chemical
-                        object_qnode = query_graph.nodes[qedge.object] # gene
-                        qualifier_direction = [qualifier.qualifier_value for qualifier_constraint in qedge.qualifier_constraints for qualifier in qualifier_constraint.qualifier_set if qualifier.qualifier_type_id == 'biolink:object_direction_qualifier'][0]
-                        if qualifier_direction == 'increased':
-                            regulation_type = 'increase'
-                        elif qualifier_direction == 'decreased':
-                            regulation_type = 'decrease'
-                        else:
-                            log.error(f"The action 'chemical_gene_regulation_graph_expansion' only support the qualifier_direction with either 'increased' or 'decreased' but {qualifier_direction} provided.")
-                            return response
-                        if subject_qnode.ids and len(subject_qnode.ids) >= 1:
-                            subject_curie = subject_qnode.ids[0] #FIXME: will need a way to handle multiple IDs
-                        else:
-                            subject_curie = None
-                        if object_qnode.ids and len(object_qnode.ids) >= 1:
-                            object_curie = object_qnode.ids[0] #FIXME: will need a way to handle multiple IDs
-                        else:
-                            object_curie = None
-                        if not subject_curie and not object_curie:
-                            log.error(f"No CURIEs found for both query subject node {qedge.subject} and query object node {qedge.object}; ARAXInfer/XCRG requires "
-                                      f"that at least subject qnode or object qnode has 'ids' specified", error_code="NoCURIEs")
-                            return response
-                        if subject_curie and object_curie:
-                            log.error(f"The action 'chemical_gene_regulation_graph_expansion' hasn't support the prediction for a single chemical-gene pair yet.", error_code="InvalidCURIEs")
-                            return response
-                        log.info(f"Calling XCRG from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
-                        from ARAX_infer import ARAXInfer
-                        if subject_curie:
-                            infer_input_parameters = {"action": "chemical_gene_regulation_graph_expansion", 'subject_qnode_id' : qedge.subject, 'qedge_id': inferred_qedge_key, 'regulation_type': regulation_type}
-                        else:
-                            infer_input_parameters = {"action": "chemical_gene_regulation_graph_expansion", 'object_qnode_id' : qedge.object, 'object_curie': object_curie, 'qedge_id': inferred_qedge_key, 'regulation_type': regulation_type}
-                        inferer = ARAXInfer()
-                        infer_response = inferer.apply(response, infer_input_parameters)
-                        response = infer_response
-                        overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(message.knowledge_graph)
-                    else:
-                        log.info(f"Qedge {inferred_qedge_key} has knowledge_type == inferred, but the query is not "
-                                 f"DTD-related (e.g., 'biolink:ameliorates', 'biolink:treats') or CRG-related ('biolink:regulates') according to the specified predicate. Will answer using the normal 'fill' strategy (not creative mode).")
-                else:
-                    log.warning(f"Expand does not yet know how to answer multi-qedge query graphs when one or more of "
-                                f"the qedges has knowledge_type == inferred. Will answer using the normal 'fill' strategy "
-                                f"(not creative mode).")
-
         # Expand any specified edges
         if qedge_keys_to_expand:
             query_sub_graph = self._extract_query_subgraph(qedge_keys_to_expand, query_graph, log)
-            if mode != "RTXKG2":
-                if inferred_qedge_keys and len(query_graph.edges) == 1:
-                    for edge in query_sub_graph.edges.keys():
-                        query_sub_graph.edges[edge].knowledge_type = 'lookup'
-            if log.status != 'OK':
-                return response
+            inferred_qedge_keys = [qedge_key for qedge_key, qedge in query_graph.edges.items() if
+                                   qedge.knowledge_type == "inferred"]
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
             ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
@@ -466,7 +350,17 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicate_details)
                 for kp in kp_selector.valid_kps:
-                    response.update_query_plan(qedge_key, kp, 'Waiting', f'Waiting for processing of {qedge_key} to begin')
+                    response.update_query_plan(qedge_key, kp, 'Waiting', f'Waiting for processing to begin')
+
+            # Get any inferred results from ARAX Infer
+            if mode != "RTXKG2" and inferred_qedge_keys:
+                response, overarching_kg = self.get_inferred_answers(inferred_qedge_keys, query_graph, response)
+                if log.status != 'OK':
+                    return response
+                # Now mark qedges as 'lookup' if this is an inferred query
+                if inferred_qedge_keys and len(query_graph.edges) == 1:
+                    for edge in query_sub_graph.edges.keys():
+                        query_sub_graph.edges[edge].knowledge_type = 'lookup'
 
             # Expand the query graph edge-by-edge
             for qedge_key in ordered_qedge_keys_to_expand:
@@ -481,6 +375,7 @@ class ARAXExpander:
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
                 if mode != "RTXKG2":
+                    # Mark these qedges as 'lookup' if this is an 'inferred' query
                     if inferred_qedge_keys and len(query_graph.edges) == 1:
                         for edge in one_hop_qg.edges.keys():
                             one_hop_qg.edges[edge].knowledge_type = 'lookup'
@@ -521,7 +416,7 @@ class ARAXExpander:
                             skipped_message = "This KP was constrained by this edge"
                             response.update_query_plan(qedge_key, skipped_kp, "Skipped", skipped_message)
 
-                    log.info(f"The KPs Expand decided to answer {qedge_key} with are: {kps_to_query}")
+                    log.info(f"Expand decided to use {len(kps_to_query)} KPs to answer {qedge_key}: {kps_to_query}")
                 else:
                     kps_to_query = set(eu.convert_to_list(parameters["kp"]))
                     for kp in kp_selector.valid_kps.difference(kps_to_query):
@@ -540,7 +435,6 @@ class ARAXExpander:
                     asyncio.set_event_loop(loop)
                     tasks = [self._expand_edge_async(one_hop_qg,
                                                      kp_to_use,
-                                                     input_parameters,
                                                      user_specified_kp,
                                                      kp_timeout,
                                                      force_local,
@@ -682,7 +576,6 @@ class ARAXExpander:
             decorator = ARAXDecorator()
             decorator.decorate_edges(response, kind="SEMMEDDB")
 
-
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
         if mode == "RTXKG2":
@@ -695,9 +588,135 @@ class ARAXExpander:
         
         return response
 
+    @staticmethod
+    def get_inferred_answers(inferred_qedge_keys: List[str],
+                             query_graph: QueryGraph,
+                             response: ARAXResponse) -> Tuple[ARAXResponse, QGOrganizedKnowledgeGraph]:
+        # Send ARAXInfer any one-hop, "inferred", "treats" queries (temporary way of making creative mode work)
+        overarching_kg = QGOrganizedKnowledgeGraph()
+        if inferred_qedge_keys:
+            response.debug(f"knowledge_type='inferred' qedges were detected ({', '.join(inferred_qedge_keys)}); "
+                      f"will determine which model to consult based on the category of source qnode and object qnode, as well as predicate.")
+            if len(query_graph.edges) == 1:
+                inferred_qedge_key = inferred_qedge_keys[0]
+                qedge = query_graph.edges[inferred_qedge_key]
+                # treats_ancestors = self.bh.get_ancestors("biolink:treats") ## we don't consider the ancestor because both "biolink:treats" and "biolink:regulates" share the same ancestors
+                if set(['biolink:ameliorates', 'biolink:treats']).intersection(set(qedge.predicates)):  # Figure out if this is a "treats" query, then use call XDTD
+                    # Call XDTD and simply return whatever it returns
+                    # Get the subject and object of this edge
+                    subject_qnode = query_graph.nodes[qedge.subject]  # drug
+                    object_qnode = query_graph.nodes[qedge.object]  # disease
+                    if object_qnode.ids and len(object_qnode.ids) >= 1:
+                        object_curie = object_qnode.ids[0]  # FIXME: will need a way to handle multiple IDs
+                    else:
+                        response.error(f"No CURIEs found for qnode {qedge.object}; ARAXInfer/XDTD requires that the"
+                                       f" object qnode has 'ids' specified", error_code="NoCURIEs")
+                        # raise Exception(f"No CURIEs found for {object_qnode.name}")
+                        return response, overarching_kg
+                    if subject_qnode.ids and len(subject_qnode.ids) >= 1:
+                        subject_curie = subject_qnode.ids  # FIXME: will need a way to handle multiple IDs
+                    else:
+                        subject_curie = None
+                    response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {object_curie}")
+                    response.update_query_plan(inferred_qedge_key, "arax-xdtd",
+                                               "Waiting", f"Waiting for response")
+                    start = time.time()
+
+                    from ARAX_infer import ARAXInfer
+                    infer_input_parameters = {"action": "drug_treatment_graph_expansion",
+                                              'node_curie': object_curie, 'qedge_id': inferred_qedge_key,
+                                              'drug_curie': subject_curie}
+                    inferer = ARAXInfer()
+                    infer_response = inferer.apply(response, infer_input_parameters)
+                    # return infer_response
+                    response = infer_response
+                    overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(response.envelope.message.knowledge_graph)
+
+                    wait_time = round(time.time() - start)
+                    if response.status == "OK":
+                        done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, dict()))} " \
+                                       f"edges in {wait_time} seconds"
+                        response.update_query_plan(inferred_qedge_key, "arax-xdtd", "Done", done_message)
+                    else:
+                        response.update_query_plan(inferred_qedge_key, "arax-xdtd", "Error",
+                                                   f"Process error-ed out with {response.status} after {wait_time} seconds")
+
+                elif set(['biolink:regulates']).intersection(set(qedge.predicates)):  # Figure out if this is a "regulates" query, then use call XCRG models
+                    # Call XCRG models and simply return whatever it returns
+                    # Get the subject and object of this edge
+                    subject_qnode = query_graph.nodes[qedge.subject]  # chemical
+                    object_qnode = query_graph.nodes[qedge.object]  # gene
+                    qualifier_direction = \
+                        [qualifier.qualifier_value for qualifier_constraint in qedge.qualifier_constraints for
+                         qualifier in qualifier_constraint.qualifier_set if
+                         qualifier.qualifier_type_id == 'biolink:object_direction_qualifier'][0]
+                    if qualifier_direction == 'increased':
+                        regulation_type = 'increase'
+                    elif qualifier_direction == 'decreased':
+                        regulation_type = 'decrease'
+                    else:
+                        response.error(f"The action 'chemical_gene_regulation_graph_expansion' only support the qualifier_direction with either 'increased' or 'decreased' but {qualifier_direction} provided.")
+                        return response, overarching_kg
+                    if subject_qnode.ids and len(subject_qnode.ids) >= 1:
+                        subject_curie = subject_qnode.ids[0]  # FIXME: will need a way to handle multiple IDs
+                    else:
+                        subject_curie = None
+                    if object_qnode.ids and len(object_qnode.ids) >= 1:
+                        object_curie = object_qnode.ids[0]  # FIXME: will need a way to handle multiple IDs
+                    else:
+                        object_curie = None
+                    if not subject_curie and not object_curie:
+                        response.error(f"No CURIEs found for both query subject node {qedge.subject} and query object node {qedge.object}; ARAXInfer/XCRG requires "
+                                       f"that at least subject qnode or object qnode has 'ids' specified",
+                                       error_code="NoCURIEs")
+                        return response, overarching_kg
+                    if subject_curie and object_curie:
+                        response.error(f"The action 'chemical_gene_regulation_graph_expansion' hasn't support the prediction for a single chemical-gene pair yet.",
+                                       error_code="InvalidCURIEs")
+                        return response, overarching_kg
+                    response.info(f"Calling XCRG from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
+                    response.update_query_plan(inferred_qedge_key, "arax-xcrg",
+                                               "Waiting", f"Waiting for response")
+                    start = time.time()
+
+                    from ARAX_infer import ARAXInfer
+                    if subject_curie:
+                        infer_input_parameters = {"action": "chemical_gene_regulation_graph_expansion",
+                                                  'subject_qnode_id': qedge.subject,
+                                                  'qedge_id': inferred_qedge_key,
+                                                  'regulation_type': regulation_type}
+                    else:
+                        infer_input_parameters = {"action": "chemical_gene_regulation_graph_expansion",
+                                                  'object_qnode_id': qedge.object, 'object_curie': object_curie,
+                                                  'qedge_id': inferred_qedge_key,
+                                                  'regulation_type': regulation_type}
+                    inferer = ARAXInfer()
+                    infer_response = inferer.apply(response, infer_input_parameters)
+                    response = infer_response
+                    overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(response.envelope.message.knowledge_graph)
+
+                    wait_time = round(time.time() - start)
+                    if response.status == "OK":
+                        done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, dict()))} " \
+                                       f"edges in {wait_time} seconds"
+                        response.update_query_plan(inferred_qedge_key, "arax-xcrg", "Done", done_message)
+                    else:
+                        response.update_query_plan(inferred_qedge_key, "arax-xcrg", "Error",
+                                                   f"Process error-ed out with {response.status} after {wait_time} seconds")
+                else:
+                    response.info(f"Qedge {inferred_qedge_key} has knowledge_type == inferred, but the query is not "
+                                  f"DTD-related (e.g., 'biolink:ameliorates', 'biolink:treats') or CRG-related ('biolink:regulates') according to the specified predicate. Will answer using the normal 'fill' strategy (not creative mode).")
+            else:
+                response.warning(
+                    f"Expand does not yet know how to answer multi-qedge query graphs when one or more of "
+                    f"the qedges has knowledge_type == inferred. Will answer using the normal 'fill' strategy "
+                    f"(not creative mode).")
+
+        response.debug(f"Done calling ARAX Infer from Expand; returning to regular Expand execution")
+        return response, overarching_kg
+
     async def _expand_edge_async(self, edge_qg: QueryGraph,
                                  kp_to_use: str,
-                                 input_parameters: Dict[str, any],
                                  user_specified_kp: bool,
                                  kp_timeout: Optional[int],
                                  force_local: bool,
@@ -721,38 +740,15 @@ class ARAXExpander:
                       error_code="InvalidKP")
             return answer_kg, log
 
-        # Route this query to the proper place depending on the KP
+        # Route this query to the KP's TRAPI API
         try:
-            use_custom_querier = kp_to_use in {'infores:arax-drug-treats-disease', 'infores:arax-normalized-google-distance'}
-            if use_custom_querier:
-                num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in edge_qg.nodes.values()])
-                waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
-                log.update_query_plan(qedge_key, kp_to_use, "Waiting", waiting_message)
-                start = time.time()
-                if kp_to_use == 'infores:arax-drug-treats-disease':
-                    # from Expand.DTD_querier import DTDQuerier
-                    # kp_querier = DTDQuerier(log)
-                    log.warning(f"DTD KP has been replaced with xDTD and thus is currently disabled.")
-                    return answer_kg, log
-                else:
-                    kp_querier = NGDQuerier(log)
-                answer_kg = kp_querier.answer_one_hop_query(edge_qg)
-                wait_time = round(time.time() - start)
-                if log.status == 'OK':
-                    done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {wait_time} seconds"
-                    log.update_query_plan(qedge_key, kp_to_use, "Done", done_message)
-                else:
-                    log.update_query_plan(qedge_key, kp_to_use, "Error", f"Process error-ed out with {log.status} after {wait_time} seconds")
-                    return answer_kg, log
-            else:
-                # This is a general purpose querier for use with any KPs that we query via their TRAPI API
-                kp_querier = TRAPIQuerier(response_object=log,
-                                          kp_name=kp_to_use,
-                                          user_specified_kp=user_specified_kp,
-                                          kp_timeout=kp_timeout,
-                                          kp_selector=kp_selector,
-                                          force_local=force_local)
-                answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
+            kp_querier = TRAPIQuerier(response_object=log,
+                                      kp_name=kp_to_use,
+                                      user_specified_kp=user_specified_kp,
+                                      kp_timeout=kp_timeout,
+                                      kp_selector=kp_selector,
+                                      force_local=force_local)
+            answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -780,8 +776,6 @@ class ARAXExpander:
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, log)
 
         return answer_kg, log
-    
-
 
     def _expand_edge_kg2_local(self, one_hop_qg: QueryGraph, log: ARAXResponse) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         qedge_key = next(qedge_key for qedge_key in one_hop_qg.edges)

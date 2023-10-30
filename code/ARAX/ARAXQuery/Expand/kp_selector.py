@@ -1,5 +1,6 @@
 #!/bin/env python3
 import os
+import pprint
 import sys
 from typing import Set, List, Optional
 from collections import defaultdict
@@ -26,7 +27,7 @@ class KPSelector:
         self.kp_cacher = KPInfoCacher()
         self.meta_map, self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self._load_cached_kp_info()
         self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else set(self.kp_urls.keys())
-        self.biolink_helper = BiolinkHelper()
+        self.bh = BiolinkHelper()
 
     def _load_cached_kp_info(self) -> tuple:
         if self.kg2_mode:
@@ -40,7 +41,8 @@ class KPSelector:
             # Record None URLs for our local KPs
             allowed_kp_urls = smart_api_info["allowed_kp_urls"]
 
-            return meta_map, allowed_kp_urls, smart_api_info["kps_excluded_by_version"], smart_api_info["kps_excluded_by_maturity"]
+            return (meta_map, allowed_kp_urls, smart_api_info["kps_excluded_by_version"],
+                    smart_api_info["kps_excluded_by_maturity"])
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[Set[str]]:
         """
@@ -49,26 +51,34 @@ class KPSelector:
         """
         qedge_key = next(qedge_key for qedge_key in qg.edges)
         qedge = qg.edges[qedge_key]
+        qedge_predicates = qedge.predicates if qedge.predicates else [self.bh.root_predicate]
         self.log.debug(f"Selecting KPs to use for qedge {qedge_key}")
         # confirm that the qg is one hop
         if len(qg.edges) > 1:
-            self.log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.", error_code="UnexpectedQG")
+            self.log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.",
+                           error_code="UnexpectedQG")
             return None
         # isolate possible subject predicate object from qg
-        sub_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.subject].categories))
-        obj_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.object].categories))
-        predicates = set(self.biolink_helper.get_descendants(qedge.predicates))
+        sub_categories = set(self.bh.get_descendants(qg.nodes[qedge.subject].categories))
+        obj_categories = set(self.bh.get_descendants(qg.nodes[qedge.object].categories))
+        predicates = set(self.bh.get_descendants(qedge_predicates))
 
-        symmetrical_predicates = set(filter(self.biolink_helper.is_symmetric, predicates))
+        symmetrical_predicates = set(filter(self.bh.is_symmetric, predicates))
 
         # use metamap to check kp for predicate triple
         self.log.debug(f"selecting from {len(self.valid_kps)} kps")
         accepting_kps = set()
         for kp in self.meta_map:
-            if self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories):
+            if self._triple_is_in_meta_map(kp,
+                                           sub_categories,
+                                           predicates,
+                                           obj_categories):
                 accepting_kps.add(kp)
             # account for symmetrical predicates by checking if kp accepts with swapped sub and obj categories
-            elif self._triple_is_in_meta_map(kp, obj_categories, symmetrical_predicates, sub_categories):
+            elif symmetrical_predicates and self._triple_is_in_meta_map(kp,
+                                                                        obj_categories,
+                                                                        symmetrical_predicates,
+                                                                        sub_categories):
                 accepting_kps.add(kp)
             else:
                 self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
@@ -100,14 +110,18 @@ class KPSelector:
             return None
 
         qedge = list(qg.edges.values())[0]
-        sub_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.subject].categories))
-        obj_categories = set(self.biolink_helper.get_descendants(qg.nodes[qedge.object].categories))
-        predicates = set(self.biolink_helper.get_descendants(qedge.predicates))
+        sub_categories = set(self.bh.get_descendants(qg.nodes[qedge.subject].categories))
+        obj_categories = set(self.bh.get_descendants(qg.nodes[qedge.object].categories))
+        qedge_predicates = qedge.predicates if qedge.predicates else [self.bh.root_predicate]
+        predicates = set(self.bh.get_descendants(qedge_predicates))
         kp_accepts = self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories)
 
         # account for symmetrical predicates by checking if kp accepts with swapped sub and obj categories
-        symmetrical_predicates = set(filter(self.biolink_helper.is_symmetric, predicates))
-        kp_accepts = kp_accepts or self._triple_is_in_meta_map(kp, obj_categories, symmetrical_predicates, sub_categories)
+        symmetrical_predicates = set(filter(self.bh.is_symmetric, predicates))
+        kp_accepts = kp_accepts or (symmetrical_predicates and self._triple_is_in_meta_map(kp,
+                                                                                           obj_categories,
+                                                                                           symmetrical_predicates,
+                                                                                           sub_categories))
 
         return kp_accepts
 
@@ -188,18 +202,24 @@ class KPSelector:
         return curie.split(":")[0].upper()
 
     def _get_supported_prefixes(self, categories: List[str], kp: str) -> Set[str]:
-        bh = BiolinkHelper()
-        categories_with_descendants = bh.get_descendants(eu.convert_to_list(categories), include_mixins=False)
+        categories_with_descendants = self.bh.get_descendants(eu.convert_to_list(categories), include_mixins=False)
         supported_prefixes = {prefix.upper() for category in categories_with_descendants
                               for prefix in self.meta_map[kp]["prefixes"].get(category, set())}
         return supported_prefixes
 
-    def _triple_is_in_meta_map(self, kp: str, subject_categories: Set[str], predicates: Set[str], object_categories: Set[str]) -> bool:
-        # returns True if at least one possible triple exists in the KP's meta map
+    def _triple_is_in_meta_map(self, kp: str,
+                               subject_categories: Set[str],
+                               predicates: Set[str],
+                               object_categories: Set[str]) -> bool:
+        """
+        Returns True if at least one possible triple exists in the KP's meta map. NOT meant to handle empty predicates;
+        you should sub in "biolink:related_to" for QEdges without predicates before calling this method.
+        """
         kp_meta_map = self.meta_map.get(kp)
         if not kp_meta_map:
             if kp not in self.valid_kps:
-                self.log.error(f"{kp} does not seem to be a valid KP for ARAX. Valid KPs are: {self.valid_kps}", error_code="InvalidKP")
+                self.log.error(f"{kp} does not seem to be a valid KP for ARAX. Valid KPs are: {self.valid_kps}",
+                               error_code="InvalidKP")
             else:
                 self.log.warning(f"Somehow missing meta info for {kp}.")
             return False
@@ -212,7 +232,6 @@ class KPSelector:
                 object_set = set()
                 _ = [object_set.add(obj) for obj_dict in predicates_map.values() for obj in obj_dict.keys()]
                 object_categories = object_set
-            any_predicate = False if predicates or kp == "NGD" else True
 
             # handle combinations of subject and objects using cross product
             qg_sub_obj_dict = defaultdict(lambda: set())
@@ -230,6 +249,17 @@ class KPSelector:
                 if len(accepted_objs) > 0:
                     # check predicates
                     for obj in accepted_objs:
-                        if any_predicate or predicates.intersection(predicates_map[sub][obj]):
+                        if predicates.intersection(predicates_map[sub][obj]):
                             return True
             return False
+
+
+def main():
+    kp_selector = KPSelector()
+    print(f"Meta map is:")
+    pp = pprint.PrettyPrinter(indent=2)
+    pp.pprint(kp_selector.meta_map)
+
+
+if __name__ == "__main__":
+    main()

@@ -2,6 +2,12 @@
 
 # Stephen Ramsey, Oregon State University
 
+# When you run this shell script, make sure your CWD is in `/home/ubuntu`
+# In a bash terminal session, run the script like this
+# (in this example, port 8080 is specified on the CLI):
+# 
+#   cd ~ && source <(curl -s https://raw.githubusercontent.com/RTXteam/RTX/master/DockerBuild/test-instance-scripts/build-test-arax-from-fresh-instance.sh) 8080
+
 set -o nounset -o pipefail -o errexit
 
 arax_base=/mnt/data/orangeboard
@@ -28,7 +34,7 @@ sudo mkdir -p ${arax_base}/databases
 sudo chown ubuntu.ubuntu ${arax_base}/databases
 
 # do a test login to arax.ncats.io, to make sure rsync won't hang up later
-ssh -q -oStrictHostKeyChecking=no rtxconfig@arax.ncats.io exit
+ssh -q -oStrictHostKeyChecking=no rtxconfig@arax-databases.rtx.ai exit
 
 # do a test login to araxconfig.rtx.ai, to make sure the scp won't hang up later
 ssh -q -oStrictHostKeyChecking=no araxconfig@araxconfig.rtx.ai exit
