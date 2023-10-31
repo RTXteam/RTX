@@ -18,27 +18,32 @@ on feedback from the team.
    your editor to visually flag PEP8 compliance issues; the resulting code
    will be easier for others to work with, whose editors flag PEP8 issues.
    
-2. Please try to use [PEP 484](https://peps.python.org/pep-0484/) type hints
+3. Please try to use [PEP 484](https://peps.python.org/pep-0484/) type hints
    wherever possible in your Python code.
    
-3. No secrets are to be checked into the project's GitHub code repository.
+4. No secrets are to be checked into the project's GitHub code repository.
    (AWS keys, database passwords, ssh keys, etc.)
    
-4. If you add a dependency on a python package in some module, generally you
+5. If you add a dependency on a python package in some module, generally you
    should add that package to the top-level `requirements.txt` file (or verify
    that the dependency is already documented in the `requirements.txt` file).
    
-5. When coding a new feature or fixing a bug, if possible, please consider
+6. When coding a new feature or fixing a bug, if possible, please consider
    adding a `pytest` unit test to a module (either a new module or an existing
    module) in `RTX/code/ARAX/test`.
    
-6. ARAX and RTX-KG2 currently use CPython 3.9 in production; any newer language
+7. ARAX and RTX-KG2 currently use CPython 3.9 in production; any newer language
    features should be avoided or used with utmost caution (i.e., only if you
    fully understand the implications of that choice for deployment).
 
-7. Only LF (i.e., `\n`) line termination for text files in the repo. Please do
+8. Only LF (i.e., `\n`) line termination for text files in the repo. Please do
    not commit text files with Windows line termination (CRLF) unless you have
    configured git to automatically convert them to LF line termination.
+
+9. Please try to format your code to PEP8 formatting conventions where possible.
+   The exception is line length, where the PEP8 standard limit (79 characters)
+   is unreasonably short given the capabilities of modern displays; but please
+   do at least try to keep lines to a less than 120 characters, if possible.
 
 # Performance considerations
 
