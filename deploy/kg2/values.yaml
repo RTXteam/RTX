@@ -80,8 +80,8 @@ storage:
 
 resources:
   requests:
-    memory: 30Gi
-    cpu: 5000m
+    memory: 50Gi
+    cpu: 10000m
   limits:
-    memory: 40Gi
-    cpu: 10000m 
+    memory: 58Gi
+    cpu: 14000m 
