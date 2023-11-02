@@ -23,7 +23,7 @@ serviceAccount:
   name: ""
 
 service:
-  type: NodePort
+  type: LoadBalancer
   port: 80
 
 ingress:
@@ -45,7 +45,7 @@ ingress:
 # toleration to node taint such that this deployment can be scheduled on the tainted node while others without the toleration can not
 tolerations: 
 - key      : "rtx"
-  value    : "managed-app"
+  value    : "kg2"
   operator : "Equal"
   effect   : "NoSchedule"
 
@@ -59,7 +59,7 @@ affinity:
         - key: application
           operator: In
           values:
-          - managed-app
+          - kg2
   # this ensures only ONE pod will run on each node
   podAntiAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -68,7 +68,7 @@ affinity:
         - key: app.kubernetes.io/name
           operator: In
           values:
-          - managed-app
+          - kg2
       topologyKey: "kubernetes.io/hostname"
 
 storageClassName:
@@ -80,8 +80,8 @@ storage:
 
 resources:
   requests:
-    memory: 38Gi
-    cpu: 7000m
+    memory: 56000Gi
+    cpu: 13000m
   limits:
     memory: 50Gi
     cpu: 13000m 
