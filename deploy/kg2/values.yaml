@@ -23,7 +23,7 @@ serviceAccount:
   name: ""
 
 service:
-  type: LoadBalancer
+  type: NodePort
   port: 80
 
 ingress:
