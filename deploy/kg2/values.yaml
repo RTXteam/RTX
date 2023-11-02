@@ -1,6 +1,6 @@
 # Default values for kg2.
 
-replicaCount: 2
+replicaCount: 1
 
 initContainer:
   image:
@@ -45,7 +45,7 @@ ingress:
 # toleration to node taint such that this deployment can be scheduled on the tainted node while others without the toleration can not
 tolerations: 
 - key      : "rtx"
-  value    : "kg2"
+  value    : "managed-app"
   operator : "Equal"
   effect   : "NoSchedule"
 
@@ -59,7 +59,7 @@ affinity:
         - key: application
           operator: In
           values:
-          - kg2
+          - managed-app
   # this ensures only ONE pod will run on each node
   podAntiAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
@@ -68,7 +68,7 @@ affinity:
         - key: app.kubernetes.io/name
           operator: In
           values:
-          - kg2
+          - managed-app
       topologyKey: "kubernetes.io/hostname"
 
 storageClassName:
@@ -80,8 +80,8 @@ storage:
 
 resources:
   requests:
-    memory: 56Gi
-    cpu: 13000m
+    memory: 50Gi
+    cpu: 10000m
   limits:
     memory: 58Gi
     cpu: 14000m 
