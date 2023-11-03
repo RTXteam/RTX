@@ -8,6 +8,11 @@
       "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.8.4/curie_to_pmids_v1.0_KG2.8.4.sqlite",
       "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.4/ExplainableDTD_v1.0_KG2.8.3_refreshedTo_KG2.8.4.db",
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
+      "graph_database": "/translator/data/orangeboard/databases/KG2.8.0.1/GRAPH_v1.0_KG2.8.0.1_refreshed.sqlite",
+      "dtd_prob": "/translator/data/orangeboard/databases/KG2.8.0.1/DTD_probability_database_v1.0_KG2.8.0.1_refreshed.db",
+      "log_model": "/translator/data/orangeboard/databases/KG2.7.6/LogModel_v1.0_KG2.7.6.pkl",
+      "rel_max": "/translator/data/orangeboard/databases/KG2.7.6/rel_max_v1.0_KG2.7.6.emb.gz",
+      "map_txt": "/translator/data/orangeboard/databases/KG2.7.6/map_v1.0_KG2.7.6.txt",
       "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.8.0.1/chemical_gene_embeddings_v1.0.KG2.8.0.1.npz",
       "xcrg_increase_model": "/translator/data/orangeboard/databases/KG2.8.0.1/xcrg_increase_model_v1.0.KG2.8.0.1.pt",
       "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.8.0.1/xcrg_decrease_model_v1.0.KG2.8.0.1.pt"
