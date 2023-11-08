@@ -80,7 +80,6 @@ def main():
                 while True:
                     try:
                         pid, _ = os.waitpid(-1, os.WNOHANG)
-                        eprint(f"PID returned from call to os.waitpid: {pid}")
                         if pid == 0:
                             break
                     except ChildProcessError as e:
