@@ -2,7 +2,8 @@
 This script converts the KG2c TSV files into KGX-compliant JSON lines files, ready for import into Plater/Automat.
 
 Usage: python convert_kg2c_tsvs_to_jsonl.py <nodes TSV file path> <edges TSV file path> \
-                                                <nodes header TSV file path> <edges header TSV file path>
+                                                <nodes header TSV file path> <edges header TSV file path> \
+                                                <biolink version>
 """
 import argparse
 import csv
@@ -14,14 +15,17 @@ import sys
 import jsonlines
 import pandas as pd
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ARRAY_DELIMITER = "ǂ"
 ARRAY_COL_NAMES = {"all_names", "all_categories", "equivalent_curies", "publications", "kg2_ids"}
 KGX_COL_NAME_REMAPPINGS = {
-    "all_categories": "category",
-    "category": "preferred_category"
+    "category": "preferred_category",
+    "all_categories": "unexpanded_categories"
 }
-LITE_PROPERTIES = {"id", "name", "category", "all_categories",
+LITE_PROPERTIES = {"id", "name", "category", "unexpanded_categories", "preferred_category",
                    "subject", "object", "predicate", "primary_knowledge_source",
                    "qualified_predicate", "qualified_object_aspect", "qualified_object_direction",
                    "domain_range_exclusion"}
@@ -43,7 +47,7 @@ def parse_value(value: any, col_name: str):
         return value
 
 
-def convert_tsv_to_jsonl(tsv_path: str, header_tsv_path: str):
+def convert_tsv_to_jsonl(tsv_path: str, header_tsv_path: str, bh: BiolinkHelper):
     """
     This method assumes the input TSV file names are in KG2c format (e.g., like nodes_c.tsv and nodes_c_header.tsv)
     """
@@ -78,9 +82,20 @@ def convert_tsv_to_jsonl(tsv_path: str, header_tsv_path: str):
                     row_obj = dict()
                     for col_name in columns_to_keep:
                         raw_value = line[node_column_indeces[col_name]]
-                        if raw_value not in {"", "{}", "[]", None}:  # Only skip empty values, not false ones
+                        if raw_value not in {"", "{}", "[]", None}:  # Skip empty values, not false ones
                             kgx_col_name = KGX_COL_NAME_REMAPPINGS.get(col_name, col_name)
-                            row_obj[kgx_col_name] = parse_value(raw_value, col_name)
+                            parsed_value = parse_value(raw_value, col_name)
+
+                            if col_name == "all_categories":
+                                # Expand categories to their ancestors as appropriate (Plater requires this pre-
+                                # expansion), but also retain what the categories were pre-expansion
+                                row_obj[kgx_col_name] = parsed_value
+                                row_obj["category"] = bh.get_ancestors(parsed_value,
+                                                                       include_mixins=False,
+                                                                       include_conflations=False)  # Done at query time
+                            else:
+                                row_obj[kgx_col_name] = parsed_value
+
                     # Create both the 'lite' and 'full' files at the same time
                     batch.append(row_obj)
                     batch_lite.append({property_name: value for property_name, value in row_obj.items()
@@ -107,11 +122,13 @@ def main():
     arg_parser.add_argument("edges_tsv_path", help="Path to the edges TSV file you want to transform")
     arg_parser.add_argument("nodes_header_tsv_path", help="Path to the header TSV file for your nodes file")
     arg_parser.add_argument("edges_header_tsv_path", help="Path to the header TSV file for your edges file")
+    arg_parser.add_argument("biolink_version", help="Version of Biolink to use")
     args = arg_parser.parse_args()
     logging.info(f"Input args are:\n {args}")
 
-    convert_tsv_to_jsonl(args.nodes_tsv_path, args.nodes_header_tsv_path)
-    convert_tsv_to_jsonl(args.edges_tsv_path, args.edges_header_tsv_path)
+    bh = BiolinkHelper(args.biolink_version)
+    convert_tsv_to_jsonl(args.nodes_tsv_path, args.nodes_header_tsv_path, bh)
+    convert_tsv_to_jsonl(args.edges_tsv_path, args.edges_header_tsv_path, bh)
 
     logging.info(f"\n\nDone converting KG2c nodes/edges TSVs to KGX JSON lines format.")
 
