@@ -7,3 +7,4 @@ kg2c-tsv.tar.gz
 master-config.shinc
 setup-kg2-neo4j.sh
 kg2-tsv-for-neo4j*
+*.jsonl

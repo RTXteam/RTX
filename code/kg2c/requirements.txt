@@ -1,3 +1,4 @@
 textstat==0.7.3
 transformers==4.30.0
 json_lines==0.5.0
+jsonlines==3.1.0
