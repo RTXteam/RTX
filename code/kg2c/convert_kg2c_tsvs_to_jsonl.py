@@ -22,8 +22,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ARRAY_DELIMITER = "ǂ"
 ARRAY_COL_NAMES = {"all_names", "all_categories", "equivalent_curies", "publications", "kg2_ids"}
 KGX_COL_NAME_REMAPPINGS = {
-    "category": "preferred_category",
-    "all_categories": "unexpanded_categories"
+    "category": "preferred_category"
 }
 LITE_PROPERTIES = {"id", "name", "category", "unexpanded_categories", "preferred_category",
                    "subject", "object", "predicate", "primary_knowledge_source",
