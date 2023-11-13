@@ -24,7 +24,7 @@ ARRAY_COL_NAMES = {"all_names", "all_categories", "equivalent_curies", "publicat
 KGX_COL_NAME_REMAPPINGS = {
     "category": "preferred_category"
 }
-LITE_PROPERTIES = {"id", "name", "category", "unexpanded_categories", "preferred_category",
+LITE_PROPERTIES = {"id", "name", "preferred_category", "all_categories",
                    "subject", "object", "predicate", "primary_knowledge_source",
                    "qualified_predicate", "qualified_object_aspect", "qualified_object_direction",
                    "domain_range_exclusion"}
