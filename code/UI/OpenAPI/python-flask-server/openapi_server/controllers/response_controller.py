@@ -28,12 +28,12 @@ def child_receive_sigpipe(signal_number, frame):
         os._exit(0)
 
 
-def _get_response(response_id: str) -> Iterable[str]:
+def _get_response(response_id: str) -> dict:
     response_cache = ResponseCache()
     return response_cache.get_response(response_id)
 
 
-def get_response_in_child_process(response_id: str) -> dict:
+def get_response_in_child_process(response_id: str) -> Iterable[str]:
     eprint("[response_controller]: Creating pipe and "
            "forking a child to get the response")
     read_fd, write_fd = os.pipe()
@@ -59,14 +59,14 @@ def get_response_in_child_process(response_id: str) -> dict:
             # descriptor `write_fd`
             with os.fdopen(write_fd, 'w') as write_fo:
                 envelope = _get_response(response_id)
-                json_strings = (json.dumps(envelope.to_dict()),)
+                json_strings = (json.dumps(envelope),)
                 for json_string in json_strings:
                     write_fo.write(json_string)
                     write_fo.flush()
         except BaseException as e:
             print("Exception in response_controller.get_response_"
                   "in_child_process: "
-                  f"{type(e)}\n{traceback.print_exc()}", file=sys.stderr)
+                  f"{type(e)}\n{traceback.format_exc()}", file=sys.stderr)
             os._exit(1)
         os._exit(0)
     elif pid > 0:  # I am the parent process
@@ -94,7 +94,7 @@ def get_response(response_id: str):  # noqa: E501
 
     if do_fork:
         json_generator = get_response_in_child_process(response_id)
-        the_dict = json.loads(next(json_generator))
+        the_dict = json.loads(json_generator)
         http_status = the_dict.get('http_status', 200)
         resp_obj = response.Response.from_dict(the_dict)
         resp_obj.http_status = http_status
