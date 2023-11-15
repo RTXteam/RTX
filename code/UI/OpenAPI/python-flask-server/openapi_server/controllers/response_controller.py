@@ -94,10 +94,7 @@ def get_response(response_id: str):  # noqa: E501
 
     if do_fork:
         json_generator = get_response_in_child_process(response_id)
-        the_dict = json.loads(json_generator)
-        http_status = the_dict.get('http_status', 200)
-        resp_obj = response.Response.from_dict(the_dict)
-        resp_obj.http_status = http_status
+        resp_obj = response.Response.from_dict(json_generator)
     else:
         resp_obj = _get_response(response_id)
         http_status = 200
