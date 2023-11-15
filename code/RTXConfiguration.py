@@ -169,16 +169,10 @@ class RTXConfiguration:
         database_downloads = self.config_dbs["database_downloads"]
         self.cohd_database_path = database_downloads["cohd_database"]
         self.cohd_database_version = self.cohd_database_path.split('/')[-1].split('_v')[-1].replace('.db', '')
-        self.graph_database_path = database_downloads["graph_database"]
-        self.graph_database_version = self.graph_database_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.log_model_path = database_downloads["log_model"]
-        self.log_model_version = self.log_model_path.split('/')[-1].split('_v')[-1].replace('.pkl', '')
         self.curie_to_pmids_path = database_downloads["curie_to_pmids"]
         self.curie_to_pmids_version = self.curie_to_pmids_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.node_synonymizer_path = database_downloads["node_synonymizer"]
         self.node_synonymizer_version = self.node_synonymizer_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.dtd_prob_path = database_downloads["dtd_prob"]
-        self.dtd_prob_version = self.dtd_prob_path.split('/')[-1].split('_v')[-1].replace('.db', '')
         self.kg2c_sqlite_path = database_downloads["kg2c_sqlite"]
         self.kg2c_sqlite_version = self.kg2c_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.kg2c_meta_kg_path = database_downloads["kg2c_meta_kg"]
@@ -195,8 +189,6 @@ class RTXConfiguration:
         self.xcrg_increase_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
         self.xcrg_decrease_model_path = database_downloads["xcrg_decrease_model"]
         self.xcrg_decrease_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
-        self.rel_max_path = database_downloads["rel_max"]
-        self.map_txt_path = database_downloads["map_txt"]
 
         # Set up mysql feedback
         self.mysql_feedback_host = self.config_secrets["mysql_feedback"]["host"]
@@ -275,7 +267,6 @@ def main():
     print("mysql feedback username: %s" % rtxConfig.mysql_feedback_username)
     print("mysql feedback password: %s" % rtxConfig.mysql_feedback_password)
     print(f"maturity: {rtxConfig.maturity}")
-    print(f"log_model_path: {rtxConfig.log_model_path}")
     print(f"current branch: {rtxConfig.current_branch_name}")
     print(f"is_itrb_instance: {rtxConfig.is_itrb_instance}")
     print(f"Total elapsed time: {(t1-t0)*1000:.2f} ms")
