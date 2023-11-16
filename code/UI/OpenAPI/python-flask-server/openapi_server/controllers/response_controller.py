@@ -18,7 +18,7 @@ import response
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 
-do_fork = False
+do_fork = True
 
 
 def child_receive_sigpipe(signal_number, frame):
