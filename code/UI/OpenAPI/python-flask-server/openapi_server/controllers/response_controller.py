@@ -97,8 +97,7 @@ def get_response(response_id: str):  # noqa: E501
         resp_obj = response.Response.from_dict(json_generator)
     else:
         resp_obj = _get_response(response_id)
-        http_status = 200
-    return (resp_obj, http_status)
+    return resp_obj
 
 
 def post_response(body):  # noqa: E501
