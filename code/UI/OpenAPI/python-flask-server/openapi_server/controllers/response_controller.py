@@ -92,8 +92,7 @@ def get_response(response_id: str):  # noqa: E501
 
     if do_fork:
         read_fo = get_response_in_child_process(response_id)
-        response_str = next(read_fo)
-        resp_obj = response.Response.from_dict(json.loads(response_str))
+        resp_obj = response.Response.from_dict(json.load(read_fo))
     else:
         resp_obj = _get_response(response_id)
     return resp_obj
