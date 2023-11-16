@@ -1,3 +1,8 @@
+'''
+The kp_info_cacher.py file is a Python script that defines a class called KPInfoCacher. 
+This class is responsible for caching information about knowledge providers (KPs) used by the Reasoner API (TRAPI) service.
+The cached information includes metadata about KPs and their APIs, as well as information about which KPs are currently available and which ones are down.
+'''
 import os
 import pathlib
 import pickle
