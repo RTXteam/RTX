@@ -705,7 +705,7 @@ class ResponseCache:
 
                         #### Enable multiprocessing to allow parallel processing of multiple envelopes when the GUI sends a bunch at once
                         #### There's only ever one here, but the GUI sends a bunch of requests which are all subject to the same GIL
-                        enable_multiprocessing = True
+                        enable_multiprocessing = False
                         if enable_multiprocessing:
                             pool = multiprocessing.Pool()
                             eprint("INFO: Launching validator via multiprocessing")

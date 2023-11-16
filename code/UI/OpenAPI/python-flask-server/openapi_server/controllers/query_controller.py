@@ -42,7 +42,7 @@ def run_query_dict_in_child_process(query_dict: dict,
 
     pid = os.fork()
 
-    if pid == 0: # I am the child process
+    if pid == 0:  # I am the child process
         sys.stdout = open('/dev/null', 'w')         # parent and child process should not share the same stdout stream object
         sys.stdin = open('/dev/null', 'r')          # parent and child process should not share the same stdin stream object
         os.close(read_fd)                   # child doesn't read from the pipe, it writes to it
@@ -61,7 +61,7 @@ def run_query_dict_in_child_process(query_dict: dict,
             print(f"Exception in query_controller.run_query_dict_in_child_process: {type(e)}\n{traceback.print_exc()}", file=sys.stderr)
             os._exit(1)
         os._exit(0)
-    elif pid > 0: # I am the parent process
+    elif pid > 0:  # I am the parent process
         os.close(write_fd)  # the parent does not write to the pipe, it reads from it
         eprint(f"[query_controller]: child process pid={pid}")
         read_fo = os.fdopen(read_fd, "r")
