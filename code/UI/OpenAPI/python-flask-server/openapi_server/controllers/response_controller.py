@@ -6,7 +6,7 @@ import sys
 import traceback
 
 from openapi_server import util
-from typing import Iterable
+from typing import Iterator
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/ResponseCache")
 from response_cache import ResponseCache
@@ -33,7 +33,7 @@ def _get_response(response_id: str) -> dict:
     return response_cache.get_response(response_id)
 
 
-def get_response_in_child_process(response_id: str) -> Iterable[str]:
+def get_response_in_child_process(response_id: str) -> Iterator[str]:
     eprint("[response_controller]: Creating pipe and "
            "forking a child to get the response")
     read_fd, write_fd = os.pipe()
@@ -59,10 +59,8 @@ def get_response_in_child_process(response_id: str) -> Iterable[str]:
             # descriptor `write_fd`
             with os.fdopen(write_fd, 'w') as write_fo:
                 envelope = _get_response(response_id)
-                json_strings = (json.dumps(envelope),)
-                for json_string in json_strings:
-                    write_fo.write(json_string)
-                    write_fo.flush()
+                write_fo.write(json.dumps(envelope))
+                write_fo.flush()
         except BaseException as e:
             print("Exception in response_controller.get_response_"
                   "in_child_process: "
@@ -93,8 +91,9 @@ def get_response(response_id: str):  # noqa: E501
     """
 
     if do_fork:
-        json_generator = get_response_in_child_process(response_id)
-        resp_obj = response.Response.from_dict(json_generator)
+        read_fo = get_response_in_child_process(response_id)
+        response_str = next(read_fo)
+        resp_obj = response.Response.from_dict(json.loads(response_str))
     else:
         resp_obj = _get_response(response_id)
     return resp_obj
