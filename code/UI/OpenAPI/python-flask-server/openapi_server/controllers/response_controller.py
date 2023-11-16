@@ -6,7 +6,7 @@ import sys
 import traceback
 
 from openapi_server import util
-from typing import Iterator
+from typing import Iterator, TextIO, Any
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/ResponseCache")
 from response_cache import ResponseCache
@@ -33,7 +33,7 @@ def _get_response(response_id: str) -> dict:
     return response_cache.get_response(response_id)
 
 
-def get_response_in_child_process(response_id: str) -> Iterator[str]:
+def get_response_in_child_process(response_id: str) -> TextIO:
     eprint("[response_controller]: Creating pipe and "
            "forking a child to get the response")
     read_fd, write_fd = os.pipe()
@@ -79,7 +79,7 @@ def get_response_in_child_process(response_id: str) -> Iterator[str]:
     return read_fo
 
 
-def get_response(response_id: str):  # noqa: E501
+def get_response(response_id: str) -> Any:  # noqa: E501
     """Request a previously stored response from the server
 
      # noqa: E501
@@ -92,7 +92,7 @@ def get_response(response_id: str):  # noqa: E501
 
     if do_fork:
         read_fo = get_response_in_child_process(response_id)
-        resp_obj = response.Response.from_dict(json.load(read_fo))
+        resp_obj = json.load(read_fo)
     else:
         resp_obj = _get_response(response_id)
     return resp_obj
