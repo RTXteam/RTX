@@ -141,13 +141,15 @@ class KPInfoCacher:
         one_day_ago = datetime.now() - timedelta(hours=24)
 
         smart_api_and_meta_map_pathlib_path = pathlib.Path(self.smart_api_and_meta_map_cache)
-
-        if not smart_api_and_meta_map_pathlib_path.exists():
-            log.warning(f"Missing KP info cache(s). Creating now.")
-            self.refresh_kp_info_caches()
-        elif (datetime.fromtimestamp(smart_api_and_meta_map_pathlib_path.stat().st_mtime) < one_day_ago):
-            log.info(f"KP info cache(s) have not been updated for 24+ hours. Refreshing stale cache(s).")
-            self.refresh_kp_info_caches()
+        try:
+            if not smart_api_and_meta_map_pathlib_path.exists():
+                raise Exception("KP info cache(s) do not exist.")
+            elif (datetime.fromtimestamp(smart_api_and_meta_map_pathlib_path.stat().st_mtime) < one_day_ago):
+                raise Exception("KP info cache(s) are older than 24 hours.")
+            
+        except Exception as e:
+            log.error(f"Unable to load KP info caches: {e}")
+            raise e
 
         # The caches MUST be up to date at this point, so we just load them
         log.debug(f"Loading cached Smart API amd meta map info")
