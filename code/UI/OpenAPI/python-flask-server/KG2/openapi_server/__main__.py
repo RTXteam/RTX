@@ -58,7 +58,7 @@ def main():
                                   f"::run_tasks [port={tcp_port}]")
         eprint("Starting background tasker in a child process")
         try:
-            ARAXBackgroundTasker(run_kp_info_cacher=False).run_tasks()
+            ARAXBackgroundTasker(run_kp_info_cacher=True).run_tasks()
         except Exception as e:
             eprint("Error in ARAXBackgroundTasker.run_tasks()")
             eprint(traceback.format_exc())
