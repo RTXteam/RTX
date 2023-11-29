@@ -40,15 +40,25 @@ def main():
         raise e
     del dbmanager
 
+    # Read any load configuration details for this instance
+    try:
+        with open('openapi_server/flask_config.json') as infile:
+            local_config = json.load(infile)
+    except Exception:
+        eprint(f"Error loading config file: {infile}")
+        local_config = {"port": FLASK_DEFAULT_TCP_PORT}
+    tcp_port = local_config['port']
+
     pid = os.fork()
     if pid == 0:  # I am the child process
         from ARAX_background_tasker import ARAXBackgroundTasker
         sys.stdout = open('/dev/null', 'w')
         sys.stdin = open('/dev/null', 'r')
-        setproctitle.setproctitle("python3 ARAX_background_tasker::run_tasks")
+        setproctitle.setproctitle("python3 ARAX_background_tasker"
+                                  f"::run_tasks [port={tcp_port}]")
         eprint("Starting background tasker in a child process")
         try:
-            ARAXBackgroundTasker(run_kp_info_cacher=False).run_tasks()
+            ARAXBackgroundTasker(run_kp_info_cacher=True).run_tasks()
         except Exception as e:
             eprint("Error in ARAXBackgroundTasker.run_tasks()")
             eprint(traceback.format_exc())
@@ -111,16 +121,9 @@ def main():
         signal.signal(signal.SIGPIPE, receive_sigpipe)
         signal.signal(signal.SIGTERM, receive_sigterm)
 
-        # Read any load configuration details for this instance
-        try:
-            with open('openapi_server/flask_config.json') as infile:
-                local_config = json.load(infile)
-        except Exception:
-            local_config = {"port": FLASK_DEFAULT_TCP_PORT}
-
         eprint("Starting flask application in the parent process")
         setproctitle.setproctitle(setproctitle.getproctitle() +
-                                  f" [port={local_config['port']}]")
+                                  f" [port={tcp_port}]")
         app.run(port=local_config['port'], threaded=True)
     else:
         eprint("[__main__]: fork() unsuccessful")
