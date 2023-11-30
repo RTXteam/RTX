@@ -19,8 +19,12 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 
 FLASK_DEFAULT_TCP_PORT = 5000
+global child_pid
 child_pid = None
+global parent_pid
 parent_pid = None
+
+CONFIG_FILE = 'openapi_server/flask_config.json'
 
 
 def main():
@@ -42,12 +46,14 @@ def main():
 
     # Read any load configuration details for this instance
     try:
-        with open('openapi_server/flask_config.json') as infile:
+        with open(CONFIG_FILE, 'r') as infile:
             local_config = json.load(infile)
     except Exception:
-        eprint(f"Error loading config file: {infile}")
+        eprint(f"Error loading config file: {CONFIG_FILE}")
         local_config = {"port": FLASK_DEFAULT_TCP_PORT}
     tcp_port = local_config['port']
+
+    parent_pid = os.getpid()
 
     pid = os.fork()
     if pid == 0:  # I am the child process
@@ -58,7 +64,7 @@ def main():
                                   f"::run_tasks [port={tcp_port}]")
         eprint("Starting background tasker in a child process")
         try:
-            ARAXBackgroundTasker().run_tasks()
+            ARAXBackgroundTasker(parent_pid).run_tasks()
         except Exception as e:
             eprint("Error in ARAXBackgroundTasker.run_tasks()")
             eprint(traceback.format_exc())
@@ -113,10 +119,7 @@ def main():
 
         # Start the service
         eprint(f"Background tasker is running in child process {pid}")
-        global child_pid
         child_pid = pid
-        global parent_pid
-        parent_pid = os.getpid()
         signal.signal(signal.SIGCHLD, receive_sigchld)
         signal.signal(signal.SIGPIPE, receive_sigpipe)
         signal.signal(signal.SIGTERM, receive_sigterm)
