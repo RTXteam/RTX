@@ -15,7 +15,7 @@ import yaml
 from pygit2 import Repository, discover_repository
 import pprint
 
-DEBUG = True
+DEBUG = False
 
 class RTXConfiguration:
 
@@ -32,7 +32,8 @@ class RTXConfiguration:
 
     # ### Constructor
     def _private_init(self):
-        print("in private_init")
+        if DEBUG:
+            print("DEBUG: in private_init")
         assert self._instance is not None
         if self._initialized:
             return
