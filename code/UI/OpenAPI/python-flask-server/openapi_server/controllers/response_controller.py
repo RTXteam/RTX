@@ -4,6 +4,7 @@ import setproctitle
 import signal
 import sys
 import traceback
+from typing import Union
 
 from openapi_server import util
 from typing import Iterator, TextIO, Any
@@ -28,7 +29,7 @@ def child_receive_sigpipe(signal_number, frame):
         os._exit(0)
 
 
-def _get_response(response_id: str) -> dict:
+def _get_response(response_id: str) -> Union[dict, tuple]:
     response_cache = ResponseCache()
     return response_cache.get_response(response_id)
 
@@ -93,6 +94,8 @@ def get_response(response_id: str) -> Any:  # noqa: E501
     if do_fork:
         read_fo = get_response_in_child_process(response_id)
         resp_obj = json.load(read_fo)
+        if type(resp_obj) == list and len(resp_obj) == 2:
+            resp_obj = tuple(resp_obj)
     else:
         resp_obj = _get_response(response_id)
     return resp_obj
