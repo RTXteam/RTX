@@ -134,7 +134,16 @@ class RTXConfiguration:
         config_secrets_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_secrets.json'
         config_dbs_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_dbs.json'
         config_secrets_local_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_secrets_local.json'
-
+        
+        # Setting Jaeger Configs
+        if self.is_itrb_instance:
+            self.jaeger_port = 6831
+            self.jaeger_endpoint = "jaeger.sri"
+            self.telemetry_enabled = True
+        else:
+            self.jaeger_port = 6831
+            self.jaeger_endpoint = "jaeger.rtx.ai"
+            self.telemetry_enabled = True
         # Download the latest copy of config_secrets.json as appropriate (or override by local file, if present)
         if os.path.exists(config_secrets_local_file_path):
             config_secrets_file_path = config_secrets_local_file_path

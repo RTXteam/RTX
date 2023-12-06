@@ -13,17 +13,19 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
 
 from RTXConfiguration import RTXConfiguration
 from ARAX_database_manager import ARAXDatabaseManager
-
-
-
+from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.aiohttp_client import (
+    AioHttpClientInstrumentor
+)
 from opentelemetry import trace
 from opentelemetry.trace.span import Span
 from opentelemetry.sdk.resources import  Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -36,35 +38,31 @@ parent_pid = None
 
 CONFIG_FILE = 'openapi_server/flask_config.json'
 
-def instrument(app):
+def instrument(app, host, port):
     
     service_name = "RTX-KG2"
 
-
-    # set the service name for our trace provider 
-    # this will tag every trace with the service name given
-    trace.set_tracer_provider(
-        TracerProvider(
-            resource=Resource.create({"service.name": service_name})
+    trace.set_tracer_provider(TracerProvider(
+        resource=Resource.create({
+            ResourceAttributes.SERVICE_NAME: service_name
+        })
+    ))
+    trace.get_tracer_provider().add_span_processor(
+        BatchSpanProcessor(
+            JaegerExporter(
+                        agent_host_name=host,
+                        agent_port=port
+        )
         )
     )
-
-    # create an exporter  to jaeger   
-    URL = "127.0.0.1"
-    UDP_PORT = "4318"
-    jaeger_exporter = OTLPSpanExporter(endpoint=f"http://{URL}:{UDP_PORT}/v1/traces")
-
-
-    # here we use the exporter to export each span in a trace
-    trace.get_tracer_provider().add_span_processor(
-        BatchSpanProcessor(jaeger_exporter)
-    )
-    FlaskInstrumentor().instrument_app(app.app)
+    trace.get_tracer_provider().get_tracer(__name__)
+    FlaskInstrumentor().instrument_app(app=app.app)
     RequestsInstrumentor().instrument()
+    AioHttpClientInstrumentor().instrument()
 
 def main():
 
-    RTXConfiguration()
+    rtx_config = RTXConfiguration()
 
     dbmanager = ARAXDatabaseManager(allow_downloads=True)
     try:
@@ -163,7 +161,8 @@ def main():
         eprint("Starting flask application in the parent process")
         setproctitle.setproctitle(setproctitle.getproctitle() +
                                   f" [port={tcp_port}]")
-        instrument(app)
+        if rtx_config.telemetry_enabled:
+            instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
         app.run(port=local_config['port'], threaded=True)
     else:
         eprint("[__main__]: fork() unsuccessful")
