@@ -7,7 +7,6 @@ import os
 import pathlib
 import pickle
 import sys
-import psutil
 from datetime import datetime, timedelta
 from typing import Set, Dict, Optional
 
