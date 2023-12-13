@@ -6,6 +6,18 @@ import traceback
 import json
 import setproctitle
 
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.aiohttp_client import (
+    AioHttpClientInstrumentor
+)
+from opentelemetry import trace
+from opentelemetry.trace.span import Span
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.sdk.resources import SERVICE_NAME as telemetery_service_name_key, Resource
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../../../ARAX/ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
@@ -26,10 +38,34 @@ parent_pid = None
 
 CONFIG_FILE = 'openapi_server/flask_config.json'
 
+def instrument(app, host, port):
+    
+    service_name = "ARAX"
+
+    trace.set_tracer_provider(TracerProvider(
+        resource=Resource.create({
+            ResourceAttributes.SERVICE_NAME: service_name
+        })
+    ))
+    trace.get_tracer_provider().add_span_processor(
+        BatchSpanProcessor(
+            JaegerExporter(
+                        agent_host_name=host,
+                        agent_port=port
+        )
+        )
+    )
+    tracer_provider = trace.get_tracer_provider()
+    tracer_provider.get_tracer(__name__)
+    FlaskInstrumentor().instrument_app(app=app.app)
+    RequestsInstrumentor().instrument()
+    AioHttpClientInstrumentor().instrument()
+
+
 
 def main():
 
-    RTXConfiguration()
+    rtx_config = RTXConfiguration()
 
     dbmanager = ARAXDatabaseManager(allow_downloads=True)
     try:
@@ -82,7 +118,7 @@ def main():
                     except ProcessLookupError:
                         eprint(f"child process {child_pid} is already gone; "
                                "exiting now")
-                    os.exit(0)
+                    sys.exit(0)
                 else:
                     # handle exit gracefully in the child process
                     os._exit(0)
@@ -111,6 +147,7 @@ def main():
         import flask_cors
         import openapi_server.encoder
         app = connexion.App(__name__, specification_dir='./openapi/')
+        
         app.app.json_encoder = openapi_server.encoder.JSONEncoder
         app.add_api('openapi.yaml',
                     arguments={'title': 'ARAX Translator Reasoner'},
@@ -127,6 +164,8 @@ def main():
         eprint("Starting flask application in the parent process")
         setproctitle.setproctitle(setproctitle.getproctitle() +
                                   f" [port={tcp_port}]")
+        if rtx_config.telemetry_enabled:
+            instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
         app.run(port=local_config['port'], threaded=True)
     else:
         eprint("[__main__]: fork() unsuccessful")
