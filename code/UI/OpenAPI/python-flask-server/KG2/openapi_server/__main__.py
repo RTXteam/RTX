@@ -116,7 +116,7 @@ def main():
                     except ProcessLookupError:
                         eprint(f"child process {child_pid} is already gone; "
                                "exiting now")
-                    os.exit(0)
+                    sys.exit(0)
                 else:
                     # handle exit gracefully in the child process
                     os._exit(0)
