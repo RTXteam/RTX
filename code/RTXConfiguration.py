@@ -138,7 +138,7 @@ class RTXConfiguration:
         # Setting Jaeger Configs
         if self.is_itrb_instance:
             self.jaeger_port = 6831
-            self.jaeger_endpoint = "jaeger.sri"
+            self.jaeger_endpoint = "jaeger-otel-agent"
             self.telemetry_enabled = True
         else:
             self.jaeger_port = 6831
