@@ -149,7 +149,6 @@ class KPInfoCacher:
             
         except Exception as e:
             log.error(f"Unable to load KP info caches: {e}")
-            raise e
 
         # The caches MUST be up to date at this point, so we just load them
         log.debug(f"Loading cached Smart API amd meta map info")
