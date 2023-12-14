@@ -774,7 +774,6 @@ def main():
             print(f"{entry.query_id}\t{entry.start_datetime}\t{elapsed}\t{entry.instance_name}\t{entry.hostname}\t{entry.status}\t{entry.origin}\t{entry.pid}\t{entry.message_id}\t{entry.message_code}\t{entry.code_description}")
             if params.prune_jobs and elapsed > 10000: 
                 prune_job_ids.append(entry.query_id)
-        return
 
     #### Extract job_ids
     job_ids = []
@@ -783,7 +782,7 @@ def main():
     job_ids.extend(prune_job_ids)
 
     #### If the request is to reset jobs, do it
-    if params.reset_job and len(job_ids) > 0:
+    if ( params.reset_job is not None or params.prune_jobs is not None ) and len(job_ids) > 0:
         for job_id in job_ids:
             attributes = {
                 'status': 'Reset',
@@ -796,6 +795,9 @@ def main():
                 eprint(f"Reset job_id {job_id}")
             except:
                 eprint(f"ERROR: Unable to reset job_id {job_id}")
+        return
+
+    if params.reset_job is not None or params.prune_jobs is not None or params.show_ongoing is not None:
         return
 
     if len(job_ids) > 0:

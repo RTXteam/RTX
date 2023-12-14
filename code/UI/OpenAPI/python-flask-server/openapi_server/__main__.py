@@ -6,6 +6,18 @@ import traceback
 import json
 import setproctitle
 
+from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.aiohttp_client import (
+    AioHttpClientInstrumentor
+)
+from opentelemetry import trace
+from opentelemetry.trace.span import Span
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.sdk.resources import SERVICE_NAME as telemetery_service_name_key, Resource
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../../../ARAX/ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
@@ -19,13 +31,41 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 
 FLASK_DEFAULT_TCP_PORT = 5000
+global child_pid
 child_pid = None
+global parent_pid
 parent_pid = None
+
+CONFIG_FILE = 'openapi_server/flask_config.json'
+
+def instrument(app, host, port):
+    
+    service_name = "ARAX"
+
+    trace.set_tracer_provider(TracerProvider(
+        resource=Resource.create({
+            ResourceAttributes.SERVICE_NAME: service_name
+        })
+    ))
+    trace.get_tracer_provider().add_span_processor(
+        BatchSpanProcessor(
+            JaegerExporter(
+                        agent_host_name=host,
+                        agent_port=port
+        )
+        )
+    )
+    tracer_provider = trace.get_tracer_provider()
+    tracer_provider.get_tracer(__name__)
+    FlaskInstrumentor().instrument_app(app=app.app)
+    RequestsInstrumentor().instrument()
+    AioHttpClientInstrumentor().instrument()
+
 
 
 def main():
 
-    RTXConfiguration()
+    rtx_config = RTXConfiguration()
 
     dbmanager = ARAXDatabaseManager(allow_downloads=True)
     try:
@@ -40,15 +80,27 @@ def main():
         raise e
     del dbmanager
 
+    # Read any load configuration details for this instance
+    try:
+        with open(CONFIG_FILE, 'r') as infile:
+            local_config = json.load(infile)
+    except Exception:
+        eprint(f"Error loading config file: {CONFIG_FILE}")
+        local_config = {"port": FLASK_DEFAULT_TCP_PORT}
+    tcp_port = local_config['port']
+
+    parent_pid = os.getpid()
+
     pid = os.fork()
     if pid == 0:  # I am the child process
         from ARAX_background_tasker import ARAXBackgroundTasker
         sys.stdout = open('/dev/null', 'w')
         sys.stdin = open('/dev/null', 'r')
-        setproctitle.setproctitle("python3 ARAX_background_tasker::run_tasks")
+        setproctitle.setproctitle("python3 ARAX_background_tasker"
+                                  f"::run_tasks [port={tcp_port}]")
         eprint("Starting background tasker in a child process")
         try:
-            ARAXBackgroundTasker().run_tasks()
+            ARAXBackgroundTasker(parent_pid).run_tasks()
         except Exception as e:
             eprint("Error in ARAXBackgroundTasker.run_tasks()")
             eprint(traceback.format_exc())
@@ -66,7 +118,7 @@ def main():
                     except ProcessLookupError:
                         eprint(f"child process {child_pid} is already gone; "
                                "exiting now")
-                    os.exit(0)
+                    sys.exit(0)
                 else:
                     # handle exit gracefully in the child process
                     os._exit(0)
@@ -95,6 +147,7 @@ def main():
         import flask_cors
         import openapi_server.encoder
         app = connexion.App(__name__, specification_dir='./openapi/')
+        
         app.app.json_encoder = openapi_server.encoder.JSONEncoder
         app.add_api('openapi.yaml',
                     arguments={'title': 'ARAX Translator Reasoner'},
@@ -103,24 +156,16 @@ def main():
 
         # Start the service
         eprint(f"Background tasker is running in child process {pid}")
-        global child_pid
         child_pid = pid
-        global parent_pid
-        parent_pid = os.getpid()
         signal.signal(signal.SIGCHLD, receive_sigchld)
         signal.signal(signal.SIGPIPE, receive_sigpipe)
         signal.signal(signal.SIGTERM, receive_sigterm)
 
-        # Read any load configuration details for this instance
-        try:
-            with open('openapi_server/flask_config.json') as infile:
-                local_config = json.load(infile)
-        except Exception:
-            local_config = {"port": FLASK_DEFAULT_TCP_PORT}
-
         eprint("Starting flask application in the parent process")
         setproctitle.setproctitle(setproctitle.getproctitle() +
-                                  f" [port={local_config['port']}]")
+                                  f" [port={tcp_port}]")
+        if rtx_config.telemetry_enabled:
+            instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
         app.run(port=local_config['port'], threaded=True)
     else:
         eprint("[__main__]: fork() unsuccessful")

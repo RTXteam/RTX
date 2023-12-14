@@ -22,8 +22,10 @@ FREQ_CHECK_ONGOING_SEC = 60
 
 class ARAXBackgroundTasker:
 
-    def __init__(self, run_kp_info_cacher=True):
+    def __init__(self, parent_pid: int,
+                 run_kp_info_cacher: bool = True):
         self.run_kp_info_cacher = run_kp_info_cacher
+        self.parent_pid = parent_pid
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker created")
 
@@ -116,6 +118,10 @@ class ARAXBackgroundTasker:
         # Loop forever doing various things
         my_pid = os.getpid()
         while True:
+            if not psutil.pid_exists(self.parent_pid):
+                eprint("INFO: ARAXBackgroundTasker: parent process "
+                       f"{self.parent_pid} has gone away; exiting")
+                sys.exit(0)
 
             # Run the KP Info Cacher less frequently
             if self.run_kp_info_cacher:
@@ -159,7 +165,7 @@ class ARAXBackgroundTasker:
 
 
 def main():
-    background_tasker = ARAXBackgroundTasker()
+    background_tasker = ARAXBackgroundTasker(os.getpid())
     background_tasker.run_tasks()
 
 

@@ -15,7 +15,7 @@ import yaml
 from pygit2 import Repository, discover_repository
 import pprint
 
-DEBUG = True
+DEBUG = False
 
 class RTXConfiguration:
 
@@ -32,7 +32,8 @@ class RTXConfiguration:
 
     # ### Constructor
     def _private_init(self):
-        print("in private_init")
+        if DEBUG:
+            print("DEBUG: in private_init")
         assert self._instance is not None
         if self._initialized:
             return
@@ -133,7 +134,16 @@ class RTXConfiguration:
         config_secrets_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_secrets.json'
         config_dbs_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_dbs.json'
         config_secrets_local_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_secrets_local.json'
-
+        
+        # Setting Jaeger Configs
+        if self.is_itrb_instance:
+            self.jaeger_port = 6831
+            self.jaeger_endpoint = "jaeger-otel-agent.sri"
+            self.telemetry_enabled = True
+        else:
+            self.jaeger_port = 6831
+            self.jaeger_endpoint = "jaeger.rtx.ai"
+            self.telemetry_enabled = True
         # Download the latest copy of config_secrets.json as appropriate (or override by local file, if present)
         if os.path.exists(config_secrets_local_file_path):
             config_secrets_file_path = config_secrets_local_file_path
