@@ -9,7 +9,6 @@ import pickle
 import sys
 from datetime import datetime, timedelta
 from typing import Set, Dict, Optional
-
 import requests
 import requests_cache
 import time
