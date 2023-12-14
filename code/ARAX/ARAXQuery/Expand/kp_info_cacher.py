@@ -28,6 +28,7 @@ from smartapi import SmartAPI
 
 
 class KPInfoCacher:
+
     def __init__(self):
         self.rtx_config = RTXConfiguration()
         version_string = f"{self.rtx_config.trapi_major_version}--{self.rtx_config.maturity}"
