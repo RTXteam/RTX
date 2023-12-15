@@ -19,6 +19,8 @@ from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 
+DEBUG = False
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -43,6 +45,7 @@ class ARAXQuery(Base):
     message_code = Column(String(255), nullable=True)
     code_description = Column(String(255), nullable=True)
     remote_address = Column(String(50), nullable=False)
+    start_timestamp = Column(Integer, nullable=True)
 
 class ARAXOngoingQuery(Base):
     __tablename__ = 'arax_ongoing_query'
@@ -62,13 +65,15 @@ class ARAXOngoingQuery(Base):
     message_code = Column(String(255), nullable=True)
     code_description = Column(String(255), nullable=True)
     remote_address = Column(String(50), nullable=False)
+    start_timestamp = Column(Integer, nullable=True)
 
 class ARAXQueryTracker:
 
    #### Constructor
     def __init__(self):
-        timestamp = str(datetime.now().isoformat())
-        eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker init")
+        if DEBUG:
+            timestamp = str(datetime.now().isoformat())
+            eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker init")
 
         self.rtxConfig = RTXConfiguration()
         self.databaseName = "QueryTracker"
@@ -76,12 +81,14 @@ class ARAXQueryTracker:
         self.session = None
         self.engine = None
 
-        if self.rtxConfig.is_production_server:
+        if self.rtxConfig.is_production_server or True:
             self.databaseName = "ResponseCache"
             self.engine_type = 'mysql'
         self.connect()
-        timestamp = str(datetime.now().isoformat())
-        eprint(f"{timestamp}: DEBUG: ARAXQueryTracker initialized")
+
+        if DEBUG:
+            timestamp = str(datetime.now().isoformat())
+            eprint(f"{timestamp}: DEBUG: ARAXQueryTracker initialized")
 
     def __del__(self):
         self.disconnect()
@@ -118,15 +125,25 @@ class ARAXQueryTracker:
 
     ##################################################################################################
     def create_tables(self):
-        Base.metadata.drop_all(self.engine)
+        eprint("WARNING: Tried to call create_tables, but this is potentially catastrophic. Manual code change required")
+        #### Uncomment this if you really want to drop tables, but be super careful!!
+        #Base.metadata.drop_all(self.engine)
         Base.metadata.create_all(self.engine)
+
+
+    ##################################################################################################
+    def create_indexes(self):
+        eprint("INFO: Creating indexes on table ARAXQuery")
+        start_timestamp_index = sqlalchemy.Index('start_timestamp_idx', ARAXQuery.start_timestamp)
+        start_timestamp_index.create(bind=self.engine)
 
 
     ##################################################################################################
     #### Create and store a database connection
     def connect(self):
-        timestamp = str(datetime.now().isoformat())
-        eprint(f"{timestamp}: DEBUG: ARAXQueryTracker initiating DB connection")
+        if DEBUG:
+            timestamp = str(datetime.now().isoformat())
+            eprint(f"{timestamp}: DEBUG: ARAXQueryTracker initiating DB connection")
 
         # If the engine_type is mysql then connect to the MySQL database
         if self.engine_type == 'mysql':
@@ -141,8 +158,10 @@ class ARAXQueryTracker:
         #DBSession = sessionmaker(bind=engine)
         #session = DBSession()
 
-        timestamp = str(datetime.now().isoformat())
-        eprint(f"{timestamp}: DEBUG: ARAXQueryTracker establishing session")
+        if DEBUG:
+            timestamp = str(datetime.now().isoformat())
+            eprint(f"{timestamp}: DEBUG: ARAXQueryTracker establishing session")
+
         session_factory = sessionmaker(bind=engine)
         Session = scoped_session(session_factory)
         session = Session()
@@ -164,8 +183,9 @@ class ARAXQueryTracker:
         try:
             self.session.close()
             self.engine.dispose()
-            timestamp = str(datetime.now().isoformat())
-            eprint(f"{timestamp}: DEBUG: ARAXQueryTracker disconnecting session")
+            if DEBUG:
+                timestamp = str(datetime.now().isoformat())
+                eprint(f"{timestamp}: DEBUG: ARAXQueryTracker disconnecting session")
         except:
             eprint("ERROR: [ARAX_query_tracker.disconnect] Attempt to close and dispose of session failed")
 
@@ -299,8 +319,9 @@ class ARAXQueryTracker:
         if session is None:
             return
 
-        timestamp = str(datetime.now().isoformat())
-        eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker create_tracker_entry")
+        if DEBUG:
+            timestamp = str(datetime.now().isoformat())
+            eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker create_tracker_entry")
 
         MAX_CONCURRENT_FROM_REMOTE = 10
 
@@ -308,13 +329,16 @@ class ARAXQueryTracker:
 
         ongoing_queries_by_remote_address = self.check_ongoing_queries()
 
+        start_datetime = datetime.now().isoformat(' ', 'seconds')
+        start_timestamp = datetime.now().timestamp()
+
         remote_address = attributes['remote_address']
         if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > MAX_CONCURRENT_FROM_REMOTE and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
             try:
-                start_datetime = datetime.now().isoformat(' ', 'seconds')
                 tracker_entry = ARAXQuery(
                     status = "Denied",
                     start_datetime = start_datetime,
+                    start_timestamp = start_timestamp,
                     pid = os.getpid(),
                     domain = instance_info['domain'],
                     hostname = instance_info['hostname'],
@@ -335,12 +359,14 @@ class ARAXQueryTracker:
             return -999
 
         try:
-            timestamp = str(datetime.now().isoformat())
-            eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker creating ARAXQuery record")
+            if DEBUG:
+                timestamp = str(datetime.now().isoformat())
+                eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker creating ARAXQuery record")
 
             tracker_entry = ARAXQuery(
                 status="started",
-                start_datetime=datetime.now().isoformat(' ', 'seconds'),
+                start_datetime = start_datetime,
+                start_timestamp = start_timestamp,
                 pid=os.getpid(),
                 domain = instance_info['domain'],
                 hostname = instance_info['hostname'],
@@ -355,13 +381,15 @@ class ARAXQueryTracker:
             tracker_id = 1
 
         try:
-            timestamp = str(datetime.now().isoformat())
-            eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker creating ARAXOngoingQuery record")
+            if DEBUG:
+                timestamp = str(datetime.now().isoformat())
+                eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker creating ARAXOngoingQuery record")
 
             ongoing_tracker_entry = ARAXOngoingQuery(
                 status="started",
                 query_id = tracker_id,
-                start_datetime=datetime.now().isoformat(' ', 'seconds'),
+                start_datetime = start_datetime,
+                start_timestamp = start_timestamp,
                 pid=os.getpid(),
                 domain = instance_info['domain'],
                 hostname = instance_info['hostname'],
@@ -384,13 +412,14 @@ class ARAXQueryTracker:
             return
 
         if ongoing_queries:
-            #return self.session.query(ARAXQuery).filter(
-            #    text("""status NOT LIKE '%Completed%' 
-            #            AND TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
             return self.session.query(ARAXOngoingQuery).all()
+
         else:
-            return self.session.query(ARAXQuery).filter(
-                text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
+            timestamp = datetime.now().timestamp()
+            timestamp -= last_n_hours * 60 * 60
+            return self.session.query(ARAXQuery).filter(ARAXQuery.start_timestamp > timestamp).all()
+            #return self.session.query(ARAXQuery).filter(
+            #    text("""TIMESTAMPDIFF(HOUR, STR_TO_DATE(start_datetime, '%Y-%m-%d %T'), NOW()) < :n""")).params(n=last_n_hours).all()
 
 
     ##################################################################################################
@@ -684,16 +713,24 @@ def main():
     argparser = argparse.ArgumentParser(description='ARAX Query Tracker System')
     argparser.add_argument('--verbose', action='count', help='If set, print more information about ongoing processing' )
     argparser.add_argument('--show_ongoing', action='count', help='Show all ongoing queries')
+    argparser.add_argument('--show_recent', action='count', help='Show queries initiated in the last hour')
     argparser.add_argument('--reset_job', action='count', help='Reset the specified job_id(s)')
     argparser.add_argument('--job_ids', type=str, help='Job IDs to show (comma separated list)')
     argparser.add_argument('--prune_jobs', action='count', help='Simply prune very stale jobs from the active query table')
+    argparser.add_argument('--create_indexes', action='count', help='Create needed indexes on the tables')
     params = argparser.parse_args()
+
+    timestamp = str(datetime.now().isoformat())
 
     #### Set verbose
     verbose = params.verbose
     if verbose is None: verbose = 1
 
     query_tracker = ARAXQueryTracker()
+
+    if params.create_indexes:
+        query_tracker.create_indexes()
+        return
 
     #### If pruning, then also set the --show_ongoing and --reset_job flags
     if params.prune_jobs:
@@ -702,8 +739,32 @@ def main():
     prune_job_ids = []
 
     #### Check ongoing queries
+    entries = None
     if params.show_ongoing:
+        timestamp = str(datetime.now().isoformat())
+        eprint(f"{timestamp}: INFO: Getting ongoing queries from database")
+
         entries = query_tracker.get_entries(ongoing_queries=True)
+
+        timestamp = str(datetime.now().isoformat())
+        eprint(f"{timestamp}: Currently ongoing queries:")
+        if len(entries) == 0:
+            eprint(" - No ongoing queries")
+            entries = []
+
+    if params.show_recent:
+        timestamp = str(datetime.now().isoformat())
+        eprint(f"{timestamp}: INFO: Getting recent queries from database")
+
+        entries = query_tracker.get_entries(last_n_hours=1)
+
+        timestamp = str(datetime.now().isoformat())
+        eprint(f"{timestamp}: Queries from the last hour:")
+        if len(entries) == 0:
+            eprint(" - No recent queries")
+            entries = []
+
+    if entries is not None:
         for entry in entries:
             #print(entry.__dict__)
             now = datetime.now(timezone.utc)
@@ -721,7 +782,7 @@ def main():
     job_ids.extend(prune_job_ids)
 
     #### If the request is to reset jobs, do it
-    if params.reset_job and len(job_ids) > 0:
+    if ( params.reset_job is not None or params.prune_jobs is not None ) and len(job_ids) > 0:
         for job_id in job_ids:
             attributes = {
                 'status': 'Reset',
@@ -734,6 +795,9 @@ def main():
                 eprint(f"Reset job_id {job_id}")
             except:
                 eprint(f"ERROR: Unable to reset job_id {job_id}")
+        return
+
+    if params.reset_job is not None or params.prune_jobs is not None or params.show_ongoing is not None:
         return
 
     if len(job_ids) > 0:

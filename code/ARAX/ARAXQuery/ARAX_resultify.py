@@ -759,8 +759,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     # ------------------ Convert the final result graphs into actual Swagger object model results ----------- #
     log.debug(f"Loading final result graphs into TRAPI object model")
-    qnodes_with_multiple_ids = {qnode_key for qnode_key, qnode in qg.nodes.items()
-                                if qnode.ids and len(qnode.ids) > 1}
+    qnodes_with_ids = {qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.ids}
 
     resource_id = "infores:rtx-kg2" if mode == "RTXKG2" else "infores:arax"
     results = []
@@ -769,7 +768,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         for qnode_key, node_keys in result_graph['nodes'].items():
             node_bindings[qnode_key] = [NodeBinding(id=node_key,
                                                     query_id=_get_query_id(node_key, kg.nodes[node_key], qnode_key,
-                                                                           qnodes_with_multiple_ids))
+                                                                           qnodes_with_ids))
                                         for node_key in node_keys]
         edge_bindings = dict()
         for qedge_key, edge_keys in result_graph['edges'].items():
@@ -977,9 +976,9 @@ def _get_parallel_qedge_keys(input_qedge: QEdge, query_graph: QueryGraph) -> Set
     return parallel_qedge_keys
 
 
-def _get_query_id(node_key: str, node: Node, qnode_key: str, qnode_keys_with_multiple_ids: Set[str]) -> Optional[str]:
+def _get_query_id(node_key: str, node: Node, qnode_key: str, qnode_keys_with_ids: Set[str]) -> Optional[str]:
     # TODO: Should this really be looking at child to parent map, instead of node's query_ids?
-    if qnode_key in qnode_keys_with_multiple_ids:
+    if qnode_key in qnode_keys_with_ids:
         if hasattr(node, "query_ids") and node.query_ids:
             query_id = _get_best_parent_id(node.query_ids)  # TODO: How should multiple query_ids be handled?? Separate results? Brought up in #1871
             return query_id if query_id != node_key else None

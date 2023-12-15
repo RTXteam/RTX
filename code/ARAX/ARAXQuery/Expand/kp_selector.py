@@ -36,7 +36,11 @@ class KPSelector:
         else:
             # Load cached KP info
             kp_cacher = KPInfoCacher()
-            smart_api_info, meta_map = kp_cacher.load_kp_info_caches(self.log)
+            try:
+                smart_api_info, meta_map = kp_cacher.load_kp_info_caches(self.log)
+            except Exception as e:
+                self.log.error(f"Failed to load KP info caches due to {e}", error_code="LoadKPCachesFailed")
+                return None, None, None, None
 
             # Record None URLs for our local KPs
             allowed_kp_urls = smart_api_info["allowed_kp_urls"]

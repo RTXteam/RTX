@@ -291,7 +291,6 @@ Netherlands.
 | Amy&nbsp;Glen           | OSU       | `glena@oregonstate.edu`        | [amykglen](https://github.com/amykglen)   | knowledge graphs  |
 | Arun&nbsp;Muluka          | PSU       | `avm6604@psu.edu`        | [aruntejam1](https://github.com/aruntejam1)   | knowledge graphs  |
 | Chunyu&nbsp;Ma        | PSU     | `cqm5886@psu.edu` | [chunyuma](https://github.com/chunyuma) | programmer/analyst | 
-| Andrew&nbsp;Hoffman   | RU      | `A.Hoffman@ftr.ru.nl`                 | [parrhesiastic](https://github.com/parrhesiastic)   | ethnographer of data science and cyberinfrastructure  |
 
 For our work on the Translator program, we also extensively
 collaborate and cooperate with investigators at Oregon Health &amp; Science

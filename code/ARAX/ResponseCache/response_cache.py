@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # Database definition and RTXFeedback class
-from ARAX.ARAXQuery.ARAX_attribute_parser import ARAXAttributeParser
+
 import sys
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -38,6 +38,8 @@ from reasoner_validator.validator import TRAPIResponseValidator
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_attribute_parser import ARAXAttributeParser
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -59,7 +61,7 @@ def validate_envelope(process_params):
 
 Base = declarative_base()
 
-#### Define the database tables as classes
+#### Define the Response table a class for SQLalchemy
 class Response(Base):
     __tablename__ = 'TRAPI_1_0_0_response'
     response_id = Column(Integer, primary_key=True)
@@ -70,6 +72,15 @@ class Response(Base):
     n_results = Column(Integer, nullable=False)
 
 
+#### Define the ResponseCacheConfigSetting table a class for SQLalchemy
+class ResponseCacheConfigSetting(Base):
+    __tablename__ = 'ResponseCacheConfigSetting'
+    setting_id = Column(Integer, primary_key=True)
+    key = Column(String(255), nullable=False)
+    value = Column(String(255), nullable=False)
+    comment = Column(Text, nullable=False)
+
+
 #### The main ResponseCache class
 class ResponseCache:
 
@@ -78,6 +89,7 @@ class ResponseCache:
         self.rtxConfig = RTXConfiguration()
         self.databaseName = "ResponseCache"
         self.engine_type = 'sqlite'
+        #if self.rtxConfig.is_production_server or True:              # For testing pretending to be production server
         if self.rtxConfig.is_production_server:
             self.engine_type = 'mysql'
         self.connect()
@@ -158,10 +170,13 @@ class ResponseCache:
         self.session = session
         self.engine = engine
 
-        #### If the tables don't exist, then create the database
+        #### If tables do not exist, create them
         database_info = sqlalchemy.inspect(engine)
         if not database_info.has_table(Response.__tablename__):
-            eprint(f"WARNING: {self.engine_type} tables do not exist; creating them")
+            eprint(f"WARNING: {self.engine_type} Response table does not exist; creating it")
+            Base.metadata.create_all(engine)
+        if not database_info.has_table(ResponseCacheConfigSetting.__tablename__):
+            eprint(f"WARNING: {self.engine_type} ResponseCacheConfigSetting table does not exist; creating it")
             Base.metadata.create_all(engine)
 
 
@@ -188,6 +203,7 @@ class ResponseCache:
     #### Store a new response into the database
     def add_new_response(self,response):
 
+        DEBUG = True
         session = self.session
         envelope = response.envelope
         message = envelope.message
@@ -217,24 +233,46 @@ class ResponseCache:
         ACCESS_KEY = rtx_config.config_secrets['s3']['secret']
         succeeded_to_s3 = False
 
+        #### Get information needed to decide which bucket to write to
+        bucket_config = self.get_configs()
+        datetime_now = str(datetime.now())
+        if DEBUG:
+            print(f"DEBUG: Datetime now is: {datetime_now}")
+            print(f"DEBUG: Cutover date is: {bucket_config['S3BucketMigrationDatetime']}")
+        buckets = {
+            'old': { 'region_name': 'us-west-2', 'bucket_name': 'arax-response-storage' },
+            'new': { 'region_name': 'us-east-1', 'bucket_name': 'arax-response-storage-2' }
+        }
+
+        #### Set the bucket info
+        if datetime_now > bucket_config['S3BucketMigrationDatetime']:
+            bucket_tag = 'new'
+            if DEBUG:
+                print(f"DEBUG: Since we're after the cutover date, use {bucket_tag} " +
+                    f"{buckets[bucket_tag]['region_name']} S3 bucket {buckets[bucket_tag]['bucket_name']}")
+        else:
+            bucket_tag = 'old'
+            if DEBUG:
+                print(f"DEBUG: Since we're before the cutover date, use {bucket_tag} " +
+                    f"{buckets[bucket_tag]['region_name']} S3 bucket {buckets[bucket_tag]['bucket_name']}")
+
+        serialized_response = json.dumps(envelope.to_dict(), sort_keys=True, indent=2)
+
         try:
-            response.debug(f"Writing response JSON to S3 bucket")
-            s3 = boto3.resource(
-                's3',
-                region_name='us-west-2',
-                aws_access_key_id=KEY_ID,
-                aws_secret_access_key=ACCESS_KEY
-            )
-            serialized_query_graph = json.dumps(envelope.to_dict(), sort_keys=True, indent=2)
+            region_name = buckets[bucket_tag]['region_name']
+            bucket_name = buckets[bucket_tag]['bucket_name']
+            eprint(f"INFO: Attempting to write to S3 bucket {region_name}:{bucket_name}:{response_filename}")
+
             t0 = timeit.default_timer()
-            s3.Object('arax-response-storage', response_filename).put(Body=serialized_query_graph)
+            s3 = boto3.resource('s3', region_name=region_name, aws_access_key_id=KEY_ID, aws_secret_access_key=ACCESS_KEY)
+            s3.Object(bucket_name, response_filename).put(Body=serialized_response)
             t1 = timeit.default_timer()
-            print("Elapsed time: "+str(t1-t0))
-            response.debug(f"Wrote {response_filename} in {t1-t0} seconds")
+
+            response.info(f"INFO: Successfully wrote {response_filename} to {region_name} S3 bucket {bucket_name} in {t1-t0} seconds")
             succeeded_to_s3 = True
 
         except:
-            response.error(f"Unable to store response in S3 bucket as {response_filename}", error_code="InternalError")
+            response.error(f"Unable to write response {response_filename} to {region_name} S3 bucket {bucket_name}", error_code="InternalError")
 
 
         #### if the S3 write failed, store it as a JSON file on the filesystem
@@ -251,7 +289,7 @@ class ResponseCache:
                 response_path = f"{response_dir}/{response_filename}"
                 try:
                     with open(response_path, 'w') as outfile:
-                        json.dump(envelope.to_dict(), outfile, sort_keys=True, indent=2)
+                        json.dump(serialized_response, outfile, sort_keys=True, indent=2)
                 except:
                     eprint(f"ERROR: Unable to write response to file {response_path}")
 
@@ -262,6 +300,8 @@ class ResponseCache:
     #### Fetch a cached response
     def get_response(self, response_id):
         session = self.session
+
+        DEBUG = False
 
         if response_id is None:
             return( { "status": 400, "title": "response_id missing", "detail": "Required attribute response_id is missing from URL", "type": "about:blank" }, 400)
@@ -275,6 +315,7 @@ class ResponseCache:
             stored_response = session.query(Response).filter(Response.response_id==int(response_id)).first()
             if stored_response is not None:
 
+                #### See if a very old response is still found locally
                 found_response_locally = False
                 response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
                 response_filename = f"{stored_response.response_id}.json"
@@ -283,8 +324,9 @@ class ResponseCache:
                     with open(response_path) as infile:
                         envelope = json.load(infile)
                     found_response_locally = True
+                    eprint(f"INFO: Wow, found the response locally at '{response_path}'. It must be very old")
                 except:
-                    eprint(f"ERROR: Unable to read response from file '{response_path}'. Will now try S3")
+                    pass
 
                 #### If the file wasn't local, try it in S3
                 if not found_response_locally:
@@ -292,36 +334,66 @@ class ResponseCache:
                     KEY_ID = rtx_config.config_secrets['s3']['access']
                     ACCESS_KEY = rtx_config.config_secrets['s3']['secret']
 
-                    try:
-                        s3 = boto3.resource(
-                            's3',
-                            region_name='us-west-2',
-                            aws_access_key_id=KEY_ID,
-                            aws_secret_access_key=ACCESS_KEY
-                        )
+                    #### Get information needed to decide which bucket to look in
+                    bucket_config = self.get_configs()
+                    datetime_now = str(datetime.now())
+                    if DEBUG:
+                        print(f"DEBUG: Datetime now is: {datetime_now}")
+                        print(f"DEBUG: Cutover date is: {bucket_config['S3BucketMigrationDatetime']}")
+                    buckets = {
+                        'old': { 'region_name': 'us-west-2', 'bucket_name': 'arax-response-storage' },
+                        'new': { 'region_name': 'us-east-1', 'bucket_name': 'arax-response-storage-2' }
+                    }
 
-                        response_filename = f"/responses/{response_id}.json"
-                        eprint(f"INFO: Attempting to read {response_filename} from S3")
-                        t0 = timeit.default_timer()
+                    for attempt in  [ 'expected_bucket', 'other_bucket' ]:
 
-                        content = s3.Object('arax-response-storage', response_filename).get()["Body"].read()
-                        envelope = json.loads(content)
-                        t1 = timeit.default_timer()
-                        print("Elapsed time: "+str(t1-t0))
-                        eprint(f"INFO: Successfully read {response_filename} from S3 in {t1-t0} seconds")
+                        if attempt == 'expected_bucket':
+                            if datetime_now > bucket_config['S3BucketMigrationDatetime']:
+                                bucket_tag = 'new'
+                                if DEBUG:
+                                    print(f"DEBUG: Since we're after the cutover date, use {bucket_tag} " +
+                                        f"{buckets[bucket_tag]['region_name']} S3 bucket {buckets[bucket_tag]['bucket_name']}")
+                            else:
+                                bucket_tag = 'old'
+                                if DEBUG:
+                                    print(f"DEBUG: Since we're before the cutover date, use {bucket_tag} " +
+                                        f"{buckets[bucket_tag]['region_name']} S3 bucket {buckets[bucket_tag]['bucket_name']}")
+                        else:
+                            print(f"ERROR: Failed in our attempt at using the {bucket_tag} " +
+                                    f"{buckets[bucket_tag]['region_name']} S3 bucket {buckets[bucket_tag]['bucket_name']}")
+                            if bucket_tag == 'old':
+                                bucket_tag = 'new'
+                            else:
+                                bucket_tag = 'old'
+                            print(f"INFO: Instead will try failing over to the {bucket_tag} " +
+                                    f"{buckets[bucket_tag]['region_name']} S3 bucket {buckets[bucket_tag]['bucket_name']}")
 
-                    except:
-                        eprint(f"ERROR: Unable to read {response_filename} from S3")
-                        return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
+                        try:
+                            region_name = buckets[bucket_tag]['region_name']
+                            bucket_name = buckets[bucket_tag]['bucket_name']
+                            s3 = boto3.resource('s3', region_name=region_name, aws_access_key_id=KEY_ID, aws_secret_access_key=ACCESS_KEY)
+
+                            response_filename = f"/responses/{response_id}.json"
+                            eprint(f"INFO: Attempting to read {region_name}:{bucket_name}:{response_filename} from S3")
+                            t0 = timeit.default_timer()
+
+                            content = s3.Object(bucket_name, response_filename).get()["Body"].read()
+                            envelope = json.loads(content)
+                            t1 = timeit.default_timer()
+                            eprint(f"INFO: Successfully read {response_filename} from {region_name} S3 bucket {bucket_name} in {t1-t0} seconds")
+                            break
+
+                        except:
+                            eprint(f"ERROR: Unable to read {region_name}:{bucket_name}:{response_filename} from S3")
+                            if attempt == 'other_bucket':
+                                return( { "status": 404, "title": "Response not found", "detail": "There is no response corresponding to response_id="+str(response_id), "type": "about:blank" }, 404)
 
 
                 #### Perform a validation on it
                 enable_validation = True
                 schema_version = trapi_version
-                #if 'schema_version' in envelope:
-                #    schema_version = envelope['schema_version']
-                try:
-                    if enable_validation:
+                if enable_validation:
+                    try:
 
                         #### Perform the validation
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
@@ -342,17 +414,18 @@ class ResponseCache:
                         else:
                             envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
 
-                    else:
-                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
-                except Exception as error:
-                    timestamp = str(datetime.now().isoformat())
-                    if 'logs' not in envelope or envelope['logs'] is None:
-                        envelope['logs'] = []
-                    envelope['logs'].append( { "code": 'ValidatorFailed', "level": "ERROR", "message": "TRAPI validator crashed with error: " + str(error),
-                        "timestamp": timestamp } )
-                    if 'description' not in envelope or envelope['description'] is None:
-                        envelope['description'] = ''
-                    envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'TRAPI validator crashed with error: ' + str(error) + ' --- ' + envelope['description'] }
+                    except Exception as error:
+                        timestamp = str(datetime.now().isoformat())
+                        if 'logs' not in envelope or envelope['logs'] is None:
+                            envelope['logs'] = []
+                        envelope['logs'].append( { "code": 'ValidatorFailed', "level": "ERROR", "message": "TRAPI validator crashed with error: " + str(error),
+                            "timestamp": timestamp } )
+                        if 'description' not in envelope or envelope['description'] is None:
+                            envelope['description'] = ''
+                        envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'TRAPI validator crashed with error: ' + str(error) + ' --- ' + envelope['description'] }
+
+                else:
+                    envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled.', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
 
 
                 #### Count provenance information
@@ -632,7 +705,7 @@ class ResponseCache:
 
                         #### Enable multiprocessing to allow parallel processing of multiple envelopes when the GUI sends a bunch at once
                         #### There's only ever one here, but the GUI sends a bunch of requests which are all subject to the same GIL
-                        enable_multiprocessing = True
+                        enable_multiprocessing = False
                         if enable_multiprocessing:
                             pool = multiprocessing.Pool()
                             eprint("INFO: Launching validator via multiprocessing")
@@ -753,11 +826,66 @@ class ResponseCache:
 
 
 
+    ##################################################################################################
+    #### Fetch the configs stored in the MySQL server
+    def get_configs(self):
+        session = self.session
+
+        query_result = session.query(ResponseCacheConfigSetting).all()
+
+        configs = {}
+        for row in query_result:
+            #print(row.__dict__)
+            configs[row.key] = row.value
+
+        #### Force value for testing code logic on one instance endpoint only:
+        #configs['S3BucketMigrationDatetime'] = '2023-10-11 15:00:00'
+
+        return configs
 
 
+    ##################################################################################################
+    #### Set a ResponseCacheConfigSetting on the MySQL server
+    def set_config(self, setting_str):
 
+        if setting_str is None or '=' not in setting_str:
+            print(f"ERROR: Config setting string must be in format key=value")
+            return
+        key, value = setting_str.split('=',1)
+        key = key.strip()
+        value = value.strip()
 
+        configs = self.get_configs()
+        session = self.session
 
+        if key in configs:
+            eprint(f"INFO: Updating ResponseCacheConfigSetting record to MySQL")
+            query_result = session.query(ResponseCacheConfigSetting).filter(ResponseCacheConfigSetting.key==key).all()
+            if len(query_result) > 0:
+                entry = query_result[0]
+                entry.value = value
+                entry.comment = f"ResponseCacheConfigSetting updated {datetime.now()}"
+                session.flush()
+                session.commit()
+            else:
+                print(f"ERROR: Internal error E808")
+            return
+
+        else:
+            eprint(f"INFO: Writing new ResponseCacheConfigSetting record to MySQL")
+            try:
+                comment = f"ResponseCacheConfigSetting added {datetime.now()}"
+                stored_setting = ResponseCacheConfigSetting(key=key, value=value, comment=comment)
+                session.add(stored_setting)
+                session.flush()
+                session.commit()
+                setting_id = stored_setting.setting_id
+                print(f"INFO: Stored. Resulting setting_id={setting_id}")
+            except:
+                eprint(f"Unable to store response record in MySQL")
+                return
+
+        return setting_id
 
 
 ############################################ Main ############################################################
@@ -769,8 +897,9 @@ def main():
     import argparse
     argparser = argparse.ArgumentParser(description='CLI testing of the ResponseCache class')
     argparser.add_argument('--verbose', action='count', help='If set, print more information about ongoing processing' )
-    #argparser.add_argument('list', action='store', help='List all local response ids')
-    argparser.add_argument('response_id', type=str, nargs='*', help='Id of a response to fetch and display')
+    argparser.add_argument('--show_config', action='count', help='Show all the database config settings')
+    argparser.add_argument('--set_config', action='store', help='Specify a key and value to insert or update with format key=value')
+    argparser.add_argument('--response_id', action='store', help='Id of a response to display')
     params = argparser.parse_args()
 
     #### Create a new ResponseStore object
@@ -787,70 +916,24 @@ def main():
             print(f"response_id={response.response_id}  response_datetime={response.response_datetime}")
         return
 
-    if len(params.response_id) > 0:
-        print(f"Content of response_id {params.response_id[0]}:")
-        envelope = response_cache.get_response(params.response_id[0])
-
+    if params.response_id is not None and len(params.response_id) > 0:
+        print(f"Loading response_id {params.response_id}:")
+        envelope = response_cache.get_response(params.response_id)
         #print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
         #print(json.dumps(envelope, sort_keys=True, indent=2))
-        print(json.dumps(envelope['logs'], sort_keys=True, indent=2))
-        #return
+        return
 
-    try:
-        validate(envelope['message'],'Message',trapi_version)
-        print('- Message is valid')
-    except ValidationError as error:
-        print(f"- Message INVALID: {error}")
+    if params.set_config is not None:
+        print(f"Setting ResponseCacheConfigSetting {params.set_config}")
+        response_cache.set_config(params.set_config)
+        return
 
-    #return
+    if params.show_config is not None:
+        print("ResponseCache config information in ResponseCacheConfigSetting table:")
+        configs = response_cache.get_configs()
+        print(json.dumps(configs, indent=2, sort_keys=True))
+        return
 
-    for component, klass in { 'query_graph': 'QueryGraph', 'knowledge_graph': 'KnowledgeGraph' }.items():
-        if component in envelope['message']:
-            try:
-                validate(envelope['message'][component], klass, trapi_version)
-                print(f"  - {component} is valid")
-            except ValidationError:
-                print(f"  - {component} INVALID")
-        else:
-            print(f"  - {component} is not present")
-
-    for node_key, node in envelope['message']['knowledge_graph']['nodes'].items():
-        print(f"{node_key}")
-        for attribute in node['attributes']:
-            attribute['value_type_id'] = None
-            try:
-                validate(attribute, 'Attribute', trapi_version)
-                print(f"  - attribute with {attribute['attribute_type_id']} is valid")
-            except ValidationError:
-                print(f"  - attribute with {attribute['attribute_type_id']} is  INVALID")
-
-
-    for result in envelope['message']['results']:
-        try:
-            validate(result,'Result', trapi_version)
-            print(f"    - result is valid")
-        except ValidationError:
-            print(f"    - result INVALID")
-
-        for key,node_binding_list in result['node_bindings'].items():
-            for node_binding in node_binding_list:
-                try:
-                    validate(node_binding, 'NodeBinding', trapi_version)
-                    print(f"      - node_binding {key} is valid")
-                except ValidationError:
-                    print(f"      - node_binding {key} INVALID")
-
-        for key,edge_binding_list in result['edge_bindings'].items():
-            for edge_binding in edge_binding_list:
-                #print(json.dumps(edge_binding, sort_keys=True, indent=2))
-                try:
-                    validate(edge_binding,'EdgeBinding', trapi_version)
-                    print(f"      - edge_binding {key} is valid")
-                except ValidationError:
-                    print(f"      - edge_binding {key} INVALID")
-
-
-
-
+    print("INFO: No CLI options provided. See --help for options.")
 
 if __name__ == "__main__": main()

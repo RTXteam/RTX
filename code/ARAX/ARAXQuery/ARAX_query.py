@@ -228,6 +228,8 @@ class ARAXQuery:
             response.envelope.description = response.message
             if hasattr(response,'http_status'):
                 response.envelope.http_status = response.http_status
+            self.track_query_finish()
+            return response.envelope
 
         if mode == 'asynchronous':
             attributes = {
@@ -482,7 +484,7 @@ class ARAXQuery:
 
         # Define allowed qnode and qedge attributes to check later
         allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'is_set': 1, 'option_group_id': 1, 'name': 1, 'constraints': 1 }
-        allowed_qedge_attributes = { 'predicates':1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'attribute_constraints': 1, 'qualifier_constraints': 1, 'knowledge_type': 1 }
+        allowed_qedge_attributes = { 'predicates': 1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'attribute_constraints': 1, 'qualifier_constraints': 1, 'knowledge_type': 1 }
 
         #### Loop through nodes checking the attributes
         for id,qnode in message['query_graph']['nodes'].items():
@@ -495,7 +497,10 @@ class ARAXQuery:
         for id,qedge in message['query_graph']['edges'].items():
             for attr in qedge:
                 if attr not in allowed_qedge_attributes:
-                    response.error(f"QueryGraph edge '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQEdgeProperty")
+                    if attr == 'predicate':
+                        response.error(f"QueryGraph edge '{id}' has an obsolete property '{attr}'. This property should be plural 'predicates' in TRAPI 1.4 and higher. Your query may be TRAPI 1.3 or lower and should be checked carefully and migrated to TRAPI 1.4", error_code="UnknownQEdgeProperty")
+                    else:
+                        response.error(f"QueryGraph edge '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQEdgeProperty")
                     return response
 
         return response

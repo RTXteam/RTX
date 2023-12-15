@@ -35,12 +35,14 @@ from openapi_server.models.retrieval_source import RetrievalSource
 class TRAPIQuerier:
 
     def __init__(self, response_object: ARAXResponse, kp_name: str, user_specified_kp: bool, kp_timeout: Optional[int],
-                 kp_selector: KPSelector = KPSelector(), force_local: bool = False):
+                 kp_selector: KPSelector = None, force_local: bool = False):
         self.log = response_object
         self.kp_infores_curie = kp_name
         self.user_specified_kp = user_specified_kp
         self.kp_timeout = kp_timeout
         self.force_local = force_local
+        if kp_selector is None:
+            kp_selector = KPSelector()
         self.kp_selector = kp_selector
         self.kp_endpoint = kp_selector.kp_urls[self.kp_infores_curie]
         self.qnodes_with_single_id = dict()  # This is set during the processing of each query
