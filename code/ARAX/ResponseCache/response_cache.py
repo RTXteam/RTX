@@ -279,7 +279,7 @@ class ResponseCache:
 
 
             #### if the S3 write failed, store it as a JSON file on the filesystem
-            if not succeeded_to_s3 or not s3_bucket_migration_datetime:
+            if not succeeded_to_s3:
                 response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
                 if not os.path.exists(response_dir):
                     try:
