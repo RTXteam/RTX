@@ -1,6 +1,6 @@
 # What is KG2canonicalized?
 
-KG2canonicalized (KG2c) is a version of KG2 in which synonymous nodes have been merged. 
+KG2canonicalized (KG2c) is a version of KG2 in which synonymous nodes have been merged.  
 It is built from [KG2pre](https://github.com/RTXteam/RTX-KG2) and uses the [ARAX NodeSynonymizer](https://github.com/RTXteam/RTX/tree/master/code/ARAX/NodeSynonymizer) to determine which nodes are equivalent. 
 
 ### Schema
