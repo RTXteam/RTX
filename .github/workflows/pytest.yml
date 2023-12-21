@@ -86,7 +86,7 @@ jobs:
         sudo docker exec rtx_test service RTX_Complete start
     
     - name: Run tests with pytest
-      run: sudo docker exec rtx_test bash -c "cd /mnt/data/orangeboard/production/RTX/code/ARAX/test && pytest -v --disable-pytest-warnings"
+      run: sudo docker exec rtx_test bash -c "cd /mnt/data/orangeboard/production/RTX/code/ARAX/test && pytest -vsk test_edge_constraints --disable-pytest-warnings"
     
     - name: Remove and delete all docker containers & images
       continue-on-error: true

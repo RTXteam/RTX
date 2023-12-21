@@ -38,6 +38,7 @@ class KPSelector:
             kp_cacher = KPInfoCacher()
             try:
                 smart_api_info, meta_map = kp_cacher.load_kp_info_caches(self.log)
+
             except Exception as e:
                 self.log.error(f"Failed to load KP info caches due to {e}", error_code="LoadKPCachesFailed")
                 return None, None, None, None
@@ -58,6 +59,7 @@ class KPSelector:
         qedge = qg.edges[qedge_key]
         qedge_predicates = qedge.predicates if qedge.predicates else [self.bh.root_predicate]
         self.log.debug(f"Selecting KPs to use for qedge {qedge_key}")
+    
         # confirm that the qg is one hop
         if len(qg.edges) > 1:
             self.log.error(f"Query graph can only have one edge, but instead has {len(qg.edges)}.",
@@ -99,7 +101,11 @@ class KPSelector:
         for kp in set(filter(None, self.kps_excluded_by_maturity)):
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a {maturity} TRAPI {version} endpoint")
             self.log.debug(f"Skipped {kp}: KP does not have a {maturity} TRAPI {version} endpoint")
-
+        self.log.debug(f"KPs that can answer this query: {accepting_kps}")
+        self.log.debug(f"excluded by version: {self.kps_excluded_by_version}")
+        self.log.debug(f"excluded by maturity: {self.kps_excluded_by_maturity}")
+        self.log.debug(f"kp urls: {self.kp_urls}" )
+        self.log.debug(f"valid kps: {self.valid_kps}")
         return accepting_kps
 
     def kp_accepts_single_hop_qg(self, qg: QueryGraph, kp: str) -> Optional[bool]:
