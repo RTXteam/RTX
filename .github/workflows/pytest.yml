@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     
   push:
-    branches: [ master, production, itrb-test ]
+    branches: [ master, production, itrb-test, issue2231 ]
     paths:
       - 'code/**'
       - 'DockerBuild/**'
