@@ -31,7 +31,6 @@ RUN chown -R rt.rt /mnt/data/orangeboard/production
 RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git
 RUN su rt && cd /mnt/data/orangeboard/production/RTX && git checkout itrb-test
 RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
-RUN git config --global --add safe.directory /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -yq apache2
