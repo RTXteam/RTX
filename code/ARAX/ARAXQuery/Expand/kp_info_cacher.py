@@ -140,6 +140,7 @@ class KPInfoCacher:
         one_day_ago = datetime.now() - timedelta(hours=24)
 
         smart_api_and_meta_map_pathlib_path = pathlib.Path(self.smart_api_and_meta_map_cache)
+        log.debug(f"SmartAPI and meta map cache path: {smart_api_and_meta_map_pathlib_path}")
         try:
             if not smart_api_and_meta_map_pathlib_path.exists():
                 raise Exception("KP info cache(s) do not exist.")

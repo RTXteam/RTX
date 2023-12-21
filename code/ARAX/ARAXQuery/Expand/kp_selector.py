@@ -44,6 +44,7 @@ class KPSelector:
 
             # Record None URLs for our local KPs
             allowed_kp_urls = smart_api_info["allowed_kp_urls"]
+            self.log.debug(f"Allowed KP URLs are: {allowed_kp_urls}")
 
             return (meta_map, allowed_kp_urls, smart_api_info["kps_excluded_by_version"],
                     smart_api_info["kps_excluded_by_maturity"])
