@@ -29,7 +29,7 @@ RUN chmod -R 700 /home/rt/.ssh
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt.rt /mnt/data/orangeboard/production
 RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && git checkout itrb-test
+RUN su rt && cd /mnt/data/orangeboard/production/RTX && git checkout issue2231
 RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
@@ -74,7 +74,7 @@ RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && echo "Github actio
 RUN mkdir -p /mnt/data/orangeboard/kg2
 RUN chown -R rt.rt /mnt/data/orangeboard/kg2
 RUN su rt && cd /mnt/data/orangeboard/kg2 && git clone https://github.com/RTXteam/RTX.git
-RUN su rt && cd /mnt/data/orangeboard/kg2/RTX && git checkout itrb-test
+RUN su rt && cd /mnt/data/orangeboard/kg2/RTX && git checkout issue2231
 RUN chown -R rt.rt /mnt/data/orangeboard/kg2/RTX
 COPY kg2-config.js /mnt/data/orangeboard/kg2/RTX/code/UI/interactive/config.js
 

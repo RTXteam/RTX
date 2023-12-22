@@ -101,11 +101,13 @@ class KPSelector:
         for kp in set(filter(None, self.kps_excluded_by_maturity)):
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a {maturity} TRAPI {version} endpoint")
             self.log.debug(f"Skipped {kp}: KP does not have a {maturity} TRAPI {version} endpoint")
+
+        self.log.debug(f"valid kps: {self.valid_kps}")
         self.log.debug(f"KPs that can answer this query: {accepting_kps}")
         self.log.debug(f"excluded by version: {self.kps_excluded_by_version}")
         self.log.debug(f"excluded by maturity: {self.kps_excluded_by_maturity}")
-        self.log.debug(f"kp urls: {self.kp_urls}" )
-        self.log.debug(f"valid kps: {self.valid_kps}")
+        self.log.debug(f"kp urls: {self.kp_urls}")
+
         return accepting_kps
 
     def kp_accepts_single_hop_qg(self, qg: QueryGraph, kp: str) -> Optional[bool]:
