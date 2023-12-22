@@ -7,6 +7,7 @@ import os
 import pathlib
 import pickle
 import sys
+import traceback
 from datetime import datetime, timedelta
 from typing import Set, Dict, Optional
 
@@ -184,7 +185,8 @@ class KPInfoCacher:
                     eprint(f"      Timed out when trying to hit {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                           f"(waited 10 seconds)")
                 except Exception:
-                    eprint(f"      Ran into a problem getting {kp_infores_curie}'s meta info")
+                    tb = traceback.format_exc()
+                    eprint(f"      Ran into a problem getting {kp_infores_curie}'s meta info: {tb}")
                 else:
                     if kp_response.status_code == 200:
                         try:
