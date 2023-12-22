@@ -675,6 +675,6 @@
         "uterotonics",
         "radiotherapy",
         "pharmacolog.*",
-        ".*medicament.*"
+        "medicament"
     ]
 }
