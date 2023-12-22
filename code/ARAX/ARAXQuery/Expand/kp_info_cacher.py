@@ -157,6 +157,7 @@ class KPInfoCacher:
             smart_api_info = cache['smart_api_cache']
             meta_map = cache['meta_map_cache']
 
+        log.debug(f"KG2 meta map is: {meta_map}")
 
         return smart_api_info, meta_map
 
