@@ -674,7 +674,6 @@
         "secondary",
         "uterotonics",
         "radiotherapy",
-        "pharmacolog.*",
-        "medicament"
+        "pharmacolog.*"
     ]
 }
