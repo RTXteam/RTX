@@ -178,7 +178,9 @@ class ARAXQuery:
                 self.response.envelope.status = 'Success'
 
             # Stream the resulting message back to the client
-            yield(json.dumps(self.response.envelope.to_dict(), sort_keys=True) + "\n")
+            yield(json.dumps(self.response.envelope.to_dict(),
+                             allow_nan=False,
+                             sort_keys=True) + "\n")
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
