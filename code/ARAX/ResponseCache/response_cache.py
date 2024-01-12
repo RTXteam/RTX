@@ -236,62 +236,67 @@ class ResponseCache:
         #### Get information needed to decide which bucket to write to
         bucket_config = self.get_configs()
         datetime_now = str(datetime.now())
+        s3_bucket_migration_datetime = bucket_config.get('S3BucketMigrationDatetime')
         if DEBUG:
             print(f"DEBUG: Datetime now is: {datetime_now}")
-            print(f"DEBUG: Cutover date is: {bucket_config['S3BucketMigrationDatetime']}")
+            print(f"DEBUG: Cutover date is: {s3_bucket_migration_datetime}")
         buckets = {
             'old': { 'region_name': 'us-west-2', 'bucket_name': 'arax-response-storage' },
             'new': { 'region_name': 'us-east-1', 'bucket_name': 'arax-response-storage-2' }
         }
 
-        #### Set the bucket info
-        if datetime_now > bucket_config['S3BucketMigrationDatetime']:
-            bucket_tag = 'new'
-            if DEBUG:
-                print(f"DEBUG: Since we're after the cutover date, use {bucket_tag} " +
-                    f"{buckets[bucket_tag]['region_name']} S3 bucket {buckets[bucket_tag]['bucket_name']}")
+        if s3_bucket_migration_datetime:  # Only save the response in S3 if we know which bucket to use
+
+            #### Set the bucket info
+            if datetime_now > s3_bucket_migration_datetime:
+                bucket_tag = 'new'
+                if DEBUG:
+                    print(f"DEBUG: Since we're after the cutover date, use {bucket_tag} " +
+                        f"{buckets[bucket_tag]['region_name']} S3 bucket {buckets[bucket_tag]['bucket_name']}")
+            else:
+                bucket_tag = 'old'
+                if DEBUG:
+                    print(f"DEBUG: Since we're before the cutover date, use {bucket_tag} " +
+                        f"{buckets[bucket_tag]['region_name']} S3 bucket {buckets[bucket_tag]['bucket_name']}")
+
+            serialized_response = json.dumps(envelope.to_dict(), sort_keys=True, indent=2)
+
+            try:
+                region_name = buckets[bucket_tag]['region_name']
+                bucket_name = buckets[bucket_tag]['bucket_name']
+                eprint(f"INFO: Attempting to write to S3 bucket {region_name}:{bucket_name}:{response_filename}")
+
+                t0 = timeit.default_timer()
+                s3 = boto3.resource('s3', region_name=region_name, aws_access_key_id=KEY_ID, aws_secret_access_key=ACCESS_KEY)
+                s3.Object(bucket_name, response_filename).put(Body=serialized_response)
+                t1 = timeit.default_timer()
+
+                response.info(f"INFO: Successfully wrote {response_filename} to {region_name} S3 bucket {bucket_name} in {t1-t0} seconds")
+                succeeded_to_s3 = True
+
+            except:
+                response.error(f"Unable to write response {response_filename} to {region_name} S3 bucket {bucket_name}", error_code="InternalError")
+
+
+            #### if the S3 write failed, store it as a JSON file on the filesystem
+            if not succeeded_to_s3:
+                response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
+                if not os.path.exists(response_dir):
+                    try:
+                        os.mkdir(response_dir)
+                    except:
+                        eprint(f"ERROR: Unable to create dir {response_dir}")
+
+                if os.path.exists(response_dir):
+                    response_filename = f"{stored_response.response_id}.json"
+                    response_path = f"{response_dir}/{response_filename}"
+                    try:
+                        with open(response_path, 'w') as outfile:
+                            json.dump(serialized_response, outfile, sort_keys=True, indent=2)
+                    except:
+                        eprint(f"ERROR: Unable to write response to file {response_path}")
         else:
-            bucket_tag = 'old'
-            if DEBUG:
-                print(f"DEBUG: Since we're before the cutover date, use {bucket_tag} " +
-                    f"{buckets[bucket_tag]['region_name']} S3 bucket {buckets[bucket_tag]['bucket_name']}")
-
-        serialized_response = json.dumps(envelope.to_dict(), sort_keys=True, indent=2)
-
-        try:
-            region_name = buckets[bucket_tag]['region_name']
-            bucket_name = buckets[bucket_tag]['bucket_name']
-            eprint(f"INFO: Attempting to write to S3 bucket {region_name}:{bucket_name}:{response_filename}")
-
-            t0 = timeit.default_timer()
-            s3 = boto3.resource('s3', region_name=region_name, aws_access_key_id=KEY_ID, aws_secret_access_key=ACCESS_KEY)
-            s3.Object(bucket_name, response_filename).put(Body=serialized_response)
-            t1 = timeit.default_timer()
-
-            response.info(f"INFO: Successfully wrote {response_filename} to {region_name} S3 bucket {bucket_name} in {t1-t0} seconds")
-            succeeded_to_s3 = True
-
-        except:
-            response.error(f"Unable to write response {response_filename} to {region_name} S3 bucket {bucket_name}", error_code="InternalError")
-
-
-        #### if the S3 write failed, store it as a JSON file on the filesystem
-        if not succeeded_to_s3:
-            response_dir = os.path.dirname(os.path.abspath(__file__)) + '/../../../data/responses_1_0'
-            if not os.path.exists(response_dir):
-                try:
-                    os.mkdir(response_dir)
-                except:
-                    eprint(f"ERROR: Unable to create dir {response_dir}")
-
-            if os.path.exists(response_dir):
-                response_filename = f"{stored_response.response_id}.json"
-                response_path = f"{response_dir}/{response_filename}"
-                try:
-                    with open(response_path, 'w') as outfile:
-                        json.dump(serialized_response, outfile, sort_keys=True, indent=2)
-                except:
-                    eprint(f"ERROR: Unable to write response to file {response_path}")
+            response.warning(f"Not saving response to S3 because I don't know the S3BucketMigrationDatetime")
 
         return stored_response.response_id
 

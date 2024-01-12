@@ -181,7 +181,7 @@ class RemoveNodes:
                     continue
                 for synonym in synonyms:
                     for block_list_synonym in block_list_synonyms:
-                        if re.match(block_list_synonym, synonym,re.IGNORECASE):
+                        if isinstance(synonym,str) and isinstance(block_list_synonym,str) and re.match(block_list_synonym, synonym,re.IGNORECASE):
                             nodes_to_remove.add(key)
 
 
