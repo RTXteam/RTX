@@ -82,8 +82,8 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
 def test_connect_acetaminophen_to_ptgs1():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n00)",
-            "add_qnode(ids=UniProtKB:P23219, key=n01)",
+            "add_qnode(ids=MONDO:0005101, key=n00)",
+            "add_qnode(ids=DrugCentral:4904, key=n01)",
             "connect(action=connect_nodes)",
             "resultify(ignore_edge_direction=true, debug=true)",
             "return(message=true, store=false)"
