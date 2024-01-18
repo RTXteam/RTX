@@ -294,7 +294,7 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         kp = 'infores:rtx-kg2'
         prune_threshold = 500
 
-        qnode_key_pairs = [[x[0], x[1], False] for x in combinations(self.parameters['qnode_keys'], 2)]
+        qnode_key_pairs = [[x[0], x[1]] for x in combinations(self.parameters['qnode_keys'], 2)]
         edge_n = 1
         node_n = 1
 
@@ -309,7 +309,7 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                     PloverDBRepo()
                 )
             )
-            q = path_finder.find_all_paths(nodes[qnode_pair[0]].ids[0], nodes[qnode_pair[1]].ids[0], hops_numbers=3)
+            q = path_finder.find_all_paths(nodes[qnode_pair[0]].ids[0], nodes[qnode_pair[1]].ids[0], hops_numbers=self.parameters['max_path_length'])
 
         # for n_new_nodes in range(self.parameters['max_path_length']):
         #     added_connection = False
