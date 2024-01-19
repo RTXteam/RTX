@@ -1,15 +1,11 @@
 import requests
+
+from RTXConfiguration import RTXConfiguration
 from .Repository import Repository
 from ..model.Node import Node
 
 
 class PloverDBRepo(Repository):
-
-    def __init__(self):
-        self.url = "https://kg2cploverdb.ci.transltr.io"
-        self.headers = {
-            'accept': 'application/json'
-        }
 
     def get_neighbors(self, node, limit=-1):
         endpoint = "/query"
@@ -31,7 +27,9 @@ class PloverDBRepo(Repository):
             "include_metadata": True,
             "respect_predicate_symmetry": True
         }
-        response = requests.post(self.url + endpoint, headers=self.headers, json=data)
+        rtx_config = RTXConfiguration()
+        plover_url = rtx_config.plover_url
+        response = requests.post(plover_url + endpoint, headers={'accept': 'application/json'}, json=data)
         json = response.json()
 
         return [Node(i) for i in json['nodes']['n01'].keys()]
