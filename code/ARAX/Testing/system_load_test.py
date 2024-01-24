@@ -11,6 +11,9 @@ import requests
 import asyncio
 import time
 
+url = "https://arax.ncats.io/test/api/arax/v1.4/query",
+# url = "https://arax.ncats.io/kg2/api/rtxkg2/v1.4/query"
+
 N = 10
 
 trapi = {"message":
@@ -28,7 +31,7 @@ trapi = {"message":
 
 
 def fetch():
-    return requests.post("https://arax.ncats.io/test/api/arax/v1.4/query",
+    return requests.post(url,
                          json=trapi)
 
 async def main():
