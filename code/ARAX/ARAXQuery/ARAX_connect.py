@@ -1,5 +1,14 @@
 import sys
+
+import requests
+from RTXConfiguration import RTXConfiguration
+
+from kg2_querier import KG2Querier
+import expand_utilities as eu
+
+
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
 
 import os
 import json
@@ -15,14 +24,21 @@ from collections.abc import Hashable
 from itertools import combinations
 import copy
 
+from Path_Finder.converter.KnowledgeGraphConverter import KnowledgeGraphConverter
+from Path_Finder.converter.QueryGraphConverter import QueryGraphConverter
+from Path_Finder.converter.PathListToGraphConverter import PathListToGraphConverter
+from Path_Finder.converter.SimpleGraphToContentGraphConverter import SimpleGraphToContentGraphConverter
+from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
 from Path_Finder.BidirectionalPathFinder import BidirectionalPathFinder
 from Path_Finder.repo.NGDSortedNeighborsRepo import NGDSortedNeighborsRepo
 from Path_Finder.repo.PloverDBRepo import PloverDBRepo
+from ARAX_decorator import ARAXDecorator
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.query_graph import QueryGraph
 
 
 class ARAXConnect:
@@ -100,7 +116,7 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
                 response.debug(f"Query graph is {message.query_graph}")
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph,
                                                                                            'nodes') and message.knowledge_graph.nodes and hasattr(
-                    message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
+                message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
                 response.debug(
                     f"Number of nodes in KG by type is {Counter([x.categories[0] for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
@@ -299,17 +315,46 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         node_n = 1
 
         for qnode_pair in qnode_key_pairs:
-
             nodes = {k: v for k, v in self.response.envelope.message.query_graph.nodes.items() if k in qnode_pair}
             if len(nodes) != 2:
                 self.response.error(f"Need to have two nodes to find paths between them. Number of nodes: {len(nodes)}")
 
             path_finder = BidirectionalPathFinder(
                 NGDSortedNeighborsRepo(
-                    PloverDBRepo()
+                    PloverDBRepo(plover_url=RTXConfiguration().plover_url)
                 )
             )
-            q = path_finder.find_all_paths(nodes[qnode_pair[0]].ids[0], nodes[qnode_pair[1]].ids[0], hops_numbers=self.parameters['max_path_length'])
+
+            paths = path_finder.find_all_paths(nodes[qnode_pair[0]].ids[0], nodes[qnode_pair[1]].ids[0],
+                                               hops_numbers=3)
+
+            if len(paths) == 0:
+                self.response.warning(f"Could not connect the nodes {qnode_pair[0]} and {qnode_pair[1]} "
+                                      f"with a max path length of {self.parameters['max_path_length']}.")
+                return self.response
+
+            nodes, edges = PathListToGraphConverter(qnode_pair[0], qnode_pair[1]).convert(paths)
+            rtx_config = RTXConfiguration()
+            plover_url = rtx_config.plover_url
+            nodes, edges = SimpleGraphToContentGraphConverter(EdgeExtractorFromPloverDB(plover_url)).convert(nodes,
+                                                                                                             edges)
+
+            # qg_organized_knowledge_graph = (KG2Querier(self.response, plover_url)
+            #                                 ._load_plover_answer_into_object_model({
+            #     "nodes": nodes,
+            #     "edges": edges
+            # }, self.response))
+            # knowledge_graph = eu.convert_qg_organized_kg_to_standard_kg(qg_organized_knowledge_graph)
+            #
+            # query_graph = QueryGraphConverter().convert(nodes, edges)
+            # self.response.envelope.message.knowledge_graph.nodes.update(knowledge_graph.nodes)
+            # self.response.envelope.message.knowledge_graph.edges.update(knowledge_graph.edges)
+            # if mode != "RTXKG2" or not parameters.get("return_minimal_metadata"):
+            #     decorator = ARAXDecorator()
+            #     decorator.decorate_nodes(self.response)
+            #     decorator.decorate_edges(self.response, kind="RTX-KG2")
+            # self.response.envelope.message.query_graph.nodes.update(query_graph.nodes)
+            # self.response.envelope.message.query_graph.edges.update(query_graph.edges)
 
         # for n_new_nodes in range(self.parameters['max_path_length']):
         #     added_connection = False
@@ -390,8 +435,8 @@ connect_nodes adds paths between nodes in the query graph and then preforms the 
         #         # FW: may want to change this to an error
         #         self.response.warning(
         #             f"Could not connect the nodes {qnode_pair[0]} and {qnode_pair[1]} with a max path length of {self.parameters['max_path_length']}.")
-        # if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
-        #     self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
+        if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
+            self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
         return self.response
 
 

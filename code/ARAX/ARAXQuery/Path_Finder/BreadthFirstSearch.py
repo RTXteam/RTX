@@ -1,6 +1,11 @@
-from .constants import NEIGHBOR_LIMIT, NUMBER_OF_WORKER_THREADS
-from .model.Node import Node
-from .model.Path import Path
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/model")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from constants import NEIGHBOR_LIMIT, NUMBER_OF_WORKER_THREADS
+from Node import Node
+from Path import Path
 import queue
 import concurrent.futures
 

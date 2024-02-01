@@ -9,7 +9,7 @@ def calculate_ngd(first_element_set, second_element_set):
         return None
 
     log_length_of_first_element = math.log(len(first_element_set))
-    log_length_of_second_element = math.log(len(first_element_set))
+    log_length_of_second_element = math.log(len(second_element_set))
     joint_count = len(first_element_set.intersection(second_element_set))
 
     if log_length_of_first_element == 0 or log_length_of_second_element == 0:
