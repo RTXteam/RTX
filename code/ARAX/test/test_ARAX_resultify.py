@@ -1464,14 +1464,16 @@ def test_node_binding_query_id_one_hop_single_input_curie():
     assert response.status == 'OK'
     assert len(message.results) > 1
     kg = response.envelope.message.knowledge_graph
-    # Make the input curie and one of its children appear somewhere in the results
+    # Make sure the input curie and one of its children appear somewhere in the results
     assert DIABETES_CURIE in kg.nodes
     assert TYPE_1_DIABETES_CURIE in kg.nodes
     # Make sure node bindings do/don't have 'query_id' filled out as appropriate
     for result in message.results:
         for node_binding in result.node_bindings["n00"]:
-            # No nodes should have query_id filled out per TRAPI because it's obvious what they map to (diabetes)
-            assert node_binding.query_id is None
+            if node_binding.id == DIABETES_CURIE:
+                assert node_binding.query_id is None
+            else:
+                assert node_binding.query_id == DIABETES_CURIE
         for node_binding in result.node_bindings["n01"]:
             assert node_binding.query_id is None
     # Make sure we have some subclass edges
@@ -1538,13 +1540,19 @@ def test_node_binding_query_id_two_hop_double_pinned():
     # Make sure node bindings do/don't have 'query_id' filled out as appropriate
     for result in message.results:
         for node_binding in result.node_bindings["n00"]:
-            assert node_binding.query_id is None  # Mapping implied because only single input curie
+            if node_binding.id == DIABETES_CURIE:
+                assert node_binding.query_id is None
+            else:
+                assert node_binding.query_id == DIABETES_CURIE
         for node_binding in result.node_bindings["n01"]:
-            assert node_binding.query_id is None  # Mapping implied because only single input curie
+            if node_binding.id == HEART_DISEASE_CURIE:
+                assert node_binding.query_id is None
+            else:
+                assert node_binding.query_id == HEART_DISEASE_CURIE
         for node_binding in result.node_bindings["n02"]:
             assert node_binding.query_id is None
     # Make sure there's one result for Dabigatran and its structure is as expected
-    dabigatran_results = [result for result in message.results if result.essence == "DABIGATRAN"]
+    dabigatran_results = [result for result in message.results if result.essence.upper() == "DABIGATRAN"]
     assert len(dabigatran_results) == 1
     dabigatran_result = dabigatran_results[0]
     edge_keys_that_should_be_filled = {"e00", "e01"}

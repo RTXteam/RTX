@@ -78,11 +78,8 @@ class ARAXDatabaseManager:
 
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
-            'graph_database': f"{pred_filepath}{os.path.sep}{self.RTXConfig.graph_database_path.split('/')[-1]}",
-            'log_model': f"{pred_filepath}{os.path.sep}{self.RTXConfig.log_model_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
-            'dtd_prob': f"{pred_filepath}{os.path.sep}{self.RTXConfig.dtd_prob_path.split('/')[-1]}",
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
             'kg2c_meta_kg': f"{kg2c_meta_kg_filepath}{os.path.sep}{self.RTXConfig.kg2c_meta_kg_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
@@ -97,11 +94,8 @@ class ARAXDatabaseManager:
         # This portion of the db path is the same on arax-databases.rtx.ai as it is on the ARAX docker instance
         self.database_subpaths = {
             'cohd_database': self.get_database_subpath(self.RTXConfig.cohd_database_path),
-            'graph_database': self.get_database_subpath(self.RTXConfig.graph_database_path),
-            'log_model': self.get_database_subpath(self.RTXConfig.log_model_path),
             'curie_to_pmids': self.get_database_subpath(self.RTXConfig.curie_to_pmids_path),
             'node_synonymizer': self.get_database_subpath(self.RTXConfig.node_synonymizer_path),
-            'dtd_prob': self.get_database_subpath(self.RTXConfig.dtd_prob_path),
             'kg2c_sqlite': self.get_database_subpath(self.RTXConfig.kg2c_sqlite_path),
             'kg2c_meta_kg': self.get_database_subpath(self.RTXConfig.kg2c_meta_kg_path),
             'fda_approved_drugs': self.get_database_subpath(self.RTXConfig.fda_approved_drugs_path),
@@ -115,11 +109,8 @@ class ARAXDatabaseManager:
         self.databases_server_dir_path = '/home/rtxconfig'
         self.remote_locations = {
             'cohd_database': self.get_remote_location('cohd_database'),
-            'graph_database': self.get_remote_location('graph_database'),
-            'log_model': self.get_remote_location('log_model'),
             'curie_to_pmids': self.get_remote_location('curie_to_pmids'),
             'node_synonymizer': self.get_remote_location('node_synonymizer'),
-            'dtd_prob': self.get_remote_location('dtd_prob'),
             'kg2c_sqlite': self.get_remote_location('kg2c_sqlite'),
             'kg2c_meta_kg': self.get_remote_location('kg2c_meta_kg'),
             'fda_approved_drugs': self.get_remote_location('fda_approved_drugs'),
@@ -133,11 +124,8 @@ class ARAXDatabaseManager:
         self.docker_databases_dir_path = '/mnt/data/orangeboard/databases'
         self.docker_central_paths = {
             'cohd_database': self.get_docker_path('cohd_database'),
-            'graph_database': self.get_docker_path('graph_database'),
-            'log_model': self.get_docker_path('log_model'),
             'curie_to_pmids': self.get_docker_path('curie_to_pmids'),
             'node_synonymizer': self.get_docker_path('node_synonymizer'),
-            'dtd_prob': self.get_docker_path('dtd_prob'),
             'kg2c_sqlite': self.get_docker_path('kg2c_sqlite'),
             'kg2c_meta_kg': self.get_docker_path('kg2c_meta_kg'),
             'fda_approved_drugs': self.get_docker_path('fda_approved_drugs'),
@@ -154,14 +142,6 @@ class ARAXDatabaseManager:
                 'path': self.local_paths['cohd_database'],
                 'version': self.RTXConfig.cohd_database_version
             },
-            'graph_database': {
-                'path': self.local_paths['graph_database'],
-                'version': self.RTXConfig.graph_database_version
-            },
-            'log_model': {
-                'path': self.local_paths['log_model'],
-                'version': self.RTXConfig.log_model_version
-            },
             'curie_to_pmids': {
                 'path': self.local_paths['curie_to_pmids'],
                 'version': self.RTXConfig.curie_to_pmids_version
@@ -169,10 +149,6 @@ class ARAXDatabaseManager:
             'node_synonymizer': {
                 'path': self.local_paths['node_synonymizer'],
                 'version': self.RTXConfig.node_synonymizer_version
-            },
-            'dtd_prob': {
-                'path': self.local_paths['dtd_prob'],
-                'version': self.RTXConfig.dtd_prob_version
             },
             'kg2c_sqlite': {
                 'path': self.local_paths['kg2c_sqlite'],
