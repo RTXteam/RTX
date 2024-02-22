@@ -1,10 +1,13 @@
+import sys
+import os
 import math
 import threading
 
-from .BreadthFirstSearch import BreadthFirstSearch
-from .model.Node import Node
-from .model.Path import Path
-from .model.PathContainer import PathContainer
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from BreadthFirstSearch import BreadthFirstSearch
+from model.Node import Node
+from model.Path import Path
+from model.PathContainer import PathContainer
 
 
 class BidirectionalPathFinder:

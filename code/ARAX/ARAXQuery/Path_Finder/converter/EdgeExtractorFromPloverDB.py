@@ -1,7 +1,5 @@
 import requests
 
-from RTXConfiguration import RTXConfiguration
-
 
 class EdgeExtractorFromPloverDB:
 

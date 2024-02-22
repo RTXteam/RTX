@@ -1,11 +1,13 @@
+import sys
 import os
 import sqlite3
 
 from RTXConfiguration import RTXConfiguration
 
-from .NGDCalculator import calculate_ngd
-from .Repository import Repository
-from ..model.Node import Node
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
+from repo.NGDCalculator import calculate_ngd
+from repo.Repository import Repository
+from model.Node import Node
 
 
 def get_curie_to_pmids_path():
@@ -57,7 +59,6 @@ class NGDSortedNeighborsRepo(Repository):
                 return neighbors
             else:
                 return neighbors[0:min(limit, len(neighbors))]
-
 
         neighbors_to_pmids = get_neighbors_pmids([neighbor.id for neighbor in neighbors])
         if neighbors_to_pmids is None:

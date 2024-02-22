@@ -1654,18 +1654,13 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 ## ARAX_connect
 ### connect(action=connect_nodes)
 
-`connect_nodes` adds paths between nodes in the query graph and then preforms the fill operation to compete the knowledge graph. 
+`connect_nodes` Try to find reasonable paths between two bio entities. 
 
 Use cases include:
 
-* finding out how 3 concepts are connected. 
-* connect 2 subgraphs in a query.
-* etc.
+* finding out how 2 concepts are connected. 
             
-You have the option to limit the maximum length of connections for node pairs (via `max_path_length=<n>`), or
-else, limit which node pairs to connect based on a query node ids (via `qnode_keys=<a list of qnode keys>`
-            
-This can be applied to an arbitrary query graph as long as there are nodes.
+You have the option to limit the maximum length of connections for node pairs (via `max_path_length=<n>`)
                     
 
 #### parameters: 
@@ -1692,17 +1687,17 @@ This can be applied to an arbitrary query graph as long as there are nodes.
 
     - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
-* ##### shortest_path
+* ##### result_as
 
-    - Indicates whether or not you would like to return the shorest connection. If false all paths of length less than or equal to the max path value will be returned.
+    - It determines how to receive the results. For instance, one_by_one means that it will return each path in one subgraph. The default value is `super_node`.
 
-    - Acceptable input types: boolean.
+    - Acceptable input types: string.
 
     - This is not a required parameter and may be omitted.
 
-    - `true`, `false`, `True`, `False`, `t`, `f`, `T`, and `F` are all possible valid inputs.
+    - `huge_graph`, `super_node`, `one_by_one` are all possible valid inputs.
 
-    - If not specified the default input will be True. 
+    - If not specified the default input will be `super_node`. 
 
 ## ARAX_infer
 ### infer(action=drug_treatment_graph_expansion)

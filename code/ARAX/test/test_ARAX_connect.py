@@ -101,7 +101,6 @@ def test_connect_nodes_1_hop():
             "add_qnode(name=DOID:3312, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "connect(action=connect_nodes)",
-            "resultify(ignore_edge_direction=true, debug=true)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
