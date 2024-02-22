@@ -85,8 +85,7 @@ class ARAXBackgroundTasker:
                     eprint(f"    {fileinfo}   {file}")
                     eprint(f"    Deleting file {filepath}")
                     try:
-                        #os.unlink(filepath)
-                        pass
+                        os.unlink(filepath)
                     except Exception as error:
                         eprint("ERROR: Unable to delete file with error "
                                f"{error}")
