@@ -1660,7 +1660,7 @@ Use cases include:
 
 * finding out how 2 concepts are connected. 
             
-You have the option to limit the maximum length of connections for node pairs (via `max_path_length=<n>`)
+You have the option to limit the maximum length of each path (via `max_path_length=<n>`)
                     
 
 #### parameters: 
@@ -1679,11 +1679,11 @@ You have the option to limit the maximum length of connections for node pairs (v
 
 * ##### qnode_keys
 
-    - List of qnode keys to connect. If not provided or empty all qnode_keys will be connected. If not empty must have at least 2 elements.
+    - Two qnode keys to connect.
 
     - Acceptable input types: list.
 
-    - This is not a required parameter and may be omitted.
+    - This is a required parameter.
 
     - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
