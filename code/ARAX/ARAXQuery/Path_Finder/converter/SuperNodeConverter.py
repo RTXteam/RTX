@@ -59,6 +59,6 @@ class SuperNodeConverter:
                     result_name=f"{self.names.result_name}_{key}",
                     auxiliary_graph_name=f"{self.names.auxiliary_graph_name}_{key}",
                     kg_edge_name=f"{self.names.kg_edge_name}_{key}",
-                    node_id_for_essence=key,
+                    main_node_id=key,
                 )
             ).convert(response)

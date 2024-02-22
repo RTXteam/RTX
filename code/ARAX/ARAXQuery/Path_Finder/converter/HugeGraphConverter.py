@@ -67,7 +67,7 @@ class HugeGraphConverter:
             response.envelope.message.results = []
 
         essence = ''
-        if self.names.essence != '':
+        if self.names.main_node_id != '':
             essence = knowledge_graph.nodes[self.names.main_node_id].name
 
         response.envelope.message.results.append(
