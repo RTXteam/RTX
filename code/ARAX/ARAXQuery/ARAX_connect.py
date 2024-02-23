@@ -51,10 +51,10 @@ class ARAXConnect:
         }
         self.result_as_info = {
             "is_required": False,
-            "examples": [['huge_graph', 'super_node', 'one_by_one'], []],
+            "examples": [['betweenness_centrality', 'all_in_one', 'one_by_one'], []],
             "type": "string",
             "description": "It determines how to receive the results. For instance, one_by_one means that it will "
-                           "return each path in one subgraph. The default value is super_node"
+                           "return each path in one subgraph. The default value is betweenness_centrality"
         }
 
         # command descriptions
@@ -215,7 +215,7 @@ connect_nodes adds paths between two nodes specified in the query.
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'connect_nodes'},
                                     'max_path_length': {int()},
-                                    'result_as': {'huge_graph', 'super_node', 'one_by_one'},
+                                    'result_as': {'betweenness_centrality', 'all_in_one', 'one_by_one'},
                                     'qnode_keys': set(self.message.query_graph.nodes.keys())
                                     }
         else:
@@ -252,7 +252,7 @@ connect_nodes adds paths between two nodes specified in the query.
         if 'max_path_length' not in self.parameters:
             self.parameters['max_path_length'] = 2
         if 'result_as' not in self.parameters:
-            self.parameters['result_as'] = 'super_node'
+            self.parameters['result_as'] = 'betweenness_centrality'
         # convert path length to int if it isn't already
         if type(self.parameters['max_path_length']) != int:
             self.parameters['max_path_length'] = int(self.parameters['max_path_length'])
