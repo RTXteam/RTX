@@ -9,12 +9,12 @@
   - [ARAX_expander](#arax_expander)
     - [expand()](#expand)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
-    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
     - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
@@ -216,16 +216,12 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 
 ## ARAX_expander
 ### expand()
-This command will expand (aka, answer/fill) your query graph in an edge-by-edge fashion, intelligently selecting which KPs to use for each edge. It selects KPs from the SmartAPI Registry based on the meta information provided by their TRAPI APIs (when available), whether they have an endpoint running a matching TRAPI version, and whether they have an endpoint with matching maturity. For each QEdge, it queries the selected KPs in parallel; it will timeout for a particular KP if it decides it's taking too long to respond. You may also optionally specify a particular KP to use via the 'kp' parameter (described below).
+This command will expand (aka, answer/fill) your query graph in an edge-by-edge fashion, intelligently selecting which KPs to use for each edge. It selects KPs from the SmartAPI Registry based on the meta information provided by their TRAPI APIs, whether they have an endpoint running a matching TRAPI version, and whether they have an endpoint with matching maturity. For each QEdge, it queries the selected KPs concurrently; it will timeout for a particular KP if it decides it's taking too long to respond (this KP timeout can be controlled by the user). You may also optionally specify a particular KP to use via the 'kp' parameter (described below).
 
 Current candidate KPs include (for TRAPI 1.4, maturity 'development'): 
-infores:agrkb, infores:arax-drug-treats-disease, infores:arax-normalized-google-distance, infores:automat-biolink, infores:automat-cam-kp, infores:automat-ctd, infores:automat-drug-central, infores:automat-gtex, infores:automat-gtopdb, infores:automat-gwas-catalog, infores:automat-hetio, infores:automat-hgnc, infores:automat-hmdb, infores:automat-human-goa, infores:automat-icees-kg, infores:automat-intact, infores:automat-panther, infores:automat-pharos, infores:automat-robokop, infores:automat-sri-reference-kg, infores:automat-string-db, infores:automat-ubergraph, infores:automat-ubergraph-nonredundant, infores:automat-viral-proteome, infores:cohd, infores:connections-hypothesis, infores:gelinea, infores:genetics-data-provider, infores:knowledge-collaboratory, infores:molepro, infores:openpredict, infores:rtx-kg2, infores:service-provider-trapi, infores:spoke, infores:text-mining-provider-cooccurrence. 
+infores:agrkb, infores:automat-binding-db, infores:automat-cam-kp, infores:automat-ctd, infores:automat-drug-central, infores:automat-gtex, infores:automat-gtopdb, infores:automat-gwas-catalog, infores:automat-hetio, infores:automat-hgnc, infores:automat-hmdb, infores:automat-human-goa, infores:automat-icees-kg, infores:automat-intact, infores:automat-monarchinitiative, infores:automat-panther, infores:automat-pharos, infores:automat-reactome, infores:automat-robokop, infores:automat-string-db, infores:automat-ubergraph, infores:automat-viral-proteome, infores:cohd, infores:connections-hypothesis, infores:gelinea, infores:genetics-data-provider, infores:knowledge-collaboratory, infores:molepro, infores:openpredict, infores:rtx-kg2, infores:service-provider-trapi, infores:spoke, infores:text-mining-provider-cooccurrence. 
 
 (Note that this list of KPs may change unexpectedly based on the SmartAPI registry.)
-
-**Notes specific to usage of ARAX's internal KPs:**
- 1. NGD: The 'infores:arax-normalized-google-distance' KP uses ARAX's in-house normalized google distance (NGD) database to expand a query graph; it returns edges between nodes with an NGD value below a certain threshold. This threshold is currently hardcoded as 0.5, though this will be made configurable/smarter in the future.
-
 
 #### parameters: 
 
@@ -296,6 +292,64 @@ infores:agrkb, infores:arax-drug-treats-disease, infores:arax-normalized-google-
     - `true` and `false` are examples of valid inputs.
 
 ## ARAX_overlay
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
 ### overlay(action=overlay_clinical_info)
 
 `overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
@@ -365,6 +419,81 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
     - This is not a required parameter and may be omitted.
 
     - `n00` and `n01` are examples of valid inputs.
+
+### overlay(action=add_node_pmids)
+
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - The maximum number of values to return. Enter 'all' to return everything
+
+    - Acceptable input types: int or string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be 100. 
+
+### overlay(action=compute_jaccard)
+
+`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
+The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
+This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
+This can be used for downstream filtering to concentrate on relevant bioentities.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### start_node_key
+
+    - A curie id specifying the starting node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### intermediate_node_key
+
+    - A curie id specifying the intermediate node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### end_node_key
+
+    - A curie id specifying the ending node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `N1`, `J2`, and `FET` are examples of valid inputs.
 
 ### overlay(action=fisher_exact_test)
 
@@ -467,29 +596,6 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - If not specified the default input will be None. 
 
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
-
 ### overlay(action=overlay_exposures_data)
 
 `overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
@@ -530,116 +636,6 @@ This can be applied to an arbitrary knowledge graph (i.e. not just those created
     - This is not a required parameter and may be omitted.
 
     - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=compute_ngd)
-
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### default_value
-
-    - The default value of the normalized Google distance (if its value cannot be determined)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0` and `inf` are examples of valid inputs.
-
-    - If not specified the default input will be inf. 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-### overlay(action=compute_jaccard)
-
-`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
-The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
-This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
-This can be used for downstream filtering to concentrate on relevant bioentities.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### start_node_key
-
-    - A curie id specifying the starting node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### intermediate_node_key
-
-    - A curie id specifying the intermediate node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### end_node_key
-
-    - A curie id specifying the ending node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `N1`, `J2`, and `FET` are examples of valid inputs.
 
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_predicate)
@@ -1660,14 +1656,14 @@ Use cases include:
 
 * finding out how 2 concepts are connected. 
             
-You have the option to limit the maximum length of each path (via `max_path_length=<n>`)
+You have the option to limit the maximum length of connections for node pairs (via `max_path_length=<n>`)
                     
 
 #### parameters: 
 
 * ##### max_path_length
 
-    - The maximum path length to connect nodes with. If not provided defaults to 2.
+    - The maximum edges to connect nodes with. If not provided defaults to 2.
 
     - Acceptable input types: integer.
 
@@ -1679,25 +1675,23 @@ You have the option to limit the maximum length of each path (via `max_path_leng
 
 * ##### qnode_keys
 
-    - Two qnode keys to connect.
+    - List of qnode keys to connect. If not provided or empty all qnode_keys will be connected. If not empty must have at least 2 elements.
 
     - Acceptable input types: list.
 
-    - This is a required parameter.
+    - This is not a required parameter and may be omitted.
 
     - `['n01', 'n02']` and `[]` are examples of valid inputs.
 
 * ##### result_as
 
-    - It determines how to receive the results. For instance, one_by_one means that it will return each path in one subgraph. The default value is `super_node`.
+    - It determines how to receive the results. For instance, one_by_one means that it will return each path in one subgraph. The default value is super_node
 
     - Acceptable input types: string.
 
     - This is not a required parameter and may be omitted.
 
-    - `huge_graph`, `super_node`, `one_by_one` are all possible valid inputs.
-
-    - If not specified the default input will be `super_node`. 
+    - `['huge_graph', 'super_node', 'one_by_one']` and `[]` are examples of valid inputs.
 
 ## ARAX_infer
 ### infer(action=drug_treatment_graph_expansion)
