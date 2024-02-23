@@ -78,7 +78,7 @@ def _run_query_and_return_json_generator_nonstream(query_dict: dict) -> Iterable
         envelope_dict['http_status'] = envelope.http_status
     else:
         envelope_dict['http_status'] = 200
-    return (json.dumps(envelope_dict), )
+    return (json.dumps(envelope_dict, allow_nan=False), )
 
 
 def _run_query_and_return_json_generator_stream(query_dict: dict) -> Iterable[str]:
