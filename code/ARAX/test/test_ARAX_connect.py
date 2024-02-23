@@ -79,12 +79,41 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     assert len(values) >= num_different_values
 
 
-def test_connect_acetaminophen_to_ptgs1():
+def test_connect_ulcerative_colitis_to_adalimumab():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(ids=MONDO:0005101, key=n00)",
             "add_qnode(ids=DrugCentral:4904, key=n01)",
             "connect(action=connect_nodes)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) == 1
+    assert len(message.results) > 0
+
+@pytest.mark.slow
+def test_connect_resveratrol_glyoxalase():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(ids=PUBCHEM.COMPOUND:445154, key=n00)",
+            "add_qnode(ids=NCBIGene:2739, key=n01)",
+            "connect(action=connect_nodes, max_path_length=4)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) == 1
+    assert len(message.results) > 0
+
+
+@pytest.mark.slow
+def test_connect_pde5i_alzheimer():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(ids=MONDO:0004975, key=n00)",
+            "add_qnode(ids=UMLS:C1318700, key=n01)",
+            "connect(action=connect_nodes, max_path_length=4)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
