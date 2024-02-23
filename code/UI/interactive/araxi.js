@@ -2241,13 +2241,13 @@ var araxi_commands = {
       "result_as": {
         "is_required": false,
         "enum": [
-          "super_node",
-          "huge_graph",
+          "betweenness_centrality",
+          "all_in_one",
           "one_by_one"
         ],
         "type": "string",
         "description": "It determines how to receive the results. For instance, one_by_one means that it will return each path in one subgraph.",
-        "default": "super_node"
+        "default": "betweenness_centrality"
       }
     },
     "description": "\nconnect_nodes adds paths between two nodes in the query graph.\n"
