@@ -44,11 +44,10 @@ class BidirectionalPathFinder:
             for path_1 in path_container_1.path_dict[node]:
                 for path_2 in path_container_2.path_dict[node]:
                     temp_path_1 = [Node(link.id, link.weight) for link in path_1.links]
-                    temp_path_2 = [Node(link.id, link.weight) for link in path_2.links]
-                    temp_path_2.pop()
-                    if len(temp_path_2) != 0:
-                        temp_path_2.reverse()
-                        temp_path_1.extend(temp_path_2)
+                    temp_path_2 = []
+                    for i in range(len(path_2.links) - 2, -1, -1):
+                        temp_path_2.append(Node(path_2.links[i].id, path_2.links[i + 1].weight))
+                    temp_path_1.extend(temp_path_2)
                     if len(temp_path_1) == len(set(temp_path_1)):
                         result.add(Path(0, temp_path_1))
 
