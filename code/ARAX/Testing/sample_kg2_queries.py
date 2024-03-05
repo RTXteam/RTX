@@ -3,9 +3,9 @@ This script grabs and saves a sample of real queries sent to our live KG2 endpoi
 submitted to KG2 instances over the last X hours and saves a random sample of N of those queries to individual
 JSON files. It also saves a summary of metadata about the queries in the sample. All output files are saved in a subdir
 called 'sample_kg2_queries'.
-Usage: python sample_kg2_queries.py <sample_size> <last_n_hours_to_sample_from>
+Usage: python sample_kg2_queries.py <last_n_hours_to_sample_from> <sample_size>
 """
-
+import copy
 import csv
 import json
 import os
@@ -13,6 +13,7 @@ import random
 import sys
 
 import argparse
+from typing import Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query_tracker import ARAXQueryTracker
@@ -33,9 +34,11 @@ def get_num_input_curies(query_message: dict) -> int:
     return 1
 
 
-def get_query_hash_key(query_message: dict) -> str:
+def get_query_hash_key(query_message: dict) -> Optional[str]:
     qg = query_message["message"]["query_graph"]
-    qedge = next(qedge for qedge in qg["edges"].values())
+    qedge = next(qedge for qedge in qg["edges"].values()) if qg.get("edges") else None
+    if not qedge:  # Invalid query; skip it
+        return None
     subj_qnode_key = qedge["subject"]
     obj_qnode_key = qedge["object"]
 
@@ -73,8 +76,8 @@ def get_query_hash_key(query_message: dict) -> str:
 
 def main():
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("sample_size", help="Number of KG2 queries to include in random sample")
     arg_parser.add_argument("last_n_hours", help="Number of hours prior to the present to select the sample from")
+    arg_parser.add_argument("sample_size", help="Number of KG2 queries to include in random sample")
     args = arg_parser.parse_args()
 
     qt = ARAXQueryTracker()
@@ -88,21 +91,36 @@ def main():
 
     # Filter down only to KG2 queries
     kg2_queries = [query for query in queries if query.instance_name == "kg2"]
-    print(f"There were a total of {len(queries)} KG2 queries in the last {last_n_hours} hours")
+    print(f"There were a total of {len(kg2_queries)} KG2 queries in the last {last_n_hours} hours")
 
-    # Deduplicate the queries
+    # Deduplicate queries
+    print(f"Deduplicating KG2 queries..")
+    node_synonymizer = NodeSynonymizer()
     deduplicated_queries = dict()
     for query in kg2_queries:
         # Canonicalize any input curies
-        canonicalized_query = dict()  # TODO
+        canonicalized_query = copy.deepcopy(query.input_query)
+        for qnode in canonicalized_query["message"]["query_graph"]["nodes"].values():
+            qnode_ids = qnode.get("ids")
+            if qnode_ids:
+                canonicalized_ids_dict = node_synonymizer.get_canonical_curies(qnode_ids)
+                canonicalized_ids = set()
+                for input_id, canonicalized_info in canonicalized_ids_dict.items():
+                    if canonicalized_info:
+                        canonicalized_ids.add(canonicalized_info["preferred_curie"])
+                    else:
+                        canonicalized_ids.add(input_id)  # Just send the ID as is if synonymizer doesn't recognize it
+                qnode["ids"] = list(canonicalized_ids)
 
         # Figure out if we've seen this query before using hash keys
-        hash_key = get_query_hash_key(query.input_query)
-        if hash_key not in deduplicated_queries:
+        hash_key = get_query_hash_key(canonicalized_query)
+        if hash_key and hash_key not in deduplicated_queries:
             deduplicated_queries[hash_key] = {"query_id": query.query_id,
                                               "query_hash_key": hash_key,
                                               "start_datetime": query.start_datetime,
                                               "submitter": query.origin,
+                                              "instance_name": query.instance_name,
+                                              "domain": query.domain,
                                               "elapsed": query.elapsed,
                                               "message_code": query.message_code,
                                               "input_query": query.input_query,
@@ -125,7 +143,8 @@ def main():
 
     # Save a summary of the sample of queries for easier analysis
     print(f"Saving a summary of the query sample..")
-    summary_col_names = ["query_id", "submitter", "start_datetime", "elapsed", "message_code", "query_hash_key"]
+    summary_col_names = ["query_id", "submitter", "instance_name", "domain", "start_datetime", "elapsed",
+                         "message_code", "query_hash_key"]
     with open(f"{sample_subdir}/sample_summary.tsv", "w+") as summary_file:
         tsv_writer = csv.writer(summary_file, delimiter="\t")
         tsv_writer.writerow(summary_col_names)
