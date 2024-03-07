@@ -19,6 +19,7 @@ from openapi_server.models.result import Result
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 
+edge_confidence_manual_agent = 0.999
 
 def _get_nx_edges_by_attr(G: Union[nx.MultiDiGraph, nx.MultiGraph], key: str, val: str) -> Set[tuple]:
     res_set = set()
@@ -550,7 +551,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         kg_edge_id_to_edge = self.kg_edge_id_to_edge
         score_stats = self.score_stats
         no_non_inf_float_flag = True
-        for edge_key,edge in message.knowledge_graph.edges.items():
+        for edge_key, edge in message.knowledge_graph.edges.items():
             kg_edge_id_to_edge[edge_key] = edge
             if edge.attributes is not None:
                 for edge_attribute in edge.attributes:
@@ -586,9 +587,13 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         response.info(f"Summary of available edge metrics: {score_stats}")
 
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
-        for edge_key,edge in message.knowledge_graph.edges.items():
+        for edge_key, edge in message.knowledge_graph.edges.items():
             if edge.attributes is not None:
                 edge_attributes = {x.original_attribute_name:x.value for x in edge.attributes}
+                for edge_attribute in edge.attributes:
+                    if edge_attribute.attribute_type_id == "biolink:agent_type" and edge_attribute.value == "manual_agent":
+                        edge.confidence = edge_confidence_manual_agent
+                        break
             else:
                 edge_attributes = {}
             if edge_attributes.get("confidence", None) is not None:
