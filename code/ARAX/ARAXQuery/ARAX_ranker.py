@@ -652,11 +652,6 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                         for edge_attribute in edge_attributes:
                             if edge_attribute.original_attribute_name == 'probability_treats' and edge_attribute.value is not None:
                                 result.analyses[0].score = float(edge_attribute.value)
-
-
-                    
-                  
-
         # for result in message.results:
         #     self.result_confidence_maker(result)
         ###################################
