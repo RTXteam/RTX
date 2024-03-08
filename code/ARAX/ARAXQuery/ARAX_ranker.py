@@ -617,12 +617,32 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # 2. number of edges in the results
         # 3. possibly conflicting information, etc.
 
+        results = message.results
+
+        edge_set_to_high_confidence = set()
+        for result in results:
+            edge_bindings = result.analyses[0].edge_bindings
+            for qedge_key in message.query_graph.edges.keys():
+                all_edges_for_qedge_are_high_confidence = False
+                bound_edges = edge_bindings.get(qedge_key, [])
+                for edge_name in bound_edges:
+                    edge_id = edge_name.id
+                    if edge_id in edge_ids_manual_agent:
+                        all_edges_for_qedge_are_high_confidence = True
+                        break
+                if all_edges_for_qedge_are_high_confidence:
+                    for edge_name in bound_edges:
+                        edge_set_to_high_confidence.add(edge_name.id)
+
+        for edge_key, edge in message.knowledge_graph.edges.items():
+            if edge_key in edge_set_to_high_confidence:
+                edge.confidence = edge_confidence_manual_agent
+
         ###################################
         # TODO: Replace this with a more "intelligent" separate function
         # now we can loop over all the results, and combine their edge confidences (now populated)
         qg_nx = _get_query_graph_networkx_from_query_graph(message.query_graph)
         kg_edge_id_to_edge = self.kg_edge_id_to_edge
-        results = message.results
         ranks_list = list(map(_quantile_rank_list,
                               map(lambda scorer_func: _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge,
                                                                                                     qg_nx,
@@ -647,17 +667,13 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 inferred_edge_bindings = []
                 if edge_bindings:
                     inferred_edge_bindings = edge_bindings.get(inferred_qedge_key,[])
-                got_manual_agent_edge = False
                 for edge_name in inferred_edge_bindings:
                     edge_id = edge_name.id
-                    if edge_id in edge_ids_manual_agent:
-                        got_manual_agent_edge = True
                     edge_attributes = message.knowledge_graph.edges[edge_id].attributes
                     if edge_attributes is not None:
                         for edge_attribute in edge_attributes:
-                            if not got_manual_agent_edge:
-                                if edge_attribute.original_attribute_name == 'probability_treats' and edge_attribute.value is not None:
-                                    result.analyses[0].score = float(edge_attribute.value)
+                            if edge_attribute.original_attribute_name == 'probability_treats' and edge_attribute.value is not None:
+                                result.analyses[0].score = float(edge_attribute.value)
         # for result in message.results:
         #     self.result_confidence_maker(result)
         ###################################
