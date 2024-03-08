@@ -592,10 +592,13 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 edge_attributes = {x.original_attribute_name:x.value for x in edge.attributes}
                 for edge_attribute in edge.attributes:
                     if edge_attribute.attribute_type_id == "biolink:agent_type" and edge_attribute.value == "manual_agent":
+                        edge_attributes['confidence'] = edge_confidence_manual_agent
+                        response.debug(f"for edge_key {edge_key}, got edge agent_type of manual_agent")
                         edge.confidence = edge_confidence_manual_agent
                         break
             else:
                 edge_attributes = {}
+
             if edge_attributes.get("confidence", None) is not None:
             #if False:       # FIXME: there is no longer such an attribute. Stored as a generic attribute?
             #if edge.confidence is not None:
@@ -649,11 +652,6 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                         for edge_attribute in edge_attributes:
                             if edge_attribute.original_attribute_name == 'probability_treats' and edge_attribute.value is not None:
                                 result.analyses[0].score = float(edge_attribute.value)
-
-
-                    
-                  
-
         # for result in message.results:
         #     self.result_confidence_maker(result)
         ###################################
