@@ -9,6 +9,7 @@ import json
 import ast
 import re
 
+
 from typing import Set, Union, Dict, List, Callable
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
@@ -47,6 +48,7 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
     qg_edge_key_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
     for analysis in result.analyses:  # For now we only ever have one Analysis per Result
         for key, edge_binding_list in analysis.edge_bindings.items():
+            edge_count = 0
             for edge_binding in edge_binding_list:
                 kg_edge = kg_edge_id_to_edge[edge_binding.id]
                 kg_edge_conf = kg_edge.confidence
@@ -55,6 +57,9 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
                 for qedge_key in qedge_keys:
                     qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
                     res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] += kg_edge_conf
+                    edge_count += 1
+            if edge_count > 0:
+                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] /= edge_count
     return res_graph
 
 
@@ -231,7 +236,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         if True:
             result_confidence = 1  # everybody gets to start with a confidence of 1
             for edge in result.edge_bindings:
-                kg_edge_id = edge.kg_id
+                kg_edge_id = edge.id
                 # TODO: replace this with the more intelligent function
                 # here we are just multiplying the edge confidences
                 # --- to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
@@ -594,7 +599,6 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 for edge_attribute in edge.attributes:
                     if edge_attribute.attribute_type_id == "biolink:agent_type" and edge_attribute.value == "manual_agent":
                         edge_attributes['confidence'] = edge_confidence_manual_agent
-                        response.debug(f"for edge_key {edge_key}, got edge agent_type of manual_agent")
                         edge.confidence = edge_confidence_manual_agent
                         edge_ids_manual_agent.add(edge_key)
                         break
@@ -636,6 +640,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         for edge_key, edge in message.knowledge_graph.edges.items():
             if edge_key in edge_set_to_high_confidence:
+                print(f"setting max confidence for edge_key: {edge_key}")
                 edge.confidence = edge_confidence_manual_agent
 
         ###################################
@@ -643,6 +648,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # now we can loop over all the results, and combine their edge confidences (now populated)
         qg_nx = _get_query_graph_networkx_from_query_graph(message.query_graph)
         kg_edge_id_to_edge = self.kg_edge_id_to_edge
+
         ranks_list = list(map(_quantile_rank_list,
                               map(lambda scorer_func: _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge,
                                                                                                     qg_nx,
