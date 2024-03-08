@@ -586,6 +586,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                         f"No non-infinite value was encountered in any edge attribute in the knowledge graph.")
         response.info(f"Summary of available edge metrics: {score_stats}")
 
+        edge_ids_manual_agent = set()
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
         for edge_key, edge in message.knowledge_graph.edges.items():
             if edge.attributes is not None:
@@ -595,6 +596,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                         edge_attributes['confidence'] = edge_confidence_manual_agent
                         response.debug(f"for edge_key {edge_key}, got edge agent_type of manual_agent")
                         edge.confidence = edge_confidence_manual_agent
+                        edge_ids_manual_agent.add(edge_key)
                         break
             else:
                 edge_attributes = {}
@@ -645,13 +647,17 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 inferred_edge_bindings = []
                 if edge_bindings:
                     inferred_edge_bindings = edge_bindings.get(inferred_qedge_key,[])
+                got_manual_agent_edge = False
                 for edge_name in inferred_edge_bindings:
                     edge_id = edge_name.id
+                    if edge_id in edge_ids_manual_agent:
+                        got_manual_agent_edge = True
                     edge_attributes = message.knowledge_graph.edges[edge_id].attributes
                     if edge_attributes is not None:
                         for edge_attribute in edge_attributes:
-                            if edge_attribute.original_attribute_name == 'probability_treats' and edge_attribute.value is not None:
-                                result.analyses[0].score = float(edge_attribute.value)
+                            if not got_manual_agent_edge:
+                                if edge_attribute.original_attribute_name == 'probability_treats' and edge_attribute.value is not None:
+                                    result.analyses[0].score = float(edge_attribute.value)
         # for result in message.results:
         #     self.result_confidence_maker(result)
         ###################################
