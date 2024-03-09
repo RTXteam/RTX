@@ -9,6 +9,7 @@ import json
 import ast
 import re
 
+
 from typing import Set, Union, Dict, List, Callable
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
@@ -19,6 +20,7 @@ from openapi_server.models.result import Result
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 
+edge_confidence_manual_agent = 0.999
 
 def _get_nx_edges_by_attr(G: Union[nx.MultiDiGraph, nx.MultiGraph], key: str, val: str) -> Set[tuple]:
     res_set = set()
@@ -46,6 +48,7 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
     qg_edge_key_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
     for analysis in result.analyses:  # For now we only ever have one Analysis per Result
         for key, edge_binding_list in analysis.edge_bindings.items():
+            edge_count = 0
             for edge_binding in edge_binding_list:
                 kg_edge = kg_edge_id_to_edge[edge_binding.id]
                 kg_edge_conf = kg_edge.confidence
@@ -54,6 +57,9 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
                 for qedge_key in qedge_keys:
                     qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
                     res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] += kg_edge_conf
+                    edge_count += 1
+            if edge_count > 0:
+                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] /= edge_count
     return res_graph
 
 
@@ -230,7 +236,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         if True:
             result_confidence = 1  # everybody gets to start with a confidence of 1
             for edge in result.edge_bindings:
-                kg_edge_id = edge.kg_id
+                kg_edge_id = edge.id
                 # TODO: replace this with the more intelligent function
                 # here we are just multiplying the edge confidences
                 # --- to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
@@ -550,7 +556,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         kg_edge_id_to_edge = self.kg_edge_id_to_edge
         score_stats = self.score_stats
         no_non_inf_float_flag = True
-        for edge_key,edge in message.knowledge_graph.edges.items():
+        for edge_key, edge in message.knowledge_graph.edges.items():
             kg_edge_id_to_edge[edge_key] = edge
             if edge.attributes is not None:
                 for edge_attribute in edge.attributes:
@@ -585,12 +591,20 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                         f"No non-infinite value was encountered in any edge attribute in the knowledge graph.")
         response.info(f"Summary of available edge metrics: {score_stats}")
 
+        edge_ids_manual_agent = set()
         # Loop over the entire KG and normalize and combine the score of each edge, place that information in the confidence attribute of the edge
-        for edge_key,edge in message.knowledge_graph.edges.items():
+        for edge_key, edge in message.knowledge_graph.edges.items():
             if edge.attributes is not None:
                 edge_attributes = {x.original_attribute_name:x.value for x in edge.attributes}
+                for edge_attribute in edge.attributes:
+                    if edge_attribute.attribute_type_id == "biolink:agent_type" and edge_attribute.value == "manual_agent":
+                        edge_attributes['confidence'] = edge_confidence_manual_agent
+                        edge.confidence = edge_confidence_manual_agent
+                        edge_ids_manual_agent.add(edge_key)
+                        break
             else:
                 edge_attributes = {}
+
             if edge_attributes.get("confidence", None) is not None:
             #if False:       # FIXME: there is no longer such an attribute. Stored as a generic attribute?
             #if edge.confidence is not None:
@@ -607,12 +621,34 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # 2. number of edges in the results
         # 3. possibly conflicting information, etc.
 
+        results = message.results
+
+        edge_set_to_high_confidence = set()
+        for result in results:
+            edge_bindings = result.analyses[0].edge_bindings
+            for qedge_key in message.query_graph.edges.keys():
+                all_edges_for_qedge_are_high_confidence = False
+                bound_edges = edge_bindings.get(qedge_key, [])
+                for edge_name in bound_edges:
+                    edge_id = edge_name.id
+                    if edge_id in edge_ids_manual_agent:
+                        all_edges_for_qedge_are_high_confidence = True
+                        break
+                if all_edges_for_qedge_are_high_confidence:
+                    for edge_name in bound_edges:
+                        edge_set_to_high_confidence.add(edge_name.id)
+
+        for edge_key, edge in message.knowledge_graph.edges.items():
+            if edge_key in edge_set_to_high_confidence:
+                print(f"setting max confidence for edge_key: {edge_key}")
+                edge.confidence = edge_confidence_manual_agent
+
         ###################################
         # TODO: Replace this with a more "intelligent" separate function
         # now we can loop over all the results, and combine their edge confidences (now populated)
         qg_nx = _get_query_graph_networkx_from_query_graph(message.query_graph)
         kg_edge_id_to_edge = self.kg_edge_id_to_edge
-        results = message.results
+
         ranks_list = list(map(_quantile_rank_list,
                               map(lambda scorer_func: _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge,
                                                                                                     qg_nx,
@@ -644,11 +680,6 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                         for edge_attribute in edge_attributes:
                             if edge_attribute.original_attribute_name == 'probability_treats' and edge_attribute.value is not None:
                                 result.analyses[0].score = float(edge_attribute.value)
-
-
-                    
-                  
-
         # for result in message.results:
         #     self.result_confidence_maker(result)
         ###################################
