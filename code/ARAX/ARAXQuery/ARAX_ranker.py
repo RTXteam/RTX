@@ -598,15 +598,9 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 edge_attributes = {x.original_attribute_name:x.value for x in edge.attributes}
                 for edge_attribute in edge.attributes:
                     if edge_attribute.attribute_type_id == "biolink:agent_type" and edge_attribute.value == "manual_agent":
-<<<<<<< Updated upstream
                         edge_attributes['confidence'] = edge_confidence_manual_agent
                         edge.confidence = edge_confidence_manual_agent
                         edge_ids_manual_agent.add(edge_key)
-=======
-                        response.info(f"encountered an edge with agent_type of manual_agent")
-                        edge.confidence = edge_confidence_manual_agent
-                        edge_attributes['confidence'] = edge.confidence
->>>>>>> Stashed changes
                         break
             else:
                 edge_attributes = {}
