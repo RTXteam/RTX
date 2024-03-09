@@ -54,7 +54,7 @@ externalDocs:
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
 - description: ARAX TRAPI 1.4 endpoint - development
-  url: https://arax.ncats.io/devED/api/arax/v1.4
+  url: https://arax.ncats.io/api/arax/v1.4
   x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web
