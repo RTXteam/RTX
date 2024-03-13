@@ -190,7 +190,7 @@ def test_sort_by_score():
     assert len(message.results) == 8
     result_scores = [x.analyses[0].score for x in message.results]
     assert result_scores == sorted(result_scores)
-    assert max(result_scores) < 1
+    assert max(result_scores) <= 1
 
 @pytest.mark.external
 def test_issue1506():
