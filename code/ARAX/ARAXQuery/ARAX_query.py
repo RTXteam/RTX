@@ -1060,10 +1060,10 @@ def main():
             "add_qnode(name=acetaminophen, key=n0)",
             "add_qnode(categories=biolink:Protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
-            "expand(edge_key=e0)",
+            "expand(edge_key=e0, kp=infores:rtx-kg2)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=limit_number_of_results, max_results=10)",
+            "#filter_results(action=limit_number_of_results, max_results=5)",
             "return(message=true, store=true)",
         ]}}
 
@@ -1838,10 +1838,12 @@ def main():
 
 
     #### Print out the logging stream
-    print(response.show(level=ARAXResponse.DEBUG))
+    #if verbose:
+    #    print(response.show(level=ARAXResponse.DEBUG))
 
     #### Print out the message that came back
-    print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+    #if verbose:
+    #    print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
 
     #### Other stuff that could be dumped
     #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
@@ -1858,10 +1860,11 @@ def main():
     #print(f"Essence names in the answers: {[x.essence for x in message.results]}")
     print("Results:")
     for result in message.results:
-        confidence = result.confidence
-        if confidence is None:
-            confidence = 0.0
-        print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
+        analysis = result.analyses[0]
+        score = analysis.score
+        if score is None:
+            score = 0.0
+        print("  -" + '{:6.3f}'.format(score) + f"\t{result.essence}")
 
     # print the response id at the bottom for convenience too:
     print(f"Returned response id: {envelope.id}")
