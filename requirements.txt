@@ -46,3 +46,4 @@ opentelemetry-instrumentation-flask==0.37b0
 opentelemetry-exporter-jaeger==1.16.0
 opentelemetry-instrumentation-requests==0.37b0
 opentelemetry-instrumentation-aiohttp-client==0.37b0
+
