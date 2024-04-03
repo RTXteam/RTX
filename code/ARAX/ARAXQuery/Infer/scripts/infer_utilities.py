@@ -155,7 +155,7 @@ class InferUtilities:
                 'key': qedge_id,
                 'subject': "drug",
                 'object': "disease",
-                'predicates': ["biolink:treats"]
+                'predicates': ["biolink:treats_or_applied_or_studied_to_treat"]
             }
             self.response = messenger.add_qedge(self.response, add_qedge_params)
             message.query_graph.edges[add_qedge_params['key']].knowledge_type = "inferred"
@@ -212,7 +212,7 @@ class InferUtilities:
                 retrieval_source = [
                                     RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                 ]
-                new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:treats', attributes=edge_attribute_list, sources=retrieval_source)
+                new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:treats_or_applied_or_studied_to_treat', attributes=edge_attribute_list, sources=retrieval_source)
                 new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source="infores:arax", kp=kp)
                 if new_edge_key not in message.knowledge_graph.edges:
                     message.knowledge_graph.edges[new_edge_key] = new_edge
@@ -327,7 +327,7 @@ class InferUtilities:
                             ]
                         else:
                             edge_attribute_list += [
-                                Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from RTX-KG2.8.0.1c by ARAXInfer."),
+                                Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from RTX-KG2.8.4c by ARAXInfer."),
                             ]
                             retrieval_source = [
                                 RetrievalSource(resource_id=primary_knowledge_source, resource_role="primary_knowledge_source"),
@@ -356,9 +356,10 @@ class InferUtilities:
                         RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                     ]
                 #edge_predicate = qedge_id
-                edge_predicate = "biolink:treats"
-                if hasattr(message.query_graph.edges[qedge_id], 'predicates') and message.query_graph.edges[qedge_id].predicates:
-                    edge_predicate = message.query_graph.edges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?
+                edge_predicate = "biolink:treats_or_applied_or_studied_to_treat"
+                # comment the following two lines for issue #2253, we now use "biolink:treats_or_applied_or_studied_to_treat" instead of "biolink:treats"
+                # if hasattr(message.query_graph.edges[qedge_id], 'predicates') and message.query_graph.edges[qedge_id].predicates:
+                #     edge_predicate = message.query_graph.edges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?
                 
                 fixed_edge = Edge(predicate=edge_predicate, subject=drug_node_info.id, object=disease_node_info.id,
                                 attributes=edge_attribute_list, sources=retrieval_source)
