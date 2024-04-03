@@ -2224,10 +2224,10 @@ var araxi_commands = {
         "min": 1,
         "max": 5,
         "type": "integer",
-        "description": "The maximum edges to connect nodes with. If not provided defaults to 2."
+        "description": "The maximum path length to connect nodes with. If not provided defaults to 2."
       },
       "qnode_keys": {
-        "is_required": true,
+        "is_required": false,
         "examples": [
           [
             "n01",
@@ -2236,21 +2236,26 @@ var araxi_commands = {
           []
         ],
         "type": "list",
-        "description": "Two qnode keys to connect."
+        "description": "List of qnode keys to connect. If not provided or empty all qnode_keys will be connected. If not empty must have at least 2 elements."
       },
-      "result_as": {
+      "shortest_path": {
         "is_required": false,
         "enum": [
-          "betweenness_centrality",
-          "all_in_one",
-          "one_by_one"
+          "true",
+          "false",
+          "True",
+          "False",
+          "t",
+          "f",
+          "T",
+          "F"
         ],
-        "type": "string",
-        "description": "It determines how to receive the results. For instance, one_by_one means that it will return each path in one subgraph.",
-        "default": "betweenness_centrality"
+        "type": "boolean",
+        "description": "Indicates whether or not you would like to return the shorest connection. If false all paths of length less than or equal to the max path value will be returned.",
+        "default": "True"
       }
     },
-    "description": "\nconnect_nodes adds paths between two nodes in the query graph.\n"
+    "description": "\nconnect_nodes adds paths between nodes in the query graph and then preforms the fill operation to compete the knowledge graph.\n                    "
   },
   "infer(action=drug_treatment_graph_expansion)": {
     "parameters": {

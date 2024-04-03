@@ -79,78 +79,117 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     assert len(values) >= num_different_values
 
 
-def test_connect_ulcerative_colitis_to_adalimumab():
+def test_connect_acetaminophen_to_ptgs1():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(ids=MONDO:0005101, key=n00)",
-            "add_qnode(ids=DrugCentral:4904, key=n01)",
+            "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n00)",
+            "add_qnode(ids=UniProtKB:P23219, key=n01)",
             "connect(action=connect_nodes)",
+            "resultify(ignore_edge_direction=true, debug=true)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 1
-    assert len(message.results) > 0
-
-@pytest.mark.slow
-def test_connect_resveratrol_glyoxalase():
-    query = {"operations": {"actions": [
-            "create_message",
-            "add_qnode(ids=PUBCHEM.COMPOUND:445154, key=n00)",
-            "add_qnode(ids=NCBIGene:2739, key=n01)",
-            "connect(action=connect_nodes, max_path_length=4)",
-            "return(message=true, store=false)"
-        ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 1
+    assert len(message.query_graph.edges) > 0
     assert len(message.results) > 0
 
 
 @pytest.mark.slow
-def test_connect_pde5i_alzheimer():
+def test_connect_nodes_1_hop():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(ids=MONDO:0004975, key=n00)",
-            "add_qnode(ids=UMLS:C1318700, key=n01)",
-            "connect(action=connect_nodes, max_path_length=4)",
+            "add_qnode(name=DOID:3312, key=n00)",
+            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+            "connect(action=connect_nodes)",
+            "resultify(ignore_edge_direction=true, debug=true)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 1
+    assert len(message.query_graph.edges) > 0
     assert len(message.results) > 0
 
+
+@pytest.mark.slow
+def test_connect_nodes_2_hop():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=UniProtKB:P18509, key=n00)",
+            "add_qnode(name=MESH:D004781, key=n01)",
+            "connect(action=connect_nodes)",
+            "resultify(ignore_edge_direction=true, debug=true)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) == 2
+    assert len(message.results) > 0
+
+
+@pytest.mark.slow
+def test_connect_nodes_subgraph_2_hop():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=UniProtKB:P54105,key=n02)",
+            "add_qnode(name=UniProtKB:P18509,key=n00)",
+            "add_qedge(subject=n00,object=n02,key=e00)",
+            "expand(kp=infores:rtx-kg2,edge_key=e00)",
+            "add_qnode(name=MESH:D004781,key=n01)",
+            "connect(action=connect_nodes,qnode_keys=[n00,n01])",
+            "resultify(ignore_edge_direction=true, debug=true)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) == 3
+    assert len(message.results) > 0
+
+@pytest.mark.slow
+def test_connect_nodes_3_disconnected_nodes():
+    query = {"operations": {"actions": [
+            "create_message",
+            "add_qnode(name=UniProtKB:P54105,key=n02)",
+            "add_qnode(name=UniProtKB:P18509,key=n00)",
+            "add_qnode(name=MESH:D004781,key=n01)",
+            "connect(action=connect_nodes)",
+            "resultify(ignore_edge_direction=true, debug=true)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) >= 3
+    assert len(message.results) > 0
 
 @pytest.mark.slow
 def test_1881():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=PUBCHEM.COMPOUND:10954115, key=n0)",
-            "add_qnode(name=MONDO:0005015, key=n1)",
-            "connect(action=connect_nodes, max_path_length=3)",
+            "add_qnode(name=glucose, key=n0)",
+            "add_qnode(name=diabetes, key=n1)",
+            "connect(action=connect_nodes, max_path_length=3, shortest_path=false)",
+            "resultify()",
             "filter_results(action=limit_number_of_results, max_results=30)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 1
+    assert len(message.query_graph.edges) >= 3
     assert len(message.results) > 0
-
 
 @pytest.mark.slow
 def test_none_object():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=PUBCHEM.COMPOUND:10954115, key=n0)",
-            "add_qnode(name=MONDO:0005015, key=n1)",
-            "connect(action=connect_nodes)",
+            "add_qnode(name=glucose, key=n0)",
+            "add_qnode(name=diabetes, key=n1)",
+            "connect(action=connect_nodes, shortest_path=false)",
+            "resultify()",
             "filter_results(action=limit_number_of_results, max_results=30)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 1
+    assert len(message.query_graph.edges) >= 1
     assert len(message.results) > 0
 
 
