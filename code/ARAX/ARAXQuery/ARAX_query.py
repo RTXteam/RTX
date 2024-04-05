@@ -409,7 +409,7 @@ class ARAXQuery:
             #### If we have operations, execute them
             if "have_operations" in query_attributes:
                 response.info(f"Found input processing plan. Sending to the ProcessingPlanExecutor")
-                response = self.execute_processing_plan(query, mode=mode)
+                result = self.execute_processing_plan(query, mode=mode)
 
             #### This used to support canned queries, but no longer does
             else:
