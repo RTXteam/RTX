@@ -17,15 +17,17 @@ class QNode(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, ids=None, categories=None, is_set=False, constraints=[], option_group_id=None):  # noqa: E501
+    def __init__(self, ids=None, categories=None, set_interpretation=False, set_id=False, constraints=[], option_group_id=None):  # noqa: E501
         """QNode - a model defined in OpenAPI
 
         :param ids: The ids of this QNode.  # noqa: E501
         :type ids: List[str]
         :param categories: The categories of this QNode.  # noqa: E501
         :type categories: List[str]
-        :param is_set: The is_set of this QNode.  # noqa: E501
-        :type is_set: bool
+        :param set_interpretation: The set_interpretation of this QNode.  # noqa: E501
+        :type set_interpretation: str
+        :param set_id: The set_id of this QNode.  # noqa: E501
+        :type set_id: str
         :param constraints: The constraints of this QNode.  # noqa: E501
         :type constraints: List[AttributeConstraint]
         :param option_group_id: The option_group_id of this QNode.  # noqa: E501
@@ -34,7 +36,8 @@ class QNode(Model):
         self.openapi_types = {
             'ids': List[str],
             'categories': List[str],
-            'is_set': bool,
+            'set_interpretation': str,
+            'set_id': str,
             'constraints': List[AttributeConstraint],
             'option_group_id': str
         }
@@ -42,14 +45,16 @@ class QNode(Model):
         self.attribute_map = {
             'ids': 'ids',
             'categories': 'categories',
-            'is_set': 'is_set',
+            'set_interpretation': 'set_interpretation',
+            'set_id': 'set_id',
             'constraints': 'constraints',
             'option_group_id': 'option_group_id'
         }
 
         self._ids = ids
         self._categories = categories
-        self._is_set = is_set
+        self._set_interpretation = set_interpretation
+        self._set_id = set_id
         self._constraints = constraints
         self._option_group_id = option_group_id
 
@@ -113,27 +118,50 @@ class QNode(Model):
         self._categories = categories
 
     @property
-    def is_set(self):
-        """Gets the is_set of this QNode.
+    def set_interpretation(self):
+        """Gets the set_interpretation of this QNode.
 
         Boolean that if set to true, indicates that this QNode MAY have multiple KnowledgeGraph Nodes bound to it within each Result. The nodes in a set should be considered as a set of independent nodes, rather than a set of dependent nodes, i.e., the answer would still be valid if the nodes in the set were instead returned individually. Multiple QNodes may have is_set=True. If a QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=False, each n1 must be connected to n2. If a QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=True, each n1 must be connected to at least one n2.  # noqa: E501
 
-        :return: The is_set of this QNode.
-        :rtype: bool
+        :return: The set_interpretation of this QNode.
+        :rtype: str
         """
-        return self._is_set
+        return self._set_interpretation
 
-    @is_set.setter
-    def is_set(self, is_set):
-        """Sets the is_set of this QNode.
+    @set_interpretation.setter
+    def set_interpretation(self, set_interpretation):
+        """Sets the set_interpretation of this QNode.
 
         Boolean that if set to true, indicates that this QNode MAY have multiple KnowledgeGraph Nodes bound to it within each Result. The nodes in a set should be considered as a set of independent nodes, rather than a set of dependent nodes, i.e., the answer would still be valid if the nodes in the set were instead returned individually. Multiple QNodes may have is_set=True. If a QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=False, each n1 must be connected to n2. If a QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=True, each n1 must be connected to at least one n2.  # noqa: E501
 
-        :param is_set: The is_set of this QNode.
-        :type is_set: bool
+        :param set_interpretation: The set_interpretation of this QNode.
+        :type set_interpretation: str
         """
 
-        self._is_set = is_set
+        self._set_interpretation = set_interpretation
+
+    @property
+    def set_id(self):
+        """Gets the set_id of this QNode.
+
+        Boolean that if set to true, indicates that this QNode MAY have multiple KnowledgeGraph Nodes bound to it within each Result. The nodes in a set should be considered as a set of independent nodes, rather than a set of dependent nodes, i.e., the answer would still be valid if the nodes in the set were instead returned individually. Multiple QNodes may have is_set=True. If a QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=False, each n1 must be connected to n2. If a QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=True, each n1 must be connected to at least one n2.  # noqa: E501
+
+        :return: The set_id of this QNode.
+        :rtype: str
+        """
+        return self._set_id
+
+    @set_id.setter
+    def set_id(self, set_id):
+        """Sets the set_id of this QNode.
+
+        Boolean that if set to true, indicates that this QNode MAY have multiple KnowledgeGraph Nodes bound to it within each Result. The nodes in a set should be considered as a set of independent nodes, rather than a set of dependent nodes, i.e., the answer would still be valid if the nodes in the set were instead returned individually. Multiple QNodes may have is_set=True. If a QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=False, each n1 must be connected to n2. If a QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=True, each n1 must be connected to at least one n2.  # noqa: E501
+
+        :param set_id: The set_id of this QNode.
+        :type set_id: str
+        """
+
+        self._set_id = set_id
 
     @property
     def constraints(self):
