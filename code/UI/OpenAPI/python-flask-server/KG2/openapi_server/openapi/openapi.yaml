@@ -21,7 +21,7 @@ info:
         external JSON schema. See schema and examples at url
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.5.0
+    version: 1.4.0
     asyncquery: false
     operations:
     - lookup
@@ -1239,6 +1239,18 @@ components:
           description: >-
             A client-provided identifier for the set described in this QNode
           nullable: true
+        is_set:
+          default: false
+          description: Boolean that if set to true, indicates that this QNode MAY
+            have multiple KnowledgeGraph Nodes bound to it within each Result. The
+            nodes in a set should be considered as a set of independent nodes, rather
+            than a set of dependent nodes, i.e., the answer would still be valid if
+            the nodes in the set were instead returned individually. Multiple QNodes
+            may have is_set=True. If a QNode (n1) with is_set=True is connected to
+            a QNode (n2) with is_set=False, each n1 must be connected to n2. If a
+            QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=True,
+            each n1 must be connected to at least one n2.
+          type: boolean
         set_interpretation:
           type: string
           description: >-
