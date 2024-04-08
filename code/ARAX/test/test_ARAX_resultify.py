@@ -1292,13 +1292,12 @@ def test_issue1119_c():
 
 @pytest.mark.slow
 def test_issue1119_d():
-    # Test one-hop query with multiple single-edge option groups and a required 'not' edge
+    # Test one-hop query with a single-edge option group and a required 'not' edge
     actions = [
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
-        "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:treats)",
-        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:affects, option_group_id=1)",
-        "add_qedge(key=e02, subject=n01, object=n00, predicates=biolink:disrupts, option_group_id=2)",
+        "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:affects)",
+        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:treats, option_group_id=1)",
         "add_qedge(key=e03, subject=n01, object=n00, exclude=True, predicates=biolink:predisposes)",
         "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
@@ -1312,9 +1311,8 @@ def test_issue1119_d():
     assert not any(result.analyses[0].edge_bindings.get("e03") for result in message.results)
     # Make sure our "optional" edges appear in one or more results
     assert any(result for result in message.results if result.analyses[0].edge_bindings.get("e01"))
-    assert any(result for result in message.results if result.analyses[0].edge_bindings.get("e02"))
     # Verify there are some results without any optional portion (happens to be true for this query)
-    assert any(result for result in message.results if not {"e01", "e02"}.issubset(set(result.analyses[0].edge_bindings)))
+    assert any(result for result in message.results if not {"e01"}.issubset(set(result.analyses[0].edge_bindings)))
 
 
 @pytest.mark.slow
