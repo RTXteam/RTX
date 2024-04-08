@@ -439,17 +439,30 @@ def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str
     return curie_to_name_map
 
 
-def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False) -> bool:
+def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False,
+                    enforce_expanded_only=False, return_unfulfilled_qedges: bool = False) -> any:
     if enforce_required_only:
         qg_without_kryptonite_portion = get_qg_without_kryptonite_portion(query_graph)
         query_graph = get_required_portion_of_qg(qg_without_kryptonite_portion)
+    if enforce_expanded_only:
+        expanded_qedge_keys = {qedge_key for qedge_key, qedge in query_graph.edges.items()
+                               if hasattr(qedge, "filled") and qedge.filled}
+        qg_edges = {qedge_key: query_graph.edges[qedge_key] for qedge_key in expanded_qedge_keys}
+        qg_nodes = {qnode_key: query_graph.nodes[qnode_key]
+                    for qedge in qg_edges.values()
+                    for qnode_key in {qedge.subject, qedge.object}}
+        query_graph = QueryGraph(edges=qg_edges, nodes=qg_nodes)
+    # Now see if we have answers in the KG for each of the remaining qedges/qnodes
+    is_fulfilled = True
     for qnode_key in query_graph.nodes:
         if not dict_kg.nodes_by_qg_id.get(qnode_key):
-            return False
-    for qedge_key in query_graph.edges:
+            is_fulfilled = False
+    unfulfilled_qedge_keys = set()
+    for qedge_key, qedge in query_graph.edges.items():
         if not dict_kg.edges_by_qg_id.get(qedge_key):
-            return False
-    return True
+            unfulfilled_qedge_keys.add(qedge_key)
+            is_fulfilled = False
+    return is_fulfilled, unfulfilled_qedge_keys if return_unfulfilled_qedges else is_fulfilled
 
 
 def qg_is_disconnected(qg: QueryGraph) -> bool:
@@ -483,6 +496,10 @@ def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_key
 
 def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
     return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
+
+
+def is_subclass_self_qedge(qedge: QEdge) -> bool:
+    return qedge.subject == qedge.object and qedge.predicates == ["biolink:subclass_of"]
 
 
 def flip_edge(edge: Edge, new_predicate: str) -> Edge:
@@ -703,14 +720,6 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
                 if result.score is None:
                     result.score = 0
     return prune_response
-
-
-def get_qg_expanded_thus_far(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph) -> QueryGraph:
-    expanded_qnodes = {qnode_key for qnode_key in qg.nodes if kg.nodes_by_qg_id.get(qnode_key)}
-    expanded_qedges = {qedge_key for qedge_key in qg.edges if kg.edges_by_qg_id.get(qedge_key)}
-    qg_expanded_thus_far = QueryGraph(nodes={qnode_key: copy.deepcopy(qg.nodes[qnode_key]) for qnode_key in expanded_qnodes},
-                                      edges={qedge_key: copy.deepcopy(qg.edges[qedge_key]) for qedge_key in expanded_qedges})
-    return qg_expanded_thus_far
 
 
 def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:

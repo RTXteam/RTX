@@ -183,7 +183,8 @@ class ComputeFTEST:
             for edge_key, edge in self.message.knowledge_graph.edges.items():
 
                 ## check if this edge is a compuated edge from ARAX, if so, skip it
-                edge_attribute_list = [x.value for x in self.message.knowledge_graph.edges[edge_key].attributes if x.attribute_type_id == 'EDAM-DATA:1772']
+                edge_attributes = self.message.knowledge_graph.edges[edge_key].attributes
+                edge_attribute_list = [x.value for x in edge_attributes if x.attribute_type_id == 'EDAM-DATA:1772'] if edge_attributes else []
                 if len(edge_attribute_list) == 0:
 
                     # ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')

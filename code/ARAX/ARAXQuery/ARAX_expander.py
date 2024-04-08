@@ -368,9 +368,7 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Expanding')
                 for kp in kp_selector.valid_kps:
                     response.update_query_plan(qedge_key, kp, 'Waiting', 'Prepping query to send to KP')
-                message.query_graph.edges[qedge_key].filled = True  # Mark as expanded in overarching QG #1848
                 qedge = query_graph.edges[qedge_key]
-                qedge.filled = True  # Also mark as expanded in local QG #1848
 
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
@@ -399,6 +397,10 @@ class ARAXExpander:
                             one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
                 if log.status != 'OK':
                     return response
+
+                # Mark this qedge as 'filled', but only AFTER pruning back prior node(s) as needed
+                message.query_graph.edges[qedge_key].filled = True  # Mark as expanded in overarching QG #1848
+                qedge.filled = True  # Also mark as expanded in local QG #1848
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
@@ -528,11 +530,19 @@ class ARAXExpander:
                 # Declare that we are done expanding this qedge
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Done')
 
-                # Make sure we found at least SOME answers for this edge
+                # Make sure we have at least SOME answers for all (regular) qedges expanded so far..
                 # TODO: Should this really just return response here? What about returning partial KG?
-                if not eu.qg_is_fulfilled(one_hop_qg, overarching_kg) and not qedge.exclude and not qedge.option_group_id:
-                    log.warning(f"No paths were found in any KPs satisfying qedge {qedge_key}. KPs used were: "
-                                f"{kps_to_query}")
+                is_fulfilled, unfulfilled_qedge_keys = eu.qg_is_fulfilled(query_graph,
+                                                                          overarching_kg,
+                                                                          enforce_required_only=True,
+                                                                          enforce_expanded_only=True,
+                                                                          return_unfulfilled_qedges=True)
+                if not is_fulfilled:
+                    if qedge.exclude:
+                        log.warning(f"After processing 'exclude=True' edge {qedge_key}, "
+                                    f"no paths remain from any KPs that satisfy qedge(s) {unfulfilled_qedge_keys}.")
+                    else:
+                        log.warning(f"No paths were found in any KPs satisfying qedge {unfulfilled_qedge_keys}.")
                     return response
 
         # Expand any specified nodes
@@ -1116,17 +1126,20 @@ class ARAXExpander:
                 for edge_key in edge_keys_to_remove:
                     organized_kg.edges_by_qg_id[qedge_key].pop(edge_key)
 
+            if not organized_kg.edges_by_qg_id[qedge_key]:
+                log.warning(f"All {qedge_key} edges have been deleted due to an Exclude=true (i.e., 'kryptonite') edge!")
+
     @staticmethod
     def _prune_kg(qnode_key_to_prune: str, prune_threshold: int, kg: QGOrganizedKnowledgeGraph,
                   qg: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         log.info(f"Pruning back {qnode_key_to_prune} nodes because there are more than {prune_threshold}")
         kg_copy = copy.deepcopy(kg)
-        qg_expanded_thus_far = eu.get_qg_expanded_thus_far(qg, kg)
-        qg_expanded_thus_far.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality
+        qg_for_resultify = copy.deepcopy(qg)
+        qg_for_resultify.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality
         num_edges_in_kg = sum([len(edges) for edges in kg.edges_by_qg_id.values()])
         overlay_fet = True if num_edges_in_kg < 100000 else False
         # Use fisher exact test and the ranker to prune down answers for this qnode
-        intermediate_results_response = eu.create_results(qg_expanded_thus_far, kg_copy, log,
+        intermediate_results_response = eu.create_results(qg_for_resultify, kg_copy, log,
                                                           rank_results=True, overlay_fet=overlay_fet,
                                                           qnode_key_to_prune=qnode_key_to_prune)
         log.debug(f"A total of {len(intermediate_results_response.envelope.message.results)} "
@@ -1143,12 +1156,15 @@ class ARAXExpander:
                 scores.append(current_result.analyses[0].score)
                 kept_nodes.update({binding.id for binding in current_result.node_bindings[qnode_key_to_prune]})
                 counter += 1
-            log.info(f"Kept top {len(kept_nodes)} answers for {qnode_key_to_prune}. "
-                     f"Best score was {round(max(scores), 5)}, worst kept was {round(min(scores), 5)}.")
+            if kept_nodes:
+                log.info(f"Kept top {len(kept_nodes)} answers for {qnode_key_to_prune}. "
+                         f"Best score was {round(max(scores), 5)}, worst kept was {round(min(scores), 5)}.")
+            else:
+                log.error(f"All nodes were pruned out for {qnode_key_to_prune}! Shouldn't be possible",
+                          error_code="PruneError")
             # Actually eliminate them from the KG
-
             nodes_to_delete = set(kg.nodes_by_qg_id[qnode_key_to_prune]).difference(kept_nodes)
-            kg.remove_nodes(nodes_to_delete, qnode_key_to_prune, qg_expanded_thus_far)
+            kg.remove_nodes(nodes_to_delete, qnode_key_to_prune, qg_for_resultify)
         else:
             log.error(f"Ran into an issue using Resultify when trying to prune {qnode_key_to_prune} answers: "
                       f"{intermediate_results_response.show()}", error_code="PruneError")
@@ -1163,10 +1179,10 @@ class ARAXExpander:
         found in the last expansion will connect to edges in the next one)
         """
         log.debug(f"Pruning any paths that are now dead ends (with help of Resultify)")
-        qg_expanded_thus_far = eu.get_qg_expanded_thus_far(expands_qg, kg)
-        for qnode in qg_expanded_thus_far.nodes.values():
+        is_set_true_qg = copy.deepcopy(expands_qg)
+        for qnode in is_set_true_qg.nodes.values():
             qnode.is_set = True  # This makes resultify run faster and doesn't hurt in this case
-        resultify_response = eu.create_results(qg_expanded_thus_far, kg, log)
+        resultify_response = eu.create_results(is_set_true_qg, kg, log)
         if resultify_response.status == "OK":
             pruned_kg = eu.convert_standard_kg_to_qg_organized_kg(resultify_response.envelope.message.knowledge_graph)
         else:
