@@ -353,12 +353,13 @@ def _get_essence_node_for_qg(qg: QueryGraph) -> Optional[str]:
     leaf_nodes = set(node_keys_list[i] for i, k in enumerate(node_degrees) if k == 1)
     is_set_nodes = set(qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.is_set)
     specific_nodes = set(qnode_key for qnode_key, qnode in qg.nodes.items() if _is_specific_query_node(qnode_key, qnode))
+    optional_nodes = {qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.option_group_id}
     non_specific_nodes = all_nodes - specific_nodes
     non_specific_leaf_nodes = leaf_nodes & non_specific_nodes
 
-    candidate_essence_nodes = non_specific_leaf_nodes - is_set_nodes
+    candidate_essence_nodes = non_specific_leaf_nodes - is_set_nodes - optional_nodes
     if len(candidate_essence_nodes) == 0:
-        candidate_essence_nodes = non_specific_nodes - is_set_nodes
+        candidate_essence_nodes = non_specific_nodes - is_set_nodes - optional_nodes
     if len(candidate_essence_nodes) == 0:
         return None
     elif len(candidate_essence_nodes) == 1:
@@ -742,9 +743,9 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                     if len(parent_keys) == 1:
                         essence_kg_node_key = next(iter(parent_keys))
                     elif not essence_qnode.is_set:
-                        log.error(f"Result contains more than one 'parent' concept fulfilling the essence qnode "
-                                  f"({essence_qnode_key}, which has is_set=False). This shouldn't be possible!",
-                                  error_code="SubclassProblem")
+                        log.warning(f"Result contains more than one 'parent' concept fulfilling the essence qnode "
+                                    f"({essence_qnode_key}, which has is_set=False). Seems suspicious!")
+                        log.info(f"Parent node keys for {essence_qnode_key} in this result are: {parent_keys}")
                         essence_kg_node_key = next(iter(parent_keys))
                     else:
                         log.warning(f"A result has multiple parent concepts fulfilling the essence qnode {essence_qnode_key}; "
@@ -914,7 +915,8 @@ def _get_query_id(node_key: str, node: Node, qnode_key: str, qnode_keys_with_ids
 
 def _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key: Dict[str, Set[str]],
                                    edge_keys_by_node_pair: DefaultDict[str, DefaultDict[Tuple[str], set]],
-                                   qg: QueryGraph) -> Dict[str, Dict[str, Dict[str, Set[str]]]]:
+                                   qg: QueryGraph,
+                                   log: ARAXResponse) -> Dict[str, Dict[str, Dict[str, Set[str]]]]:
     # Returned dict looks like {'n00': {'UMLS:11234': {'n01': {UniProtKB:122}}}}
     # First initiate the overall structure of our (QG-organized) adjacency map
     kg_node_to_node_map = {qnode_key: dict() for qnode_key in kg_node_keys_by_qg_key}
@@ -1117,7 +1119,7 @@ def _create_result_graphs(qg: QueryGraph,
                           ignore_edge_direction: bool = True,
                           log: ARAXResponse = ARAXResponse(),
                           base_result_graphs: Optional[List[dict]] = None) -> List[dict]:
-    kg_node_adj_map_by_qg_key = _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key, edge_keys_by_node_pair, qg)
+    kg_node_adj_map_by_qg_key = _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key, edge_keys_by_node_pair, qg, log)
     qg_adj_map = _get_qg_adj_map_undirected(qg)
 
     # Iteratively construct "result graphs" (initially containing only nodes, not edges) by walking through all qnodes
