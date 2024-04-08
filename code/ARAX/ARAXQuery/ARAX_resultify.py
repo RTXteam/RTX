@@ -688,10 +688,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         log.debug(f"There are a total of {len(final_result_graphs)} final result graphs")
 
     # ---------------------- Separate children from parents now that results have been formed ------------------ #
-    qg_adj_map = _get_qg_adj_map_undirected(qg)
     for result_graph in final_result_graphs:
-        # First add original edge subject/object (children) nodes to result and create a helper map for later use
-        result_edge_keys_by_node_pair = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
+        # First add original edge subject/object (children) nodes to result
         for qedge_key, edge_keys in result_graph["edges"].items():
             qedge = qg.edges[qedge_key]
             for edge_key in edge_keys:
@@ -702,51 +700,11 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                     qnode_subj_fulfills, qnode_obj_fulfills = _get_qnodes_subj_and_obj_fulfill(original_edge, qedge, kg_node_keys_by_qg_key)
                     result_graph["nodes"][qnode_subj_fulfills].add(original_edge.subject)
                     result_graph["nodes"][qnode_obj_fulfills].add(original_edge.object)
-                # Record this edge under its node pair
-                node_pair_key = (original_edge.subject, original_edge.object)
-                result_edge_keys_by_node_pair[qedge_key][node_pair_key].add(edge_key)
-                if ignore_edge_direction:
-                    node_pair_key_other_direction = (original_edge.object, original_edge.subject)
-                    result_edge_keys_by_node_pair[qedge_key][node_pair_key_other_direction].add(edge_key)
-        # Then go through and remove unhelpful ('dead-end') children and add in the proper subclass self-edges
-        result_kg_adj_map = _get_kg_node_adj_map_by_qg_key(result_graph["nodes"], result_edge_keys_by_node_pair, qg)
-        for subclass_qnode_key in subclass_qnode_keys:
-            subclass_qedge_key = next(qedge_key for qedge_key, qedge in subclass_self_qedges.items()
-                                      if qedge.subject == subclass_qnode_key)
-            # Remove any child nodes that don't make any connections beyond the parent's connections
-            qnode_neighbor_keys = qg_adj_map[subclass_qnode_key].difference({subclass_qnode_key})
-            result_node_keys = result_graph["nodes"][subclass_qnode_key]
-            node_keys_to_remove = set()
-            for result_node_key in result_node_keys:
-                parent_key = child_to_parent_map[subclass_qnode_key][result_node_key]
-                node_is_child = parent_key != result_node_key
-                if node_is_child:  # We'll leave parents in no matter what
-                    child_is_useful = _node_in_result_is_useful(result_node_key, subclass_qnode_key, parent_key,
-                                                                qnode_neighbor_keys, result_kg_adj_map)
-                    if child_is_useful:
-                        # Add a subclass self-edge between this child and its parent
-                        node_pair_key = (result_node_key, parent_key)
-                        subclass_edge_keys = edge_keys_by_node_pair[subclass_qedge_key][node_pair_key]
-                        for subclass_edge_key in subclass_edge_keys:
-                            result_graph["edges"][subclass_qedge_key].add(subclass_edge_key)
-                    else:
-                        # Mark this child for removal
-                        node_keys_to_remove.add(result_node_key)
 
-            # Actually remove the children we marked for removal
-            for node_key_to_remove in node_keys_to_remove:
-                result_graph["nodes"][subclass_qnode_key].remove(node_key_to_remove)
-
-        # Remove any edges that were orphaned due to removing children (within this result)
-        edges_to_remove = collections.defaultdict(set)
-        node_keys_in_result = set.union(*result_graph["nodes"].values())
-        for qedge_key, edge_keys in result_graph["edges"].items():
-            for edge_key in edge_keys:
-                edge = kg.edges[edge_key]
-                if not {edge.subject, edge.object}.issubset(node_keys_in_result):
-                    edges_to_remove[qedge_key].add(edge_key)
-        for qedge_key, edge_keys_to_remove in edges_to_remove.items():
-            result_graph["edges"][qedge_key] = result_graph["edges"][qedge_key].difference(edge_keys_to_remove)
+    if len(final_result_graphs) == 1:
+        qnode_counts = {qnode_key: len(node_ids) for qnode_key, node_ids in final_result_graphs[0]["nodes"].items()}
+        qedge_counts = {qedge_key: len(edge_ids) for qedge_key, edge_ids in final_result_graphs[0]["edges"].items()}
+        log.info(f"After separating children from parents in our single result, counts are: {qnode_counts}, {qedge_counts}")
 
     # ------------------ Convert the final result graphs into actual Swagger object model results ----------- #
     log.debug(f"Loading final result graphs into TRAPI object model")
@@ -821,31 +779,6 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     log.info(f"Resultify created {len(results)} results")
     log.total_results_count = len(results)
     return results
-
-
-def _node_in_result_is_useful(node_key: str, qnode_key: str, parent_key: str, qnode_neighbor_keys: Set[str],
-                              result_kg_adj_map: Dict[str, Dict[str, Dict[str, Set[str]]]]) -> bool:
-    """
-    This function determines whether the given node (node_key, which fulfills qnode_key), adds information to a result
-    beyond that provided by its parent (parent_key). Nodes that do not can be considered 'dead ends'. Dead end
-    child nodes are somewhat similar to dead-end intermediate nodes when is_set=True; if they don't link through on a
-    path that matches the full QG, they're dead ends. The difference is that together a parent + child need to link
-    through, instead of a single node.
-    """
-    has_same_neighbors = []
-    has_additional_neighbors = []
-    for qnode_neighbor_key in qnode_neighbor_keys:
-        parent_neighbors = result_kg_adj_map[qnode_key][parent_key][qnode_neighbor_key]
-        own_neighbors = result_kg_adj_map[qnode_key][node_key][qnode_neighbor_key]
-        if own_neighbors.difference(parent_neighbors):
-            has_additional_neighbors.append(True)
-        else:
-            has_additional_neighbors.append(False)
-        if own_neighbors == parent_neighbors:
-            has_same_neighbors.append(True)
-        else:
-            has_same_neighbors.append(False)
-    return True if any(has_additional_neighbors) or all(has_same_neighbors) else False
 
 
 def _get_result_graph_counts(result_graph):

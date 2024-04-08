@@ -702,7 +702,7 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
                     log.warning(f"Attempted to overlay FET from Expand, but it didn't work. Pruning without it.")
 
     # Create results and rank them as appropriate
-    log.debug(f"Calling Resultify from Expand for pruning")
+    log.debug(f"Calling Resultify from Expand..")
     resultifier.apply(prune_response, {})
     if rank_results:
         try:

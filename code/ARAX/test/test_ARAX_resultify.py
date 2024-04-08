@@ -121,7 +121,7 @@ def _get_result_edge_keys_by_qg_key(result: Result) -> Dict[str, Set[str]]:
     return {qedge_key: {edge_binding.id for edge_binding in result.analyses[0].edge_bindings[qedge_key]} for qedge_key in result.analyses[0].edge_bindings}
 
 
-def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[ARAXResponse, Message]:
+def _do_arax_query(actions_list: List[str], debug=False, enforce_connected=True) -> Tuple[ARAXResponse, Message]:
     query = {"operations": {"actions": actions_list}}
     araxq = ARAXQuery()
     response = araxq.query(query)
@@ -131,6 +131,27 @@ def _do_arax_query(actions_list: List[str], debug=False) -> Tuple[ARAXResponse, 
         print(response.show(level=response.DEBUG))
     elif response.status != 'OK':
         print(response.show(level=response.DEBUG))
+
+    # Ensure results are connected
+    if enforce_connected:
+        for result in message.results:
+            # First grab all edge keys used in this result
+            all_edge_keys_in_result = {edge_binding.id
+                                       for qedge_key, edge_bindings in result.analyses[0].edge_bindings.items()
+                                       for edge_binding in edge_bindings}
+            if all_edge_keys_in_result:  # Skip checking for single-node queries
+                # Then figure out all nodes that those edges link to
+                all_subjects = {message.knowledge_graph.edges[edge_key].object for edge_key in all_edge_keys_in_result}
+                all_objects = {message.knowledge_graph.edges[edge_key].subject for edge_key in all_edge_keys_in_result}
+                all_nodes_used_by_edges = all_subjects.union(all_objects)
+                # Then ensure that every node in the result is used by an edge (catches subclass nodes that only point
+                #  to parent since there is no subclass qedge in the final results) and every node used by an edge has
+                #  a node binding
+                all_node_keys_in_result = {node_binding.id
+                                           for qnode_key, node_bindings in result.node_bindings.items()
+                                           for node_binding in node_bindings}
+                assert all_node_keys_in_result == all_nodes_used_by_edges
+
     return response, message
 
 
@@ -1165,7 +1186,7 @@ def test_issue1119_a():
     # Run a query to identify chemical substances that are both indicated for and contraindicated for our disease
     actions = [
         "add_qnode(name=DOID:3312, key=n00, is_set=True)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+        "add_qnode(categories=biolink:Drug, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes, key=e01)",
         "expand(kp=infores:rtx-kg2)",
@@ -1175,12 +1196,14 @@ def test_issue1119_a():
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
     assert message.results
-    contraindicated_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in message.knowledge_graph.edges.values()}
+    # NOTE: Compare *edges* instead of n01 drugs because 'exclude=True' doesn't chain subclass relationships
+    contraindicated_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in message.knowledge_graph.edges.values()
+                             if "e01" in edge.qedge_keys}
 
     # Verify those chemical substances aren't returned when we make the contraindicated_for edge kryptonite
     actions = [
         "add_qnode(name=DOID:3312, key=n00, is_set=True)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+        "add_qnode(categories=biolink:Drug, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes, exclude=true, key=ex0)",
         "expand(kp=infores:rtx-kg2)",
@@ -1190,9 +1213,10 @@ def test_issue1119_a():
     kryptonite_response, kryptonite_message = _do_arax_query(actions)
     assert kryptonite_response.status == 'OK'
     assert kryptonite_message.results
-    all_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in kryptonite_message.knowledge_graph.edges.values()}
-    assert not contraindicated_pairs.intersection(all_pairs)
+    treats_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in kryptonite_message.knowledge_graph.edges.values()
+                    if "e00" in edge.qedge_keys}
 
+    assert not contraindicated_pairs.intersection(treats_pairs)
 
 @pytest.mark.slow
 def test_issue1119_b():
@@ -1256,16 +1280,14 @@ def test_issue1119_c():
     actions = [
         "add_qnode(key=n00, ids=MONDO:0005015)",
         f"add_qnode(key=n01, ids=[{', '.join(n01_node_keys_original)}])",
-        "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:predisposes)",
+        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:predisposes)",
         "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
-        # Note: skipping resultify here due to issue #1152
     ]
     response, message_option_edge_only = _do_arax_query(actions)
     assert response.status == 'OK'
-    # I'd think these two numbers should be exactly the same, but they're off by one... maybe due to subclassing?
-    assert abs(len(message_option_edge_only.results) - len(results_with_optional_edge)) < 5
+    assert len(message_option_edge_only.results) == len(results_with_optional_edge)
 
 
 @pytest.mark.slow
