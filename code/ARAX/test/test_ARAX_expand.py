@@ -477,7 +477,7 @@ def test_exclude_edge_parallel():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    contraindicated_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in edges_by_qg_id["e00"].values()}
+    contraindicated_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in edges_by_qg_id["e01"].values()}
     assert contraindicated_pairs
 
     # Then exclude the contraindicated edge and make sure the appropriate nodes are blown away
