@@ -426,12 +426,17 @@ def _get_qg_without_kryptonite_portions(qg: QueryGraph, log: ARAXResponse) -> Qu
     """
     kryptonite_qedge_keys = {qedge_key for qedge_key, qedge in qg.edges.items() if qedge.exclude}
     normal_qedge_keys = set(qg.edges).difference(kryptonite_qedge_keys)
-    qnode_keys_used_by_normal_qedges = {qnode_key for qedge_key in normal_qedge_keys for qnode_key in
-                                        [qg.edges[qedge_key].subject, qg.edges[qedge_key].object]}
-    log.debug(f"Non-kryptonite qedges are {normal_qedge_keys}, non-kryptonite qnodes are "
-              f"{qnode_keys_used_by_normal_qedges}; will resultify only this sub-QG")
-    return QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items() if qnode_key in qnode_keys_used_by_normal_qedges},
-                      edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items() if qedge_key in normal_qedge_keys})
+    if normal_qedge_keys:
+        filtered_qedge_keys = normal_qedge_keys
+        filtered_qnode_keys = {qnode_key for qedge_key in normal_qedge_keys for qnode_key in
+                               [qg.edges[qedge_key].subject, qg.edges[qedge_key].object]}
+    else:
+        # Handle edgeless queries
+        filtered_qedge_keys = set()
+        filtered_qnode_keys = {qnode_key for qnode_key in qg.nodes}
+    log.debug(f"Non-kryptonite qedges are {filtered_qedge_keys}, non-kryptonite qnodes are {filtered_qnode_keys}.")
+    return QueryGraph(nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items() if qnode_key in filtered_qnode_keys},
+                      edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items() if qedge_key in filtered_qedge_keys})
 
 
 def _filter_to_expanded_portion(qg: QueryGraph, log: ARAXResponse) -> QueryGraph:
@@ -789,16 +794,20 @@ def _get_result_graph_counts(result_graph):
 
 
 def _qg_is_disconnected(qg: QueryGraph) -> bool:
-    qnode_keys_examined = {next(qnode_key for qnode_key in qg.nodes)} if qg.nodes else set()  # Start with any qnode
-    qnode_keys_remaining = set(qg.nodes).difference(qnode_keys_examined)
-    # Repeatedly look for a qnode connected to at least one of the already examined qnodes
-    connected_qnode_key, _ = _find_qnode_connected_to_sub_qg(qnode_keys_examined, qnode_keys_remaining, qg)
-    while connected_qnode_key and qnode_keys_remaining:
-        qnode_keys_remaining.remove(connected_qnode_key)
-        qnode_keys_examined.add(connected_qnode_key)
+    if qg.edges:
+        qnode_keys_examined = {next(qnode_key for qnode_key in qg.nodes)} if qg.nodes else set()  # Start with any qnode
+        qnode_keys_remaining = set(qg.nodes).difference(qnode_keys_examined)
+        # Repeatedly look for a qnode connected to at least one of the already examined qnodes
         connected_qnode_key, _ = _find_qnode_connected_to_sub_qg(qnode_keys_examined, qnode_keys_remaining, qg)
-    # The QG must be disconnected if there are qnodes remaining that are not connected to any of our examined ones
-    return True if not connected_qnode_key and qnode_keys_remaining else False
+        while connected_qnode_key and qnode_keys_remaining:
+            qnode_keys_remaining.remove(connected_qnode_key)
+            qnode_keys_examined.add(connected_qnode_key)
+            connected_qnode_key, _ = _find_qnode_connected_to_sub_qg(qnode_keys_examined, qnode_keys_remaining, qg)
+        # The QG must be disconnected if there are qnodes remaining that are not connected to any of our examined ones
+        return True if not connected_qnode_key and qnode_keys_remaining else False
+    else:
+        # Allow edgeless multi-node queries
+        return False
 
 
 def _merge_optional_into_required_result_graph(optional_result_graph: Dict[str, Dict[str, Set[str]]],
