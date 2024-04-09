@@ -667,11 +667,29 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
     prune_message.query_graph = qg
     prune_message.knowledge_graph = regular_format_kg
     if overlay_fet:
-        log.debug(f"Using FET to assess quality of intermediate answers in Expand")
+        log.debug(f"Determining whether we can use FET to assess quality of intermediate answers in Expand")
+        # Figure out which qnodes to overlay FET edges between
         connected_qedges = [qedge for qedge in qg.edges.values()
                             if qedge.subject == qnode_key_to_prune or qedge.object == qnode_key_to_prune]
-        qnode_pairs_to_overlay = {(qedge.subject if qedge.subject != qnode_key_to_prune else qedge.object, qnode_key_to_prune)
-                                  for qedge in connected_qedges}
+        qnode_pairs_to_overlay = set()
+        for connected_qedge in connected_qedges:
+            if connected_qedge.subject != connected_qedge.object:  # Don't overlay self-edges
+                subject_qnode = qg.nodes[connected_qedge.subject]
+                object_qnode = qg.nodes[connected_qedge.object]
+                # NOTE: Skip using FET for an optional qnode, because a qnode can only belong to ONE option
+                #       group, yet overlaying FET would introduce it to another (FET-specific) option group!
+                #       (breaks resultify) #2166
+                if not subject_qnode.option_group_id and not object_qnode.option_group_id:
+                    if connected_qedge.subject != qnode_key_to_prune:
+                        qnode_pairs_to_overlay.add((connected_qedge.subject, qnode_key_to_prune))
+                    else:
+                        qnode_pairs_to_overlay.add((qnode_key_to_prune, connected_qedge.object))
+        if qnode_pairs_to_overlay:
+            log.debug(f"Qnode pairs to overlay FET between are: {qnode_pairs_to_overlay}")
+        else:
+            log.debug(f"No suitable qnode pairs to overlay FET between were detected. Continuing pruning without FET.")
+
+        # Overlay FET between each of the selected qnode pairs
         for qnode_pair in qnode_pairs_to_overlay:
             pair_string_id = f"{qnode_pair[0]}-->{qnode_pair[1]}"
             log.debug(f"Overlaying FET for {pair_string_id} (from Expand)")
