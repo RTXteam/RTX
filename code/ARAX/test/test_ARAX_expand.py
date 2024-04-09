@@ -1057,18 +1057,13 @@ def test_fda_approved_query_workflow_a9_egfr_advanced():
           "subject": "n0",
           "object": "n1",
           "predicates": [
-            "biolink:decreases_abundance_of",
-            "biolink:decreases_activity_of",
-            "biolink:decreases_expression_of",
-            "biolink:decreases_synthesis_of",
-            "biolink:increases_degradation_of",
-            "biolink:disrupts",
-            "biolink:entity_negatively_regulates_entity"
+            "biolink:related_to"
           ]
         }
       }
     }
-    nodes_by_qg_id_unconstrained, edges_by_qg_id_unconstrained = _run_query_and_do_standard_testing(json_query=query_unconstrained)
+    nodes_by_qg_id_unconstrained, edges_by_qg_id_unconstrained = _run_query_and_do_standard_testing(json_query=query_unconstrained, timeout=30)
+    assert nodes_by_qg_id_unconstrained.get("n1")
 
     query_constrained = query_unconstrained
     fda_approved_constraint = {
@@ -1078,7 +1073,7 @@ def test_fda_approved_query_workflow_a9_egfr_advanced():
         "value": "regular approval"
     }
     query_constrained["nodes"]["n0"]["constraints"] = [fda_approved_constraint]
-    nodes_by_qg_id_constrained, edges_by_qg_id_constrained = _run_query_and_do_standard_testing(json_query=query_constrained)
+    nodes_by_qg_id_constrained, edges_by_qg_id_constrained = _run_query_and_do_standard_testing(json_query=query_constrained, timeout=30)
 
     assert len(nodes_by_qg_id_constrained["n0"]) < len(nodes_by_qg_id_unconstrained["n0"])
 
