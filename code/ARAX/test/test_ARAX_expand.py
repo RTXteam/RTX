@@ -720,11 +720,11 @@ def test_domain_range_exclusion():
 @pytest.mark.slow
 def test_issue_1373_pinned_curies():
     actions_list = [
-        "add_qnode(ids=chembl.compound:CHEMBL2108129, key=n00)",
+        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL2108129, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:physically_interacts_with)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:related_to)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:related_to)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
