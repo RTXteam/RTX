@@ -717,7 +717,7 @@ def create_kg2c_files(is_test=False):
                              f"TSVs; this means I can't verify that the KG2pre version matches what we want, "
                              f"so I'll halt processing")
         else:
-            kg2pre_version = kg2pre_build_node["name"].replace("RTX KG", "")
+            kg2pre_version = kg2pre_build_node["name"].replace("RTX-KG", "")
             if kg2pre_version != kg2_version:
                 raise ValueError(f"The version on the KG2pre build node in the ingested KG2pre TSVs is "
                                  f"{kg2pre_version}, but the KG2c version you want to build is {kg2_version}. "
