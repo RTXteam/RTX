@@ -658,19 +658,29 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                                                 if qedge.option_group_id == option_group_id or not qedge.option_group_id})
             log.debug(f"For option group {option_group_id}, qnodes are {set(option_group_qg.nodes)}, "
                       f"qedges are {set(option_group_qg.edges)}")
-            qg_is_disconnected = _qg_is_disconnected(option_group_qg)
-            if qg_is_disconnected:
-                log.error(f"Required + option group {option_group_id} portion of the QG is disconnected. "
-                          f"This isn't allowed! 'Required'/group {option_group_id} qnode IDs are: "
-                          f"{[qnode_key for qnode_key in option_group_qg.nodes]}", error_code="DisconnectedQG")
-                return []
-            log.info(f"Creating result graphs for option group {option_group_id}")
-            result_graphs_for_option_group = _create_result_graphs(option_group_qg, kg_node_keys_by_qg_key_collapsed,
-                                                                   edge_keys_by_subject_collapsed, edge_keys_by_object_collapsed,
-                                                                   edge_keys_by_node_pair_collapsed,
-                                                                   ignore_edge_direction, log,
-                                                                   base_result_graphs=copy.deepcopy(result_graphs_required))
-            log.debug(f"Created {len(result_graphs_for_option_group)} option group {option_group_id} result graphs")
+            # Check whether this option group has been fulfilled at all
+            unfulfilled_qnodes = {qnode_key for qnode_key in option_group_qg.nodes
+                                  if not kg_node_keys_by_qg_key_collapsed.get(qnode_key)}
+            unfulfilled_qedges = {qedge_key for qedge_key in option_group_qg.edges
+                                  if not kg_edge_keys_by_qg_key.get(qedge_key)}
+            if unfulfilled_qnodes or unfulfilled_qedges:
+                log.info(f"No results found for option group {option_group_id}. Unfulfilled qnode(s): "
+                         f"{unfulfilled_qnodes}. Unfulfilled qedge(s): {unfulfilled_qedges}")
+                result_graphs_for_option_group = []
+            else:
+                qg_is_disconnected = _qg_is_disconnected(option_group_qg)
+                if qg_is_disconnected:
+                    log.error(f"Required + option group {option_group_id} portion of the QG is disconnected. "
+                              f"This isn't allowed! 'Required'/group {option_group_id} qnode IDs are: "
+                              f"{[qnode_key for qnode_key in option_group_qg.nodes]}", error_code="DisconnectedQG")
+                    return []
+                log.info(f"Creating result graphs for option group {option_group_id}")
+                result_graphs_for_option_group = _create_result_graphs(option_group_qg, kg_node_keys_by_qg_key_collapsed,
+                                                                       edge_keys_by_subject_collapsed, edge_keys_by_object_collapsed,
+                                                                       edge_keys_by_node_pair_collapsed,
+                                                                       ignore_edge_direction, log,
+                                                                       base_result_graphs=copy.deepcopy(result_graphs_required))
+                log.debug(f"Created {len(result_graphs_for_option_group)} option group {option_group_id} result graphs")
             option_group_results_dict[option_group_id] = result_graphs_for_option_group
 
         # Organize our results for the 'required' portion of the QG by the IDs of their is_set=False nodes
