@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
     
   push:
-    branches: [ master, production, itrb-test ]
+    branches: [ master, production, itrb-test, dev ]
     paths:
       - 'code/**'
       - 'DockerBuild/**'
       - 'requirements.txt'
       - '.github/workflows/pytest.yml'
   pull_request:
-    branches: [ master, production, itrb-test ]
+    branches: [ master, production, itrb-test, dev ]
     paths:
       - 'code/**'
       - 'DockerBuild/**'
