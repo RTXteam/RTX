@@ -477,7 +477,7 @@ def test_exclude_edge_parallel():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    contraindicated_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in edges_by_qg_id["e00"].values()}
+    contraindicated_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in edges_by_qg_id["e01"].values()}
     assert contraindicated_pairs
 
     # Then exclude the contraindicated edge and make sure the appropriate nodes are blown away
@@ -498,17 +498,17 @@ def test_exclude_edge_parallel():
 
 @pytest.mark.slow
 def test_exclude_edge_perpendicular():
-    exclude_curies = ", ".join(['CHEMBL.COMPOUND:CHEMBL190', 'CHEMBL.COMPOUND:CHEMBL775'])
+    exclude_curies = ", ".join(['GO:0006915'])
     # First run a query without any kryptonite edges to get a baseline
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
         f"add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:causes)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:affects)",
         # 'Exclude' portion (just optional for now to get a baseline)
-        f"add_qnode(categories=biolink:ChemicalEntity, key=nx0, option_group_id=1, ids=[{exclude_curies}])",
-        "add_qedge(subject=n01, object=nx0, key=ex0, option_group_id=1, predicates=biolink:entity_negatively_regulates_entity)",
+        f"add_qnode(categories=biolink:Pathway, key=nx0, option_group_id=1, ids=[{exclude_curies}])",
+        "add_qedge(subject=n01, object=nx0, key=ex0, option_group_id=1, predicates=biolink:related_to)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
@@ -516,6 +516,7 @@ def test_exclude_edge_perpendicular():
     nodes_used_by_kryptonite_edge = eu.get_node_keys_used_by_edges(edges_by_qg_id["ex0"])
     n01_nodes_to_blow_away = set(nodes_by_qg_id["n01"]).intersection(nodes_used_by_kryptonite_edge)
     assert n01_nodes_to_blow_away
+    assert len(n01_nodes_to_blow_away) < len(nodes_by_qg_id["n01"])
 
     # Then use a kryptonite edge and make sure the appropriate nodes are blown away
     actions_list = [
@@ -523,10 +524,10 @@ def test_exclude_edge_perpendicular():
         "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
         f"add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:causes)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:entity_positively_regulates_entity)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:affects)",
         # 'Exclude' portion
-        f"add_qnode(categories=biolink:ChemicalEntity, key=nx0, ids=[{exclude_curies}])",
-        "add_qedge(subject=n01, object=nx0, key=ex0, exclude=True, predicates=biolink:entity_negatively_regulates_entity)",
+        f"add_qnode(categories=biolink:Pathway, key=nx0, ids=[{exclude_curies}])",
+        "add_qedge(subject=n01, object=nx0, key=ex0, exclude=True, predicates=biolink:related_to)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
@@ -719,11 +720,11 @@ def test_domain_range_exclusion():
 @pytest.mark.slow
 def test_issue_1373_pinned_curies():
     actions_list = [
-        "add_qnode(ids=chembl.compound:CHEMBL2108129, key=n00)",
+        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL2108129, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:physically_interacts_with)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
+        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:related_to)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:related_to)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
@@ -1056,18 +1057,13 @@ def test_fda_approved_query_workflow_a9_egfr_advanced():
           "subject": "n0",
           "object": "n1",
           "predicates": [
-            "biolink:decreases_abundance_of",
-            "biolink:decreases_activity_of",
-            "biolink:decreases_expression_of",
-            "biolink:decreases_synthesis_of",
-            "biolink:increases_degradation_of",
-            "biolink:disrupts",
-            "biolink:entity_negatively_regulates_entity"
+            "biolink:related_to"
           ]
         }
       }
     }
-    nodes_by_qg_id_unconstrained, edges_by_qg_id_unconstrained = _run_query_and_do_standard_testing(json_query=query_unconstrained)
+    nodes_by_qg_id_unconstrained, edges_by_qg_id_unconstrained = _run_query_and_do_standard_testing(json_query=query_unconstrained, timeout=30)
+    assert nodes_by_qg_id_unconstrained.get("n1")
 
     query_constrained = query_unconstrained
     fda_approved_constraint = {
@@ -1077,7 +1073,7 @@ def test_fda_approved_query_workflow_a9_egfr_advanced():
         "value": "regular approval"
     }
     query_constrained["nodes"]["n0"]["constraints"] = [fda_approved_constraint]
-    nodes_by_qg_id_constrained, edges_by_qg_id_constrained = _run_query_and_do_standard_testing(json_query=query_constrained)
+    nodes_by_qg_id_constrained, edges_by_qg_id_constrained = _run_query_and_do_standard_testing(json_query=query_constrained, timeout=30)
 
     assert len(nodes_by_qg_id_constrained["n0"]) < len(nodes_by_qg_id_unconstrained["n0"])
 
