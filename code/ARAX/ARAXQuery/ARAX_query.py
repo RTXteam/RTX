@@ -1830,6 +1830,17 @@ def main():
             "scoreless_resultify(ignore_edge_direction=true)",
             "rank_results()"
         ]}}
+    elif params.example_number == 2262:
+         query = {"operations": {"actions": [
+                "create_message",
+                "add_qnode(name=DOID:1227, key=n00)",
+                "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+                "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
+                "expand(edge_key=e00, kp=infores:rtx-kg2)",
+                "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=t, qedge_keys=[e00])",
+                "resultify(ignore_edge_direction=true)",
+                "return(message=true, store=false)"
+            ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
