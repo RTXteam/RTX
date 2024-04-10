@@ -1,10 +1,10 @@
 {
    "database_downloads": {
-      "node_synonymizer": "/translator/data/orangeboard/databases/KG2.8.4/node_synonymizer_v1.0_KG2.8.4.sqlite",
-      "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.8.4/kg2c_v1.0_KG2.8.4.sqlite",
-      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.8.4/meta_kg_v1.0_KG2.8.4c.json",
-      "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.8.4/fda_approved_drugs_v1.0_KG2.8.4c.pickle",
-      "autocomplete": "/translator/data/orangeboard/databases/KG2.8.4/autocomplete_v1.0_KG2.8.4.sqlite",
+      "node_synonymizer": "/translator/data/orangeboard/databases/KG2.9.0/node_synonymizer_v1.0_KG2.9.0.sqlite",
+      "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.9.0/kg2c_v1.1_KG2.9.0.sqlite",
+      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.9.0/meta_kg_v1.0_KG2.9.0c.json",
+      "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.9.0/fda_approved_drugs_v1.0_KG2.9.0c.pickle",
+      "autocomplete": "/translator/data/orangeboard/databases/KG2.9.0/autocomplete_v1.0_KG2.9.0.sqlite",
       "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.8.4/curie_to_pmids_v1.0_KG2.8.4.sqlite",
       "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.8.4/ExplainableDTD_v1.0_KG2.8.4.db",
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
@@ -18,7 +18,7 @@
       "prod": "https://kg2cploverdb.transltr.io"
    },
    "neo4j": {
-      "KG2pre": "kg2endpoint-kg2-8-4.rtx.ai",
-      "KG2c": "kg2-8-4c.rtx.ai"
+      "KG2pre": "kg2endpoint-kg2-9-0.rtx.ai",
+      "KG2c": "kg2-9-0c.rtx.ai"
    }
 }
