@@ -6497,8 +6497,8 @@ function retrieveSysTestResults() {
 }
 
 
-function generateSmokeTestResults(smoketestdata) {
-    if (smoketestdata['data'] == null) {
+function generateSmokeTestResults(smoketestfields) {
+    if (smoketestfields['data'] == null) {
 	var h2 = document.createElement("h2");
         h2.appendChild(document.createTextNode("-- No Data --"));
 	return h2;
@@ -6506,31 +6506,25 @@ function generateSmokeTestResults(smoketestdata) {
 
     var tdiv = document.createElement("div");
 
-    var all_agents = {};
-    for (var queryname in smoketestdata['data']) {
-	for (var actor in smoketestdata['data'][queryname]['actors'])
-	    all_agents[actor] = 1;
-    }
-
     var checknames = false;
-    if (smoketestdata['parameters']) {
-	smoketestdata['parameters']['Environment'] = smoketestdata['environment'];
+    if (smoketestfields['parameters']) {
+	smoketestfields['parameters']['Environment'] = smoketestfields['environment'];
 	tdiv.appendChild(document.createTextNode("Parameters::"));
-	for (var param in smoketestdata['parameters']) {
+	for (var param in smoketestfields['parameters']) {
 	    var span = document.createElement("span");
 	    span.style.fontWeight = "bold";
 	    span.style.marginLeft = '10px';
 	    span.appendChild(document.createTextNode(param+": "));
 	    tdiv.appendChild(span);
 	    if (param.includes("curie")) {
-		if (!Array.isArray(smoketestdata['parameters'][param]))
-		    smoketestdata['parameters'][param] = [ smoketestdata['parameters'][param] ];
+		if (!Array.isArray(smoketestfields['parameters'][param]))
+		    smoketestfields['parameters'][param] = [ smoketestfields['parameters'][param] ];
 
 		var comma = '';
-		for (var mol of smoketestdata['parameters'][param]) {
+		for (var mol of smoketestfields['parameters'][param]) {
 		    tdiv.appendChild(document.createTextNode(comma+mol+" ("));
 		    span = document.createElement("span");
-		    span.id = queryname+"_entityname_"+mol;
+		    span.id = smoketestfields['pk']+"_entityname_"+mol;
 		    span.title = mol;
 		    if (entities[mol])
 			span.innerText = entities[mol].name;
@@ -6546,70 +6540,32 @@ function generateSmokeTestResults(smoketestdata) {
 		}
 	    }
 	    else
-		tdiv.appendChild(document.createTextNode(smoketestdata['parameters'][param]));
+		tdiv.appendChild(document.createTextNode(smoketestfields['parameters'][param]));
 
 	}
 	tdiv.appendChild(document.createElement("br"));
 	tdiv.appendChild(document.createElement("br"));
     }
 
-    var table = document.createElement("table");
-    table.className = 'sumtab';
 
-    var tr = document.createElement("tr");
-    var td = document.createElement("th");
-    td.appendChild(document.createTextNode('Query'));
-    tr.appendChild(td);
-    for (var agent of Object.keys(all_agents).sort()) {
-	td = document.createElement("th");
-	td.style.minWidth = '80px';
-        td.appendChild(document.createTextNode(agent.replace(/ara-|kp-/,"")));
-	tr.appendChild(td);
-    }
-    table.appendChild(tr);
-
-    for (var queryname in smoketestdata['data']) {
-	tr = document.createElement("tr");
-	td = document.createElement("td");
-
-	var link = document.createElement("a");
-	link.title = 'view this response';
-        link.style.fontFamily = "monospace";
-	link.style.textTransform = 'initial';
-	link.style.cursor = "pointer";
-	link.setAttribute('onclick', 'pasteId("'+smoketestdata['data'][queryname]['parent_pk']+'");sendId(false);selectInput("qid");');
-	link.appendChild(document.createTextNode(queryname));
-	td.appendChild(link);
-	tr.appendChild(td);
-
-	for (var agent of Object.keys(all_agents).sort()) {
-	    td = document.createElement("td");
-	    td.style.borderLeft = "1px solid black";
-	    td.style.textAlign = 'right';
-
-	    for (var ara in smoketestdata['data'][queryname]['actors']) {
-		if (ara == agent) {
-		    var obj = smoketestdata['data'][queryname]['actors'][ara];
-		    var pcl = obj['drug_report'] == "pass" ? "p9" : "p1";
-
-		    var span = document.createElement("span");
-		    span.className = pcl+' qprob cytograph_controls';
-		    span.appendChild(document.createTextNode(Number(obj['score']).toFixed(2)));
-		    td.appendChild(span);
-		    td.title = obj['drug_report'];
-		}
-	    }
-	    tr.appendChild(td);
+    if (smoketestfields['data']['analysis']) {
+	for (var querytest in smoketestfields['data']['analysis']) {
+            var table = renderSmokeTestTable(smoketestfields['data']['analysis'][querytest],'Test: '+querytest);
+	    tdiv.appendChild(table);
+	    tdiv.appendChild(document.createElement("br"));
+	    tdiv.appendChild(document.createElement("br"));
 	}
-	table.appendChild(tr);
+    }
+    else {
+	var table = renderSmokeTestTable(smoketestfields['data'],'QUERY');
+	tdiv.appendChild(table);
+	tdiv.appendChild(document.createElement("br"));
+	tdiv.appendChild(document.createElement("br"));
     }
 
     if (checknames)
 	check_entities_batch(99);
 
-    tdiv.appendChild(table);
-    tdiv.appendChild(document.createElement("br"));
-    tdiv.appendChild(document.createElement("br"));
     tdiv.appendChild(document.createTextNode("Legend:"));
     var span = document.createElement("span");
     span.className = 'p9 qprob cytograph_controls';
@@ -6626,6 +6582,74 @@ function generateSmokeTestResults(smoketestdata) {
 
     return tdiv;
 }
+
+
+function renderSmokeTestTable(smoketestdata,qtest) {
+    var all_agents = {};
+    for (var queryname in smoketestdata) {
+	for (var actor in smoketestdata[queryname]['actors'])
+	    all_agents[actor] = 1;
+    }
+
+    var table = document.createElement("table");
+    table.className = 'sumtab';
+
+    var tr = document.createElement("tr");
+    var td = document.createElement("th");
+    td.style.textTransform = 'initial';
+    td.appendChild(document.createTextNode(qtest));
+    tr.appendChild(td);
+    for (var agent of Object.keys(all_agents).sort()) {
+	td = document.createElement("th");
+	td.style.minWidth = '80px';
+        td.appendChild(document.createTextNode(agent.replace(/ara-|kp-/,"")));
+	tr.appendChild(td);
+    }
+    table.appendChild(tr);
+
+    for (var queryname in smoketestdata) {
+	tr = document.createElement("tr");
+	td = document.createElement("td");
+
+	if (smoketestdata[queryname]['parent_pk']) {
+	    var link = document.createElement("a");
+	    link.title = 'view this response';
+            link.style.fontFamily = "monospace";
+	    link.style.textTransform = 'initial';
+	    link.style.cursor = "pointer";
+	    link.setAttribute('onclick', 'pasteId("'+smoketestdata[queryname]['parent_pk']+'");sendId(false);selectInput("qid");');
+	    link.appendChild(document.createTextNode(queryname));
+	    td.appendChild(link);
+	}
+	else
+	    td.appendChild(document.createTextNode(queryname));
+	tr.appendChild(td);
+
+	for (var agent of Object.keys(all_agents).sort()) {
+	    td = document.createElement("td");
+	    td.style.borderLeft = "1px solid black";
+	    td.style.textAlign = 'right';
+
+	    for (var ara in smoketestdata[queryname]['actors']) {
+		if (ara == agent) {
+		    var obj = smoketestdata[queryname]['actors'][ara];
+		    var pcl = obj['drug_report'] == "pass" ? "p9" : "p1";
+
+		    var span = document.createElement("span");
+		    span.className = pcl+' qprob cytograph_controls';
+		    span.appendChild(document.createTextNode(Number(obj['score']).toFixed(2)));
+		    td.appendChild(span);
+		    td.title = obj['drug_report'];
+		}
+	    }
+	    tr.appendChild(td);
+	}
+	table.appendChild(tr);
+    }
+
+    return table;
+}
+
 
 function generateLoadTimeTestResults(loadtestdata) {
     if (loadtestdata['data'] == null) {
