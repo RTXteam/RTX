@@ -9,7 +9,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: ARAX Translator Reasoner - TRAPI 1.4.0
-  version: 1.4.3
+  version: 1.4.4
   x-translator:
     component: ARA
     team:
