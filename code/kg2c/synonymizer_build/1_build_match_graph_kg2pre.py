@@ -62,7 +62,7 @@ def create_match_nodes_kg2pre(kg2pre_version: str) -> Set[str]:
     kg2pre_build_node_id = "RTX:KG2"
     if kg2pre_build_node_id in nodes_df.index:
         kg2pre_build_node = nodes_df.loc[kg2pre_build_node_id]
-        kg2pre_build_node_name_chunks = kg2pre_build_node["name"].split("-")  # Note: Using '.name' accessor here returns node ID for some reason...
+        kg2pre_build_node_name_chunks = kg2pre_build_node["name"].split(" ")  # Note: Using '.name' accessor here returns node ID for some reason...
         kg2pre_build_node_version = kg2pre_build_node_name_chunks[1].replace("KG", "")
         if kg2pre_build_node_version != kg2pre_version:
             raise ValueError(f"We appear to have the wrong KG2pre TSVs! Requested version was {kg2pre_version}, but the"

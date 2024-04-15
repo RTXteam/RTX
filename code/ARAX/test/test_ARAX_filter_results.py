@@ -48,7 +48,7 @@ def test_command_definitions():
 def test_n_results():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=UMLS:C0040250, key=n00)",
+            "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=infores:rtx-kg2)",
@@ -122,7 +122,7 @@ def test_prune():
 def test_warning():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=UMLS:C0040250, key=n00)",
+            "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=infores:rtx-kg2)",
@@ -160,7 +160,7 @@ def test_sort_by_edge_attribute():
 def test_sort_by_node_attribute():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=UMLS:C0040250, key=n00)",
+            "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=infores:rtx-kg2)",
@@ -177,7 +177,7 @@ def test_sort_by_node_attribute():
 def test_sort_by_score():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=UMLS:C0040250, key=n00)",
+            "add_qnode(name=DOID:4337, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=infores:rtx-kg2)",

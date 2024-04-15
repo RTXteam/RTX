@@ -1,6 +1,6 @@
 {
-  "kg2pre_version": "2.9.0",
-  "biolink_version": "4.0.0",
+  "kg2pre_version": "2.8.4",
+  "biolink_version": "3.1.2",
   "upload_to_arax_databases.rtx.ai": true,
   "synonymizer": {
     "build": true,

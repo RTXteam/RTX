@@ -371,8 +371,7 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     array_edge_columns = _get_array_properties("edge")
     node_labels_property = _get_node_labels_property()
     for canonicalized_node in canonicalized_nodes_dict.values():
-        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node[node_labels_property], include_mixins=True)[:20] #Limiting to 20 labels due to neo4j 3.5.13 limitations
-
+        canonicalized_node['node_labels'] = bh.get_ancestors(canonicalized_node[node_labels_property], include_mixins=True)
         for list_node_property in array_node_columns:
             canonicalized_node[list_node_property] = _convert_list_to_string_encoded_format(canonicalized_node[list_node_property])
     for canonicalized_edge in canonicalized_edges_dict.values():
@@ -718,7 +717,7 @@ def create_kg2c_files(is_test=False):
                              f"TSVs; this means I can't verify that the KG2pre version matches what we want, "
                              f"so I'll halt processing")
         else:
-            kg2pre_version = kg2pre_build_node["name"].replace("RTX-KG", "")
+            kg2pre_version = kg2pre_build_node["name"].replace("RTX KG", "")
             if kg2pre_version != kg2_version:
                 raise ValueError(f"The version on the KG2pre build node in the ingested KG2pre TSVs is "
                                  f"{kg2pre_version}, but the KG2c version you want to build is {kg2_version}. "
