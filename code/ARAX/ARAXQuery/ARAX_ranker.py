@@ -168,6 +168,33 @@ def _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge: Dict[str, 
     return nx_graph_scorer(result_graphs_nx)
 
 
+def _break_ties_and_preserve_order(scores):
+    adjusted_scores = scores.copy()
+    n = len(scores)
+    # if there are more than 1,000 scores, apply the fix to the first 1000 scores and ignore the rest
+    if n > 1000:
+        n = 1000
+
+    for i in range(n):
+        if i > 0 and adjusted_scores[i] >= adjusted_scores[i - 1]:
+            # Calculate the decrement such that it makes this score slightly less than the previous,
+            # maintaining the descending order.
+            decrement = round(adjusted_scores[i - 1] - adjusted_scores[i], 3) - 0.001
+            adjusted_scores[i] = adjusted_scores[i - 1] - max(decrement, 0.001)
+
+        # Ensure the adjusted score doesn't become lower than the next score
+        if i < n - 1 and adjusted_scores[i] <= adjusted_scores[i + 1]:
+            # Adjust the next score to be slightly less than the current score
+            increment = round(adjusted_scores[i] - adjusted_scores[i + 1], 3) - 0.001
+            adjusted_scores[i + 1] = adjusted_scores[i] - max(increment, 0.001)
+
+    # round all scores to 3 decimal places
+    adjusted_scores = [round(score, 3) for score in adjusted_scores]
+    # make sure no scores are below 0
+    adjusted_scores = [max(score, 0) for score in adjusted_scores]
+    return adjusted_scores
+
+
 class ARAXRanker:
 
     # #### Constructor
@@ -657,10 +684,11 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                                   [_score_networkx_graphs_by_max_flow,
                                    _score_networkx_graphs_by_longest_path,
                                    _score_networkx_graphs_by_frobenius_norm])))
-        #print(ranks_list)
-        #print(float(len(ranks_list)))
+
+
         result_scores = sum(ranks_list)/float(len(ranks_list))
         #print(result_scores)
+
 
         # Replace Inferred Results Score with Probability score calculated by xDTD model
         inferred_qedge_keys = [qedge_key for qedge_key, qedge in message.query_graph.edges.items() 
@@ -699,6 +727,13 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         # Re-sort the final results
         message.results.sort(key=lambda result: result.analyses[0].score, reverse=True)
+        # break ties and preserve order, round to 3 digits and make sure none are < 0
+        scores_with_ties = [result.analyses[0].score for result in message.results]
+        scores_without_ties = _break_ties_and_preserve_order(scores_with_ties)
+        # reinsert these scores into the results
+        for result, score in zip(message.results, scores_without_ties):
+            result.analyses[0].score = score
+            result.row_data[0] = score
         response.debug("Results have been ranked and sorted")
 
 

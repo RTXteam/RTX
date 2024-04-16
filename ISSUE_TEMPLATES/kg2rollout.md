@@ -78,10 +78,8 @@ Host arax.ncats.io
 The following databases should be rebuilt and copies of them should be put in `/home/rtxconfig/KG2.X.Y` on `arax-databases.rtx.ai`. Please use this kind of naming format: `mydatabase_v1.0_KG2.X.Y.sqlite`.
 
 - [ ] NGD database (how-to is [here](https://github.com/RTXteam/RTX/blob/master/code/ARAX/ARAXQuery/Overlay/ngd/README.md))
-- [ ] refreshed DTD @chunyuma
-- [ ] DTD model @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
-- [ ] DTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
-- [ ] XDTD database @chunyuma
+- [ ] refreshed XDTD database @chunyuma 
+- [ ] XDTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
 
 **NOTE**: As databases are rebuilt, `RTX/code/config_dbs.json` will need to be updated to point to their new paths! Push these changes to the branch for this KG2 version, unless the rollout of this KG2 version has already occurred, in which case you should push to `master` (but first follow the steps described [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#config_dbsjson)). 
 
@@ -153,7 +151,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `ssh ubuntu@cicd.rtx.ai`
   - [ ] `cd RTX`
   - [ ] `git pull origin master`
-  - [ ] If there have been changes to `requirements.txt`, make sure to do `~/venv3.9/bin/pip3 install -r code/requirements.txt`
+  - [ ] If there have been changes to `requirements.txt`, make sure to do `~/venv3.9/bin/pip3 install -r requirements.txt`
   - [ ]  `sudo bash`
   - [ ] `mkdir -m 777 /mnt/data/orangeboard/databases/KG2.X.Y`
   - [ ] `exit`

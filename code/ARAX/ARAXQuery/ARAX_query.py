@@ -131,7 +131,7 @@ class ARAXQuery:
                     while i_message < n_messages:
                         with self.lock:
                             i_message_obj = self.response.messages[i_message].copy()
-                        yield(json.dumps(i_message_obj) + "\n")
+                        yield(json.dumps(i_message_obj, allow_nan=False) + "\n")
                         i_message += 1
                         idle_ticks = 0.0
 
@@ -147,7 +147,7 @@ class ARAXQuery:
                         query_plan_counter = self_query_plan_counter
                         with self.lock:
                             self_response_query_plan = self.response.query_plan.copy()
-                        yield(json.dumps(self_response_query_plan, sort_keys=True) + "\n")
+                        yield(json.dumps(self_response_query_plan, allow_nan=False, sort_keys=True) + "\n")
                         idle_ticks = 0.0
                     time.sleep(0.2)
                     idle_ticks += 0.2
@@ -161,14 +161,14 @@ class ARAXQuery:
                 # #### If there are any more logging messages in the queue, send them first
             n_messages = len(self.response.messages)
             while i_message < n_messages:
-                yield(json.dumps(self.response.messages[i_message]) + "\n")
+                yield(json.dumps(self.response.messages[i_message], allow_nan=False) + "\n")
                 i_message += 1
 
             #### Also emit any updates to the query_plan
             self_response_query_plan_counter = self.response.query_plan['counter']
             if query_plan_counter < self_response_query_plan_counter:
                 query_plan_counter = self_response_query_plan_counter
-                yield(json.dumps(self.response.query_plan, sort_keys=True) + "\n")
+                yield(json.dumps(self.response.query_plan, allow_nan=False, sort_keys=True) + "\n")
 
             # Remove the little DONE flag the other thread used to signal this thread that it is done
             self.response.status = re.sub('DONE,', '', self.response.status)
@@ -178,7 +178,21 @@ class ARAXQuery:
                 self.response.envelope.status = 'Success'
 
             # Stream the resulting message back to the client
-            yield(json.dumps(self.response.envelope.to_dict(), sort_keys=True) + "\n")
+            try:
+                msg_str = json.dumps(self.response.envelope.to_dict(),
+                                     allow_nan=False,
+                                     sort_keys=True) + "\n"
+            except ValueError as v:
+                self.response.envelope.message.results = []
+                self.response.envelope.message.auxiliary_graphs = None
+                self.response.envelope.message.knowledge_graph = {'edges': dict(), 'nodes': dict()}
+                self.response.envelope.status = 'ERROR'
+                error_message_str = f"error dumping result to JSON: {str(v)}"
+                self.response.error(error_message_str)
+                eprint(error_message_str)
+                msg_str = json.dumps(self.response.envelope.to_dict(),
+                                     sort_keys=True) + "\n"
+            yield msg_str
 
         # Wait until both threads rejoin here and the return
         main_query_thread.join()
@@ -483,7 +497,7 @@ class ARAXQuery:
         response.info(f"Validating the input query graph")
 
         # Define allowed qnode and qedge attributes to check later
-        allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'is_set': 1, 'option_group_id': 1, 'name': 1, 'constraints': 1 }
+        allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'is_set': 1, 'set_interpretation': 1, 'set_id': 1, 'option_group_id': 1, 'name': 1, 'constraints': 1 }
         allowed_qedge_attributes = { 'predicates': 1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'attribute_constraints': 1, 'qualifier_constraints': 1, 'knowledge_type': 1 }
 
         #### Loop through nodes checking the attributes
@@ -1060,10 +1074,10 @@ def main():
             "add_qnode(name=acetaminophen, key=n0)",
             "add_qnode(categories=biolink:Protein, key=n1)",
             "add_qedge(subject=n0, object=n1, key=e0)",
-            "expand(edge_key=e0)",
+            "expand(edge_key=e0, kp=infores:rtx-kg2)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=limit_number_of_results, max_results=10)",
+            "#filter_results(action=limit_number_of_results, max_results=5)",
             "return(message=true, store=true)",
         ]}}
 
@@ -1816,6 +1830,17 @@ def main():
             "scoreless_resultify(ignore_edge_direction=true)",
             "rank_results()"
         ]}}
+    elif params.example_number == 2262:
+         query = {"operations": {"actions": [
+                "create_message",
+                "add_qnode(name=DOID:1227, key=n00)",
+                "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+                "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
+                "expand(edge_key=e00, kp=infores:rtx-kg2)",
+                "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=t, qedge_keys=[e00])",
+                "resultify(ignore_edge_direction=true)",
+                "return(message=true, store=false)"
+            ]}}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return
@@ -1838,10 +1863,12 @@ def main():
 
 
     #### Print out the logging stream
-    print(response.show(level=ARAXResponse.DEBUG))
+    #if verbose:
+    #    print(response.show(level=ARAXResponse.DEBUG))
 
     #### Print out the message that came back
-    print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
+    #if verbose:
+    #    print(json.dumps(ast.literal_eval(repr(envelope)), sort_keys=True, indent=2))
 
     #### Other stuff that could be dumped
     #print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
@@ -1858,10 +1885,11 @@ def main():
     #print(f"Essence names in the answers: {[x.essence for x in message.results]}")
     print("Results:")
     for result in message.results:
-        confidence = result.confidence
-        if confidence is None:
-            confidence = 0.0
-        print("  -" + '{:6.3f}'.format(confidence) + f"\t{result.essence}")
+        analysis = result.analyses[0]
+        score = analysis.score
+        if score is None:
+            score = 0.0
+        print("  -" + '{:6.3f}'.format(score) + f"\t{result.essence}")
 
     # print the response id at the bottom for convenience too:
     print(f"Returned response id: {envelope.id}")
