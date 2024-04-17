@@ -78,10 +78,8 @@ Host arax.ncats.io
 The following databases should be rebuilt and copies of them should be put in `/home/rtxconfig/KG2.X.Y` on `arax-databases.rtx.ai`. Please use this kind of naming format: `mydatabase_v1.0_KG2.X.Y.sqlite`.
 
 - [ ] NGD database (how-to is [here](https://github.com/RTXteam/RTX/blob/master/code/ARAX/ARAXQuery/Overlay/ngd/README.md))
-- [ ] refreshed DTD @chunyuma
-- [ ] DTD model @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
-- [ ] DTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
-- [ ] XDTD database @chunyuma
+- [ ] refreshed XDTD database @chunyuma 
+- [ ] XDTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
 
 **NOTE**: As databases are rebuilt, `RTX/code/config_dbs.json` will need to be updated to point to their new paths! Push these changes to the branch for this KG2 version, unless the rollout of this KG2 version has already occurred, in which case you should push to `master` (but first follow the steps described [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#config_dbsjson)). 
 
@@ -196,6 +194,9 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
       
 #### 7. Roll-out to ITRB TEST 
 - [ ] In GitHub, for the RTXteam/RTX project, merge `master` to `itrb-test`. Record this issue number in the merge message.
+- [ ] In GitHub, for the RTXteam/PloverDB project, merge `main` to `itrb-test`. Record this issue number in the merge message.
+- [ ] Tag the release using the `master` branch of RTXteam/RTX project.
+- [ ] Tag the release using the `main` branch of RTXteam/PloverDB project.
 - [ ] Via a message in the `#devops-teamexpanderagent` channel in the `NCATSTranslator` Slack workspace, put in a request to `@Sarah Stemann` to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB test
 - [ ] Monitor the `#devops-teamexpanderagent` channel to follow the roll-out of the updated services in ITRB test (i.e., to see if there are any errors reported by ITRB) 
 - [ ] Check proper functioning of `kg2cploverdb.test.transltr.io`

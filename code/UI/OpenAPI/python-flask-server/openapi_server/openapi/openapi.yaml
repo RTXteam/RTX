@@ -2,14 +2,14 @@ openapi: 3.0.1
 info:
   contact:
     email: edeutsch@systemsbiology.org
-  description: TRAPI 1.4 endpoint for the NCATS Biomedical Translator Reasoner called
+  description: TRAPI 1.5 endpoint for the NCATS Biomedical Translator Reasoner called
     ARAX
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
-  title: ARAX Translator Reasoner - TRAPI 1.4.0
-  version: 1.4.3
+  title: ARAX Translator Reasoner - TRAPI 1.5.0
+  version: 1.5.0
   x-translator:
     component: ARA
     team:
@@ -592,7 +592,9 @@ components:
         page_size: 100
       properties:
         message:
-          $ref: '#/components/schemas/Message'
+          oneOf:
+            - $ref: '#/components/schemas/Message'
+          nullable: false
         log_level:
           description: The least critical level of logs to return
           nullable: true
@@ -641,8 +643,13 @@ components:
           type: string
         bypass_cache:
           default: false
-          description: Set to true in order to bypass any possible cached response
-            and try to answer the query from scratch
+          description: >-
+            Set to true in order to request that the agent obtain
+            fresh information from its sources in all cases where
+            it has a viable choice between requesting fresh information
+            in real time and using cached information. The agent
+            receiving this flag MUST also include it in TRAPI sent to
+            downstream sources (e.g., ARS -> ARAs -> KPs).
           type: boolean
         stream_progress:
           default: false
@@ -705,7 +712,9 @@ components:
           pattern: ^https?://
           type: string
         message:
-          $ref: '#/components/schemas/Message'
+          oneOf:
+            - $ref: '#/components/schemas/Message'
+          nullable: false
         log_level:
           description: The least critical level of logs to return
           nullable: true
@@ -752,6 +761,16 @@ components:
             of queries for development and issue resolution.
           nullable: true
           type: string
+        bypass_cache:
+          type: boolean
+          default: false
+          description: >-
+            Set to true in order to request that the agent obtain
+            fresh information from its sources in all cases where
+            it has a viable choice between requesting fresh information
+            in real time and using cached information. The agent
+            receiving this flag MUST also include it in TRAPI sent to
+            downstream sources (e.g., ARS -> ARAs -> KPs).
       required:
       - callback
       - message
@@ -900,7 +919,9 @@ components:
         info: info
       properties:
         message:
-          $ref: '#/components/schemas/Message'
+          oneOf:
+            - $ref: '#/components/schemas/Message'
+          nullable: false
         status:
           description: One of a standardized set of short codes, e.g. Success, QueryNotTraversable,
             KPsNotAvailable
@@ -1079,7 +1100,11 @@ components:
         results:
           description: |-
             List of all returned Result objects for the query posed. The list SHOULD NOT be assumed to be ordered. The 'score' property,
-             if present, MAY be used to infer result rankings.
+            if present, MAY be used to infer result rankings. If Results are
+            not expected (such as for a query Message), this property SHOULD
+            be null or absent. If Results are expected (such as for a response
+            Message) and no Results are available, this property SHOULD be an
+            array with 0 Results in it.
           items:
             $ref: '#/components/schemas/Result'
           nullable: true
@@ -1098,7 +1123,7 @@ components:
           - $ref: '#/components/schemas/KnowledgeGraph'
         auxiliary_graphs:
           additionalProperties:
-            $ref: '#components/schemas/AuxiliaryGraph'
+            $ref: '#/components/schemas/AuxiliaryGraph'
           description: Dictionary of AuxiliaryGraph instances that are used by Knowledge
             Graph Edges and Result Analyses. These are referenced elsewhere by the
             dictionary key.
@@ -1282,7 +1307,8 @@ components:
         id:
           description: The CURIE of a Node within the Knowledge Graph.
           oneOf:
-          - $ref: '#/components/schemas/CURIE'
+            - $ref: '#/components/schemas/CURIE'
+          nullable: false
         query_id:
           description: An optional property to provide the CURIE in the QueryGraph
             to which this binding applies. If the bound QNode does not have an an
@@ -1492,17 +1518,31 @@ components:
           nullable: true
           type: array
         is_set:
-          default: false
-          description: Boolean that if set to true, indicates that this QNode MAY
-            have multiple KnowledgeGraph Nodes bound to it within each Result. The
-            nodes in a set should be considered as a set of independent nodes, rather
-            than a set of dependent nodes, i.e., the answer would still be valid if
-            the nodes in the set were instead returned individually. Multiple QNodes
-            may have is_set=True. If a QNode (n1) with is_set=True is connected to
-            a QNode (n2) with is_set=False, each n1 must be connected to n2. If a
-            QNode (n1) with is_set=True is connected to a QNode (n2) with is_set=True,
-            each n1 must be connected to at least one n2.
           type: boolean
+          description: >-
+            Set to true if this QNode is a set (deprecated)
+          default: false
+        set_id:
+          type: string
+          description: >-
+            A client-provided identifier for the set described in this QNode
+          nullable: true
+        set_interpretation:
+          type: string
+          description: >-
+            Indicates how multiple CURIEs in the ids property MUST be
+            interpreted. BATCH indicates that the query is intended to be
+            a batch query and each CURIE is treated independently. ALL means
+            that all specified CURIES MUST appear in each Result.
+            MANY means that member CURIEs MUST form one or more
+            sets in the Results, and sets with more members are generally
+            considered more desirable that sets with fewer members.
+            If this property is missing or null, the default is BATCH.
+          enum:
+            - BATCH
+            - ALL
+            - MANY
+          nullable: true
         constraints:
           default: []
           description: A list of contraints applied to a query node. If there are

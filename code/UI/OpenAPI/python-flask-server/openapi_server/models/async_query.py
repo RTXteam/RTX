@@ -23,7 +23,7 @@ class AsyncQuery(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, callback=None, message=None, log_level=None, workflow=None, submitter=None):  # noqa: E501
+    def __init__(self, callback=None, message=None, log_level=None, workflow=None, submitter=None, bypass_cache=False):  # noqa: E501
         """AsyncQuery - a model defined in OpenAPI
 
         :param callback: The callback of this AsyncQuery.  # noqa: E501
@@ -36,13 +36,16 @@ class AsyncQuery(Model):
         :type workflow: List[AnyType]
         :param submitter: The submitter of this AsyncQuery.  # noqa: E501
         :type submitter: str
+        :param bypass_cache: The bypass_cache of this Query.  # noqa: E501
+        :type bypass_cache: bool
         """
         self.openapi_types = {
             'callback': str,
             'message': Message,
             'log_level': LogLevel,
             'workflow': List[AnyType],
-            'submitter': str
+            'submitter': str,
+            'bypass_cache': bool
         }
 
         self.attribute_map = {
@@ -50,7 +53,8 @@ class AsyncQuery(Model):
             'message': 'message',
             'log_level': 'log_level',
             'workflow': 'workflow',
-            'submitter': 'submitter'
+            'submitter': 'submitter',
+            'bypass_cache': 'bypass_cache'
         }
 
         self._callback = callback
@@ -58,6 +62,7 @@ class AsyncQuery(Model):
         self._log_level = log_level
         self._workflow = workflow
         self._submitter = submitter
+        self._bypass_cache = bypass_cache
 
     @classmethod
     def from_dict(cls, dikt) -> 'AsyncQuery':
@@ -188,3 +193,27 @@ class AsyncQuery(Model):
         """
 
         self._submitter = submitter
+
+    @property
+    def bypass_cache(self):
+        """Gets the bypass_cache of this Query.
+
+        Set to true in order to bypass any possible cached response and try to answer the query from scratch  # noqa: E501
+
+        :return: The bypass_cache of this Query.
+        :rtype: bool
+        """
+        return self._bypass_cache
+
+    @bypass_cache.setter
+    def bypass_cache(self, bypass_cache):
+        """Sets the bypass_cache of this Query.
+
+        Set to true in order to bypass any possible cached response and try to answer the query from scratch  # noqa: E501
+
+        :param bypass_cache: The bypass_cache of this Query.
+        :type bypass_cache: bool
+        """
+
+        self._bypass_cache = bypass_cache
+

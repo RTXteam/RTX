@@ -439,17 +439,30 @@ def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str
     return curie_to_name_map
 
 
-def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False) -> bool:
+def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False,
+                    enforce_expanded_only=False, return_unfulfilled_qedges: bool = False) -> any:
     if enforce_required_only:
         qg_without_kryptonite_portion = get_qg_without_kryptonite_portion(query_graph)
         query_graph = get_required_portion_of_qg(qg_without_kryptonite_portion)
+    if enforce_expanded_only:
+        expanded_qedge_keys = {qedge_key for qedge_key, qedge in query_graph.edges.items()
+                               if hasattr(qedge, "filled") and qedge.filled}
+        qg_edges = {qedge_key: query_graph.edges[qedge_key] for qedge_key in expanded_qedge_keys}
+        qg_nodes = {qnode_key: query_graph.nodes[qnode_key]
+                    for qedge in qg_edges.values()
+                    for qnode_key in {qedge.subject, qedge.object}}
+        query_graph = QueryGraph(edges=qg_edges, nodes=qg_nodes)
+    # Now see if we have answers in the KG for each of the remaining qedges/qnodes
+    is_fulfilled = True
     for qnode_key in query_graph.nodes:
         if not dict_kg.nodes_by_qg_id.get(qnode_key):
-            return False
-    for qedge_key in query_graph.edges:
+            is_fulfilled = False
+    unfulfilled_qedge_keys = set()
+    for qedge_key, qedge in query_graph.edges.items():
         if not dict_kg.edges_by_qg_id.get(qedge_key):
-            return False
-    return True
+            unfulfilled_qedge_keys.add(qedge_key)
+            is_fulfilled = False
+    return is_fulfilled, unfulfilled_qedge_keys if return_unfulfilled_qedges else is_fulfilled
 
 
 def qg_is_disconnected(qg: QueryGraph) -> bool:
@@ -483,6 +496,10 @@ def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_key
 
 def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
     return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
+
+
+def is_subclass_self_qedge(qedge: QEdge) -> bool:
+    return qedge.subject == qedge.object and qedge.predicates == ["biolink:subclass_of"]
 
 
 def flip_edge(edge: Edge, new_predicate: str) -> Edge:
@@ -650,11 +667,29 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
     prune_message.query_graph = qg
     prune_message.knowledge_graph = regular_format_kg
     if overlay_fet:
-        log.debug(f"Using FET to assess quality of intermediate answers in Expand")
+        log.debug(f"Determining whether we can use FET to assess quality of intermediate answers in Expand")
+        # Figure out which qnodes to overlay FET edges between
         connected_qedges = [qedge for qedge in qg.edges.values()
                             if qedge.subject == qnode_key_to_prune or qedge.object == qnode_key_to_prune]
-        qnode_pairs_to_overlay = {(qedge.subject if qedge.subject != qnode_key_to_prune else qedge.object, qnode_key_to_prune)
-                                  for qedge in connected_qedges}
+        qnode_pairs_to_overlay = set()
+        for connected_qedge in connected_qedges:
+            if connected_qedge.subject != connected_qedge.object:  # Don't overlay self-edges
+                subject_qnode = qg.nodes[connected_qedge.subject]
+                object_qnode = qg.nodes[connected_qedge.object]
+                # NOTE: Skip using FET for an optional qnode, because a qnode can only belong to ONE option
+                #       group, yet overlaying FET would introduce it to another (FET-specific) option group!
+                #       (breaks resultify) #2166
+                if not subject_qnode.option_group_id and not object_qnode.option_group_id:
+                    if connected_qedge.subject != qnode_key_to_prune:
+                        qnode_pairs_to_overlay.add((connected_qedge.subject, qnode_key_to_prune))
+                    else:
+                        qnode_pairs_to_overlay.add((qnode_key_to_prune, connected_qedge.object))
+        if qnode_pairs_to_overlay:
+            log.debug(f"Qnode pairs to overlay FET between are: {qnode_pairs_to_overlay}")
+        else:
+            log.debug(f"No suitable qnode pairs to overlay FET between were detected. Continuing pruning without FET.")
+
+        # Overlay FET between each of the selected qnode pairs
         for qnode_pair in qnode_pairs_to_overlay:
             pair_string_id = f"{qnode_pair[0]}-->{qnode_pair[1]}"
             log.debug(f"Overlaying FET for {pair_string_id} (from Expand)")
@@ -685,7 +720,7 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
                     log.warning(f"Attempted to overlay FET from Expand, but it didn't work. Pruning without it.")
 
     # Create results and rank them as appropriate
-    log.debug(f"Calling Resultify from Expand for pruning")
+    log.debug(f"Calling Resultify from Expand..")
     resultifier.apply(prune_response, {})
     if rank_results:
         try:
@@ -703,14 +738,6 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
                 if result.score is None:
                     result.score = 0
     return prune_response
-
-
-def get_qg_expanded_thus_far(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph) -> QueryGraph:
-    expanded_qnodes = {qnode_key for qnode_key in qg.nodes if kg.nodes_by_qg_id.get(qnode_key)}
-    expanded_qedges = {qedge_key for qedge_key in qg.edges if kg.edges_by_qg_id.get(qedge_key)}
-    qg_expanded_thus_far = QueryGraph(nodes={qnode_key: copy.deepcopy(qg.nodes[qnode_key]) for qnode_key in expanded_qnodes},
-                                      edges={qedge_key: copy.deepcopy(qg.edges[qedge_key]) for qedge_key in expanded_qedges})
-    return qg_expanded_thus_far
 
 
 def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:
