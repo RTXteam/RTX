@@ -45,8 +45,8 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.4.2'
-biolink_version = '3.5.4'
+trapi_version = '1.5.0-beta'
+biolink_version = '4.1.6'
 
 
 def validate_envelope(process_params):
@@ -398,9 +398,11 @@ class ResponseCache:
                 enable_validation = True
                 schema_version = trapi_version
                 if enable_validation:
+                    #if True:
                     try:
 
                         #### Perform the validation
+                        eprint(f"Validating TRAPI with version {schema_version} and {biolink_version}")
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                         validator.check_compliance_of_trapi_response(envelope)
                         validation_messages_text = validator.dumps()
@@ -419,6 +421,7 @@ class ResponseCache:
                         else:
                             envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
 
+                    #else:
                     except Exception as error:
                         timestamp = str(datetime.now().isoformat())
                         if 'logs' not in envelope or envelope['logs'] is None:
