@@ -1281,8 +1281,9 @@ function process_ars_message(ars_msg, level) {
 	checkRefreshARS();
 
     level++;
-    for (let child of ars_msg["children"].sort(function(a, b) { return a.actor.agent > b.actor.agent ? 1 : -1; }))
-	process_ars_message(child, level);
+    if (ars_msg["children"])
+	for (let child of ars_msg["children"].sort(function(a, b) { return a.actor.agent > b.actor.agent ? 1 : -1; }))
+	    process_ars_message(child, level);
 }
 
 
@@ -1388,6 +1389,18 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    nr.className = 'explevel p0';
             nr.title = 'Response is non-TRAPI';
 	}
+        else if (jsonObj2.validation_result.status == "DISABLED") {
+            if (type == "all") {
+		var span = document.createElement("span");
+		span.className = 'error';
+		span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+		statusdiv.appendChild(span);
+		statusdiv.appendChild(document.createElement("br"));
+	    }
+	    nr.innerHTML = '&#10067;';
+	    nr.className = 'explevel';
+	    nr.title = 'TRAPI validation has been temporarily DISABLED';
+	}
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
@@ -1425,7 +1438,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 			td.appendChild(document.createTextNode("Validation "+vtype));
 			tr.appendChild(td);
 			table.appendChild(tr);
-			for (var vmsg in jsonObj2.validation_result.validation_messages[vtype]) {
+			for (var vmsg of jsonObj2.validation_result.validation_messages[vtype]) {
                             tr = document.createElement("tr");
                             tr.style.background = "initial";
                             td = document.createElement("td");
@@ -1685,7 +1698,12 @@ function render_response(respObj,dispjson) {
 
     sesame('openmax',statusdiv);
 
-    if (respObj.id) {
+    if (respObj.araxui_response) {
+        document.title = "ARAX-UI ["+respObj.araxui_response+"]";
+        add_to_session(respObj.araxui_response,"id="+respObj.araxui_response);
+	history.pushState({ id: 'ARAX_UI' }, "ARAX | id="+respObj.araxui_response, "//"+ window.location.hostname + window.location.pathname + "?r="+respObj.araxui_response);
+    }
+    else if (respObj.id) {
 	var response_id = respObj.id.substr(respObj.id.lastIndexOf('/') + 1);
 	document.title = "ARAX-UI ["+response_id+"]";
 
@@ -1698,11 +1716,6 @@ function render_response(respObj,dispjson) {
 	    document.title += ": (no restated question)";
 	}
 	history.pushState({ id: 'ARAX_UI' }, 'ARAX | response='+response_id, "//"+ window.location.hostname + window.location.pathname + '?r='+response_id);
-    }
-    else if (respObj.araxui_response) {
-        document.title = "ARAX-UI ["+respObj.araxui_response+"]";
-        add_to_session(respObj.araxui_response,"id="+respObj.araxui_response);
-	history.pushState({ id: 'ARAX_UI' }, "ARAX | id="+respObj.araxui_response, "//"+ window.location.hostname + window.location.pathname + "?r="+respObj.araxui_response);
     }
     else if (respObj.restated_question)
         document.title = "ARAX-UI [no response_id]: "+respObj.restated_question+"?";
@@ -2893,6 +2906,8 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		kmne.id = node.id;
 		if (node.attributes)
 		    kmne.node_binding_attributes = node.attributes;
+		else if (node.detail_lookup)
+		    kmne.node_binding_attributes_lookup_key = node.detail_lookup;
 		var tmpdata = { "data" : kmne };
 		cytodata['R'+num+'A0'].push(tmpdata);
 	    }
@@ -2914,8 +2929,11 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		    kmne.qualifiers = null;
 		if (edge.attributes)
 		    kmne.edge_binding_attributes = edge.attributes;
+                else if (edge.detail_lookup)
+		    kmne.edge_binding_attributes_lookup_key = edge.detail_lookup;
 
-                if (kmne.attributes) {
+		// confirm...
+		if (kmne.attributes) {
 		    for (var att of kmne.attributes) {
 			if (att.attribute_type_id == "biolink:support_graphs" && att.value && att.value.length > 0) {
 			    for (var sgid of att.value) {
@@ -3297,6 +3315,7 @@ function add_cyto(i,dataid) {
 	}
     });
 
+
     cyobj[i].on('tap','node', function() {
 	var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
@@ -3325,8 +3344,14 @@ function add_cyto(i,dataid) {
 	    div.appendChild(document.createElement("br"));
 	}
 
-	show_attributes(i,div, this.data('attributes'),null,"value");
-        if (this.data('node_binding_attributes')) {
+
+	if (this.data('attributes'))
+	    show_attributes(i,div, this.data('attributes'),null,"value");
+	else if (this.data('detail_lookup'))
+	    retrieve_attributes(i,div, this,null,"value");
+
+
+	if (this.data('node_binding_attributes')) {
 	    div.appendChild(document.createElement("br"));
 	    show_attributes(i,div, this.data('node_binding_attributes'),"Node Binding Attributes:","value");
 	}
@@ -3406,15 +3431,22 @@ function add_cyto(i,dataid) {
 			cyobj[i].nodes("[id='"+this.data('target')+"']").data('name')
 		       );
 
-	show_attributes(i,div, this.data('attributes'),null,"value");
+
+        if (this.data('attributes')) {
+	    show_attributes(i,div, this.data('attributes'),null,"value");
+	    if (this.data('sources')) {
+		div.appendChild(document.createElement("br"));
+		show_attributes(i,div, this.data('sources'),"Edge Sources:","resource_id");
+		//show_attributes(i,div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
+	    }
+	}
+	else if (this.data('detail_lookup'))
+	    retrieve_attributes(i,div, this,null,"value");
+
+
 	if (this.data('edge_binding_attributes')) {
             div.appendChild(document.createElement("br"));
             show_attributes(i,div, this.data('edge_binding_attributes'),"Edge Binding Attributes:","value");
-	}
-	if (this.data('sources')) {
-            div.appendChild(document.createElement("br"));
-            show_attributes(i,div, this.data('sources'),"Edge Sources:","resource_id");
-            //show_attributes(i,div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -3549,8 +3581,39 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 }
 
 
+async function retrieve_attributes(num,html_div, cytobject, title, mainvalue) {
+    if (!cytobject.data('detail_lookup'))
+	return;
+
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginTop = "20px";
+    wait.style.marginBottom = "20px";
+    html_div.appendChild(wait);
+
+    response = await fetch(providers["ARAX"].url + "/response/" + cytobject.data('detail_lookup'));
+    var respjson = await response.json();
+
+    if (respjson) {
+	wait.remove();
+	if (respjson.attributes) {
+	    cytobject.data('attributes', respjson.attributes);
+	    show_attributes(num,html_div, cytobject.data('attributes'),title,mainvalue);
+	}
+	if (respjson.sources) {
+	    cytobject.data('sources', respjson.sources);
+            html_div.appendChild(document.createElement("br"));
+            show_attributes(num,html_div, cytobject.data('sources'),"Edge Sources:","resource_id");
+	}
+	sesame('openmax',document.getElementById('a'+cytobject.data('parentdivnum')+'_div'));
+    }
+    else
+	wait.remove();
+}
+
+
 function show_attributes(num,html_div, atts, title, mainvalue) {
-    if (atts == null)  { return; }
+    if (atts == null)
+	return;
 
     var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
 
@@ -3759,7 +3822,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
     row.appendChild(cell);
     tab.appendChild(row);
 
-    if (sub_atts) {
+    if (sub_atts && Array.isArray(sub_atts) && sub_atts.length >0) {
 	row = document.createElement("tr");
 	cell = document.createElement("td");
         cell.style.fontWeight = "bold";
@@ -6243,13 +6306,13 @@ function retrieveKPInfo() {
 			td.appendChild(text);
 			td.appendChild(document.createElement("br"));
 
-                        if (was_seen.includes(item["infores_name"])) {
+                        if (was_seen.includes(item["infores_name"]+item["version"])) {
                             td.className = "error";
                             td.appendChild(document.createTextNode('\u274C\u00A0'));
 			    td.title = "This is a DUPLICATE infores entry";
 			}
 			else
-			    was_seen.push(item["infores_name"]);
+			    was_seen.push(item["infores_name"]+item["version"]);
 			td.appendChild(document.createTextNode(item["infores_name"]));
 
 			tr.appendChild(td);
@@ -6446,6 +6509,7 @@ function retrieveSysTestResults() {
     else
 	apiurl += 'report/'+test_pk;
 
+
     fetch(apiurl)
         .then(response => {
 	    if (response.ok) return response.json();
@@ -6483,9 +6547,6 @@ function retrieveSysTestResults() {
 	    systest_node.appendChild(document.createElement("br"));
 	    systest_node.appendChild(document.createElement("br"));
 
-	    if (test_pk == "LATEST")
-		retrieveSysTestResultsList(100);
-
         })
         .catch(error => {
             wspan.innerHTML = '';
@@ -6494,6 +6555,8 @@ function retrieveSysTestResults() {
             console.error(error);
 	});
 
+    if (test_pk == "LATEST")
+	retrieveSysTestResultsList(100);
 }
 
 
@@ -6602,7 +6665,7 @@ function renderSmokeTestTable(smoketestdata,qtest) {
     for (var agent of Object.keys(all_agents).sort()) {
 	td = document.createElement("th");
 	td.style.minWidth = '80px';
-        td.appendChild(document.createTextNode(agent.replace(/ara-|kp-/,"")));
+        td.appendChild(document.createTextNode(agent.replace(/ars-|ara-|kp-/,"")));
 	tr.appendChild(td);
     }
     table.appendChild(tr);
@@ -6706,7 +6769,7 @@ function generateLoadTimeTestResults(loadtestdata) {
 	td = document.createElement("th");
 	td.colSpan = '2';
 	td.style.minWidth = '80px';
-	td.innerText = agent.replace(/ara-|kp-/,"");
+	td.innerText = agent.replace(/ars-|ara-|kp-/,"");
 	tr.appendChild(td);
     }
     table.appendChild(tr);
@@ -6774,13 +6837,20 @@ function generateLoadTimeTestResults(loadtestdata) {
 
             td = document.createElement("td");
 	    td.style.textAlign = 'right';
-            if (obj['actors'][agent] && obj['actors'][agent]['completion_time'])
+            if (obj['actors'][agent] && obj['actors'][agent]['completion_time']) {
 		td.innerText = Number(obj['actors'][agent]['completion_time']).toFixed(3);
+		if (obj['actors'][agent]['completion_time'] == obj["completion_time"])
+		    td.className = 'essence';
+	    }
             else if (obj['actors'][agent] && obj['actors'][agent]['status'] == "Error")
 		td.innerText = 'E';
 	    else
 		td.innerText = 'n/a';
-	    td.title = (obj['actors'][agent]['n_results'] ? obj['actors'][agent]['n_results'] : "No") + " results";
+
+	    if (obj['actors'][agent])
+		td.title = (obj['actors'][agent]['n_results'] ? obj['actors'][agent]['n_results'] : "No") + " results";
+	    else
+		td.title = "no actor: "+agent;
 
 	    tr.appendChild(td);
 	}
