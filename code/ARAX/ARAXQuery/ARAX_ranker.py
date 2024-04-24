@@ -174,24 +174,23 @@ def _break_ties_and_preserve_order(scores):
     # if there are more than 1,000 scores, apply the fix to the first 1000 scores and ignore the rest
     if n > 1000:
         n = 1000
+    # set all scores below the 1000th to 0
+    for i in range(n, len(adjusted_scores)):
+        adjusted_scores[i] = 0
 
-    for i in range(n):
-        if i > 0 and adjusted_scores[i] >= adjusted_scores[i - 1]:
-            # Calculate the decrement such that it makes this score slightly less than the previous,
-            # maintaining the descending order.
-            decrement = round(adjusted_scores[i - 1] - adjusted_scores[i], 3) - 0.001
-            adjusted_scores[i] = adjusted_scores[i - 1] - max(decrement, 0.001)
-
-        # Ensure the adjusted score doesn't become lower than the next score
-        if i < n - 1 and adjusted_scores[i] <= adjusted_scores[i + 1]:
-            # Adjust the next score to be slightly less than the current score
-            increment = round(adjusted_scores[i] - adjusted_scores[i + 1], 3) - 0.001
-            adjusted_scores[i + 1] = adjusted_scores[i] - max(increment, 0.001)
-
-    # round all scores to 3 decimal places
+    # round all scores to 3 decimal places initially to make adjustment easier
     adjusted_scores = [round(score, 3) for score in adjusted_scores]
-    # make sure no scores are below 0
-    adjusted_scores = [max(score, 0) for score in adjusted_scores]
+
+    # Adjust scores in descending order to ensure no tie or inversion
+    for i in range(1, n):
+        if adjusted_scores[i] >= adjusted_scores[i - 1]:
+            # Decrease the current score to make it strictly less than the previous score
+            new_score = adjusted_scores[i - 1] - 0.001
+            adjusted_scores[i] = max(new_score, 0)  # Prevent going below 0
+
+    # Final check to ensure all scores are within bounds
+    adjusted_scores = [round(max(min(score, 1), 0), 3) for score in adjusted_scores]
+
     return adjusted_scores
 
 
@@ -730,6 +729,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # break ties and preserve order, round to 3 digits and make sure none are < 0
         scores_with_ties = [result.analyses[0].score for result in message.results]
         scores_without_ties = _break_ties_and_preserve_order(scores_with_ties)
+        print(scores_with_ties)
+        print(scores_without_ties)
         # reinsert these scores into the results
         for result, score in zip(message.results, scores_without_ties):
             result.analyses[0].score = score
