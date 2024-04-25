@@ -733,7 +733,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         for qnode_key, node_keys in result_graph['nodes'].items():
             node_bindings[qnode_key] = [NodeBinding(id=node_key,
                                                     query_id=_get_query_id(node_key, kg.nodes[node_key], qnode_key,
-                                                                           qnodes_with_ids))
+                                                                           qnodes_with_ids),
+                                                    attributes=[])
                                         for node_key in node_keys]
         edge_bindings = dict()
         for qedge_key, edge_keys in result_graph['edges'].items():
