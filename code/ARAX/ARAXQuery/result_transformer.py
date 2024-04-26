@@ -22,7 +22,7 @@ class ResultTransformer:
                                f"to TRAPI 1.4 format (i.e., support_graphs).", error_code="NoOriginalQG")
                 return
 
-            response.info(f"Transforming results to TRAPI 1.4 format (moving 'virtual' nodes/edges to support graphs)")
+            response.info(f"Transforming results to TRAPI 1.5 format (moving 'virtual' nodes/edges to support graphs)")
 
             original_qedge_keys = {qedge_key for qedge_key, qedge in response.original_query_graph.edges.items()
                                    if not qedge.exclude}  # 'Exclude'/'kryptonite' edges shouldn't appear in results
@@ -134,4 +134,4 @@ class ResultTransformer:
             # Log some final stats about result transformation
             response.debug(f"Virtual qedge keys moved to support_graphs were: {all_virtual_qedge_keys}")
             response.debug(f"There are a total of {len(message.auxiliary_graphs) if message.auxiliary_graphs else 0} AuxiliaryGraphs.")
-            response.info(f"Done transforming results to TRAPI 1.4 format (i.e., using support_graphs)")
+            response.info(f"Done transforming results to TRAPI 1.5 format (i.e., using support_graphs)")

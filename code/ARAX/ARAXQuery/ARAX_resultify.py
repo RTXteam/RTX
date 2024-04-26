@@ -738,7 +738,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                                         for node_key in node_keys]
         edge_bindings = dict()
         for qedge_key, edge_keys in result_graph['edges'].items():
-            edge_bindings[qedge_key] = [EdgeBinding(id=edge_key) for edge_key in edge_keys]
+            edge_bindings[qedge_key] = [EdgeBinding(id=edge_key,attributes=[]) for edge_key in edge_keys]
         result = Result(node_bindings=node_bindings, analyses=[Analysis(resource_id=resource_id,
                                                                         edge_bindings=edge_bindings)])
 
