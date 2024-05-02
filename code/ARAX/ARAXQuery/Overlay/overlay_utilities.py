@@ -101,7 +101,7 @@ def determine_virtual_qedge_option_group(subject_qnode_key: str, object_qnode_ke
 
 def update_results_with_overlay_edge(subject_knode_key: str, object_knode_key: str, kedge_key: str, message: Message, log: ARAXResponse, reasoner_id: str="infores:arax"):
     try:
-        new_edge_binding = EdgeBinding(id=kedge_key)
+        new_edge_binding = EdgeBinding(id=kedge_key, attributes=[])
         for result in message.results:
             for analysis in result.analyses:
                 if reasoner_id != analysis.resource_id:
