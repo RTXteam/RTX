@@ -12,7 +12,7 @@ import copy
 import timeit
 
 #sys.path = ['/mnt/data/python/TestValidator'] + sys.path
-from reasoner_validator import TRAPIResponseValidator
+from reasoner_validator.validator import TRAPIResponseValidator
 
 
 
@@ -133,12 +133,12 @@ def main():
 
     #validator = TRAPIResponseValidator(trapi_version="TranslatorReasonerAPI-1.4.0-beta4.yaml", biolink_version="3.2.8")
     t0 = timeit.default_timer()
-    validator = TRAPIResponseValidator(trapi_version="1.4.2", biolink_version="3.5.0")
+    validator = TRAPIResponseValidator(trapi_version="1.5.0-beta", biolink_version="4.1.6")
     t1 = timeit.default_timer()
     validator.check_compliance_of_trapi_response(envelope)
     t2 = timeit.default_timer()
 
-    messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+    messages: Dict[str, List[Dict[str,str]]] = validator.get_all_messages()
     print(json.dumps(messages, sort_keys=True, indent=2))
 
     print("-------------------------")
