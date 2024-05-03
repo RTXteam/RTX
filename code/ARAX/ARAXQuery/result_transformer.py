@@ -61,7 +61,7 @@ class ResultTransformer:
                     aux_graph_key = f"aux_graph_{aux_graph_id_str}{group_id_str}"
                     # Create and save the aux graph in the central location (on Message), if it doesn't yet exist
                     if aux_graph_key not in message.auxiliary_graphs:
-                        message.auxiliary_graphs[aux_graph_key] = AuxiliaryGraph(edges=list(group_edge_keys))
+                        message.auxiliary_graphs[aux_graph_key] = AuxiliaryGraph(edges=list(group_edge_keys),attributes=[])
 
                     # Refer to this aux graph from the current Result or Edge (if this is an Infer support graph)
                     if group_id and (group_id.startswith("creative_DTD_") or group_id.startswith("creative_CRG_")):

@@ -1429,7 +1429,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
                 table.style.width = "100%";
                 table.style.borderCollapse = "collapse";
 
-		for (var vtype of ["errors","warnings","information"] ) {
+		for (var vtype of ["critical","error","warning","info","skipped"] ) {
                     if (Object.keys(jsonObj2.validation_result.validation_messages[vtype]).length > 0) {
 			tr = document.createElement("tr");
 			td = document.createElement("th");
@@ -1438,7 +1438,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 			td.appendChild(document.createTextNode("Validation "+vtype));
 			tr.appendChild(td);
 			table.appendChild(tr);
-			for (var vmsg of jsonObj2.validation_result.validation_messages[vtype]) {
+			for (var vmsg in jsonObj2.validation_result.validation_messages[vtype]) {
                             tr = document.createElement("tr");
                             tr.style.background = "initial";
                             td = document.createElement("td");

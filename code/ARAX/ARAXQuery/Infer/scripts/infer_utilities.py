@@ -144,7 +144,7 @@ class InferUtilities:
                 'name': disease_curie,
             }
             self.response = messenger.add_qnode(self.response, add_qnode_params)
-            message.knowledge_graph.nodes[disease_curie] = Node(name=disease_name, categories=[disease_info.category])
+            message.knowledge_graph.nodes[disease_curie] = Node(name=disease_name, categories=[disease_info.category], attributes=[])
             message.knowledge_graph.nodes[disease_curie].qnode_keys = [add_qnode_params['key']]
             add_qnode_params = {
                 'key': "drug",
@@ -165,7 +165,7 @@ class InferUtilities:
             self.response.original_query_graph = copy.deepcopy(message.query_graph)
 
         else:
-            message.knowledge_graph.nodes[disease_curie] = Node(name=disease_name, categories=[disease_info.category])
+            message.knowledge_graph.nodes[disease_curie] = Node(name=disease_name, categories=[disease_info.category], attributes=[])
             drug_qnode_key = response.envelope.message.query_graph.edges[qedge_id].subject
             disease_qnode_key = response.envelope.message.query_graph.edges[qedge_id].object
             message.knowledge_graph.nodes[disease_curie].qnode_keys = [disease_qnode_key]
@@ -193,7 +193,7 @@ class InferUtilities:
                 drug_name = node_info.name
                 essence_scores[drug_name] = node_id_to_score[drug_canonical_id]
                 if drug_canonical_id not in message.knowledge_graph.nodes:
-                    message.knowledge_graph.nodes[drug_canonical_id] = Node(name=drug_name, categories=drug_categories)
+                    message.knowledge_graph.nodes[drug_canonical_id] = Node(name=drug_name, categories=drug_categories, attributes=[])
                     message.knowledge_graph.nodes[drug_canonical_id].qnode_keys = [drug_qnode_key]
                 else:  # it's already in the KG, just pass
                     pass
@@ -287,7 +287,7 @@ class InferUtilities:
                     subject_name = subject_node_info.name
                     subject_category = subject_node_info.category
                     if subject_curie not in message.knowledge_graph.nodes:
-                        message.knowledge_graph.nodes[subject_curie] = Node(name=subject_name, categories=[subject_category])
+                        message.knowledge_graph.nodes[subject_curie] = Node(name=subject_name, categories=[subject_category], attributes=[])
                         message.knowledge_graph.nodes[subject_curie].qnode_keys = [subject_qnode_key]
                     elif subject_qnode_key not in message.knowledge_graph.nodes[subject_curie].qnode_keys:
                         message.knowledge_graph.nodes[subject_curie].qnode_keys.append(subject_qnode_key)
@@ -297,7 +297,7 @@ class InferUtilities:
                     object_name = object_node_info.name
                     object_category = object_node_info.category
                     if object_curie not in message.knowledge_graph.nodes:
-                        message.knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=[object_category])
+                        message.knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=[object_category], attributes=[])
                         message.knowledge_graph.nodes[object_curie].qnode_keys = [object_qnode_key]
                     elif object_qnode_key not in message.knowledge_graph.nodes[object_curie].qnode_keys:
                         message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
@@ -450,7 +450,7 @@ class InferUtilities:
                     'name': chemical_curie
                 }
                 self.response = messenger.add_qnode(self.response, add_qnode_params)
-                message.knowledge_graph.nodes[chemical_curie] = Node(name=chemical_name, categories=['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule'])
+                message.knowledge_graph.nodes[chemical_curie] = Node(name=chemical_name, categories=['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule'], attributes=[])
                 message.knowledge_graph.nodes[chemical_curie].qnode_keys = ['chemical']
                 add_qnode_params = {
                     'key': "gene",
@@ -471,7 +471,7 @@ class InferUtilities:
                     'name': gene_curie
                 }
                 self.response = messenger.add_qnode(self.response, add_qnode_params)
-                message.knowledge_graph.nodes[gene_curie] = Node(name=gene_name, categories=['biolink:Gene','biolink:Protein'])
+                message.knowledge_graph.nodes[gene_curie] = Node(name=gene_name, categories=['biolink:Gene','biolink:Protein'], attributes=[])
                 message.knowledge_graph.nodes[gene_curie].qnode_keys = ['gene']
 
             if model_type == 'increase':
@@ -511,7 +511,7 @@ class InferUtilities:
                 categories_to_add.update(self.bh.get_ancestors(['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule']))
                 categories_to_add.update(list(synonymizer.get_normalizer_results(chemical_curie)[chemical_curie]['categories'].keys()))
                 categories_to_add = list(categories_to_add)
-                message.knowledge_graph.nodes[chemical_curie] = Node(name=chemical_name, categories=categories_to_add)
+                message.knowledge_graph.nodes[chemical_curie] = Node(name=chemical_name, categories=categories_to_add, attributes=[])
                 chemical_qnode_key = message.query_graph.edges[qedge_id].subject
                 gene_qnode_key = message.query_graph.edges[qedge_id].object
                 message.knowledge_graph.nodes[chemical_curie].qnode_keys = [chemical_qnode_key]
@@ -531,7 +531,7 @@ class InferUtilities:
                 categories_to_add.update(self.bh.get_ancestors(['biolink:Gene','biolink:Protein']))
                 categories_to_add.update(list(synonymizer.get_normalizer_results(gene_curie)[gene_curie]['categories'].keys()))
                 categories_to_add = list(categories_to_add)
-                message.knowledge_graph.nodes[gene_curie] = Node(name=gene_name, categories=categories_to_add)
+                message.knowledge_graph.nodes[gene_curie] = Node(name=gene_name, categories=categories_to_add, attributes=[])
                 chemical_qnode_key = message.query_graph.edges[qedge_id].subject
                 gene_qnode_key = message.query_graph.edges[qedge_id].object
                 message.knowledge_graph.nodes[gene_curie].qnode_keys = [gene_qnode_key]
@@ -569,7 +569,7 @@ class InferUtilities:
                     gene_name = node_info[node_id]['preferred_name']
                     essence_scores[gene_name] = node_id_to_score[node_id]
                     if gene_canonical_id not in message.knowledge_graph.nodes:
-                        message.knowledge_graph.nodes[gene_canonical_id] = Node(name=gene_name, categories=gene_categories)
+                        message.knowledge_graph.nodes[gene_canonical_id] = Node(name=gene_name, categories=gene_categories, attributes=[])
                         message.knowledge_graph.nodes[gene_canonical_id].qnode_keys = [gene_qnode_key]
                     else:  # it's already in the KG, just pass
                         pass
@@ -616,7 +616,7 @@ class InferUtilities:
                     chemical_name = node_info[node_id]['preferred_name']
                     essence_scores[chemical_name] = node_id_to_score[node_id]
                     if chemical_canonical_id not in message.knowledge_graph.nodes:
-                        message.knowledge_graph.nodes[chemical_canonical_id] = Node(name=chemical_name, categories=chemical_categories)
+                        message.knowledge_graph.nodes[chemical_canonical_id] = Node(name=chemical_name, categories=chemical_categories, attributes=[])
                         message.knowledge_graph.nodes[chemical_canonical_id].qnode_keys = [chemical_qnode_key]
                     else:  # it's already in the KG, just pass
                         pass
@@ -708,7 +708,7 @@ class InferUtilities:
                     subject_name = node_info[subject_curie]['preferred_name']
                     subject_category = node_info[subject_curie]['preferred_category']
                     if subject_curie not in message.knowledge_graph.nodes:
-                        message.knowledge_graph.nodes[subject_curie] = Node(name=subject_name, categories=[subject_category, 'biolink:NamedThing'])
+                        message.knowledge_graph.nodes[subject_curie] = Node(name=subject_name, categories=[subject_category, 'biolink:NamedThing'], attributes=[])
                         message.knowledge_graph.nodes[subject_curie].qnode_keys = [subject_qnode_key]
                     elif subject_qnode_key not in message.knowledge_graph.nodes[subject_curie].qnode_keys:
                         message.knowledge_graph.nodes[subject_curie].qnode_keys.append(subject_qnode_key)
@@ -717,7 +717,7 @@ class InferUtilities:
                     object_name = node_info[object_curie]['preferred_name']
                     object_category = node_info[object_curie]['preferred_category']
                     if object_curie not in message.knowledge_graph.nodes:
-                        message.knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=[object_category, 'biolink:NamedThing'])
+                        message.knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=[object_category, 'biolink:NamedThing'], attributes=[])
                         message.knowledge_graph.nodes[object_curie].qnode_keys = [object_qnode_key]
                     elif object_qnode_key not in message.knowledge_graph.nodes[object_curie].qnode_keys:
                         message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
