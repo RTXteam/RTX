@@ -15,7 +15,7 @@ info:
     team:
     - Expander Agent
     infores: infores:arax
-    biolink-version: 4.0.0
+    biolink-version: 4.1.0
     externalDocs:
       description: The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
@@ -53,8 +53,20 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: ARAX TRAPI 1.4 endpoint - development
-  url: https://arax.ncats.io/api/arax/v1.4
+- description: ARAX TRAPI 1.5 endpoint - staging
+  url: https://arax.ci.transltr.io/api/arax/v1.4
+  x-maturity: staging
+- description: ARAX TRAPI 1.5 endpoint - development
+  url: https://arax.ncats.io/beta/api/arax/v1.4
+  x-maturity: development
+- description: ARAX TRAPI 1.5 endpoint - development
+  url: https://arax.ncats.io/test/api/arax/v1.4
+  x-maturity: development
+- description: ARAX TRAPI 1.5 endpoint - development
+  url: https://arax.ncats.io/devED/api/arax/v1.4
+  x-maturity: development
+- description: ARAX TRAPI 1.5 endpoint - development
+  url: https://arax.ncats.io/devLM/api/arax/v1.4
   x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web

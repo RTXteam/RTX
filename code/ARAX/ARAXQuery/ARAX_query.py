@@ -1841,6 +1841,50 @@ def main():
                 "resultify(ignore_edge_direction=true)",
                 "return(message=true, store=false)"
             ]}}
+    elif params.example_number == 2263:
+        query = {
+  "message": {
+    "query_graph": {
+      "edges": {
+        "t_edge": {
+          "attribute_constraints": [],
+          "knowledge_type": "inferred",
+          "object": "on",
+          "predicates": [
+            "biolink:treats"
+          ],
+          "qualifier_constraints": [],
+          "subject": "sn"
+        }
+      },
+      "nodes": {
+        "on": {
+          "categories": [
+            "biolink:Disease"
+          ],
+          "constraints": [],
+          "ids": [
+            "MONDO:0015564"
+          ],
+          "is_set": False
+        },
+        "sn": {
+          "categories": [
+            "biolink:ChemicalEntity"
+          ],
+          "constraints": [],
+          "is_set": False
+        }
+      }
+    }
+  },
+  "submitter": "ARAX GUI",
+  "stream_progress": True,
+  "query_options": {
+    "kp_timeout": "30",
+    "prune_threshold": "50"
+  }
+}
     else:
         eprint(f"Invalid test number {params.example_number}. Try 1 through 17")
         return

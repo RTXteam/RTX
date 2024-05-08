@@ -43,7 +43,10 @@ def pytest_sessionstart(session):
     # Refresh KP info cache if it hasn't been updated in more than an hour
     kp_info_cacher = KPInfoCacher()
     cache_exists = os.path.exists(kp_info_cacher.smart_api_and_meta_map_cache)
-    cache_is_stale = time.time() - os.path.getmtime(kp_info_cacher.smart_api_and_meta_map_cache) > 3600
+    if cache_exists:
+        cache_is_stale = time.time() - os.path.getmtime(kp_info_cacher.smart_api_and_meta_map_cache) > 3600
+    else:
+        cache_is_stale = True
     if cache_exists and not cache_is_stale:
         print(f"KP info cache is up to date.")
     else:

@@ -83,7 +83,7 @@ def test_connect_ulcerative_colitis_to_adalimumab():
     query = {"operations": {"actions": [
             "create_message",
             "add_qnode(ids=MONDO:0005101, key=n00)",
-            "add_qnode(ids=DrugCentral:4904, key=n01)",
+            "add_qnode(ids=UNII:FYS6T7F842, key=n01)",
             "connect(action=connect_nodes)",
             "return(message=true, store=false)"
         ]}}

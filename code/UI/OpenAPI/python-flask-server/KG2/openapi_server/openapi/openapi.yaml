@@ -9,19 +9,19 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2 - TRAPI 1.5.0
-  version: 2.8.5
+  version: 2.9.0
   x-translator:
     component: KP
     team:
     - Expander Agent
     infores: infores:rtx-kg2
-    biolink-version: 3.1.2
+    biolink-version: 4.0.0
     externalDocs:
       description: The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.4.0
+    version: 1.5.0
     asyncquery: false
     operations:
     - lookup
@@ -33,7 +33,7 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: RTX-KG2 TRAPI 1.4 endpoint - development
+- description: RTX-KG2 TRAPI 1.5 endpoint - development
   url: https://arax.ncats.io/api/rtxkg2/v1.4
   x-maturity: development
 tags:

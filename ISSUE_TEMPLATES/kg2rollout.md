@@ -151,7 +151,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `ssh ubuntu@cicd.rtx.ai`
   - [ ] `cd RTX`
   - [ ] `git pull origin master`
-  - [ ] If there have been changes to `requirements.txt`, make sure to do `~/venv3.9/bin/pip3 install -r code/requirements.txt`
+  - [ ] If there have been changes to `requirements.txt`, make sure to do `~/venv3.9/bin/pip3 install -r requirements.txt`
   - [ ]  `sudo bash`
   - [ ] `mkdir -m 777 /mnt/data/orangeboard/databases/KG2.X.Y`
   - [ ] `exit`

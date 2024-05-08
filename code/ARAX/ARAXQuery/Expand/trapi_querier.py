@@ -478,7 +478,8 @@ class TRAPIQuerier:
                             parent_info_dict = parent_node_info.get(edge.object)
                             if parent_info_dict:
                                 parent_node = Node(name=parent_info_dict.get("preferred_name"),
-                                                   categories=[parent_info_dict.get("preferred_category")])
+                                                   categories=[parent_info_dict.get("preferred_category")],
+                                                   attributes=[])
                             else:
                                 parent_node = Node()
                             parent_node.query_ids = []   # Does not need a mapping since it appears in the QG

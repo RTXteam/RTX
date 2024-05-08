@@ -235,7 +235,7 @@ class KG2Querier:
 
     @staticmethod
     def _convert_kg2c_plover_node_to_trapi_node(node_tuple: list) -> Node:
-        node = Node(name=node_tuple[0], categories=eu.convert_to_list(node_tuple[1]))
+        node = Node(name=node_tuple[0], categories=eu.convert_to_list(node_tuple[1]), attributes=[])
         node.query_ids = node_tuple[2]  # This is an unofficial property, so can't fill out during initialization
         return node
 
