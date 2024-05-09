@@ -21,6 +21,8 @@ from Path_Finder.repo.PloverDBRepo import PloverDBRepo
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.knowledge_graph import KnowledgeGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
+from node_synonymizer import NodeSynonymizer
 
 
 class ARAXConnect:
@@ -285,8 +287,9 @@ connect_nodes adds paths between two nodes specified in the query.
         )
         qnode_1_id = self.parameters['qnode_keys'][0]
         qnode_2_id = self.parameters['qnode_keys'][1]
-        node_1_id = nodes[qnode_1_id].ids[0]
-        node_2_id = nodes[qnode_2_id].ids[0]
+        synonymizer = NodeSynonymizer()
+        node_1_id = synonymizer.get_canonical_curies(curies=nodes[qnode_1_id].ids[0])[nodes[qnode_1_id].ids[0]]['preferred_curie']
+        node_2_id = synonymizer.get_canonical_curies(curies=nodes[qnode_2_id].ids[0])[nodes[qnode_2_id].ids[0]]['preferred_curie']
 
         paths = path_finder.find_all_paths(node_1_id, node_2_id, hops_numbers=self.parameters['max_path_length'])
 
