@@ -21,6 +21,8 @@ from Path_Finder.repo.PloverDBRepo import PloverDBRepo
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.knowledge_graph import KnowledgeGraph
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
+from node_synonymizer import NodeSynonymizer
 
 
 class ARAXConnect:
@@ -41,17 +43,17 @@ class ARAXConnect:
             "min": 1,
             "max": 5,
             "type": "integer",
-            "description": "The maximum edges to connect nodes with. If not provided defaults to 2."
+            "description": "The maximum edges to connect two nodes with. If not provided defaults to 2."
         }
         self.qnode_keys_info = {
-            "is_required": False,
+            "is_required": True,
             "examples": [['n01', 'n02'], []],
             "type": "list",
-            "description": "List of qnode keys to connect. If not provided or empty all qnode_keys will be connected. If not empty must have at least 2 elements."
+            "description": "List with just two qnode keys to connect. example: [n1, n2]"
         }
         self.result_as_info = {
             "is_required": False,
-            "examples": [['betweenness_centrality', 'all_in_one', 'one_by_one'], []],
+            "examples": ['betweenness_centrality', 'all_in_one', 'one_by_one'],
             "type": "string",
             "description": "It determines how to receive the results. For instance, one_by_one means that it will "
                            "return each path in one subgraph. The default value is betweenness_centrality"
@@ -68,7 +70,7 @@ Use cases include:
 
 * finding out how 2 concepts are connected. 
             
-You have the option to limit the maximum length of connections for node pairs (via `max_path_length=<n>`)
+You have the option to limit the maximum number of edges in a path (via `max_path_length=<n>`)
                     """,
                 'brief_description': """
 connect_nodes adds paths between two nodes specified in the query.
@@ -224,7 +226,7 @@ connect_nodes adds paths between two nodes specified in the query.
                                         'a maximum path length to use to connect qnodes. Defaults to 2.'},
                                     'result_as': {
                                         'How to show results?'},
-                                    'qnode_keys': {'a list of query node keys to connect'}
+                                    'qnode_keys': {'A list with just two query keys to connect'}
                                     }
 
         # A little function to describe what this thing does
@@ -285,8 +287,9 @@ connect_nodes adds paths between two nodes specified in the query.
         )
         qnode_1_id = self.parameters['qnode_keys'][0]
         qnode_2_id = self.parameters['qnode_keys'][1]
-        node_1_id = nodes[qnode_1_id].ids[0]
-        node_2_id = nodes[qnode_2_id].ids[0]
+        synonymizer = NodeSynonymizer()
+        node_1_id = synonymizer.get_canonical_curies(curies=nodes[qnode_1_id].ids[0])[nodes[qnode_1_id].ids[0]]['preferred_curie']
+        node_2_id = synonymizer.get_canonical_curies(curies=nodes[qnode_2_id].ids[0])[nodes[qnode_2_id].ids[0]]['preferred_curie']
 
         paths = path_finder.find_all_paths(node_1_id, node_2_id, hops_numbers=self.parameters['max_path_length'])
 
