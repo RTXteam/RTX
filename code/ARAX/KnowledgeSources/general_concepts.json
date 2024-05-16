@@ -8,6 +8,7 @@
         "mesh:q000276",
         "mesh:q000506",
         "umls:c3653849",
+        "chv:0000044508",
         "umls:c0086860",
         "umls:c5432207",
         "umls:c3653916",
@@ -687,6 +688,8 @@
         "Vitamin_supplementation",
         "Biological_products",
         "Neuroprotective_agent",
-        "Basis"
+        "Basis",
+        "METRIC"
+
     ]
 }
