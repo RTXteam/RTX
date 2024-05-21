@@ -16,7 +16,7 @@ connexion[swagger-ui]
 Flask==2.2.5
 Flask-Cors==3.0.10
 SQLAlchemy==1.4.47
-pymysql==1.0.2
+pymysql==1.1.1
 CacheControl==0.12.11
 lockfile==0.12.2
 simple-crypt==4.1.7
