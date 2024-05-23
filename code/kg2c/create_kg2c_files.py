@@ -466,9 +466,10 @@ def _create_build_node(kg2_version: str, sub_version: str, biolink_version: str)
     return kg2c_build_node
 
 
-def _canonicalize_nodes(kg2pre_nodes: List[Dict[str, any]]) -> Tuple[Dict[str, Dict[str, any]], Dict[str, str]]:
-    logging.info(f"Canonicalizing nodes..")
-    synonymizer = NodeSynonymizer()
+def _canonicalize_nodes(kg2pre_nodes: List[Dict[str, any]],
+                        synonymizer_name: str) -> Tuple[Dict[str, Dict[str, any]], Dict[str, str]]:
+    logging.info(f"Canonicalizing nodes using {synonymizer_name}..")
+    synonymizer = NodeSynonymizer(sqlite_file_name=synonymizer_name)
     node_ids = [node.get('id') for node in kg2pre_nodes if node.get('id')]
     logging.info(f"  Sending NodeSynonymizer.get_canonical_curies() {len(node_ids)} curies..")
     canonicalized_info = synonymizer.get_canonical_curies(curies=node_ids, return_all_categories=True)
@@ -656,7 +657,7 @@ def remove_overly_general_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, an
     return canonicalized_nodes_dict, canonicalized_edges_dict
 
 
-def create_kg2c_files(kg2pre_version: str, sub_version: str, biolink_version: str,  is_test: bool):
+def create_kg2c_files(kg2pre_version: str, sub_version: str, biolink_version: str,  synonymizer_name: str, is_test: bool):
     """
     This function extracts all nodes/edges from the KG2pre TSVs, canonicalizes the nodes, merges edges
     (based on subject, object, predicate), and saves the resulting canonicalized graph in multiple file formats: JSON,
@@ -684,7 +685,7 @@ def create_kg2c_files(kg2pre_version: str, sub_version: str, biolink_version: st
                          f" {kg2pre_version}. These version numbers must match. Halting the build.")
 
     # Actually canonicalize the nodes
-    canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
+    canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes, synonymizer_name)
 
     # Add a node containing information about this KG2C build
     build_node = _create_build_node(kg2pre_version, sub_version, biolink_version)

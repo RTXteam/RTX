@@ -32,30 +32,6 @@ logging.basicConfig(level=logging.INFO,
                               logging.StreamHandler()])
 
 
-def _setup_config_dbs_file(synonymizer_name: str):
-    """
-    This function locally modifies config_dbs.json to point to the right synonymizer.
-    """
-    logging.info("Creating a config_dbs.json file pointed to the right synonymizer..")
-    config_dbs_file_path = f"{CODE_DIR}/config_dbs.json"
-
-    # Save a copy of any pre-existing config_dbs.json so we don't overwrite it
-    original_config_dbs_file = pathlib.Path(config_dbs_file_path)
-    if original_config_dbs_file.exists():
-        os.system(f"mv {config_dbs_file_path} {config_dbs_file_path}_KG2CBUILDTEMP")
-        os.system(f"cp {config_dbs_file_path}_KG2CBUILDTEMP {config_dbs_file_path}")
-
-    RTXConfiguration()  # Regenerates config_secrets.json with the latest version
-    with open(config_dbs_file_path) as config_dbs_file:
-        rtx_config_dbs_dict = json.load(config_dbs_file)
-    # Point to the 'right' synonymizer
-    rtx_config_dbs_dict["database_downloads"]["node_synonymizer"] = f"/something/{synonymizer_name}"  # Only need name, not full path
-
-    # Save our new config_dbs.json file
-    with open(config_dbs_file_path, "w+") as revised_config_dbs_file:
-        json.dump(rtx_config_dbs_dict, revised_config_dbs_file, indent=3)
-
-
 def _create_kg2pre_tsv_test_files():
     logging.info(f"Creating test versions of the KG2pre TSVs...")
     kg2pre_tsv_dir = f"{KG2C_DIR}/kg2pre_tsvs"
@@ -177,7 +153,7 @@ def main():
     if args.download_kg2pre:
         logging.info(f"KG2pre TSV files from S3 WILL be DOWNLOADED.")
     else:
-        logging.info(f"Local KG2pre TSV files will be used (will NOT download files from S3.")
+        logging.info(f"Local KG2pre TSV files will be used (will NOT download files from S3).")
         kg2pre_tsvs_path = f"{KG2C_DIR}/kg2pre_tsvs"
         if not pathlib.Path(kg2pre_tsvs_path).exists():
             raise ValueError(f"No local KG2pre TSVs seem to exist. You need to either put "
@@ -209,9 +185,6 @@ def main():
         synonymizer_name = f"node_synonymizer_{args.sub_version}_KG{args.kg2pre_version}.sqlite"
         logging.info(f"Will use synonymizer {synonymizer_name}")
 
-    # Set up an RTX config_local.json file that points to the right KG2 and synonymizer
-    _setup_config_dbs_file(synonymizer_name)
-
     # Download KG2pre TSVs as applicable
     if args.download_kg2pre:
         logging.info(f"Downloading KG2pre TSVs from S3...")
@@ -223,7 +196,7 @@ def main():
 
     # Actually build KG2c
     logging.info("Calling create_kg2c_files.py..")
-    create_kg2c_files(args.kg2pre_version, args.sub_version, args.biolink_version, args.test)
+    create_kg2c_files(args.kg2pre_version, args.sub_version, args.biolink_version, synonymizer_name, args.test)
     logging.info("Calling record_kg2c_meta_info.py..")
     record_meta_kg_info(args.biolink_version, args.test)
 
@@ -239,13 +212,6 @@ def main():
         _upload_output_files_to_s3(args.test)
 
     logging.info(f"DONE WITH KG2c {'TEST ' if args.test else ''}BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours.")
-
-    # Undo the revisions we made to config_dbs.json
-    config_dbs_file_path = f"{CODE_DIR}/config_dbs.json"
-    temp_config_dbs_file_path = f"{config_dbs_file_path}_KG2CBUILDTEMP"
-    temp_config_dbs_path = pathlib.Path(temp_config_dbs_file_path)
-    if temp_config_dbs_path.exists():
-        os.system(f"mv {temp_config_dbs_file_path} {config_dbs_file_path}")
 
 
 if __name__ == "__main__":

@@ -29,9 +29,11 @@ from openapi_server.models.retrieval_source import RetrievalSource
 
 class NodeSynonymizer:
 
-    def __init__(self):
+    def __init__(self, sqlite_file_name: Optional[str] = None):
         self.rtx_config = RTXConfiguration()
-        self.database_name = self.rtx_config.node_synonymizer_path.split("/")[-1]
+        self.sqlite_file_name = sqlite_file_name
+        # Use specified node syonymizer sqlite file, if provided; otherwise use synonymizer specified in config_dbs.json
+        self.database_name = self.sqlite_file_name if self.sqlite_file_name else self.rtx_config.node_synonymizer_path.split("/")[-1]
         synonymizer_dir = os.path.dirname(os.path.abspath(__file__))
         self.database_path = f"{synonymizer_dir}/{self.database_name}"
         self.placeholder_lookup_values_str = "**LOOKUP_VALUES_GO_HERE**"
