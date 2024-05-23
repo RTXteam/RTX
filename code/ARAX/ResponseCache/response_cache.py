@@ -707,24 +707,14 @@ class ResponseCache:
                 #### Perform a validation on it
                 enable_validation = True
                 schema_version = trapi_version
-                #if 'schema_version' in envelope:
-                #    schema_version = envelope['schema_version']
                 try:
                     if enable_validation:
 
                         #### Set up the validator
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
 
-                        #### Enable multiprocessing to allow parallel processing of multiple envelopes when the GUI sends a bunch at once
-                        #### There's only ever one here, but the GUI sends a bunch of requests which are all subject to the same GIL
-                        enable_multiprocessing = False
-                        if enable_multiprocessing:
-                            pool = multiprocessing.Pool()
-                            eprint("INFO: Launching validator via multiprocessing")
-                            pool_results = pool.map(validate_envelope, [ { 'validator': validator, 'envelope': envelope} ] )
-                            validator = pool_results[0]
-                        else:
-                            validator.check_compliance_of_trapi_response(envelope)
+                        eprint(f"Validating response with trapi_version={schema_version}, biolink_version={biolink_version}")
+                        validator.check_compliance_of_trapi_response(envelope)
 
                         raw_messages: Dict[str, List[Dict[str,str]]] = validator.get_all_messages()
                         messages = raw_messages['Validate TRAPI Response']['Standards Test']
