@@ -210,9 +210,9 @@ def _load_publications_info(raw_publications_info: Union[str, dict], kg2_edge_id
     return publications_info
 
 
-def _load_kg2pre_tsv(local_tsv_dir_path: str, nodes_or_edges: str) -> List[Dict[str, any]]:
-    tsv_path = f"{local_tsv_dir_path}/{nodes_or_edges}.tsv"
-    tsv_header_path = f"{local_tsv_dir_path}/{nodes_or_edges}_header.tsv"
+def _load_kg2pre_tsv(local_tsv_dir_path: str, nodes_or_edges: str, is_test: bool) -> List[Dict[str, any]]:
+    tsv_path = f"{local_tsv_dir_path}/{nodes_or_edges}.tsv{'_TEST' if is_test else ''}"
+    tsv_header_path = f"{local_tsv_dir_path}/{nodes_or_edges}_header.tsv{'_TEST' if is_test else ''}"
     kg2pre_objects = []
     logging.info(f"Loading {nodes_or_edges} from KG2pre TSV ({tsv_path})..")
     headers = _get_kg2pre_headers(tsv_header_path)
@@ -316,11 +316,11 @@ def _write_list_to_neo4j_ready_tsv(input_list: List[Dict[str, any]], file_name_r
     logging.info(f"  Creating {file_name_root} header file..")
     column_headers = list(input_list[0].keys())
     modified_headers = _modify_column_headers_for_neo4j(column_headers, file_name_root)
-    with open(f"{KG2C_DIR}/{file_name_root}_header.tsv", "w+") as header_file:
+    with open(f"{KG2C_DIR}/{file_name_root}_header.tsv{'_TEST' if is_test else ''}", "w+") as header_file:
         dict_writer = csv.DictWriter(header_file, modified_headers, delimiter='\t')
         dict_writer.writeheader()
     logging.info(f"  Creating {file_name_root} file..")
-    with open(f"{KG2C_DIR}/{file_name_root}.tsv", "w+") as data_file:
+    with open(f"{KG2C_DIR}/{file_name_root}.tsv{'_TEST' if is_test else ''}", "w+") as data_file:
         dict_writer = csv.DictWriter(data_file, column_headers, delimiter='\t')
         dict_writer.writerows(input_list)
 
@@ -332,7 +332,7 @@ def create_kg2c_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     kgx_format_json = {"nodes": list(canonicalized_nodes_dict.values()),
                        "edges": list(canonicalized_edges_dict.values())}
     kgx_format_json.update(meta_info_dict)
-    with open(f"{KG2C_DIR}/kg2c.json", "w+") as output_file:
+    with open(f"{KG2C_DIR}/kg2c.json{'_TEST' if is_test else ''}", "w+") as output_file:
         json.dump(kgx_format_json, output_file)
 
 
@@ -358,7 +358,7 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
 
     # Save this lite KG to a JSON file
     logging.info(f"  Saving lite json...")
-    with open(f"{KG2C_DIR}/kg2c_lite.json", "w+") as output_file:
+    with open(f"{KG2C_DIR}/kg2c_lite.json{'_TEST' if is_test else ''}", "w+") as output_file:
         json.dump(lite_kg, output_file, indent=2)
 
 
@@ -394,7 +394,7 @@ def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
 def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                           canonicalized_edges_dict: Dict[str, Dict[str, any]], is_test: bool):
     logging.info(" Creating KG2c sqlite database..")
-    db_name = f"kg2c.sqlite"
+    db_name = f"kg2c.sqlite{'_TEST' if is_test else ''}"
     # Remove any preexisting version of this database
     if os.path.exists(db_name):
         os.remove(db_name)
@@ -446,8 +446,9 @@ def create_kg2c_sqlite_db(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
     connection.close()
 
 
-def _create_build_node(kg2_version: str, biolink_version: str) -> Dict[str, any]:
+def _create_build_node(kg2_version: str, sub_version: str, biolink_version: str) -> Dict[str, any]:
     description_dict = {"kg2_version": kg2_version,
+                        "sub_version": sub_version,
                         "biolink_version": biolink_version,
                         "build_date": datetime.now().strftime('%Y-%m-%d %H:%M')}
     description = f"{description_dict}"
@@ -522,16 +523,15 @@ def _canonicalize_nodes(kg2pre_nodes: List[Dict[str, any]]) -> Tuple[Dict[str, D
     return canonicalized_nodes, curie_map
 
 
-def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str, str], is_test: bool) -> Dict[str, Dict[str, any]]:
+def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str, str]) -> Dict[str, Dict[str, any]]:
     logging.info(f"Canonicalizing edges..")
     canonicalized_edges = dict()
     for kg2pre_edge in kg2pre_edges:
         kg2_edge_id = kg2pre_edge['id']
         original_subject = kg2pre_edge['subject']
         original_object = kg2pre_edge['object']
-        if not is_test:  # Make sure we have the mappings we expect
-            assert original_subject in curie_map
-            assert original_object in curie_map
+        assert original_subject in curie_map
+        assert original_object in curie_map
         canonicalized_subject = curie_map.get(original_subject, original_subject)
         canonicalized_object = curie_map.get(original_object, original_object)
         edge_publications = kg2pre_edge['publications'] if kg2pre_edge.get('publications') else []
@@ -579,21 +579,16 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
     return canonicalized_edges
 
 
-def _post_process_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]], kg2c_config_info: Dict[str, any]) -> Dict[str, Dict[str, any]]:
+def _post_process_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]]) -> Dict[str, Dict[str, any]]:
     # Choose best descriptions for each cluster
-    use_nlp_to_choose_descriptions = kg2c_config_info["kg2c"].get("use_nlp_to_choose_descriptions")
     node_ids = list(canonicalized_nodes_dict)
     description_lists = [canonicalized_nodes_dict[node_id]["descriptions_list"] for node_id in node_ids]
     num_cpus = os.cpu_count()
     logging.info(f"Detected {num_cpus} cpus; will use all of them to choose best descriptions")
     start = time.time()
     with Pool(num_cpus) as pool:
-        if use_nlp_to_choose_descriptions:
-            logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions..")
-            best_descriptions = pool.map(_get_best_description_nlp, description_lists)
-        else:
-            logging.info(f" Choosing best descriptions (longest under 10,000 characters)..")
-            best_descriptions = pool.map(_get_best_description_length, description_lists)
+        logging.info(f" Starting to use Chunyu's NLP-based method to choose best descriptions..")
+        best_descriptions = pool.map(_get_best_description_nlp, description_lists)
     logging.info(f" Choosing best descriptions took {round(((time.time() - start) / 60) / 60, 2)} hours")
 
     # Actually decorate nodes with their 'best' description
@@ -631,8 +626,7 @@ def _post_process_edges(canonicalized_edges_dict: Dict[str, Dict[str, any]]) -> 
 
 def remove_overly_general_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                                 canonicalized_edges_dict: Dict[str, Dict[str, any]],
-                                biolink_version: str,
-                                is_test: bool) -> Tuple[Dict[str, Dict[str, any]], Dict[str, Dict[str, any]]]:
+                                biolink_version: str) -> Tuple[Dict[str, Dict[str, any]], Dict[str, Dict[str, any]]]:
     logging.info(f"Removing overly general nodes from the graph..")
     bh = BiolinkHelper(biolink_version)
     # Remove all nodes that have a biolink category as an equivalent identifier, as well as a few others
@@ -650,101 +644,69 @@ def remove_overly_general_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, an
         canonicalized_nodes_dict.pop(node_id, None)
 
     # Delete any now orphaned edges
-    if not is_test:
-        orphaned_edge_ids = {edge_id for edge_id, edge in canonicalized_edges_dict.items()
-                             if edge["subject"] not in canonicalized_nodes_dict or
-                             edge["object"] not in canonicalized_nodes_dict}
-        logging.info(f"  Deleting {len(orphaned_edge_ids)} edges that were orphaned by the above steps..")
-        for edge_id in orphaned_edge_ids:
-            canonicalized_edges_dict.pop(edge_id, None)
+    orphaned_edge_ids = {edge_id for edge_id, edge in canonicalized_edges_dict.items()
+                         if edge["subject"] not in canonicalized_nodes_dict or
+                         edge["object"] not in canonicalized_nodes_dict}
+    logging.info(f"  Deleting {len(orphaned_edge_ids)} edges that were orphaned by the above steps..")
+    for edge_id in orphaned_edge_ids:
+        canonicalized_edges_dict.pop(edge_id, None)
 
     logging.info(f"Done removing overly general nodes: resulting KG2c now has {len(canonicalized_nodes_dict)} nodes "
                  f"and {len(canonicalized_edges_dict)} edges")
     return canonicalized_nodes_dict, canonicalized_edges_dict
 
 
-def create_kg2c_files(is_test=False):
+def create_kg2c_files(kg2pre_version: str, sub_version: str, biolink_version: str,  is_test: bool):
     """
     This function extracts all nodes/edges from the KG2pre TSVs, canonicalizes the nodes, merges edges
     (based on subject, object, predicate), and saves the resulting canonicalized graph in multiple file formats: JSON,
     sqlite, and TSV (ready for import into Neo4j).
     """
-    with open(f"{KG2C_DIR}/kg2c_config.json") as config_file:
-        kg2c_config_info = json.load(config_file)
-    kg2_version = kg2c_config_info.get("kg2pre_version")
-    biolink_version = kg2c_config_info.get("biolink_version")
-    start_from_kg2c_json = kg2c_config_info["kg2c"].get("start_from_kg2c_json")
-    use_local_kg2pre_tsvs = kg2c_config_info["kg2c"].get("use_local_kg2pre_tsvs")
-    did_synonymizer_build = kg2c_config_info["synonymizer"]["build"]
 
-    # Start with the pre-existing kg2c.json, if directed to in the config file (allows partial builds)
-    if start_from_kg2c_json:
-        logging.info(f"Loading KG2c from pre-existing kg2c.json..")
-        with open(f"{KG2C_DIR}/kg2c.json") as kg2c_json_file:
-            kg2c = json.load(kg2c_json_file)
-        canonicalized_nodes_dict = {node["id"]: node for node in kg2c["nodes"]}
-        canonicalized_edges_dict = {edge["id"]: edge for edge in kg2c["edges"]}
-        logging.info(f"Loaded KG2c has {len(canonicalized_nodes_dict)} nodes and {len(canonicalized_edges_dict)} edges")
-    # Otherwise do a full build, starting with the KG2pre TSVs
+    # First make sure the KG2pre TSV directory exists as it should
+    local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
+    if not pathlib.Path(local_tsv_dir_path).exists():
+        raise ValueError(f"KG2pre TSVs do not exist in {local_tsv_dir_path}. You need to either put them "
+                         f"there or use the '--downloadkg2pre' flag to download fresh copies.")
+
+    # Load the KG2pre nodes
+    kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes")
+    canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
+
+    # Make sure that the KG2pre version matches the version we're supposed to be building a KG2c off of
+    kg2pre_build_node = canonicalized_nodes_dict.get("RTX:KG2")
+    if not kg2pre_build_node:
+        raise ValueError(f"There is no build node (i.e., no node with the ID 'RTX:KG2' in the ingested KG2pre "
+                         f"TSVs; this means I can't verify that the KG2pre version matches what we want, "
+                         f"so I'll halt processing")
     else:
-        # First make sure the KG2pre TSV directory exists as it should
-        local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
-        if not pathlib.Path(local_tsv_dir_path).exists():
-            if use_local_kg2pre_tsvs:
-                raise ValueError(f"You specified in kg2c_config.json that you want your own local KG2pre TSVs to be "
-                                 f"used, but they don't seem to exist in {local_tsv_dir_path}. They must be named: "
-                                 f"nodes.tsv, nodes_header.tsv, edges.tsv, edges_header.tsv")
-            else:
-                subprocess.check_call(["mkdir", local_tsv_dir_path])
+        local_files_kg2pre_version = kg2pre_build_node["name"].replace("RTX-KG", "")
+        if kg2pre_version != local_files_kg2pre_version:
+            raise ValueError(f"The version on the KG2pre build node in the ingested KG2pre TSVs is "
+                             f"{kg2pre_version}, but the KG2pre version you specified for this build is"
+                             f" {kg2pre_version}. These version numbers must match. Halting the build.")
 
-        # Download the KG2pre TSVs from the AWS S3 bucket as needed
-        if not (is_test or use_local_kg2pre_tsvs or did_synonymizer_build):  # Synonymizer build downloads KG2pre TSVs
-            kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
-            logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
-            subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
-            logging.info(f"Unpacking {kg2pre_tarball_name}..")
-            subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", local_tsv_dir_path])
-        else:
-            logging.info(f"Using the KG2pre TSVs in {local_tsv_dir_path} (not downloading fresh versions)")
+    # Add a node containing information about this KG2C build
+    build_node = _create_build_node(kg2pre_version, sub_version, biolink_version)
+    canonicalized_nodes_dict[build_node['id']] = build_node
+    canonicalized_nodes_dict = _post_process_nodes(canonicalized_nodes_dict)
+    del kg2pre_nodes  # Try to free up as much memory as possible for edge processing
+    gc.collect()
 
-        # Load the KG2pre nodes
-        kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes")
-        canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes)
+    # Canonicalize edges
+    kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges", is_test)
+    canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map)
+    del kg2pre_edges
+    gc.collect()
+    canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
 
-        # Make sure that the KG2pre version matches the version we're supposed to be building a KG2c off of
-        kg2pre_build_node = canonicalized_nodes_dict.get("RTX:KG2")
-        if not kg2pre_build_node:
-            raise ValueError(f"There is no build node (i.e., no node with the ID 'RTX:KG2' in the ingested KG2pre "
-                             f"TSVs; this means I can't verify that the KG2pre version matches what we want, "
-                             f"so I'll halt processing")
-        else:
-            kg2pre_version = kg2pre_build_node["name"].replace("RTX-KG", "")
-            if kg2pre_version != kg2_version:
-                raise ValueError(f"The version on the KG2pre build node in the ingested KG2pre TSVs is "
-                                 f"{kg2pre_version}, but the KG2c version you want to build is {kg2_version}. "
-                                 f"These version numbers must match. Halting the build.")
-
-        # Add a node containing information about this KG2C build
-        build_node = _create_build_node(kg2_version, biolink_version)
-        canonicalized_nodes_dict[build_node['id']] = build_node
-        canonicalized_nodes_dict = _post_process_nodes(canonicalized_nodes_dict, kg2c_config_info)
-        del kg2pre_nodes  # Try to free up as much memory as possible for edge processing
-        gc.collect()
-
-        # Canonicalize edges
-        kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges")
-        canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map, is_test)
-        del kg2pre_edges
-        gc.collect()
-        canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
-
-        # Remove overly general nodes (e.g., 'Genes', 'Disease or disorder'..)
-        canonicalized_nodes_dict, canonicalized_edges_dict = remove_overly_general_nodes(canonicalized_nodes_dict,
-                                                                                         canonicalized_edges_dict,
-                                                                                         biolink_version, is_test)
+    # Remove overly general nodes (e.g., 'Genes', 'Disease or disorder'..)
+    canonicalized_nodes_dict, canonicalized_edges_dict = remove_overly_general_nodes(canonicalized_nodes_dict,
+                                                                                     canonicalized_edges_dict,
+                                                                                     biolink_version)
 
     # Actually create all of our output files (different formats for storing KG2c)
-    meta_info_dict = {"kg2_version": kg2_version, "biolink_version": biolink_version}
+    meta_info_dict = {"kg2_version": kg2pre_version, "sub_version": sub_version, "biolink_version": biolink_version}
     logging.info(f"Saving KG2c in various file formats..")
     create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
@@ -758,12 +720,13 @@ def main():
                         handlers=[logging.FileHandler("createkg2cfiles.log"),
                                   logging.StreamHandler()])
     arg_parser = argparse.ArgumentParser()
+    # TODO: Update this...
     arg_parser.add_argument('--test', dest='test', action='store_true', default=False)
     args = arg_parser.parse_args()
 
     logging.info(f"Starting to create KG2canonicalized..")
     start = time.time()
-    create_kg2c_files(args.test)
+    # create_kg2c_files(args.test)
     logging.info(f"Done! Took {round(((time.time() - start) / 60) / 60, 2)} hours.")
 
 
