@@ -42,8 +42,8 @@ def _setup_config_dbs_file(synonymizer_name: str):
     # Save a copy of any pre-existing config_dbs.json so we don't overwrite it
     original_config_dbs_file = pathlib.Path(config_dbs_file_path)
     if original_config_dbs_file.exists():
-        subprocess.check_call(["mv", config_dbs_file_path, f"{config_dbs_file_path}_KG2CBUILDTEMP"])
-        subprocess.check_call(["cp", f"{config_dbs_file_path}_KG2CBUILDTEMP", config_dbs_file_path])
+        os.system(f"mv {config_dbs_file_path} {config_dbs_file_path}_KG2CBUILDTEMP")
+        os.system(f"cp {config_dbs_file_path}_KG2CBUILDTEMP {config_dbs_file_path}")
 
     RTXConfiguration()  # Regenerates config_secrets.json with the latest version
     with open(config_dbs_file_path) as config_dbs_file:
@@ -130,14 +130,12 @@ def _create_kg2pre_tsv_test_files():
 def _upload_output_files_to_s3(is_test: bool):
     logging.info("Uploading KG2c json and TSV files to S3..")
     tarball_name = f"kg2c-tsv.tar.gz{'_TEST' if is_test else ''}"
-    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2", f"{KG2C_DIR}/{tarball_name}", f"s3://rtx-kg2/{tarball_name}"])
+    os.system(f"aws s3 cp --no-progress --region us-west-2 {KG2C_DIR}/{tarball_name} s3://rtx-kg2/")
 
     unzipped_lite_json_name = f"kg2c_lite.json{'_TEST' if is_test else ''}"
-    subprocess.check_call(["gzip", "-f", f"{KG2C_DIR}/{unzipped_lite_json_name}"])
-
+    os.system(f"gzip -f {KG2C_DIR}/{unzipped_lite_json_name}")
     zipped_lite_json_name = f"{unzipped_lite_json_name}.gz"
-    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2",
-                           f"{KG2C_DIR}/{zipped_lite_json_name}", f"s3://rtx-kg2/{zipped_lite_json_name}"])
+    os.system(f"aws s3 cp --no-progress --region us-west-2 {KG2C_DIR}/{zipped_lite_json_name} s3://rtx-kg2/")
 
 
 def main():
@@ -230,14 +228,14 @@ def main():
     record_meta_kg_info(args.biolink_version, args.test)
 
     logging.info(f"Creating tarball of KG2c TSVs..")
-    subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/make-kg2c-tarball.sh", "_TEST" if args.test else ""])
+    os.system(f"bash -x {KG2C_DIR}/make-kg2c-tarball.sh {'_TEST' if args.test else ''}")
 
     # Upload artifacts to the relevant places
     if args.upload_artifacts:
         upload_directory = f"/home/rtxconfig/KG{args.kg2pre_version}"
         logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
-        subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTX_CONFIG.db_host,
-                               args.sub_version, args.kg2pre_version, upload_directory, "_TEST" if args.test else ""])
+        os.system(f"bash -x {KG2C_DIR}/upload-kg2c-artifacts.sh {RTX_CONFIG.db_host} {args.sub_version} "
+                  f"{args.kg2pre_version} {upload_directory} {'_TEST' if args.test else ''}")
         _upload_output_files_to_s3(args.test)
 
     logging.info(f"DONE WITH KG2c {'TEST ' if args.test else ''}BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours.")
@@ -247,7 +245,7 @@ def main():
     temp_config_dbs_file_path = f"{config_dbs_file_path}_KG2CBUILDTEMP"
     temp_config_dbs_path = pathlib.Path(temp_config_dbs_file_path)
     if temp_config_dbs_path.exists():
-        subprocess.check_call(["mv", temp_config_dbs_file_path, config_dbs_file_path])
+        os.system(f"mv {temp_config_dbs_file_path} {config_dbs_file_path}")
 
 
 if __name__ == "__main__":
