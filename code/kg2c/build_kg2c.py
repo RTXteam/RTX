@@ -5,6 +5,7 @@ kg2c_config.json.
 Usage: python build_kg2c.py TODO: update this
 """
 import argparse
+import csv
 import logging
 import pathlib
 import json
@@ -12,6 +13,8 @@ import os
 import subprocess
 import sys
 import time
+
+import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from create_kg2c_files import create_kg2c_files
@@ -55,7 +58,73 @@ def _setup_config_dbs_file(synonymizer_name: str):
 
 def _create_kg2pre_tsv_test_files():
     logging.info(f"Creating test versions of the KG2pre TSVs...")
+    kg2pre_tsv_dir = f"{KG2C_DIR}/kg2pre_tsvs"
     # TODO: Improve this so don't have orphan edge problem..
+
+    # First grab all node IDs in our nodes file
+    test_nodes_file_path = f"{kg2pre_tsv_dir}/nodes.tsv_TEST"
+    nodes_file_path = f"{kg2pre_tsv_dir}/nodes.tsv"
+    nodes_tsv_header_path = f"{kg2pre_tsv_dir}/nodes_header.tsv"
+    nodes_header_df = pd.read_table(nodes_tsv_header_path)
+    node_column_names = [column_name.split(":")[0] if not column_name.startswith(":") else column_name
+                         for column_name in nodes_header_df.columns]
+    columns_to_keep = ["id"]
+    nodes_df = pd.read_table(nodes_file_path,
+                             names=node_column_names,
+                             usecols=columns_to_keep,
+                             index_col="id",
+                             dtype={
+                                 "id": str
+                             })
+    node_ids = set(nodes_df.index)
+    logging.info(f"Loaded all {len(node_ids)} node IDs in nodes.tsv.")
+
+    # Then look for X edges that use only nodes we have
+    logging.info(f"Looking for edges that use only node IDs present.")
+    edges_tsv_header_path = f"{kg2pre_tsv_dir}/edges_header.tsv"
+    edges_header_df = pd.read_table(edges_tsv_header_path)
+    edge_column_names = [column_name.split(":")[0] if not column_name.startswith(":") else column_name
+                         for column_name in edges_header_df.columns]
+    test_edge_count = 0
+    nodes_used_by_test_edges = set()
+    with open(f"{kg2pre_tsv_dir}/edges.tsv_TEST", "w+") as kg2pre_test_edges_file:
+        writer = csv.writer(kg2pre_test_edges_file, delimiter="\t")
+        with open(f"{kg2pre_tsv_dir}/edges.tsv", "r") as kg2pre_edges_file:
+            reader = csv.reader(kg2pre_edges_file, delimiter="\t")
+            subject_id_col = edge_column_names.index("subject")
+            object_id_col = edge_column_names.index("object")
+            for row in reader:
+                if test_edge_count < 1000000:
+                    subject_id = row[subject_id_col]
+                    object_id = row[object_id_col]
+                    # Save this edge as a test edge if we have both of its nodes
+                    if subject_id in node_ids and object_id in node_ids:
+                        writer.writerow(row)
+                        nodes_used_by_test_edges.add(subject_id)
+                        nodes_used_by_test_edges.add(object_id)
+                        test_edge_count += 1
+                else:
+                    logging.info(f"Found enough test edges; won't look for more")
+                    break
+    logging.info(f"Kept a total of {test_edge_count} test edges that use {len(nodes_used_by_test_edges)} "
+                 f"different test nodes.")
+
+    # Then narrow down our nodes to only those used by our saved test edges (plus the build node)
+    logging.info(f"Creating test nodes file (will contain only those nodes used by the test edges)..")
+    with open(f"{kg2pre_tsv_dir}/nodes.tsv_TEST", "w+") as kg2pre_test_nodes_file:
+        writer = csv.writer(kg2pre_test_nodes_file, delimiter="\t")
+        with open(f"{kg2pre_tsv_dir}/nodes.tsv", "r") as kg2pre_nodes_file:
+            reader = csv.reader(kg2pre_nodes_file, delimiter="\t")
+            node_id_col = node_column_names.index("id")
+            for row in reader:
+                node_id = row[node_id_col]
+                if node_id in nodes_used_by_test_edges or node_id == "RTX:KG2":
+                    writer.writerow(row)
+
+    # Then copy headers to test versions
+    logging.info(f"Creating test versions of headers (same as originals)..")
+    os.system(f"cp {kg2pre_tsv_dir}/nodes_header.tsv {kg2pre_tsv_dir}/nodes_header.tsv_TEST")
+    os.system(f"cp {kg2pre_tsv_dir}/edges_header.tsv {kg2pre_tsv_dir}/edges_header.tsv_TEST")
 
 
 def _upload_output_files_to_s3(is_test: bool):
@@ -146,7 +215,7 @@ def main():
     _setup_config_dbs_file(synonymizer_name)
 
     # Download KG2pre TSVs as applicable
-    if args.download_kg2pre_tsvs:
+    if args.download_kg2pre:
         logging.info(f"Downloading KG2pre TSVs from S3...")
         os.system(f"bash -x {KG2C_DIR}/download-kg2pre-tsvs.sh")
 
@@ -171,7 +240,7 @@ def main():
                                args.sub_version, args.kg2pre_version, upload_directory, "_TEST" if args.test else ""])
         _upload_output_files_to_s3(args.test)
 
-    logging.info(f"DONE WITH KG2c BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours.")
+    logging.info(f"DONE WITH KG2c {'TEST ' if args.test else ''}BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours.")
 
     # Undo the revisions we made to config_dbs.json
     config_dbs_file_path = f"{CODE_DIR}/config_dbs.json"

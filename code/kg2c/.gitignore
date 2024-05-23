@@ -1,5 +1,6 @@
 *.log
 kg2c*.tsv
+*_TEST
 kg2c.json*
 kg2c_lite.json*
 meta_kg.json
