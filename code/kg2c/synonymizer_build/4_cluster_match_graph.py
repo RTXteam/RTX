@@ -14,9 +14,6 @@ import requests
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
 SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s',
-                    handlers=[logging.StreamHandler()])
 PREDICATE_WEIGHTS = {
     "same_as": 1.0,
     "close_match": 0.5,

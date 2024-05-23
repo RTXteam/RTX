@@ -16,9 +16,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
 SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
 SRI_NN_DIR = f"{SYNONYMIZER_BUILD_DIR}/SRI_NN"
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s',
-                    handlers=[logging.StreamHandler()])
 # NOTE: These below three variables need to be updated for new SRI NN builds..
 SRI_NN_NODES_FILE_NAME = "KGX_NN_data-2023apr7_nodes.jsonl"
 SRI_NN_EDGES_FILE_NAME = "KGX_NN_data-2023apr7_edges.jsonl"

@@ -12,9 +12,6 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
 KG2PRE_TSV_DIR = f"{KG2C_DIR}/kg2pre_tsvs"
 SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s',
-                    handlers=[logging.StreamHandler()])
 PRIMARY_KNOWLEDGE_SOURCE_PROPERTY_NAME = "primary_knowledge_source"
 
 

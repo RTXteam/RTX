@@ -6,9 +6,6 @@ from typing import List
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
 SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s',
-                    handlers=[logging.StreamHandler()])
 KG2PRE_RESOURCE_ID = "infores:rtx-kg2"
 SRI_NN_RESOURCE_ID = "infores:sri-node-normalizer"
 ROW_BATCH_SIZE = 1000000
