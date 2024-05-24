@@ -5,8 +5,13 @@ import subprocess
 import sys
 import time
 
+# NOTE: Importing these files this way because their names begin with a number (normal 'import __' doesn't work)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-import a_build_match_graph_kg2pre, b_build_match_graph_sri, c_merge_match_graphs, d_cluster_match_graph, e_create_synonymizer_sqlite
+build_match_graph_kg2pre = __import__("1_build_match_graph_kg2pre")
+build_match_graph_sri = __import__("2_build_match_graph_sri")
+merge_match_graphs = __import__("3_merge_match_graphs")
+cluster_match_graph = __import__("4_cluster_match_graph")
+create_synonymizer_sqlite = __import__("5_create_synonymizer_sqlite")
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # RTX code directory
 from RTXConfiguration import RTXConfiguration
@@ -48,16 +53,16 @@ def main():
     # Run the requested steps (default is all steps)
     step_num_to_start_at = int(args.start_at)
     if step_num_to_start_at <= 1:
-        a_build_match_graph_kg2pre.run(kg2pre_version=args.kg2pre_version,
-                                       download_fresh=args.download_kg2pre)
+        build_match_graph_kg2pre.run(kg2pre_version=args.kg2pre_version,
+                                     download_fresh=args.download_kg2pre)
     if step_num_to_start_at <= 2:
-        b_build_match_graph_sri.run()
+        build_match_graph_sri.run()
     if step_num_to_start_at <= 3:
-        c_merge_match_graphs.run()
+        merge_match_graphs.run()
     if step_num_to_start_at <= 4:
-        d_cluster_match_graph.run()
+        cluster_match_graph.run()
     if step_num_to_start_at <= 5:
-        e_create_synonymizer_sqlite.run()
+        create_synonymizer_sqlite.run()
     logging.info(f"Done building node_synonymizer.sqlite. Took "
                  f"{round(((time.time() - start) / 60) / 60, 1)} hours.")
 

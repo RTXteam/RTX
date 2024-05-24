@@ -112,26 +112,18 @@ def get_sri_cluster_id_mappings(kg2pre_node_ids_set: Set[str]):
     return sri_node_id_to_cluster_id_map
 
 
-def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_test: bool):
+def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str]):
     # Grab the KG2pre-related nodes from the SRI NN json lines file (which is huge - has ~600 million nodes in total)
     logging.info(f"Extracting relevant nodes from bulk SRI NN json lines file..")
 
-    if is_test:
-        # We'll make up some nodes for testing purposes
-        nodes_dict = {node_id: (node_id, "some name", "biolink:Disease", cluster_id)
-                      for node_id, cluster_id in sri_node_id_to_cluster_id_map.items()}
-    else:
-        nodes_dict = dict()
-        with json_lines.open(f"{SRI_NN_DIR}/{SRI_NN_NODES_FILE_NAME}") as jsonl_file:
-            for line_obj in jsonl_file:
-                node_id = line_obj["id"]
-                if node_id in sri_node_id_to_cluster_id_map:  # Means it's part of a cluster involving KG2pre nodes
-                    cluster_id = sri_node_id_to_cluster_id_map[node_id]
-                    node_row = (node_id, line_obj.get("name"), line_obj["category"], cluster_id)
-                    nodes_dict[node_id] = node_row
-
-                    if is_test and len(nodes_dict) > 10:
-                        break
+    nodes_dict = dict()
+    with json_lines.open(f"{SRI_NN_DIR}/{SRI_NN_NODES_FILE_NAME}") as jsonl_file:
+        for line_obj in jsonl_file:
+            node_id = line_obj["id"]
+            if node_id in sri_node_id_to_cluster_id_map:  # Means it's part of a cluster involving KG2pre nodes
+                cluster_id = sri_node_id_to_cluster_id_map[node_id]
+                node_row = (node_id, line_obj.get("name"), line_obj["category"], cluster_id)
+                nodes_dict[node_id] = node_row
 
     # Save our selected SRI nodes
     logging.info(f"Loading select SRI nodes into DataFrame..")
@@ -142,46 +134,44 @@ def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_tes
     nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/2_match_nodes_sri.tsv", sep="\t", index=False)
 
 
-def create_match_edges_sri(sri_node_ids: Set[str], is_test: bool = False):
-    # TODO: Just create edges from data from API...
-    # Grab the KG2pre-related edges from the SRI NN json lines file (which is huge - has ~200 million edges)
-    logging.info(f"Extracting relevant edges from bulk SRI NN json lines file..")
-
-    edges_dict = dict()
-    with json_lines.open(f"{SRI_NN_DIR}/{SRI_NN_EDGES_FILE_NAME}") as jsonl_file:
-        for line_obj in jsonl_file:
-            edge_subject = line_obj["subject"]
-            edge_object = line_obj["object"]
-            if edge_subject in sri_node_ids and edge_object in sri_node_ids:
-                edge_id = get_sri_edge_id(edge_subject, edge_object)
-                edge_row = (edge_id, edge_subject, line_obj["predicate"], edge_object)
-                edges_dict[edge_id] = edge_row
-
-                if is_test and len(edges_dict) > 10:
-                    break
-
-    # Save our selected SRI edges
-    logging.info(f"Loading select SRI edges into DataFrame..")
-    edges_df = pd.DataFrame(edges_dict.values(), columns=["id", "subject", "predicate", "object"])
-    strip_biolink_prefix_vectorized = np.vectorize(strip_biolink_prefix)
-    edges_df.predicate = strip_biolink_prefix_vectorized(edges_df.predicate)
-    logging.info(f"Saving SRI edges to TSV..")
-    edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/2_match_edges_sri.tsv", sep="\t", index=False)
+# def create_match_edges_sri(sri_node_id_to_cluster_id_map: Dict[str, str]):
+#     # TODO: Just create edges from data from API...
+#     # Grab the KG2pre-related edges from the SRI NN json lines file (which is huge - has ~200 million edges)
+#     logging.info(f"Extracting relevant edges from bulk SRI NN json lines file..")
+#
+#     edges_dict = dict()
+#     with json_lines.open(f"{SRI_NN_DIR}/{SRI_NN_EDGES_FILE_NAME}") as jsonl_file:
+#         for line_obj in jsonl_file:
+#             edge_subject = line_obj["subject"]
+#             edge_object = line_obj["object"]
+#             if edge_subject in sri_node_ids and edge_object in sri_node_ids:
+#                 edge_id = get_sri_edge_id(edge_subject, edge_object)
+#                 edge_row = (edge_id, edge_subject, line_obj["predicate"], edge_object)
+#                 edges_dict[edge_id] = edge_row
+#
+#     # Save our selected SRI edges
+#     logging.info(f"Loading select SRI edges into DataFrame..")
+#     edges_df = pd.DataFrame(edges_dict.values(), columns=["id", "subject", "predicate", "object"])
+#     strip_biolink_prefix_vectorized = np.vectorize(strip_biolink_prefix)
+#     edges_df.predicate = strip_biolink_prefix_vectorized(edges_df.predicate)
+#     logging.info(f"Saving SRI edges to TSV..")
+#     edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/2_match_edges_sri.tsv", sep="\t", index=False)
 
 
-def main():
+def run():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--test', dest='test', action='store_true')
-    args = arg_parser.parse_args()
 
     # First grab the SRI cluster IDs ('preferred'/canonical curies) for all KG2pre nodes from SRI NN RestAPI
     kg2pre_node_ids = get_kg2pre_node_ids()
     sri_node_id_to_cluster_id_map = get_sri_cluster_id_mappings(kg2pre_node_ids)
 
     # Then build an SRI 'match graph' using the SRI NN bulk download
-    create_match_nodes_sri(sri_node_id_to_cluster_id_map, args.test)
-    create_match_edges_sri(sri_node_id_to_cluster_id_map, args.test)
+    create_match_nodes_sri(sri_node_id_to_cluster_id_map)
+    # create_match_edges_sri(sri_node_id_to_cluster_id_map)
+
+
+def main():
+    run()
 
 
 if __name__ == "__main__":
