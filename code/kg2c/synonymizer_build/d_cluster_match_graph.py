@@ -376,7 +376,7 @@ def load_merged_edges() -> pd.DataFrame:
     return edges_df
 
 
-def main():
+def run():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
 
     # Load match graph data
@@ -403,6 +403,10 @@ def main():
     logging.info(f"Saving final nodes and edges tables..")
     nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv", sep="\t")
     edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv", sep="\t")
+
+
+def main():
+    run()
 
 
 if __name__ == "__main__":

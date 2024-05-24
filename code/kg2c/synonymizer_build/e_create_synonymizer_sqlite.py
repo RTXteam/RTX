@@ -233,7 +233,8 @@ def write_graph_reports(nodes_df: pd.DataFrame, edges_df: pd.DataFrame, clusters
     oversized_clusters_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/5_report_oversized_clusters.tsv", sep="\t", index=False,
                                  columns=["cluster_id", "cluster_size", "category", "name"])
 
-def main():
+
+def run():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
 
     logging.info(f"Loading nodes and edges TSVs into DataFrames..")
@@ -246,6 +247,10 @@ def main():
 
     # Save some reports about the graph's content (meta-level)
     write_graph_reports(nodes_df, edges_df, clusters_df)
+
+
+def main():
+    run()
 
 
 if __name__ == "__main__":

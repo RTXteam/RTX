@@ -133,12 +133,16 @@ def write_node_batch(writer: csv.writer, rows: list):
     return []
 
 
-def main():
+def run():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
 
     # Merge KG2pre and SRI NN data
     merge_edges()
     merge_nodes()
+
+
+def main():
+    run()
 
 
 if __name__ == "__main__":
