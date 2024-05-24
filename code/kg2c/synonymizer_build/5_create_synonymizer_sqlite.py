@@ -64,7 +64,7 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
     sqlite_db_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
     logging.info(f"Synonymizer will be saved to: {sqlite_db_path}")
     if pathlib.Path(sqlite_db_path).exists():
-        subprocess.check_call(["rm", sqlite_db_path])
+        os.system(f"rm {sqlite_db_path}")
     db_connection = sqlite3.connect(sqlite_db_path)
 
     # Add a column of simplified names (for better name-based lookup)

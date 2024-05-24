@@ -46,9 +46,9 @@ def get_sri_cluster_id_mappings(kg2pre_node_ids_set: Set[str]):
     sri_match_nodes_file_path = f"{SYNONYMIZER_BUILD_DIR}/2_match_nodes_sri.tsv"
     sri_match_edges_file_path = f"{SYNONYMIZER_BUILD_DIR}/2_match_edges_sri.tsv"
     if pathlib.Path(sri_match_nodes_file_path).exists():
-        subprocess.check_call(["mv", sri_match_nodes_file_path, f"{sri_match_nodes_file_path}_PREVIOUS"])
+        os.system(f"mv {sri_match_nodes_file_path} {sri_match_nodes_file_path}_PREVIOUS")
     if pathlib.Path(sri_match_edges_file_path).exists():
-        subprocess.check_call(["mv", sri_match_edges_file_path, f"{sri_match_edges_file_path}_PREVIOUS"])
+        os.system(f"mv {sri_match_edges_file_path} {sri_match_edges_file_path}_PREVIOUS")
 
     # Divide KG2pre node IDs into batches
     batch_size = 1000  # This is the suggested max batch size from Chris Bizon (in Translator slack..)
@@ -143,6 +143,7 @@ def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_tes
 
 
 def create_match_edges_sri(sri_node_ids: Set[str], is_test: bool = False):
+    # TODO: Just create edges from data from API...
     # Grab the KG2pre-related edges from the SRI NN json lines file (which is huge - has ~200 million edges)
     logging.info(f"Extracting relevant edges from bulk SRI NN json lines file..")
 
@@ -168,31 +169,11 @@ def create_match_edges_sri(sri_node_ids: Set[str], is_test: bool = False):
     edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/2_match_edges_sri.tsv", sep="\t", index=False)
 
 
-def download_sri_nn_files():
-    logging.info(f"Downloading SRI NN source files..")
-    if not pathlib.Path(SRI_NN_DIR).exists():
-        subprocess.check_call(["mkdir", SRI_NN_DIR])
-    logging.info(f"Downloading SRI NN nodes file..")
-    subprocess.check_call(["curl", "-L", f"{SRI_NN_REMOTE_ROOT_PATH}/{SRI_NN_NODES_FILE_NAME}.gz", "-o",
-                           f"{SRI_NN_DIR}/{SRI_NN_NODES_FILE_NAME}.gz"])
-    logging.info(f"Downloading SRI NN edges file..")
-    subprocess.check_call(["curl", "-L", f"{SRI_NN_REMOTE_ROOT_PATH}/{SRI_NN_EDGES_FILE_NAME}.gz", "-o",
-                           f"{SRI_NN_DIR}/{SRI_NN_EDGES_FILE_NAME}.gz"])
-    logging.info(f"Unzipping SRI NN files..")
-    subprocess.check_call(["gunzip", f"{SRI_NN_DIR}/{SRI_NN_NODES_FILE_NAME}.gz"])
-    subprocess.check_call(["gunzip", f"{SRI_NN_DIR}/{SRI_NN_EDGES_FILE_NAME}.gz"])
-
-
 def main():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--downloadfresh', dest='download_fresh', action='store_true')
     arg_parser.add_argument('--test', dest='test', action='store_true')
     args = arg_parser.parse_args()
-
-    # Download a fresh copy of the bulk SRI NN data, if requested
-    if args.download_fresh:
-        download_sri_nn_files()
 
     # First grab the SRI cluster IDs ('preferred'/canonical curies) for all KG2pre nodes from SRI NN RestAPI
     kg2pre_node_ids = get_kg2pre_node_ids()

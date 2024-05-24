@@ -22,24 +22,23 @@ def main():
     shinc_file_name = "master-config.shinc"
     logging.info(f"Getting {shinc_file_name} from KG2pre repo")
     rtx_kg2_repo_url = "https://github.com/RTXteam/RTX-KG2/blob/master"
-    subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/{shinc_file_name}?raw=true", "-o", f"{KG2C_DIR}/{shinc_file_name}"])
+    os.system(f"curl -L {rtx_kg2_repo_url}/{shinc_file_name}?raw=true -o {KG2C_DIR}/{shinc_file_name}")
 
     # Get the system memory script from the KG2 repo
     mem_file_name = "get-system-memory-gb.sh"
     logging.info(f"Getting {mem_file_name} from KG2pre repo")
-    subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/{mem_file_name}?raw=true", "-o", f"{KG2C_DIR}/{mem_file_name}"])
+    os.system(f"curl -L {rtx_kg2_repo_url}/{mem_file_name}?raw=true -o {KG2C_DIR}/{mem_file_name}")
     os.chmod(f"{KG2C_DIR}/{mem_file_name}", 755)
 
     # Get the Neo4j setup script from the KG2 repo
     setup_script_name = "setup-kg2-neo4j.sh"
     logging.info(f"Getting {setup_script_name} from KG2pre repo")
-    subprocess.check_call(["curl", "-L", f"{rtx_kg2_repo_url}/{setup_script_name}?raw=true", "-o", f"{KG2C_DIR}/{setup_script_name}"])
+    os.system(f"curl -L {rtx_kg2_repo_url}/{setup_script_name}?raw=true -o {KG2C_DIR}/{setup_script_name}")
 
     # Now run the Neo4j setup script
     logging.info(f"Running {setup_script_name}")
     os.chdir(KG2C_DIR)
-#    subprocess.check_call(["cd", KG2C_DIR]) # Causing issues, replaced with the above chdir command.
-    subprocess.check_call(["bash", "-x", setup_script_name])
+    os.system(f"bash -x {KG2C_DIR}/{setup_script_name}")
 
     logging.info("DONE SETTING UP FOR NEO4J")
 

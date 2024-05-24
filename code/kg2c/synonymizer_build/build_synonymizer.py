@@ -12,6 +12,7 @@ RTX_CONFIG = RTXConfiguration()
 SYNONYMIZER_BUILD_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SYNONYMIZER_BUILD_DIR}/.."
 RTX_CODE_DIR = f"{KG2C_DIR}/.."
+ARAX_DIR = f"{RTX_CODE_DIR}/ARAX"
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s %(levelname)s: %(message)s',
@@ -50,28 +51,32 @@ def main():
     step_num_to_start_at = int(args.start_at)
     steps_to_run = all_steps[step_num_to_start_at - 1:]
     for step_to_run in steps_to_run:
-        subprocess.check_call(step_to_run)
-    logging.info(f"Done building core synonymizer (node_synonymizer.sqlite).")
+        os.system(" ".join(step_to_run))
+    logging.info(f"Done building node_synonymizer.sqlite. Took "
+                 f"{round(((time.time() - start) / 60) / 60, 1)} hours.")
 
     logging.info(f"Regenerating autocomplete database..")
-    subprocess.check_call(["python", f"{SYNONYMIZER_BUILD_DIR}/dump_autocomplete_node_info.py", args.kg2pre_version])
-    subprocess.check_call(["python", f"{RTX_CODE_DIR}/autocomplete/create_load_db.py",
-                           "--input", f"{SYNONYMIZER_BUILD_DIR}/autocomplete_node_info.tsv",
-                           "--output", f"{SYNONYMIZER_BUILD_DIR}/autocomplete.sqlite"])
+    os.system(f"python {SYNONYMIZER_BUILD_DIR}/dump_autocomplete_node_info.py {args.kg2pre_version}")
+    os.system(f"python {RTX_CODE_DIR}/autocomplete/create_load_db.py "
+              f"--input {SYNONYMIZER_BUILD_DIR}/autocomplete_node_info.tsv "
+              f"--output {SYNONYMIZER_BUILD_DIR}/autocomplete.sqlite")
 
     if args.upload_artifacts:
         upload_directory = f"/home/rtxconfig/KG{args.kg2pre_version}"
         logging.info(f"Uploading synonymizer artifacts to arax-databases.rtx.ai:{upload_directory}")
-        subprocess.check_call(["bash", "-x", f"{SYNONYMIZER_BUILD_DIR}/upload-synonymizer-artifacts.sh",
-                               RTX_CONFIG.db_host, upload_directory, args.sub_version, args.kg2pre_version])
+        os.system(f"bash -x {SYNONYMIZER_BUILD_DIR}/upload-synonymizer-artifacts.sh {RTX_CONFIG.db_host} "
+                  f"{upload_directory} {args.sub_version} {args.kg2pre_version}")
 
     # Move the new synonymizer into the ARAX NodeSynonymizer directory so it can be queried properly
     logging.info(f"Moving the new synonymizer into the ARAX NodeSynonymizer directory")
     final_synonymizer_name = f"node_synonymizer_{args.sub_version}_KG{args.kg2pre_version}.sqlite"
-    subprocess.check_call(["mv", f"{KG2C_DIR}/synonymizer_build/node_synonymizer.sqlite",
-                           f"{RTX_CODE_DIR}/ARAX/NodeSynonymizer/{final_synonymizer_name}"])
+    os.system(f"mv {SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite {ARAX_DIR}/NodeSynonymizer/{final_synonymizer_name}")
 
     logging.info(f"Done with synonymizer build. Took {round(((time.time() - start) / 60) / 60, 1)} hours.")
+
+    # TODO: Add some automated testing..
+
+
 
 
 if __name__ == "__main__":
