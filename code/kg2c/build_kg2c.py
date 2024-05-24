@@ -98,19 +98,21 @@ def _create_kg2pre_tsv_test_files():
 
     # Then copy headers to test versions
     logging.info(f"Creating test versions of headers (same as originals)..")
-    os.system(f"cp {kg2pre_tsv_dir}/nodes_header.tsv {kg2pre_tsv_dir}/nodes_header.tsv_TEST")
-    os.system(f"cp {kg2pre_tsv_dir}/edges_header.tsv {kg2pre_tsv_dir}/edges_header.tsv_TEST")
+    subprocess.check_call(["cp", f"{kg2pre_tsv_dir}/nodes_header.tsv", f"{kg2pre_tsv_dir}/nodes_header.tsv_TEST"])
+    subprocess.check_call(["cp", f"{kg2pre_tsv_dir}/edges_header.tsv", f"{kg2pre_tsv_dir}/edges_header.tsv_TEST"])
 
 
 def _upload_output_files_to_s3(is_test: bool):
     logging.info("Uploading KG2c json and TSV files to S3..")
     tarball_name = f"kg2c-tsv.tar.gz{'_TEST' if is_test else ''}"
-    os.system(f"aws s3 cp --no-progress --region us-west-2 {KG2C_DIR}/{tarball_name} s3://rtx-kg2/")
+    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2",
+                           f"{KG2C_DIR}/{tarball_name}", "s3://rtx-kg2/"])
 
     unzipped_lite_json_name = f"kg2c_lite.json{'_TEST' if is_test else ''}"
-    os.system(f"gzip -f {KG2C_DIR}/{unzipped_lite_json_name}")
+    subprocess.check_call(["gzip", "-f", f"{KG2C_DIR}/{unzipped_lite_json_name}"])
     zipped_lite_json_name = f"{unzipped_lite_json_name}.gz"
-    os.system(f"aws s3 cp --no-progress --region us-west-2 {KG2C_DIR}/{zipped_lite_json_name} s3://rtx-kg2/")
+    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2",
+                           f"{KG2C_DIR}/{zipped_lite_json_name}", "s3://rtx-kg2/"])
 
 
 def main():
@@ -187,7 +189,7 @@ def main():
     # Download KG2pre TSVs as applicable
     if args.download_kg2pre:
         logging.info(f"Downloading KG2pre TSVs from S3...")
-        os.system(f"bash -x {KG2C_DIR}/download-kg2pre-tsvs.sh")
+        subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/download-kg2pre-tsvs.sh"])
 
     # Create KG2pre test TSV files as applicable
     if args.test:
@@ -200,14 +202,14 @@ def main():
     record_meta_kg_info(args.biolink_version, args.test)
 
     logging.info(f"Creating tarball of KG2c TSVs..")
-    os.system(f"bash -x {KG2C_DIR}/make-kg2c-tarball.sh {'_TEST' if args.test else ''}")
+    subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/make-kg2c-tarball.sh", "_TEST" if args.test else ""])
 
     # Upload artifacts to the relevant places
     if args.upload_artifacts:
         upload_directory = f"/home/rtxconfig/KG{args.kg2pre_version}"
         logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
-        os.system(f"bash -x {KG2C_DIR}/upload-kg2c-artifacts.sh {RTX_CONFIG.db_host} {args.sub_version} "
-                  f"{args.kg2pre_version} {upload_directory} {'_TEST' if args.test else ''}")
+        subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", RTX_CONFIG.db_host,
+                               args.sub_version, args.kg2pre_version, upload_directory, "_TEST" if args.test else ""])
         _upload_output_files_to_s3(args.test)
 
     logging.info(f"DONE WITH KG2c {'TEST ' if args.test else ''}BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours.")

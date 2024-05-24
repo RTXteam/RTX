@@ -16,6 +16,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
 SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
 SRI_NN_DIR = f"{SYNONYMIZER_BUILD_DIR}/SRI_NN"
+SRI_NN_URL = "https://nodenormalization-sri.renci.org/get_normalized_nodes"
 # NOTE: These below three variables need to be updated for new SRI NN builds..
 SRI_NN_NODES_FILE_NAME = "KGX_NN_data-2023apr7_nodes.jsonl"
 SRI_NN_EDGES_FILE_NAME = "KGX_NN_data-2023apr7_edges.jsonl"
@@ -66,13 +67,14 @@ def get_sri_cluster_id_mappings(kg2pre_node_ids_set: Set[str]):
     for node_id_batch in kg2pre_node_id_batches:
         # Send the batch to the SRI NN RestAPI
         # Note: This is their development (non-ITRB) server, which seems to be faster for us..
-        sri_nn_url = "https://nodenormalization-sri.renci.org/1.3/get_normalized_nodes"
+
         query_body = {"curies": node_id_batch,
                       "conflate": True}
-        response = requests.post(sri_nn_url, json=query_body)
+        response = requests.post(SRI_NN_URL, json=query_body)
 
         # Extract the canonical identifiers and any other equivalent IDs from the response for this batch
         if response.status_code == 200:
+            print(response.json())
             for kg2pre_node_id, normalized_info in response.json().items():
                 # This means the SRI NN recognized the KG2pre node ID we asked for
                 if normalized_info:
@@ -110,7 +112,7 @@ def get_sri_cluster_id_mappings(kg2pre_node_ids_set: Set[str]):
     return sri_node_id_to_cluster_id_map
 
 
-def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_test: bool) -> Set[str]:
+def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_test: bool):
     # Grab the KG2pre-related nodes from the SRI NN json lines file (which is huge - has ~600 million nodes in total)
     logging.info(f"Extracting relevant nodes from bulk SRI NN json lines file..")
 
@@ -138,8 +140,6 @@ def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_tes
     nodes_df.category = strip_biolink_prefix_vectorized(nodes_df.category)
     logging.info(f"Saving SRI nodes to TSV..")
     nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/2_match_nodes_sri.tsv", sep="\t", index=False)
-
-    return set(nodes_dict)
 
 
 def create_match_edges_sri(sri_node_ids: Set[str], is_test: bool = False):
@@ -180,8 +180,8 @@ def main():
     sri_node_id_to_cluster_id_map = get_sri_cluster_id_mappings(kg2pre_node_ids)
 
     # Then build an SRI 'match graph' using the SRI NN bulk download
-    sri_node_ids = create_match_nodes_sri(sri_node_id_to_cluster_id_map, args.test)
-    create_match_edges_sri(sri_node_ids, args.test)
+    create_match_nodes_sri(sri_node_id_to_cluster_id_map, args.test)
+    create_match_edges_sri(sri_node_id_to_cluster_id_map, args.test)
 
 
 if __name__ == "__main__":

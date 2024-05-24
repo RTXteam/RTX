@@ -23,11 +23,12 @@ def download_kg2pre_tsvs():
     logging.info(f"Downloading KG2pre TSV source files to {KG2PRE_TSV_DIR}..")
     kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
     logging.info(f"Downloading {kg2pre_tarball_name} from the rtx-kg2 S3 bucket")
-    os.system(f"aws s3 cp --no-progress --region us-west-2 s3://rtx-kg2/{kg2pre_tarball_name} {KG2C_DIR}")
+    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2",
+                           f"s3://rtx-kg2/{kg2pre_tarball_name}", KG2C_DIR])
     logging.info(f"Unpacking {kg2pre_tarball_name}..")
     if not pathlib.Path(KG2PRE_TSV_DIR).exists():
         os.system(f"mkdir {KG2PRE_TSV_DIR}")
-    os.system(f"tar -xvzf {kg2pre_tarball_name} -C {KG2PRE_TSV_DIR}")
+    subprocess.check_call(["tar", "-xvzf", kg2pre_tarball_name, "-C", KG2PRE_TSV_DIR])
 
 
 def create_match_nodes_kg2pre(kg2pre_version: str) -> Set[str]:
@@ -113,20 +114,24 @@ def create_match_edges_kg2pre(all_kg2pre_node_ids: Set[str]):
     edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/1_match_edges_kg2pre.tsv", sep="\t")
 
 
-def main():
+def run(kg2pre_version: str, download_fresh: bool):
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
+
+    # Download a fresh copy of KG2pre data, if requested
+    if download_fresh:
+        download_kg2pre_tsvs()
+
+    # Transform KG2pre data into 'match graph' format
+    all_kg2pre_node_ids = create_match_nodes_kg2pre(kg2pre_version)
+    create_match_edges_kg2pre(all_kg2pre_node_ids)
+
+
+def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('kg2pre_version')
     arg_parser.add_argument('--downloadfresh', dest='download_fresh', action='store_true')
     args = arg_parser.parse_args()
-
-    # Download a fresh copy of KG2pre data, if requested
-    if args.download_fresh:
-        download_kg2pre_tsvs()
-
-    # Transform KG2pre data into 'match graph' format
-    all_kg2pre_node_ids = create_match_nodes_kg2pre(args.kg2pre_version)
-    create_match_edges_kg2pre(all_kg2pre_node_ids)
+    run(args.kg2pre_version, args.download_fresh)
 
 
 if __name__ == "__main__":
