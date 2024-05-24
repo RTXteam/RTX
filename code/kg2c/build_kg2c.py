@@ -35,7 +35,6 @@ logging.basicConfig(level=logging.INFO,
 def _create_kg2pre_tsv_test_files():
     logging.info(f"Creating test versions of the KG2pre TSVs...")
     kg2pre_tsv_dir = f"{KG2C_DIR}/kg2pre_tsvs"
-    # TODO: Improve this so don't have orphan edge problem..
 
     # First grab all node IDs in our nodes file
     test_nodes_file_path = f"{kg2pre_tsv_dir}/nodes.tsv_TEST"

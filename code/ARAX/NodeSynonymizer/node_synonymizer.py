@@ -43,7 +43,7 @@ class NodeSynonymizer:
         self.arax_infores_curie = "infores:arax"
 
         if not pathlib.Path(self.database_path).exists():
-            raise ValueError(f"Synonymizer specified in config_dbs file does not exist locally."
+            raise ValueError(f"Specified synonymizer does not exist locally."
                              f" It should be at: {self.database_path}")
         else:
             self.db_connection = sqlite3.connect(self.database_path)
