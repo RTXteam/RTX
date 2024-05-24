@@ -25,6 +25,8 @@ serviceAccount:
 service:
   type: LoadBalancer
   port: 80
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-additional-resource-tags: Name=translator-eks-ci-blue-rtx,environment=ci,org=ncats,project=translator,program=translator,access-team=ncats-devops,technical-poc=dpi-are,app-group=rtx
 
 ingress:
   annotations: 
