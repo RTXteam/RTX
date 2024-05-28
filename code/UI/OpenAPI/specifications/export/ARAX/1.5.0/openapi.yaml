@@ -23,6 +23,8 @@ info:
   x-trapi:
     version: 1.5.0
     asyncquery: true
+    pathfinderquery: true
+    multicuriequery: false
     operations:
     - lookup
     - lookup_and_score
