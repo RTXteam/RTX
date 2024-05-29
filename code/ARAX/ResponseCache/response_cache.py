@@ -46,6 +46,7 @@ from openapi_server.models.response import Response as Envelope
 
 trapi_version = '1.5.0'
 biolink_version = '4.1.6'
+biolink_version = '4.2.1'
 
 
 def validate_envelope(process_params):
