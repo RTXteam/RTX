@@ -210,7 +210,7 @@ def test_query_that_expands_same_edge_twice():
     actions_list = [
         "add_qnode(key=n00, ids=DOID:9065, categories=biolink:Disease)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
-        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:treats)",
+        "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:treats_or_applied_or_studied_to_treat)",
         "expand(kp=infores:rtx-kg2)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
@@ -274,7 +274,7 @@ def test_query_with_intermediate_curie_node():
         "add_qnode(categories=biolink:Protein, key=n00, is_set=True)",
         "add_qnode(ids=HP:0005110, key=n01)",  # atrial fibrillation
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:treats)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:treats_or_applied_or_studied_to_treat)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:related_to)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
@@ -471,7 +471,7 @@ def test_exclude_edge_parallel():
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:causes, key=e01)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
@@ -484,7 +484,7 @@ def test_exclude_edge_parallel():
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:causes, exclude=true, key=e01)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
@@ -542,8 +542,8 @@ def test_exclude_edge_ordering():
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=e01)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes_to_condition, exclude=true, key=e01)",
         "expand(kp=infores:rtx-kg2, edge_key=e00)",
         "expand(kp=infores:rtx-kg2, edge_key=e01)",
         "return(message=true, store=false)"
@@ -552,8 +552,8 @@ def test_exclude_edge_ordering():
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=e01)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes_to_condition, exclude=true, key=e01)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
@@ -561,8 +561,8 @@ def test_exclude_edge_ordering():
     actions_list = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes, exclude=true, key=e01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes_to_condition, exclude=true, key=e01)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
@@ -577,7 +577,7 @@ def test_exclude_edge_no_results():
     actions = [
         "add_qnode(name=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n00, object=n01, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:not_a_real_edge_type, exclude=true, key=e01)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
@@ -942,7 +942,7 @@ def test_merging_node_attributes_1450():
     actions = [
         "add_qnode(key=n0, ids=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(key=n1, categories=biolink:Disease)",
-        "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:treats)",
+        "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:treats_or_applied_or_studied_to_treat)",
         "expand(kp=infores:biothings-explorer)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
@@ -952,7 +952,7 @@ def test_merging_node_attributes_1450():
     actions = [
         "add_qnode(key=n0, ids=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(key=n1, categories=biolink:Disease)",
-        "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:treats)",
+        "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:treats_or_applied_or_studied_to_treat)",
         "expand(kp=infores:rtx-kg2)",
         "expand(kp=infores:biothings-explorer)",
         "return(message=true, store=false)"
@@ -1029,7 +1029,7 @@ def test_fda_approved_query_simple():
                 "subject": "n1",
                 "object": "n0",
                 "predicates": [
-                    "biolink:treats"
+                    "biolink:treats_or_applied_or_studied_to_treat"
                 ]
             }
         }
@@ -1082,7 +1082,7 @@ def test_inverted_treats_handling():
     actions = [
         "add_qnode(key=n0, ids=MONDO:0005077)",
         "add_qnode(key=n1, categories=biolink:ChemicalEntity)",
-        "add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:treats)",
+        "add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:treats_or_applied_or_studied_to_treat)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
@@ -1103,7 +1103,7 @@ def test_xdtd_expand():
                 "t_edge": {
                     "object": "disease",
                     "subject": "chemical",
-                    "predicates": ["biolink:treats"],
+                    "predicates": ["biolink:treats_or_applied_or_studied_to_treat"],
                     "knowledge_type": "inferred"
                 }
             }
@@ -1142,7 +1142,7 @@ def test_xdtd_different_categories():
                 "t_edge": {
                     "object": "disease",
                     "subject": "chemical",
-                    "predicates": ["biolink:treats"],
+                    "predicates": ["biolink:treats_or_applied_or_studied_to_treat"],
                     "knowledge_type": "inferred"
                 }
             }
@@ -1162,7 +1162,7 @@ def test_xdtd_different_categories():
             "t_edge": {
                 "object": "disease",
                 "subject": "chemical",
-                "predicates": ["biolink:treats"],
+                "predicates": ["biolink:treats_or_applied_or_studied_to_treat"],
                 "knowledge_type": "inferred"
             }
         }
@@ -1182,7 +1182,7 @@ def test_xdtd_different_categories():
             "t_edge": {
                 "object": "disease",
                 "subject": "chemical",
-                "predicates": ["biolink:treats"],
+                "predicates": ["biolink:treats_or_applied_or_studied_to_treat"],
                 "knowledge_type": "inferred"
             }
         }
@@ -1204,7 +1204,7 @@ def test_xdtd_multiple_categories():
                 "t_edge": {
                     "object": "disease",
                     "subject": "chemical",
-                    "predicates": ["biolink:treats"],
+                    "predicates": ["biolink:treats_or_applied_or_studied_to_treat"],
                     "knowledge_type": "inferred"
                 }
             }
@@ -1226,7 +1226,7 @@ def test_xdtd_different_predicates():
                 "t_edge": {
                     "object": "disease",
                     "subject": "chemical",
-                    "predicates": ["biolink:ameliorates"],
+                    "predicates": ["biolink:ameliorates_condition"],
                     "knowledge_type": "inferred"
                 }
             }
@@ -1248,7 +1248,7 @@ def test_xdtd_no_curies():
                 "t_edge": {
                     "object": "disease",
                     "subject": "chemical",
-                    "predicates": ["biolink:ameliorates"],
+                    "predicates": ["biolink:ameliorates_condition"],
                     "knowledge_type": "inferred"
                 }
             }
@@ -1453,7 +1453,7 @@ def test_missing_epc_attributes():
     actions = [
         "add_qnode(name=Parkinson's disease, key=n0)",
         "add_qnode(categories=biolink:Drug, key=n1)",
-        "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:predisposes)",
+        "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:predisposes_to_condition)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
