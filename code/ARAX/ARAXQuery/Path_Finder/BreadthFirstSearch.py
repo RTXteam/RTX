@@ -2,7 +2,7 @@ import sys
 import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from constants import NEIGHBOR_LIMIT, NUMBER_OF_WORKER_THREADS
+from constants import NEIGHBOR_LIMIT, NUMBER_OF_WORKER_THREADS, NODE_DEGREE_LIMIT
 from model.Node import Node
 from model.Path import Path
 import queue
@@ -19,6 +19,9 @@ class BreadthFirstSearch:
         result = []
         if path.path_limit > 0:
             last_link = path.last()
+            node_degree = self.repo.get_node_degree(last_link)
+            if node_degree > NODE_DEGREE_LIMIT:
+                return result
             neighbors = self.repo.get_neighbors(last_link, NEIGHBOR_LIMIT)
             for neighbor in neighbors:
                 if neighbor not in path.links:
