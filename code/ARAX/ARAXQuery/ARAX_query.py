@@ -753,7 +753,7 @@ class ARAXQuery:
 
                 # Catch a crash
                 try:
-                    if action['command'] == 'create_message':
+                    if action['command'] == 'create_message' or action['command'] == 'create_envelope':
                         messenger.create_envelope(response)
                         #### Put our input processing actions into the envelope
                         if response.envelope.query_options is None:
