@@ -45,8 +45,8 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.4.2'
-biolink_version = '3.5.4'
+trapi_version = '1.5.0-beta'
+biolink_version = '4.1.6'
 
 
 def validate_envelope(process_params):
@@ -398,20 +398,24 @@ class ResponseCache:
                 enable_validation = True
                 schema_version = trapi_version
                 if enable_validation:
+                    #if True:
                     try:
 
                         #### Perform the validation
+                        eprint(f"Validating TRAPI with version {schema_version} and {biolink_version}")
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                         validator.check_compliance_of_trapi_response(envelope)
                         validation_messages_text = validator.dumps()
-                        messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                        raw_messages: Dict[str, List[Dict[str,str]]] = validator.get_all_messages()
+                        messages = raw_messages['Validate TRAPI Response']['Standards Test']
+                        #eprint(json.dumps(messages, indent=2, sort_keys=True))
 
                         critical_errors = 0
                         errors = 0
                         if 'critical' in messages and len(messages['critical']) > 0:
                             critical_errors = len(messages['critical'])
-                        if 'errors' in messages and len(messages['errors']) > 0:
-                            errors = len(messages['errors'])
+                        if 'error' in messages and len(messages['error']) > 0:
+                            errors = len(messages['error'])
                         if critical_errors > 0:
                             envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                         elif errors > 0:
@@ -419,6 +423,7 @@ class ResponseCache:
                         else:
                             envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
 
+                    #else:
                     except Exception as error:
                         timestamp = str(datetime.now().isoformat())
                         if 'logs' not in envelope or envelope['logs'] is None:
@@ -493,14 +498,15 @@ class ResponseCache:
 
                     validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                     validator.check_compliance_of_trapi_response(envelope)
-                    messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                    raw_messages: Dict[str, List[Dict[str,str]]] = validator.get_all_messages()
+                    messages = raw_messages['Validate TRAPI Response']['Standards Test']
 
                     critical_errors = 0
                     errors = 0
                     if 'critical' in messages and len(messages['critical']) > 0:
                         critical_errors = len(messages['critical'])
-                    if 'errors' in messages and len(messages['errors']) > 0:
-                       errors = len(messages['errors'])
+                    if 'error' in messages and len(messages['error']) > 0:
+                       errors = len(messages['error'])
                     if critical_errors > 0:
                         envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                     elif errors > 0:
@@ -531,6 +537,7 @@ class ResponseCache:
 
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
+
             debug = False
 
             ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
@@ -719,15 +726,16 @@ class ResponseCache:
                         else:
                             validator.check_compliance_of_trapi_response(envelope)
 
-                        messages: Dict[str, List[Dict[str,str]]] = validator.get_messages()
+                        raw_messages: Dict[str, List[Dict[str,str]]] = validator.get_all_messages()
+                        messages = raw_messages['Validate TRAPI Response']['Standards Test']
                         validation_messages_text = validator.dumps()
 
                         critical_errors = 0
                         errors = 0
                         if 'critical' in messages and len(messages['critical']) > 0:
                             critical_errors = len(messages['critical'])
-                        if 'errors' in messages and len(messages['errors']) > 0:
-                            errors = len(messages['errors'])
+                        if 'error' in messages and len(messages['error']) > 0:
+                            errors = len(messages['error'])
                         if critical_errors > 0:
                             envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
                         elif errors > 0:

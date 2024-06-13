@@ -674,6 +674,19 @@
         "secondary",
         "uterotonics",
         "radiotherapy",
-        "pharmacolog.*"
+        "pharmacolog.*",
+        "medicament",
+        "Anesthetics",
+        "vaccines",
+        "Anti-inflammatory_agents",
+        "Antibodies",
+        "Anti-anxiety_agents",
+        "Antibodies,_monoclonal",
+        "Antidepressive_agents",
+        "Prescribed_medications",
+        "Vitamin_supplementation",
+        "Biological_products",
+        "Neuroprotective_agent",
+        "Basis"
     ]
 }

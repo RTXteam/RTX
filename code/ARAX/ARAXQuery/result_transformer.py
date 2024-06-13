@@ -22,12 +22,14 @@ class ResultTransformer:
                                f"to TRAPI 1.4 format (i.e., support_graphs).", error_code="NoOriginalQG")
                 return
 
-            response.info(f"Transforming results to TRAPI 1.4 format (moving 'virtual' nodes/edges to support graphs)")
+            response.info(f"Transforming results to TRAPI 1.5 format (moving 'virtual' nodes/edges to support graphs)")
 
-            original_qedge_keys = set(response.original_query_graph.edges)
+            original_qedge_keys = {qedge_key for qedge_key, qedge in response.original_query_graph.edges.items()
+                                   if not qedge.exclude}  # 'Exclude'/'kryptonite' edges shouldn't appear in results
             original_qnode_keys = set(response.original_query_graph.nodes)
-            non_orphan_qnode_keys = {qnode_key for qedge in response.original_query_graph.edges.values()
-                                     for qnode_key in {qedge.subject, qedge.object}}
+            non_orphan_qnode_keys = {qnode_key for qedge_key in original_qedge_keys
+                                     for qnode_key in {response.original_query_graph.edges[qedge_key].subject,
+                                                       response.original_query_graph.edges[qedge_key].object}}
             response.debug(f"Original input QG contained qnodes {original_qnode_keys} and qedges {original_qedge_keys}")
             response.debug(f"Non-orphan qnodes in original QG are: {non_orphan_qnode_keys}")
             all_virtual_qedge_keys = set()
@@ -59,7 +61,7 @@ class ResultTransformer:
                     aux_graph_key = f"aux_graph_{aux_graph_id_str}{group_id_str}"
                     # Create and save the aux graph in the central location (on Message), if it doesn't yet exist
                     if aux_graph_key not in message.auxiliary_graphs:
-                        message.auxiliary_graphs[aux_graph_key] = AuxiliaryGraph(edges=list(group_edge_keys))
+                        message.auxiliary_graphs[aux_graph_key] = AuxiliaryGraph(edges=list(group_edge_keys),attributes=[])
 
                     # Refer to this aux graph from the current Result or Edge (if this is an Infer support graph)
                     if group_id and (group_id.startswith("creative_DTD_") or group_id.startswith("creative_CRG_")):
@@ -113,9 +115,10 @@ class ResultTransformer:
                     del node_bindings[virtual_qnode_key]
 
                 # Delete bindings for any subclass parent nodes that are now orphans (they'll still be in the KG)
+                qedge_keys_in_result = set(result.analyses[0].edge_bindings)  # May not include 'optional' edges in QG
                 for non_orphan_qnode_key in non_orphan_qnode_keys:
                     node_keys = {binding.id for binding in node_bindings[non_orphan_qnode_key]}
-                    node_keys_used_by_result_edges = {node_key for qedge_key in original_qedge_keys
+                    node_keys_used_by_result_edges = {node_key for qedge_key in qedge_keys_in_result
                                                       for binding in result.analyses[0].edge_bindings[qedge_key]
                                                       for node_key in {message.knowledge_graph.edges[binding.id].subject,
                                                                        message.knowledge_graph.edges[binding.id].object}}
@@ -131,4 +134,4 @@ class ResultTransformer:
             # Log some final stats about result transformation
             response.debug(f"Virtual qedge keys moved to support_graphs were: {all_virtual_qedge_keys}")
             response.debug(f"There are a total of {len(message.auxiliary_graphs) if message.auxiliary_graphs else 0} AuxiliaryGraphs.")
-            response.info(f"Done transforming results to TRAPI 1.4 format (i.e., using support_graphs)")
+            response.info(f"Done transforming results to TRAPI 1.5 format (i.e., using support_graphs)")
