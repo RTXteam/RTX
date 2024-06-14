@@ -6283,10 +6283,10 @@ function retrieveKPInfo() {
 			    item["version"] = '--NULL--';
 			    text.className = "qprob p0";
 			}
-			else if (item["version"] == "1.4.0")
-			    text.className = "qprob p9";
 			else if (item["version"] == "1.5.0")
-			    text.className = "qprob schp";
+			    text.className = "qprob p9";
+			//else if (item["version"] == "1.5.0")
+			//text.className = "qprob schp";
 			else
 			    text.className = "qprob p1";
                         text.appendChild(document.createTextNode(item["version"]));
@@ -6470,7 +6470,8 @@ function retrieveSysTestResultsList(num) {
         .then(data => {
 	    var menu = document.getElementById("whichsystest");
 	    for (let i=0; i<menu.length; i++) {
-		if (menu.options[i].value != 'LATEST') {
+		if (menu.options[i].value != 'LATEST' &&
+		    menu.options[i].value != 'ARSARS') {
 		    menu.remove(i);
 		    i--;
 		}
@@ -6504,7 +6505,9 @@ function retrieveSysTestResults() {
 
     var apiurl = 'https://utility.ci.transltr.io/arstest/api/';
     var test_pk = document.getElementById("whichsystest").value;
-    if (test_pk == "LATEST")
+    if (test_pk == "ARSARS")
+	apiurl = 'https://arax.ncats.io/devLM/ARS-testing/test_run_65_results.tsv.json';
+    else if (test_pk == "LATEST")
 	apiurl += 'latest_report';
     else
 	apiurl += 'report/'+test_pk;
@@ -6518,6 +6521,13 @@ function retrieveSysTestResults() {
         .then(data => {
             wspan.innerHTML = '<b>Report source:</b> '+apiurl;
 	    systest_node.innerHTML = '';
+
+	    if (test_pk == "ARSARS") {
+		systest_node.appendChild(displayARSResults(data));
+		systest_node.appendChild(document.createElement("br"));
+		return;
+	    }
+
 
 	    var tests = {};
 	    if ('fields' in data)
@@ -6556,7 +6566,7 @@ function retrieveSysTestResults() {
 	});
 
     if (test_pk == "LATEST")
-	retrieveSysTestResultsList(100);
+	retrieveSysTestResultsList(30);
 }
 
 
@@ -6885,6 +6895,127 @@ function generateLoadTimeTestResults(loadtestdata) {
 
     return tdiv;
 }
+
+
+
+function displayARSResults(arsdata) {
+    var test2css = {};
+    test2css['TopAnswer'] = 'p9';
+    test2css['Acceptable'] = 'p7';
+    test2css['BadButForgivable'] = 'p3';
+    test2css['NeverShow'] = 'p1';
+    test2css['OverlyGeneric'] = 'p0';
+
+    var hint = {};
+    hint['TopAnswer'] = 'Result must be in the top 10% of answers';
+    hint['Acceptable'] = 'Result must be in the top 50% of answers';
+    hint['BadButForgivable'] = 'Result must NOT be in the top 50%';
+    hint['NeverShow'] = 'Result must NOT appear anywhere in the answers';
+    hint['OverlyGeneric'] = 'Overly. Generic.';
+
+    var tdiv = document.createElement("div");
+
+    var table = document.createElement("table");
+    table.className = 'sumtab';
+
+    var tr = document.createElement("tr");
+    var td = document.createElement("th");
+    tr.appendChild(td);
+    td = document.createElement("th");
+    td.innerText = 'Name';
+    tr.appendChild(td);
+    td = document.createElement("th");
+    td.innerText = 'Test Type';
+    tr.appendChild(td);
+
+    for (var agent of arsdata['ara_list']) {
+	td = document.createElement("th");
+	td.style.minWidth = '80px';
+	td.innerText = agent;
+	tr.appendChild(td);
+    }
+    table.appendChild(tr);
+
+    var num = 0;
+    for (var row of arsdata['row_data']) {
+	num++;
+	tr = document.createElement("tr");
+	tr.className = 'hoverable';
+
+	td = document.createElement("td");
+	td.innerText = num+'.';
+	tr.appendChild(td);
+
+	td = document.createElement("td");
+	td.style.textAlign = "right";
+	var link = document.createElement("a");
+        link.title = 'view in information radiator';
+        link.style.cursor = "pointer";
+	link.href = row.url;
+	link.target = "_radiator";
+	link.appendChild(document.createTextNode(row.name.split(":")[1]));
+	td.appendChild(link);
+	tr.appendChild(td);
+
+	var ttype = row.name.split(":")[0];
+        td = document.createElement("td");
+	td.title = hint[ttype];
+        var span = document.createElement("span");
+	span.className = test2css[ttype] + " explevel";
+	span.appendChild(document.createTextNode(ttype));
+        td.appendChild(span);
+        tr.appendChild(td);
+
+	for (var agent of arsdata['ara_list']) {
+            td = document.createElement("td");
+	    td.style.borderLeft = "1px solid black";
+	    td.style.textAlign = 'center';
+	    var span = document.createElement("span");
+
+	    if (row[agent] && row[agent] != '') {
+		if (row[agent] == 'FAILED') {
+                    span.innerHTML = '&cross;';
+		    span.className = 'explevel p1';
+		}
+                else if (row[agent] == 'PASSED') {
+                    span.innerHTML = '&check;';
+		    span.className = 'explevel p9';
+		}
+		else if (row[agent] == 'No results') {
+		    span.innerHTML = '0';
+		    span.className = 'explevel p0';
+		}
+                else if (row[agent] == 'Timed out') {
+                    span.innerHTML = 'T';
+		    span.className = 'explevel p3';
+		}
+                else if (row[agent].startsWith('Status code:')) {
+		    span.innerHTML = row[agent].split(":")[1];
+                    span.className = 'explevel p3';
+		}
+		else {
+		    span.innerHTML = row[agent];
+		}
+
+                td.appendChild(span);
+		td.title = row[agent];
+	    }
+	    else {
+		td.innerText = '[[ n/a ]]';
+	    }
+
+	    tr.appendChild(td);
+	}
+
+	table.appendChild(tr);
+    }
+
+    tdiv.appendChild(table);
+    tdiv.appendChild(document.createElement("br"));
+
+    return tdiv;
+}
+
 
 
 function show_hide(ele, span) {
