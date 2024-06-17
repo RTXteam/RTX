@@ -139,6 +139,9 @@ function main() {
     }
     else if (sys) {
 	tab = "systest";
+	for (var opt of document.getElementById("whichsystest"))
+	    if (opt.value == "ARSARS_"+getQueryVariable("systest"))
+		opt.selected = true;
 	retrieveSysTestResults();
     }
     openSection(tab);
@@ -6011,7 +6014,7 @@ function retrieveRecentQs(active) {
 
 	    for (var filterfield of ["submitter","remote_address","domain","hostname","instance_name","state","status"] ) {
 		if (Object.keys(stats[filterfield]).length > 1) {
-		    add_filtermenu(filterfield, stats[filterfield]);
+		    add_filtermenu('recentqs_table',filterfield, stats[filterfield]);
 		}
 	    }
 
@@ -6119,7 +6122,7 @@ function displayQTimeline(tdata) {
     timeline_node.appendChild(document.createTextNode("Your computer's local time"));
 }
 
-function add_filtermenu(field, values) {
+function add_filtermenu(tid, field, values) {
     var node = document.getElementById('filter_'+field);
     //node.title = "Click to filter based on this column's values";
     node.appendChild(document.createTextNode("\u25BC"));
@@ -6133,7 +6136,7 @@ function add_filtermenu(field, values) {
     for (var val of vals) {
 	var item = document.createElement('a');
 	item.appendChild(document.createTextNode(val));
-	item.setAttribute('onclick', 'filter_querytable("'+field+'","'+val+'");');
+	item.setAttribute('onclick', 'filter_table("'+tid+'","'+field+'","'+val+'");');
 
 	var item2 = document.createElement('span');
 	item2.id = 'filter_'+field+"_"+val;
@@ -6144,7 +6147,7 @@ function add_filtermenu(field, values) {
     node.appendChild(fmenu);
 }
 
-function filter_querytable(field, value) {
+function filter_table(tableid, field, value) {
     for (var item of document.querySelectorAll('[id^="filter_'+field+'_"]')) {
 	item.className = '';
 	item.innerHTML = '';
@@ -6161,7 +6164,7 @@ function filter_querytable(field, value) {
 	document.getElementById('filter_'+field).dataset.filterstring = value;
     }
 
-    var trs = document.getElementById('recentqs_table').children;
+    var trs = document.getElementById(tableid).children;
     var head = true;
     for (var tr of trs) {
 	if (head) {
@@ -6471,7 +6474,7 @@ function retrieveSysTestResultsList(num) {
 	    var menu = document.getElementById("whichsystest");
 	    for (let i=0; i<menu.length; i++) {
 		if (menu.options[i].value != 'LATEST' &&
-		    menu.options[i].value != 'ARSARS') {
+		    !menu.options[i].value.startsWith('ARSARS_')) {
 		    menu.remove(i);
 		    i--;
 		}
@@ -6505,8 +6508,8 @@ function retrieveSysTestResults() {
 
     var apiurl = 'https://utility.ci.transltr.io/arstest/api/';
     var test_pk = document.getElementById("whichsystest").value;
-    if (test_pk == "ARSARS")
-	apiurl = 'https://arax.ncats.io/devLM/ARS-testing/test_run_65_results.tsv.json';
+    if (test_pk.startsWith("ARSARS_"))
+	apiurl = 'https://arax.ncats.io/devLM/ARS-testing/test_run_'+test_pk.split("_")[1]+'_results.tsv.json';
     else if (test_pk == "LATEST")
 	apiurl += 'latest_report';
     else
@@ -6522,8 +6525,8 @@ function retrieveSysTestResults() {
             wspan.innerHTML = '<b>Report source:</b> '+apiurl;
 	    systest_node.innerHTML = '';
 
-	    if (test_pk == "ARSARS") {
-		systest_node.appendChild(displayARSResults(data));
+	    if (test_pk.startsWith("ARSARS_")) {
+		displayARSResults(systest_node,data);
 		systest_node.appendChild(document.createElement("br"));
 		return;
 	    }
@@ -6898,7 +6901,7 @@ function generateLoadTimeTestResults(loadtestdata) {
 
 
 
-function displayARSResults(arsdata) {
+function displayARSResults(parentnode,arsdata) {
     var test2css = {};
     test2css['TopAnswer'] = 'p9';
     test2css['Acceptable'] = 'p7';
@@ -6913,24 +6916,41 @@ function displayARSResults(arsdata) {
     hint['NeverShow'] = 'Result must NOT appear anywhere in the answers';
     hint['OverlyGeneric'] = 'Overly. Generic.';
 
-    var tdiv = document.createElement("div");
+    var stats = {};
+    stats.test_type = {};
+    stats.test_case = {};
+    for (var agent of arsdata['ara_list'])
+	stats[agent] = {};
 
+    var tdiv = document.createElement("div");
     var table = document.createElement("table");
+    table.id = 'arsresults_table'
     table.className = 'sumtab';
 
     var tr = document.createElement("tr");
-    var td = document.createElement("th");
-    tr.appendChild(td);
-    td = document.createElement("th");
-    td.innerText = 'Name';
-    tr.appendChild(td);
-    td = document.createElement("th");
-    td.innerText = 'Test Type';
-    tr.appendChild(td);
+    tr.dataset.qstatus = "COLUMNHEADER";
+    var td;
+
+    for (var head of ["","Name","Test Type","Test Case","Test Asset"]) {
+	td = document.createElement("th");
+	td.innerText = head;
+
+        if (head == "Test Type") {
+	    td.id = 'filter_test_type';
+	    td.dataset.filterstring = '';
+	}
+        else if (head == "Test Case") {
+	    td.id = 'filter_test_case';
+	    td.dataset.filterstring = '';
+	}
+	tr.appendChild(td);
+    }
 
     for (var agent of arsdata['ara_list']) {
 	td = document.createElement("th");
+        td.id = 'filter_'+agent.toLowerCase();
 	td.style.minWidth = '80px';
+        td.dataset.filterstring = '';
 	td.innerText = agent;
 	tr.appendChild(td);
     }
@@ -6949,10 +6969,16 @@ function displayARSResults(arsdata) {
 	td = document.createElement("td");
 	td.style.textAlign = "right";
 	var link = document.createElement("a");
-        link.title = 'view in information radiator';
         link.style.cursor = "pointer";
-	link.href = row.url;
 	link.target = "_radiator";
+	if (row.pk) {
+            link.title = 'view results in ARAX GUI';
+	    link.href = row.pk;
+	}
+	else {
+            link.title = 'view in information radiator';
+	    link.href = row.url;
+	}
 	link.appendChild(document.createTextNode(row.name.split(":")[1]));
 	td.appendChild(link);
 	tr.appendChild(td);
@@ -6960,16 +6986,66 @@ function displayARSResults(arsdata) {
 	var ttype = row.name.split(":")[0];
         td = document.createElement("td");
 	td.title = hint[ttype];
-        var span = document.createElement("span");
+        td.dataset.value = ttype;
+        if (stats['test_type'][ttype])
+	    stats['test_type'][ttype]++;
+	else
+	    stats['test_type'][ttype] = 1;
+
+	var span = document.createElement("span");
 	span.className = test2css[ttype] + " explevel";
 	span.appendChild(document.createTextNode(ttype));
         td.appendChild(span);
         tr.appendChild(td);
 
+        td = document.createElement("td");
+        td.dataset.value = row.TestCase;
+	if (stats['test_case'][row.TestCase])
+	    stats['test_case'][row.TestCase]++;
+	else
+	    stats['test_case'][row.TestCase] = 1;
+
+	if (row.TestCase) {
+	    link = document.createElement("a");
+            link.target = "_radiator";
+            link.title = 'view test JSON';
+	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/test_cases/'+row.TestCase+'.json';
+	    link.appendChild(document.createTextNode(row.TestCase));
+	    td.appendChild(link);
+	}
+	else {
+	    td.className = 'msgWARNING';
+	    td.innerText = "--- empty ---";
+	}
+	tr.appendChild(td);
+
+        td = document.createElement("td");
+        if (row.TestAsset) {
+            link = document.createElement("a");
+	    link.target = "_radiator";
+	    link.title = 'view asset JSON';
+	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/test_assets/'+row.TestAsset+'.json';
+            link.appendChild(document.createTextNode(row.TestAsset));
+	    td.appendChild(link);
+	}
+	else {
+            td.className = 'msgWARNING';
+	    td.innerText = "--- empty ---";
+	}
+	tr.appendChild(td);
+
+
 	for (var agent of arsdata['ara_list']) {
             td = document.createElement("td");
 	    td.style.borderLeft = "1px solid black";
 	    td.style.textAlign = 'center';
+            td.dataset.value = row[agent];
+
+            if (stats[agent][row[agent]])
+		stats[agent][row[agent]]++;
+	    else
+		stats[agent][row[agent]] = 1;
+
 	    var span = document.createElement("span");
 
 	    if (row[agent] && row[agent] != '') {
@@ -7013,7 +7089,14 @@ function displayARSResults(arsdata) {
     tdiv.appendChild(table);
     tdiv.appendChild(document.createElement("br"));
 
-    return tdiv;
+    parentnode.appendChild(tdiv);
+
+    for (var filterfield of arsdata['ara_list'].concat(['test_type','test_case']) ) {
+	if (Object.keys(stats[filterfield]).length > 1) {
+	    add_filtermenu('arsresults_table',filterfield, stats[filterfield]);
+	}
+    }
+
 }
 
 
