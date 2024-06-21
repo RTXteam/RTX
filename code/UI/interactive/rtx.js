@@ -81,6 +81,7 @@ function main() {
     add_status_divs();
     cytodata['QG'] = 'dummy';
 
+
     for (var prov in providers) {
 	document.getElementById(prov+"_url").value = providers[prov].url;
 	document.getElementById(prov+"_url_button").disabled = true;
@@ -95,6 +96,8 @@ function main() {
     var pks = getQueryVariable("latest") || null;
     var sys = getQueryVariable("systest") || null;
     var sai = getQueryVariable("smartapi") || getQueryVariable("smartAPI") || null;
+
+    retrieveTestRunnerResultsList(sys);
 
     var response_id = getQueryVariable("r") || getQueryVariable("id") || null;
     if (response_id) {
@@ -139,7 +142,10 @@ function main() {
     }
     else if (sys) {
 	tab = "systest";
-	retrieveSysTestResults();
+	if (sys != "1")
+	    retrieveSysTestResults("ARSARS_"+sys);
+	else
+	    retrieveSysTestResults();
     }
     openSection(tab);
     dragElement(document.getElementById('nodeeditor'));
@@ -6011,7 +6017,7 @@ function retrieveRecentQs(active) {
 
 	    for (var filterfield of ["submitter","remote_address","domain","hostname","instance_name","state","status"] ) {
 		if (Object.keys(stats[filterfield]).length > 1) {
-		    add_filtermenu(filterfield, stats[filterfield]);
+		    add_filtermenu('recentqs_table',filterfield, stats[filterfield]);
 		}
 	    }
 
@@ -6119,7 +6125,7 @@ function displayQTimeline(tdata) {
     timeline_node.appendChild(document.createTextNode("Your computer's local time"));
 }
 
-function add_filtermenu(field, values) {
+function add_filtermenu(tid, field, values) {
     var node = document.getElementById('filter_'+field);
     //node.title = "Click to filter based on this column's values";
     node.appendChild(document.createTextNode("\u25BC"));
@@ -6133,7 +6139,9 @@ function add_filtermenu(field, values) {
     for (var val of vals) {
 	var item = document.createElement('a');
 	item.appendChild(document.createTextNode(val));
-	item.setAttribute('onclick', 'filter_querytable("'+field+'","'+val+'");');
+	if (val != '[ Show all ]')
+	    item.appendChild(document.createTextNode(" ["+values[val]+"]"));
+	item.setAttribute('onclick', 'filter_table("'+tid+'","'+field+'","'+val+'");');
 
 	var item2 = document.createElement('span');
 	item2.id = 'filter_'+field+"_"+val;
@@ -6144,7 +6152,7 @@ function add_filtermenu(field, values) {
     node.appendChild(fmenu);
 }
 
-function filter_querytable(field, value) {
+function filter_table(tableid, field, value) {
     for (var item of document.querySelectorAll('[id^="filter_'+field+'_"]')) {
 	item.className = '';
 	item.innerHTML = '';
@@ -6161,7 +6169,7 @@ function filter_querytable(field, value) {
 	document.getElementById('filter_'+field).dataset.filterstring = value;
     }
 
-    var trs = document.getElementById('recentqs_table').children;
+    var trs = document.getElementById(tableid).children;
     var head = true;
     for (var tr of trs) {
 	if (head) {
@@ -6283,10 +6291,10 @@ function retrieveKPInfo() {
 			    item["version"] = '--NULL--';
 			    text.className = "qprob p0";
 			}
-			else if (item["version"] == "1.4.0")
-			    text.className = "qprob p9";
 			else if (item["version"] == "1.5.0")
-			    text.className = "qprob schp";
+			    text.className = "qprob p9";
+			//else if (item["version"] == "1.5.0")
+			//text.className = "qprob schp";
 			else
 			    text.className = "qprob p1";
                         text.appendChild(document.createTextNode(item["version"]));
@@ -6460,6 +6468,44 @@ function retrieveKPInfo() {
 
 }
 
+
+function retrieveTestRunnerResultsList(thisone=null) {
+    var url = 'https://arax.ncats.io/devLM/ARS-testing/testRunnerResults.json';
+
+    fetch(url, {
+	headers: {'pragma': 'no-cache', 'cache-control': 'no-cache'}
+    })
+        .then(response => {
+	    if (response.ok) return response.json();
+	    else throw new Error('Unable to fetch ARS Translator TestRunner results list from '+url);
+	})
+        .then(data => {
+	    var menu = document.getElementById("whichsystest");
+	    for (let i=0; i<menu.length; i++) {
+		if (menu.options[i].value.startsWith('ARSARS_')) {
+		    menu.remove(i);
+		    i--;
+		}
+	    }
+
+	    for (var test of data['results']) {
+		var opt = document.createElement('option');
+		opt.value = "ARSARS_"+test['run_no'];
+		opt.innerHTML = test['title'];
+		if (test['run_no'] == thisone ||
+		    opt.value== thisone)
+		    opt.selected = true;
+		menu.prepend(opt);
+	    }
+	})
+        .catch(error => {
+	    div.appendChild(document.createTextNode("ERROR: "+error));
+	    console.error(error);
+	});
+
+}
+
+
 function retrieveSysTestResultsList(num) {
     var apiurl = 'https://utility.ci.transltr.io/arstest/api/latest_pk/'+num;
     fetch(apiurl)
@@ -6470,7 +6516,8 @@ function retrieveSysTestResultsList(num) {
         .then(data => {
 	    var menu = document.getElementById("whichsystest");
 	    for (let i=0; i<menu.length; i++) {
-		if (menu.options[i].value != 'LATEST') {
+		if (menu.options[i].value != 'LATEST' &&
+		    !menu.options[i].value.startsWith('ARSARS_')) {
 		    menu.remove(i);
 		    i--;
 		}
@@ -6490,7 +6537,9 @@ function retrieveSysTestResultsList(num) {
 
 }
 
-function retrieveSysTestResults() {
+function retrieveSysTestResults(testid=null) {
+    var test_pk = testid ? testid : document.getElementById("whichsystest").value;
+
     var systest_node = document.getElementById("systest_container");
     systest_node.innerHTML = '';
     systest_node.className = '';
@@ -6503,8 +6552,9 @@ function retrieveSysTestResults() {
     wspan.appendChild(document.createTextNode('Loading...'));
 
     var apiurl = 'https://utility.ci.transltr.io/arstest/api/';
-    var test_pk = document.getElementById("whichsystest").value;
-    if (test_pk == "LATEST")
+    if (test_pk.startsWith("ARSARS_"))
+	apiurl = 'https://arax.ncats.io/devLM/ARS-testing/artifacts/results/test_run_'+test_pk.split("_")[1]+'_results.json';
+    else if (test_pk == "LATEST")
 	apiurl += 'latest_report';
     else
 	apiurl += 'report/'+test_pk;
@@ -6518,6 +6568,14 @@ function retrieveSysTestResults() {
         .then(data => {
             wspan.innerHTML = '<b>Report source:</b> '+apiurl;
 	    systest_node.innerHTML = '';
+
+	    if (test_pk.startsWith("ARSARS_")) {
+		displayARSResults(systest_node,data);
+		systest_node.appendChild(document.createElement("br"));
+		retrieveTestRunnerResultsList(test_pk);
+		return;
+	    }
+
 
 	    var tests = {};
 	    if ('fields' in data)
@@ -6556,7 +6614,7 @@ function retrieveSysTestResults() {
 	});
 
     if (test_pk == "LATEST")
-	retrieveSysTestResultsList(100);
+	retrieveSysTestResultsList(20);
 }
 
 
@@ -6884,6 +6942,286 @@ function generateLoadTimeTestResults(loadtestdata) {
     tdiv.appendChild(document.createTextNode("\u00A0\u00A0\u00A0Number is completion time (sec)"));
 
     return tdiv;
+}
+
+
+
+function displayARSResults(parentnode,arsdata) {
+    var test2css = {};
+    test2css['TopAnswer'] = 'p9';
+    test2css['Acceptable'] = 'p7';
+    test2css['BadButForgivable'] = 'p3';
+    test2css['NeverShow'] = 'p1';
+    test2css['OverlyGeneric'] = 'p0';
+
+    var hint = {};
+    hint['TopAnswer'] = 'Result must be in the top 10% of answers';
+    hint['Acceptable'] = 'Result must be in the top 50% of answers';
+    hint['BadButForgivable'] = 'Result must NOT be in the top 50%';
+    hint['NeverShow'] = 'Result must NOT appear anywhere in the answers';
+    hint['OverlyGeneric'] = 'Overly. Generic.';
+
+    var stats = {};
+    stats.test_type = {};
+    stats.test_case = {};
+    stats.status_list = {};
+    stats.status_list['PASSED'] = 1;
+    stats.status_list['FAILED'] = 1;
+    stats.status_list['No results'] = 1;
+    for (var agent of arsdata['ara_list']) {
+	stats[agent] = {};
+	stats[agent]['PASSED'] = 0;
+    }
+
+    var tdiv = document.createElement("div");
+    var sumtable = document.createElement("table");
+    sumtable.id = 'arssummary_table'
+    sumtable.className = 'sumtab';
+    tdiv.appendChild(sumtable);
+    tdiv.appendChild(document.createElement("br"));
+
+    var table = document.createElement("table");
+    table.id = 'arsresults_table'
+    table.className = 'sumtab';
+
+    var tr = document.createElement("tr");
+    tr.dataset.qstatus = "COLUMNHEADER";
+    var td;
+
+    for (var head of ["","Name","Test Type","Test Case","Test Asset"]) {
+	td = document.createElement("th");
+	td.innerText = head;
+
+        if (head == "Test Type") {
+	    td.id = 'filter_test_type';
+	    td.dataset.filterstring = '';
+	}
+        else if (head == "Test Case") {
+	    td.id = 'filter_test_case';
+	    td.dataset.filterstring = '';
+	}
+	tr.appendChild(td);
+    }
+
+    for (var agent of arsdata['ara_list']) {
+	td = document.createElement("th");
+        td.id = 'filter_'+agent.toLowerCase();
+	td.style.minWidth = '80px';
+        td.dataset.filterstring = '';
+	td.innerText = agent;
+	tr.appendChild(td);
+    }
+    table.appendChild(tr);
+
+    var num = 0;
+    for (var row of arsdata['row_data']) {
+	num++;
+	tr = document.createElement("tr");
+	tr.className = 'hoverable';
+
+	td = document.createElement("td");
+	td.innerText = num+'.';
+	tr.appendChild(td);
+
+	td = document.createElement("td");
+	td.style.textAlign = "right";
+	var link = document.createElement("a");
+        link.style.cursor = "pointer";
+	link.target = "_radiator";
+	if (row.pk) {
+            link.title = 'view results in ARAX GUI';
+	    link.href = row.pk;
+	}
+	else {
+            link.title = 'view in information radiator';
+	    link.href = row.url;
+	}
+	link.appendChild(document.createTextNode(row.name.split(":")[1]));
+	td.appendChild(link);
+	tr.appendChild(td);
+
+	var ttype = row.name.split(":")[0];
+        td = document.createElement("td");
+	td.title = hint[ttype];
+        td.dataset.value = ttype;
+        if (stats['test_type'][ttype])
+	    stats['test_type'][ttype]++;
+	else
+	    stats['test_type'][ttype] = 1;
+
+	var span = document.createElement("span");
+	span.className = test2css[ttype] + " explevel";
+	span.appendChild(document.createTextNode(ttype));
+        td.appendChild(span);
+        tr.appendChild(td);
+
+        td = document.createElement("td");
+        td.dataset.value = row.TestCase;
+	if (stats['test_case'][row.TestCase])
+	    stats['test_case'][row.TestCase]++;
+	else
+	    stats['test_case'][row.TestCase] = 1;
+
+	if (row.TestCase) {
+	    link = document.createElement("a");
+            link.target = "_radiator";
+            link.title = 'view test JSON';
+	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/test_cases/'+row.TestCase+'.json';
+	    link.appendChild(document.createTextNode(row.TestCase));
+	    td.appendChild(link);
+	}
+	else {
+	    td.className = 'msgWARNING';
+	    td.innerText = "--- empty ---";
+	}
+	tr.appendChild(td);
+
+        td = document.createElement("td");
+        if (row.TestAsset) {
+            link = document.createElement("a");
+	    link.target = "_radiator";
+	    link.title = 'view asset JSON';
+	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/test_assets/'+row.TestAsset+'.json';
+            link.appendChild(document.createTextNode(row.TestAsset));
+	    td.appendChild(link);
+	}
+	else {
+            td.className = 'msgWARNING';
+	    td.innerText = "--- empty ---";
+	}
+	tr.appendChild(td);
+
+
+	for (var agent of arsdata['ara_list']) {
+            td = document.createElement("td");
+	    td.style.borderLeft = "1px solid black";
+	    td.style.textAlign = 'center';
+            td.dataset.value = row[agent];
+
+	    stats.status_list[row[agent]] = 1;
+            if (stats[agent][row[agent]])
+		stats[agent][row[agent]]++;
+	    else
+		stats[agent][row[agent]] = 1;
+
+	    var span = document.createElement("span");
+
+	    if (row[agent] && row[agent] != '') {
+		if (row[agent] == 'FAILED') {
+                    span.innerHTML = '&cross;';
+		    span.className = 'explevel p1';
+		}
+                else if (row[agent] == 'PASSED') {
+                    span.innerHTML = '&check;';
+		    span.className = 'explevel p9';
+		}
+		else if (row[agent] == 'No results') {
+		    span.innerHTML = '0';
+		    span.className = 'explevel p0';
+		}
+                else if (row[agent] == 'Timed out') {
+                    span.innerHTML = 'T';
+		    span.className = 'explevel p3';
+		}
+                else if (row[agent].startsWith('Status code:')) {
+		    span.innerHTML = row[agent].split(":")[1];
+                    span.className = 'explevel p3';
+		}
+		else {
+		    span.innerHTML = row[agent];
+		}
+
+                td.appendChild(span);
+		td.title = agent+" :: "+row[agent];
+	    }
+	    else {
+		td.innerText = '[[ n/a ]]';
+	    }
+
+	    tr.appendChild(td);
+	}
+
+	table.appendChild(tr);
+    }
+
+    tdiv.appendChild(table);
+    tdiv.appendChild(document.createElement("br"));
+
+
+    tr = document.createElement("tr");
+    for (var agent of ['Status Summary'].concat(arsdata['ara_list'])) {
+	td = document.createElement("th");
+	td.colSpan = '2';
+	td.style.minWidth = '80px';
+	td.innerText = agent;
+	tr.appendChild(td);
+    }
+    sumtable.appendChild(tr);
+
+    for (var status in stats.status_list) {
+	tr = document.createElement("tr");
+        tr.className = 'hoverable';
+
+        td = document.createElement("td");
+	span = document.createElement("span");
+	if (status == 'FAILED') {
+	    span.innerHTML = '&cross;';
+	    span.className = 'explevel p1';
+	}
+	else if (status == 'PASSED') {
+	    span.innerHTML = '&check;';
+	    span.className = 'explevel p9';
+	}
+	else if (status == 'No results') {
+	    span.innerHTML = '0';
+	    span.className = 'explevel p0';
+	}
+	else if (status == 'Timed out') {
+	    span.innerHTML = 'T';
+	    span.className = 'explevel p3';
+	}
+	else if (status.startsWith('Status code:')) {
+	    span.innerHTML = status.split(":")[1];
+	    span.className = 'explevel p3';
+	}
+        td.appendChild(span);
+	tr.appendChild(td);
+
+	td = document.createElement("td");
+	td.className = 'fieldname';
+	td.innerText = status;
+	tr.appendChild(td);
+
+	for (var agent of arsdata['ara_list']) {
+	    td = document.createElement("td");
+            td.style.textAlign = "right";
+            td.innerText = (stats[agent][status]!=null) ? stats[agent][status] : '.';
+	    tr.appendChild(td);
+
+	    td = document.createElement("td");
+	    if (status == 'PASSED') {
+		var cnf = (100*Number(stats[agent][status])/num).toFixed(1);
+		var pcl = Number(stats[agent][status])>=350 ? "p9" : Number(stats[agent][status])>=175 ? "p3" : "p1";
+
+		td.title = 'Current Translator goal of 350 passing tests :: ';
+		td.title += (pcl == 'p9') ? 'YES':'NO';
+		span = document.createElement("span");
+		span.className = 'explevel '+pcl;
+		span.innerText = cnf+"%";
+		td.appendChild(span);
+	    }
+	    tr.appendChild(td);
+	}
+	sumtable.appendChild(tr);
+    }
+
+    parentnode.appendChild(tdiv);
+
+    for (var filterfield of arsdata['ara_list'].concat(['test_type','test_case']) ) {
+	if (Object.keys(stats[filterfield]).length > 1) {
+	    add_filtermenu('arsresults_table',filterfield, stats[filterfield]);
+	}
+    }
 }
 
 

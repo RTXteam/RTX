@@ -126,7 +126,11 @@ class InferUtilities:
 
         disease_curie = top_drugs['disease_id'].tolist()[0]
         disease_name = top_drugs['disease_name'].tolist()[0]
-        disease_info = xdtdmapping.get_node_info(node_id=disease_curie)
+        try:
+            disease_info = xdtdmapping.get_node_info(node_id=disease_curie)
+        except:
+            self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table due to using refreshed xDTD database")
+            return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
         if not message.knowledge_graph or not hasattr(message, 'knowledge_graph'):  # if the knowledge graph is empty, create it
             message.knowledge_graph = KnowledgeGraph()
             message.knowledge_graph.nodes = {}
@@ -187,7 +191,10 @@ class InferUtilities:
             node_id_to_score = dict(zip(node_ids, top_drugs['tp_score']))
             # Add the drugs to the knowledge graph
             for drug_canonical_id in node_ids:
-                node_info = xdtdmapping.get_node_info(node_id=drug_canonical_id)
+                try:
+                    node_info = xdtdmapping.get_node_info(node_id=drug_canonical_id)
+                except:
+                    continue
                 drug_categories = [node_info.category]
                 # add the node to the knowledge graph
                 drug_name = node_info.name
@@ -283,7 +290,10 @@ class InferUtilities:
                 for i in range(path_idx+1):
                     subject_qnode_key = path_keys[path_idx]["qnode_pairs"][i][0]
                     subject_curie = edges_info[i][0].subject
-                    subject_node_info = xdtdmapping.get_node_info(node_id=subject_curie)
+                    try:
+                        subject_node_info = xdtdmapping.get_node_info(node_id=subject_curie)
+                    except:
+                        break_flag = True
                     subject_name = subject_node_info.name
                     subject_category = subject_node_info.category
                     if subject_curie not in message.knowledge_graph.nodes:
@@ -293,7 +303,10 @@ class InferUtilities:
                         message.knowledge_graph.nodes[subject_curie].qnode_keys.append(subject_qnode_key)
                     object_qnode_key = path_keys[path_idx]["qnode_pairs"][i][1]
                     object_curie = edges_info[i][0].object
-                    object_node_info = xdtdmapping.get_node_info(node_id=object_curie)
+                    try:
+                        object_node_info = xdtdmapping.get_node_info(node_id=object_curie)
+                    except:
+                        break_flag = True
                     object_name = object_node_info.name
                     object_category = object_node_info.category
                     if object_curie not in message.knowledge_graph.nodes:
