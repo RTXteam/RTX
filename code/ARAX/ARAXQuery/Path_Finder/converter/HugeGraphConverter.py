@@ -45,6 +45,14 @@ class HugeGraphConverter:
                         self.names.auxiliary_graph_name
                     ]
                 )
+            ],
+            sources=[
+                {
+                    "resource_id": "infores:arax",
+                    "resource_role": "primary_knowledge_source",
+                    "source_record_urls": None,
+                    "upstream_resource_ids": None
+                }
             ]
         )
         edge_with_support_graph.qedge_keys = [self.names.q_edge_name]
@@ -58,7 +66,7 @@ class HugeGraphConverter:
         analyses = Analysis(
             edge_bindings={
                 self.names.q_edge_name: [
-                    EdgeBinding(id=self.names.kg_edge_name)
+                    EdgeBinding(id=self.names.kg_edge_name, attributes=[])
                 ]
             }
         )
@@ -75,8 +83,8 @@ class HugeGraphConverter:
                 id=self.names.result_name,
                 analyses=[analyses],
                 node_bindings={
-                    self.qnode_1_id: [NodeBinding(id=self.node_1_id)],
-                    self.qnode_2_id: [NodeBinding(id=self.node_2_id)]
+                    self.qnode_1_id: [NodeBinding(id=self.node_1_id, attributes=[])],
+                    self.qnode_2_id: [NodeBinding(id=self.node_2_id, attributes=[])]
                 },
                 essence=essence
             )
@@ -85,5 +93,6 @@ class HugeGraphConverter:
         if response.envelope.message.auxiliary_graphs is None:
             response.envelope.message.auxiliary_graphs = {}
         response.envelope.message.auxiliary_graphs[self.names.auxiliary_graph_name] = AuxiliaryGraph(
-            edges=list(knowledge_graph.edges.keys())
+            edges=list(knowledge_graph.edges.keys()),
+            attributes=[]
         )
