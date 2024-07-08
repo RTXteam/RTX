@@ -211,7 +211,7 @@ class ARAXRanker:
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
                                           'jaccard_index': 0.5,
-                                          'probability_treats': 1,
+                                          'probability_treats': 0.8,
                                           'paired_concept_frequency': 0.5,
                                           'observed_expected_ratio': 0.8,
                                           'chi_square': 0.8,
@@ -222,7 +222,8 @@ class ARAXRanker:
                                           'fisher_exact_test_p-value': 0.8,
                                           'Richards-effector-genes': 0.5,
                                           'feature_coefficient': 1.0,
-                                          'CMAP similarity score': 1.0
+                                          'CMAP similarity score': 1.0,
+                                          'publications': 0.5 # downweight publications (including those from semmeddb)
                                           }
         self.virtual_edge_types = {}
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
@@ -287,11 +288,15 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         1. To weight different attributes by different amounts
         2. Figure out what to do with edges that have no attributes
         """
-        # Currently a dead simple "just multiply them all together"
-        edge_confidence = 1
+        edge_base_confidence = 1 # regardless of what attributes are present, each edge has a base confidence of 1
+        edge_score_list = []
         edge_attribute_dict = {}
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
+                if edge_attribute.original_attribute_name == "biolink:knowledge_level": # this probably means it's a fact or high-quality edge from reliable source, we tend to trust it.
+                    edge_score_list = [1]
+                    break
+                # if a specific attribute found, normalize its score and add it to the list
                 if edge_attribute.original_attribute_name is not None:
                     edge_attribute_dict[edge_attribute.original_attribute_name] = edge_attribute.value
                     normalized_score = self.edge_attribute_score_normalizer(edge_attribute.original_attribute_name, edge_attribute.value)
@@ -300,11 +305,21 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                     normalized_score = self.edge_attribute_score_normalizer(edge_attribute.attribute_type_id, edge_attribute.value)
                 if edge_attribute.attribute_type_id == "biolink:publications":
                     normalized_score = self.edge_attribute_publication_normalizer(edge_attribute.attribute_type_id, edge_attribute.value)
+
                 if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
                     continue  # so don't do anything to the score since we don't know what to do with it yet
-                else:  # we have a way to normalize it, so multiply away
-                    edge_confidence *= normalized_score
-        
+                else:
+                    if self.known_attributes_to_trust.get(edge_attribute.original_attribute_name, None) is not None:
+                        edge_score_list.append(normalized_score * self.known_attributes_to_trust[edge_attribute.original_attribute_name])
+                    elif edge_attribute.attribute_type_id == "biolink:publications":
+                        edge_score_list.append(normalized_score * self.known_attributes_to_trust['publications'])
+                    else:
+                        continue # add more rules in the future
+                    
+            edge_confidence = np.mean(edge_score_list) # simply take the mean of all the scores. With this way, a fact edge without additional scores has higher confidence
+        else:
+            edge_confidence = edge_base_confidence
+
         return edge_confidence
 
     def edge_attribute_score_normalizer(self, edge_attribute_name: str, edge_attribute_value) -> float:
