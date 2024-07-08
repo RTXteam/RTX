@@ -1481,6 +1481,7 @@ def test_kg2_version():
     }
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
     assert nodes_by_qg_id["n00"]
+    print(f"RTX-KG2c build node: \n\n{nodes_by_qg_id['n00']}")
     # TODO: Assert that the KG2 version on the build node matches the OpenAPI spec (need to sort out which file to use)
 
 
