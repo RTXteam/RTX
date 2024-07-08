@@ -114,7 +114,7 @@ class RemoveNodes:
                 connected_node_keys.add(edge.subject)
                 connected_node_keys.add(edge.object)
 
-            # iterate over all nodes in KG
+            # Identify all orphan nodes in the KG
             nodes_to_remove = set()
             for key, node in self.message.knowledge_graph.nodes.items():
                 if 'node_category' in node_parameters and node_parameters['node_category'] in node.categories:
@@ -124,8 +124,25 @@ class RemoveNodes:
                     if key not in connected_node_keys:
                         nodes_to_remove.add(key)
 
+            # Determine which nodes are supposed to be orphans (if any)
+            qg = self.message.query_graph
+            all_qnode_ids = set(qg.nodes)
+            connected_qnode_ids = {qnode_key for qedge in qg.edges.values()
+                                   for qnode_key in {qedge.subject, qedge.object}}
+            orphan_qnode_ids = all_qnode_ids.difference(connected_qnode_ids)
+            if orphan_qnode_ids:
+                self.response.debug(f"Note: Nodes fulfilling {orphan_qnode_ids} are supposed to be orphans")
+            orphan_node_keys = set()
+            # Don't filter out nodes that are supposed to be orphans #2306
+            for node_key in nodes_to_remove:
+                node = self.message.knowledge_graph.nodes[node_key]
+                if set(node.qnode_keys).intersection(orphan_qnode_ids):
+                    orphan_node_keys.add(node_key)
+            nodes_to_remove = nodes_to_remove.difference(orphan_node_keys)
+
             # remove the orphaned nodes
             #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in node_indexes_to_remove]
+            self.response.debug(f"Identified {len(nodes_to_remove)} orphan nodes to remove")
             for key in nodes_to_remove:
                 del self.message.knowledge_graph.nodes[key]
         except:

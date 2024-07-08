@@ -1470,5 +1470,19 @@ def test_missing_epc_attributes():
                 assert publications
 
 
+def test_kg2_version():
+    query = {
+      "nodes": {
+        "n00": {
+          "ids": ["RTX:KG2c"]
+        }
+      },
+      "edges": {}
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    assert nodes_by_qg_id["n00"]
+    # TODO: Assert that the KG2 version on the build node matches the OpenAPI spec (need to sort out which file to use)
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
