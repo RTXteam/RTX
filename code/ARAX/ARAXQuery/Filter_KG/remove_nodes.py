@@ -130,14 +130,15 @@ class RemoveNodes:
             connected_qnode_ids = {qnode_key for qedge in qg.edges.values()
                                    for qnode_key in {qedge.subject, qedge.object}}
             orphan_qnode_ids = all_qnode_ids.difference(connected_qnode_ids)
-            if orphan_qnode_ids:
-                self.response.debug(f"Note: Nodes fulfilling {orphan_qnode_ids} are supposed to be orphans")
             orphan_node_keys = set()
             # Don't filter out nodes that are supposed to be orphans #2306
             for node_key in nodes_to_remove:
                 node = self.message.knowledge_graph.nodes[node_key]
                 if set(node.qnode_keys).intersection(orphan_qnode_ids):
                     orphan_node_keys.add(node_key)
+            if orphan_node_keys:
+                self.response.debug(f"Leaving {len(orphan_node_keys)} orphan nodes in the KG because they fulfill an "
+                                    f"orphan qnode ({orphan_qnode_ids})")
             nodes_to_remove = nodes_to_remove.difference(orphan_node_keys)
 
             # remove the orphaned nodes
