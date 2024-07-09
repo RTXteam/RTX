@@ -7194,6 +7194,7 @@ function displayARSResults(parentnode,arsdata) {
 
 	for (var agent of arsdata['ara_list']) {
 	    td = document.createElement("td");
+            td.style.borderLeft = "1px solid black";
             td.style.textAlign = "right";
             td.innerText = (stats[agent][status]!=null) ? stats[agent][status] : '.';
 	    tr.appendChild(td);
@@ -7201,7 +7202,8 @@ function displayARSResults(parentnode,arsdata) {
 	    td = document.createElement("td");
 	    if (status == 'PASSED') {
 		var cnf = (100*Number(stats[agent][status])/num).toFixed(1);
-		var pcl = Number(stats[agent][status])>=350 ? "p9" : Number(stats[agent][status])>=175 ? "p3" : "p1";
+		var passing = document.getElementById("whichsystest").options[document.getElementById("whichsystest").selectedIndex].text.includes("Sprint 4") ? 40 : 350;
+		var pcl = Number(stats[agent][status])>=passing ? "p9" : Number(stats[agent][status])>=(passing/2) ? "p3" : "p1";
 
 		td.title = 'Current Translator goal of 350 passing tests :: ';
 		td.title += (pcl == 'p9') ? 'YES':'NO';
