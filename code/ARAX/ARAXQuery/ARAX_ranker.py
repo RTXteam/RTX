@@ -39,6 +39,74 @@ def _get_query_graph_networkx_from_query_graph(query_graph: QueryGraph) -> nx.Mu
     return query_graph_nx
 
 
+def _normalize_number_of_edges(edge_number):
+    """
+    Normalize the number of edges to be between 0 and 1
+    """
+    value = edge_number
+    max_value = 1.0
+    curve_steepness = 0.5
+    midpoint = 0
+    normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - midpoint)))
+
+    return normalized_value
+
+def _normalize_number_of_drugbank_edges(drugbank_edge_number):
+    """
+    Normalize the number of drugbank edges to be between 0 and 1
+    """
+    value = drugbank_edge_number
+    max_value = 1.0
+    curve_steepness = 3
+    midpoint = 0
+    normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - midpoint)))
+    
+    if normalized_value == 0.5:
+        normalized_value = 0.0
+
+    return normalized_value
+
+def _calculate_final_edge_score(kg_edge_id_to_edge: Dict[str, Edge], edge_binding_list: List[Dict], alpha: float = 0.8, beta: float = 0.1) -> float:
+    """
+    Calculate the final edge score for a given edge binding list considering the individual base edge confidence scores, the number of edges, and the 
+    presence of drugbank edges. The algorithm is as follows:
+        final_score= alpha x max_score + beta x normalized_edge_count + gamma x drugbank_proportion
+    
+    1. to consider the individual base edge confidence scores, the max score of all edge confidence is calculated.
+        max_score = max([edge.confidence for edge in edge_binding_list])
+    
+    2. to consider the number of edges, the normalized edge count is calculated.
+        normalized_edge_count = _normalize_number_of_edges(# of non-semmeddb nonvirtual edges)
+
+    3. to consider the presence of drugbank edges, the drugbank edge count is calculated.
+        normalized_drugbank_edge_count = _normalize_number_of_drugbank_edges(# of drugbank edges)
+    
+    Parameters:
+        kg_edge_id_to_edge (Dict[str, Edge]): A dictionary mapping edge IDs to Edge objects.
+        edge_binding_list (List[Dict]): A list of dictionaries containing edge bindings.
+        alpha (float): Weight for the average score of edges.
+        beta (float): Weight for the normalized number of edges.
+    Returns:
+        float: The final combined score between 0 and 1.
+    """
+
+    # Calculate the max score of all edge confidences
+    max_score = max([kg_edge_id_to_edge[edge_binding.id].confidence for edge_binding in edge_binding_list])
+
+    # Calculate the number of non-semmeddb nonvirtual edges
+    number_of_non_semmdb_nonvirtual_edges = len([edge_binding.id for edge_binding in edge_binding_list if 'infores:' in edge_binding.id and edge_binding.id.split('--')[-1] != 'infores:semmeddb'])
+    normalized_edge_count = _normalize_number_of_edges(number_of_non_semmdb_nonvirtual_edges)
+
+    # Calculate the number of drugbank edges
+    drugbank_edge_count = len([edge_binding.id for edge_binding in edge_binding_list if edge_binding.id.split('--')[-1] == 'infores:drugbank'])
+    normalized_drugbank_edge_count = _normalize_number_of_drugbank_edges(drugbank_edge_count)
+
+    # Calculate the final score
+    final_score = alpha * max_score + beta * normalized_edge_count + (1 - alpha - beta) * normalized_drugbank_edge_count
+
+    return final_score
+
+
 def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str, Edge],
                                                    qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
                                                    result: Result) -> Union[nx.MultiDiGraph,
@@ -47,19 +115,10 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
     qg_edge_tuples = tuple(qg_nx.edges(keys=True, data=True))
     qg_edge_key_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
     for analysis in result.analyses:  # For now we only ever have one Analysis per Result
-        for key, edge_binding_list in analysis.edge_bindings.items():
-            edge_count = 0
-            for edge_binding in edge_binding_list:
-                kg_edge = kg_edge_id_to_edge[edge_binding.id]
-                kg_edge_conf = kg_edge.confidence
-                #kg_edge_conf = kg_edge_attributes["confidence"]
-                qedge_keys = kg_edge.qedge_keys
-                for qedge_key in qedge_keys:
-                    qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
-                    res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] += kg_edge_conf
-                    edge_count += 1
-            if edge_count > 0:
-                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_key]['weight'] /= edge_count
+        for qedge_key, edge_binding_list in analysis.edge_bindings.items():
+            qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
+            res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_tuple[2]]['weight'] = _calculate_final_edge_score(kg_edge_id_to_edge, edge_binding_list)
+                
     return res_graph
 
 
@@ -211,7 +270,7 @@ class ARAXRanker:
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
                                           'jaccard_index': 0.5,
-                                          'probability_treats': 0.8,
+                                          'probability_treats': 0.7,
                                           'paired_concept_frequency': 0.5,
                                           'observed_expected_ratio': 0.8,
                                           'chi_square': 0.8,
@@ -289,12 +348,12 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         2. Figure out what to do with edges that have no attributes
         """
         edge_base_confidence = 1 # regardless of what attributes are present, each edge has a base confidence of 1
-        edge_score_list = []
+        edge_score_list = [edge_base_confidence]
         edge_attribute_dict = {}
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
                 if edge_attribute.original_attribute_name == "biolink:knowledge_level": # this probably means it's a fact or high-quality edge from reliable source, we tend to trust it.
-                    edge_score_list = [1]
+                    edge_score_list.append(1)
                     break
                 # if a specific attribute found, normalize its score and add it to the list
                 if edge_attribute.original_attribute_name is not None:
@@ -730,7 +789,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                     inferred_edge_bindings = edge_bindings.get(inferred_qedge_key,[])
                 for edge_name in inferred_edge_bindings:
                     edge_id = edge_name.id
-                    edge_attributes = message.knowledge_graph.edges[edge_id].attributes
+                    edge_attributes = kg_edge_id_to_edge[edge_id].attributes
                     if edge_attributes is not None:
                         for edge_attribute in edge_attributes:
                             if edge_attribute.original_attribute_name == 'probability_treats' and edge_attribute.value is not None:
