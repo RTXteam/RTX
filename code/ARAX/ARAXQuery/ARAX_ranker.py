@@ -742,26 +742,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         results = message.results
 
-        ## comment code below because it is logically a duplicate code from above
-        # edge_set_to_high_confidence = set()
-        # for result in results:
-        #     edge_bindings = result.analyses[0].edge_bindings
-        #     for qedge_key in message.query_graph.edges.keys():
-        #         all_edges_for_qedge_are_high_confidence = False
-        #         bound_edges = edge_bindings.get(qedge_key, [])
-        #         for edge_name in bound_edges:
-        #             edge_id = edge_name.id
-        #             if edge_id in edge_ids_manual_agent:
-        #                 all_edges_for_qedge_are_high_confidence = True
-        #                 break
-        #         if all_edges_for_qedge_are_high_confidence:
-        #             for edge_name in bound_edges:
-        #                 edge_set_to_high_confidence.add(edge_name.id)
-
-        # for edge_key, edge in message.knowledge_graph.edges.items():
         for edge_key in edge_ids_manual_agent:
             print(f"setting max confidence for edge_key: {edge_key}")
-            # edge.confidence = edge_confidence_manual_agent
 
         ###################################
         # TODO: Replace this with a more "intelligent" separate function
