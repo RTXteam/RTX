@@ -270,7 +270,7 @@ class ARAXRanker:
         self.known_attributes_to_trust = {'probability': 0.5,
                                           'normalized_google_distance': 0.8,
                                           'jaccard_index': 0.5,
-                                          'probability_treats': 0.7,
+                                          'probability_treats': 0.8,
                                           'paired_concept_frequency': 0.5,
                                           'observed_expected_ratio': 0.8,
                                           'chi_square': 0.8,
@@ -282,7 +282,8 @@ class ARAXRanker:
                                           'Richards-effector-genes': 0.5,
                                           'feature_coefficient': 1.0,
                                           'CMAP similarity score': 1.0,
-                                          'publications': 0.5 # downweight publications (including those from semmeddb)
+                                          'publications': 0.5, # downweight publications (including those from semmeddb)
+                                          'text-mining-provider': 0.8
                                           }
         self.virtual_edge_types = {}
         self.score_stats = dict()  # dictionary that stores that max's and min's of the edge attribute values
@@ -347,14 +348,15 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         1. To weight different attributes by different amounts
         2. Figure out what to do with edges that have no attributes
         """
-        edge_base_confidence = 1 # regardless of what attributes are present, each edge has a base confidence of 1
-        edge_score_list = [edge_base_confidence]
+        edge_best_score = 1
+        edge_score_list = []
         edge_attribute_dict = {}
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
                 if edge_attribute.original_attribute_name == "biolink:knowledge_level": # this probably means it's a fact or high-quality edge from reliable source, we tend to trust it.
-                    edge_score_list.append(1)
+                    edge_score_list.append(edge_best_score)
                     break
+                
                 # if a specific attribute found, normalize its score and add it to the list
                 if edge_attribute.original_attribute_name is not None:
                     edge_attribute_dict[edge_attribute.original_attribute_name] = edge_attribute.value
@@ -365,19 +367,24 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 if edge_attribute.attribute_type_id == "biolink:publications":
                     normalized_score = self.edge_attribute_publication_normalizer(edge_attribute.attribute_type_id, edge_attribute.value)
 
-                if normalized_score == -1:  # this means we have no current normalization of this kind of attribute,
-                    continue  # so don't do anything to the score since we don't know what to do with it yet
+                if self.known_attributes_to_trust.get(edge_attribute.original_attribute_name, None) is not None:
+                    edge_score_list.append(normalized_score * self.known_attributes_to_trust[edge_attribute.original_attribute_name])
+                elif edge_attribute.attribute_type_id == "biolink:publications":
+                    edge_score_list.append(normalized_score * self.known_attributes_to_trust['publications'])
+                elif edge_attribute.attribute_type_id == "biolink:primary_knowledge_source" and edge_attribute.value == "infores:text-mining-provider-targeted":
+                    edge_score_list.append(1 * self.known_attributes_to_trust['text-mining-provider'])
                 else:
-                    if self.known_attributes_to_trust.get(edge_attribute.original_attribute_name, None) is not None:
-                        edge_score_list.append(normalized_score * self.known_attributes_to_trust[edge_attribute.original_attribute_name])
-                    elif edge_attribute.attribute_type_id == "biolink:publications":
-                        edge_score_list.append(normalized_score * self.known_attributes_to_trust['publications'])
-                    else:
-                        continue # add more rules in the future
-                    
-            edge_confidence = np.mean(edge_score_list) # simply take the mean of all the scores. With this way, a fact edge without additional scores has higher confidence
+                    # this means we have no current normalization of this kind of attribute,
+                    # so don't do anything to the score since we don't know what to do with it yet
+                    # add more rules in the future
+                    continue 
+            
+            if len(edge_score_list) == 0: # if no appropriate attribute for score calculation, set the confidence to 1
+                edge_confidence = edge_best_score
+            else:
+                edge_confidence = np.max(edge_score_list) # if attributes has multiple scores, take the largest one
         else:
-            edge_confidence = edge_base_confidence
+            edge_confidence = edge_best_score
 
         return edge_confidence
 
@@ -773,27 +780,11 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
 
         result_scores = sum(ranks_list)/float(len(ranks_list))
-        #print(result_scores)
 
 
-        # Replace Inferred Results Score with Probability score calculated by xDTD model
-        inferred_qedge_keys = [qedge_key for qedge_key, qedge in message.query_graph.edges.items() 
-                               if qedge.knowledge_type == "inferred"]
         for result, score in zip(results, result_scores):
             result.analyses[0].score = score  # For now we only ever have one Analysis per Result
-            if inferred_qedge_keys:
-                inferred_qedge_key = inferred_qedge_keys[0]
-                edge_bindings =  result.analyses[0].edge_bindings
-                inferred_edge_bindings = []
-                if edge_bindings:
-                    inferred_edge_bindings = edge_bindings.get(inferred_qedge_key,[])
-                for edge_name in inferred_edge_bindings:
-                    edge_id = edge_name.id
-                    edge_attributes = kg_edge_id_to_edge[edge_id].attributes
-                    if edge_attributes is not None:
-                        for edge_attribute in edge_attributes:
-                            if edge_attribute.original_attribute_name == 'probability_treats' and edge_attribute.value is not None:
-                                result.analyses[0].score = float(edge_attribute.value)
+
         # for result in message.results:
         #     self.result_confidence_maker(result)
         ###################################
