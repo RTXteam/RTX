@@ -2,7 +2,7 @@
 
 # Usage:
 # run all: pytest -v test_ARAX_ranker.py
-# run just certain tests: pytest -v test_ARAX_ranker.py -k test_jaccard
+# run just certain tests: pytest -v test_ARAX_ranker.py -k test_ARAXRanker
 
 import sys
 import os
