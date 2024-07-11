@@ -6840,10 +6840,12 @@ function generateLoadTimeTestResults(loadtestdata) {
         tr.className = 'hoverable';
 
 	td = document.createElement("td");
+	td.rowSpan = '2';
         td.innerText = num+'.';
 	tr.appendChild(td);
 
         td = document.createElement("td");
+	td.rowSpan = '2';
 	var link = document.createElement("a");
 	link.title = 'view this response';
 	link.style.cursor = "pointer";
@@ -6914,6 +6916,37 @@ function generateLoadTimeTestResults(loadtestdata) {
 	}
 
 	table.appendChild(tr);
+
+	if (obj['merge_report']) {
+            tr = document.createElement("tr");
+	    tr.style.backgroundColor = 'initial';
+            tr.className = 'hoverable';
+
+	    td = document.createElement("td");
+	    td.append("Merge:");
+	    tr.appendChild(td);
+
+            for (var agent of Object.keys(all_agents).sort()) {
+		td = document.createElement("td");
+		td.style.borderLeft = "1px solid black";
+		td.style.textAlign = 'left';
+		if (obj['merge_report'][agent])
+		    td.append(obj['merge_report'][agent]['status']);
+		else
+		    td.append('NA');
+		tr.appendChild(td);
+
+		td = document.createElement("td");
+		td.style.textAlign = 'right';
+                if (obj['merge_report'][agent])
+		    td.append(obj['merge_report'][agent]['completion_time'].toFixed(2));
+		else
+		    td.append('');
+		tr.appendChild(td);
+	    }
+
+	    table.appendChild(tr);
+	}
     }
 
     tdiv.appendChild(table);
