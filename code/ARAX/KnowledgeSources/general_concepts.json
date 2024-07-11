@@ -339,7 +339,8 @@
         "mesh:d013287",
         "mesh:q000662",
         "mesh:q000635",
-        "umls:C000340"
+        "umls:C000340",
+        "CHEBI:35469"
     ],
     "synonyms": [
         "used in nicotine dependence",
@@ -691,7 +692,8 @@
         "Neuroprotective_agent",
         "Basis",
         "METRIC",
-        "everything"
+        "everything",
+        "Antidepressive Agents"
 
     ]
 }
