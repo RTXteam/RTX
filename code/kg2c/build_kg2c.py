@@ -2,7 +2,8 @@
 This script creates a canonicalized version of KG2 stored in various file formats, including TSVs ready for import
 into Neo4j. Files are created in the directory this script is in. It relies on the options you specify in
 kg2c_config.json.
-Usage: python build_kg2c.py TODO: update this
+Usage: python build_kg2c.py <kg2pre version> <subversion, e.g., v1.0> <biolink version>
+                            [synonymizer filename override] [--downloadkg2pre] [--uploadartifacts] [--test]
 """
 import argparse
 import csv
@@ -120,13 +121,13 @@ def main():
     # Grab any parameters passed to this script
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('kg2pre_version',
-                            help="The version of KG2pre to build KG2c from (e.g., 2.9.2)")
+                            help="The version of KG2pre to build KG2c from (e.g., 2.9.2).")
     arg_parser.add_argument('sub_version',
                             help="The KG2c sub version (e.g., v1.0); generally should be v1.0 unless you are doing a "
                                  "KG2c rebuild for a KG2pre version that already had a KG2c built from it - then it"
                                  " should be v1.1, or etc.")
     arg_parser.add_argument('biolink_version',
-                            help="The Biolink version that the given KG2pre version uses (e.g., 4.0.1")
+                            help="The Biolink version that the given KG2pre version uses (e.g., 4.0.1).")
     arg_parser.add_argument('synonymizer_override', nargs='?', default=None,
                             help="The file name of the synonymizer you want to force this KG2c build "
                                  "to use (e.g., node_synonymizer_v1.0_KG2.9.0.sqlite). The file you specify must be "
@@ -159,7 +160,7 @@ def main():
         if not pathlib.Path(kg2pre_tsvs_path).exists():
             raise ValueError(f"No local KG2pre TSVs seem to exist. You need to either put "
                              f"nodes.tsv, edges.tsv, nodes_header.tsv, and edges_header.tsv files at "
-                             f"{kg2pre_tsvs_path} or use the '--downloadkg2pre' flag to download fresh copies.")
+                             f"{kg2pre_tsvs_path} or use the '--downloadkg2pre' flag to download fresh copies from S3.")
         required_kg2pre_tsv_files = ["nodes.tsv", "edges.tsv", "nodes_header.tsv", "edges_header.tsv"]
         for kg2pre_tsv_file_name in required_kg2pre_tsv_files:
             if not pathlib.Path(f"{kg2pre_tsvs_path}/{kg2pre_tsv_file_name}").exists():
@@ -176,9 +177,9 @@ def main():
         arax_synonymizer_dir = f"{CODE_DIR}/ARAX/NodeSynonymizer"
         synonymizer_override_file_path = pathlib.Path(f"{arax_synonymizer_dir}/{args.synonymizer_override}")
         if not synonymizer_override_file_path.exists():
-            raise ValueError(f"The synonymizer file you specified () does not exist in {arax_synonymizer_dir}. "
-                             f"You must put a copy of it there, use a different synonymizer, or opt to build a "
-                             f"new synonymizer in kg2c_config.json.")
+            raise ValueError(f"The synonymizer file you specified ({args.synonymizer_override}) does not exist in "
+                             f"{arax_synonymizer_dir}. You must either put a copy of it there or use a different "
+                             f"synonymizer.")
         else:
             synonymizer_name = args.synonymizer_override
             logging.info(f"Will use the USER-SPECIFIED synonymizer: {synonymizer_name}")

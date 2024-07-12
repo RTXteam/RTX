@@ -721,13 +721,29 @@ def main():
                         handlers=[logging.FileHandler("createkg2cfiles.log"),
                                   logging.StreamHandler()])
     arg_parser = argparse.ArgumentParser()
-    # TODO: Update this...
-    arg_parser.add_argument('--test', dest='test', action='store_true', default=False)
+    arg_parser.add_argument('kg2pre_version',
+                            help="The version of KG2pre to build KG2c from (e.g., 2.9.2)")
+    arg_parser.add_argument('sub_version',
+                            help="The KG2c sub version (e.g., v1.0); generally should be v1.0 unless you are doing a "
+                                 "KG2c rebuild for a KG2pre version that already had a KG2c built from it - then it"
+                                 " should be v1.1, or etc.")
+    arg_parser.add_argument('biolink_version',
+                            help="The Biolink version that the given KG2pre version uses (e.g., 4.0.1).")
+    arg_parser.add_argument('synonymizer_name',
+                            help="The file name of the synonymizer this KG2c build "
+                                 "should use (e.g., node_synonymizer_v1.0_KG2.9.0.sqlite).")
+    arg_parser.add_argument('-t', '--test', dest='test', action='store_true',
+                            help="Specifies whether this is test build; if this flag is used, the script will use "
+                                 "'_TEST' KG2pre and KG2c files.")
     args = arg_parser.parse_args()
 
     logging.info(f"Starting to create KG2canonicalized..")
     start = time.time()
-    # create_kg2c_files(args.test)
+    create_kg2c_files(kg2pre_version=args.kg2pre_version,
+                      sub_version=args.sub_version,
+                      biolink_version=args.biolink_version,
+                      synonymizer_name=args.synonymizer_name,
+                      is_test=args.test)
     logging.info(f"Done! Took {round(((time.time() - start) / 60) / 60, 2)} hours.")
 
 
