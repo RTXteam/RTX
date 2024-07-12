@@ -316,7 +316,8 @@ class ARAXExpander:
                             final_predicates = set(qedge.predicates).difference(asymmetric_non_canonical).union(converted_asymmetric)
                             eu.flip_qedge(qedge, list(final_predicates))
                     # Handle special situation where user entered treats edge in wrong direction
-                    if qedge.predicates == ["biolink:treats"]:
+                    if (qedge.predicates == ["biolink:treats"] or
+                            qedge.predicates == ["biolink:treats_or_applied_or_studied_to_treat"]):
                         subject_qnode = query_graph.nodes[qedge.subject]
                         if "biolink:Disease" in self.bh.get_descendants(subject_qnode.categories):
                             log.warning(f"{qedge_key} seems to be pointing in the wrong direction (you have "

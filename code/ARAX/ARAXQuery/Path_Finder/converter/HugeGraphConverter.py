@@ -45,6 +45,14 @@ class HugeGraphConverter:
                         self.names.auxiliary_graph_name
                     ]
                 )
+            ],
+            sources=[
+                {
+                    "resource_id": "infores:arax",
+                    "resource_role": "primary_knowledge_source",
+                    "source_record_urls": None,
+                    "upstream_resource_ids": None
+                }
             ]
         )
         edge_with_support_graph.qedge_keys = [self.names.q_edge_name]

@@ -1184,12 +1184,12 @@ def test_issue912_clean_up_kg():
 
 @pytest.mark.slow
 def test_issue1119_a():
-    # Run a query to identify chemical substances that are both indicated for and contraindicated for our disease
+    # Run a query to identify chemical substances that are both indicated for and contraindicated for the same disease
     actions = [
-        "add_qnode(name=DOID:3312, key=n00, is_set=True)",
+        "add_qnode(name=HP:0020110, key=n00, is_set=True)",
         "add_qnode(categories=biolink:Drug, key=n01)",
-        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
-        "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes, key=e01)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes_to_condition, key=e01)",
         "expand(kp=infores:rtx-kg2)",
         "resultify()",
         "return(message=true, store=false)"
@@ -1201,12 +1201,12 @@ def test_issue1119_a():
     contraindicated_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in message.knowledge_graph.edges.values()
                              if "e01" in edge.qedge_keys}
 
-    # Verify those chemical substances aren't returned when we make the contraindicated_for edge kryptonite
+    # Verify those chemical substances aren't returned when we make the predisposes edge kryptonite
     actions = [
-        "add_qnode(name=DOID:3312, key=n00, is_set=True)",
+        "add_qnode(name=HP:0020110, key=n00, is_set=True)",
         "add_qnode(categories=biolink:Drug, key=n01)",
-        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
-        "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes, exclude=true, key=ex0)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes_to_condition, exclude=true, key=ex0)",
         "expand(kp=infores:rtx-kg2)",
         "resultify()",
         "return(message=true, store=false)"
@@ -1218,6 +1218,7 @@ def test_issue1119_a():
                     if "e00" in edge.qedge_keys}
 
     assert not contraindicated_pairs.intersection(treats_pairs)
+
 
 @pytest.mark.slow
 def test_issue1119_b():
@@ -1249,7 +1250,7 @@ def test_issue1119_c():
         "add_qnode(key=n00, ids=MONDO:0005015)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
-        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:predisposes, option_group_id=1)",
+        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:predisposes_to_condition, option_group_id=1)",
         "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
@@ -1281,7 +1282,7 @@ def test_issue1119_c():
     actions = [
         "add_qnode(key=n00, ids=MONDO:0005015)",
         f"add_qnode(key=n01, ids=[{', '.join(n01_node_keys_original)}])",
-        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:predisposes)",
+        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:predisposes_to_condition)",
         "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
@@ -1298,8 +1299,8 @@ def test_issue1119_d():
         "add_qnode(key=n00, ids=DOID:3312)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:affects)",
-        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:treats, option_group_id=1)",
-        "add_qedge(key=e03, subject=n01, object=n00, exclude=True, predicates=biolink:predisposes)",
+        "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, option_group_id=1)",
+        "add_qedge(key=e03, subject=n01, object=n00, exclude=True, predicates=biolink:predisposes_to_condition)",
         "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
@@ -1452,7 +1453,7 @@ def test_node_binding_query_id_one_hop_single_input_curie():
     actions = [
         f"add_qnode(ids={DIABETES_CURIE}, key=n00)",
         f"add_qnode(categories=biolink:Drug, key=n01)",
-        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
@@ -1485,7 +1486,7 @@ def test_node_binding_query_id_one_hop_multiple_input_curies():
     actions = [
         f"add_qnode(ids=[{','.join(parent_query_ids)}], key=n00)",
         f"add_qnode(categories=biolink:Drug, key=n01)",
-        "add_qedge(subject=n01, object=n00, predicates=biolink:treats, key=e00)",
+        "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
@@ -1522,7 +1523,7 @@ def test_node_binding_query_id_two_hop_double_pinned():
         f"add_qnode(ids={HEART_DISEASE_CURIE}, key=n01)",
         f"add_qnode(categories=biolink:Drug, key=n02)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:related_to, key=e00)",
-        "add_qedge(subject=n01, object=n02, predicates=biolink:treats, key=e01)",
+        "add_qedge(subject=n01, object=n02, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e01)",
         "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
         "return(message=true, store=false)"

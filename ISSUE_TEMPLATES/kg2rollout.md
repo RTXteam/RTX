@@ -118,8 +118,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 - [ ] upload the new databases and their md5 checksums to ITRB's SFTP server using the steps detailed [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#steps-for-all-databases-at-once)
 
 #### 5. Rollout new KG2c version to `arax.ncats.io` development endpoints
-- [ ] Notify the `#deployment` channel in the `ARAXTeam` Slack workspace that you are rolling out a new version of KG2c to the various `arax.ncats.io` development endpoints.
-- [ ] for the `RTXteam/RTX` project, merge the `master` branch into the branch for this KG2 version.  Record this issue number in the merge message.
+- [ ] Notify the `#deployment` channel in the `ARAXTeam` Slack workspace that you are rolling out a new version of KG2c to the various `arax.ncats.io` development endpoints. Provide the KG2c version number in this notification.
+- [ ] for the `RTXteam/RTX` project, merge the `master` branch into the branch for this KG2 version.  Record the RTX issue number (for the KG2c rollout checklist issue) in the merge message.
 - [ ] for the `RTXteam/RTX` project, merge this KG2 version's branch back into the `master` branch.  Record this issue number in the merge message.
 - [ ] to roll `master` out to a specific ARAX or KG2 endpoint named `/EEE`, you would do the following steps:
   - [ ] If you are offsite, log into your office VPN (there are strict IP address block restrictions on client IPs that can ssh into `arax.ncats.io`)
@@ -145,14 +145,14 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `kg2test`
   - [ ] `test`
   - [ ] `devLM`
-- [ ] inside the Docker `rtx1` container, run the pytest suite on the various endpoints:
+- [ ] inside the Docker `rtx1` container, run the pytest suite on the various ARAX development endpoints (that means `devED`, `devLM`, `test`, and `beta`):
   - [ ] `cd /mnt/data/orangeboard/EEE/RTX/code/ARAX/test && pytest -v`
 - [ ] update our CI/CD testing instance with the new databases:
   - [ ] `ssh ubuntu@cicd.rtx.ai`
   - [ ] `cd RTX`
   - [ ] `git pull origin master`
   - [ ] If there have been changes to `requirements.txt`, make sure to do `~/venv3.9/bin/pip3 install -r requirements.txt`
-  - [ ]  `sudo bash`
+  - [ ] `sudo bash`
   - [ ] `mkdir -m 777 /mnt/data/orangeboard/databases/KG2.X.Y`
   - [ ] `exit`
   - [ ] `~/venv3.9/bin/python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused`
@@ -160,18 +160,18 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 #### 6. Final items/clean up:
 
-- [ ] turn off the old KG2c version's neo4j instance
+- [ ] turn off the old KG2c version's neo4j instance (if it has not already been turned off; it is likely to have been turned off when the old KG2c was rolled out)
   - [ ] determine what is the DNS A record hostname for `kg2-X-Zc.rtx.ai` (where `Z` is one less than the new minor release version): run `nslookup kg2-X-Zc.rtx.ai` (it will return either `kg2canonicalized.rtx.ai` or `kg2canonicalized2.rtx.ai`; we'll call it `kg2canonicalizedN.rtx.ai`).
   - [ ] message the `#deployment` channel in the `ARAXTeam` Slack workspace that you will be stopping the `kg2canonicalizedN.rtx.ai` Neo4j endpoint
   - [ ] `ssh ubuntu@kg2-X-Zc.rtx.ai` 
   - [ ] `sudo service neo4j stop`
   - [ ] In the AWS console, stop the instance `kg2canonicalizedN.rtx.ai`
-- [ ] turn off the old KG2c version's plover instance
+- [ ] turn off the old KG2c version's plover instance (if it has not already been turned off during the previous KG2c roll-out; under normal circumstances, we turn off the self-hosted PloverDB for the new KG2c, during clean-up)
   - [ ] Determine what is the DNS A record hostname for `kg2-X-Zcplover.rtx.ai` (where `Z` is one less than the new minor release version): run `nslookup kg2-X-Zploverc.rtx.ai` (it will return either `kg2cplover.rtx.ai`, `kg2cplover2.rtx.ai`, or `kg2cplover3.rtx.ai`; we'll call it `kg2cploverN.rtx.ai`).
   - [ ] message the `#deployment` channel in the `ARAXTeam` Slack workspace that you will be stopping the `kg2-X-Zcplover.rtx.ai` PloverDB service
   - [ ] Log into `kg2cploverN.rtx.ai`: `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] Stop the PloverDB container: `sudo docker stop plovercontainer2.X.Z` (if you are not sure of the container name, use `sudo docker container ls -a` to get the container name).
-- [ ] turn off the new KG2pre version's neo4j instance (Coordinate with the KG2pre team before doing this)
+- [ ] turn off the new KG2pre version's Neo4j instance (Coordinate with the KG2pre team before doing this)
 - [ ] deploy new PloverDB service into ITRB CI that is backed by the new KG2c database: 
     - [ ] merge PloverDB `main` branch into `kg2.X.Yc` branch (if `main` has any commits ahead of `kg2.X.Yc`). Reference this issue (via its full GitHub URL) in the merge message.
     - [ ] merge PloverDB `kg2.X.Yc` branch into `main` branch. Reference this issue (via its full GitHub URL) in the merge message.
@@ -188,9 +188,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
       - [ ] `sudo docker container ls -a` (gives you the name of the container; assume it is `plovercontainer2.X.Y`)
       - [ ] `sudo docker stop plovercontainer2.X.Y`
     - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
-- [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
+- [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen, who has permissions to do this)
 - [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
-- [ ] upload KG2c TSV tarball to the [Translator Knowledge Graph Exchange (KGE)](https://archive.translator.ncats.io/home).
       
 #### 7. Roll-out to ITRB TEST 
 - [ ] In GitHub, for the RTXteam/RTX project, merge `master` to `itrb-test`. Record this issue number in the merge message.
