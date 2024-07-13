@@ -63,8 +63,10 @@ def create_match_nodes_kg2pre(kg2pre_version: str) -> Set[str]:
         kg2pre_build_node_name_chunks = kg2pre_build_node["name"].split("-")  # Note: Using '.name' accessor here returns node ID for some reason...
         kg2pre_build_node_version = kg2pre_build_node_name_chunks[1].replace("KG", "")
         if kg2pre_build_node_version != kg2pre_version:
-            raise ValueError(f"We appear to have the wrong KG2pre TSVs! Requested version was {kg2pre_version}, but the"
-                             f" build node in the KG2pre TSVs says the version is {kg2pre_build_node_version}.")
+            raise ValueError(f"Wrong KG2pre TSVs! You requested KG2pre version {kg2pre_version},"
+                             f" but the build node in the KG2pre TSVs at {KG2PRE_TSV_DIR} says the version is "
+                             f"{kg2pre_build_node_version}. You need to either put the {kg2pre_version} TSVs in "
+                             f"{KG2PRE_TSV_DIR} or use a different KG2pre version.")
     else:
         raise ValueError(f"No build node exists in the KG2pre TSVs! Cannot verify we have the correct KG2pre TSVs.")
 
