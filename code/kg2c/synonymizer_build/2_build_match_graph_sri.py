@@ -39,9 +39,9 @@ def get_sri_edge_id(subject_id: str, object_id: str) -> str:
 def determine_cluster_category(sri_types: List[str], category_map: Dict[str, str], bh: BiolinkHelper) -> str:
     sri_types_hash = "-".join(sorted(sri_types))
     if sri_types_hash not in category_map:  # Only need to process this set if we haven't seen it before
-        sri_types_set = set(sri_types)
+        sri_types_set = set(bh.filter_out_mixins(sri_types))  # We want to assign a true category, not mixin
         leaves = []
-        for biolink_category in sri_types:
+        for biolink_category in sri_types_set:
             descendants = set(bh.get_descendants(biolink_category,
                                                  include_mixins=False,
                                                  include_conflations=False)).difference({biolink_category})
@@ -50,7 +50,12 @@ def determine_cluster_category(sri_types: List[str], category_map: Dict[str, str
                 leaves.append(biolink_category)
         if leaves:
             # Store this mapping for fast lookup later
-            category_map[sri_types_hash] = sorted(leaves)[0]
+            chosen_category = sorted(leaves)[0]
+            category_map[sri_types_hash] = chosen_category
+            if len(leaves) > 1:
+                logging.info(f"SRI clique has more than one leaf category. Original category list from SRI was: "
+                             f"{sri_types}. Identified 'leaves' within that category subtree are: {leaves}."
+                             f" Category chosen to represent all nodes in clique was: {chosen_category}.")
         else:
             raise ValueError(f"Failed to find the most specific category for a node from SRI! Must be a bug.")
 
@@ -91,13 +96,14 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str], biolink_version: str):
                       "drug_chemical_conflate": True}
         response = requests.post(SRI_NN_URL, json=query_body)
 
-        # Extract the canonical identifiers and any other equivalent IDs from the response for this batch
+        # Add nodes and edges to our SRI match graph based on the returned info
         if response.status_code == 200:
             for kg2pre_node_id, normalized_info in response.json().items():
                 if normalized_info:  # This means the SRI NN recognized the KG2pre node ID we asked for
                     cluster_id = normalized_info["id"]["identifier"]
-                    cluster_category = determine_cluster_category(normalized_info["type"], category_map, bh)
                     if cluster_id not in sri_nodes_dict:  # Process this cluster if we haven't seen it before
+                        cluster_category = determine_cluster_category(normalized_info["type"], category_map, bh)
+
                         # Create nodes for all members of this cluster
                         cluster_nodes_dict = dict()
                         for equivalent_node in normalized_info["equivalent_identifiers"]:
