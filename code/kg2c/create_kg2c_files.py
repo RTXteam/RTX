@@ -550,11 +550,14 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
         edge_knowledge_level = kg2pre_edge['knowledge_level']
         edge_agent_type = kg2pre_edge['agent_type']
 
-        '''Patch for lack of qualified_predicate when qualified_object_direction is present'''
+        # Patch for lack of qualified_predicate when qualified_object_direction is present
         predicate = kg2pre_edge['predicate']
         if predicate == "biolink:regulates" and edge_qualified_object_direction and not edge_qualified_predicate:
             edge_qualified_predicate = "biolink:causes"
             edge_qualified_object_aspect = "activity_or_abundance"
+        # Patch to filter out Chembl applied_to_treat edges (will eventually be removed from KG2pre itself)
+        elif predicate == "biolink:applied_to_treat" and edge_primary_knowledge_source == "infores:chembl":
+            continue
 
         edge_publications_info = _load_publications_info(kg2pre_edge['publications_info'], kg2_edge_id) if kg2pre_edge.get('publications_info') else dict()
         if canonicalized_subject != canonicalized_object:  # Don't allow self-edges
