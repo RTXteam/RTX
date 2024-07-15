@@ -59,7 +59,9 @@ PROPERTIES_LOOKUP = {
         "qualified_predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_object_aspect": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "domain_range_exclusion" : {"type": str, "in_kg2pre": True, "in_kg2c_lite": True}
+        "domain_range_exclusion": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "knowledge_level": {"type": str, "in_kg2pre": True, "in_kg2c_lite": False},
+        "agent_type": {"type": str, "in_kg2pre": True, "in_kg2c_lite": False}
     }
 }
 
@@ -281,7 +283,8 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
 
 def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_source: str, publications: List[str],
                  publications_info: Dict[str, any], kg2_ids: List[str],
-                 qualified_predicate, qualified_object_aspect, qualified_object_direction, domain_range_exclusion) -> Dict[str, any]:
+                 qualified_predicate: str, qualified_object_aspect: str, qualified_object_direction: str,
+                 domain_range_exclusion: str, knowledge_level: str, agent_type: str) -> Dict[str, any]:
     edge_properties_lookup = PROPERTIES_LOOKUP["edges"]
     assert isinstance(subject, edge_properties_lookup["subject"]["type"])
     assert isinstance(object, edge_properties_lookup["object"]["type"])
@@ -294,7 +297,8 @@ def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_so
     assert isinstance(qualified_object_aspect, edge_properties_lookup["qualified_object_aspect"]["type"])
     assert isinstance(qualified_object_direction, edge_properties_lookup["qualified_object_direction"]["type"])
     assert isinstance(domain_range_exclusion, edge_properties_lookup["domain_range_exclusion"]["type"])
-
+    assert isinstance(knowledge_level, edge_properties_lookup["knowledge_level"]["type"])
+    assert isinstance(agent_type, edge_properties_lookup["agent_type"]["type"])
     
     return {
         "subject": subject,
@@ -307,7 +311,9 @@ def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_so
         "qualified_predicate": qualified_predicate, 
         "qualified_object_aspect": qualified_object_aspect,
         "qualified_object_direction": qualified_object_direction,
-        "domain_range_exclusion": domain_range_exclusion
+        "domain_range_exclusion": domain_range_exclusion,
+        "knowledge_level": knowledge_level,
+        "agent_type": agent_type
     }
 
 
@@ -541,6 +547,8 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
         edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if kg2pre_edge.get('qualified_object_aspect') else ""
         edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if kg2pre_edge.get('qualified_object_direction') else ""
         edge_domain_range_exclusion = kg2pre_edge['domain_range_exclusion']
+        edge_knowledge_level = kg2pre_edge['knowledge_level']
+        edge_agent_type = kg2pre_edge['agent_type']
 
         '''Patch for lack of qualified_predicate when qualified_object_direction is present'''
         predicate = kg2pre_edge['predicate']
@@ -573,7 +581,9 @@ def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str,
                                                       qualified_predicate=edge_qualified_predicate,
                                                       qualified_object_aspect=edge_qualified_object_aspect,
                                                       qualified_object_direction=edge_qualified_object_direction,
-                                                      domain_range_exclusion=edge_domain_range_exclusion)
+                                                      domain_range_exclusion=edge_domain_range_exclusion,
+                                                      knowledge_level=edge_knowledge_level,
+                                                      agent_type=edge_agent_type)
                 canonicalized_edges[canonicalized_edge_key] = new_canonicalized_edge
     logging.info(f"Number of KG2pre edges was reduced to {len(canonicalized_edges)} "
                  f"({round((len(canonicalized_edges) / len(kg2pre_edges)) * 100)}%)")
