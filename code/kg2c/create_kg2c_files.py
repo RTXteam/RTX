@@ -718,8 +718,7 @@ def create_kg2c_files(kg2pre_version: str, sub_version: str, biolink_version: st
 def main():
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(levelname)s: %(message)s',
-                        handlers=[logging.FileHandler("createkg2cfiles.log"),
-                                  logging.StreamHandler()])
+                        handlers=[logging.StreamHandler()])
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('kg2pre_version',
                             help="The version of KG2pre to build KG2c from (e.g., 2.9.2)")

@@ -134,6 +134,9 @@ def write_node_batch(writer: csv.writer, rows: list):
 
 
 def run():
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s %(levelname)s: %(message)s",
+                        handlers=[logging.StreamHandler()])
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
 
     # Merge KG2pre and SRI NN data

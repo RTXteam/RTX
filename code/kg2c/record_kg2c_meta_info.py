@@ -192,6 +192,7 @@ def generate_fda_approved_drugs_pickle(edges_by_id: Dict[str, Dict[str, any]], f
 
 
 def record_meta_kg_info(biolink_version: str, is_test: bool):
+    logging.info("Starting to record KG2c meta info..")
     bh = BiolinkHelper(biolink_version)
     start = time.time()
 
@@ -220,17 +221,16 @@ def record_meta_kg_info(biolink_version: str, is_test: bool):
 
 
 def main():
-    # TODO: Update this..
     logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(levelname)s: %(message)s',
-                        handlers=[logging.FileHandler("metainfo.log"),
-                                  logging.StreamHandler()])
-    logging.info("Starting to record KG2c meta info..")
+                        format="%(asctime)s %(levelname)s: %(message)s",
+                        handlers=[logging.StreamHandler()])
+
     arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('biolink_version',
+                            help="The Biolink version that the given KG2pre version uses (e.g., 4.0.1).")
     arg_parser.add_argument("--test", dest="test", action='store_true', default=False)
     args = arg_parser.parse_args()
-
-    # record_meta_kg_info(args.test)
+    record_meta_kg_info(args.biolink_version, args.test)
 
 
 if __name__ == "__main__":
