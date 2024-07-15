@@ -51,11 +51,13 @@ class BiolinkHelper:
     def get_ancestors(self, biolink_items: Union[str, List[str]], include_mixins: bool = True, include_conflations: bool = True) -> List[str]:
         """
         Returns the ancestors of Biolink categories, predicates, category mixins, or predicate mixins. Input
-        categories/predicates/mixins are themselves included in the returned ancestor list. For categories/predicates,
-        inclusion of mixin ancestors can be turned on or off via the include_mixins flag. Inclusion of ARAX-defined
-        conflations (e.g., gene == protein) can be controlled via the include_conflations parameter.
+        categories/predicates/mixins are themselves included in the returned ancestor list. For proper
+        categories/predicates, inclusion of mixin ancestors can be turned on or off via the include_mixins flag.
+        Note that currently the 'include_mixins' flag is only relevant when inputting *proper* predicates/categories;
+        if only predicate/category *mixins* are input, then the 'include_mixins' flag does nothing (mixins will always
+        be included in that case). Inclusion of ARAX-defined conflations (e.g., gene == protein) can be controlled via
+        the include_conflations parameter.
         """
-        # TODO: Make the include_mixins work for mixin inputs? (return only categories/predicates)
         input_item_set = self._convert_to_set(biolink_items)
         categories = input_item_set.intersection(set(self.biolink_lookup_map["categories"]))
         predicates = input_item_set.intersection(set(self.biolink_lookup_map["predicates"]))
@@ -84,11 +86,13 @@ class BiolinkHelper:
     def get_descendants(self, biolink_items: Union[str, List[str], Set[str]], include_mixins: bool = True, include_conflations: bool = True) -> List[str]:
         """
         Returns the descendants of Biolink categories, predicates, category mixins, or predicate mixins. Input
-        categories/predicates/mixins are themselves included in the returned descendant list. For categories/predicates,
-        inclusion of mixin descendants can be turned on or off via the include_mixins flag. Inclusion of ARAX-defined
-        conflations (e.g., gene == protein) can be controlled via the include_conflations parameter.
+        categories/predicates/mixins are themselves included in the returned descendant list. For proper
+        categories/predicates, inclusion of mixin descendants can be turned on or off via the include_mixins flag.
+        Note that currently the 'include_mixins' flag is only relevant when inputting *proper* predicates/categories;
+        if only predicate/category mixins are input, then the 'include_mixins' flag does nothing (mixins will always
+        be included in that case). Inclusion of ARAX-defined conflations (e.g., gene == protein) can be controlled
+        via the include_conflations parameter.
         """
-        # TODO: Make the include_mixins work for mixin inputs? (return only categories/predicates)
         input_item_set = self._convert_to_set(biolink_items)
         categories = input_item_set.intersection(set(self.biolink_lookup_map["categories"]))
         predicates = input_item_set.intersection(set(self.biolink_lookup_map["predicates"]))
@@ -117,22 +121,27 @@ class BiolinkHelper:
     def get_canonical_predicates(self, predicates: Union[str, List[str], Set[str]]) -> List[str]:
         """
         Returns the canonical version of the input predicate(s). Accepts a single predicate or multiple predicates as
-        input and always returns the canonical predicate(s) in a list.
+        input and always returns the canonical predicate(s) in a list. Works with both proper and mixin predicates.
         """
-        # TODO: Add canonical predicates for predicate mixins?
         input_predicate_set = self._convert_to_set(predicates)
-        valid_predicates = input_predicate_set.intersection(self.biolink_lookup_map["predicates"])
+        valid_predicates_proper = input_predicate_set.intersection(self.biolink_lookup_map["predicates"])
+        valid_predicate_mixins = input_predicate_set.intersection(self.biolink_lookup_map["predicate_mixins"])
+        valid_predicates = valid_predicates_proper.union(valid_predicate_mixins)
         invalid_predicates = input_predicate_set.difference(valid_predicates)
         if invalid_predicates:
             eprint(f"WARNING: Provided predicate(s) {invalid_predicates} do not exist in Biolink {self.biolink_version}")
         canonical_predicates = {self.biolink_lookup_map["predicates"][predicate]["canonical_predicate"]
-                                for predicate in valid_predicates}
+                                for predicate in valid_predicates_proper}
+        canonical_predicates.update({self.biolink_lookup_map["predicate_mixins"][predicate]["canonical_predicate"]
+                                     for predicate in valid_predicate_mixins})
         canonical_predicates.update(invalid_predicates)  # Go ahead and include those we don't have canonical info for
         return list(canonical_predicates)
 
     def is_symmetric(self, predicate: str) -> bool:
         if predicate in self.biolink_lookup_map["predicates"]:
             return self.biolink_lookup_map["predicates"][predicate]["is_symmetric"]
+        elif predicate in self.biolink_lookup_map["predicate_mixins"]:
+            return self.biolink_lookup_map["predicate_mixins"][predicate]["is_symmetric"]
         else:
             return True  # Consider unrecognized predicates symmetric (rather than throw error)
 
@@ -245,7 +254,9 @@ class BiolinkHelper:
                 biolink_lookup_map["predicate_mixins"][predicate_mixin] = {
                     "ancestors": ancestors.difference({"MIXIN"}),  # Our made-up root doesn't count as an ancestor
                     "descendants": self._get_descendants_from_tree(predicate_mixin, predicate_mixin_tree),
-                    "direct_mappings": mixin_to_predicates_map.get(predicate_mixin, set())
+                    "direct_mappings": mixin_to_predicates_map.get(predicate_mixin, set()),
+                    "canonical_predicate": canonical_predicate_map.get(predicate_mixin, predicate_mixin),
+                    "is_symmetric": predicate_mixin in symmetric_predicates
                 }
             del biolink_lookup_map["predicate_mixins"]["MIXIN"]  # No longer need this imaginary root node
             for category_mixin_node in category_mixin_tree.all_nodes():
@@ -519,8 +530,8 @@ def main():
 
     # Test predicates
     treats_ancestors = bh.get_ancestors("biolink:treats")
-    assert "biolink:related_to" in treats_ancestors
-    affects_descendants = bh.get_descendants("biolink:affects")
+    assert "biolink:treats_or_applied_or_studied_to_treat" in treats_ancestors
+    affects_descendants = bh.get_descendants("biolink:affects", include_mixins=True)
     assert "biolink:treats" in affects_descendants
 
     # Test lists
@@ -557,7 +568,8 @@ def main():
 
     # Test predicate symmetry
     assert bh.is_symmetric("biolink:related_to")
-    assert not bh.is_symmetric("biolink:treats")
+    assert bh.is_symmetric("biolink:interacts_with")  # This is a mixin starting in Biolink 4.1.0
+    assert not bh.is_symmetric("biolink:treats")  # This is a mixin starting in Biolink 4.1.0
 
     # Test getting biolink version
     biolink_version = bh.get_current_arax_biolink_version()

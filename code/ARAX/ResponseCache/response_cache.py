@@ -23,6 +23,8 @@ import multiprocessing
 
 import boto3
 import timeit
+import uuid
+import shutil
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
@@ -45,8 +47,14 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.5.0-beta'
-biolink_version = '4.1.6'
+trapi_version = '1.5.0'
+biolink_version = '4.2.1'
+
+component_cache_dir = os.path.dirname(os.path.abspath(__file__))+"/json_cache"
+if os.path.exists(component_cache_dir):
+    shutil.rmtree(component_cache_dir)
+if not os.path.exists(component_cache_dir):
+    os.mkdir(component_cache_dir)
 
 
 def validate_envelope(process_params):
@@ -537,8 +545,18 @@ class ResponseCache:
 
         #### Otherwise, see if it is an ARS style response_id
         if len(response_id) > 30:
-
             debug = False
+
+            #### See if this thing is cached already
+            filename = f"{component_cache_dir}/{response_id}.json"
+            if os.path.exists(filename):
+                with open(filename) as infile:
+                    envelope = json.load(infile)
+                return envelope
+
+            #### If it started with Z, this is a special temporary cache, and if it's not there, all is lost
+            if response_id.startswith('Z'):
+                return( { "status": 404, "title": f"Cached component not found", "detail": f"The component cache has been cleared since the initial request. Refresh the entire response", "type": "about:blank" }, 404)
 
             ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
             for ars_host in ars_hosts:
@@ -783,6 +801,41 @@ class ResponseCache:
                     #### Count provenance information
                     attribute_parser = ARAXAttributeParser(envelope,envelope['message'])
                     envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
+
+                    #### Strip highly verbose information
+                    if 'nodes' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['nodes'] is not None:
+                        for node_key, node in envelope['message']['knowledge_graph']['nodes'].items():
+                            component_uuid = 'Z' + str(uuid.uuid4())
+                            filename = f"{component_cache_dir}/{component_uuid}.json"
+                            with open(filename, 'w') as outfile:
+                                json.dump(node, outfile)
+                            node['attributes'] = None
+                            node['detail_lookup'] = component_uuid
+                    if 'edges' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['edges'] is not None:
+                        for edge_key, edge in envelope['message']['knowledge_graph']['edges'].items():
+                            component_uuid = 'Z' + str(uuid.uuid4())
+                            filename = f"{component_cache_dir}/{component_uuid}.json"
+                            with open(filename, 'w') as outfile:
+                                json.dump(edge, outfile)
+                            edge['detail_lookup'] = component_uuid
+                            edge['attributes'] = None
+                            edge['sources'] = None
+                    content_size = len(json.dumps(envelope,indent=2))
+                    if content_size < 1000:
+                        content_size = '{:.2f} kB'.format(content_size/1000)
+                    elif content_size < 1000000:
+                        content_size = '{:.0f} kB'.format(content_size/1000)
+                    elif content_size < 10000000000:
+                        content_size = '{:.1f} MB'.format(content_size/1000000)
+                    else:
+                        content_size = '{:.0f} MB'.format(content_size/1000000)
+                    envelope['validation_result']['size'] = content_size
+                    filename = f"{component_cache_dir}/{response_id}.json"
+                    with open(filename, 'w') as outfile:
+                        json.dump(envelope, outfile)
+
+
+
 
 
                 return envelope

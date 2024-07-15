@@ -84,7 +84,7 @@ def test_add_qnode_name():
     assert response.status == 'OK'
     assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.nodes) == 1
-    assert message.query_graph.nodes['n00'].ids[0] == 'PUBCHEM.COMPOUND:1983'
+    assert message.query_graph.nodes['n00'].ids[0] == 'CHEBI:46195'
 
 
 def test_add_qnode_type():

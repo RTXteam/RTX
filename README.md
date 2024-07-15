@@ -291,6 +291,7 @@ Netherlands.
 | Amy&nbsp;Glen           | OSU       | `glena@oregonstate.edu`        | [amykglen](https://github.com/amykglen)   | knowledge graphs  |
 | Arun&nbsp;Muluka          | PSU       | `avm6604@psu.edu`        | [aruntejam1](https://github.com/aruntejam1)   | knowledge graphs  |
 | Chunyu&nbsp;Ma        | PSU     | `cqm5886@psu.edu` | [chunyuma](https://github.com/chunyuma) | programmer/analyst | 
+| Sundareswar&nbsp;Pullela | OSU  | `pullelas@oregonstate.edu` | [sundareswarpullela](https://github.com/sundareswarpullela) | programmer, knowledge graphs |
 
 For our work on the Translator program, we also extensively
 collaborate and cooperate with investigators at Oregon Health &amp; Science
@@ -444,7 +445,7 @@ Tyler Beck, Sarah Stemann, Debbi Adelakun, Dena Procaccini, and Tyler Peryea),
 and Will Byrd, Greg Rosenblatt, Michael Patton, Chunlei Wu, Kevin Xin, Tom
 Conlin, Harold Solbrig, Matt Brush, Karamarie Fecho, Julie McMurray, Kent
 Shefchek, Chris Bizon, Steve Cox, Deepak Unni, Tim Putman, Patrick Wang, Sui
-Huang, Theo Knijnenburg, Gustavo Glusman, John Earls, Andrew Su, Chris Mungall,
+Huang, Theo Knijnenburg, Gwênlyn Glusman, John Earls, Andrew Su, Chris Mungall,
 Marcin Joachimiak, Michel Dumontier, Richard Bruskiewich, and Melissa
 Haendel. Support for the development of RTX was provided by NCATS through the
 Translator program award OT2TR002520.  Support for the development of ARAX was
