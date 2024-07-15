@@ -38,8 +38,6 @@ def main():
                             help="The synonymizer sub version (e.g., v1.0); generally should be v1.0 unless you are "
                                  "doing a synonymizer rebuild for a KG2 version that already has a synonymizer - then "
                                  "it should be v1.1, or etc.")
-    arg_parser.add_argument('biolink_version',
-                            help="The Biolink version that the given KG2pre version uses (e.g., 4.0.1).")
     arg_parser.add_argument('start_at', nargs='?', default='1',
                             help="The step in the synonymizer build to begin at. Used only for development purposes.")
     arg_parser.add_argument('-d', '--downloadkg2pre', dest='download_kg2pre', action='store_true',
@@ -58,7 +56,7 @@ def main():
         build_match_graph_kg2pre.run(kg2pre_version=args.kg2pre_version,
                                      download_fresh=args.download_kg2pre)
     if step_num_to_start_at <= 2:
-        build_match_graph_sri.run(biolink_version=args.biolink_version)
+        build_match_graph_sri.run()
     if step_num_to_start_at <= 3:
         merge_match_graphs.run()
     if step_num_to_start_at <= 4:

@@ -4,21 +4,24 @@ import json
 import logging
 import os
 import pathlib
+import subprocess
 import sys
 from typing import Set, Dict, List
 
+import json_lines
 import numpy as np
 import pandas as pd
 import requests
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAX/BiolinkHelper/")
-from biolink_helper import BiolinkHelper
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
 SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
 SRI_NN_URL = "https://nodenormalization-sri.renci.org/get_normalized_nodes"
 # Note: The above is the SRI NN development (non-ITRB) server, which seems to be faster for us
+SRI_NN_VERSION = "2024jul13"
+SRI_NN_COMPENDIA_URL = f"https://stars.renci.org/var/babel_outputs/{SRI_NN_VERSION}/compendia/"
+SRI_NN_PARENT_DIR = f"{SYNONYMIZER_BUILD_DIR}/SRI_NN"
+SRI_NN_DIR = f"{SRI_NN_PARENT_DIR}/{SRI_NN_VERSION}"
 
 
 def strip_biolink_prefix(item: str) -> str:
@@ -36,38 +39,39 @@ def get_sri_edge_id(subject_id: str, object_id: str) -> str:
     return f"SRI:{subject_id}--{object_id}"
 
 
-def determine_cluster_category(sri_types: List[str], category_map: Dict[str, str], bh: BiolinkHelper) -> str:
-    sri_types_hash = "-".join(sorted(sri_types))
-    if sri_types_hash not in category_map:  # Only need to process this set if we haven't seen it before
-        sri_types_set = set(bh.filter_out_mixins(sri_types))  # We want to assign a true category, not mixin
-        leaves = []
-        for biolink_category in sri_types_set:
-            descendants = set(bh.get_descendants(biolink_category,
-                                                 include_mixins=False,
-                                                 include_conflations=False)).difference({biolink_category})
-            if not descendants.intersection(sri_types_set):
-                # We've found a (in this context) 'leaf' category!
-                leaves.append(biolink_category)
-        if leaves:
-            # Store this mapping for fast lookup later
-            chosen_category = sorted(leaves)[0]
-            category_map[sri_types_hash] = chosen_category
-            if len(leaves) > 1:
-                logging.info(f"SRI clique has more than one leaf category. Original category list from SRI was: "
-                             f"{sri_types}. Identified 'leaves' within that category subtree are: {leaves}."
-                             f" Category chosen to represent all nodes in clique was: {chosen_category}.")
-        else:
-            raise ValueError(f"Failed to find the most specific category for a node from SRI! Must be a bug.")
+def build_category_map(kg2pre_node_ids: Set[str]) -> Dict[str, str]:
+    """
+    The SRI NN API doesn't currently provide the category for each identifier in a clique, so
+    we extract this information from the SRI NN bulk compendia files.
+    """
+    # Download SRI NN files we don't already have
+    if not pathlib.Path(SRI_NN_PARENT_DIR).exists():
+        subprocess.check_call(["mkdir", SRI_NN_PARENT_DIR])
+    if not pathlib.Path(SRI_NN_DIR).exists():
+        subprocess.check_call(["mkdir", SRI_NN_DIR])
+    logging.info(f"Downloading SRI NN compendia files (only those not already present locally)..")
+    # os.system(f"wget -A '*.txt*' -c -N -r -np -nH --cut-dirs=4 {SRI_NN_COMPENDIA_URL} -P {SRI_NN_DIR}")
 
-    return category_map[sri_types_hash]
+    category_map = dict()
+    compendia_files = {file_name for file_name in os.listdir(SRI_NN_DIR) if ".txt" in file_name}
+    for compendia_file in compendia_files:
+        with json_lines.open(f"{SRI_NN_DIR}/{compendia_file}") as jsonl_file:
+            for line_obj in jsonl_file:
+                clique_ids = {identifier["i"] for identifier in line_obj.get("identifiers", [])}
+                # Record categories for all nodes in a cluster involving a KG2pre node
+                if clique_ids.intersection(kg2pre_node_ids):
+                    category = line_obj.get("type", "")
+                    for identifier in clique_ids:
+                        category_map[identifier] = category
+
+    logging.info(f"Done loading category map for SRI nodes. Found categories for {len(category_map)} nodes.")
+    return category_map
 
 
-def create_sri_match_graph(kg2pre_node_ids_set: Set[str], biolink_version: str):
-    kg2pre_node_ids = list(kg2pre_node_ids_set)
-    bh = BiolinkHelper(biolink_version=biolink_version)
-    logging.info(f"Starting to build SRI match graph based on {len(kg2pre_node_ids):,} KG2pre node IDs..")
+def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
+    logging.info(f"Starting to build SRI match graph based on {len(kg2pre_node_ids_set):,} KG2pre node IDs..")
 
-    # Save the current version of SRI match graph, if it exists (as backup, in case the SRI NN API is down)
+    # Save the previous version of SRI match graph, if it exists (as backup, in case the SRI NN API is down)
     logging.info(f"Saving backup copies of already existing SRI match graph TSV files..")
     sri_match_nodes_file_path = f"{SYNONYMIZER_BUILD_DIR}/2_match_nodes_sri.tsv"
     sri_match_edges_file_path = f"{SYNONYMIZER_BUILD_DIR}/2_match_edges_sri.tsv"
@@ -76,7 +80,11 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str], biolink_version: str):
     if pathlib.Path(sri_match_edges_file_path).exists():
         os.system(f"mv {sri_match_edges_file_path} {sri_match_edges_file_path}_PREVIOUS")
 
+    # Determine categories for SRI nodes based on bulk SRI files (per-identifier type isn't available via API)
+    category_map = build_category_map(kg2pre_node_ids_set)
+
     # Divide KG2pre node IDs into batches
+    kg2pre_node_ids = list(kg2pre_node_ids_set)
     batch_size = 1000  # This is the suggested max batch size from Chris Bizon (in Translator slack..)
     logging.info(f"Dividing KG2pre node IDs into batches of {batch_size}")
     kg2pre_node_id_batches = [kg2pre_node_ids[batch_start:batch_start + batch_size]
@@ -88,7 +96,6 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str], biolink_version: str):
     num_unrecognized_nodes = 0
     sri_nodes_dict = dict()
     sri_edges_dict = dict()
-    category_map = dict()
     for node_id_batch in kg2pre_node_id_batches:
         # Send the batch to the SRI NN RestAPI
         query_body = {"curies": node_id_batch,
@@ -102,13 +109,11 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str], biolink_version: str):
                 if normalized_info:  # This means the SRI NN recognized the KG2pre node ID we asked for
                     cluster_id = normalized_info["id"]["identifier"]
                     if cluster_id not in sri_nodes_dict:  # Process this cluster if we haven't seen it before
-                        cluster_category = determine_cluster_category(normalized_info["type"], category_map, bh)
-
                         # Create nodes for all members of this cluster
                         cluster_nodes_dict = dict()
                         for equivalent_node in normalized_info["equivalent_identifiers"]:
                             node_id = equivalent_node["identifier"]
-                            node = (node_id, equivalent_node.get("label"), cluster_category, cluster_id)
+                            node = (node_id, equivalent_node.get("label"), category_map.get(node_id, ""), cluster_id)
                             cluster_nodes_dict[node_id] = node
                         sri_nodes_dict.update(cluster_nodes_dict)
 
@@ -158,20 +163,18 @@ def save_sri_edges(edges_dict: dict):
     edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/2_match_edges_sri.tsv", sep="\t", index=False)
 
 
-def run(biolink_version: str):
+def run():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
 
     kg2pre_node_ids = get_kg2pre_node_ids()
-    create_sri_match_graph(kg2pre_node_ids, biolink_version)
+    create_sri_match_graph(kg2pre_node_ids)
 
 
 def main():
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('biolink_version',
-                            help="The Biolink version that the given KG2pre version uses (e.g., 4.0.1).")
-    args = arg_parser.parse_args()
-
-    run(biolink_version=args.biolink_version)
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s %(levelname)s: %(message)s",
+                        handlers=[logging.StreamHandler()])
+    run()
 
 
 if __name__ == "__main__":
