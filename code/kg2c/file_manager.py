@@ -25,7 +25,8 @@ def download_kg2pre_tsvs(kg2pre_version: str):
     subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2",
                            f"s3://rtx-kg2/{kg2pre_tarball_name}", kg2pre_tsv_version_dir])
     logging.info(f"Unpacking {kg2pre_tarball_name}..")
-    subprocess.check_call(["tar", "-xvzf", f"{kg2pre_tsv_version_dir}/{kg2pre_tarball_name}"])
+    subprocess.check_call(["tar", "-xvzf", f"{kg2pre_tsv_version_dir}/{kg2pre_tarball_name}",
+                           "-C", kg2pre_tsv_version_dir])
 
 
 def ensure_kg2pre_tsvs_exist(kg2pre_version: str):
