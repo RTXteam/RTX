@@ -663,28 +663,10 @@ def create_kg2c_files(kg2pre_version: str, sub_version: str, biolink_version: st
     (based on subject, object, predicate), and saves the resulting canonicalized graph in multiple file formats: JSON,
     sqlite, and TSV (ready for import into Neo4j).
     """
+    local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs/{kg2pre_version}"
 
-    # First make sure the KG2pre TSV directory exists as it should
-    local_tsv_dir_path = f"{KG2C_DIR}/kg2pre_tsvs"
-    if not pathlib.Path(local_tsv_dir_path).exists():
-        raise ValueError(f"KG2pre TSVs do not exist in {local_tsv_dir_path}. You need to either put them "
-                         f"there or use the '--downloadkg2pre' flag to download fresh copies.")
-
-    # Load the KG2pre nodes
+    # Load and canonicalize the KG2pre nodes
     kg2pre_nodes = _load_kg2pre_tsv(local_tsv_dir_path, "nodes", is_test)
-
-    # Make sure that the KG2pre version matches the version we're supposed to be building a KG2c off of
-    kg2pre_build_node = next(node for node in kg2pre_nodes[::-1] if node["id"] == "RTX:KG2")
-    logging.info(f"KG2pre build node is: {kg2pre_build_node}")
-    local_files_kg2pre_version = kg2pre_build_node["name"].replace("RTX-KG", "")
-    if kg2pre_version == local_files_kg2pre_version:
-        logging.info(f"User-specified KG2pre version matches that in the build node in the KG2pre TSVs.")
-    else:
-        raise ValueError(f"The version on the KG2pre build node in the ingested KG2pre TSVs is "
-                         f"{local_files_kg2pre_version}, but the KG2pre version you specified for this build is"
-                         f" {kg2pre_version}. These version numbers must match. Halting the build.")
-
-    # Actually canonicalize the nodes
     canonicalized_nodes_dict, curie_map = _canonicalize_nodes(kg2pre_nodes, synonymizer_name)
 
     # Add a node containing information about this KG2C build
@@ -701,7 +683,7 @@ def create_kg2c_files(kg2pre_version: str, sub_version: str, biolink_version: st
     gc.collect()
     canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
 
-    # Remove overly general nodes (e.g., 'Genes', 'Disease or disorder'..)
+    # Remove some overly general nodes (e.g., 'Genes', 'Disease or disorder'..)
     canonicalized_nodes_dict, canonicalized_edges_dict = remove_overly_general_nodes(canonicalized_nodes_dict,
                                                                                      canonicalized_edges_dict,
                                                                                      biolink_version)

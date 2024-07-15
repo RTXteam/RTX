@@ -43,6 +43,7 @@ def build_category_map(kg2pre_node_ids: Set[str]) -> Dict[str, str]:
     """
     The SRI NN API doesn't currently provide the category for each identifier in a clique, so
     we extract this information from the SRI NN bulk compendia files.
+    TODO: Remove this once Gaurav adds this to the API (https://github.com/TranslatorSRI/NodeNormalization/issues/281)
     """
     # Download SRI NN files we don't already have
     if not pathlib.Path(SRI_NN_PARENT_DIR).exists():

@@ -94,7 +94,7 @@ def main():
         file_manager.download_kg2pre_tsvs(args.kg2pre_version)
 
     # Validate local KG2pre TSV files
-    file_manager.check_kg2pre_tsvs_version(args.kg2pre_version)
+    file_manager.check_kg2pre_tsvs_version(args.kg2pre_version, args.biolink_version, args.test)
 
     # Create KG2pre test TSV files as applicable
     if args.test:

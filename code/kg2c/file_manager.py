@@ -5,6 +5,7 @@ import pathlib
 import subprocess
 import argparse
 import sys
+from typing import Optional
 
 import pandas as pd
 
@@ -44,7 +45,7 @@ def ensure_kg2pre_tsvs_exist(kg2pre_version: str):
     logging.info(f"Confirmed KG2pre TSVs exist in {kg2pre_tsv_version_path}")
 
 
-def check_kg2pre_tsvs_version(kg2pre_version: str):
+def check_kg2pre_tsvs_version(kg2pre_version: str, biolink_version: Optional[str] = None, is_test: Optional[bool] = None):
     # First ensure that the files actually exist
     ensure_kg2pre_tsvs_exist(kg2pre_version)
 
@@ -65,7 +66,8 @@ def check_kg2pre_tsvs_version(kg2pre_version: str):
                              index_col="id",
                              dtype={
                                  "id": str,
-                                 "name": str
+                                 "name": str,
+                                 "iri": str
                              })
 
     # Make sure this is actually the KG2pre version we are supposed to be using
@@ -83,7 +85,33 @@ def check_kg2pre_tsvs_version(kg2pre_version: str):
                              f"{kg2pre_build_node_version}. You need to either put the true {kg2pre_version} TSVs in "
                              f"{kg2pre_tsv_version_path} or use a different KG2pre version.")
     else:
-        raise ValueError(f"No build node exists in the KG2pre TSVs! Cannot verify we have the correct KG2pre TSVs.")
+        if is_test:
+            logging.warning(f"No RTX-KG2pre build node was found in the local KG2pre TSVs. "
+                            f"This is ok since this is just a test.")
+        else:
+            raise ValueError(f"No build node exists in the KG2pre TSVs! Cannot verify we have the correct KG2pre TSVs.")
+
+    # Verify the Biolink version requested matches that on the KG2pre Biolink node
+    if biolink_version:
+        biolink_build_node_id = "biolink_download_source:"
+        if biolink_build_node_id in nodes_df.index:
+            biolink_build_node = nodes_df.loc[biolink_build_node_id]
+            biolink_build_node_version = biolink_build_node["iri"].split("/")[-4].replace("v", "")
+            if biolink_build_node_version == biolink_version:
+                logging.info(f"Confirmed that the version on the Biolink node in the local KG2pre TSVs matches "
+                             f"the requested Biolink version ({biolink_version}).")
+            else:
+                raise ValueError(f"The Biolink node in the local KG2pre TSVs is {biolink_build_node_version}, "
+                                 f"but you requested Biolink version {biolink_version}! "
+                                 f"This needs to be reconciled to proceed.")
+        else:
+            if is_test:
+                logging.warning(f"No Biolink build node was found in the local KG2pre TSVs. "
+                                f"This is ok since this is just a test.")
+            else:
+                raise ValueError(f"No Biolink build node (i.e., node with id '{biolink_build_node_id}' was "
+                                 f"found in the local KG2pre TSV files in {kg2pre_tsv_version_path}. This needs to "
+                                 f"be fixed so that we can verify the correct Biolink version is being used.")
 
 
 def create_kg2pre_tsv_test_files(kg2pre_version: str):
