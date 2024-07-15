@@ -317,7 +317,7 @@ def verify_clustering_output(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     nodes_missing_category = list(nodes_df[nodes_df.category != nodes_df.category].index.values)  # NaN value is not equal to itself
     if nodes_missing_category:
         raise ValueError(f"{len(nodes_missing_category)} nodes are missing a category "
-                         f"(i.e., no SRI or KG2pre category): {nodes_missing_category}")
+                         f"(i.e., no SRI or KG2pre category).")
 
     # Make sure every node has a major branch
     logging.info(f"Verifying every node has a major_branch...")

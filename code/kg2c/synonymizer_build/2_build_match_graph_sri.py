@@ -50,7 +50,7 @@ def build_category_map(kg2pre_node_ids: Set[str]) -> Dict[str, str]:
     if not pathlib.Path(SRI_NN_DIR).exists():
         subprocess.check_call(["mkdir", SRI_NN_DIR])
     logging.info(f"Downloading SRI NN compendia files (only those not already present locally)..")
-    # os.system(f"wget -A '*.txt*' -c -N -r -np -nH --cut-dirs=4 {SRI_NN_COMPENDIA_URL} -P {SRI_NN_DIR}")
+    os.system(f"wget -A '*.txt*' -c -N -r -np -nH --cut-dirs=4 {SRI_NN_COMPENDIA_URL} -P {SRI_NN_DIR}")
 
     category_map = dict()
     compendia_files = {file_name for file_name in os.listdir(SRI_NN_DIR) if ".txt" in file_name}
