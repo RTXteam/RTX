@@ -69,12 +69,17 @@ def determine_cluster_category(sri_types: List[str], category_map: Dict[str, str
                 logging.info(f"SRI clique has more than one leaf category. Original category list from SRI was: "
                              f"{sri_types}. Identified 'leaves' within that category subtree are: {leaves}."
                              f" Category chosen to represent all nodes in clique was: {chosen_category}.")
-            category_map[sri_types_hash] = chosen_category
         else:
-            error_message = f"Failed to find the most specific category for a node from SRI! Must be a bug. "\
-                            f"SRI types list was: {sri_types}. Leaves were: {leaves}"
-            logging.error(error_message)
-            raise ValueError(error_message)
+            # Weirdly, some cliques have only one SRI type provided (e.g., biolink:GenomicEntity)
+            if len(sri_types) == 1:
+                chosen_category = sri_types[0]
+            else:
+                error_message = f"Failed to find the most specific category for a node from SRI! Must be a bug. "\
+                                f"SRI types list was: {sri_types}. Leaves were: {leaves}"
+                logging.error(error_message)
+                raise ValueError(error_message)
+
+        category_map[sri_types_hash] = chosen_category
 
     return category_map[sri_types_hash]
 
