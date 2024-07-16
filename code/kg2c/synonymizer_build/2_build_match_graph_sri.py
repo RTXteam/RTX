@@ -122,7 +122,7 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
                         cluster_category = determine_cluster_category(normalized_info["type"], category_map, bh)
                         for equivalent_node in normalized_info["equivalent_identifiers"]:
                             node_id = equivalent_node["identifier"]
-                            node = (node_id, equivalent_node.get("label"), category_map.get(node_id, ""), cluster_id)
+                            node = (node_id, equivalent_node.get("label"), cluster_category, cluster_id)
                             cluster_nodes_dict[node_id] = node
                         sri_nodes_dict.update(cluster_nodes_dict)
 
