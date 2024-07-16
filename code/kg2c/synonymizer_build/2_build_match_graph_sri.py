@@ -71,7 +71,10 @@ def determine_cluster_category(sri_types: List[str], category_map: Dict[str, str
                              f" Category chosen to represent all nodes in clique was: {chosen_category}.")
             category_map[sri_types_hash] = chosen_category
         else:
-            raise ValueError(f"Failed to find the most specific category for a node from SRI! Must be a bug.")
+            error_message = f"Failed to find the most specific category for a node from SRI! Must be a bug. "\
+                            f"SRI types list was: {sri_types}. Leaves were: {leaves}"
+            logging.error(error_message)
+            raise ValueError(error_message)
 
     return category_map[sri_types_hash]
 
@@ -136,8 +139,10 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
                 else:  # The SRI NN did not recognize the KG2pre node ID we asked for
                     num_unrecognized_nodes += 1
         else:
-            raise ValueError(f"Batch #{batch_num} request to SRI failed; returned status code "
-                             f"{response.status_code}: {response.text}")
+            error_message = f"Batch #{batch_num} request to SRI failed; returned status code "\
+                            f"{response.status_code}: {response.text}"
+            logging.error(error_message)
+            raise ValueError(error_message)
 
         # Log our progress
         batch_num += 1
