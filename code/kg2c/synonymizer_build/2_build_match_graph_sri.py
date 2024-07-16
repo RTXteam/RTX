@@ -55,7 +55,9 @@ def build_category_map(kg2pre_node_ids: Set[str]) -> Dict[str, str]:
 
     category_map = dict()
     compendia_files = {file_name for file_name in os.listdir(SRI_NN_DIR) if ".txt" in file_name}
+    logging.info(f"Extracting node categories from {len(compendia_files)} SRI NN compendia files..")
     for compendia_file in compendia_files:
+        logging.info(f"On SRI NN compendia file {compendia_file}")
         with json_lines.open(f"{SRI_NN_DIR}/{compendia_file}") as jsonl_file:
             for line_obj in jsonl_file:
                 clique_ids = {identifier["i"] for identifier in line_obj.get("identifiers", [])}
