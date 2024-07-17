@@ -196,7 +196,10 @@ def create_kg2pre_tsv_test_files(kg2pre_version: str):
 
 def make_kg2c_tarball(is_test: bool):
     logging.info(f"Creating tarball of KG2c TSVs..")
-    subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/make-kg2c-tarball.sh", "_TEST" if is_test else ""])
+    test_suffix = "_TEST" if is_test else ""
+    subprocess.check_call(["tar", "-czvf", f"{KG2C_DIR}/kg2c-tsv.tar.gz{test_suffix}",
+                           f"{KG2C_DIR}/nodes_c.tsv{test_suffix}", f"{KG2C_DIR}/nodes_c_header.tsv{test_suffix}",
+                           f"{KG2C_DIR}/edges_c.tsv{test_suffix}", f"{KG2C_DIR}/edges_c_header.tsv{test_suffix}"])
 
 
 def upload_kg2c_files_to_s3(is_test: bool):
