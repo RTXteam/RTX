@@ -16,6 +16,8 @@ create_synonymizer_sqlite = __import__("5_create_synonymizer_sqlite")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # RTX code directory
 from RTXConfiguration import RTXConfiguration
 RTX_CONFIG = RTXConfiguration()
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # KG2c directory
+import file_manager
 
 SYNONYMIZER_BUILD_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SYNONYMIZER_BUILD_DIR}/.."
@@ -85,10 +87,7 @@ def main():
                            "--output", f"{SYNONYMIZER_BUILD_DIR}/autocomplete.sqlite"])
 
     if args.upload_artifacts:
-        upload_directory = f"/home/rtxconfig/KG{args.kg2pre_version}"
-        logging.info(f"Uploading synonymizer artifacts to arax-databases.rtx.ai:{upload_directory}")
-        subprocess.check_call(["bash", "-x", f"{SYNONYMIZER_BUILD_DIR}/upload-synonymizer-artifacts.sh",
-                               RTX_CONFIG.db_host, upload_directory, args.sub_version, args.kg2pre_version])
+        file_manager.upload_synonymizer_files_to_arax_databases_server(args.kg2pre_version, args.sub_version)
 
     # Move the new synonymizer into the ARAX NodeSynonymizer directory so it can be queried properly
     logging.info(f"Moving the new synonymizer into the ARAX NodeSynonymizer directory")

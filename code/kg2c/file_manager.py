@@ -14,6 +14,7 @@ from RTXConfiguration import RTXConfiguration
 
 KG2C_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2PRE_TSVS_DIR = f"{KG2C_DIR}/kg2pre_tsvs"
+SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
 
 
 def download_kg2pre_tsvs(kg2pre_version: str):
@@ -214,6 +215,32 @@ def upload_kg2c_files_to_arax_databases_server(kg2pre_version: str, sub_version:
     logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
     subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", rtx_config.db_host,
                            sub_version, kg2pre_version, upload_directory, "_TEST" if is_test else ""])
+
+
+def upload_synonymizer_files_to_arax_databases_server(kg2pre_version: str, sub_version: str):
+    rtx_config = RTXConfiguration()
+    logging.info(f"Uploading synonymizer artifacts to arax-databases server")
+
+    # Make sure the necessary directories exist on arax-databases.rtx.ai (will not hurt if they already exist)
+    remote_dbs_dir = f"/home/rtxconfig/KG{kg2pre_version}"
+    remote_dbs_subdir = f"{remote_dbs_dir}/extra_files"
+    os.system(f'ssh rtxconfig@{rtx_config.db_host} "mkdir -p {remote_dbs_dir}"')
+    os.system(f'ssh rtxconfig@{rtx_config.db_host} "mkdir -p {remote_dbs_subdir}"')
+
+    # Upload required databases
+    os.system(f"scp {SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite rtxconfig@{rtx_config.db_host}:{remote_dbs_dir}/node_synonymizer_{sub_version}_KG{kg2pre_version}.sqlite")
+    os.system(f"scp {SYNONYMIZER_BUILD_DIR}/autocomplete.sqlite rtxconfig@{rtx_config.db_host}:{remote_dbs_dir}/autocomplete_{sub_version}_KG{kg2pre_version}.sqlite")
+
+    # Upload 'extra files' (nice for debugging; not needed by running ARAX code)
+    file_names = ["3_merged_match_nodes.tsv", "3_merged_match_edges.tsv", "4_match_nodes_preprocessed.tsv",
+                  "4_match_edges_preprocessed.tsv", "5_report_category_counts.tsv", "5_report_cluster_sizes.tsv",
+                  "5_report_cluster_sizes_non_sri_nodes.tsv", "5_report_major_branch_counts.tsv",
+                  "5_report_oversized_clusters.tsv", "5_report_predicate_counts.tsv",
+                  "5_report_primary_knowledge_source_counts.tsv", "5_report_upstream_resource_counts.tsv",
+                  "kg2_nodes_not_in_sri_nn.tsv"]
+    for file_name in file_names:
+        os.system(f"scp {SYNONYMIZER_BUILD_DIR}/{file_name} rtxconfig@{rtx_config.db_host}:{remote_dbs_subdir}/{file_name}")
+    logging.info(f"Done uploading synonymizer artifacts to arax databases server.")
 
 
 def main():
