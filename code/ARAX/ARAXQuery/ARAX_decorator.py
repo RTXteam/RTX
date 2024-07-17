@@ -25,12 +25,17 @@ class ARAXDecorator:
     def __init__(self, use_kg2c_sqlite: bool = True):
         self.node_attributes = {"iri": str, "description": str, "all_categories": list, "all_names": list,
                                 "equivalent_curies": list, "publications": list}
-        self.edge_attributes = {"publications": list, "publications_info": dict, "kg2_ids": list}
+        self.edge_attributes = {"publications": list, "publications_info": dict, "kg2_ids": list,
+                                "knowledge_level": str, "agent_type": str}
         self.attribute_shells = {
             "iri": Attribute(attribute_type_id="biolink:IriType",
                              value_type_id="metatype:Uri"),
             "description": Attribute(attribute_type_id="biolink:description",
                                      value_type_id="metatype:String"),
+            "knowledge_level": Attribute(attribute_type_id="biolink:knowledge_level",
+                                         value_type_id="metatype:String"),
+            "agent_type": Attribute(attribute_type_id="biolink:agent_type",
+                                    value_type_id="metatype:String"),
             "all_categories": Attribute(attribute_type_id="biolink:category",
                                         value_type_id="metatype:Uriorcurie",
                                         description="Categories of all nodes in this synonym set in RTX-KG2."),
@@ -107,8 +112,8 @@ class ARAXDecorator:
     def decorate_edges(self, response: ARAXResponse, kind: Optional[str] = "RTX-KG2") -> ARAXResponse:
         """
         Decorates edges with publication sentences and any other available EPC info.
-        kind: The kind of edges to decorate, either: "NGD" or "RTX-KG2". For NGD edges, publications info attributes
-        are added. For RTX-KG2 edges, attributes for all EPC properties are added.
+        kind: The kind of edges to decorate, either: "NGD", "RTX-KG2", or "SEMMEDDB". For NGD edges, only
+        publications_info attributes are added. For RTX-KG2 and SEMMEDDB, all available attributes are added.
         """
         kg = response.envelope.message.knowledge_graph
         response.debug(f"Decorating edges with EPC info from KG2c")
@@ -137,98 +142,146 @@ class ARAXDecorator:
         else:
             response.debug(f"Identified {len(edge_keys_to_decorate)} edges to decorate")
 
+        if kind == "NGD":
+            # Decorating NGD edges is a little different, so we handle this in a separate function
+            self._decorate_ngd_edges(edge_keys_to_decorate, kg, response)
+        else:
+            # NOTE: 'kg2c_edge_id' refers to edge IDs in the KG2c graph; 'kg_edge_key' refers to the key of
+            #        an edge in the TRAPI kg.edges; these are not necessarily the same
+            # Map KG2c edge IDs to the edges they correspond to in the given KG
+            kg2c_edge_ids_to_kg_keys_map = defaultdict(set)
+            for edge_key in edge_keys_to_decorate:
+                edge = kg.edges[edge_key]
+                kg2c_edge_id = self._get_kg2c_edge_key(edge)
+                if kg2c_edge_id in kg2c_edge_ids_to_kg_keys_map:
+                    response.error(f"Encountered more than one edge in the KG that corresponds to the same "
+                                   f"KG2c edge (k{kg2c_edge_id}; duplicate edges are: {edge_key} and "
+                                   f"{kg2c_edge_ids_to_kg_keys_map[kg2c_edge_id]}")
+                kg2c_edge_ids_to_kg_keys_map[kg2c_edge_id] = edge_key
+
+            # Extract the proper entries from sqlite
+            edge_id_col = "triple"  # NOTE: This column name is outdated; the column contains KG2c edge ids
+            connection, cursor = self._connect_to_sqlite()
+            response.debug(f"Looking up EPC edge info in KG2c sqlite")
+            response.debug(f"Looking up corresponding KG2c nodes in sqlite")
+            edge_attributes_ordered = list(self.edge_attributes)
+            kg2c_edge_ids_set = set(search_key.replace("'", "''") for search_key in set(kg2c_edge_ids_to_kg_keys_map))  # Escape quotes
+            kg2c_edge_ids_str = "','".join(kg2c_edge_ids_set)  # SQL wants ('edge1', 'edge2') format for string lists
+            if self.use_kg2c_sqlite:
+                edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
+                sql_query = f"SELECT E.{edge_id_col}, {edge_cols_str} " \
+                            f"FROM edges AS E " \
+                            f"WHERE E.{edge_id_col} IN ('{kg2c_edge_ids_str}')"
+            else:  # This is used by Chunyu's decoration code
+                edge_cols_str = ", ".join([property_name for property_name in edge_attributes_ordered])
+                sql_query = f"SELECT triple, {edge_cols_str} " \
+                            f"FROM EDGE_MAPPING_TABLE AS E " \
+                            f"WHERE E.triple IN ('{kg2c_edge_ids_str}')"
+            cursor.execute(sql_query)
+            rows = cursor.fetchall()
+            cursor.close()
+            connection.close()
+
+            response.debug(f"Got {len(rows)} rows back from KG2c sqlite")
+
+            response.debug(f"Adding attributes to edges in the KG")
+            # Create helper maps for easy access to returned rows and attribute shells
+            kg2c_edge_id_to_kg2c_edge_tuple_map = {row[0]: row for row in rows}
+            attribute_type_id_map = {self.create_attribute(property_name, "irrelevant").attribute_type_id: property_name
+                                     for property_name in set(self.edge_attributes)}
+            # Loop through and add attributes to KG edges based on rows returned from KG2c sqlite
+            for kg2c_edge_id, kg2c_edge_tuple in kg2c_edge_id_to_kg2c_edge_tuple_map.items():
+                kg_edge_key = kg2c_edge_ids_to_kg_keys_map[kg2c_edge_id]
+                kg_edge = kg.edges[kg_edge_key]
+                new_attributes = []
+                # Make sure we don't add a duplicate attribute (in case a decoration step happened previously)
+                existing_attribute_short_names = {attribute_type_id_map[attribute.attribute_type_id]
+                                                  for attribute in kg_edge.attributes} if kg_edge.attributes else set()
+                for index, property_name in enumerate(edge_attributes_ordered):
+                    raw_value = kg2c_edge_tuple[index + 1]
+                    if raw_value and property_name not in existing_attribute_short_names:
+                        value = self._load_property(property_name, raw_value)
+                        # Figure out if we should cite a specific attribute source
+                        if "publications" in property_name:
+                            primary_ks = self._get_primary_knowledge_source(kg_edge)
+                            attribute_source = primary_ks if primary_ks else self.kg2_infores_curie
+                        else:
+                            attribute_source = self.kg2_infores_curie
+                        attribute = self.create_attribute(attribute_short_name=property_name,
+                                                          value=value,
+                                                          attribute_source=attribute_source,
+                                                          log=response)
+                        new_attributes.append(attribute)
+
+                # Actually tack the new attributes onto the edge
+                if new_attributes:
+                    if not kg_edge.attributes:
+                        kg_edge.attributes = new_attributes
+                    else:
+                        kg_edge.attributes += new_attributes
+
+        return response
+
+    def _decorate_ngd_edges(self, edge_keys_to_decorate, kg, response):
         # Determine the search keys for these edges that we need to look up in sqlite
         search_key_to_edge_keys_map = defaultdict(set)
-        if kind == "NGD":  # For now only NGD/overlay will use this mode
-            for edge_key in edge_keys_to_decorate:
-                edge = kg.edges[edge_key]
-                search_key = f"{edge.subject}--{edge.object}"
-                search_key_to_edge_keys_map[search_key].add(edge_key)
-            search_key_column = "node_pair"
-        else:  # This is the mode used for decorating KG2 edges (or other KPs' edges)
-            for edge_key in edge_keys_to_decorate:
-                edge = kg.edges[edge_key]
-                search_key = self._get_kg2c_edge_key(edge)
-                search_key_to_edge_keys_map[search_key].add(edge_key)
-            search_key_column = "triple"
+        for edge_key in edge_keys_to_decorate:
+            edge = kg.edges[edge_key]
+            search_key = f"{edge.subject}--{edge.object}"
+            search_key_to_edge_keys_map[search_key].add(edge_key)
+        node_pair_key_col = "node_pair"
 
         # Extract the proper entries from sqlite
         connection, cursor = self._connect_to_sqlite()
-        response.debug(f"Looking up EPC edge info in KG2c sqlite")
-        response.debug(f"Looking up corresponding KG2c nodes in sqlite")
+        response.debug(f"Looking up EPC edge info in KG2c sqlite to decorate NGD edges")
         edge_attributes_ordered = list(self.edge_attributes)
         search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
         search_keys_str = "','".join(search_keys_set)  # SQL wants ('edge1', 'edge2') format for string lists
-        if self.use_kg2c_sqlite:
-            edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
-            sql_query = f"SELECT E.{search_key_column}, {edge_cols_str} " \
-                        f"FROM edges AS E " \
-                        f"WHERE E.{search_key_column} IN ('{search_keys_str}')"
-        else:
-            edge_cols_str = ", ".join([property_name for property_name in edge_attributes_ordered])
-            sql_query = f"SELECT triple, {edge_cols_str} " \
-                        f"FROM EDGE_MAPPING_TABLE AS E " \
-                        f"WHERE E.triple IN ('{search_keys_str}')"
+        edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
+        sql_query = f"SELECT E.{node_pair_key_col}, {edge_cols_str} " \
+                    f"FROM edges AS E " \
+                    f"WHERE E.{node_pair_key_col} IN ('{search_keys_str}')"
         cursor.execute(sql_query)
         rows = cursor.fetchall()
         cursor.close()
         connection.close()
-            
+
         response.debug(f"Got {len(rows)} rows back from KG2c sqlite")
 
-        response.debug(f"Adding attributes to edges in the KG")
+        response.debug(f"Adding attributes to NGD edges in the KG")
         # Create a helper lookup map for easy access to returned rows
         search_key_to_kg2c_edge_tuples_map = defaultdict(list)
         for row in rows:
             search_key = row[0]
             search_key_to_kg2c_edge_tuples_map[search_key].append(row)
 
-        attribute_type_id_map = {property_name: self.create_attribute(property_name, "something").attribute_type_id
+        attribute_type_id_map = {self.create_attribute(property_name, "irrelevant").attribute_type_id: property_name
                                  for property_name in set(self.edge_attributes)}
         for search_key, kg2c_edge_tuples in search_key_to_kg2c_edge_tuples_map.items():
-            # Join the property values found for all edges matching the given search key
-            merged_kg2c_properties = {property_name: None for property_name in edge_attributes_ordered}
+            # Extract publications info for all edges between the two nodes specified in the search key
+            merged_publications_info = dict()
             for kg2c_edge_tuple in kg2c_edge_tuples:
                 for index, property_name in enumerate(edge_attributes_ordered):
                     raw_value = kg2c_edge_tuple[index + 1]
                     if raw_value:  # Skip empty attributes
                         value = self._load_property(property_name, raw_value)
-                        if not merged_kg2c_properties.get(property_name):
-                            merged_kg2c_properties[property_name] = set() if isinstance(value, list) else dict()
-                        if isinstance(value, list):
-                            merged_kg2c_properties[property_name].update(set(value))
-                        else:
-                            merged_kg2c_properties[property_name].update(value)
-            joined_kg2_ids = list(merged_kg2c_properties["kg2_ids"]) if merged_kg2c_properties.get("kg2_ids") else set()
-            joined_publications = list(merged_kg2c_properties["publications"]) if merged_kg2c_properties.get("publications") else set()
-            joined_publications_info = merged_kg2c_properties["publications_info"] if merged_kg2c_properties.get("publications_info") else dict()
+                        merged_publications_info.update(value)
 
-            # Add the joined attributes to each of the edges with the given search key (as needed)
-            corresponding_bare_edge_keys = search_key_to_edge_keys_map[search_key]
-            for edge_key in corresponding_bare_edge_keys:
-                bare_edge = kg.edges[edge_key]
-                primary_knowledge_source = self._get_primary_knowledge_source(bare_edge)
-                existing_attribute_type_ids = {attribute.attribute_type_id for attribute in bare_edge.attributes} if bare_edge.attributes else set()
-                new_attributes = []
-                # Create KG2 edge-specific attributes
-                if kind == "RTX-KG2" or kind == "SEMMEDDB":
-                    if attribute_type_id_map["kg2_ids"] not in existing_attribute_type_ids:
-                        new_attributes.append(self.create_attribute("kg2_ids", list(joined_kg2_ids)))
-                    if joined_publications and attribute_type_id_map["publications"] not in existing_attribute_type_ids:
-                        new_attributes.append(self.create_attribute("publications", list(joined_publications),
-                                                                    attribute_source=primary_knowledge_source if primary_knowledge_source else None))
-                # Create attributes that belong on both KG2 and NGD edges
-                if joined_publications_info and attribute_type_id_map["publications_info"] not in existing_attribute_type_ids:
-                    new_attributes.append(self.create_attribute("publications_info", joined_publications_info,
-                                                                attribute_source=primary_knowledge_source if primary_knowledge_source else None))
-                # Actually tack the new attributes onto the edge
-                if new_attributes:
-                    if not bare_edge.attributes:
-                        bare_edge.attributes = new_attributes
+            # Add the attributes to each of the edges with the given search key (as needed)
+            corresponding_kg_edge_keys = search_key_to_edge_keys_map[search_key]
+            for edge_key in corresponding_kg_edge_keys:
+                kg_edge = kg.edges[edge_key]
+                # Make sure we don't add a duplicate attribute (in case a decoration step happened previously)
+                existing_attribute_short_names = {attribute_type_id_map[attribute.attribute_type_id]
+                                                  for attribute in kg_edge.attributes} if kg_edge.attributes else set()
+                if merged_publications_info and "publications_info" not in existing_attribute_short_names:
+                    attribute = self.create_attribute(attribute_short_name="publications_info",
+                                                      value=merged_publications_info,
+                                                      attribute_source=self.kg2_infores_curie)
+                    if not kg_edge.attributes:
+                        kg_edge.attributes = [attribute]
                     else:
-                        bare_edge.attributes += new_attributes
-
-        return response
+                        kg_edge.attributes.append(attribute)
 
     def create_attribute(self, attribute_short_name: str, value: any, attribute_source: Optional[str] = None,
                          log: Optional[ARAXResponse] = ARAXResponse()) -> Attribute:
