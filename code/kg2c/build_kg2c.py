@@ -31,6 +31,18 @@ logging.basicConfig(level=logging.INFO,
                               logging.StreamHandler()])
 
 
+# Include uncaught exceptions in build log - thank you: https://stackoverflow.com/a/16993115
+def handle_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+
+sys.excepthook = handle_exception
+
+
 def main():
     start = time.time()
     # Grab any parameters passed to this script
