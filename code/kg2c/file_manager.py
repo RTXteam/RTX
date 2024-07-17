@@ -30,7 +30,7 @@ def download_kg2pre_tsvs(kg2pre_version: str):
                            "-C", kg2pre_tsv_version_dir])
 
 
-def ensure_kg2pre_tsvs_exist(kg2pre_version: str):
+def ensure_kg2pre_tsvs_exist(kg2pre_version: str, is_test: Optional[bool] = None):
     kg2pre_tsv_version_path = f"{KG2PRE_TSVS_DIR}/{kg2pre_version}"
     logging.info(f"Ensuring that KG2pre TSVs exist in {kg2pre_tsv_version_path}")
     if not pathlib.Path(kg2pre_tsv_version_path).exists():
@@ -38,7 +38,10 @@ def ensure_kg2pre_tsvs_exist(kg2pre_version: str):
                          f"it should be at {kg2pre_tsv_version_path}. You need to either put "
                          f"nodes.tsv, edges.tsv, nodes_header.tsv, and edges_header.tsv files into "
                          f"{kg2pre_tsv_version_path} or choose to download fresh copies of the KG2pre TSVs from S3.")
-    required_kg2pre_tsv_files = ["nodes.tsv", "edges.tsv", "nodes_header.tsv", "edges_header.tsv"]
+    required_kg2pre_tsv_files = [f"nodes.tsv{'_TEST' if is_test else ''}",
+                                 f"edges.tsv{'_TEST' if is_test else ''}",
+                                 f"nodes_header.tsv{'_TEST' if is_test else ''}",
+                                 f"edges_header.tsv{'_TEST' if is_test else ''}"]
     for kg2pre_tsv_file_name in required_kg2pre_tsv_files:
         if not pathlib.Path(f"{kg2pre_tsv_version_path}/{kg2pre_tsv_file_name}").exists():
             raise ValueError(f"Required KG2pre TSV file {kg2pre_tsv_file_name} does not exist in "
@@ -49,19 +52,19 @@ def ensure_kg2pre_tsvs_exist(kg2pre_version: str):
 
 def check_kg2pre_tsvs_version(kg2pre_version: str, biolink_version: Optional[str] = None, is_test: Optional[bool] = None):
     # First ensure that the files actually exist
-    ensure_kg2pre_tsvs_exist(kg2pre_version)
+    ensure_kg2pre_tsvs_exist(kg2pre_version, is_test)
 
     # Load KG2pre nodes data, including only the columns relevant to us (to locate the build node)
     kg2pre_tsv_version_path = f"{KG2PRE_TSVS_DIR}/{kg2pre_version}"
     logging.info(f"Confirming that local KG2pre TSVs in {kg2pre_tsv_version_path} are for the "
                  f"requested KG2pre version ({kg2pre_version})..")
     logging.info(f"Loading nodes into dataframe to extract KG2pre build node..")
-    nodes_tsv_path = f"{kg2pre_tsv_version_path}/nodes.tsv"
-    nodes_tsv_header_path = f"{kg2pre_tsv_version_path}/nodes_header.tsv"
+    nodes_tsv_path = f"{kg2pre_tsv_version_path}/nodes.tsv{'_TEST' if is_test else ''}"
+    nodes_tsv_header_path = f"{kg2pre_tsv_version_path}/nodes_header.tsv{'_TEST' if is_test else ''}"
     nodes_header_df = pd.read_table(nodes_tsv_header_path)
     node_column_names = [column_name.split(":")[0] if not column_name.startswith(":") else column_name
                          for column_name in nodes_header_df.columns]
-    columns_to_keep = ["id", "name"]
+    columns_to_keep = ["id", "name", "iri"]
     nodes_df = pd.read_table(nodes_tsv_path,
                              names=node_column_names,
                              usecols=columns_to_keep,
