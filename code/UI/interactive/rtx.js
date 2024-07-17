@@ -6840,10 +6840,12 @@ function generateLoadTimeTestResults(loadtestdata) {
         tr.className = 'hoverable';
 
 	td = document.createElement("td");
+	td.rowSpan = '2';
         td.innerText = num+'.';
 	tr.appendChild(td);
 
         td = document.createElement("td");
+	td.rowSpan = '2';
 	var link = document.createElement("a");
 	link.title = 'view this response';
 	link.style.cursor = "pointer";
@@ -6914,6 +6916,37 @@ function generateLoadTimeTestResults(loadtestdata) {
 	}
 
 	table.appendChild(tr);
+
+	if (obj['merge_report']) {
+            tr = document.createElement("tr");
+	    tr.style.backgroundColor = 'initial';
+            tr.className = 'hoverable';
+
+	    td = document.createElement("td");
+	    td.append("Merge:");
+	    tr.appendChild(td);
+
+            for (var agent of Object.keys(all_agents).sort()) {
+		td = document.createElement("td");
+		td.style.borderLeft = "1px solid black";
+		td.style.textAlign = 'left';
+		if (obj['merge_report'][agent])
+		    td.append(obj['merge_report'][agent]['status']);
+		else
+		    td.append('NA');
+		tr.appendChild(td);
+
+		td = document.createElement("td");
+		td.style.textAlign = 'right';
+                if (obj['merge_report'][agent])
+		    td.append(obj['merge_report'][agent]['completion_time'].toFixed(2));
+		else
+		    td.append('');
+		tr.appendChild(td);
+	    }
+
+	    table.appendChild(tr);
+	}
     }
 
     tdiv.appendChild(table);
@@ -7194,6 +7227,7 @@ function displayARSResults(parentnode,arsdata) {
 
 	for (var agent of arsdata['ara_list']) {
 	    td = document.createElement("td");
+            td.style.borderLeft = "1px solid black";
             td.style.textAlign = "right";
             td.innerText = (stats[agent][status]!=null) ? stats[agent][status] : '.';
 	    tr.appendChild(td);
@@ -7201,7 +7235,8 @@ function displayARSResults(parentnode,arsdata) {
 	    td = document.createElement("td");
 	    if (status == 'PASSED') {
 		var cnf = (100*Number(stats[agent][status])/num).toFixed(1);
-		var pcl = Number(stats[agent][status])>=350 ? "p9" : Number(stats[agent][status])>=175 ? "p3" : "p1";
+		var passing = document.getElementById("whichsystest").options[document.getElementById("whichsystest").selectedIndex].text.includes("Sprint 4") ? 40 : 350;
+		var pcl = Number(stats[agent][status])>=passing ? "p9" : Number(stats[agent][status])>=(passing/2) ? "p3" : "p1";
 
 		td.title = 'Current Translator goal of 350 passing tests :: ';
 		td.title += (pcl == 'p9') ? 'YES':'NO';
