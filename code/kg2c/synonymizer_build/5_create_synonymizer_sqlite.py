@@ -79,8 +79,8 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
     # Report any duplicate nodes (if they exist it'll produce an error further on during index creation)
     duplicate_ids = {id_simplified: rows for id_simplified, rows in nodes_df.groupby(["id_simplified"]) if len(rows) > 1}
     if duplicate_ids:
-        logging.warning(f"Found {len(duplicate_ids)} simplified IDs that have duplicates. This shouldn't happen.")
-        logging.info(f"Duplicate IDs are: {duplicate_ids}")
+        logging.warning(f"Found {len(duplicate_ids)} simplified IDs that have duplicates. This shouldn't happen. "
+                        f"Duplicate IDs are: {duplicate_ids}")
 
     # Save nodes table
     logging.info(f"Dumping nodes table to sqlite...")

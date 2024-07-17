@@ -80,7 +80,7 @@ def merge_nodes():
             kg2pre_id_col = kg2pre_headers.index("id")
             kg2pre_category_col = kg2pre_headers.index("category")
             kg2pre_name_col = kg2pre_headers.index("name")
-            kg2pre_nodes_dict = {row[kg2pre_id_col]: row for row in reader}
+            kg2pre_nodes_dict = {row[kg2pre_id_col].upper(): row for row in reader}  # Do case-insensitive ID matching
 
         # Then go through SRI nodes, merge them as necessary with KG2pre nodes, and write them in batches
         with open(f"{SYNONYMIZER_BUILD_DIR}/2_match_nodes_sri.tsv") as sri_nodes_file:
@@ -95,13 +95,14 @@ def merge_nodes():
             for sri_row in reader:
                 num_sri_nodes_processed += 1
                 node_id = sri_row[sri_id_col]
+                node_id_uppercase = node_id.upper()
                 # Merge node if it's present in both KG2pre and SRI NN
-                if node_id in kg2pre_nodes_dict:
-                    kg2pre_row = kg2pre_nodes_dict[node_id]
+                if node_id_uppercase in kg2pre_nodes_dict:  # IDs all capitalized here for case-insensitive matching
+                    kg2pre_row = kg2pre_nodes_dict[node_id_uppercase]
                     merged_row = [node_id, sri_row[sri_cluster_id_col],
                                   kg2pre_row[kg2pre_category_col], kg2pre_row[kg2pre_name_col],
                                   sri_row[sri_category_col], sri_row[sri_name_col]]
-                    del kg2pre_nodes_dict[node_id]
+                    del kg2pre_nodes_dict[node_id_uppercase]
                 # Otherwise this node is only in SRI NN; just transform it to 'merged' format
                 else:
                     merged_row = [node_id, sri_row[sri_cluster_id_col],
@@ -118,7 +119,7 @@ def merge_nodes():
         # Then take care of any KG2pre nodes that WEREN'T in SRI NN
         logging.info(f"Processing the {len(kg2pre_nodes_dict):,} KG2pre nodes that were not in SRI NN..")
         for remaining_node_id, kg2pre_row in kg2pre_nodes_dict.items():
-            merged_row = [remaining_node_id, None,
+            merged_row = [kg2pre_row[kg2pre_id_col], None,
                           kg2pre_row[kg2pre_category_col], kg2pre_row[kg2pre_name_col],
                           None, None]
             row_batch.append(merged_row)

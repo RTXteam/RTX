@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO,
                               logging.FileHandler(f"{SYNONYMIZER_BUILD_DIR}/buildsynonymizer.log")])
 
 
-# Include uncaught exceptions in log - thank you: https://stackoverflow.com/a/16993115
+# Include uncaught exceptions in build log - thank you: https://stackoverflow.com/a/16993115
 def handle_exception(exc_type, exc_value, exc_traceback):
     if issubclass(exc_type, KeyboardInterrupt):
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
