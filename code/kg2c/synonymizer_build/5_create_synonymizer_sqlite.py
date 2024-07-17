@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import pathlib
@@ -76,6 +77,14 @@ def create_synonymizer_sqlite(nodes_df: pd.DataFrame, edges_df: pd.DataFrame) ->
     logging.info(f"Assigning nodes their simplified IDs...")
     nodes_df["id_simplified"] = nodes_df.id.apply(capitalize_curie_prefix)
     logging.info(f"After adding simplified ids, DataFrame is: \n{nodes_df}")
+    # Report any duplicate nodes (if they exist it'll produce an error further on during index creation)
+    duplicate_ids = {i: rows for i, rows in nodes_df.groupby(['id_simplified']) if len(rows) > 1}
+    if duplicate_ids:
+        duplicates_report_file_path = f"{SYNONYMIZER_BUILD_DIR}/5_duplicate_simplified_ids.json"
+        logging.warning(f"Found {len(duplicate_ids)} simplified IDs that have duplicates. This shouldn't happen. "
+                        f"Saving these to {duplicates_report_file_path}.")
+        with open(duplicates_report_file_path, "w+") as duplicate_file:
+            json.dump(duplicate_ids, duplicate_file, indent=2)
 
     # Save nodes table
     logging.info(f"Dumping nodes table to sqlite...")
