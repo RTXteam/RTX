@@ -214,10 +214,22 @@ def upload_kg2c_files_to_s3(is_test: bool):
 
 def upload_kg2c_files_to_arax_databases_server(kg2pre_version: str, sub_version: str, is_test: bool):
     rtx_config = RTXConfiguration()
-    upload_directory = f"/home/rtxconfig/KG{kg2pre_version}"
-    logging.info(f"Uploading KG2c artifacts to arax-databases.rtx.ai:{upload_directory}")
-    subprocess.check_call(["bash", "-x", f"{KG2C_DIR}/upload-kg2c-artifacts.sh", rtx_config.db_host,
-                           sub_version, kg2pre_version, upload_directory, "_TEST" if is_test else ""])
+    logging.info(f"Uploading KG2c artifacts to arax-databases server")
+
+    # Make sure the necessary directories exist on arax-databases.rtx.ai (will not hurt if they already exist)
+    remote_dbs_dir = f"/home/rtxconfig/KG{kg2pre_version}"
+    remote_dbs_subdir = f"{remote_dbs_dir}/extra_files"
+    os.system(f'ssh rtxconfig@{rtx_config.db_host} "mkdir -p {remote_dbs_dir}"')
+    os.system(f'ssh rtxconfig@{rtx_config.db_host} "mkdir -p {remote_dbs_subdir}"')
+
+    # First upload required files
+    test_suffix = "_TEST" if is_test else ""
+    os.system(f"scp kg2c.sqlite{test_suffix} rtxconfig@{rtx_config.db_host}:{remote_dbs_dir}/kg2c_{sub_version}_KG{kg2pre_version}.sqlite{test_suffix}")
+    os.system(f"scp meta_kg.json{test_suffix} rtxconfig@{rtx_config.db_host}:{remote_dbs_dir}/meta_kg_{sub_version}_KG{kg2pre_version}c.json{test_suffix}")
+    os.system(f"scp fda_approved_drugs.pickle{test_suffix} rtxconfig@{rtx_config.db_host}:{remote_dbs_dir}/fda_approved_drugs_{sub_version}_KG{kg2pre_version}c.pickle{test_suffix}")
+
+    # Then upload files not actually needed for running ARAX code
+    os.system(f"scp kg2c-tsv.tar.gz{test_suffix} rtxconfig@{rtx_config.db_host}:{remote_dbs_subdir}/kg2c-tsv.tar.gz{test_suffix}")
 
 
 def upload_synonymizer_files_to_arax_databases_server(kg2pre_version: str, sub_version: str):
