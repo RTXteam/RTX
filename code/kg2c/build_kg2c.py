@@ -105,12 +105,12 @@ def main():
     if args.download_kg2pre:
         file_manager.download_kg2pre_tsvs(args.kg2pre_version)
 
-    # Validate local KG2pre TSV files
-    file_manager.check_kg2pre_tsvs_version(args.kg2pre_version, args.biolink_version, args.test)
-
     # Create KG2pre test TSV files as applicable
     if args.test:
         file_manager.create_kg2pre_tsv_test_files(args.kg2pre_version)
+
+    # Validate local KG2pre TSV files
+    file_manager.check_kg2pre_tsvs_version(args.kg2pre_version, args.biolink_version, args.test)
 
     # Actually build KG2c
     logging.info("Calling create_kg2c_files.py..")
