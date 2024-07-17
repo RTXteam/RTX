@@ -97,7 +97,8 @@ def main():
 
     logging.info(f"Done with synonymizer build. Took {round(((time.time() - start) / 60) / 60, 1)} hours.")
 
-    # TODO: Add some automated testing..
+    # Run automated tests
+    os.system(f"pytest -v {SYNONYMIZER_BUILD_DIR}/test_synonymizer.py --synonymizername {final_synonymizer_name}")
 
 
 if __name__ == "__main__":

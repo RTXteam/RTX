@@ -302,7 +302,7 @@ class NodeSynonymizer:
 
     # ---------------------------------------- EXTERNAL DEBUG METHODS --------------------------------------------- #
 
-    def print_cluster_table(self, curie_or_name: str):
+    def print_cluster_table(self, curie_or_name: str, include_edges: bool = True):
         # First figure out what cluster this concept belongs to
         canonical_info = self.get_canonical_curies(curies=curie_or_name)
         if not canonical_info[curie_or_name]:
@@ -332,8 +332,9 @@ class NodeSynonymizer:
                 edges_df = self._load_records_into_dataframe(edge_rows, "edges")
                 edges_df = edges_df[["subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]]
 
-                print(f"\nCluster for {curie_or_name} has {edges_df.shape[0]} edges:\n")
-                print(f"{edges_df.to_markdown(index=False)}\n")
+                if include_edges:
+                    print(f"\nCluster for {curie_or_name} has {edges_df.shape[0]} edges:\n")
+                    print(f"{edges_df.to_markdown(index=False)}\n")
                 print(f"\nCluster for {curie_or_name} has {nodes_df.shape[0]} nodes:\n")
                 print(f"{nodes_df.to_markdown(index=False)}\n")
             else:
