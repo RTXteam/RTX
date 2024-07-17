@@ -530,66 +530,86 @@ def _canonicalize_nodes(kg2pre_nodes: List[Dict[str, any]],
     return canonicalized_nodes, curie_map
 
 
-def _canonicalize_edges(kg2pre_edges: List[Dict[str, any]], curie_map: Dict[str, str]) -> Dict[str, Dict[str, any]]:
+def _canonicalize_edges(local_tsv_dir_path: str, curie_map: Dict[str, str], is_test: bool) -> Dict[str, Dict[str, any]]:
     logging.info(f"Canonicalizing edges..")
     canonicalized_edges = dict()
-    for kg2pre_edge in kg2pre_edges:
-        kg2_edge_id = kg2pre_edge['id']
-        original_subject = kg2pre_edge['subject']
-        original_object = kg2pre_edge['object']
-        assert original_subject in curie_map
-        assert original_object in curie_map
-        canonicalized_subject = curie_map.get(original_subject, original_subject)
-        canonicalized_object = curie_map.get(original_object, original_object)
-        edge_publications = kg2pre_edge['publications'] if kg2pre_edge.get('publications') else []
-        edge_primary_knowledge_source = kg2pre_edge['primary_knowledge_source'] if kg2pre_edge.get('primary_knowledge_source') else ""
-        edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if kg2pre_edge.get('qualified_predicate') else ""
-        edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if kg2pre_edge.get('qualified_object_aspect') else ""
-        edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if kg2pre_edge.get('qualified_object_direction') else ""
-        edge_domain_range_exclusion = kg2pre_edge['domain_range_exclusion']
-        edge_knowledge_level = kg2pre_edge['knowledge_level']
-        edge_agent_type = kg2pre_edge['agent_type']
+    edges_tsv_path = f"{local_tsv_dir_path}/edges.tsv{'_TEST' if is_test else ''}"
+    edges_tsv_header_path = f"{local_tsv_dir_path}/edges_header.tsv{'_TEST' if is_test else ''}"
+    logging.info(f"Looping through edges in KG2pre TSV ({edges_tsv_path}) and converting them to canonicalized edges..")
+    headers = _get_kg2pre_headers(edges_tsv_header_path)
+    kg2pre_property_names = _get_kg2pre_properties("edges")
+    num_kg2pre_edges_processed = 0
+    with open(edges_tsv_path) as kg2pre_edges_file:
+        reader = csv.reader(kg2pre_edges_file, delimiter="\t")
+        for row in reader:  # We only load one KG2pre edge into memory at a time to reduce memory consumption
+            num_kg2pre_edges_processed += 1
+            if num_kg2pre_edges_processed % 1000000 == 0:
+                logging.info(f"Have processed {num_kg2pre_edges_processed} KG2pre edges")
 
-        # Patch for lack of qualified_predicate when qualified_object_direction is present
-        predicate = kg2pre_edge['predicate']
-        if predicate == "biolink:regulates" and edge_qualified_object_direction and not edge_qualified_predicate:
-            edge_qualified_predicate = "biolink:causes"
-            edge_qualified_object_aspect = "activity_or_abundance"
-        # Patch to filter out Chembl applied_to_treat edges (will eventually be removed from KG2pre itself)
-        elif predicate == "biolink:applied_to_treat" and edge_primary_knowledge_source == "infores:chembl":
-            continue
+            # First load this KG2pre edge into a dictionary
+            kg2pre_edge = dict()
+            for property_name in kg2pre_property_names:
+                property_info = PROPERTIES_LOOKUP["edges"][property_name]
+                raw_property_value = row[headers.index(property_name)]
+                kg2pre_edge[property_name] = _load_property(raw_property_value, property_info["type"])
 
-        edge_publications_info = _load_publications_info(kg2pre_edge['publications_info'], kg2_edge_id) if kg2pre_edge.get('publications_info') else dict()
-        if canonicalized_subject != canonicalized_object:  # Don't allow self-edges
-            canonicalized_edge_key = _get_edge_key(subject=canonicalized_subject,
-                                                   object=canonicalized_object,
-                                                   predicate=kg2pre_edge['predicate'],
-                                                   qualified_predicate=edge_qualified_predicate,
-                                                   qualified_object_aspect=edge_qualified_object_aspect,
-                                                   qualified_object_direction=edge_qualified_object_direction,
-                                                   primary_knowledge_source=edge_primary_knowledge_source)
-            if canonicalized_edge_key in canonicalized_edges:
-                canonicalized_edge = canonicalized_edges[canonicalized_edge_key]
-                canonicalized_edge['publications'] = _merge_two_lists(canonicalized_edge['publications'], edge_publications)
-                canonicalized_edge['publications_info'].update(edge_publications_info)
-                canonicalized_edge['kg2_ids'].append(kg2_edge_id)
-            else:
-                new_canonicalized_edge = _create_edge(subject=canonicalized_subject,
-                                                      object=canonicalized_object,
-                                                      predicate=kg2pre_edge['predicate'],
-                                                      primary_knowledge_source=edge_primary_knowledge_source,
-                                                      publications=edge_publications,
-                                                      publications_info=edge_publications_info,
-                                                      kg2_ids=[kg2_edge_id],
-                                                      qualified_predicate=edge_qualified_predicate,
-                                                      qualified_object_aspect=edge_qualified_object_aspect,
-                                                      qualified_object_direction=edge_qualified_object_direction,
-                                                      domain_range_exclusion=edge_domain_range_exclusion,
-                                                      knowledge_level=edge_knowledge_level,
-                                                      agent_type=edge_agent_type)
-                canonicalized_edges[canonicalized_edge_key] = new_canonicalized_edge
-    logging.info(f"Number of KG2pre edges was reduced to {len(canonicalized_edges)} "
-                 f"({round((len(canonicalized_edges) / len(kg2pre_edges)) * 100)}%)")
+            # Then create a canonicalized version of this KG2pre edge
+            kg2_edge_id = kg2pre_edge['id']
+            original_subject = kg2pre_edge['subject']
+            original_object = kg2pre_edge['object']
+            assert original_subject in curie_map
+            assert original_object in curie_map
+            canonicalized_subject = curie_map.get(original_subject, original_subject)
+            canonicalized_object = curie_map.get(original_object, original_object)
+            edge_publications = kg2pre_edge['publications'] if kg2pre_edge.get('publications') else []
+            edge_primary_knowledge_source = kg2pre_edge['primary_knowledge_source'] if kg2pre_edge.get('primary_knowledge_source') else ""
+            edge_qualified_predicate = kg2pre_edge['qualified_predicate'] if kg2pre_edge.get('qualified_predicate') else ""
+            edge_qualified_object_aspect = kg2pre_edge['qualified_object_aspect'] if kg2pre_edge.get('qualified_object_aspect') else ""
+            edge_qualified_object_direction = kg2pre_edge['qualified_object_direction'] if kg2pre_edge.get('qualified_object_direction') else ""
+            edge_domain_range_exclusion = kg2pre_edge['domain_range_exclusion']
+            edge_knowledge_level = kg2pre_edge['knowledge_level']
+            edge_agent_type = kg2pre_edge['agent_type']
+
+            # Patch for lack of qualified_predicate when qualified_object_direction is present
+            predicate = kg2pre_edge['predicate']
+            if predicate == "biolink:regulates" and edge_qualified_object_direction and not edge_qualified_predicate:
+                edge_qualified_predicate = "biolink:causes"
+                edge_qualified_object_aspect = "activity_or_abundance"
+            # Patch to filter out Chembl applied_to_treat edges (will eventually be removed from KG2pre itself)
+            elif predicate == "biolink:applied_to_treat" and edge_primary_knowledge_source == "infores:chembl":
+                continue
+
+            edge_publications_info = _load_publications_info(kg2pre_edge['publications_info'], kg2_edge_id) if kg2pre_edge.get('publications_info') else dict()
+            if canonicalized_subject != canonicalized_object:  # Don't allow self-edges
+                canonicalized_edge_key = _get_edge_key(subject=canonicalized_subject,
+                                                       object=canonicalized_object,
+                                                       predicate=kg2pre_edge['predicate'],
+                                                       qualified_predicate=edge_qualified_predicate,
+                                                       qualified_object_aspect=edge_qualified_object_aspect,
+                                                       qualified_object_direction=edge_qualified_object_direction,
+                                                       primary_knowledge_source=edge_primary_knowledge_source)
+                if canonicalized_edge_key in canonicalized_edges:
+                    canonicalized_edge = canonicalized_edges[canonicalized_edge_key]
+                    canonicalized_edge['publications'] = _merge_two_lists(canonicalized_edge['publications'], edge_publications)
+                    canonicalized_edge['publications_info'].update(edge_publications_info)
+                    canonicalized_edge['kg2_ids'].append(kg2_edge_id)
+                else:
+                    new_canonicalized_edge = _create_edge(subject=canonicalized_subject,
+                                                          object=canonicalized_object,
+                                                          predicate=kg2pre_edge['predicate'],
+                                                          primary_knowledge_source=edge_primary_knowledge_source,
+                                                          publications=edge_publications,
+                                                          publications_info=edge_publications_info,
+                                                          kg2_ids=[kg2_edge_id],
+                                                          qualified_predicate=edge_qualified_predicate,
+                                                          qualified_object_aspect=edge_qualified_object_aspect,
+                                                          qualified_object_direction=edge_qualified_object_direction,
+                                                          domain_range_exclusion=edge_domain_range_exclusion,
+                                                          knowledge_level=edge_knowledge_level,
+                                                          agent_type=edge_agent_type)
+                    canonicalized_edges[canonicalized_edge_key] = new_canonicalized_edge
+        logging.info(f"Number of KG2pre edges was reduced to {len(canonicalized_edges)} "
+                     f"({round((len(canonicalized_edges) / num_kg2pre_edges_processed) * 100)}%)")
     return canonicalized_edges
 
 
@@ -690,10 +710,7 @@ def create_kg2c_files(kg2pre_version: str, sub_version: str, biolink_version: st
     gc.collect()
 
     # Canonicalize edges
-    kg2pre_edges = _load_kg2pre_tsv(local_tsv_dir_path, "edges", is_test)
-    canonicalized_edges_dict = _canonicalize_edges(kg2pre_edges, curie_map)
-    del kg2pre_edges
-    gc.collect()
+    canonicalized_edges_dict = _canonicalize_edges(local_tsv_dir_path, curie_map, is_test)
     canonicalized_edges_dict = _post_process_edges(canonicalized_edges_dict)
 
     # Remove some overly general nodes (e.g., 'Genes', 'Disease or disorder'..)
