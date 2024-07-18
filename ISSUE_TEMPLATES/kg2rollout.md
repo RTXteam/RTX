@@ -16,7 +16,7 @@ To complete this workflow, you will need `ssh` access to:
 ##### GitHub access
 - [ ] write access to the `RTXteam/PloverDB` project area
 - [ ] write access to the `RTXteam/RTX` project area
-- [ ] write access to the `ncats/translator-lfs-artifacts` project area (not critical, but needed for some final archiving steps; Amy Glen has access)
+- [ ] write access to the `ncats/translator-lfs-artifacts` project area (not critical, but needed for some final archiving steps; Amy Glen and Sundar Pullela have access)
 
 ##### AWS access
 You will need:
@@ -70,7 +70,10 @@ Host arax.ncats.io
 - [ ] start the new self-hosted PloverDB on `kg2cploverN.rtx.ai`:
   - [ ] `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] `cd PloverDB && git pull origin kg2.X.Yc`
-  - [ ] `./run.sh ploverimage2.X.Y plovercontainer2.X.Y "sudo docker"`
+  - [ ] if you have **not** yet built the 2.X.Y docker image/container on this instance, run:
+    - [ ] `./run.sh ploverimage2.X.Y plovercontainer2.X.Y "sudo docker"` (takes about an hour)
+  - [ ] otherwise, simply run:
+    - [ ] `sudo docker start plovercontainer2.X.Y` (takes about five minutes)
 - [ ] update `config_dbs.json` in the branch for this KG2 version in the RTX repo to point to the new Plover **for the 'dev' maturity level**
 
 #### 2. Rebuild downstream databases:
@@ -190,6 +193,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
     - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen, who has permissions to do this)
 - [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
+- [ ] update the current RTX GitHub changelog issue (add the rollout of this KG2 version as a changelog item)
       
 #### 7. Roll-out to ITRB TEST 
 - [ ] In GitHub, for the RTXteam/RTX project, merge `master` to `itrb-test`. Record this issue number in the merge message.
