@@ -1,11 +1,11 @@
 {
    "database_downloads": {
-      "node_synonymizer": "/translator/data/orangeboard/databases/KG2.9.2/node_synonymizer_v1.0_KG2.9.2.sqlite",
-      "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.9.2/kg2c_v1.0_KG2.9.2.sqlite",
-      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.9.2/meta_kg_v1.0_KG2.9.2c.json",
-      "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.9.2/fda_approved_drugs_v1.0_KG2.9.2c.pickle",
-      "autocomplete": "/translator/data/orangeboard/databases/KG2.9.2/autocomplete_v1.0_KG2.9.2.sqlite",
-      "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.9.2/curie_to_pmids_v1.0_KG2.9.2.sqlite",
+      "node_synonymizer": "/translator/data/orangeboard/databases/KG2.10.0/node_synonymizer_v1.0_KG2.10.0.sqlite",
+      "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.10.0/kg2c_v1.0_KG2.10.0.sqlite",
+      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.10.0/meta_kg_v1.0_KG2.10.0c.json",
+      "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.10.0/fda_approved_drugs_v1.0_KG2.10.0c.pickle",
+      "autocomplete": "/translator/data/orangeboard/databases/KG2.10.0/autocomplete_v1.0_KG2.10.0.sqlite",
+      "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.10.0/curie_to_pmids_v1.0_KG2.10.0.sqlite",
       "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.9.2/ExplainableDTD_v1.0_KG2.8.4_refreshedTo_KG2.9.2.db",
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
       "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.8.0.1/chemical_gene_embeddings_v1.0.KG2.8.0.1.npz",
@@ -13,12 +13,12 @@
       "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.8.0.1/xcrg_decrease_model_v1.0.KG2.8.0.1.pt"
    },
    "plover": {
-      "dev": "https://kg2cploverdb.ci.transltr.io",
+      "dev": "http://kg2cplover.rtx.ai:9990",
       "test": "https://kg2cploverdb.test.transltr.io",
       "prod": "https://kg2cploverdb.transltr.io"
    },
    "neo4j": {
-      "KG2pre": "kg2endpoint-kg2-9-2.rtx.ai",
-      "KG2c": "kg2-9-2c.rtx.ai"
+      "KG2pre": "kg2endpoint-kg2-10-0.rtx.ai",
+      "KG2c": "kg2-10-0c.rtx.ai"
    }
 }
