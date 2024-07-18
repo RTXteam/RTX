@@ -649,7 +649,7 @@ def test_issue_1314():
     actions_list = [
         "add_qnode(key=n0, ids=DRUGBANK:DB00394, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n1, categories=biolink:Disease)",
-        "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:treats_or_applied_or_studied_to_treat)",
+        "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:subject_of_treatment_application_or_study_for_treatment_by)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
@@ -1483,6 +1483,22 @@ def test_kg2_version():
     assert nodes_by_qg_id["n00"]
     print(f"RTX-KG2c build node: \n\n{nodes_by_qg_id['n00']}")
     # TODO: Assert that the KG2 version on the build node matches the OpenAPI spec (need to sort out which file to use)
+
+
+def test_klat_attributes():
+    actions_list = [
+        "add_qnode(key=n0, ids=DRUGBANK:DB00394)",
+        "add_qnode(key=n1, categories=biolink:Disease)",
+        "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:treats_or_applied_or_studied_to_treat)",
+        "expand(kp=infores:rtx-kg2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    for edge_key, edge in edges_by_qg_id["e0"].items():
+        assert any(attribute.attribute_type_id == "biolink:knowledge_level" for attribute in edge.attributes)
+        assert any(attribute.attribute_type_id == "biolink:agent_type" for attribute in edge.attributes)
+        assert all(isinstance(attribute.value, str) for attribute in edge.attributes
+                   if attribute.attribute_type_id in {"biolink:knowledge_level", "biolink:agent_type"})
 
 
 if __name__ == "__main__":
