@@ -649,7 +649,7 @@ def test_issue_1314():
     actions_list = [
         "add_qnode(key=n0, ids=DRUGBANK:DB00394, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n1, categories=biolink:Disease)",
-        "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:treated_by)",
+        "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:treats_or_applied_or_studied_to_treat)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]

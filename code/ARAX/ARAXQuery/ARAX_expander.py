@@ -289,32 +289,18 @@ class ARAXExpander:
                 if qedge.predicates:
                     # Convert predicates to their canonical form as needed/possible
                     qedge_predicates = set(qedge.predicates)
-                    symmetric_predicates = {predicate for predicate in qedge_predicates
-                                            if self.bh.is_symmetric(predicate)}
-                    asymmetric_predicates = qedge_predicates.difference(symmetric_predicates)
-                    canonical_predicates = set(self.bh.get_canonical_predicates(qedge.predicates))
-                    if canonical_predicates != qedge_predicates:
-                        asymmetric_non_canonical = asymmetric_predicates.difference(canonical_predicates)
-                        asymmetric_canonical = asymmetric_predicates.intersection(canonical_predicates)
-                        symmetric_non_canonical = symmetric_predicates.difference(canonical_predicates)
-                        if symmetric_non_canonical:
-                            # Switch to canonical predicates, but no need to flip the qedge since they're symmetric
-                            log.debug(f"Converting symmetric predicates {symmetric_non_canonical} on {qedge_key} to "
-                                      f"their canonical forms.")
-                            converted_symmetric = self.bh.get_canonical_predicates(symmetric_non_canonical)
-                            qedge.predicates = list(qedge_predicates.difference(symmetric_non_canonical).union(converted_symmetric))
-                        if asymmetric_non_canonical and asymmetric_canonical:
-                            log.error(f"Qedge {qedge_key} has asymmetric predicates in both canonical and non-canonical"
-                                      f" forms, which isn't allowed. Non-canonical asymmetric predicates are: "
-                                      f"{asymmetric_non_canonical}", error_code="InvalidPredicates")
-                        elif asymmetric_non_canonical:
-                            # Flip the qedge in this case (OK to do since only other predicates are symmetric)
-                            log.debug(f"Converting {qedge_key}'s asymmetric non-canonical predicates to canonical "
-                                      f"form; requires flipping the qedge, but this is OK since there are no "
-                                      f"asymmetric canonical predicates on this qedge.")
-                            converted_asymmetric = self.bh.get_canonical_predicates(asymmetric_non_canonical)
-                            final_predicates = set(qedge.predicates).difference(asymmetric_non_canonical).union(converted_asymmetric)
-                            eu.flip_qedge(qedge, list(final_predicates))
+                    all_predicates_canonicalized = set(self.bh.get_canonical_predicates(qedge.predicates))
+                    canonical_used_in_qg = qedge_predicates.intersection(all_predicates_canonicalized)
+                    non_canonical_used_in_qg = qedge_predicates.difference(canonical_used_in_qg)
+                    if non_canonical_used_in_qg and canonical_used_in_qg:
+                        log.error(f"QEdge {qedge_key} contains both canonical and non-canonical predicates; this is "
+                                  f"not valid. Use either all canonical predicates or all non-canonical predicates.",
+                                  error_code="InvalidPredicates")
+                    elif non_canonical_used_in_qg:
+                        # This qedge must only have non-canonical predicates, so we'll flip the qedge to canonical
+                        log.debug(f"Converting {qedge_key}'s non-canonical predicates to canonical form; requires "
+                                  f"swapping the qedge subject/object.")
+                        eu.flip_qedge(qedge, list(all_predicates_canonicalized))
                     # Handle special situation where user entered treats edge in wrong direction
                     if (qedge.predicates == ["biolink:treats"] or
                             qedge.predicates == ["biolink:treats_or_applied_or_studied_to_treat"]):
