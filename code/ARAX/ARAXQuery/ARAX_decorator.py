@@ -195,8 +195,10 @@ class ARAXDecorator:
                 kg_edge = kg.edges[kg_edge_key]
                 new_attributes = []
                 # Make sure we don't add a duplicate attribute (in case a decoration step happened previously)
-                existing_attribute_short_names = {attribute_type_id_map[attribute.attribute_type_id]
-                                                  for attribute in kg_edge.attributes} if kg_edge.attributes else set()
+                existing_attribute_type_ids = {attribute.attribute_type_id for attribute in kg_edge.attributes
+                                               if attribute.attribute_type_id in attribute_type_id_map} if kg_edge.attributes else set()
+                existing_attribute_short_names = {attribute_type_id_map[existing_attribute_type_id]
+                                                  for existing_attribute_type_id in existing_attribute_type_ids}
                 for index, property_name in enumerate(edge_attributes_ordered):
                     raw_value = kg2c_edge_tuple[index + 1]
                     if raw_value and property_name not in existing_attribute_short_names:
@@ -237,8 +239,7 @@ class ARAXDecorator:
         edge_attributes_ordered = list(self.edge_attributes)
         search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
         search_keys_str = "','".join(search_keys_set)  # SQL wants ('edge1', 'edge2') format for string lists
-        edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
-        sql_query = f"SELECT E.{node_pair_key_col}, {edge_cols_str} " \
+        sql_query = f"SELECT E.{node_pair_key_col}, E.publications_info " \
                     f"FROM edges AS E " \
                     f"WHERE E.{node_pair_key_col} IN ('{search_keys_str}')"
         cursor.execute(sql_query)
@@ -259,21 +260,23 @@ class ARAXDecorator:
                                  for property_name in set(self.edge_attributes)}
         for search_key, kg2c_edge_tuples in search_key_to_kg2c_edge_tuples_map.items():
             # Extract publications info for all edges between the two nodes specified in the search key
-            merged_publications_info = dict()
+            merged_publications_info = []
             for kg2c_edge_tuple in kg2c_edge_tuples:
-                for index, property_name in enumerate(edge_attributes_ordered):
-                    raw_value = kg2c_edge_tuple[index + 1]
-                    if raw_value:  # Skip empty attributes
-                        value = self._load_property(property_name, raw_value)
-                        merged_publications_info.update(value)
+                pubs_info_col_index = edge_attributes_ordered.index("publications_info")
+                raw_value = kg2c_edge_tuple[pubs_info_col_index]
+                if raw_value:  # Skip empty attributes
+                    value = self._load_property("publications_info", raw_value)
+                    merged_publications_info.append(value)
 
             # Add the attributes to each of the edges with the given search key (as needed)
             corresponding_kg_edge_keys = search_key_to_edge_keys_map[search_key]
             for edge_key in corresponding_kg_edge_keys:
                 kg_edge = kg.edges[edge_key]
                 # Make sure we don't add a duplicate attribute (in case a decoration step happened previously)
-                existing_attribute_short_names = {attribute_type_id_map[attribute.attribute_type_id]
-                                                  for attribute in kg_edge.attributes} if kg_edge.attributes else set()
+                existing_attribute_type_ids = {attribute.attribute_type_id for attribute in kg_edge.attributes
+                                               if attribute.attribute_type_id in attribute_type_id_map} if kg_edge.attributes else set()
+                existing_attribute_short_names = {attribute_type_id_map[existing_attribute_type_id]
+                                                  for existing_attribute_type_id in existing_attribute_type_ids}
                 if merged_publications_info and "publications_info" not in existing_attribute_short_names:
                     attribute = self.create_attribute(attribute_short_name="publications_info",
                                                       value=merged_publications_info,
