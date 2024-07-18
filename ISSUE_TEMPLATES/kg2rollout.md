@@ -74,6 +74,9 @@ Host arax.ncats.io
     - [ ] `./run.sh ploverimage2.X.Y plovercontainer2.X.Y "sudo docker"` (takes about an hour)
   - [ ] otherwise, simply run:
     - [ ] `sudo docker start plovercontainer2.X.Y` (takes about five minutes)
+- [ ] verify that Plover's regression tests pass, and fix any broken tests (note: tests must use **canonical** curies!); from any instance/computer, run:
+  - [ ] `cd PloverDB`
+  - [ ] `pytest -v test/test.py --endpoint http://kg2cploverN.rtx.ai:9990`
 - [ ] update `config_dbs.json` in the branch for this KG2 version in the RTX repo to point to the new Plover **for the 'dev' maturity level**
 
 #### 2. Rebuild downstream databases:
