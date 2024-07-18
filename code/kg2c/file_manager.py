@@ -197,9 +197,9 @@ def create_kg2pre_tsv_test_files(kg2pre_version: str):
 def make_kg2c_tarball(is_test: bool):
     logging.info(f"Creating tarball of KG2c TSVs..")
     test_suffix = "_TEST" if is_test else ""
-    subprocess.check_call(["tar", "-czvf", f"{KG2C_DIR}/kg2c-tsv.tar.gz{test_suffix}",
-                           f"{KG2C_DIR}/nodes_c.tsv{test_suffix}", f"{KG2C_DIR}/nodes_c_header.tsv{test_suffix}",
-                           f"{KG2C_DIR}/edges_c.tsv{test_suffix}", f"{KG2C_DIR}/edges_c_header.tsv{test_suffix}"])
+    subprocess.check_call(["tar", "-czvf", f"{KG2C_DIR}/kg2c-tsv.tar.gz{test_suffix}", "-C", KG2C_DIR,
+                           f"nodes_c.tsv{test_suffix}", f"nodes_c_header.tsv{test_suffix}",
+                           f"edges_c.tsv{test_suffix}", f"edges_c_header.tsv{test_suffix}"])
 
 
 def upload_kg2c_files_to_s3(is_test: bool):
@@ -218,6 +218,7 @@ def upload_kg2c_files_to_s3(is_test: bool):
 def upload_kg2c_files_to_arax_databases_server(kg2pre_version: str, sub_version: str, is_test: bool):
     rtx_config = RTXConfiguration()
     logging.info(f"Uploading KG2c artifacts to arax-databases server")
+    # TODO: Add log statement for each file
 
     # Make sure the necessary directories exist on arax-databases.rtx.ai (will not hurt if they already exist)
     remote_dbs_dir = f"/home/rtxconfig/KG{kg2pre_version}"
