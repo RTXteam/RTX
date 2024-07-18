@@ -82,7 +82,7 @@ def test_adams_oliver():
 
 def test_lumbar_vertebra():
     lumbar_vertebra_curie = "UBERON:0002414"
-    synonymizer.print_cluster_table(lumbar_vertebra_curie)
+    synonymizer.print_cluster_table(lumbar_vertebra_curie, include_edges=False)
     canonical_check(lumbar_vertebra_curie)
     lumbar_vertebra_trusted_ids = {"UBERON:0002414", "FMA:9921", "MESH:D008159"}
     other_lumbar_related_ids = {"UMLS:C1518034", "UMLS:C0738840", "FMA:58287", "UBERON:0007716",

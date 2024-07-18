@@ -47,13 +47,18 @@ def main():
 
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('kg2pre_version',
-                            help="The version of KG2pre to build this synonymizer from (e.g., 2.9.2).")
+                            help="The version of KG2pre to build this synonymizer from (e.g., 2.10.0).")
     arg_parser.add_argument('sub_version',
-                            help="The synonymizer sub version (e.g., v1.0); generally should be v1.0 unless you are "
-                                 "doing a synonymizer rebuild for a KG2 version that already has a synonymizer - then "
-                                 "it should be v1.1, or etc.")
+                            help="The sub-version for this KG2c build (e.g., v1.0); we always use v1.0 the first "
+                                 "time we are building KG2c from a given KG2pre version; if we do a second build of"
+                                 " KG2c from that *same* KG2pre version, we would use v1.1, and so on.")
     arg_parser.add_argument('start_at', nargs='?', default='1',
-                            help="The step in the synonymizer build to begin at. Used only for development purposes.")
+                            help="Optional parameter that specifies the step in the synonymizer build to begin at "
+                                 "(default is 1; valid values are 1-5). Allows partial builds of "
+                                 "the synonymizer; used only for development purposes. Step 1 is building the KG2pre "
+                                 "match graph, 2 is building the SRI NodeNormalizer match graph, 3 is merging the "
+                                 "match graphs, 4 is clustering the merged match graph, and 5 is creating the "
+                                 "final synonymizer sqlite and build reports.")
     arg_parser.add_argument('-d', '--downloadkg2pre', dest='download_kg2pre', action='store_true',
                             help="Specifies that the KG2pre TSV files should be downloaded from S3. If this flag is not "
                                  "set, local KG2pre TSVs will be used.")

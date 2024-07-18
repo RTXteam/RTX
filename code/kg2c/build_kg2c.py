@@ -48,30 +48,33 @@ def main():
     # Grab any parameters passed to this script
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument('kg2pre_version',
-                            help="The version of KG2pre to build KG2c from (e.g., 2.9.2).")
+                            help="The version of KG2pre to build this KG2c from (e.g., 2.10.0).")
     arg_parser.add_argument('sub_version',
-                            help="The KG2c sub version (e.g., v1.0); generally should be v1.0 unless you are doing a "
-                                 "KG2c rebuild for a KG2pre version that already had a KG2c built from it - then it"
-                                 " should be v1.1, or etc.")
+                            help="The sub-version for this KG2c build (e.g., v1.0); we always use v1.0 the first "
+                                 "time we are building KG2c from a given KG2pre version; if we do a second build of"
+                                 " KG2c from that *same* KG2pre version, we would use v1.1, and so on.")
     arg_parser.add_argument('biolink_version',
-                            help="The Biolink version that the given KG2pre version uses (e.g., 4.0.1).")
+                            help="The Biolink version that the given KG2pre version uses (e.g., 4.2.0). You can "
+                                 "look this up on the KG2pre versions markdown page at: "
+                                 "github.com/RTXteam/RTX-KG2/blob/master/docs/kg2-versions.md")
     arg_parser.add_argument('synonymizer_override', nargs='?', default=None,
-                            help="The file name of the synonymizer you want to force this KG2c build "
-                                 "to use (e.g., node_synonymizer_v1.0_KG2.9.0.sqlite). The file you specify must be "
+                            help="Optional parameter that specifies the file name of the synonymizer you want to force "
+                                 "this KG2c build to use (e.g., node_synonymizer_v1.0_KG2.9.0.sqlite); used for "
+                                 "development work. The file you specify must be "
                                  "present in the RTX/code/ARAX/NodeSynonymizer subdir locally. By default, the build "
-                                 "will determine the synonymizer file name based on the KG2pre version and sub version "
+                                 "will determine the synonymizer file name based on the kg2pre_version and sub_version "
                                  "parameters, but you can override that with this optional parameter.")
     arg_parser.add_argument('-d', '--downloadkg2pre', dest='download_kg2pre', action='store_true',
                             help="Specifies that the KG2pre TSV files should be downloaded from S3. If this flag is not "
                                  "set, local KG2pre TSVs will be used.")
     arg_parser.add_argument('-u', '--uploadartifacts', dest='upload_artifacts', action='store_true',
                             help="Specifies that artifacts of the build should be uploaded to the ARAX databases server"
-                                 " and to S3.")
+                                 " and to the RTX-KG2 S3 bucket.")
     arg_parser.add_argument('-t', '--test', dest='test', action='store_true',
                             help="Specifies whether to do a test build. Test builds create a smaller version of the "
                                  "KG2pre TSVs and do a KG2c build off of those. They ensure that the test graph "
-                                 "does not include any orphan edges. All output files are named with a "
-                                 "'_TEST' suffix.")
+                                 "does not include any orphan edges. All output files from test builds are named with "
+                                 "a '_TEST' suffix.")
     args = arg_parser.parse_args()
     logging.info(f"STARTING KG2c BUILD")
 
