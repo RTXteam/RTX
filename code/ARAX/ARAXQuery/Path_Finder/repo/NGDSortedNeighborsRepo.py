@@ -7,6 +7,7 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 from repo.NGDCalculator import calculate_ngd
 from repo.Repository import Repository
+from repo.NodeDegreeRepo import NodeDegreeRepo
 from model.Node import Node
 
 
@@ -46,8 +47,9 @@ def get_neighbors_pmids(neighbors):
 
 class NGDSortedNeighborsRepo(Repository):
 
-    def __init__(self, repo):
+    def __init__(self, repo, degree_repo=NodeDegreeRepo()):
         self.repo = repo
+        self.degree_repo = degree_repo
 
     def get_neighbors(self, node, limit=-1):
 
@@ -84,3 +86,6 @@ class NGDSortedNeighborsRepo(Repository):
                                 sorted_neighbors_tuple[0:min(limit, len(sorted_neighbors_tuple))]]
 
         return sorted_neighbors
+
+    def get_node_degree(self, node):
+        return self.degree_repo.get_node_degree(node)
