@@ -1,6 +1,7 @@
 import sys
 import os
 import sqlite3
+import math
 
 from RTXConfiguration import RTXConfiguration
 
@@ -8,6 +9,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 from repo.NGDCalculator import calculate_ngd
 from repo.Repository import Repository
 from repo.NodeDegreeRepo import NodeDegreeRepo
+from repo.RedisConnector import RedisConnector
 from model.Node import Node
 
 
@@ -47,34 +49,35 @@ def get_neighbors_pmids(neighbors):
 
 class NGDSortedNeighborsRepo(Repository):
 
-    def __init__(self, repo, degree_repo=NodeDegreeRepo()):
+    def __init__(self, repo, degree_repo=NodeDegreeRepo(), redis_connector=RedisConnector()):
         self.repo = repo
         self.degree_repo = degree_repo
+        self.redis_connector = redis_connector
 
     def get_neighbors(self, node, limit=-1):
 
         neighbors = self.repo.get_neighbors(node, limit=limit)
-
-        node_pmids = get_node_pmids(node.id)
-        if node_pmids is None:
+        node_pmids_length = self.redis_connector.get_key_length(node.id)
+        if node_pmids_length == 0:
             if limit == -1:
                 return neighbors
             else:
                 return neighbors[0:min(limit, len(neighbors))]
 
-        neighbors_to_pmids = get_neighbors_pmids([neighbor.id for neighbor in neighbors])
-        if neighbors_to_pmids is None:
+        neighbors_ids = [neighbor.id for neighbor in neighbors]
+        curie_pmids_length_tuple = self.redis_connector.get_len_of_keys(neighbors_ids)
+        non_zero_curie_pmids_length_tuple = [(key, length) for key, length in curie_pmids_length_tuple if length > 0]
+        if len(non_zero_curie_pmids_length_tuple) == 0:
             if limit == -1:
                 return neighbors
             else:
                 return neighbors[0:min(limit, len(neighbors))]
 
-        curie_pmids_dict = dict(neighbors_to_pmids)
+        intersection_list = self.redis_connector.get_intersection_list(node.id, non_zero_curie_pmids_length_tuple)
+        log_of_node_pmids_length = math.log(node_pmids_length)
         ngd_key_value = dict()
-        node_pmids_set = set(node_pmids[0].strip('][').split(','))
-        for key, value in curie_pmids_dict.items():
-            second_element_pmids = value.strip('][').split(',')
-            ngd_key_value[key] = calculate_ngd(node_pmids_set, set(second_element_pmids))
+        for pmid_length_pair, intersection in zip(non_zero_curie_pmids_length_tuple, intersection_list):
+            ngd_key_value[pmid_length_pair[0]] = calculate_ngd(log_of_node_pmids_length, pmid_length_pair[1], len(intersection))
 
         sorted_neighbors_tuple = sorted(ngd_key_value.items(),
                                         key=lambda x: (x[1] is None, x[1] if x[1] is not None else float('inf')))
