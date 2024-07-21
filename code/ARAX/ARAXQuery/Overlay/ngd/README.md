@@ -29,7 +29,7 @@ cd RTX/code/ARAX/ARAXQuery/Overlay/ngd
 python3 build_ngd_database.py --full
 ```
 This will automatically download and use the latest PubMed XML files, including both the annual 'baseline' files and 
-the 'update' files. Note that full builds take 8+ hours and require **more than 64G of RAM**.
+the 'update' files. Note that full builds take around 24 hours and require **more than 64G of RAM**.
 
 #### Partial build
 
@@ -40,6 +40,6 @@ python3 build_ngd_database.py
 ```
 This will use the existing `conceptname_to_pmids.db` artifact on your machine 
 (in `RTX/code/ARAX/ARAXQuery/Overlay/ngd/`), which will shave several hours off the build time. Partial builds take 
-about 45 minutes and require around 60G of RAM.
+about one hour and require around 60G of RAM.
 
 The resulting database will be saved at `RTX/code/ARAX/ARAXQuery/Overlay/ngd/curie_to_pmids.sqlite`.
