@@ -22,7 +22,7 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 class ARAXDecorator:
 
-    def __init__(self, use_kg2c_sqlite: bool = True):
+    def __init__(self):
         self.node_attributes = {"iri": str, "description": str, "all_categories": list, "all_names": list,
                                 "equivalent_curies": list, "publications": list}
         self.edge_attributes = {"publications": list, "publications_info": dict, "kg2_ids": list,
@@ -56,7 +56,6 @@ class ARAXDecorator:
         }
         self.array_delimiter_char = "ǂ"
         self.kg2_infores_curie = "infores:rtx-kg2"  # Can't use expand_utilities.py here due to circular imports
-        self.use_kg2c_sqlite = use_kg2c_sqlite  # False means Chunyu's special XDTD KG2 data is used
 
     def decorate_nodes(self, response: ARAXResponse) -> ARAXResponse:
         message = response.envelope.message
@@ -70,16 +69,10 @@ class ARAXDecorator:
         node_attributes_ordered = list(self.node_attributes)
         node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
         node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
-        if self.use_kg2c_sqlite:
-            node_cols_str = ", ".join([f"N.{property_name}" for property_name in node_attributes_ordered])
-            sql_query = f"SELECT N.id, {node_cols_str} " \
-                        f"FROM nodes AS N " \
-                        f"WHERE N.id IN ('{node_keys_str}')"
-        else:
-            node_cols_str = ", ".join([property_name for property_name in node_attributes_ordered])
-            sql_query = f"SELECT id, {node_cols_str} " \
-                        f"FROM NODE_MAPPING_TABLE AS N " \
-                        f"WHERE N.id IN ('{node_keys_str}')"
+        node_cols_str = ", ".join([f"N.{property_name}" for property_name in node_attributes_ordered])
+        sql_query = f"SELECT N.id, {node_cols_str} " \
+                    f"FROM nodes AS N " \
+                    f"WHERE N.id IN ('{node_keys_str}')"
         cursor.execute(sql_query)
         rows = cursor.fetchall()
         cursor.close()
@@ -167,16 +160,10 @@ class ARAXDecorator:
             edge_attributes_ordered = list(self.edge_attributes)
             kg2c_edge_ids_set = set(search_key.replace("'", "''") for search_key in set(kg2c_edge_ids_to_kg_keys_map))  # Escape quotes
             kg2c_edge_ids_str = "','".join(kg2c_edge_ids_set)  # SQL wants ('edge1', 'edge2') format for string lists
-            if self.use_kg2c_sqlite:
-                edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
-                sql_query = f"SELECT E.{edge_id_col}, {edge_cols_str} " \
-                            f"FROM edges AS E " \
-                            f"WHERE E.{edge_id_col} IN ('{kg2c_edge_ids_str}')"
-            else:  # This is used by Chunyu's decoration code
-                edge_cols_str = ", ".join([property_name for property_name in edge_attributes_ordered])
-                sql_query = f"SELECT triple, {edge_cols_str} " \
-                            f"FROM EDGE_MAPPING_TABLE AS E " \
-                            f"WHERE E.triple IN ('{kg2c_edge_ids_str}')"
+            edge_cols_str = ", ".join([f"E.{property_name}" for property_name in edge_attributes_ordered])
+            sql_query = f"SELECT E.{edge_id_col}, {edge_cols_str} " \
+                        f"FROM edges AS E " \
+                        f"WHERE E.{edge_id_col} IN ('{kg2c_edge_ids_str}')"
             cursor.execute(sql_query)
             rows = cursor.fetchall()
             cursor.close()
@@ -301,17 +288,14 @@ class ARAXDecorator:
         return attribute
 
     def _get_kg2c_edge_key(self, edge: Edge) -> str:
-        if self.use_kg2c_sqlite:
-            qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
-            qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate", "")
-            qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier", "")
-            qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier", "")
-            primary_knowledge_source = self._get_primary_knowledge_source(edge)
+        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
+        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate", "")
+        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier", "")
+        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier", "")
+        primary_knowledge_source = self._get_primary_knowledge_source(edge)
 
-            qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
-            edge_key = f"{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_knowledge_source}"
-        else:
-            edge_key = f"{edge.subject}--{edge.predicate}--{edge.object}"
+        qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+        edge_key = f"{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_knowledge_source}"
         return edge_key
 
     @staticmethod
@@ -324,12 +308,8 @@ class ARAXDecorator:
         path_list = os.path.realpath(__file__).split(os.path.sep)
         rtx_index = path_list.index("RTX")
         rtxc = RTXConfiguration()
-        if self.use_kg2c_sqlite:
-            sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
-            sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
-        else:
-            sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
-            sqlite_name = rtxc.explainable_dtd_db_path.split('/')[-1]
+        sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+        sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
         sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
         connection = sqlite3.connect(sqlite_file_path)
         cursor = connection.cursor()
