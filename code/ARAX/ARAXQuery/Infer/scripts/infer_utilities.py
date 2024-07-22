@@ -110,7 +110,7 @@ class InferUtilities:
         expander = ARAXExpander()
         messenger = ARAXMessenger()
         synonymizer = NodeSynonymizer()
-        decorator = ARAXDecorator(False)
+        decorator = ARAXDecorator()
         xdtdmapping = xDTDMappingDB(None, None, RTXConfig.explainable_dtd_db_path.split('/')[-1], mode='run', db_loc=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction']))
 
         kp = 'infores:rtx-kg2'
