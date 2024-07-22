@@ -126,11 +126,11 @@ class InferUtilities:
 
         disease_curie = top_drugs['disease_id'].tolist()[0]
         disease_name = top_drugs['disease_name'].tolist()[0]
-        try:
-            disease_info = xdtdmapping.get_node_info(node_id=disease_curie)
-        except:
+        disease_info = xdtdmapping.get_node_info(node_id=disease_curie)
+        if disease_info is None:
             self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table due to using refreshed xDTD database")
             return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+        
         if not message.knowledge_graph or not hasattr(message, 'knowledge_graph'):  # if the knowledge graph is empty, create it
             message.knowledge_graph = KnowledgeGraph()
             message.knowledge_graph.nodes = {}
