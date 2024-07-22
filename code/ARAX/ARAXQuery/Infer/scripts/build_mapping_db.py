@@ -1,4 +1,3 @@
-
 """
 This script is used to build a database for mapping the nodes and edges in the predicted paths generated from KGML-xDTD model to the original KG2 graph.
 Author: Chunyu Ma
