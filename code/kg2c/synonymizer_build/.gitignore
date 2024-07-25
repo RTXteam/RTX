@@ -2,3 +2,4 @@
 cluster_debug_graphs/*
 *.json
 *.jsonl
+SRI_NN/*

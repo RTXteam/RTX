@@ -10,6 +10,7 @@ import os
 from typing import List, Dict, Optional
 
 import pytest
+import yaml
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
@@ -649,7 +650,7 @@ def test_issue_1314():
     actions_list = [
         "add_qnode(key=n0, ids=DRUGBANK:DB00394, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n1, categories=biolink:Disease)",
-        "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:treated_by)",
+        "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:subject_of_treatment_application_or_study_for_treatment_by)",
         "expand(kp=infores:rtx-kg2)",
         "return(message=true, store=false)"
     ]
@@ -1480,9 +1481,39 @@ def test_kg2_version():
       "edges": {}
     }
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+
+    # First grab KG2 version from the KG2c build node
     assert nodes_by_qg_id["n00"]
-    print(f"RTX-KG2c build node: \n\n{nodes_by_qg_id['n00']}")
-    # TODO: Assert that the KG2 version on the build node matches the OpenAPI spec (need to sort out which file to use)
+    assert len(nodes_by_qg_id["n00"]) == 1
+    build_node = nodes_by_qg_id["n00"]["RTX:KG2c"]
+    kg2c_build_node_version = build_node.name.replace("RTX-KG", "").strip("c")
+    print(f"KG2 version from KG2c build node is: {kg2c_build_node_version}")
+
+    # Then grab KG2 version from the OpenAPI spec
+    code_dir = os.path.dirname(os.path.abspath(__file__)) + "/../../"
+    kg2_openapi_yaml_path = f"{code_dir}/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml"
+    with open(kg2_openapi_yaml_path) as kg2_api_file:
+        kg2_openapi_configuration = yaml.safe_load(kg2_api_file)
+        kg2_openapi_version = kg2_openapi_configuration["info"]["version"]
+    print(f"KG2 version from KG2 openapi.yaml file is: {kg2_openapi_version}")
+
+    assert kg2c_build_node_version == kg2_openapi_version
+
+
+def test_klat_attributes():
+    actions_list = [
+        "add_qnode(key=n0, ids=DRUGBANK:DB00394)",
+        "add_qnode(key=n1, categories=biolink:Disease)",
+        "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:treats_or_applied_or_studied_to_treat)",
+        "expand(kp=infores:rtx-kg2)",
+        "return(message=true, store=false)"
+    ]
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
+    for edge_key, edge in edges_by_qg_id["e0"].items():
+        assert any(attribute.attribute_type_id == "biolink:knowledge_level" for attribute in edge.attributes)
+        assert any(attribute.attribute_type_id == "biolink:agent_type" for attribute in edge.attributes)
+        assert all(isinstance(attribute.value, str) for attribute in edge.attributes
+                   if attribute.attribute_type_id in {"biolink:knowledge_level", "biolink:agent_type"})
 
 
 if __name__ == "__main__":
