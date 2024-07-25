@@ -51,7 +51,8 @@ class TRAPIQuerier:
                                                      resource_role="aggregator_knowledge_source",
                                                      upstream_resource_ids=[self.kp_infores_curie])
 
-    async def answer_one_hop_query_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
+    async def answer_one_hop_query_async(self, query_graph: QueryGraph,
+                                         alter_kg2_treats_edges: bool = False) -> QGOrganizedKnowledgeGraph:
         """
         This function answers a one-hop (single-edge) query using the specified KP.
         :param query_graph: A TRAPI query graph.
@@ -85,6 +86,15 @@ class TRAPIQuerier:
             skipped_message = f"No equivalent curies with supported prefixes found"
             log.update_query_plan(qedge_key, self.kp_infores_curie, "Skipped", skipped_message)
             return final_kg
+
+        # Patch to address lack of answers from KG2 for treats queries after treats refactor #2328
+        if alter_kg2_treats_edges and self.kp_infores_curie == "infores:rtx-kg2":
+            for qedge in qg_copy.edges.values():  # Note there's only ever one qedge per QG here
+                log.info(qedge)
+                qedge.predicates = ["biolink:treats_or_applied_or_studied_to_treat" if predicate == "biolink:treats" else predicate
+                                    for predicate in qedge.predicates]
+                log.info(f"For querying infores:rtx-kg2, edited the QG for this single-hop query to use "
+                         f"the biolink:treats_or_applied_or_studied_to_treat predicate (instead of biolink:treats)")
 
         # Answer the query using the KP and load its answers into our object model
         final_kg = await self._answer_query_using_kp_async(qg_copy)

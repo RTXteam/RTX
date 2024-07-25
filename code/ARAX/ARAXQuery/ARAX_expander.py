@@ -314,10 +314,11 @@ class ARAXExpander:
                     qedge.predicates = [self.bh.get_root_predicate()]
 
         # Expand any specified edges
+        inferred_qedge_keys = [qedge_key for qedge_key, qedge in query_graph.edges.items() if
+                               qedge.knowledge_type == "inferred"]
+        do_issue_2328_patch = True  # Turns on/off the patch for #2328 (treats refactor issue)
         if qedge_keys_to_expand:
             query_sub_graph = self._extract_query_subgraph(qedge_keys_to_expand, query_graph, log)
-            inferred_qedge_keys = [qedge_key for qedge_key, qedge in query_graph.edges.items() if
-                                   qedge.knowledge_type == "inferred"]
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
 
             ordered_qedge_keys_to_expand = self._get_order_to_expand_qedges_in(query_sub_graph, log)
@@ -356,6 +357,8 @@ class ARAXExpander:
                 for kp in kp_selector.valid_kps:
                     response.update_query_plan(qedge_key, kp, 'Waiting', 'Prepping query to send to KP')
                 qedge = query_graph.edges[qedge_key]
+                alter_kg2_treats_edges = True if (do_issue_2328_patch and qedge_key in inferred_qedge_keys
+                                                  and "biolink:treats" in qedge.predicates) else False
 
                 # Create a query graph for this edge (that uses curies found in prior steps)
                 one_hop_qg = self._get_query_graph_for_edge(qedge_key, query_graph, overarching_kg, log)
@@ -429,7 +432,8 @@ class ARAXExpander:
                                                      force_local,
                                                      kp_selector,
                                                      log,
-                                                     multiple_kps=True)
+                                                     multiple_kps=True,
+                                                     alter_kg2_treats_edges=alter_kg2_treats_edges)
                              for kp_to_use in kps_to_query]
                     task_group = asyncio.gather(*tasks)
                     kp_answers = loop.run_until_complete(task_group)
@@ -572,6 +576,19 @@ class ARAXExpander:
         elif mode == "RTXKG2":
             decorator = ARAXDecorator()
             decorator.decorate_edges(response, kind="SEMMEDDB")
+
+        # Second half of patch for #2328; edit KG2 'treats_or_applied_or_studied_to_treat' edges to just 'treats'
+        if mode != "RTXKG2" and do_issue_2328_patch and inferred_qedge_keys:
+            num_edges_altered = 0
+            higher_level_treats_predicates = {"biolink:treats_or_applied_or_studied_to_treat",
+                                              "biolink:applied_to_treat"}
+            for edge in message.knowledge_graph.edges.values():
+                is_kg2_edge = any(source.resource_id == "infores:rtx-kg2" for source in edge.sources)
+                if is_kg2_edge and edge.predicate in higher_level_treats_predicates:
+                    edge.predicate = "biolink:treats"
+                    num_edges_altered += 1
+            if num_edges_altered:
+                log.info(f"Modified the predicate of {num_edges_altered} KG2 edges to biolink:treats")
 
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
@@ -719,7 +736,8 @@ class ARAXExpander:
                                  force_local: bool,
                                  kp_selector: KPSelector,
                                  log: ARAXResponse,
-                                 multiple_kps: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+                                 multiple_kps: bool = False,
+                                 alter_kg2_treats_edges: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
@@ -745,7 +763,8 @@ class ARAXExpander:
                                       kp_timeout=kp_timeout,
                                       kp_selector=kp_selector,
                                       force_local=force_local)
-            answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg)
+            answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg,
+                                                                    alter_kg2_treats_edges=alter_kg2_treats_edges)
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
