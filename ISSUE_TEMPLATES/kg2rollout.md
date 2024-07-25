@@ -1,7 +1,8 @@
 _NOTE: To create a new issue based on this template, simply go to: https://github.com/RTXteam/RTX/issues/new?template=kg2rollout.md_
 
 **THE BRANCH FOR THIS ROLLOUT IS: `________`**
-**THE ARAX-DATABASES.RTX.AI DIRECTORY FOR THIS ROLLOUT IS: `/home/rtxconfig/KG2_____`**
+**THE ARAX-DATABASES.RTX.AI DIRECTORY FOR THIS ROLLOUT IS: `/home/rtxconfig/KG2_____`**  
+**Sprint changelog link: ([Changelog](https://github.com/RTXteam/RTX/issues/ ________))**
 
 #### Prerequisites
 ##### ssh access
