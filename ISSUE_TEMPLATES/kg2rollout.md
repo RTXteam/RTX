@@ -194,7 +194,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
       - [ ] `sudo docker container ls -a` (gives you the name of the container; assume it is `plovercontainer2.X.Y`)
       - [ ] `sudo docker stop plovercontainer2.X.Y`
     - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
-- [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen, who has permissions to do this)
+- [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen or Sundar Pullela, who have permission to do this)
 - [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
 - [ ] update the current RTX GitHub changelog issue (add the rollout of this KG2 version as a changelog item)
       
