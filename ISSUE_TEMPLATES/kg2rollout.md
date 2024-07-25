@@ -191,9 +191,9 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
     - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen, who has permissions to do this)
 - [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
+- [ ]  Update the current RTX GitHub changelog issue (add the rollout of this KG2 version as a changelog item)
       
 #### 7. Roll-out to ITRB TEST
-- [ ] Update the changelog for the respective sprint.
 - [ ] In GitHub, for the RTXteam/RTX project, merge `master` to `itrb-test`. Record this issue number in the merge message.
 - [ ] In GitHub, for the RTXteam/PloverDB project, merge `main` to `itrb-test`. Record this issue number in the merge message.
 - [ ] Tag the release using the `master` branch of RTXteam/RTX project.
