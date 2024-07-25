@@ -191,7 +191,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen, who has permissions to do this)
 - [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
       
-#### 7. Roll-out to ITRB TEST 
+#### 7. Roll-out to ITRB TEST
+- [ ] Update the changelog for the respective sprint.
 - [ ] In GitHub, for the RTXteam/RTX project, merge `master` to `itrb-test`. Record this issue number in the merge message.
 - [ ] In GitHub, for the RTXteam/PloverDB project, merge `main` to `itrb-test`. Record this issue number in the merge message.
 - [ ] Tag the release using the `master` branch of RTXteam/RTX project.
