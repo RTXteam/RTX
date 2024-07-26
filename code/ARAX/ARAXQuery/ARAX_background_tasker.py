@@ -47,7 +47,7 @@ class ARAXBackgroundTasker:
         query_tracker.clear_ongoing_queries()
 
         # Print out our packages for debugging
-        if True:  # set to true to print out the packages
+        if False:  # set to true to print out the packages
             eprint("Installed packages:")
             for location, modname, flag in pkgutil.iter_modules():
                 location = f"{location}"
