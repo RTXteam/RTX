@@ -39,7 +39,7 @@ jobs:
     - name: Set up config files
       run: |
         scp araxconfig@araxconfig.rtx.ai:config_secrets.json /mnt/config/config_secrets.json
-        echo "http://localhost:5008/api/rtxkg2/v1.4" > /mnt/config/kg2_url_override.txt
+        echo "http://localhost:5008/api/rtxkg2/v1.5" > /mnt/config/kg2_url_override.txt
 
     # - name: Append code dir to GITHUB_PATH                # Causing RTXConfiguration import error
     #   run: echo $GITHUB_PATH
