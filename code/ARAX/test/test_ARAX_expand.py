@@ -1516,5 +1516,61 @@ def test_klat_attributes():
                    if attribute.attribute_type_id in {"biolink:knowledge_level", "biolink:agent_type"})
 
 
+def test_treats_patch_issue_2328():
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["MONDO:0015564"]
+            },
+            "chemical": {
+                "categories": ["biolink:ChemicalEntity"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:treats"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    assert edges_by_qg_id["t_edge"]
+    kg2_edges_treats = [edge for edge in edges_by_qg_id["t_edge"].values()
+                        if any(source.resource_id == "infores:rtx-kg2" for source in edge.sources)]
+    print(f"Answer includes {len(kg2_edges_treats)} edges from KG2")
+    assert kg2_edges_treats
+    for edge in kg2_edges_treats:
+        assert edge.predicate == "biolink:treats"
+        assert edge.attributes
+
+    # Verify that the predicate editing doesn't happen outside of inferred mode
+    query = {
+        "nodes": {
+            "disease": {
+                "ids": ["MONDO:0015564"]
+            },
+            "chemical": {
+                "categories": ["biolink:ChemicalEntity"]
+            }
+        },
+        "edges": {
+            "t_edge": {
+                "object": "disease",
+                "subject": "chemical",
+                "predicates": ["biolink:treats_or_applied_or_studied_to_treat", "biolink:applied_to_treat"]
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    assert edges_by_qg_id["t_edge"]
+    kg2_edges_treats_or = [edge for edge in edges_by_qg_id["t_edge"].values()
+                           if any(source.resource_id == "infores:rtx-kg2" for source in edge.sources)]
+    print(f"Answer includes {len(kg2_edges_treats_or)} edges from KG2")
+    assert kg2_edges_treats_or
+    assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:treats_or_applied_or_studied_to_treat")
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
