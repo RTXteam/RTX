@@ -90,7 +90,7 @@ class TRAPIQuerier:
         # Patch to address lack of answers from KG2 for treats queries after treats refactor #2328
         if alter_kg2_treats_edges and self.kp_infores_curie == "infores:rtx-kg2":
             for qedge in qg_copy.edges.values():  # Note there's only ever one qedge per QG here
-                log.info(qedge)
+                #log.info(qedge)
                 qedge.predicates = ["biolink:treats_or_applied_or_studied_to_treat" if predicate == "biolink:treats" else predicate
                                     for predicate in qedge.predicates]
                 log.info(f"For querying infores:rtx-kg2, edited the QG for this single-hop query to use "
