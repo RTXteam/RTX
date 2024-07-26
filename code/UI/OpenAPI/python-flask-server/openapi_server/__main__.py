@@ -164,8 +164,8 @@ def main():
         eprint("Starting flask application in the parent process")
         setproctitle.setproctitle(setproctitle.getproctitle() +
                                   f" [port={tcp_port}]")
-        # if rtx_config.telemetry_enabled:
-        #     instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
+        if rtx_config.telemetry_enabled:
+            instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
         app.run(port=local_config['port'], threaded=True)
     else:
         eprint("[__main__]: fork() unsuccessful")
