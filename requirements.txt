@@ -14,7 +14,7 @@ scikit-learn==1.1.2
 connexion==2.14.1
 connexion[swagger-ui]
 Flask==2.2.5
-Flask-Cors==3.0.10
+Flask-Cors==4.0.1
 SQLAlchemy==1.4.47
 pymysql==1.1.1
 CacheControl==0.12.11
