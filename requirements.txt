@@ -31,7 +31,7 @@ treelib==1.6.1
 asyncio==3.4.3
 aiohttp==3.9.4
 boto3==1.24.59
-tornado==6.3.3
+tornado==6.4.1
 MarkupSafe==2.1.2
 reasoner-validator==4.2.3
 pronto==2.5.3
