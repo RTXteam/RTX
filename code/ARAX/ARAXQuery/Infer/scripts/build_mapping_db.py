@@ -1,4 +1,3 @@
-
 """
 This script is used to build a database for mapping the nodes and edges in the predicted paths generated from KGML-xDTD model to the original KG2 graph.
 Author: Chunyu Ma
@@ -106,8 +105,8 @@ class xDTDMappingDB():
             ## load kgml_xdtd data
             print("Loading KGML-xDTD data...", flush=True)
             kgml_xdtd_graph_nodes = pd.read_csv(os.path.join(self.kgml_xdtd_data_path, 'entity2freq.txt'), sep='\t', header=None).drop(columns=[1])
-            kgml_xdtd_graph_edges = pd.read_csv(os.path.join(self.kgml_xdtd_data_path, 'graph_edges.txt'), sep='\t', header=0)
-            kgml_xdtd_graph_edges_dict = {(row[0],row[2],row[1]):1 for row in kgml_xdtd_graph_edges.to_numpy()}
+            # kgml_xdtd_graph_edges = pd.read_csv(os.path.join(self.kgml_xdtd_data_path, 'graph_edges.txt'), sep='\t', header=0)
+            # kgml_xdtd_graph_edges_dict = {(row[0],row[2],row[1]):1 for row in kgml_xdtd_graph_edges.to_numpy()}
             # kgml_xdtd_graph_edges_dict = {}
             # for row in tqdm(kgml_xdtd_graph_edges.to_numpy()):
             #     if row[2] == 'biolink:entity_regulates_entity':
@@ -160,10 +159,12 @@ class xDTDMappingDB():
                 data_reader = csv.reader(data_tsv, delimiter='\t')
                 tsv_edge_df = pd.DataFrame([row for row in data_reader])
                 tsv_edge_df.columns = headers
-                tsv_edge_df = tsv_edge_df[['subject','object','predicate','knowledge_source','publications','publications_info','kg2_ids']]
+                ## filter out the 'domain_range_exclusion==True' edge
+                tsv_edge_df = tsv_edge_df.loc[tsv_edge_df['domain_range_exclusion'] != 'True',:].reset_index(drop=True)
+                tsv_edge_df = tsv_edge_df[['subject','object','predicate','primary_knowledge_source','publications','publications_info','kg2_ids']]
                 # Split 'knowledge_sources' on 'ǂ' and then explode it
-                tsv_edge_df['knowledge_source'] = tsv_edge_df['knowledge_source'].str.split('ǂ')
-                tsv_edge_df = tsv_edge_df.explode('knowledge_source')
+                # tsv_edge_df['knowledge_source'] = tsv_edge_df['knowledge_source'].str.split('ǂ')
+                # tsv_edge_df = tsv_edge_df.explode('knowledge_source')
     
             ## Insert node information into database
             print("Inserting into NODE_MAPPING_TABLE...", flush=True)
@@ -177,11 +178,11 @@ class xDTDMappingDB():
             ## Intert edge information into database
             print("Inserting into EDGE_MAPPING_TABLE...", flush=True)
             for row in tqdm(tsv_edge_df.to_numpy()):
-                if (row[0], row[2], row[1]) in kgml_xdtd_graph_edges_dict:
+                # if (row[0], row[2], row[1]) in kgml_xdtd_graph_edges_dict:
                     ## intsert into database
-                    row = [f"{row[0]}--{row[2]}--{row[1]}"] + list(row)
-                    insert_command = f"INSERT INTO EDGE_MAPPING_TABLE values (?,?,?,?,?,?,?,?)"
-                    self.connection.execute(insert_command, tuple(row))
+                row = [f"{row[0]}--{row[2]}--{row[1]}"] + list(row)
+                insert_command = f"INSERT INTO EDGE_MAPPING_TABLE values (?,?,?,?,?,?,?,?)"
+                self.connection.execute(insert_command, tuple(row))
             print(f"Inserting into EDGE_MAPPING_TABLE is completed", flush=True)
             self.connection.commit()
 
@@ -213,13 +214,19 @@ class xDTDMappingDB():
             query = f"SELECT * FROM NODE_MAPPING_TABLE WHERE id = '{node_id}'"
             cursor.execute(query)
             ## create a named tuple
-            res = res._make(cursor.fetchone())
+            temp_result = cursor.fetchone()
+            if temp_result is None:
+                return None
+            res = res._make(temp_result)
             return res
         elif node_name is not None and type(node_name) == str:
             query = f"SELECT * FROM NODE_MAPPING_TABLE WHERE name = '{node_name}'"
             cursor.execute(query)
             ## create a named tuple
-            res = res._make(cursor.fetchone())
+            temp_result = cursor.fetchone()
+            if temp_result is None:
+                return None
+            res = res._make(temp_result)
             return res
         else:
             return None
@@ -243,8 +250,12 @@ class xDTDMappingDB():
         elif triple_name is not None and type(triple_name) == tuple:
             subject_name, predicate, object_name = triple_name
             subject_info = self.get_node_info(node_name=subject_name)
+            if not subject_info:
+                return []
             subject_id = subject_info.id
             object_info = self.get_node_info(node_name=object_name)
+            if not object_info:
+                return []
             object_id = object_info.id
             if predicate != 'SELF_LOOP_RELATION':
                 query = f"SELECT * FROM EDGE_MAPPING_TABLE WHERE triple = '{subject_id}--{predicate}--{object_id}'"

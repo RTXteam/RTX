@@ -1,39 +1,53 @@
 # What is KG2canonicalized?
 
-KG2canonicalized (KG2c) is a version of KG2 in which synonymous nodes have been merged.  
-It is built from [KG2pre](https://github.com/RTXteam/RTX-KG2) and uses the [ARAX NodeSynonymizer](https://github.com/RTXteam/RTX/tree/master/code/ARAX/NodeSynonymizer) to determine which nodes are equivalent. 
+RTX-KG2canonicalized (RTX-KG2c, or simply KG2c) is a version of RTX-KG2 in which synonymous nodes have been merged. 
+Its build process consists of:
+1) [building a NodeSynonymizer](https://github.com/RTXteam/RTX/tree/master/code/kg2c/synonymizer_build) based on information in [RTX-KG2pre](https://github.com/RTXteam/RTX-KG2) as well as two other sources,
+1) using that NodeSynonymizer to identify synonymous nodes in [RTX-KG2pre](https://github.com/RTXteam/RTX-KG2), and
+1) merging the synonymous nodes (i.e., doing entity resolution).
 
-### Schema
+### Graph schema
+
+Like RTX-KG2pre, KG2c adheres to the [Biolink model](https://github.com/biolink/biolink-model) for its semantic layer and schema.
 
 ###### Example KG2c node:
 ```
 {
-  "id": "CHEMBL.COMPOUND:CHEMBL3349001", 
-  "name": "AVN-944",
+  "id": "CHEBI:40116",
+  "name": "propyl acetate",
   "category": "biolink:SmallMolecule",
-  "iri": "https://identifiers.org/chembl.compound:CHEMBL3349001",
-  "description": "UMLS Semantic Type: UMLSSC:T121; UMLS Semantic Type: UMLSSC:T109; AVN944 is a biotech drug that demonstrated a statistically meaningful impact on IMPDH and other proteins that are critical to activities in cancer cells, including nucleotide biosynthesis, energy and metabolism, DNA replication, apoptosis and cell cycle control. AVN944 has been associated with cancer cell death in clinical trials. It is being investigated for the treatment of patients with advanced hematologic malignancies.",
+  "iri": "http://purl.obolibrary.org/obo/CHEBI_40116",
+  "description": "Propyl acetate, also known as 1-acetoxypropane or propyl ethanoate, belongs to the class of organic compounds known as carboxylic acid esters. These are carboxylic acid derivatives in which the carbon atom from the carbonyl group is attached to an alkyl or an aryl moiety through an oxygen atom (forming an ester group). It is formed by the esterification of acetic acid and 1-propanol (known as a condensation reaction), often via Fischer–Speier esterification, with sulfuric acid as a catalyst and water produced as a byproduct. This clear, colorless liquid is known by its characteristic odor of pears. Propyl acetate is a drug. Propyl acetate is a bitter, celery, and fruity tasting compound. It has been detected, but not quantified, in several different foods, such as muskmelons, figs, apples, pineapples, and cocoa beans. Due to this fact, it is commonly used in fragrances and as a flavor additive. Propyl acetate has been found to be associated with the diseases such as nonalcoholic fatty liver disease; also propyl acetate has been linked to the inborn metabolic disorders including celiac disease.",
   "equivalent_curies": [
-    "MESH:C526922",
-    "DRUGBANK:DB05500",
-    "CHEMBL.COMPOUND:CHEMBL3349001"
+    "RXNORM:1649519",
+    "MESH:C026498",
+    "UMLS:C0072214",
+    "UNII:4AWM8C91G6",
+    "DRUGBANK:DB01670",
+    "RXCUI:1649519",
+    "CHEMBL.COMPOUND:CHEMBL44857",
+    "CHEBI:40116",
+    "HMDB:HMDB0034237",
+    "PUBCHEM.COMPOUND:7997",
+    "CAS:109-60-4",
+    "INCHIKEY:YKYONYBAUNKHLG-UHFFFAOYSA-N"
   ],
   "all_names": [
-    "AVN-944",
-    "Avn 944",
-    "Avn-944"
+    "propyl acetate",
+    "ACETIC ACID PROPYL ESTER",
+    "Propyl acetate"
   ],
   "all_categories": [
-    "biolink:ChemicalEntity",
-    "biolink:SmallMolecule"
+    "biolink:SmallMolecule",
+    "biolink:Drug"
   ],
   "publications": [
-    "PMID:17462731",
-    "PMID:17659481"
+    "PMID:2033592",
+    "PMID:15857133"
   ]
 }
 ```
-The node `id` is the 'preferred' curie for the group of synonymous nodes this KG2c node represents (according to the ARAX `NodeSynonymizer`). Similarly, the node `category` and `name` are the 'preferred' category/name, according to the `NodeSynonymizer`.
+The node `id` is the 'preferred' curie for the group of synonymous nodes this KG2c node represents (according to the `NodeSynonymizer`). Similarly, the node `category` and `name` are the 'preferred' category/name, according to the `NodeSynonymizer`.
 
 In the Neo4j instantiation of KG2c (see [below section](#host-kg2canonicalized-in-neo4j) for how to host KG2c in Neo4j), nodes are labeled with their `all_categories` and ancestors of those categories.
 
@@ -58,9 +72,9 @@ In creating KG2c, edges from KG2pre are remapped to use only 'preferred' curies 
 
 The `kg2_ids` property captures the IDs of the edges in KG2pre that this KG2c edge was created from. 
 
-# How to create it
+# How to build KG2c
 
-### Build KG2canonicalized
+### Initial set up
 
 If the machine you'll be using has never previously built a KG2c, you need to do some environmental set-up:
 
@@ -73,50 +87,108 @@ If the machine you'll be using has never previously built a KG2c, you need to do
 1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
     1. Create a copy of `config_secrets.json` that contains the proper secrets for your own KG2pre Neo4j endpoint
 
-To run the build:  
-    The build requires ~200GB of RAM and 2-11 hours depending on your settings in **kg2c_config.json**
 
-1. Make sure you have the **latest code** from whatever branch of the **RTX** repo you'll be doing the build from (e.g., do `git pull origin master` if you're doing this build from the `master` branch)
-2. Locally modify the KG2c build **config file** (`RTX/code/kg2c/kg2c_config.json`) for your particular needs:
-    - `kg2pre_version`: Specify the KG2pre version you want to build this KG2c from (e.g., 2.6.7)
-    - `biolink_version`: Should match the Biolink version used by the KG2pre you specified (e.g., 1.8.1)
-    - `upload_to_arax_databases.rtx.ai`: Specify whether build artifacts should be uploaded to arax-databases.rtx.ai (generally should be `true` unless you're doing a debugging build)
-    - `upload_directory`: The path to the directory on arax-databases.rtx.ai where artifacts should be uploaded (e.g., `/home/rtxconfig/KG2.6.7`)
-        - **WARNING**: If this is pointing to the wrong directory, data may be overwritten! Be careful.
-    - Under the `synonymizer` slot:
-        - `build`: Set this to true if you want to build a **new** synonymizer (from your specified KG2pre version), false otherwise
-        - `synonymizer_db_version`: The minor version of the synonymizer to build/use (e.g., "v1.0")
-    - Under the `kg2c` slot:
-        - `build`: Specify whether you want a KG2c to be built (sometimes it can be useful to build only a synonymizer and not a KG2c)
-        - `kg2c_db_version`: The minor version for this KG2c build (e.g., "v1.0")
-        - `use_nlp_to_choose_descriptions`: This should generally be set to `true`, unless you're doing a 'debugging' build that doesn't involve debugging of node descriptions. In that case you may want to set this to `false` because it will shave a few hours off the build time. (When `true`, an NLP method will be used to choose the best node descriptions; when `false`, the longest description under a certain limit will be chosen.)
-        - `upload_to_s3`: Indicates whether you want the final output KG2c files (JSON and a tarball of TSVs) to automatically be uploaded to the KG2 S3 bucket (this should generally be `true` unless you're doing a 'debugging' build)
-        - `start_from_kg2c_json`: Set to `true` if you want to resume a build starting with the `kg2c.json` in `RTX/code/kg2c`. (Allows partial builds starting from the point after canonicalization is done.)
-        - `use_local_kg2pre_tsvs`: Set to `true` if you **don't** want the latest KG2pre TSVs to be downloaded from the `rtx-kg2` S3 bucket; if set to true, you must make sure your four Neo4j-ready KG2pre TSVs are in `RTX/code/kg2c/kg2pre_tsvs/`.
-3. Run a test build to make sure things go ok:
-    - `python RTX/code/kg2c/build_kg2c.py --test`
-4. Then do the actual build (should take ~200GB of RAM and 2-11 hours depending on your settings in `kg2c_config.json`):
-    - `python RTX/code/kg2c/build_kg2c.py`
+### Building KG2c
+
+#### Recommended steps
+
+At a high level, building KG2c consists of running **two scripts**: one to build the NodeSynonymizer and one to build 
+the actual KG2c graph. It requires ~200GB of RAM; we run the build on an `r5a.8xlarge` AWS EC2 instance 
+(`buildkg2c.rtx.ai`).
+
+The steps we recommend to do the build are listed below; we are pretending that the KG2pre version we want to build
+this KG2c from is 2.10.0, the Biolink model version that that KG2pre uses is 4.2.0, and the 'sub-version' for this 
+build is v1.0. See the [Build options section](#build-options) for an explanation of the sub-version and other 
+flags/options.
+
+1. Make sure you have the **latest code** from whatever branch of the **RTX** repo you'll be doing the build from
+(e.g., do `git checkout kg2.10.0c` and `git pull origin kg2.10.0c` if want to do this build from the `kg2.10.0c` branch)
+1. **Build the synonymizer**:
+   1. `screen -S synonymizer`
+   1. `pyenv activate rtx` if you're using buildkg2c.rtx.ai; otherwise activate your python environment however necessary
+   1. `cd RTX/code/kg2c/synonymizer_build`
+   2. `python build_synonymizer.py 2.10.0 v1.0 --downloadkg2pre --uploadartifacts`
+   1. once the build finishes, run the regression test suite:
+      1. `pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.X.Y.sqlite`
+1. **Do a test KG2c build**: If you're satisfied with the synonymizer, proceed with a test KG2c build:
+   2. `screen -S kg2c`
+   3. `pyenv activate rtx` if you're using buildkg2c.rtx.ai; otherwise activate your python environment however necessary
+   1. `cd RTX/code/kg2c`
+   4. `python build_kg2c.py 2.10.0 v1.0 4.2.0 --uploadartifacts --test`
+1. **Do the full KG2c build**: Then, if everything went smoothly, do the full build (we're assuming you're in the same `screen` session):
+   4. `python build_kg2c.py 2.10.0 v1.0 4.2.0 --uploadartifacts`
+
+The synonymizer build should take around 5 hours and the KG2c build should take around 10 hours.
 
 In the end, KG2c will be created and stored in multiple file formats, including TSVs ready for import into Neo4j.
 
-### Build only an ARAX NodeSynonymizer
+#### Build options
 
-If you want to build _only_ an ARAX NodeSynonymizer from your KG2 version, follow the same steps as in the [above section](#build-kg2canonicalized),
-simply making sure to set the `kg2c` --> `build` slot in the config file to `false` and the `synonymizer` --> `build` slot to `true`.
+You can see explanations for the different **synonymizer build** options by running 
+`python RTX/code/kg2c/synonymizer_build/build_synonymizer.py --help`, which spits this info out to the command line:
+```commandline
+usage: build_synonymizer.py [-h] [-d] [-u] kg2pre_version sub_version [start_at]
 
-This will build a synonymizer off of the KG2pre TSVs and then halt before building
-a KG2c. This can be very useful when debugging conflations or other synonymization issues. In particular, after your
-synonymizer build is done, you may want to inspect the various reports output to the `RTX/code/kg2c/synonymizer_build` directory.
+positional arguments:
+  kg2pre_version        The version of KG2pre to build this synonymizer from (e.g., 2.10.0).
+  sub_version           The sub-version for this KG2c build (e.g., v1.0); we always use v1.0 the
+                        first time we are building KG2c from a given KG2pre version; if we do a
+                        second build of KG2c from that *same* KG2pre version, we would use v1.1,
+                        and so on.
+  start_at              Optional parameter that specifies the step in the synonymizer build to
+                        begin at (default is 1; valid values are 1-5). Allows partial builds of
+                        the synonymizer; used only for development purposes. Step 1 is building
+                        the KG2pre match graph, 2 is building the SRI NodeNormalizer match graph,
+                        3 is merging the match graphs, 4 is clustering the merged match graph,
+                        and 5 is creating the final synonymizer sqlite and build reports.
 
-If you build a synonymizer and then decide you want to move forward with a KG2c build using it, just adjust your
-config file once again:
-* Set the `kg2c` --> `build` slot to `true`
-* Set the `synonymizer` --> `build` slot to `false`
+optional arguments:
+  -h, --help            show this help message and exit
+  -d, --downloadkg2pre  Specifies that the KG2pre TSV files should be downloaded from S3. If this
+                        flag is not set, local KG2pre TSVs will be used.
+  -u, --uploadartifacts
+                        Specifies that artifacts of the build should be uploaded to the ARAX
+                        databases server.
+```
 
-And then once again run `python3 RTX/code/kg2c/build_kg2c.py`.
+Similarly, you can see explanations for the different **KG2c build** options by running 
+`python RTX/code/kg2c/build_kg2c.py --help`, which spits this info out to the command line:
 
-### Host KG2canonicalized in Neo4j
+```commandline
+usage: build_kg2c.py [-h] [-d] [-u] [-t]
+                     kg2pre_version sub_version biolink_version [synonymizer_override]
+
+positional arguments:
+  kg2pre_version        The version of KG2pre to build this KG2c from (e.g., 2.10.0).
+  sub_version           The sub-version for this KG2c build (e.g., v1.0); we always use v1.0 the first
+                        time we are building KG2c from a given KG2pre version; if we do a second build
+                        of KG2c from that *same* KG2pre version, we would use v1.1, and so on.
+  biolink_version       The Biolink version that the given KG2pre version uses (e.g., 4.2.0). You can
+                        look this up on the KG2pre versions markdown page at: github.com/RTXteam/RTX-
+                        KG2/blob/master/docs/kg2-versions.md
+  synonymizer_override  Optional parameter that specifies the file name of the synonymizer you want to
+                        force this KG2c build to use (e.g., node_synonymizer_v1.0_KG2.9.0.sqlite); used
+                        for development work. The file you specify must be present in the
+                        RTX/code/ARAX/NodeSynonymizer subdir locally. By default, the build will
+                        determine the synonymizer file name based on the kg2pre_version and sub_version
+                        parameters, but you can override that with this optional parameter.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -d, --downloadkg2pre  Specifies that the KG2pre TSV files should be downloaded from S3. If this flag
+                        is not set, local KG2pre TSVs will be used.
+  -u, --uploadartifacts
+                        Specifies that artifacts of the build should be uploaded to the ARAX databases
+                        server and to the RTX-KG2 S3 bucket.
+  -t, --test            Specifies whether to do a test build. Test builds create a smaller version of
+                        the KG2pre TSVs and do a KG2c build off of those. They ensure that the test
+                        graph does not include any orphan edges. All output files from test builds are
+                        named with a '_TEST' suffix.
+```
+
+
+
+### Hosting KG2c in Neo4j
 The Neo4j instances are usually present on the AWS EC2 instances `KG2canonicalized.rtx.ai` and `KG2canonicalized2.rtx.ai`.  
 Please check the **CNAME** to **ANAME** mapping on **AWS Lightsail** to verify what EC2 instance's Neo4j to update with the latest KG2c version. 
 
@@ -151,42 +223,6 @@ python3 RTX/code/kg2c/setup_for_neo4j.py
 bash -x RTX/code/kg2c/tsv-to-neo4j-canonicalized.sh
 ```
 
-### Upload KG2C to KGE (Knowledge Graph Exchange) (Deprecated)
-##### Generate TSV files
-
-The following should be run in the build system, typically `buildkg2c.rtx.ai`, in the folder where the files `nodes_c.tsv` and `edges_c.tsv` are stored. 
-
-(1) Use python3.7 in a virtual environment and install kgx, if kgx has not yet been installed.
-```
-python3.7 -m venv venv
-venv/bin/pip3.7 install kgx
-source venv/bin/activate
-```
-
-(2) Run the script `kg2c_tsv_to_kgx_tsv.py` to generate output files `nodes.tsv` and `edges.tsv`.
-```
-python3.7 kg2c_tsv_to_kgx_tsv.py
-```
-
-(3) Validate output files and generate `content_metadata.json` using `kgx-validation-and-metagraph.sh`.
-```
-bash -x kgx-validation-and-metagraph.sh
-```
-
-##### Upload to KGE
-
-(4) Upload `edges.tsv`, `nodes.tsv`, and `content_metadata.json` to a public S3 bucket. 
-```
-aws s3 sp edges.tsv s3://rtx-kg2-public
-aws s3 sp nodes.tsv s3://rtx-kg2-public
-aws s3 sp content_metadata.json s3://rtx-kg2-public
-```
-
-(5) Upload `edges.tsv`, `nodes.tsv`, and `content_metadata.json` to the Knowledge Graph Exchange at `https://archive.translator.ncats.io/home`. Select `RTX_KG2c` from the dropdown next to `Choose a Knowledge Graph`. Click `Add a new file set`. Use the URLs for each file in the S3 buckets to upload to KGE. 
-
-(6) Click `Done uploading` once all three files are uploaded. 
-
-(7) Rename `edges.tsv`, `nodes.tsv`, and `content_metadata.json` with current version number and move to private s3 bucket, `s3://rtx-kg2`.
 
 # Contact
 ## Maintainer

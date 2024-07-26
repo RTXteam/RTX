@@ -233,7 +233,7 @@ function pasteExample(type) {
 	document.getElementById("dslText").value = '# This program creates two query nodes and a query edge between them, looks for matching edges in the KG,\n# overlays NGD metrics, and returns the top 30 results\nadd_qnode(name=acetaminophen, key=n0)\nadd_qnode(categories=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand()\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
     }
     else if (type == "JSON1") {
-	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicates": ["biolink:physically_interacts_with"]\n      }\n   },\n   "nodes": {\n      "n00": {\n         "ids":        ["CHEMBL.COMPOUND:CHEMBL112"]\n      },\n      "n01": {\n         "categories":  ["biolink:Protein"]\n      }\n   }\n}\n';
+	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicates": ["biolink:interacts_with"]\n      }\n   },\n   "nodes": {\n      "n00": {\n         "ids":        ["CHEMBL.COMPOUND:CHEMBL112"]\n      },\n      "n01": {\n         "categories":  ["biolink:Protein"]\n      }\n   }\n}\n';
     }
     else if (type == "JSON2") {
 	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "attribute_constraints": [],\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:treats"\n      ],\n      "qualifier_constraints": [],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Disease"\n      ],\n      "constraints": [],\n      "ids": [\n        "MONDO:0015564"\n      ],\n      "is_set": false\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ],\n      "constraints": [],\n      "is_set": false\n    }\n  }\n}\n';
@@ -3945,6 +3945,7 @@ function mapEdgeColor(ele,num) {
     if (etype == "biolink:contraindicated_for")       { return "red";}
     if (etype == "biolink:indicated_for")             { return "green";}
     if (etype == "biolink:physically_interacts_with") { return "green";}
+    if (etype == "biolink:interacts_with")            { return "green";}
     return "#aaf";
 }
 
@@ -6840,10 +6841,12 @@ function generateLoadTimeTestResults(loadtestdata) {
         tr.className = 'hoverable';
 
 	td = document.createElement("td");
+	td.rowSpan = '2';
         td.innerText = num+'.';
 	tr.appendChild(td);
 
         td = document.createElement("td");
+	td.rowSpan = '2';
 	var link = document.createElement("a");
 	link.title = 'view this response';
 	link.style.cursor = "pointer";
@@ -6914,6 +6917,37 @@ function generateLoadTimeTestResults(loadtestdata) {
 	}
 
 	table.appendChild(tr);
+
+	if (obj['merge_report']) {
+            tr = document.createElement("tr");
+	    tr.style.backgroundColor = 'initial';
+            tr.className = 'hoverable';
+
+	    td = document.createElement("td");
+	    td.append("Merge:");
+	    tr.appendChild(td);
+
+            for (var agent of Object.keys(all_agents).sort()) {
+		td = document.createElement("td");
+		td.style.borderLeft = "1px solid black";
+		td.style.textAlign = 'left';
+		if (obj['merge_report'][agent])
+		    td.append(obj['merge_report'][agent]['status']);
+		else
+		    td.append('NA');
+		tr.appendChild(td);
+
+		td = document.createElement("td");
+		td.style.textAlign = 'right';
+                if (obj['merge_report'][agent])
+		    td.append(obj['merge_report'][agent]['completion_time'].toFixed(2));
+		else
+		    td.append('');
+		tr.appendChild(td);
+	    }
+
+	    table.appendChild(tr);
+	}
     }
 
     tdiv.appendChild(table);
@@ -7194,6 +7228,7 @@ function displayARSResults(parentnode,arsdata) {
 
 	for (var agent of arsdata['ara_list']) {
 	    td = document.createElement("td");
+            td.style.borderLeft = "1px solid black";
             td.style.textAlign = "right";
             td.innerText = (stats[agent][status]!=null) ? stats[agent][status] : '.';
 	    tr.appendChild(td);
@@ -7201,7 +7236,8 @@ function displayARSResults(parentnode,arsdata) {
 	    td = document.createElement("td");
 	    if (status == 'PASSED') {
 		var cnf = (100*Number(stats[agent][status])/num).toFixed(1);
-		var pcl = Number(stats[agent][status])>=350 ? "p9" : Number(stats[agent][status])>=175 ? "p3" : "p1";
+		var passing = document.getElementById("whichsystest").options[document.getElementById("whichsystest").selectedIndex].text.includes("Sprint 4") ? 40 : 350;
+		var pcl = Number(stats[agent][status])>=passing ? "p9" : Number(stats[agent][status])>=(passing/2) ? "p3" : "p1";
 
 		td.title = 'Current Translator goal of 350 passing tests :: ';
 		td.title += (pcl == 'p9') ? 'YES':'NO';
