@@ -1,7 +1,8 @@
 _NOTE: To create a new issue based on this template, simply go to: https://github.com/RTXteam/RTX/issues/new?template=kg2rollout.md_
 
 **THE BRANCH FOR THIS ROLLOUT IS: `________`**
-**THE ARAX-DATABASES.RTX.AI DIRECTORY FOR THIS ROLLOUT IS: `/home/rtxconfig/KG2_____`**
+**THE ARAX-DATABASES.RTX.AI DIRECTORY FOR THIS ROLLOUT IS: `/home/rtxconfig/KG2_____`**  
+**Sprint changelog link: ([Changelog](https://github.com/RTXteam/RTX/issues/ ________))**
 
 #### Prerequisites
 ##### ssh access
@@ -16,7 +17,7 @@ To complete this workflow, you will need `ssh` access to:
 ##### GitHub access
 - [ ] write access to the `RTXteam/PloverDB` project area
 - [ ] write access to the `RTXteam/RTX` project area
-- [ ] write access to the `ncats/translator-lfs-artifacts` project area (not critical, but needed for some final archiving steps; Amy Glen has access)
+- [ ] write access to the `ncats/translator-lfs-artifacts` project area (not critical, but needed for some final archiving steps; Amy Glen and Sundar Pullela have access)
 
 ##### AWS access
 You will need:
@@ -70,7 +71,13 @@ Host arax.ncats.io
 - [ ] start the new self-hosted PloverDB on `kg2cploverN.rtx.ai`:
   - [ ] `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] `cd PloverDB && git pull origin kg2.X.Yc`
-  - [ ] `./run.sh ploverimage2.X.Y plovercontainer2.X.Y "sudo docker"`
+  - [ ] if you have **not** yet built the 2.X.Y docker image/container on this instance, run:
+    - [ ] `./run.sh ploverimage2.X.Y plovercontainer2.X.Y "sudo docker"` (takes about an hour)
+  - [ ] otherwise, simply run:
+    - [ ] `sudo docker start plovercontainer2.X.Y` (takes about five minutes)
+- [ ] verify that Plover's regression tests pass, and fix any broken tests (note: tests must use **canonical** curies!); from any instance/computer, run:
+  - [ ] `cd PloverDB`
+  - [ ] `pytest -v test/test.py --endpoint http://kg2cploverN.rtx.ai:9990`
 - [ ] update `config_dbs.json` in the branch for this KG2 version in the RTX repo to point to the new Plover **for the 'dev' maturity level**
 
 #### 2. Rebuild downstream databases:
@@ -160,6 +167,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 #### 6. Final items/clean up:
 
+- [ ] update the current RTX GitHub changelog issue (add the rollout of this KG2 version as a changelog item)
+- [ ] delete the `kg2.X.Yc` branch in the RTX repo (since it has been merged into `master` at this point)
 - [ ] turn off the old KG2c version's neo4j instance (if it has not already been turned off; it is likely to have been turned off when the old KG2c was rolled out)
   - [ ] determine what is the DNS A record hostname for `kg2-X-Zc.rtx.ai` (where `Z` is one less than the new minor release version): run `nslookup kg2-X-Zc.rtx.ai` (it will return either `kg2canonicalized.rtx.ai` or `kg2canonicalized2.rtx.ai`; we'll call it `kg2canonicalizedN.rtx.ai`).
   - [ ] message the `#deployment` channel in the `ARAXTeam` Slack workspace that you will be stopping the `kg2canonicalizedN.rtx.ai` Neo4j endpoint
@@ -177,6 +186,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
     - [ ] merge PloverDB `kg2.X.Yc` branch into `main` branch. Reference this issue (via its full GitHub URL) in the merge message.
     - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)
     - [ ] wait about 60 minutes for Jenkins to build the PloverDB project and deploy it to `kg2cploverdb.ci.transltr.io`
+    - [ ] verify the CI Plover is running the new KG2 version by running the following test and inspecting the command line output: `cd PloverDB && pytest -vs test/test.py -k test_version --endpoint https://kg2cploverdb.ci.transltr.io`
     - [ ] run Plover tests to verify it's working: `cd PloverDB && pytest -v test/test.py --endpoint https://kg2cploverdb.ci.transltr.io`
     - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in (locally change the URL in `RTX/code/config_dbs.json` and set `force_local = True` in Expand)
     - [ ] if all tests pass, update `RTX/code/config_dbs.json` in the `master` branch to point to the ITRB Plover endpoints (all maturity levels): (`dev`: `kg2cploverdb.ci.transltr.io`; `test`: `kg2cploverdb.test.transltr.io`; `prod`: `kg2cploverdb.transltr.io`)
@@ -188,10 +198,11 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
       - [ ] `sudo docker container ls -a` (gives you the name of the container; assume it is `plovercontainer2.X.Y`)
       - [ ] `sudo docker stop plovercontainer2.X.Y`
     - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
-- [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen, who has permissions to do this)
-- [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo
-      
-#### 7. Roll-out to ITRB TEST 
+    - [ ] delete the `kg2.X.Yc` branch in the PloverDB repo (since it has been merged into `main` at this point)
+- [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen or Sundar Pullela, who have permission to do this)
+- [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo 
+
+#### 7. Roll-out to ITRB TEST
 - [ ] In GitHub, for the RTXteam/RTX project, merge `master` to `itrb-test`. Record this issue number in the merge message.
 - [ ] In GitHub, for the RTXteam/PloverDB project, merge `main` to `itrb-test`. Record this issue number in the merge message.
 - [ ] Tag the release using the `master` branch of RTXteam/RTX project.

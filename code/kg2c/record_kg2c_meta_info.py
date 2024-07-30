@@ -104,7 +104,7 @@ def build_meta_kg(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str,
 
 
 def add_neighbor_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], edges_by_id: Dict[str, Dict[str, any]],
-                                  sqlite_file_name: str, label_property_name: str, is_test: bool):
+                                  sqlite_file_name: str, label_property_name: str):
     logging.info("Counting up node neighbors by category..")
     # First gather neighbors of each node by label/category
     neighbors_by_label = defaultdict(lambda: defaultdict(lambda: set()))
@@ -114,13 +114,12 @@ def add_neighbor_counts_to_sqlite(nodes_by_id: Dict[str, Dict[str, any]], edges_
         object_node_id = edge["object"]
         neighbors[subject_node_id].add(object_node_id)  # Used for overall neighbor counts later
         neighbors[object_node_id].add(subject_node_id)  # Used for overall neighbor counts later
-        if not is_test or (subject_node_id in nodes_by_id and object_node_id in nodes_by_id):
-            subject_node = nodes_by_id[subject_node_id]
-            object_node = nodes_by_id[object_node_id]
-            for label in object_node[label_property_name]:
-                neighbors_by_label[subject_node_id][label].add(object_node_id)
-            for label in subject_node[label_property_name]:
-                neighbors_by_label[object_node_id][label].add(subject_node_id)
+        subject_node = nodes_by_id[subject_node_id]
+        object_node = nodes_by_id[object_node_id]
+        for label in object_node[label_property_name]:
+            neighbors_by_label[subject_node_id][label].add(object_node_id)
+        for label in subject_node[label_property_name]:
+            neighbors_by_label[object_node_id][label].add(subject_node_id)
 
     # Then record only the counts of neighbors per label/category
     neighbor_counts = defaultdict(dict)
@@ -192,18 +191,13 @@ def generate_fda_approved_drugs_pickle(edges_by_id: Dict[str, Dict[str, any]], f
         pickle.dump(fda_approved_drugs, pickle_file)
 
 
-def record_meta_kg_info(is_test: bool):
-    kg2c_lite_file_name = f"kg2c_lite.json"
-    meta_kg_file_name = f"meta_kg.json"
-    sqlite_file_name = f"kg2c.sqlite"
-    fda_approved_file_name = f"fda_approved_drugs.pickle"
-    # Initiate a BiolinkHelper for the proper Biolink model version
-    with open("kg2c_config.json") as config_file:
-        config_info = json.load(config_file)
-    bh = BiolinkHelper(config_info["biolink_version"])
-
+def record_meta_kg_info(biolink_version: str, is_test: bool):
+    logging.info("Starting to record KG2c meta info..")
+    bh = BiolinkHelper(biolink_version)
     start = time.time()
+
     # Load the 'lite' KG2c file into node/edge dictionaries
+    kg2c_lite_file_name = f"kg2c_lite.json{'_TEST' if is_test else ''}"
     with open(f"{KG2C_DIR}/{kg2c_lite_file_name}", "r") as input_kg_file:
         logging.info(f"Loading {kg2c_lite_file_name} into memory..")
         kg2c_dict = json.load(input_kg_file)
@@ -215,8 +209,11 @@ def record_meta_kg_info(is_test: bool):
     for node in nodes_by_id.values():
         node[expanded_labels_property_name] = bh.get_ancestors(node["all_categories"], include_mixins=True)
 
+    meta_kg_file_name = f"meta_kg.json{'_TEST' if is_test else ''}"
+    sqlite_file_name = f"kg2c.sqlite{'_TEST' if is_test else ''}"
+    fda_approved_file_name = f"fda_approved_drugs.pickle{'_TEST' if is_test else ''}"
     build_meta_kg(nodes_by_id, edges_by_id, meta_kg_file_name, bh, is_test)
-    add_neighbor_counts_to_sqlite(nodes_by_id, edges_by_id, sqlite_file_name, expanded_labels_property_name, is_test)
+    add_neighbor_counts_to_sqlite(nodes_by_id, edges_by_id, sqlite_file_name, expanded_labels_property_name)
     add_category_counts_to_sqlite(nodes_by_id, sqlite_file_name, expanded_labels_property_name)
     generate_fda_approved_drugs_pickle(edges_by_id, fda_approved_file_name)
     
@@ -225,15 +222,15 @@ def record_meta_kg_info(is_test: bool):
 
 def main():
     logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(levelname)s: %(message)s',
-                        handlers=[logging.FileHandler("metainfo.log"),
-                                  logging.StreamHandler()])
-    logging.info("Starting to record KG2c meta info..")
+                        format="%(asctime)s %(levelname)s: %(message)s",
+                        handlers=[logging.StreamHandler()])
+
     arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument('biolink_version',
+                            help="The Biolink version that the given KG2pre version uses (e.g., 4.0.1).")
     arg_parser.add_argument("--test", dest="test", action='store_true', default=False)
     args = arg_parser.parse_args()
-
-    record_meta_kg_info(args.test)
+    record_meta_kg_info(args.biolink_version, args.test)
 
 
 if __name__ == "__main__":

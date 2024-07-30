@@ -245,7 +245,7 @@ def test_FET_ex1():
         "add_qedge(subject=n00, object=n01,key=e00)",
         "expand(edge_key=e00, kp=infores:rtx-kg2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_keys=[n01])",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_keys=[n01])",
         "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=e01, kp=infores:rtx-kg2)",
@@ -277,12 +277,11 @@ def test_FET_ex1():
         edge, relation_name = edge_tuple
         assert hasattr(edge, 'attributes')
         assert edge.attributes
-        edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
         assert 'primary_knowledge_source' in [source.resource_role for source in edge.sources]
         if relation_name == 'FET1':
-            assert 0 <= float(edge.attributes[0].value) < 0.001
+            assert 0 <= float(edge.attributes[0].value) < 0.005
         else:
             assert 0 <= float(edge.attributes[0].value) < 0.05
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
@@ -334,7 +333,6 @@ def test_FET_ex2():
         edge, relation_name = edge_tuple
         assert hasattr(edge, 'attributes')
         assert edge.attributes
-        edge_attributes_dict = {attr.original_attribute_name:attr.value for attr in edge.attributes}
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
     FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}

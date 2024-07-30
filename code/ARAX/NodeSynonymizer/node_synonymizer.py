@@ -29,9 +29,11 @@ from openapi_server.models.retrieval_source import RetrievalSource
 
 class NodeSynonymizer:
 
-    def __init__(self):
+    def __init__(self, sqlite_file_name: Optional[str] = None):
         self.rtx_config = RTXConfiguration()
-        self.database_name = self.rtx_config.node_synonymizer_path.split("/")[-1]
+        self.sqlite_file_name = sqlite_file_name
+        # Use specified node syonymizer sqlite file, if provided; otherwise use synonymizer specified in config_dbs.json
+        self.database_name = self.sqlite_file_name if self.sqlite_file_name else self.rtx_config.node_synonymizer_path.split("/")[-1]
         synonymizer_dir = os.path.dirname(os.path.abspath(__file__))
         self.database_path = f"{synonymizer_dir}/{self.database_name}"
         self.placeholder_lookup_values_str = "**LOOKUP_VALUES_GO_HERE**"
@@ -41,7 +43,7 @@ class NodeSynonymizer:
         self.arax_infores_curie = "infores:arax"
 
         if not pathlib.Path(self.database_path).exists():
-            raise ValueError(f"Synonymizer specified in config_dbs file does not exist locally."
+            raise ValueError(f"Specified synonymizer does not exist locally."
                              f" It should be at: {self.database_path}")
         else:
             self.db_connection = sqlite3.connect(self.database_path)
@@ -300,7 +302,7 @@ class NodeSynonymizer:
 
     # ---------------------------------------- EXTERNAL DEBUG METHODS --------------------------------------------- #
 
-    def print_cluster_table(self, curie_or_name: str):
+    def print_cluster_table(self, curie_or_name: str, include_edges: bool = True):
         # First figure out what cluster this concept belongs to
         canonical_info = self.get_canonical_curies(curies=curie_or_name)
         if not canonical_info[curie_or_name]:
@@ -330,8 +332,9 @@ class NodeSynonymizer:
                 edges_df = self._load_records_into_dataframe(edge_rows, "edges")
                 edges_df = edges_df[["subject", "predicate", "object", "upstream_resource_id", "primary_knowledge_source"]]
 
-                print(f"\nCluster for {curie_or_name} has {edges_df.shape[0]} edges:\n")
-                print(f"{edges_df.to_markdown(index=False)}\n")
+                if include_edges:
+                    print(f"\nCluster for {curie_or_name} has {edges_df.shape[0]} edges:\n")
+                    print(f"{edges_df.to_markdown(index=False)}\n")
                 print(f"\nCluster for {curie_or_name} has {nodes_df.shape[0]} nodes:\n")
                 print(f"{nodes_df.to_markdown(index=False)}\n")
             else:

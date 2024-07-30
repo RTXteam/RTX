@@ -137,11 +137,12 @@ class BiolinkHelper:
         canonical_predicates.update(invalid_predicates)  # Go ahead and include those we don't have canonical info for
         return list(canonical_predicates)
 
-    def is_symmetric(self, predicate: str) -> bool:
+    def is_symmetric(self, predicate: str) -> Optional[bool]:
         if predicate in self.biolink_lookup_map["predicates"]:
             return self.biolink_lookup_map["predicates"][predicate]["is_symmetric"]
         elif predicate in self.biolink_lookup_map["predicate_mixins"]:
-            return self.biolink_lookup_map["predicate_mixins"][predicate]["is_symmetric"]
+            # TODO: Starting with Biolink 4.2.0, predicate mixins are missing the 'symmetric:' slot. why??
+            return None
         else:
             return True  # Consider unrecognized predicates symmetric (rather than throw error)
 
@@ -568,8 +569,8 @@ def main():
 
     # Test predicate symmetry
     assert bh.is_symmetric("biolink:related_to")
-    assert bh.is_symmetric("biolink:interacts_with")  # This is a mixin starting in Biolink 4.1.0
-    assert not bh.is_symmetric("biolink:treats")  # This is a mixin starting in Biolink 4.1.0
+    assert bh.is_symmetric("biolink:close_match")
+    assert not bh.is_symmetric("biolink:subclass_of")
 
     # Test getting biolink version
     biolink_version = bh.get_current_arax_biolink_version()
