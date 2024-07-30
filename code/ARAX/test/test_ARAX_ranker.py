@@ -505,7 +505,7 @@ def test_ARAXRanker_test13_asset355():
             break
     total_results = len(message.results)
     
-    assert rank_right_answer != -1
+    assert rank_right_answer != -1 # comment out this until the full build of xDTD
     # assert rank_right_answer < 0.1 * total_results
 
 
