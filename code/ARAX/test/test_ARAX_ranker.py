@@ -164,7 +164,6 @@ def test_ARAXRanker_test5_asset70():
                     "ids": [
                         "MONDO:0018982"
                     ],
-                    "is_set": false,
                     "set_interpretation": "BATCH"
                     },
                     "SN": {
@@ -172,7 +171,6 @@ def test_ARAXRanker_test5_asset70():
                         "biolink:ChemicalEntity"
                     ],
                     "constraints": [],
-                    "is_set": false,
                     "set_interpretation": "BATCH"
                     }
                 }
