@@ -14,9 +14,6 @@ import requests
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
 SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s',
-                    handlers=[logging.StreamHandler()])
 PREDICATE_WEIGHTS = {
     "same_as": 1.0,
     "close_match": 0.5,
@@ -320,7 +317,7 @@ def verify_clustering_output(nodes_df: pd.DataFrame, edges_df: pd.DataFrame):
     nodes_missing_category = list(nodes_df[nodes_df.category != nodes_df.category].index.values)  # NaN value is not equal to itself
     if nodes_missing_category:
         raise ValueError(f"{len(nodes_missing_category)} nodes are missing a category "
-                         f"(i.e., no SRI or KG2pre category): {nodes_missing_category}")
+                         f"(i.e., no SRI or KG2pre category).")
 
     # Make sure every node has a major branch
     logging.info(f"Verifying every node has a major_branch...")
@@ -379,7 +376,7 @@ def load_merged_edges() -> pd.DataFrame:
     return edges_df
 
 
-def main():
+def run():
     logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
 
     # Load match graph data
@@ -406,6 +403,13 @@ def main():
     logging.info(f"Saving final nodes and edges tables..")
     nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_nodes_preprocessed.tsv", sep="\t")
     edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/4_match_edges_preprocessed.tsv", sep="\t")
+
+
+def main():
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s %(levelname)s: %(message)s",
+                        handlers=[logging.StreamHandler()])
+    run()
 
 
 if __name__ == "__main__":

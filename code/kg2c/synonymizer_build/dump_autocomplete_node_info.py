@@ -9,11 +9,8 @@ import pandas as pd
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
-KG2PRE_TSV_DIR = f"{KG2C_DIR}/kg2pre_tsvs"
+KG2PRE_TSVS_DIR = f"{KG2C_DIR}/kg2pre_tsvs"
 SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s',
-                    handlers=[logging.StreamHandler()])
 
 
 def strip_tabs_and_newlines(some_string: Optional[str]) -> Optional[str]:
@@ -25,8 +22,8 @@ def strip_tabs_and_newlines(some_string: Optional[str]) -> Optional[str]:
 
 def dump_kg2pre_node_info(kg2pre_version: str):
     # Load KG2pre node data into a dataframe, including only the columns relevant to us
-    nodes_tsv_path = f"{KG2PRE_TSV_DIR}/nodes.tsv"
-    nodes_tsv_header_path = f"{KG2PRE_TSV_DIR}/nodes_header.tsv"
+    nodes_tsv_path = f"{KG2PRE_TSVS_DIR}/{kg2pre_version}/nodes.tsv"
+    nodes_tsv_header_path = f"{KG2PRE_TSVS_DIR}/{kg2pre_version}/nodes_header.tsv"
     nodes_header_df = pd.read_table(nodes_tsv_header_path)
     node_column_names = [column_name.split(":")[0] if not column_name.startswith(":") else column_name
                          for column_name in nodes_header_df.columns]

@@ -5,24 +5,22 @@ import logging
 import os
 import pathlib
 import subprocess
-from typing import Set, Dict
+import sys
+from typing import Set, Dict, List
 
 import json_lines
 import numpy as np
 import pandas as pd
 import requests
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAX/BiolinkHelper/")
+from biolink_helper import BiolinkHelper
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
 SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
-SRI_NN_DIR = f"{SYNONYMIZER_BUILD_DIR}/SRI_NN"
-logging.basicConfig(level=logging.INFO,
-                    format='%(asctime)s %(levelname)s: %(message)s',
-                    handlers=[logging.StreamHandler()])
-# NOTE: These below three variables need to be updated for new SRI NN builds..
-SRI_NN_NODES_FILE_NAME = "KGX_NN_data-2023apr7_nodes.jsonl"
-SRI_NN_EDGES_FILE_NAME = "KGX_NN_data-2023apr7_edges.jsonl"
-SRI_NN_REMOTE_ROOT_PATH = "https://stars.renci.org/var/babel_outputs/2022dec2-2/kgx/"
+SRI_NN_URL = "https://nodenormalization-sri.renci.org/get_normalized_nodes"
+# Note: The above is the SRI NN development (non-ITRB) server, which seems to be faster for us
 
 
 def strip_biolink_prefix(item: str) -> str:
@@ -40,101 +38,133 @@ def get_sri_edge_id(subject_id: str, object_id: str) -> str:
     return f"SRI:{subject_id}--{object_id}"
 
 
-def get_sri_cluster_id_mappings(kg2pre_node_ids_set: Set[str]):
-    kg2pre_node_ids = list(kg2pre_node_ids_set)
-    logging.info(f"Starting to build SRI match graph based on {len(kg2pre_node_ids):,} KG2pre node IDs..")
+def determine_cluster_category(sri_types: List[str], category_map: Dict[str, str], bh: BiolinkHelper) -> str:
+    # Temporary patch to pick best single category for cluster until this info is added to API response
+    sri_types_hash = "-".join(sorted(sri_types))
+    if sri_types_hash not in category_map:  # Only need to process this set if we haven't seen it before
+        sri_types_set = set(bh.filter_out_mixins(sri_types))  # We want to assign a true category, not mixin
+        leaves = set()
+        for biolink_category in sri_types_set:
+            descendants = set(bh.get_descendants(biolink_category,
+                                                 include_mixins=False,
+                                                 include_conflations=False)).difference({biolink_category})
+            if not descendants.intersection(sri_types_set):
+                # We've found a (in this context) 'leaf' category!
+                leaves.add(biolink_category)
+        if leaves:
+            # Store this mapping for fast lookup later
+            if len(leaves) == 1:
+                chosen_category = list(leaves)[0]
+            else:
+                if "biolink:Gene" in leaves:
+                    chosen_category = "biolink:Gene"
+                elif "biolink:SmallMolecule" in leaves:
+                    chosen_category = "biolink:SmallMolecule"
+                elif "biolink:Protein" in leaves:
+                    chosen_category = "biolink:Protein"
+                elif "biolink:Drug" in leaves:
+                    chosen_category = "biolink:Drug"
+                else:
+                    chosen_category = sorted(list(leaves))[0]
+                logging.info(f"SRI clique has more than one leaf category. Original category list from SRI was: "
+                             f"{sri_types}. Identified 'leaves' within that category subtree are: {leaves}."
+                             f" Category chosen to represent all nodes in clique was: {chosen_category}.")
+        else:
+            # Weirdly, some cliques have only one SRI type provided (e.g., biolink:GenomicEntity)
+            if len(sri_types) == 1:
+                chosen_category = sri_types[0]
+            else:
+                error_message = f"Failed to find the most specific category for a node from SRI! Must be a bug. "\
+                                f"SRI types list was: {sri_types}. Leaves were: {leaves}"
+                logging.error(error_message)
+                raise ValueError(error_message)
 
-    # Save the current version of SRI match graph, if it exists (as backup, in case the SRI NN API is down)
+        category_map[sri_types_hash] = chosen_category
+
+    return category_map[sri_types_hash]
+
+
+def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
+    logging.info(f"Starting to build SRI match graph based on {len(kg2pre_node_ids_set):,} KG2pre node IDs..")
+
+    # Save the previous version of SRI match graph, if it exists (as backup, in case the SRI NN API is down)
     logging.info(f"Saving backup copies of already existing SRI match graph TSV files..")
     sri_match_nodes_file_path = f"{SYNONYMIZER_BUILD_DIR}/2_match_nodes_sri.tsv"
     sri_match_edges_file_path = f"{SYNONYMIZER_BUILD_DIR}/2_match_edges_sri.tsv"
     if pathlib.Path(sri_match_nodes_file_path).exists():
-        subprocess.check_call(["mv", sri_match_nodes_file_path, f"{sri_match_nodes_file_path}_PREVIOUS"])
+        os.system(f"mv {sri_match_nodes_file_path} {sri_match_nodes_file_path}_PREVIOUS")
     if pathlib.Path(sri_match_edges_file_path).exists():
-        subprocess.check_call(["mv", sri_match_edges_file_path, f"{sri_match_edges_file_path}_PREVIOUS"])
+        os.system(f"mv {sri_match_edges_file_path} {sri_match_edges_file_path}_PREVIOUS")
 
     # Divide KG2pre node IDs into batches
+    kg2pre_node_ids = list(kg2pre_node_ids_set)
     batch_size = 1000  # This is the suggested max batch size from Chris Bizon (in Translator slack..)
     logging.info(f"Dividing KG2pre node IDs into batches of {batch_size}")
     kg2pre_node_id_batches = [kg2pre_node_ids[batch_start:batch_start + batch_size]
                               for batch_start in range(0, len(kg2pre_node_ids), batch_size)]
 
     # Ask the SRI NodeNormalizer for normalized info for each batch of KG2pre IDs
-    logging.info(f"Beginning to send {len(kg2pre_node_id_batches)} batches to SRI NN..")
-    sri_node_id_to_cluster_id_map = dict()
-    batch_size = 1000  # This is the preferred max batch size, according to Chris Bizon in Translator slack
+    logging.info(f"Beginning to send {len(kg2pre_node_id_batches)} batches of node IDs to SRI NN..")
     batch_num = 0
-    num_failed_batches = 0
     num_unrecognized_nodes = 0
+    sri_nodes_dict = dict()
+    sri_edges_dict = dict()
+    category_map = dict()
+    bh = BiolinkHelper()
     for node_id_batch in kg2pre_node_id_batches:
         # Send the batch to the SRI NN RestAPI
-        # Note: This is their development (non-ITRB) server, which seems to be faster for us..
-        sri_nn_url = "https://nodenormalization-sri.renci.org/1.3/get_normalized_nodes"
         query_body = {"curies": node_id_batch,
-                      "conflate": True}
-        response = requests.post(sri_nn_url, json=query_body)
+                      "conflate": True,
+                      "drug_chemical_conflate": True}
+        response = requests.post(SRI_NN_URL, json=query_body)
 
-        # Extract the canonical identifiers and any other equivalent IDs from the response for this batch
+        # Add nodes and edges to our SRI match graph based on the returned info
         if response.status_code == 200:
             for kg2pre_node_id, normalized_info in response.json().items():
-                # This means the SRI NN recognized the KG2pre node ID we asked for
-                if normalized_info:
-                    # Process this cluster if we haven't seen it before
+                if normalized_info:  # This means the SRI NN recognized the KG2pre node ID we asked for
                     cluster_id = normalized_info["id"]["identifier"]
-                    if cluster_id not in sri_node_id_to_cluster_id_map:
+                    if cluster_id not in sri_nodes_dict:  # Process this cluster if we haven't seen it before
+                        # Create nodes for all members of this cluster
+                        cluster_nodes_dict = dict()
+                        # TODO: Update once Gaurav adds per-identifier type info to the API https://github.com/TranslatorSRI/NodeNormalization/issues/281
+                        cluster_category = determine_cluster_category(normalized_info["type"], category_map, bh)
                         for equivalent_node in normalized_info["equivalent_identifiers"]:
                             node_id = equivalent_node["identifier"]
-                            sri_node_id_to_cluster_id_map[node_id] = cluster_id
-                else:
-                    # The SRI NN did not recognize the KG2pre node ID we asked for
+                            node = (node_id, equivalent_node.get("label"), cluster_category, cluster_id)
+                            cluster_nodes_dict[node_id] = node
+                        sri_nodes_dict.update(cluster_nodes_dict)
+
+                        # Create within-cluster edges (form a complete graph for the clique)
+                        cluster_node_ids = list(cluster_nodes_dict.keys())
+                        for node_pair in list(itertools.combinations(cluster_node_ids, 2)):
+                            subject_id, object_id = node_pair
+                            edge_id = get_sri_edge_id(subject_id, object_id)
+                            edge = (edge_id, subject_id, "biolink:same_as", object_id)
+                            sri_edges_dict[edge_id] = edge
+                else:  # The SRI NN did not recognize the KG2pre node ID we asked for
                     num_unrecognized_nodes += 1
         else:
-            logging.warning(f"Batch {batch_num} returned non-200 status ({response.status_code}): {response.text}")
-            num_failed_batches += 1
+            error_message = f"Batch #{batch_num} request to SRI failed; returned status code "\
+                            f"{response.status_code}: {response.text}"
+            logging.error(error_message)
+            raise ValueError(error_message)
 
         # Log our progress
         batch_num += 1
         if batch_num % 100 == 0:
             logging.info(f"Have processed {batch_num} of {len(kg2pre_node_id_batches)} batches..")
 
-    # Save map of cluster IDs
-    logging.info(f"Done getting SRI cluster ID mappings. Saving cluster ID map to JSON file..")
-    with open(f"{SYNONYMIZER_BUILD_DIR}/2_sri_node_ids_to_cluster_ids.json", "w+") as cluster_id_file:
-        json.dump(sri_node_id_to_cluster_id_map, cluster_id_file, indent=2)
-
     # Report some final stats
+    logging.info(f"SRI match graph contains {len(sri_nodes_dict)} nodes and {len(sri_edges_dict)} edges")
     logging.info(f"SRI NN API did not recognize {num_unrecognized_nodes:,} of {len(kg2pre_node_ids):,} "
                  f"KG2pre nodes ({round(num_unrecognized_nodes / len(kg2pre_node_ids), 2) * 100}%)")
-    logging.info(f"Got cluster ID mappings for {len(sri_node_id_to_cluster_id_map):,} SRI nodes")
-    if num_failed_batches:
-        logging.warning(f"{num_failed_batches} requests to SRI NN API failed. Each failed request included "
-                        f"{batch_size} KG2pre node IDs.")
 
-    return sri_node_id_to_cluster_id_map
+    # Save the match graph to disk
+    save_sri_nodes(sri_nodes_dict)
+    save_sri_edges(sri_edges_dict)
 
 
-def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_test: bool) -> Set[str]:
-    # Grab the KG2pre-related nodes from the SRI NN json lines file (which is huge - has ~600 million nodes in total)
-    logging.info(f"Extracting relevant nodes from bulk SRI NN json lines file..")
-
-    if is_test:
-        # We'll make up some nodes for testing purposes
-        nodes_dict = {node_id: (node_id, "some name", "biolink:Disease", cluster_id)
-                      for node_id, cluster_id in sri_node_id_to_cluster_id_map.items()}
-    else:
-        nodes_dict = dict()
-        with json_lines.open(f"{SRI_NN_DIR}/{SRI_NN_NODES_FILE_NAME}") as jsonl_file:
-            for line_obj in jsonl_file:
-                node_id = line_obj["id"]
-                if node_id in sri_node_id_to_cluster_id_map:  # Means it's part of a cluster involving KG2pre nodes
-                    cluster_id = sri_node_id_to_cluster_id_map[node_id]
-                    node_row = (node_id, line_obj.get("name"), line_obj["category"], cluster_id)
-                    nodes_dict[node_id] = node_row
-
-                    if is_test and len(nodes_dict) > 10:
-                        break
-
-    # Save our selected SRI nodes
+def save_sri_nodes(nodes_dict: dict):
     logging.info(f"Loading select SRI nodes into DataFrame..")
     nodes_df = pd.DataFrame(nodes_dict.values(), columns=["id", "name", "category", "cluster_id"])
     strip_biolink_prefix_vectorized = np.vectorize(strip_biolink_prefix)
@@ -142,27 +172,8 @@ def create_match_nodes_sri(sri_node_id_to_cluster_id_map: Dict[str, str], is_tes
     logging.info(f"Saving SRI nodes to TSV..")
     nodes_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/2_match_nodes_sri.tsv", sep="\t", index=False)
 
-    return set(nodes_dict)
 
-
-def create_match_edges_sri(sri_node_ids: Set[str], is_test: bool = False):
-    # Grab the KG2pre-related edges from the SRI NN json lines file (which is huge - has ~200 million edges)
-    logging.info(f"Extracting relevant edges from bulk SRI NN json lines file..")
-
-    edges_dict = dict()
-    with json_lines.open(f"{SRI_NN_DIR}/{SRI_NN_EDGES_FILE_NAME}") as jsonl_file:
-        for line_obj in jsonl_file:
-            edge_subject = line_obj["subject"]
-            edge_object = line_obj["object"]
-            if edge_subject in sri_node_ids and edge_object in sri_node_ids:
-                edge_id = get_sri_edge_id(edge_subject, edge_object)
-                edge_row = (edge_id, edge_subject, line_obj["predicate"], edge_object)
-                edges_dict[edge_id] = edge_row
-
-                if is_test and len(edges_dict) > 10:
-                    break
-
-    # Save our selected SRI edges
+def save_sri_edges(edges_dict: dict):
     logging.info(f"Loading select SRI edges into DataFrame..")
     edges_df = pd.DataFrame(edges_dict.values(), columns=["id", "subject", "predicate", "object"])
     strip_biolink_prefix_vectorized = np.vectorize(strip_biolink_prefix)
@@ -171,39 +182,18 @@ def create_match_edges_sri(sri_node_ids: Set[str], is_test: bool = False):
     edges_df.to_csv(f"{SYNONYMIZER_BUILD_DIR}/2_match_edges_sri.tsv", sep="\t", index=False)
 
 
-def download_sri_nn_files():
-    logging.info(f"Downloading SRI NN source files..")
-    if not pathlib.Path(SRI_NN_DIR).exists():
-        subprocess.check_call(["mkdir", SRI_NN_DIR])
-    logging.info(f"Downloading SRI NN nodes file..")
-    subprocess.check_call(["curl", "-L", f"{SRI_NN_REMOTE_ROOT_PATH}/{SRI_NN_NODES_FILE_NAME}.gz", "-o",
-                           f"{SRI_NN_DIR}/{SRI_NN_NODES_FILE_NAME}.gz"])
-    logging.info(f"Downloading SRI NN edges file..")
-    subprocess.check_call(["curl", "-L", f"{SRI_NN_REMOTE_ROOT_PATH}/{SRI_NN_EDGES_FILE_NAME}.gz", "-o",
-                           f"{SRI_NN_DIR}/{SRI_NN_EDGES_FILE_NAME}.gz"])
-    logging.info(f"Unzipping SRI NN files..")
-    subprocess.check_call(["gunzip", f"{SRI_NN_DIR}/{SRI_NN_NODES_FILE_NAME}.gz"])
-    subprocess.check_call(["gunzip", f"{SRI_NN_DIR}/{SRI_NN_EDGES_FILE_NAME}.gz"])
+def run():
+    logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
+
+    kg2pre_node_ids = get_kg2pre_node_ids()
+    create_sri_match_graph(kg2pre_node_ids)
 
 
 def main():
-    logging.info(f"\n\n  ------------------- STARTING TO RUN SCRIPT {os.path.basename(__file__)} ------------------- \n")
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--downloadfresh', dest='download_fresh', action='store_true')
-    arg_parser.add_argument('--test', dest='test', action='store_true')
-    args = arg_parser.parse_args()
-
-    # Download a fresh copy of the bulk SRI NN data, if requested
-    if args.download_fresh:
-        download_sri_nn_files()
-
-    # First grab the SRI cluster IDs ('preferred'/canonical curies) for all KG2pre nodes from SRI NN RestAPI
-    kg2pre_node_ids = get_kg2pre_node_ids()
-    sri_node_id_to_cluster_id_map = get_sri_cluster_id_mappings(kg2pre_node_ids)
-
-    # Then build an SRI 'match graph' using the SRI NN bulk download
-    sri_node_ids = create_match_nodes_sri(sri_node_id_to_cluster_id_map, args.test)
-    create_match_edges_sri(sri_node_ids, args.test)
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s %(levelname)s: %(message)s",
+                        handlers=[logging.StreamHandler()])
+    run()
 
 
 if __name__ == "__main__":

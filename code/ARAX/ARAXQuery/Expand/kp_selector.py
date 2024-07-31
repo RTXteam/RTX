@@ -67,8 +67,6 @@ class KPSelector:
         obj_categories = set(self.bh.get_descendants(qg.nodes[qedge.object].categories))
         predicates = set(self.bh.get_descendants(qedge_predicates))
 
-        symmetrical_predicates = set(filter(self.bh.is_symmetric, predicates))
-
         # use metamap to check kp for predicate triple
         self.log.debug(f"selecting from {len(self.valid_kps)} kps")
         accepting_kps = set()
@@ -79,10 +77,10 @@ class KPSelector:
                                            obj_categories):
                 accepting_kps.add(kp)
             # account for symmetrical predicates by checking if kp accepts with swapped sub and obj categories
-            elif symmetrical_predicates and self._triple_is_in_meta_map(kp,
-                                                                        obj_categories,
-                                                                        symmetrical_predicates,
-                                                                        sub_categories):
+            elif self._triple_is_in_meta_map(kp,
+                                             obj_categories,
+                                             predicates,
+                                             sub_categories):
                 accepting_kps.add(kp)
             else:
                 self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
@@ -121,11 +119,10 @@ class KPSelector:
         kp_accepts = self._triple_is_in_meta_map(kp, sub_categories, predicates, obj_categories)
 
         # account for symmetrical predicates by checking if kp accepts with swapped sub and obj categories
-        symmetrical_predicates = set(filter(self.bh.is_symmetric, predicates))
-        kp_accepts = kp_accepts or (symmetrical_predicates and self._triple_is_in_meta_map(kp,
-                                                                                           obj_categories,
-                                                                                           symmetrical_predicates,
-                                                                                           sub_categories))
+        kp_accepts = kp_accepts or self._triple_is_in_meta_map(kp,
+                                                               obj_categories,
+                                                               predicates,
+                                                               sub_categories)
 
         return kp_accepts
 
