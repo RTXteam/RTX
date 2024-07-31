@@ -143,7 +143,7 @@ function main() {
     else if (sys) {
 	tab = "systest";
 	if (sys != "1")
-	    retrieveSysTestResults("ARSARS_"+sys);
+	    var timeout = setTimeout(function() { retrieveSysTestResults("ARSARS_"+sys); }, 50 );  // give it time...
 	else
 	    retrieveSysTestResults();
     }
@@ -6989,7 +6989,7 @@ function displayARSResults(parentnode,arsdata) {
     test2css['OverlyGeneric'] = 'p0';
 
     var hint = {};
-    hint['TopAnswer'] = 'Result must be in the top 10% of answers';
+    hint['TopAnswer'] = 'Result must be in the top 30 or top 10% of answers, whichever is greater';
     hint['Acceptable'] = 'Result must be in the top 50% of answers';
     hint['BadButForgivable'] = 'Result must NOT be in the top 50%';
     hint['NeverShow'] = 'Result must NOT appear anywhere in the answers';
@@ -7239,7 +7239,7 @@ function displayARSResults(parentnode,arsdata) {
 		var passing = document.getElementById("whichsystest").options[document.getElementById("whichsystest").selectedIndex].text.includes("Sprint 4") ? 40 : 350;
 		var pcl = Number(stats[agent][status])>=passing ? "p9" : Number(stats[agent][status])>=(passing/2) ? "p3" : "p1";
 
-		td.title = 'Current Translator goal of 350 passing tests :: ';
+		td.title = 'Current Translator goal of '+passing+' passing tests :: ';
 		td.title += (pcl == 'p9') ? 'YES':'NO';
 		span = document.createElement("span");
 		span.className = 'explevel '+pcl;
