@@ -68,15 +68,18 @@ class HugeGraphConverter:
                 self.names.q_edge_name: [
                     EdgeBinding(id=self.names.kg_edge_name, attributes=[])
                 ]
-            }
+            },
+            resource_id="infores:arax",
         )
 
         if response.envelope.message.results is None:
             response.envelope.message.results = []
 
         essence = ''
-        if self.names.main_node_id != '':
+        if self.names.main_node_id != '' and self.names.main_node_id in knowledge_graph.nodes:
             essence = knowledge_graph.nodes[self.names.main_node_id].name
+        else:
+            response.error("Could not find main node id name to fill essence variable!")
 
         response.envelope.message.results.append(
             Result(

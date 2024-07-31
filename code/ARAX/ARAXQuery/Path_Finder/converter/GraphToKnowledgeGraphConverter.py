@@ -29,7 +29,7 @@ class GraphToKnowledgeGraphConverter:
             EdgeExtractorFromPloverDB(
                 plover_url
             )
-        ).convert(nodes, edges)
+        ).convert(nodes, edges, response)
 
         qg_organized_knowledge_graph = (
             KG2Querier(response, plover_url)._load_plover_answer_into_object_model(
