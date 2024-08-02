@@ -12,7 +12,8 @@ from collections import Counter
 import copy
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from Path_Finder.converter.paths_to_response_converter_factory import paths_to_response_converter_factory
+from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
+from Path_Finder.converter.SuperNodeConverter import SuperNodeConverter
 from Path_Finder.converter.Names import Names
 from Path_Finder.BidirectionalPathFinder import BidirectionalPathFinder
 from Path_Finder.repo.NGDSortedNeighborsRepo import NGDSortedNeighborsRepo
@@ -20,6 +21,7 @@ from Path_Finder.repo.PloverDBRepo import PloverDBRepo
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.q_edge import QEdge
+from openapi_server.models.q_node import QNode
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
@@ -298,26 +300,55 @@ connect_nodes adds paths between two nodes specified in the query.
                                   f"with a max path length of {self.parameters['max_path_length']}.")
             return self.response
 
-        q_edge_name = 'q_edge_path_finder'
-        self.response.envelope.message.query_graph.edges[q_edge_name] = QEdge(
+        qnode_mid_id = "qnode_mid_id"
+        self.response.envelope.message.query_graph.nodes[qnode_mid_id] = QNode(
+            ids=[],
+            categories=None,
+            is_set=False,
+            set_interpretation='BATCH',
+            set_id=None,
+            constraints=[],
+            option_group_id=None
+        )
+
+        q_edge_src_dest = 'q_edge_src_dest'
+        self.response.envelope.message.query_graph.edges[q_edge_src_dest] = QEdge(
             object=qnode_1_id,
+            subject=qnode_2_id
+        )
+        q_edge_src_mid = 'q_edge_src_mid'
+        self.response.envelope.message.query_graph.edges[q_edge_src_mid] = QEdge(
+            object=qnode_1_id,
+            subject=qnode_mid_id
+        )
+        q_edge_mid_dest = 'q_edge_mid_dest'
+        self.response.envelope.message.query_graph.edges[q_edge_mid_dest] = QEdge(
+            object=qnode_mid_id,
             subject=qnode_2_id
         )
 
         names = Names(
-            q_edge_name=q_edge_name,
+            q_src_dest_edge_name=q_edge_src_dest,
+            q_src_mid_edge_name=q_edge_src_mid,
+            q_mid_dest_edge_name=q_edge_mid_dest,
             result_name="result",
             auxiliary_graph_name="aux",
-            kg_edge_name="kg_edge"
+            kg_src_dest_edge_name="kg_src_dest_edge",
+            kg_src_mid_edge_name="kg_src_mid_edge",
+            kg_mid_dest_edge_name="kg_mid_dest_edge",
         )
-        paths_to_response_converter_factory(
-            self.parameters['result_as'],
+        edge_extractor = EdgeExtractorFromPloverDB(
+            RTXConfiguration().plover_url
+        )
+        SuperNodeConverter(
             paths,
             node_1_id,
             node_2_id,
             qnode_1_id,
             qnode_2_id,
-            names
+            qnode_mid_id,
+            names,
+            edge_extractor
         ).convert(self.response)
 
         if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
