@@ -51,6 +51,19 @@ def _normalize_number_of_edges(edge_number):
 
     return normalized_value
 
+
+def _calculate_final_individual_edge_confidence(base_score: int, attribute_scores: List[float]) -> float:
+    
+    sorted_attribute_scores = sorted(attribute_scores, reverse=True)
+    
+    # use Eric's loop algorithm
+    W_r = base_score
+    
+    for W_i in attribute_scores:
+        W_r = W_r + (1 - W_r) * W_i
+
+    return W_r
+
 def _normalize_number_of_goldsource_edges(goldsource_edge_number):
     """
     Normalize the number of drugbank edges to be between 0 and 1
@@ -66,43 +79,38 @@ def _normalize_number_of_goldsource_edges(goldsource_edge_number):
 
     return normalized_value
 
-def _calculate_final_edge_score(kg_edge_id_to_edge: Dict[str, Edge], edge_binding_list: List[Dict], alpha: float = 0.8, beta: float = 0.1) -> float:
+def _calculate_final_result_score(kg_edge_id_to_edge: Dict[str, Edge], edge_binding_list: List[Dict]) -> float:
     """
-    Calculate the final edge score for a given edge binding list considering the individual base edge confidence scores, the number of edges, and the 
-    presence of edges from gold databases. The algorithm is as follows:
-        final_score= alpha x max_score + beta x normalized_edge_count + gamma x drugbank_proportion
+    Calculate the final result score for a given edge binding list considering the individual base edge confidence scores. The looping aglorithm is used:
+        W_r = W_r + (1 - W_r) * W_i
     
-    1. to consider the individual base edge confidence scores, the max score of all edge confidence is calculated.
-        max_score = max([edge.confidence for edge in edge_binding_list])
+    Here are the steps:
+    1. sort all edge scores in descending order
+    2. use looping algorithm to combine all sorted edge scores
     
-    2. to consider the number of edges, the normalized edge count is calculated.
-        normalized_edge_count = _normalize_number_of_edges(# of non-semmeddb nonvirtual edges)
+    Here is an example:
+    Given score list: 0.994, 0.93, 0.85, 0.68
 
-    3. to consider the presence of edges from gold databases, the gold-source edge count is calculated.
-        normalized_goldsource_edge_count = _normalize_number_of_goldsource_edges(# of edges from gold databases)
+    We have:
+    Round   W_i W_r
+    1 0.994   0.994
+    2 0.93    0.99958
+    3 0.85    0.999937
+    4 0.68    0.99997984
+    Final result score = 0.99997984
     
     Parameters:
         kg_edge_id_to_edge (Dict[str, Edge]): A dictionary mapping edge IDs to Edge objects.
         edge_binding_list (List[Dict]): A list of dictionaries containing edge bindings.
-        alpha (float): Weight for the average score of edges.
-        beta (float): Weight for the normalized number of edges.
     Returns:
         float: The final combined score between 0 and 1.
     """
 
-    # Calculate the max score of all edge confidences
-    max_score = max([kg_edge_id_to_edge[edge_binding.id].confidence for edge_binding in edge_binding_list])
-
-    # Calculate the number of non-semmeddb nonvirtual edges
-    number_of_non_semmdb_nonvirtual_edges = len([edge_binding.id for edge_binding in edge_binding_list if 'infores:' in edge_binding.id and edge_binding.id.split('--')[-1] != 'infores:semmeddb'])
-    normalized_edge_count = _normalize_number_of_edges(number_of_non_semmdb_nonvirtual_edges)
-
-    # Calculate the number of edges from gold databases (e.g., drugbank, drugcentral)
-    goldsource_edge_count = len([edge_binding.id for edge_binding in edge_binding_list if edge_binding.id.split('--')[-1] in ['infores:drugbank', 'infores:drugcentral']])
-    normalized_goldsource_edge_count = _normalize_number_of_goldsource_edges(goldsource_edge_count)
+    # Calculate final result score
+    all_edge_scores = [kg_edge_id_to_edge[edge_binding.id].confidence for edge_binding in edge_binding_list]
 
     # Calculate the final score
-    final_score = alpha * max_score + beta * normalized_edge_count + (1 - alpha - beta) * normalized_goldsource_edge_count
+    final_score = _calculate_final_individual_edge_confidence(0, all_edge_scores)
 
     return final_score
 
@@ -117,7 +125,7 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
     for analysis in result.analyses:  # For now we only ever have one Analysis per Result
         for qedge_key, edge_binding_list in analysis.edge_bindings.items():
             qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
-            res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_tuple[2]]['weight'] = _calculate_final_edge_score(kg_edge_id_to_edge, edge_binding_list)
+            res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_tuple[2]]['weight'] = _calculate_final_result_score(kg_edge_id_to_edge, edge_binding_list)
                 
     return res_graph
 
@@ -261,7 +269,7 @@ class ARAXRanker:
         self.message = None
         self.parameters = None
         # how much we trust each of the edge attributes
-        self.known_attributes_to_trust = {'probability': 0.5,
+        self.known_attributes_to_trust = {'probability': 0.8,
                                           'normalized_google_distance': 0.8,
                                           'jaccard_index': 0.5,
                                           'probability_treats': 0.8,
@@ -278,10 +286,11 @@ class ARAXRanker:
                                           'CMAP similarity score': 1.0,
                                           }
         # how much we trust each data source
-        self.known_data_sources_to_trust = {'infores:semmeddb': 0.5, # downweight semmeddb
-                                            'infores:text-mining-provider': 0.8,
-                                            'other': 1.0
-                                            # we can define the customized weights for other data sources here later if needed.
+        self.data_source_base_weights = {'infores:semmeddb': 0.5, # downweight semmeddb
+                                         'infores:text-mining-provider': 0.85,
+                                         'infores:drugcentral': 0.93,
+                                         'infores:drugbank': 0.99
+                                         # we can define the more customized weights for other data sources here later if needed.
         }
 
         self.virtual_edge_types = {}
@@ -340,20 +349,29 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             #       then assign result confidence as average/median of these "single" edge confidences?
             result.confidence = 1
 
-    def edge_attribute_score_combiner(self, edge):
+    def edge_attribute_score_combiner(self, edge_key, edge):
         """
         This function takes a single edge and decides how to combine its attribute scores into a single confidence
         Eventually we will want
         1. To weight different attributes by different amounts
         2. Figure out what to do with edges that have no attributes
         """
-        edge_best_score = 1
-        edge_score_list = []
+        edge_default_base = 0.75
+        edge_attribute_score_list = []
+        
+        # find data source from edge_key
+        if edge_key.split('--')[-1] in self.data_source_base_weights:
+            base = self.data_source_base_weights[edge_key.split('--')[-1]]
+        elif 'infores' in edge_key.split('--')[-1]: # default score for other data sources
+            base = edge_default_base
+        else: # virtual edges or inferred edges
+            base = 0 # no base score for these edges. Its core is based on
+        
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
                 # if edge_attribute.original_attribute_name == "biolink:knowledge_level": # this probably means it's a fact or high-quality edge from reliable source, we tend to trust it.
                 # TODO: we might consider the value from this attrubute name in the future
- 
+
                 # if a specific attribute found, normalize its score and add it to the list
                 if edge_attribute.original_attribute_name is not None:
                     normalized_score = self.edge_attribute_score_normalizer(edge_attribute.original_attribute_name, edge_attribute.value)
@@ -366,24 +384,25 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
                 if self.known_attributes_to_trust.get(edge_attribute.original_attribute_name, None):
                     if normalized_score > 0:
-                        edge_score_list.append(normalized_score * self.known_data_sources_to_trust['other'])
+                        edge_attribute_score_list.append(normalized_score * self.known_attributes_to_trust[edge_attribute.original_attribute_name])
+                elif self.known_attributes_to_trust.get(edge_attribute.attribute_type_id, None):
+                    if normalized_score > 0:
+                        edge_attribute_score_list.append(normalized_score * self.known_attributes_to_trust[edge_attribute.attribute_type_id])
                 elif edge_attribute.attribute_type_id == "biolink:publications" and (edge_attribute.attribute_source is None or edge_attribute.attribute_source == "infores:semmeddb"):
                     if normalized_score > 0:
-                        edge_score_list.append(normalized_score * self.known_data_sources_to_trust['infores:semmeddb'])
-                elif edge_attribute.attribute_type_id == "biolink:primary_knowledge_source" and edge_attribute.value == "infores:text-mining-provider-targeted":
-                    edge_score_list.append(1 * self.known_data_sources_to_trust['infores:text-mining-provider'])
+                        edge_attribute_score_list.append(normalized_score)
                 else:
                     # this means we have no current normalization of this kind of attribute,
                     # so don't do anything to the score since we don't know what to do with it yet
                     # add more rules in the future
                     continue 
             
-            if len(edge_score_list) == 0: # if no appropriate attribute for score calculation, set the confidence to 1
-                edge_confidence = edge_best_score
+            if len(edge_attribute_score_list) == 0: # if no appropriate attribute for score calculation, set the confidence to 1
+                edge_confidence = base
             else:
-                edge_confidence = np.max(edge_score_list) # if attributes has multiple scores, take the largest one
+                edge_confidence = _calculate_final_individual_edge_confidence(base, edge_attribute_score_list)
         else:
-            edge_confidence = edge_best_score
+            edge_confidence = base
 
         return edge_confidence
 
@@ -730,7 +749,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 edge.confidence = edge_attributes['confidence']
                 #continue
             else:
-                confidence = self.edge_attribute_score_combiner(edge)
+                confidence = self.edge_attribute_score_combiner(edge_key, edge)
                 #edge.attributes.append(Attribute(name="confidence", value=confidence))
                 edge.confidence = confidence
 
