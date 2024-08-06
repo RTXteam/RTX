@@ -14,7 +14,7 @@ class Path:
         self.links = links
 
     def __str__(self):
-        return "_".join([link.id for link in self.links])
+        return f"{'_'.join([link.id for link in self.links])}_{self.path_limit}"
 
     def __eq__(self, other):
         if isinstance(other, Path):

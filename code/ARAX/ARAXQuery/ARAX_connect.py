@@ -16,8 +16,6 @@ from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPlo
 from Path_Finder.converter.SuperNodeConverter import SuperNodeConverter
 from Path_Finder.converter.Names import Names
 from Path_Finder.BidirectionalPathFinder import BidirectionalPathFinder
-from Path_Finder.repo.NGDSortedNeighborsRepo import NGDSortedNeighborsRepo
-from Path_Finder.repo.PloverDBRepo import PloverDBRepo
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.q_edge import QEdge
@@ -283,9 +281,7 @@ connect_nodes adds paths between two nodes specified in the query.
             self.response.error(f"Need to have two nodes to find paths between them. Number of nodes: {len(nodes)}")
 
         path_finder = BidirectionalPathFinder(
-            NGDSortedNeighborsRepo(
-                PloverDBRepo(plover_url=RTXConfiguration().plover_url)
-            )
+            "NGDSortedNeighborsRepo"
         )
         qnode_1_id = self.parameters['qnode_keys'][0]
         qnode_2_id = self.parameters['qnode_keys'][1]
