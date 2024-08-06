@@ -183,7 +183,6 @@ class InferUtilities:
         # kedges = message.knowledge_graph.edges
         # qnodes = message.query_graph.nodes
         # qedges = message.query_graph.edges
-
         # If the max path len is 0, that means there are no paths found, so just insert the drugs with the probability_treats on them
         if max_path_len == 0:
             essence_scores = {}
@@ -426,11 +425,12 @@ class InferUtilities:
         messenger = ARAXMessenger()
         synonymizer = NodeSynonymizer()
         decorator = ARAXDecorator()
-
-        node_ids = set([y for paths in top_paths.values() for x in paths for y in list(x.values())[::2] if y and y != ''])
+        #TBD
+        # node_ids = set([y for paths in top_paths.values() for x in paths for y in list(x.values())[::2] if y and y != ''])
+        node_ids = set([y for paths in top_paths.values() for x in paths for y in x[::2] if y and y != ''])
         node_info = synonymizer.get_canonical_curies(list(node_ids))
-
-        path_lengths = [math.floor(len(x.keys())/2.) for paths in top_paths.values() for x in paths]
+        #TBD
+        path_lengths = [len(x)//2 for paths in top_paths.values() for x in paths]
         try:
             max_path_len = max(path_lengths)
         except ValueError:
@@ -499,7 +499,7 @@ class InferUtilities:
                 'key': qedge_id,
                 'subject': "chemical",
                 'object': "gene",
-                'predicates': ["biolink:regulates"]
+                'predicates': ["biolink:affects"]
             }
             self.response = messenger.add_qedge(self.response, add_qedge_params)
             message.query_graph.edges[add_qedge_params['key']].knowledge_type = "inferred"
@@ -609,7 +609,7 @@ class InferUtilities:
                         Qualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                         Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                     ]
-                    new_edge = Edge(subject=chemical_curie, object=gene_canonical_id, predicate=f'biolink:regulates', attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source)
+                    new_edge = Edge(subject=chemical_curie, object=gene_canonical_id, predicate=f'biolink:affects', attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source)
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source="infores:arax", kp='infores:rtx-kg2')
                     if new_edge_key not in message.knowledge_graph.edges:
                         message.knowledge_graph.edges[new_edge_key] = new_edge
@@ -655,7 +655,7 @@ class InferUtilities:
                         Qualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                         Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                     ]
-                    new_edge = Edge(subject=chemical_canonical_id, object=gene_curie, predicate=f'biolink:regulates', attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source)
+                    new_edge = Edge(subject=chemical_canonical_id, object=gene_curie, predicate=f'biolink:affects', attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source)
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source="infores:arax", kp='infores:rtx-kg2')
                     if new_edge_key not in message.knowledge_graph.edges:
                         message.knowledge_graph.edges[new_edge_key] = new_edge
@@ -702,15 +702,17 @@ class InferUtilities:
 
         # FW: code that will add resulting paths to the query graph and knowledge graph goes here
         essence_scores = {}
-        for (chemical, gene), paths in top_paths.items():
+        for (curie1, curie2), paths in top_paths.items():
             path_added = False
 
             for path in paths:
-                path = list(path.values())
                 if query_chemical:
-                    gene_curie = path[-1]
+                    chemical_curie = curie1
+                    gene_curie = curie2
+                    
                 else:
-                    chemical_curie = path[0]
+                    chemical_curie = curie2
+                    gene_curie = curie1
                 n_elements = len(path)
                 # Creates edge tuples of the form (node name 1, edge predicate, node name 2)
                 edge_tuples = [(path[i],path[i+1],path[i+2]) for i in range(0,n_elements-2,2)]
@@ -734,32 +736,20 @@ class InferUtilities:
                         message.knowledge_graph.nodes[object_curie].qnode_keys = [object_qnode_key]
                     elif object_qnode_key not in message.knowledge_graph.nodes[object_curie].qnode_keys:
                         message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
-                    predicates = edge_tuples[i][1]
-                    for predicate, (temp_retrieval_source, temp_attributes, temp_qualifiers) in predicates:
-                        primary_knowledge_source = predicate.split('--')[-1]
-                        temp_predicate = predicate.split('--')[1]
-                        temp_kp = ':'.join(predicate.split('--')[0].split(':')[:2])
-                        if subject_curie in predicate.split('--')[0] or object_curie in predicate.split('--')[-1]:
-                            new_edge = Edge(subject=subject_curie, object=object_curie, predicate=temp_predicate, attributes=[], qualifiers=temp_qualifiers, sources=temp_retrieval_source)
-                        else:
-                            new_edge = Edge(subject=object_curie, object=subject_curie, predicate=temp_predicate, attributes=[], qualifiers=temp_qualifiers, sources=temp_retrieval_source)
-                        ## add attributes to the path-based edges 
-                        edge_attribute_list = [
-                            Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                            Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is inferred by ARAXInfer.")
-                        ] + temp_attributes
+                    new_edge = edge_tuples[i][1]
+                    for key in new_edge:
+                        edge_name = decorator._get_kg2c_edge_key(new_edge[key])
+                        message.knowledge_graph.edges[edge_name] = new_edge[key]
+                        message.knowledge_graph.edges[edge_name].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
 
-                        new_edge.attributes += edge_attribute_list
-                        new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source=primary_knowledge_source, kp=temp_kp)
-                        message.knowledge_graph.edges[new_edge_key] = new_edge
-                        message.knowledge_graph.edges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
+                   
                 path_added = True
             if path_added:
                 if query_chemical:
-                    regulate_score = top_predictions.loc[top_predictions['gene_id'] == gene]["tp_prob"].iloc[0]
+                    regulate_score = top_predictions.loc[top_predictions['gene_id'] == gene_curie]["tp_prob"].iloc[0]
                     essence_scores[gene_curie] = regulate_score
                 else:
-                    regulate_score = top_predictions.loc[top_predictions['chemical_id'] == chemical]["tp_prob"].iloc[0]
+                    regulate_score = top_predictions.loc[top_predictions['chemical_id'] == chemical_curie]["tp_prob"].iloc[0]
                     essence_scores[chemical_curie] = regulate_score
                 edge_attribute_list = [
                     Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
@@ -770,7 +760,7 @@ class InferUtilities:
                                         RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                         ]
                 
-                edge_predicate = f'biolink:regulates'
+                edge_predicate = f'biolink:affects'
                 if hasattr(message.query_graph.edges[qedge_id], 'predicates') and message.query_graph.edges[qedge_id].predicates:
                     edge_predicate = message.query_graph.edges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?
                 if model_type == 'increase':
@@ -781,19 +771,21 @@ class InferUtilities:
                     Qualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                     Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                 ]
-                fixed_edge = Edge(predicate=edge_predicate, subject=chemical, object=gene, attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source)
+                chem_gene_node_info = synonymizer.get_canonical_curies([chemical_curie,gene_curie])
+                preferred_chemical_curie = chem_gene_node_info[chemical_curie]['preferred_curie']
+                preferred_gene_curie = chem_gene_node_info[gene_curie]['preferred_curie']
+                fixed_edge = Edge(predicate=edge_predicate, subject=preferred_chemical_curie, object=preferred_gene_curie, attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source)
                 fixed_edge.qedge_keys = [qedge_id]
                 message.knowledge_graph.edges[f"creative_CRG_prediction_{self.kedge_global_iter}"] = fixed_edge
                 self.kedge_global_iter += 1
             else:
-                self.response.warning(f"Something went wrong when adding the subgraph for the chemical-gene pair ({chemical},{gene}) to the knowledge graph. Skipping this result....")
+                self.response.warning(f"Something went wrong when adding the subgraph for the chemical-gene pair ({preferred_chemical_curie},{preferred_gene_curie}) to the knowledge graph. Skipping this result....")
         self.response = decorator.decorate_nodes(self.response)
         if self.response.status != 'OK':
             return self.response
         self.response = decorator.decorate_edges(self.response)
         if self.response.status != 'OK':
             return self.response
-
         #FIXME: this might cause a problem since it doesn't add optional groups for 1 and 2 hops
         # This might also cause issues when infer is on an intermediate edge
         self.resultify_and_sort(essence_scores)
