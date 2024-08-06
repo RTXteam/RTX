@@ -349,7 +349,6 @@ class ARAXExpander:
                 if inferred_qedge_keys and len(query_graph.edges) == 1:
                     for edge in query_sub_graph.edges.keys():
                         query_sub_graph.edges[edge].knowledge_type = 'lookup'
-
             # Expand the query graph edge-by-edge
             for qedge_key in ordered_qedge_keys_to_expand:
                 log.debug(f"Expanding qedge {qedge_key}")
@@ -655,7 +654,7 @@ class ARAXExpander:
                         response.update_query_plan(inferred_qedge_key, "arax-xdtd", "Error",
                                                    f"Process error-ed out with {response.status} after {wait_time} seconds")
 
-                elif set(['biolink:regulates']).intersection(set(qedge.predicates)):  # Figure out if this is a "regulates" query, then use call XCRG models
+                elif set(["biolink:affects"]).intersection(set(qedge.predicates)):  # Figure out if this is a "regulates" query, then use call XCRG models
                     # Call XCRG models and simply return whatever it returns
                     # Get the subject and object of this edge
                     subject_qnode = query_graph.nodes[qedge.subject]  # chemical
