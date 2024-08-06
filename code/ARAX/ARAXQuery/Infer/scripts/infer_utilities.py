@@ -194,6 +194,8 @@ class InferUtilities:
                     node_info = xdtdmapping.get_node_info(node_id=drug_canonical_id)
                 except:
                     continue
+                if not node_info:
+                    continue
                 drug_categories = [node_info.category]
                 # add the node to the knowledge graph
                 drug_name = node_info.name
