@@ -73,11 +73,13 @@ class InferUtilities:
             "ignore_edge_direction": "true"
         }
         self.response = resultifier.apply(self.response, resultify_params)
+
         for result in message.results:
             if result.essence in essence_scores:
                 result.score = essence_scores[result.essence]
             else:
                 result.score = None
+                # result.analyses[0].score = essence_scores[result.essence]
                 self.response.warning(
                     f"Error retrieving score for result essence {result.essence}. Setting result score to None.")
         message.results.sort(key=lambda x: self.__none_to_zero(x.score), reverse=True)
@@ -516,7 +518,6 @@ class InferUtilities:
         else:
 
             categories_to_add = set()
-
             if query_chemical:
 
                 chemical_curie = top_predictions['chemical_id'].to_list()[0]
@@ -706,7 +707,6 @@ class InferUtilities:
         essence_scores = {}
         for (curie1, curie2), paths in top_paths.items():
             path_added = False
-
             for path in paths:
                 if query_chemical:
                     chemical_curie = curie1
@@ -715,6 +715,7 @@ class InferUtilities:
                 else:
                     chemical_curie = curie2
                     gene_curie = curie1
+                    path.reverse()
                 n_elements = len(path)
                 # Creates edge tuples of the form (node name 1, edge predicate, node name 2)
                 edge_tuples = [(path[i],path[i+1],path[i+2]) for i in range(0,n_elements-2,2)]
@@ -747,12 +748,15 @@ class InferUtilities:
                    
                 path_added = True
             if path_added:
+                chem_gene_node_info = synonymizer.get_canonical_curies([chemical_curie,gene_curie])
+                preferred_chemical_curie = chem_gene_node_info[chemical_curie]['preferred_curie']
+                preferred_gene_curie = chem_gene_node_info[gene_curie]['preferred_curie']
                 if query_chemical:
                     regulate_score = top_predictions.loc[top_predictions['gene_id'] == gene_curie]["tp_prob"].iloc[0]
-                    essence_scores[gene_curie] = regulate_score
+                    essence_scores[chem_gene_node_info[gene_curie]['preferred_name']] = regulate_score
                 else:
                     regulate_score = top_predictions.loc[top_predictions['chemical_id'] == chemical_curie]["tp_prob"].iloc[0]
-                    essence_scores[chemical_curie] = regulate_score
+                    essence_scores[chem_gene_node_info[chemical_curie]['preferred_name']] = regulate_score
                 edge_attribute_list = [
                     Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                     Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
@@ -773,15 +777,13 @@ class InferUtilities:
                     Qualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                     Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                 ]
-                chem_gene_node_info = synonymizer.get_canonical_curies([chemical_curie,gene_curie])
-                preferred_chemical_curie = chem_gene_node_info[chemical_curie]['preferred_curie']
-                preferred_gene_curie = chem_gene_node_info[gene_curie]['preferred_curie']
+                
                 fixed_edge = Edge(predicate=edge_predicate, subject=preferred_chemical_curie, object=preferred_gene_curie, attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source)
                 fixed_edge.qedge_keys = [qedge_id]
                 message.knowledge_graph.edges[f"creative_CRG_prediction_{self.kedge_global_iter}"] = fixed_edge
                 self.kedge_global_iter += 1
             else:
-                self.response.warning(f"Something went wrong when adding the subgraph for the chemical-gene pair ({preferred_chemical_curie},{preferred_gene_curie}) to the knowledge graph. Skipping this result....")
+                self.response.warning(f"Something went wrong when adding the subgraph for the chemical-gene pair ({chemical_curie},{gene_curie}) to the knowledge graph. Skipping this result....")
         self.response = decorator.decorate_nodes(self.response)
         if self.response.status != 'OK':
             return self.response
