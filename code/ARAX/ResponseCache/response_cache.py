@@ -558,6 +558,13 @@ class ResponseCache:
             if response_id.startswith('Z'):
                 return( { "status": 404, "title": f"Cached component not found", "detail": f"The component cache has been cleared since the initial request. Refresh the entire response", "type": "about:blank" }, 404)
 
+            #### If it started with X, then turn off the default attribute stripping mode
+            attribute_caching = True
+            original_response_id = response_id
+            if response_id.startswith('X'):
+                attribute_caching = False
+                response_id = response_id[1:]
+
             ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
@@ -803,7 +810,7 @@ class ResponseCache:
                     envelope['validation_result']['provenance_summary'] = attribute_parser.summarize_provenance_info()
 
                     #### Strip highly verbose information
-                    if 'nodes' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['nodes'] is not None:
+                    if attribute_caching is True and 'nodes' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['nodes'] is not None:
                         for node_key, node in envelope['message']['knowledge_graph']['nodes'].items():
                             component_uuid = 'Z' + str(uuid.uuid4())
                             filename = f"{component_cache_dir}/{component_uuid}.json"
@@ -811,8 +818,14 @@ class ResponseCache:
                                 json.dump(node, outfile)
                             node['attributes'] = None
                             node['detail_lookup'] = component_uuid
-                    if 'edges' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['edges'] is not None:
+                    eprint(f"attribute_caching={attribute_caching}")
+                    if attribute_caching is True and 'edges' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['edges'] is not None:
                         for edge_key, edge in envelope['message']['knowledge_graph']['edges'].items():
+                            eprint(f"edge {edge_key}")
+                            if 'attributes' in edge and edge['attributes'] is not None:
+                                for attribute in edge['attributes']:
+                                    if 'attribute_type_id' in attribute and attribute['attribute_type_id'] is not None and attribute['attribute_type_id'] == 'biolink:support_graphs':
+                                        edge['has_support_graph'] = True
                             component_uuid = 'Z' + str(uuid.uuid4())
                             filename = f"{component_cache_dir}/{component_uuid}.json"
                             with open(filename, 'w') as outfile:
@@ -820,6 +833,7 @@ class ResponseCache:
                             edge['detail_lookup'] = component_uuid
                             edge['attributes'] = None
                             edge['sources'] = None
+
                     content_size = len(json.dumps(envelope,indent=2))
                     if content_size < 1000:
                         content_size = '{:.2f} kB'.format(content_size/1000)
@@ -830,7 +844,7 @@ class ResponseCache:
                     else:
                         content_size = '{:.0f} MB'.format(content_size/1000000)
                     envelope['validation_result']['size'] = content_size
-                    filename = f"{component_cache_dir}/{response_id}.json"
+                    filename = f"{component_cache_dir}/{original_response_id}.json"
                     with open(filename, 'w') as outfile:
                         json.dump(envelope, outfile)
 
