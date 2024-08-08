@@ -1,14 +1,9 @@
 import argparse
-import json
 import logging
 import os
-import pathlib
-import subprocess
 import sys
-from typing import Set
 
 import jsonlines
-import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # KG2c dir
@@ -17,10 +12,6 @@ import file_manager
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
 KG2PRE_TSVS_DIR = f"{KG2C_DIR}/kg2pre_tsvs"
-
-
-def strip_biolink_prefix(item: str) -> str:
-    return item.replace("biolink:", "")
 
 
 def extract_subclass_edges(kg2pre_version: str, is_test: bool):

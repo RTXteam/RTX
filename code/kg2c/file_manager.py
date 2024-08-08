@@ -226,12 +226,13 @@ def upload_file_to_arax_databases_server(local_file_path: str, remote_file_name:
     os.system(f"scp {local_file_path} rtxconfig@{rtx_config.db_host}:{remote_dir_path}/{remote_file_name}")
 
 
-def gzip_file(unzipped_file_path: str):
-    logging.info(f"Gzipping {unzipped_file_path}..")
-    zipped_file_path = f"{unzipped_file_path}.gz"
-    with open(unzipped_file_path, "rb") as unzipped_file:
-        with gzip.open(f"{zipped_file_path}.gz", "wb") as zipped_file:
+def gzip_file(file_path: str):
+    logging.info(f"Gzipping {file_path}..")
+    with open(file_path, "rb") as unzipped_file:
+        with gzip.open(f"{file_path}.gz", "wb") as zipped_file:
             zipped_file.writelines(unzipped_file)
+    # Delete the unzipped version
+    subprocess.check_call(["rm", "-f", file_path])
 
 
 def upload_kg2c_files_to_arax_databases_server(kg2pre_version: str, sub_version: str, is_test: bool):
