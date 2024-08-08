@@ -30,14 +30,15 @@ def extract_subclass_edges(kg2pre_version: str, is_test: bool):
     edges_tsv_path = f"{KG2PRE_TSVS_DIR}/{kg2pre_version}/edges.tsv{'_TEST' if is_test else ''}"
     edges_tsv_header_path = f"{KG2PRE_TSVS_DIR}/{kg2pre_version}/edges_header.tsv{'_TEST' if is_test else ''}"
     edges_header_df = pd.read_table(edges_tsv_header_path)
-    columns_to_keep = ["subject", "predicate", "object", "agent_type"]
+    columns_to_keep = ["subject", "predicate", "object", "agent_type", "primary_knowledge_source"]
     edges_df_all_predicates = pd.read_table(edges_tsv_path,
                                             names=list(edges_header_df.columns),
                                             usecols=columns_to_keep,
                                             dtype={"subject": str,
                                                    "predicate": "category",
                                                    "object": str,
-                                                   "agent_type": "category"})
+                                                   "agent_type": "category",
+                                                   "primary_knowledge_source": "category"})
 
     # Filter down to only subclass edges from manual (or manually reviewed) sources
     logging.info(f"Filtering down to only subclass/superclass edges from manual (or manually reviewed) sources..")
