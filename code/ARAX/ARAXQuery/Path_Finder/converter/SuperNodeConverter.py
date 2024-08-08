@@ -17,7 +17,8 @@ class SuperNodeConverter:
             qnode_2_id,
             qnode_mid_id,
             names,
-            edge_extractor
+            edge_extractor,
+            node_category_constraint
     ):
         self.paths = paths
         self.node_1_id = node_1_id
@@ -27,6 +28,7 @@ class SuperNodeConverter:
         self.qnode_mid_id = qnode_mid_id
         self.names = names
         self.edge_extractor = edge_extractor
+        self.node_category_constraint = node_category_constraint
 
     def convert(self, response):
         occurrence_list_src_mid_by_node_id = {}
@@ -78,5 +80,6 @@ class SuperNodeConverter:
                     kg_src_mid_edge_name=f"{self.names.kg_src_mid_edge_name}_{key}",
                     kg_mid_dest_edge_name=f"{self.names.kg_mid_dest_edge_name}_{key}",
                 ),
-                self.edge_extractor
+                self.edge_extractor,
+                self.node_category_constraint
             ).convert(response)

@@ -28,7 +28,8 @@ class HugeGraphConverter:
             qnode_2_id,
             qnode_in_between_id,
             names,
-            edge_extractor
+            edge_extractor,
+            node_category_constraint
     ):
         self.paths = paths
         self.paths_src_mid = paths_src_mid
@@ -41,23 +42,19 @@ class HugeGraphConverter:
         self.qnode_in_between_id = qnode_in_between_id
         self.names = names
         self.edge_extractor = edge_extractor
+        self.node_category_constraint = node_category_constraint
 
     def convert(self, response):
-        (source_destination_knowledge_graph_edge,
-         source_middle_knowledge_graph_edge,
-         destination_middle_knowledge_graph_edge) = self.self_created_knowledge_graph_edges()
-
-        response.envelope.message.knowledge_graph.edges[
-            self.names.kg_src_dest_edge_name] = source_destination_knowledge_graph_edge
-        response.envelope.message.knowledge_graph.edges[
-            self.names.kg_src_mid_edge_name] = source_middle_knowledge_graph_edge
-        response.envelope.message.knowledge_graph.edges[
-            self.names.kg_mid_dest_edge_name] = destination_middle_knowledge_graph_edge
 
         knowledge_graph_src_dest = GraphToKnowledgeGraphConverter(
             self.qnode_1_id,
             self.qnode_2_id,
             self.edge_extractor).convert(response, self.paths)
+
+        if (self.node_category_constraint != ''
+                and self.node_category_constraint not in
+                knowledge_graph_src_dest.nodes[self.node_in_between_id].categories):
+            return
 
         response.envelope.message.knowledge_graph.edges.update(knowledge_graph_src_dest.edges)
         response.envelope.message.knowledge_graph.nodes.update(knowledge_graph_src_dest.nodes)
@@ -77,6 +74,17 @@ class HugeGraphConverter:
 
         response.envelope.message.knowledge_graph.edges.update(knowledge_graph_mid_dest.edges)
         response.envelope.message.knowledge_graph.nodes.update(knowledge_graph_mid_dest.nodes)
+
+        (source_destination_knowledge_graph_edge,
+         source_middle_knowledge_graph_edge,
+         destination_middle_knowledge_graph_edge) = self.self_created_knowledge_graph_edges()
+
+        response.envelope.message.knowledge_graph.edges[
+            self.names.kg_src_dest_edge_name] = source_destination_knowledge_graph_edge
+        response.envelope.message.knowledge_graph.edges[
+            self.names.kg_src_mid_edge_name] = source_middle_knowledge_graph_edge
+        response.envelope.message.knowledge_graph.edges[
+            self.names.kg_mid_dest_edge_name] = destination_middle_knowledge_graph_edge
 
         analyses = Analysis(
             edge_bindings={
