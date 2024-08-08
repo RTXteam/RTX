@@ -227,12 +227,7 @@ def upload_file_to_arax_databases_server(local_file_path: str, remote_file_name:
 
 
 def gzip_file(file_path: str):
-    logging.info(f"Gzipping {file_path}..")
-    with open(file_path, "rb") as unzipped_file:
-        with gzip.open(f"{file_path}.gz", "wb") as zipped_file:
-            zipped_file.writelines(unzipped_file)
-    # Delete the unzipped version
-    subprocess.check_call(["rm", "-f", file_path])
+    subprocess.check_call(["gzip", "-f", file_path])
 
 
 def upload_kg2c_files_to_arax_databases_server(kg2pre_version: str, sub_version: str, is_test: bool):
