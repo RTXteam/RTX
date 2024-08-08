@@ -2939,14 +2939,17 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		    kmne.edge_binding_attributes_lookup_key = edge.detail_lookup;
 
 		// confirm...
-		if (kmne.attributes) {
+		if (kmne.has_these_support_graphs && kmne.has_these_support_graphs.length > 0) {
+                    kmne.__has_sgs = true;
+                    for (var sgid of kmne.has_these_support_graphs)
+			add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+		}
+		else if (kmne.attributes) {
 		    for (var att of kmne.attributes) {
 			if (att.attribute_type_id == "biolink:support_graphs" && att.value && att.value.length > 0) {
-			    for (var sgid of att.value) {
-				//console.log("edge aux::"+sgid);
-				kmne.__has_sgs = true;
+			    kmne.__has_sgs = true;
+			    for (var sgid of att.value)
 				add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
-			    }
 			}
 		    }
 		}
@@ -3397,13 +3400,13 @@ function add_cyto(i,dataid) {
 	a.innerHTML = this.data('target');
 	div.appendChild(a);
 
-	if (this.data('__has_sgs')) {
-	    UIstate["edgesg"] = 0;
-            span = document.createElement("span");
-	    span.id = 'd'+this.data('parentdivnum')+'_div_edge';
-	    span.appendChild(document.createTextNode(" Edge Support Graphs: "));
-            div.appendChild(span);
-	}
+	UIstate["edgesg"] = 0;
+        span = document.createElement("span");
+	if (!this.data('__has_sgs'))
+	    span.style.display = 'none';
+	span.id = 'd'+this.data('parentdivnum')+'_div_edge';
+	span.appendChild(document.createTextNode(" Edge Support Graphs: "));
+        div.appendChild(span);
 
 	div.appendChild(document.createElement("br"));
 
@@ -3701,7 +3704,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
     cell = document.createElement("td");
     cell.style.overflowWrap = "anywhere"; //??
 
-    if (value != null && value != '') {
+    if (value != null && value != '' || value == false) {
 	if (Array.isArray(att[mainvalue])) {
 	    if (att.attribute_type_id != "biolink:publications")
                 cell.className = 'attvalue';
@@ -3769,10 +3772,11 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		    a.style.fontWeight = "bold";
 		    a.style.fontSize = "larger";
 		    a.style.marginLeft = "20px";
-		    a.title = 'View Aux Graph: '+ val;
+		    a.title = 'View Edge Aux Graph: '+ val;
 		    a.setAttribute('onclick', 'add_cyto('+num+',"AUX'+val+'");');
 		    a.innerText = UIstate["edgesg"];
 		    document.getElementById('d'+num+'_div_edge').appendChild(a);
+		    document.getElementById('d'+num+'_div_edge').style.display = ''; // display it
 		}
 
 		else {
