@@ -24,7 +24,7 @@ def strip_biolink_prefix(item: str) -> str:
 
 
 def extract_subclass_edges(kg2pre_version: str, is_test: bool):
-    logging.info(f"Creating KG2pre edges table...")
+    logging.info(f"Loading KG2pre edges table...")
 
     # Load KG2pre data into edges table, including only the columns relevant to us
     edges_tsv_path = f"{KG2PRE_TSVS_DIR}/{kg2pre_version}/edges.tsv{'_TEST' if is_test else ''}"
