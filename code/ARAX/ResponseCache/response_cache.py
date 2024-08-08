@@ -825,7 +825,8 @@ class ResponseCache:
                             if 'attributes' in edge and edge['attributes'] is not None:
                                 for attribute in edge['attributes']:
                                     if 'attribute_type_id' in attribute and attribute['attribute_type_id'] is not None and attribute['attribute_type_id'] == 'biolink:support_graphs':
-                                        edge['has_support_graph'] = True
+                                        edge['has_these_support_graphs'] = attribute['value']
+                                        eprint(f"has_these_support_graphs={attribute['value']}")
                             component_uuid = 'Z' + str(uuid.uuid4())
                             filename = f"{component_cache_dir}/{component_uuid}.json"
                             with open(filename, 'w') as outfile:
