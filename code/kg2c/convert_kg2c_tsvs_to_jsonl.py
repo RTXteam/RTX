@@ -108,6 +108,9 @@ def convert_tsv_to_jsonl(tsv_path: str, header_tsv_path: str):
                     jsonl_writer_lite.write_all(batch_lite)
 
     logging.info(f"Done converting rows in {tsv_path} to json lines.")
+    logging.info(f"Line counts of output files:")
+    logging.info(os.system(f"wc -l {jsonl_output_file_path}"))
+    logging.info(os.system(f"wc -l {jsonl_output_file_path_lite}"))
 
 
 def run(is_test: bool):
