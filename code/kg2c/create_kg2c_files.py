@@ -332,17 +332,6 @@ def _write_list_to_neo4j_ready_tsv(input_list: List[Dict[str, any]], file_name_r
         dict_writer.writerows(input_list)
 
 
-def create_kg2c_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
-                          canonicalized_edges_dict: Dict[str, Dict[str, any]],
-                          meta_info_dict: Dict[str, str], is_test: bool):
-    logging.info(f" Creating KG2c JSON file..")
-    kgx_format_json = {"nodes": list(canonicalized_nodes_dict.values()),
-                       "edges": list(canonicalized_edges_dict.values())}
-    kgx_format_json.update(meta_info_dict)
-    with open(f"{KG2C_DIR}/kg2c.json{'_TEST' if is_test else ''}", "w+") as output_file:
-        json.dump(kgx_format_json, output_file)
-
-
 def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                                canonicalized_edges_dict: Dict[str, Dict[str, any]],
                                meta_info_dict: Dict[str, str], is_test: bool):

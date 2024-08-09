@@ -9,6 +9,7 @@ import csv
 import logging
 import os
 import sys
+import time
 
 import jsonlines
 import pandas as pd
@@ -110,6 +111,7 @@ def convert_tsv_to_jsonl(tsv_path: str, header_tsv_path: str):
 
 
 def run(is_test: bool):
+    start = time.time()
     logging.info(f"Beginning to convert KG2c TSVs to json lines format (and filter out low-quality edges)..")
     nodes_tsv_path = f"{KG2C_DIR}/nodes_c.tsv{'_TEST' if is_test else ''}"
     nodes_header_tsv_path = f"{KG2C_DIR}/nodes_c_header.tsv{'_TEST' if is_test else ''}"
@@ -117,7 +119,7 @@ def run(is_test: bool):
     edges_tsv_path = f"{KG2C_DIR}/edges_c.tsv{'_TEST' if is_test else ''}"
     edges_header_tsv_path = f"{KG2C_DIR}/edges_c_header.tsv{'_TEST' if is_test else ''}"
     convert_tsv_to_jsonl(edges_tsv_path, edges_header_tsv_path)
-    logging.info(f"Conversion to json lines is complete.")
+    logging.info(f"Conversion to json lines is complete. Took {round((time.time() - start) / 60)} minutes.")
 
 
 def main():
