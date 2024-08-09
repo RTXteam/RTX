@@ -203,17 +203,10 @@ def make_kg2c_tarball(is_test: bool):
                            f"edges_c.tsv{test_suffix}", f"edges_c_header.tsv{test_suffix}"])
 
 
-def upload_kg2c_files_to_s3(is_test: bool):
-    logging.info("Uploading KG2c json and TSV files to S3..")
-    tarball_name = f"kg2c-tsv.tar.gz{'_TEST' if is_test else ''}"
+def upload_file_to_s3(local_file_path: str):
+    logging.info(f"Uploading file to s3 {local_file_path}")
     subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2",
-                           f"{KG2C_DIR}/{tarball_name}", "s3://rtx-kg2/"])
-
-    unzipped_lite_json_name = f"kg2c_lite.json{'_TEST' if is_test else ''}"
-    subprocess.check_call(["gzip", "-f", f"{KG2C_DIR}/{unzipped_lite_json_name}"])
-    zipped_lite_json_name = f"{unzipped_lite_json_name}.gz"
-    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2",
-                           f"{KG2C_DIR}/{zipped_lite_json_name}", "s3://rtx-kg2/"])
+                           local_file_path, "s3://rtx-kg2/"])
 
 
 def upload_file_to_arax_databases_server(local_file_path: str, remote_file_name: str, kg2pre_version: str,
@@ -226,8 +219,33 @@ def upload_file_to_arax_databases_server(local_file_path: str, remote_file_name:
     os.system(f"scp {local_file_path} rtxconfig@{rtx_config.db_host}:{remote_dir_path}/{remote_file_name}")
 
 
+def upload_file_to_kg2webhost(local_file_path: str, remote_file_name: str):
+    if not local_file_path.endswith(".gz") and remote_file_name.endswith(".gz"):
+        gzip_file(local_file_path)
+        local_file_path = f"{local_file_path}.gz"
+    logging.info(f"Uploading {local_file_path} to kg2webhost server..")
+    remote_dir_path = f"/home/ubuntu/nginx-document-root"
+    os.system(f"scp {local_file_path} ubuntu@kg2webhost.rtx.ai:{remote_dir_path}/{remote_file_name}")
+
+
 def gzip_file(file_path: str):
+    logging.info(f"Zipping file {file_path}")
     subprocess.check_call(["gzip", "-f", file_path])
+
+
+def zip_and_upload_artifacts_to_kg2webhost(kg2pre_version: str, sub_version: str, is_test: bool):
+    logging.info(f"Uploading KG2c artifacts to kg2webhost server")
+    test_suffix = "_TEST" if is_test else ""
+    upload_file_to_kg2webhost(local_file_path=f"{KG2C_DIR}/kg2c_lite.json{test_suffix}",
+                              remote_file_name=f"kg2c_lite_{kg2pre_version}_{sub_version}{test_suffix}.json.gz")
+    upload_file_to_kg2webhost(local_file_path=f"{KG2C_DIR}/nodes_c.jsonl{test_suffix}",
+                              remote_file_name=f"kg2c-{kg2pre_version}-{sub_version}-nodes{test_suffix}.jsonl.gz")
+    upload_file_to_kg2webhost(local_file_path=f"{KG2C_DIR}/edges_c.jsonl{test_suffix}",
+                              remote_file_name=f"kg2c-{kg2pre_version}-{sub_version}-edges{test_suffix}.jsonl.gz")
+    upload_file_to_kg2webhost(local_file_path=f"{KG2C_DIR}/nodes_c_lite.jsonl{test_suffix}",
+                              remote_file_name=f"kg2c-{kg2pre_version}-{sub_version}-nodes-lite{test_suffix}.jsonl.gz")
+    upload_file_to_kg2webhost(local_file_path=f"{KG2C_DIR}/edges_c_lite.jsonl{test_suffix}",
+                              remote_file_name=f"kg2c-{kg2pre_version}-{sub_version}-edges-lite{test_suffix}.jsonl.gz")
 
 
 def upload_kg2c_files_to_arax_databases_server(kg2pre_version: str, sub_version: str, is_test: bool):
@@ -291,8 +309,8 @@ def main():
     arg_parser.add_argument("-c", "--checkversion", dest="check_version", action="store_true")
     arg_parser.add_argument("-f", "--testfiles", dest="test_files", action="store_true")
     arg_parser.add_argument("-m", "--maketarball", dest="make_tarball", action="store_true")
-    arg_parser.add_argument("-s", "--uploads3", dest="upload_s3", action="store_true")
     arg_parser.add_argument("-u", "--uploaddatabases", dest="upload_databases", action="store_true")
+    arg_parser.add_argument("-w", "--uploadkg2webhost", dest="upload_kg2webhost", action="store_true")
     args = arg_parser.parse_args()
     if args.download:
         download_kg2pre_tsvs(args.kg2pre_version)
@@ -304,8 +322,8 @@ def main():
         create_kg2pre_tsv_test_files(args.kg2pre_version)
     if args.make_tarball:
         make_kg2c_tarball(args.test)
-    if args.upload_s3:
-        upload_kg2c_files_to_s3(args.test)
+    if args.upload_kg2webhost:
+        zip_and_upload_artifacts_to_kg2webhost(args.kg2pre_version, args.sub_version, args.test)
     if args.upload_databases:
         upload_kg2c_files_to_arax_databases_server(args.kg2pre_version, args.sub_version, args.test)
 

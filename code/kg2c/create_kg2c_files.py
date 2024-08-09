@@ -24,6 +24,7 @@ from typing import List, Dict, Tuple, Union, Optional, Set
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils import select_best_description
+import convert_kg2c_tsvs_to_jsonl
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/BiolinkHelper/")
@@ -722,8 +723,8 @@ def create_kg2c_files(kg2pre_version: str, sub_version: str, biolink_version: st
     meta_info_dict = {"kg2_version": kg2pre_version, "sub_version": sub_version, "biolink_version": biolink_version}
     logging.info(f"Saving KG2c in various file formats..")
     create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
-    create_kg2c_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, biolink_version, is_test)
+    convert_kg2c_tsvs_to_jsonl.run(is_test)
     create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
 
 
