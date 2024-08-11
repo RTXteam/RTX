@@ -619,7 +619,7 @@ class InferUtilities:
                         message.knowledge_graph.edges[new_edge_key].filled = True
                         message.knowledge_graph.edges[new_edge_key].qedge_keys = [qedge_id]
             else:
-                node_ids = list(top_predictions['gene_id'].to_numpy())
+                node_ids = list(top_predictions['chemical_id'].to_numpy())
                 node_info = synonymizer.get_canonical_curies(node_ids)
                 node_id_to_canonical_id = {k: v['preferred_curie'] for k, v in node_info.items() if v is not None}
                 node_id_to_score = dict(zip(node_ids, top_predictions['tp_prob']))
@@ -706,16 +706,18 @@ class InferUtilities:
         # FW: code that will add resulting paths to the query graph and knowledge graph goes here
         essence_scores = {}
         for (curie1, curie2), paths in top_paths.items():
+            if query_chemical:
+                chemical_curie = curie1
+                gene_curie = curie2
+                    
+            else:
+                chemical_curie = curie2
+                gene_curie = curie1
             path_added = False
             for path in paths:
-                if query_chemical:
-                    chemical_curie = curie1
-                    gene_curie = curie2
-                    
-                else:
-                    chemical_curie = curie2
-                    gene_curie = curie1
+                if not query_chemical:
                     path.reverse()
+                    
                 n_elements = len(path)
                 # Creates edge tuples of the form (node name 1, edge predicate, node name 2)
                 edge_tuples = [(path[i],path[i+1],path[i+2]) for i in range(0,n_elements-2,2)]
