@@ -1,9 +1,6 @@
 import sys
 import os
-import sqlite3
 import math
-
-from RTXConfiguration import RTXConfiguration
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 from repo.NGDCalculator import calculate_ngd
@@ -11,40 +8,6 @@ from repo.Repository import Repository
 from repo.NodeDegreeRepo import NodeDegreeRepo
 from repo.RedisConnector import RedisConnector
 from model.Node import Node
-
-
-def get_curie_to_pmids_path():
-    pathlist = os.path.realpath(__file__).split(os.path.sep)
-    RTXindex = pathlist.index("RTX")
-    ngd_filepath = os.path.sep.join(
-        [*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
-    return f"{ngd_filepath}{os.path.sep}{RTXConfiguration().curie_to_pmids_path.split('/')[-1]}"
-
-
-def get_node_pmids(node_id):
-    query_to_find_pmids_for_node_id = f"SELECT pmids FROM curie_to_pmids WHERE curie == '{node_id}'"
-    conn = sqlite3.connect(get_curie_to_pmids_path())
-    cursor = conn.cursor()
-    cursor.execute(query_to_find_pmids_for_node_id)
-    node_pmids = cursor.fetchone()
-    conn.close()
-    return node_pmids
-
-
-def get_neighbors_pmids(neighbors):
-    chunk_size = 100000
-    connection = sqlite3.connect(get_curie_to_pmids_path())
-    base_query = "SELECT curie, pmids FROM curie_to_pmids WHERE curie IN ({})"
-    results = []
-    for i in range(0, len(neighbors), chunk_size):
-        chunk = neighbors[i:i + chunk_size]
-        placeholders = ', '.join('?' * len(chunk))
-        query = base_query.format(placeholders)
-        cursor = connection.cursor()
-        cursor.execute(query, chunk)
-        results.extend(cursor.fetchall())
-    connection.close()
-    return results
 
 
 class NGDSortedNeighborsRepo(Repository):
