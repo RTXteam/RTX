@@ -47,11 +47,12 @@ jobs:
 
     - name: Download databases into CICD instance
       run: |
-        mkdir /home/ubuntu/temp
-        cd /home/ubuntu/temp
-        git clone https://github.com/RTXteam/RTX.git
-        mv RTX RTX_temp
         echo ${{ github.ref }}
+        # mkdir /home/ubuntu/temp
+        # cd /home/ubuntu/temp
+        # git clone https://github.com/RTXteam/RTX.git
+        # mv RTX RTX_temp
+        # echo ${{ github.ref }}
         # git checkout ${{ github.ref }}
         # ~/venv3.9/bin/python3 -m venv venv3.9_temp
         # source venv3.9_temp/bin/activate
