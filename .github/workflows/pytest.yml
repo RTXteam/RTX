@@ -44,8 +44,10 @@ jobs:
     # - name: Append code dir to GITHUB_PATH                # Causing RTXConfiguration import error
     #   run: echo $GITHUB_PATH
 
-    # - name: Download databases as needed
-    #   run: python3 $HOME/RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
+    - name: Download databases as needed
+      run: |
+        pwd
+        ls -l pwd
 
     - name: Stop any running containers
       continue-on-error: true
