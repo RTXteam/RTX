@@ -47,7 +47,7 @@ jobs:
     
     - name: Download databases into CICD instance
       run: |
-        ~/venv3.9/bin/python3 /home/ubuntu/action-runner/_work/RTX/RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
+        ~/venv3.9/bin/python3 /home/ubuntu/actions-runner/_work/RTX/RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
 
 
     - name: Stop any running containers
