@@ -45,9 +45,7 @@ jobs:
     #   run: echo $GITHUB_PATH
 
     - name: Download databases as needed
-      run: |
-        echo pwd
-        ls -l pwd
+      run: pwd
 
     - name: Stop any running containers
       continue-on-error: true
