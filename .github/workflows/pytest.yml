@@ -47,12 +47,8 @@ jobs:
 
     - name: Pre database download steps
       run: |
-        touch /home/ubuntu/actions-runner/_work/RTX/RTX/code/__init__.py
-        # ~/venv3.9/bin/python3 /home/ubuntu/actions-runner/_work/RTX/RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
+        ~/venv3.9/bin/python3 /home/ubuntu/RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
 
-    - name: Download databases
-      run: |
-        cd /home/ubuntu/actions-runner/_work/RTX/RTX/code && ~/venv3.9/bin/python3 -c 'import sys; print(sys.path)'
 
     - name: Stop any running containers
       continue-on-error: true
