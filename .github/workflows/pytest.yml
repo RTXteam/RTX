@@ -50,13 +50,13 @@ jobs:
         mkdir -p /home/ubuntu/temp
         cd /home/ubuntu/temp
         git clone https://github.com/RTXteam/RTX.git
-        cd RTX
+        cd /home/ubuntu/temp/RTX
         echo ${GITHUB_REF#refs/heads/}
         git checkout ${GITHUB_REF#refs/heads/}
         ~/venv3.9/bin/python3 -m venv venv3.9
         source venv3.9/bin/activate
-        pip install -r RTX/code/requirements.txt
-        ~/venv3.9_temp/bin/python3 RTX_temp/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
+        pip install -r /home/ubuntu/temp/RTX/requirements.txt
+        ~/venv3.9/bin/python3 RTX_temp/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
         rm -rf /home/ubuntu/temp
 
 
