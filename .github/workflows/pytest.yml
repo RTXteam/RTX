@@ -49,7 +49,7 @@ jobs:
       run: |
         mkdir /home/ubuntu/temp
         cd /home/ubuntu/temp
-        git clone git@github.com:RTXteam/RTX.git
+        git clone https://github.com/RTXteam/RTX.git
         mv RTX RTX_temp
         echo ${{ github.ref }}
         # git checkout ${{ github.ref }}
