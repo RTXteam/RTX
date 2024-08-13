@@ -46,7 +46,7 @@ jobs:
 
     - name: Download databases as needed
       run: |
-        pwd
+        echo pwd
         ls -l pwd
 
     - name: Stop any running containers
