@@ -45,7 +45,7 @@ jobs:
     # - name: Append code dir to GITHUB_PATH                # Causing RTXConfiguration import error
     #   run: echo $GITHUB_PATH
 
-    - name: Pre database download steps
+    - name: Download databases into CICD instance
       run: |
         ~/venv3.9/bin/python3 /home/ubuntu/RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
 
