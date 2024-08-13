@@ -47,6 +47,7 @@ jobs:
 
     - name: Download databases into CICD instance
       run: |
+        mkdir /home/ubuntu/temp
         cd /home/ubuntu/temp
         git clone git@github.com:RTXteam/RTX.git
         mv RTX RTX_temp
