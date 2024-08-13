@@ -51,13 +51,15 @@ jobs:
         cd /home/ubuntu/temp
         git clone https://github.com/RTXteam/RTX.git
         echo ${GITHUB_REF#refs/heads/}
-        git checkout ${GITHUB_REF#refs/heads/}
         ~/venv3.9/bin/python3 -m venv venv3.9
         source venv3.9/bin/activate
         cd RTX
+        git checkout ${GITHUB_REF#refs/heads/}
+
         pip install -r requirements.txt
         ~/temp/venv3.9/bin/python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
         rm -rf /home/ubuntu/temp
+        deactivate
 
 
 
