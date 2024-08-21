@@ -56,6 +56,9 @@ class TRAPIQuerier:
         """
         This function answers a one-hop (single-edge) query using the specified KP.
         :param query_graph: A TRAPI query graph.
+        :param alter_kg2_treats_edges: If true, will query KG2 for higher-level treats-type predicates instead of just
+                                        'treats'. Any higher-level returned edges will later be altered to have 'treats'
+                                        predicates in ARAX_expander.py.
         :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
                 results for the query. (Organized by QG IDs.)
         """
@@ -90,10 +93,11 @@ class TRAPIQuerier:
         # Patch to address lack of answers from KG2 for treats queries after treats refactor #2328
         if alter_kg2_treats_edges and self.kp_infores_curie == "infores:rtx-kg2":
             for qedge in qg_copy.edges.values():  # Note there's only ever one qedge per QG here
-                qedge.predicates = ["biolink:treats_or_applied_or_studied_to_treat" if predicate == "biolink:treats" else predicate
-                                    for predicate in qedge.predicates]
-                log.info(f"For querying infores:rtx-kg2, edited the QG for this single-hop query to use "
-                         f"the biolink:treats_or_applied_or_studied_to_treat predicate (instead of biolink:treats)")
+                qedge.predicates = list(set(qedge.predicates).union({"biolink:treats_or_applied_or_studied_to_treat",
+                                                                     "biolink:applied_to_treat",
+                                                                     "biolink:studied_to_treat"}))
+                log.info(f"For querying infores:rtx-kg2, edited {qedge_key} to use higher treats-type predicates: "
+                         f"{qedge.predicates}")
 
         # Answer the query using the KP and load its answers into our object model
         final_kg = await self._answer_query_using_kp_async(qg_copy)
