@@ -599,6 +599,7 @@ class ARAXExpander:
                     # Record the original KG2 predicate in an attribute
                     edge.attributes.append(Attribute(attribute_type_id="biolink:original_predicate",
                                                      value=edge.predicate,
+                                                     value_type_id="biolink:predicate",
                                                      description="Predicate as it appears in RTX-KG2, prior to "
                                                                  "alteration by ARAX.",
                                                      attribute_source="infores:arax"))
