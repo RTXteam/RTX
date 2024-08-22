@@ -1553,6 +1553,7 @@ def test_treats_patch_issue_2328():
     for edge in kg2_edges_treats:
         assert edge.predicate == "biolink:treats"
         assert edge.attributes
+        assert not any(source.resource_id == "infores:semmeddb" for source in edge.sources)
 
     # Verify that the predicate editing doesn't happen outside of inferred mode
     query = {
