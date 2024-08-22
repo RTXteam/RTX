@@ -6,6 +6,7 @@ import pathlib
 import sqlite3
 import string
 import sys
+import time
 from collections import defaultdict
 from typing import Optional, Union, List, Set, Dict, Tuple
 
@@ -56,7 +57,9 @@ class NodeSynonymizer:
 
     def get_canonical_curies(self, curies: Optional[Union[str, Set[str], List[str]]] = None,
                              names: Optional[Union[str, Set[str], List[str]]] = None,
-                             return_all_categories: bool = False) -> dict:
+                             return_all_categories: bool = False,
+                             debug: bool = False) -> dict:
+        start = time.time()
 
         # Convert any input values to Set format
         curies_set = self._convert_to_set_format(curies)
@@ -144,11 +147,15 @@ class NodeSynonymizer:
         for unrecognized_value in unrecognized_input_values:
             results_dict[unrecognized_value] = None
 
+        if debug:
+            print(f"Took {round(time.time() - start, 5)} seconds")
         return results_dict
 
     def get_equivalent_nodes(self, curies: Optional[Union[str, Set[str], List[str]]] = None,
                              names: Optional[Union[str, Set[str], List[str]]] = None,
-                             include_unrecognized_entities: bool = True) -> dict:
+                             include_unrecognized_entities: bool = True,
+                             debug: bool = False) -> dict:
+        start = time.time()
 
         # Convert any input values to Set format
         curies_set = self._convert_to_set_format(curies)
@@ -210,9 +217,77 @@ class NodeSynonymizer:
             for unrecognized_curie in unrecognized_curies:
                 results_dict[unrecognized_curie] = None
 
+        if debug:
+            print(f"Took {round(time.time() - start, 5)} seconds")
         return results_dict
 
-    def get_normalizer_results(self, entities: Optional[Union[str, Set[str], List[str]]]) -> dict:
+    def get_preferred_names(self, curies: Union[str, Set[str], List[str]], debug: bool = False) -> dict:
+        """
+        Returns preferred names for input curies - i.e., the name of the curie's canonical identifier.
+        """
+        start = time.time()
+
+        # Convert any input values to Set format
+        curies_set = self._convert_to_set_format(curies)
+        results_dict = dict()
+
+        if curies_set:
+            # First transform curies so that their prefixes are entirely uppercase
+            curies_to_capitalized_curies, capitalized_curies = self._map_to_capitalized_curies(curies_set)
+
+            # Query the synonymizer sqlite database for these identifiers (in batches, if necessary)
+            sql_query_template = f"""
+                        SELECT N.id_simplified, C.name
+                        FROM nodes as N
+                        INNER JOIN clusters as C on C.cluster_id == N.cluster_id
+                        WHERE N.id_simplified in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, capitalized_curies)
+
+            # Transform the results into the proper response format
+            results_dict_capitalized = {row[0]: row[1] for row in matching_rows}
+            results_dict = {input_curie: results_dict_capitalized[capitalized_curie]
+                            for input_curie, capitalized_curie in curies_to_capitalized_curies.items()
+                            if capitalized_curie in results_dict_capitalized}
+
+        if debug:
+            print(f"Took {round(time.time() - start, 5)} seconds")
+        return results_dict
+
+    def get_curie_names(self, curies: Union[str, Set[str], List[str]], debug: bool = False) -> dict:
+        """
+        Returns NON-preferred names for input curies; i.e., the curie's direct name, not the name of its canonical
+        identifier.
+        """
+        start = time.time()
+
+        # Convert any input values to Set format
+        curies_set = self._convert_to_set_format(curies)
+        results_dict = dict()
+
+        if curies_set:
+            # First transform curies so that their prefixes are entirely uppercase
+            curies_to_capitalized_curies, capitalized_curies = self._map_to_capitalized_curies(curies_set)
+
+            # Query the synonymizer sqlite database for these identifiers (in batches, if necessary)
+            sql_query_template = f"""
+                        SELECT N.id_simplified, N.name
+                        FROM nodes as N
+                        WHERE N.id_simplified in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, capitalized_curies)
+
+            # Transform the results into the proper response format
+            results_dict_capitalized = {row[0]: row[1] for row in matching_rows}
+            results_dict = {input_curie: results_dict_capitalized[capitalized_curie]
+                            for input_curie, capitalized_curie in curies_to_capitalized_curies.items()
+                            if capitalized_curie in results_dict_capitalized}
+
+        if debug:
+            print(f"Took {round(time.time() - start, 5)} seconds")
+        return results_dict
+
+    def get_normalizer_results(self, entities: Optional[Union[str, Set[str], List[str]]],
+                               debug: bool = False) -> dict:
+        start = time.time()
 
         # First handle any special input from /entity endpoint
         output_format = None
@@ -298,6 +373,8 @@ class NodeSynonymizer:
                 if normalizer_info:
                     normalizer_info["knowledge_graph"] = self._get_cluster_graph(normalizer_info)
 
+        if debug:
+            print(f"Took {round(time.time() - start, 5)} seconds")
         return results_dict
 
     # ---------------------------------------- EXTERNAL DEBUG METHODS --------------------------------------------- #
@@ -574,6 +651,8 @@ def main():
     arg_parser.add_argument("-c", "--canonical", dest="canonical", action="store_true")
     arg_parser.add_argument("-e", "--equivalent", dest="equivalent", action="store_true")
     arg_parser.add_argument("-n", "--normalizer", dest="normalizer", action="store_true")
+    arg_parser.add_argument("-l", "--names", dest="names", action="store_true")
+    arg_parser.add_argument("-p", "--preferrednames", dest="preferred_names", action="store_true")
     # Add a couple other data viewing options (tabular and TRAPI cluster graph format)
     arg_parser.add_argument("-t", "--table", dest="table", action="store_true")
     arg_parser.add_argument("-g", "--graph", dest="graph", action="store_true")
@@ -581,20 +660,26 @@ def main():
 
     synonymizer = NodeSynonymizer()
     if args.canonical:
-        results = synonymizer.get_canonical_curies(curies=args.curie_or_name)
+        results = synonymizer.get_canonical_curies(curies=args.curie_or_name, debug=True)
         if not results[args.curie_or_name]:
             results = synonymizer.get_canonical_curies(names=args.curie_or_name)
         print(json.dumps(results, indent=2))
     if args.equivalent:
-        results = synonymizer.get_equivalent_nodes(curies=args.curie_or_name)
+        results = synonymizer.get_equivalent_nodes(curies=args.curie_or_name, debug=True)
         if not results[args.curie_or_name]:
-            results = synonymizer.get_equivalent_nodes(names=args.curie_or_name)
+            results = synonymizer.get_equivalent_nodes(names=args.curie_or_name, debug=True)
         print(json.dumps(results, indent=2))
     if args.normalizer:
-        results = synonymizer.get_normalizer_results(entities=args.curie_or_name)
+        results = synonymizer.get_normalizer_results(entities=args.curie_or_name, debug=True)
+        print(json.dumps(results, indent=2))
+    if args.names:
+        results = synonymizer.get_curie_names(curies=args.curie_or_name, debug=True)
+        print(json.dumps(results, indent=2))
+    if args.preferred_names:
+        results = synonymizer.get_preferred_names(curies=args.curie_or_name, debug=True)
         print(json.dumps(results, indent=2))
     # Default to printing the tabular view of the cluster if nothing else was specified
-    if args.table or (not args.canonical and not args.equivalent and not args.normalizer and not args.graph):
+    if args.table or not (args.canonical or args.equivalent or args.normalizer or args.names or args.preferred_names or args.graph):
         synonymizer.print_cluster_table(args.curie_or_name)
 
 

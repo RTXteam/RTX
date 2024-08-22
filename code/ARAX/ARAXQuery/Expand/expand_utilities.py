@@ -409,33 +409,8 @@ def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) ->
 def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, str]:
     curies = convert_to_list(curie)
     synonymizer = NodeSynonymizer()
-    log.debug(f"Looking up names for {len(curies)} input curies using NodeSynonymizer")
-    synonymizer_info = synonymizer.get_normalizer_results(curies)
-    curie_to_name_map = dict()
-    if synonymizer_info:
-        recognized_input_curies = {input_curie for input_curie in synonymizer_info if synonymizer_info.get(input_curie)}
-        unrecognized_curies = set(curies).difference(recognized_input_curies)
-        if unrecognized_curies:
-            log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
-        input_curies_without_matching_node = set()
-        for input_curie in recognized_input_curies:
-            equivalent_nodes = synonymizer_info[input_curie]["nodes"]
-            # Find the 'node' in the synonymizer corresponding to this curie
-            input_curie_nodes = [node for node in equivalent_nodes if node["identifier"] == input_curie]
-            if not input_curie_nodes:
-                # Try looking for slight variation (KG2 vs. SRI discrepancy): "KEGG:C02700" vs. "KEGG.COMPOUND:C02700"
-                input_curie_stripped = input_curie.replace(".COMPOUND", "")
-                input_curie_nodes = [node for node in equivalent_nodes if node["identifier"] == input_curie_stripped]
-            # Record the name for this input curie
-            if input_curie_nodes:
-                curie_to_name_map[input_curie] = input_curie_nodes[0].get("label")
-            else:
-                input_curies_without_matching_node.add(input_curie)
-        if input_curies_without_matching_node:
-            log.warning(f"No matching nodes found in NodeSynonymizer for these input curies: "
-                        f"{input_curies_without_matching_node}. Cannot determine their specific names.")
-    else:
-        log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+    log.debug(f"Looking up names for {len(curies)} input curies using NodeSynonymizer.get_curie_names()")
+    curie_to_name_map = synonymizer.get_curie_names(curies)
     return curie_to_name_map
 
 
