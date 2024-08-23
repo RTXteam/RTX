@@ -26,6 +26,9 @@ class BiolinkHelper:
         eprint(f"{timestamp}: DEBUG: In BiolinkHelper init")
 
         self.biolink_version = biolink_version if biolink_version else self.get_current_arax_biolink_version()
+        if self.biolink_version == "4.2.0":
+            print(f"Overriding Biolink version from 4.2.0 to 4.2.1 due to issues with treats predicates in 4.2.0")
+            self.biolink_version = "4.2.1"
         self.root_category = "biolink:NamedThing"
         self.root_predicate = "biolink:related_to"
         self.root_imaginary = "ROOT"
