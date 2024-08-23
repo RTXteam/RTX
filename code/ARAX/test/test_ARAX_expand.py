@@ -1531,7 +1531,15 @@ def test_treats_patch_issue_2328():
                 "object": "disease",
                 "subject": "chemical",
                 "predicates": ["biolink:treats"],
-                "knowledge_type": "inferred"
+                "knowledge_type": "inferred",
+                "attribute_constraints": [
+                    {
+                        "id": "knowledge_source",
+                        "name": "knowledge source",
+                        "value": ["infores:rtx-kg2"],
+                        "operator": "=="
+                    }
+                ]
             }
         }
     }
@@ -1541,9 +1549,11 @@ def test_treats_patch_issue_2328():
                         if any(source.resource_id == "infores:rtx-kg2" for source in edge.sources)]
     print(f"Answer includes {len(kg2_edges_treats)} edges from KG2")
     assert kg2_edges_treats
+    print(kg2_edges_treats)
     for edge in kg2_edges_treats:
         assert edge.predicate == "biolink:treats"
         assert edge.attributes
+        assert not any(source.resource_id == "infores:semmeddb" for source in edge.sources)
 
     # Verify that the predicate editing doesn't happen outside of inferred mode
     query = {
@@ -1559,7 +1569,15 @@ def test_treats_patch_issue_2328():
             "t_edge": {
                 "object": "disease",
                 "subject": "chemical",
-                "predicates": ["biolink:treats_or_applied_or_studied_to_treat", "biolink:applied_to_treat"]
+                "predicates": ["biolink:treats_or_applied_or_studied_to_treat", "biolink:applied_to_treat"],
+                "attribute_constraints": [
+                    {
+                        "id": "knowledge_source",
+                        "name": "knowledge source",
+                        "value": ["infores:rtx-kg2"],
+                        "operator": "=="
+                    }
+                ]
             }
         }
     }
@@ -1570,6 +1588,7 @@ def test_treats_patch_issue_2328():
     print(f"Answer includes {len(kg2_edges_treats_or)} edges from KG2")
     assert kg2_edges_treats_or
     assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:treats_or_applied_or_studied_to_treat")
+    assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:applied_to_treat")
 
 
 if __name__ == "__main__":
