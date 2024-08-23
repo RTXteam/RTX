@@ -54,18 +54,49 @@ In the Neo4j instantiation of KG2c (see [below section](#host-kg2canonicalized-i
 ###### Example KG2c edge:
 ```
 {
-  "id": "26507826",
-  "subject": "UMLS:C4683553",
-  "object": "MONDO:0000001",
-  "predicate": "biolink:treats",
-  "primary_knowledge_source": "infores:semmeddb"
-  "kg2_ids": [
-    "UMLS:C4683553---SEMMEDDB:treats---UMLS:C0012634---SEMMEDDB:"
-  ],
-  "publications": [
-    "PMID:34141790"
-  ],
-  "publications_info": "{'PMID:34141790': {'publication date': '2021 Jun 16', 'sentence': 'Recently, the use of ALK inhibitors for the treatment of this disease has been reported.', 'subject score': 983, 'object score': 1000}}"
+   "id": 9830983,
+   "subject": "CHEBI:22984",
+   "object": "PUBCHEM.COMPOUND:5235",
+   "predicate": "biolink:interacts_with",
+   "primary_knowledge_source": "infores:semmeddb",
+   "agent_type": "text_mining_agent",
+   "knowledge_level": "prediction",
+   "domain_range_exclusion": false,
+   "kg2_ids":[
+      "UMLS:C0006675---SEMMEDDB:interacts_with---None---None---None---UMLS:C0037508---SEMMEDDB:"
+   ],
+   "publications":[
+      "PMID:10865219",
+      "PMID:17469511",
+      "PMID:23400904",
+      "PMID:3879454"
+   ],
+   "publications_info":{
+      "PMID:10865219":{
+         "object score":"1000",
+         "publication date":"2000 Jul",
+         "sentence":"To compare the effects of sodium fluoride and etidronate in severe postmenopausal osteoporosis, we conducted a 3 year, prospective, trial in 118 postmenopausal osteoporotic women with at least one vertebral fracture, who were randomly assigned to receive sodium fluoride (25 mg twice daily, as enteric-coated tablets) plus calcium (1000 mg/day) or intermittent etidronate (400 mg/day for 14 days) followed by calcium (1000 mg/day for 76 days).",
+         "subject score":"888"
+      },
+      "PMID:17469511":{
+         "object score":"1000",
+         "publication date":"2006",
+         "sentence":"PURPOSE: The aim of this study was to examine the effect of sodium fluoride and caffeine on concentrations of calcium, phosphorus, and magnesium in rat serum.",
+         "subject score":"1000"
+      },
+      "PMID:23400904":{
+         "object score":"658",
+         "publication date":"2013 Jun",
+         "sentence":"Effects of acute sodium fluoride exposure on kidney function, water homeostasis, and renal handling of calcium and inorganic phosphate.",
+         "subject score":"1000"
+      },
+      "PMID:3879454":{
+         "object score":"1000",
+         "publication date":"1985",
+         "sentence":"Effect of sodium fluoride, calcium, phosphate, and vitamin D2 on trabecular bone balance and remodeling in osteoporotics.",
+         "subject score":"1000"
+      }
+   }
 }
 ```
 In creating KG2c, edges from KG2pre are remapped to use only 'preferred' curies for their `subject` and `object`; edges with the same `subject`, `object`, and `predicate` are then merged.
