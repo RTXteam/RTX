@@ -340,7 +340,11 @@
         "mesh:q000662",
         "mesh:q000635",
         "umls:C000340",
-        "CHEBI:35469"
+        "CHEBI:35469",
+        "umls:c0040616",
+        "umls:c0302837",
+        "chebi:50847",
+        "umls:c0003209"
     ],
     "synonyms": [
         "used in nicotine dependence",
@@ -688,12 +692,16 @@
         "Antidepressive_agents",
         "Prescribed_medications",
         "Vitamin_supplementation",
+        "Vitamin supplementation",
         "Biological_products",
         "Neuroprotective_agent",
         "Basis",
         "METRIC",
         "everything",
-        "Antidepressive Agents"
+        "Antidepressive Agents",
+        "Anti-Anxiety Agents",
+        "immunological adjuvant",
+        "Anti-Inflammatory Agents"
 
     ]
 }
