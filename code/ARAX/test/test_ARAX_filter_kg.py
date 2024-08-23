@@ -69,17 +69,17 @@ def test_warnings():
 def test_error():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:1227, key=n00)",
+            "add_qnode(name=MONDO:0001475, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-            "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
+            "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:related_to_at_instance_level)",
             "expand(edge_key=e00, kp=infores:rtx-kg2)",
-            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats, remove_connected_nodes=t, qedge_keys=[e00])",
+            "filter_kg(action=remove_edges_by_predicate, edge_predicate=biolink:treats_or_applied_or_studied_to_treat, remove_connected_nodes=t, qedge_keys=[e00])",
             "resultify(ignore_edge_direction=true)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query, False)
     assert response.status == 'ERROR'
-    assert response.error_code == "RemovedQueryNode"
+    assert response.error_code == "OrphanEdges"
 
 def test_edge_key_removal():
     query = {"operations": {"actions": [

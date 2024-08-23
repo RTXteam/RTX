@@ -110,7 +110,7 @@ class InferUtilities:
         expander = ARAXExpander()
         messenger = ARAXMessenger()
         synonymizer = NodeSynonymizer()
-        decorator = ARAXDecorator(False)
+        decorator = ARAXDecorator()
         xdtdmapping = xDTDMappingDB(None, None, RTXConfig.explainable_dtd_db_path.split('/')[-1], mode='run', db_loc=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction']))
 
         kp = 'infores:rtx-kg2'
@@ -126,11 +126,11 @@ class InferUtilities:
 
         disease_curie = top_drugs['disease_id'].tolist()[0]
         disease_name = top_drugs['disease_name'].tolist()[0]
-        try:
-            disease_info = xdtdmapping.get_node_info(node_id=disease_curie)
-        except:
+        disease_info = xdtdmapping.get_node_info(node_id=disease_curie)
+        if disease_info is None:
             self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table due to using refreshed xDTD database")
             return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+        
         if not message.knowledge_graph or not hasattr(message, 'knowledge_graph'):  # if the knowledge graph is empty, create it
             message.knowledge_graph = KnowledgeGraph()
             message.knowledge_graph.nodes = {}
@@ -159,7 +159,7 @@ class InferUtilities:
                 'key': qedge_id,
                 'subject': "drug",
                 'object': "disease",
-                'predicates': ["biolink:treats_or_applied_or_studied_to_treat"]
+                'predicates': ["biolink:treats"]
             }
             self.response = messenger.add_qedge(self.response, add_qedge_params)
             message.query_graph.edges[add_qedge_params['key']].knowledge_type = "inferred"
@@ -219,7 +219,7 @@ class InferUtilities:
                 retrieval_source = [
                                     RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                 ]
-                new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:treats_or_applied_or_studied_to_treat', attributes=edge_attribute_list, sources=retrieval_source)
+                new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:treats', attributes=edge_attribute_list, sources=retrieval_source)
                 new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source="infores:arax", kp=kp)
                 if new_edge_key not in message.knowledge_graph.edges:
                     message.knowledge_graph.edges[new_edge_key] = new_edge
@@ -369,7 +369,7 @@ class InferUtilities:
                         RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                     ]
                 #edge_predicate = qedge_id
-                edge_predicate = "biolink:treats_or_applied_or_studied_to_treat"
+                edge_predicate = "biolink:treats"
                 # comment the following two lines for issue #2253, we now use "biolink:treats_or_applied_or_studied_to_treat" instead of "biolink:treats"
                 # if hasattr(message.query_graph.edges[qedge_id], 'predicates') and message.query_graph.edges[qedge_id].predicates:
                 #     edge_predicate = message.query_graph.edges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?

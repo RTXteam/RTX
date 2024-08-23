@@ -1,7 +1,7 @@
 openapi: 3.0.1
 info:
   description: TRAPI 1.4 endpoint for the NCATS Biomedical Translator KP called RTX KG2
-  version: 2.9.0
+  version: 2.10.0
   title: RTX KG2
   contact:
     email: edeutsch@systemsbiology.org
@@ -14,7 +14,7 @@ info:
     team:
       - Expander Agent
     infores: infores:rtx-kg2
-    biolink-version: 4.0.0
+    biolink-version: 4.2.0
     externalDocs:
       description: >-
         The values for component and team are restricted according to this

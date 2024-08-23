@@ -102,7 +102,7 @@ def main():
     sqlite_path = f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite"
     cluster_graphs_path = f"{SYNONYMIZER_BUILD_DIR}/cluster_debug_graphs"
     if not pathlib.Path(cluster_graphs_path).exists():
-        subprocess.check_call(["mkdir", cluster_graphs_path])
+        os.system(f"mkdir {cluster_graphs_path}")
     db_connection = sqlite3.connect(sqlite_path)
     cursor = db_connection.cursor()
 

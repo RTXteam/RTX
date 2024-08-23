@@ -100,29 +100,37 @@ class NGDDatabaseBuilder:
             conceptname_to_pmids_map = dict()
             # Go through each downloaded pubmed file and build our dictionary of mappings
             pubmed_file_names_to_process = pubmed_file_names if not self.is_test else pubmed_file_names[:1]
+            num_skipped_files = 0
             for file_name in pubmed_file_names_to_process:
                 logging.info(f"  Starting to process file '{file_name}'.. ({pubmed_file_names_to_process.index(file_name) + 1}"
                              f" of {len(pubmed_file_names_to_process)})")
                 file_start_time = time.time()
-                with gzip.open(f"{xml_file_sub_dir}/{file_name}") as pubmed_file:
-                    file_contents_tree = etree.parse(pubmed_file)
-                pubmed_articles = file_contents_tree.xpath("//PubmedArticle")
+                try:
+                    file_contents_tree = etree.parse(f"{xml_file_sub_dir}/{file_name}")
+                except Exception:
+                    logging.warning(f"File {file_name} threw an exception when trying to do etree.parse() on it!")
+                    num_skipped_files += 1
+                else:
+                    pubmed_articles = file_contents_tree.xpath("//PubmedArticle")
 
-                for article in pubmed_articles:
-                    # Link each concept name to the PMID of this article
-                    current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
-                    descriptor_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
-                    qualifier_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/QualifierName/text()")
-                    chemical_names = article.xpath(".//MedlineCitation/ChemicalList/Chemical/NameOfSubstance/text()")
-                    gene_symbols = article.xpath(".//MedlineCitation/GeneSymbolList/GeneSymbol/text()")
-                    keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
-                    all_concept_names = descriptor_names + qualifier_names + chemical_names + gene_symbols + keywords
-                    unique_concept_names = {concept_name for concept_name in all_concept_names if concept_name}
-                    for concept_name in unique_concept_names:
-                        self._add_pmids_mapping(concept_name, current_pmid, conceptname_to_pmids_map)
+                    for article in pubmed_articles:
+                        # Link each concept name to the PMID of this article
+                        current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
+                        descriptor_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
+                        qualifier_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/QualifierName/text()")
+                        chemical_names = article.xpath(".//MedlineCitation/ChemicalList/Chemical/NameOfSubstance/text()")
+                        gene_symbols = article.xpath(".//MedlineCitation/GeneSymbolList/GeneSymbol/text()")
+                        keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
+                        all_concept_names = descriptor_names + qualifier_names + chemical_names + gene_symbols + keywords
+                        unique_concept_names = {concept_name for concept_name in all_concept_names if concept_name}
+                        for concept_name in unique_concept_names:
+                            self._add_pmids_mapping(concept_name, current_pmid, conceptname_to_pmids_map)
 
-                self._destroy_etree(file_contents_tree)  # Hack around lxml memory leak
+                    self._destroy_etree(file_contents_tree)  # Hack around lxml memory leak
                 logging.info(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
+            if num_skipped_files:
+                logging.warning(f"Was unable to process {num_skipped_files} of {len(pubmed_file_names_to_process)} "
+                                f"{sub_dir_name} files because they threw an exception on etree.parse()")
 
         # Save the data to the PickleDB after we're done
         logging.info("  Loading data into PickleDB..")
