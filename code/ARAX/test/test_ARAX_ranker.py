@@ -134,9 +134,8 @@ def test_ARAXRanker_test1_asset12():
             break
     total_results = len(message.results)
     
-    # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 def test_ARAXRanker_test5_asset70():
     # test 'Miglustat treats Niemann-Pick type C'
@@ -244,9 +243,8 @@ def test_ARAXRanker_test6_asset72():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 def test_ARAXRanker_test9_asset614():
     # test 'famotidine treats Gastroesophageal Reflux Disease'
@@ -299,11 +297,11 @@ def test_ARAXRanker_test9_asset614():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
+pytest.skip("Skipping test_ARAXRanker_test9_asset615() because the probablity < 0.8, thus not included in the xDTD database")
 def test_ARAXRanker_test9_asset619():
     # test 'lansoprazole treats Gastroesophageal Reflux Disease'
     expected_answer = 'lansoprazole'
@@ -355,11 +353,11 @@ def test_ARAXRanker_test9_asset619():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
+pytest.skip("Skipping test_ARAXRanker_test9_asset615() because the probablity < 0.8, thus not included in the xDTD database")
 def test_ARAXRanker_test9_asset623():
     # test 'rabeprazole treats Gastroesophageal Reflux Disease'
     expected_answer = 'rabeprazole'
@@ -411,9 +409,8 @@ def test_ARAXRanker_test9_asset623():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
 def test_ARAXRanker_test13_asset311():
@@ -480,11 +477,11 @@ def test_ARAXRanker_test13_asset311():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
+pytest.skip("Skipping test_ARAXRanker_test13_asset312() because the nodesynonymizer uses 'Monopril' as preferred name")
 def test_ARAXRanker_test13_asset355():
     # test 'Fosinopril decreases activity or abundance of ACE'
     expected_answer = 'Fosinopril'
@@ -549,9 +546,8 @@ def test_ARAXRanker_test13_asset355():
             break
     total_results = len(message.results)
     
-    # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
 def test_ARAXRanker_test13_asset360():
@@ -618,9 +614,8 @@ def test_ARAXRanker_test13_asset360():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
     
     
 def test_ARAXRanker_test13_asset361():
@@ -687,9 +682,8 @@ def test_ARAXRanker_test13_asset361():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
 def test_ARAXRanker_test21_asset338():
@@ -756,9 +750,8 @@ def test_ARAXRanker_test21_asset338():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
 def test_ARAXRanker_test23_asset381():
@@ -825,9 +818,8 @@ def test_ARAXRanker_test23_asset381():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
 def test_ARAXRanker_test23_asset378():
@@ -894,9 +886,8 @@ def test_ARAXRanker_test23_asset378():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
 if __name__ == "__main__":
