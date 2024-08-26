@@ -1,8 +1,11 @@
 from typing import List, Dict, Set, Union, Optional
 import os, sys
 import joblib
+import json
 import numpy as np
 import pandas as pd
+import sqlite3
+import requests
 # import graph_tool.all as gt
 from tqdm import tqdm, trange
 
@@ -15,10 +18,63 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'Ope
 import openapi_server
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
+from kg2_querier import KG2Querier
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-# response = ARAXResponse()
+sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery','']))
+
+def call_plover(curies: List, respect_predicate_symmetry: bool=False):
+        json = {}
+        plover_url = RTXConfig.plover_url
+        endpoint = "/query"
+        body = {
+                "edges": {
+                    "e00": {
+                        "subject": "n00",
+                        "object": "n01"
+                    }
+                },
+                "nodes": {
+                    "n00": {
+                        "ids": curies
+                    },
+                    "n01": {
+                        "categories": ["biolink:NamedThing"]
+                    }
+                },
+                "include_metadata": True,
+                "respect_predicate_symmetry": respect_predicate_symmetry
+            }
+        try:
+            response = requests.post(plover_url + endpoint, headers={'accept': 'application/json'}, json=body)
+            json = response.json()
+        except Exception as e:
+            pass
+        return json
+
+# class TFDatabase:
+#     def __init__(self):
+#         database = '/Users/kevin/Documents/GitHub/RTX/code/ARAX/ARAXQuery/Infer/data/xCRG_data/tf_db_kg2.10.0.db'
+#         self.connection = sqlite3.connect(database)
+#         self.connection.row_factory = sqlite3.Row
+
+#     def _query_database(self, query):
+#         cursor = self.connection.cursor()
+#         cursor.execute(query)
+#         res = cursor.fetchall()
+#         return res
+
+#     # def get_tf_neighbors(self):
+#     #     query = "select * from edges ;"
+#     #     return self._query_database(query)
+
+#     def __del__(self):
+#         try:
+#             self.connection.commit()
+#             self.connection.close()
+#         except:
+#             pass
 
 def load_ML_CRGmodel(response: ARAXResponse, model_path: str, model_type: str):
 
@@ -82,10 +138,10 @@ def extract_path(path_result: openapi_server.models.result.Result, mapping: Dict
     path_result_analyses = path_result.analyses[0]
     sublcass_edge_keys = [x for x in list(path_result_analyses.edge_bindings.keys()) if 'subclass' in x]
     find_parent = dict()
-    for key in sublcass_edge_keys:
-        qnode_key = key.split('--')[-1]
-        parent_node = path_result_analyses.edge_bindings[key][0].id.split('--')[-1]
-        find_parent[qnode_key] = parent_node
+    # for key in sublcass_edge_keys:
+    #     qnode_key = key.split('--')[-1]
+    #     parent_node = path_result_analyses.edge_bindings[key][0].id.split('--')[-1]
+    #     find_parent[qnode_key] = parent_node
     edge_bindings = sorted(path_result_analyses.edge_bindings.items(), key=lambda x: x[0])
     for index in range(len(node_bindings) - 1):
         qnode_id1, curie1 = node_bindings[index][0], node_bindings[index][1][0].id
@@ -142,20 +198,64 @@ class creativeCRG:
         self._top_N_genes_dict = dict()
         self._top_N_genes_dict['increase'] = dict()
         self._top_N_genes_dict['decrease'] = dict()
+        path_list = os.path.realpath(__file__).split(os.path.sep)
+        rtx_index = path_list.index("RTX")
+        tf_list_file_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'ARAXQuery','Infer','data','xCRG_data','transcription_factors.json'])
+        with open(tf_list_file_path) as fp:
+                self.tf_list = json.loads(fp.read())['tf']
 
-    def get_preferred_curie(self, curie: str):
+    def get_tf_neighbors(self):        
+        response = call_plover(self.tf_list,respect_predicate_symmetry=False)
+        edges = response.get("edges",{}).get("e00",{})
+        query_tf_neighbor_data = []
+        answer_tf_neigbor_data = []
+        for edge in edges.keys():
+            c1 = edges[edge][0]
+            c2 = edges[edge][1]
+            if 'subclass' in edges[edge][2]:
+                continue
+            if c1 == c2:
+                continue
+            if c1 in self.tf_list:
+                curie = c2
+                tf = c1
+                answer_tf_neigbor_data.append({"edge_id": edge, "transcription_factor":tf, "neighbour": curie})
+            if c2 in self.tf_list:
+                curie = c1
+                tf = c2
+                query_tf_neighbor_data.append({"edge_id": edge, "transcription_factor":tf, "neighbour": curie})
+        return query_tf_neighbor_data,answer_tf_neigbor_data, edges
+    
+    def add_node_ids_to_path(self, paths, tf_edges,chemical_edges, gene_edges):
+        kg2_querier = KG2Querier(self.response, RTXConfig.plover_url)
+        tf_edges.update(chemical_edges['edges']['e00'])
+        tf_edges.update(gene_edges['edges']['e00'])
+        final_paths = {}
+        node_counter = 1
 
-        if curie:
-            normalizer_res = self.synonymizer.get_canonical_curies(curie)[curie]
-            if normalizer_res:
-                preferred_curie = normalizer_res['preferred_curie']
-                return preferred_curie
-            else:
-                self.response.warning(f"Cannot get the preferred curie for {curie}")
-                return None        
-        else:
-            self.response.warning(f"Given curie is {curie}")
-            return None
+        for (query,answer), _paths in paths.items():
+            final_paths[(query,answer)] = []
+            for path in _paths:
+                _path_to_add = [query]
+                for edge in path:
+                    plover_edge = tf_edges[edge]
+                    trapi_edge = kg2_querier._convert_kg2c_plover_edge_to_trapi_edge(plover_edge)
+                    _path_to_add.append({edge:trapi_edge})
+                    _path_to_add.append(plover_edge[1])
+                final_paths[(query,answer)].append(_path_to_add)
+        return final_paths
+
+        
+
+
+    def get_preferred_curies(self, curies: list):
+        preferred_curies = {curie: None for curie in curies}
+        if not curies:
+            return preferred_curies
+        normalizer_res = self.synonymizer.get_canonical_curies(curies)
+        for curie in curies:
+            preferred_curies[curie] = normalizer_res.get(curie,{}).get('preferred_curie',None)
+        return preferred_curies        
 
     def predict_top_N_chemicals(self, query_gene: str, N: int = 10, threshold: float = 0.5, model_type: str = 'increase'):
 
@@ -256,7 +356,6 @@ class creativeCRG:
             #     return None
             # self.response.info(f"Use the preferred curie {preferred_query_chemical} of chemical {query_chemical} for prediction.")
             preferred_query_chemical = query_chemical
-
             if model_type not in ['increase', 'decrease']:
                 self.response.warning(f"The parameter 'model_type' allows either 'increase' or 'decrease'. But {model_type} is provided.")
                 return None
@@ -372,42 +471,30 @@ class creativeCRG:
             #     return None
             # self.response.info(f"Use the preferred curie {preferred_query_chemical} of chemical {query_chemical} for prediction")
             preferred_query_chemical = query_chemical
-
             if preferred_query_chemical not in self._top_N_chemicals_dict[model_type]:
                 self.response.warning(f"No '{model_type}-type' prediction record for the chemical {preferred_query_chemical}. Please first call the 'predict_top_N_genes' method.")
                 return None
-            else:
-                res = self._top_N_chemicals_dict[model_type][preferred_query_chemical]
-                res = res.loc[res['tp_prob'] >= threshold,:].reset_index(drop=True).iloc[:N,:]
-                if len(res) == 0:
-                    self.response.warning(f"There is no chemical-gene pair satisfying the requirement of top {N} with threshold >={threshold}. Perhaps try using more loose threshold.")
-                    return None
-                else:
-                    top_paths = dict()
-                    for start_n, end_n in tqdm(res[['chemical_id','gene_id']].to_numpy()):
-                        self.response.info(f"extract top{M} paths for the {start_n}-{end_n} pair")
-                        DSL_query = build_DSL_command(start_n, end_n, path_len + 1 - 2, M, kp, interm_ids, interm_names, interm_categories)
-                        araxq = ARAXQuery()    
-                        result = araxq.query(DSL_query)
-                        message = araxq.response.envelope.message
-                        mapping_edgekey_to_resource = {edge_key:[edge.sources, edge.attributes, edge.qualifiers] for edge_key, edge in message.knowledge_graph.edges.items()}                            
 
-                        if result.status != 'OK':
-                            self.response.warning(f"Get something wrong with using 'ARAXQuery' to extract paths for the {start_n}-{end_n} pair, we skip this pair.")
-                            continue
-                        else:
-                            top_paths[(start_n, end_n)] = [extract_path(result, mapping_edgekey_to_resource) for result in message.results]
-                            
-                    return top_paths
+            res = self._top_N_chemicals_dict[model_type][preferred_query_chemical]
+            res = res.loc[res['tp_prob'] >= threshold,:].reset_index(drop=True).iloc[:N,:]
+            if len(res) == 0:
+                self.response.warning(f"There is no chemical-gene pair satisfying the requirement of top {N} with threshold >={threshold}. Perhaps try using more loose threshold.")
+                return None
+            top_paths = dict()
+            chemical_neighbors = call_plover([query_chemical])
+            answers = res['gene_id'].tolist()
+            self.preferred_curies = self.get_preferred_curies(answers)
+            valid_genes = [item for item in self.preferred_curies.values() if item]
+            gene_neighbors = call_plover(valid_genes)
+            query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
+            
+            
+            paths = self.get_paths(preferred_query_chemical, res['gene_id'].tolist(), chemical_neighbors, gene_neighbors, query_tf_neighbors, answer_tf_neigbors, self.tf_list, M)
+            final_paths = self.add_node_ids_to_path(paths, tf_edges, chemical_neighbors, gene_neighbors)
+            #TODO: check for subclass & check the actual path
+            return final_paths
         else:
-
-            ## get the preferred curie
-            # preferred_query_gene = self.get_preferred_curie(query_gene)
-            # if not preferred_query_gene:
-            #     return None
-            # self.response.info(f"Use the preferred curie {preferred_query_gene} of gene {preferred_query_gene} for prediction")
             preferred_query_gene = query_gene
-
             if preferred_query_gene not in self._top_N_genes_dict[model_type]:
                 self.response.warning(f"No '{model_type}-type' prediction record for the gene {preferred_query_gene}. Please first call the 'predict_top_N_chemicals' method.")
                 return None
@@ -418,20 +505,81 @@ class creativeCRG:
                     self.response.warning(f"There is no chemical-gene pair satisfying the requirement of top {N} with threshold >={threshold}. Perhaps try using more loose threshold.")
                     return None
                 else:
-                    top_paths = dict()
-                    for start_n, end_n in tqdm(res[['chemical_id','gene_id']].to_numpy()):
-                        self.response.info(f"extract top{M} paths for the {start_n}-{end_n} pair")
-                        DSL_query = build_DSL_command(start_n, end_n, path_len + 1 - 2, M, kp, interm_ids, interm_names, interm_categories)
-                        araxq = ARAXQuery()
-                        result = araxq.query(DSL_query)
-                        message = araxq.response.envelope.message
-                        mapping_edgekey_to_resource = {edge_key:[edge.sources, edge.attributes, edge.qualifiers] for edge_key, edge in message.knowledge_graph.edges.items()}
 
-                        if result.status != 'OK':
-                            self.response.warning(f"Get something wrong with using 'ARAXQuery' to extract paths for the {start_n}-{end_n} pair, we skip this pair.")
-                            continue
-                        else:
-                            top_paths[(start_n, end_n)] = [x for x in [extract_path(result, mapping_edgekey_to_resource) for result in message.results] if x]
-                    return top_paths
+                    top_paths = dict()
+                    gene_neighbors = call_plover([preferred_query_gene])
+                    answers = res['chemical_id'].tolist()
+                    self.preferred_curies = self.get_preferred_curies(answers)
+                    valid_chemicals = [item for item in self.preferred_curies.values() if item]
+                    chemical_neighbors = call_plover(valid_chemicals)
+                    query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
+                    
+                    paths = self.get_paths(preferred_query_gene, res['chemical_id'].tolist(), gene_neighbors, chemical_neighbors,  query_tf_neighbors, answer_tf_neigbors,self.tf_list, M)
+                    final_paths = self.add_node_ids_to_path(paths, tf_edges, chemical_neighbors, gene_neighbors)
+                    return final_paths
     
+
+    def get_paths(self, query_curie, answer_curies, query_neighbors, answer_neighbors, query_tf_neighbors, answer_tf_neighbors, tf_list,n_paths):
+        query_neighbors_curies = list(query_neighbors['nodes']['n01'].keys())
+        query_tf_neighbors_dict = {}
+        answer_tf_neighbors_dict = {}
+        query_path = {}
+        answer_path = {}
+        combined_path = dict()
+        one_hop_from_query  = set(tf_list).intersection(query_neighbors_curies)
+        for record in query_tf_neighbors:
+            query_tf_neighbors_dict[record['neighbour']] = query_tf_neighbors_dict.get(record['neighbour'],[]) + [(record['edge_id'],record['transcription_factor'])]
+        for record in answer_tf_neighbors:
+            answer_tf_neighbors_dict[record['neighbour']] = answer_tf_neighbors_dict.get(record['neighbour'],[]) + [(record['edge_id'],record['transcription_factor'])]
+        # one hop from query
+        for edge_id, edge in query_neighbors['edges']['e00'].items():
+            if edge[1] in tf_list and edge[1] not in query_path:
+                query_path[edge[1]] = [edge_id]
+        
+
+        # two hop from query
+        for edge_id, edge in query_neighbors['edges']['e00'].items():
+            if edge[0] != query_curie:
+                continue
+            neighbor =  edge[1]
+            for item in query_tf_neighbors_dict.get(neighbor,[]):
+                if item[1] not in query_path:
+                    query_path[item[1]] = [edge_id,item[0]]
+                    
+        
+        for edge_id, edge in answer_neighbors['edges']['e00'].items():
+            if edge[1] not in self.preferred_curies.values():
+                continue
+            answer = edge[1]
+            neighbor = edge[0]
+            # one hop from answer
+            if answer not in answer_path:
+                answer_path[answer] = dict()
+            if neighbor in tf_list:
+                answer_path[answer][neighbor] = [edge_id]
+
+            # two hop from answer
+            for item in answer_tf_neighbors_dict.get(neighbor,[]):
+                if item[1] not in answer_path[answer]:
+                    answer_path[answer][item[1]] = [item[0],edge_id]
+
+        # joining paths
+        for answer in answer_curies:
+            combined_path[(query_curie,answer)] = list()
+            if not self.preferred_curies[answer]:
+                continue
+            key = self.preferred_curies[answer]
+            if key not in answer_path:
+                continue
+            
+            path_counter = 0
+            for tf in tf_list:
+                if path_counter > n_paths:
+                    break
+                if tf in query_path and tf in answer_path[key]:
+                    combined_path[(query_curie,answer)].append(query_path[tf] + answer_path[key][tf])
+                    path_counter += 1
+
+        return combined_path
+
 
