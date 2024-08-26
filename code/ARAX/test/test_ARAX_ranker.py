@@ -24,6 +24,9 @@ from actions_parser import ActionsParser
 from result_transformer import ResultTransformer
 from ARAX_ranker import ARAXRanker
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
+from node_synonymizer import NodeSynonymizer
+synonymizer = NodeSynonymizer()
 
 PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
@@ -86,6 +89,11 @@ def _ranker_tester(query: dict = None, response_id: str = None) -> Message:
 def test_ARAXRanker_test1_asset12():
     # test 'rituximab treats Castleman Disease'
     expected_answer = 'rituximab'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
@@ -140,6 +148,11 @@ def test_ARAXRanker_test1_asset12():
 def test_ARAXRanker_test5_asset70():
     # test 'Miglustat treats Niemann-Pick type C'
     expected_answer = 'Miglustat'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
     
     query = { "message": { "query_graph": {
                 "edges": {
@@ -195,6 +208,11 @@ def test_ARAXRanker_test5_asset70():
 def test_ARAXRanker_test6_asset72():
     # test 'Lomitapide treats Homozygous Familial Hypercholesterolemia'
     expected_answer = 'Lomitapide'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
@@ -249,6 +267,11 @@ def test_ARAXRanker_test6_asset72():
 def test_ARAXRanker_test9_asset614():
     # test 'famotidine treats Gastroesophageal Reflux Disease'
     expected_answer = 'famotidine'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
@@ -301,10 +324,15 @@ def test_ARAXRanker_test9_asset614():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
-pytest.skip("Skipping test_ARAXRanker_test9_asset615() because the probablity < 0.8, thus not included in the xDTD database")
+@pytest.mark.skip(reason="Skipping test_ARAXRanker_test9_asset615() because the probablity < 0.8, thus not included in the xDTD database")
 def test_ARAXRanker_test9_asset619():
     # test 'lansoprazole treats Gastroesophageal Reflux Disease'
     expected_answer = 'lansoprazole'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
     
     query = { "message": { "query_graph": {
                 "edges": {
@@ -357,10 +385,15 @@ def test_ARAXRanker_test9_asset619():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
-pytest.skip("Skipping test_ARAXRanker_test9_asset615() because the probablity < 0.8, thus not included in the xDTD database")
+@pytest.mark.skip(reason="Skipping test_ARAXRanker_test9_asset615() because the probablity < 0.8, thus not included in the xDTD database")
 def test_ARAXRanker_test9_asset623():
     # test 'rabeprazole treats Gastroesophageal Reflux Disease'
     expected_answer = 'rabeprazole'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
@@ -416,6 +449,11 @@ def test_ARAXRanker_test9_asset623():
 def test_ARAXRanker_test13_asset311():
     # test 'Benazepril decreases activity or abundance of ACE'
     expected_answer = 'Benazepril'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
@@ -481,10 +519,14 @@ def test_ARAXRanker_test13_asset311():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
-pytest.skip("Skipping test_ARAXRanker_test13_asset312() because the nodesynonymizer uses 'Monopril' as preferred name")
 def test_ARAXRanker_test13_asset355():
     # test 'Fosinopril decreases activity or abundance of ACE'
     expected_answer = 'Fosinopril'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
@@ -553,6 +595,11 @@ def test_ARAXRanker_test13_asset355():
 def test_ARAXRanker_test13_asset360():
     # test 'Trandolapril decreases activity or abundance of ACE'
     expected_answer = 'Trandolapril'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
@@ -621,6 +668,11 @@ def test_ARAXRanker_test13_asset360():
 def test_ARAXRanker_test13_asset361():
     # test 'Moexipril decreases activity or abundance of ACE'
     expected_answer = 'Moexipril'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
@@ -689,6 +741,11 @@ def test_ARAXRanker_test13_asset361():
 def test_ARAXRanker_test21_asset338():
     # test 'canagliflozin decreases activity or abundance of SLC5A2 (human)'
     expected_answer = 'canagliflozin'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
@@ -757,6 +814,11 @@ def test_ARAXRanker_test21_asset338():
 def test_ARAXRanker_test23_asset381():
     # test 'atenolol decreases activity or abundance of ADRB2'
     expected_answer = 'atenolol'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
@@ -825,6 +887,11 @@ def test_ARAXRanker_test23_asset381():
 def test_ARAXRanker_test23_asset378():
     # test 'propranolol decreases activity or abundance of ADRB2'
     expected_answer = 'propranolol'
+    preferred_curie = synonymizer.get_canonical_curies(names=expected_answer)[expected_answer]
+    if preferred_curie is None:
+        expected_answer = expected_answer
+    else:
+        expected_answer = preferred_curie['preferred_name']
 
     query = { "message": { "query_graph": {
                 "edges": {
