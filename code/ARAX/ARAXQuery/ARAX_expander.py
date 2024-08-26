@@ -27,6 +27,7 @@ from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute_constraint import AttributeConstraint
+from openapi_server.models.attribute import Attribute
 from Expand.kg2_querier import KG2Querier
 from Expand.trapi_querier import TRAPIQuerier
 
@@ -59,6 +60,9 @@ class ARAXExpander:
                                                       "aggregator_knowledge_source": {"==": "*"}}
         self.supported_qedge_qualifier_constraints = {"biolink:qualified_predicate", "biolink:object_direction_qualifier",
                                                       "biolink:object_aspect_qualifier"}
+        self.higher_level_treats_predicates = {"biolink:treats_or_applied_or_studied_to_treat",
+                                               "biolink:applied_to_treat",
+                                               "biolink:studied_to_treat"}
 
     def describe_me(self):
         """
@@ -504,6 +508,16 @@ class ARAXExpander:
                         for kedge_key in kedges_to_remove:
                             if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
                                 del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
+                # Remove KG2 SemMedDB treats_or_applied-type edges if this is an inferred treats query
+                if alter_kg2_treats_edges:
+                    edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
+                                           if edge.predicate in self.higher_level_treats_predicates and
+                                           any(source.resource_id == "infores:rtx-kg2" for source in edge.sources) and
+                                           any(source.resource_id == "infores:semmeddb" for source in edge.sources)}
+                    log.debug(f"Removing {len(edge_keys_to_remove)} KG2 semmeddb treats_or_applied-type edges "
+                              f"fulfilling {qedge_key}")
+                    for edge_key in edge_keys_to_remove:
+                        del overarching_kg.edges_by_qg_id[qedge_key][edge_key]
 
                 if mode != "RTXKG2":
                     # Apply any kryptonite ("not") qedges
@@ -579,11 +593,17 @@ class ARAXExpander:
         # Second half of patch for #2328; edit KG2 'treats_or_applied_or_studied_to_treat' edges to just 'treats'
         if mode != "RTXKG2" and do_issue_2328_patch and inferred_qedge_keys:
             num_edges_altered = 0
-            higher_level_treats_predicates = {"biolink:treats_or_applied_or_studied_to_treat",
-                                              "biolink:applied_to_treat"}
             for edge in message.knowledge_graph.edges.values():
                 is_kg2_edge = any(source.resource_id == "infores:rtx-kg2" for source in edge.sources)
-                if is_kg2_edge and edge.predicate in higher_level_treats_predicates:
+                if is_kg2_edge and edge.predicate in self.higher_level_treats_predicates:
+                    # Record the original KG2 predicate in an attribute
+                    edge.attributes.append(Attribute(attribute_type_id="biolink:original_predicate",
+                                                     value=edge.predicate,
+                                                     value_type_id="biolink:predicate",
+                                                     description="Predicate as it appears in RTX-KG2, prior to "
+                                                                 "alteration by ARAX.",
+                                                     attribute_source="infores:arax"))
+                    # Then change the predicate to treats
                     edge.predicate = "biolink:treats"
                     num_edges_altered += 1
             if num_edges_altered:
@@ -1132,7 +1152,7 @@ class ARAXExpander:
                     organized_kg.edges_by_qg_id[qedge_key].pop(edge_key)
 
             if not organized_kg.edges_by_qg_id[qedge_key]:
-                log.warning(f"All {qedge_key} edges have been deleted due to an Exclude=true (i.e., 'kryptonite') edge!")
+                log.warning(f"All {qedge_key} edges have been deleted!")
 
     @staticmethod
     def _prune_kg(qnode_key_to_prune: str, prune_threshold: int, kg: QGOrganizedKnowledgeGraph,
