@@ -201,9 +201,8 @@ def test_ARAXRanker_test5_asset70():
             break
     total_results = len(message.results)
     
-    # # comment out this until the full build of xDTD
-    # assert rank_right_answer != -1
-    # assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
+    assert rank_right_answer != -1
+    assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 def test_ARAXRanker_test6_asset72():
     # test 'Lomitapide treats Homozygous Familial Hypercholesterolemia'
@@ -324,7 +323,6 @@ def test_ARAXRanker_test9_asset614():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
-@pytest.mark.skip(reason="Skipping test_ARAXRanker_test9_asset615() because the probablity < 0.8, thus not included in the xDTD database")
 def test_ARAXRanker_test9_asset619():
     # test 'lansoprazole treats Gastroesophageal Reflux Disease'
     expected_answer = 'lansoprazole'
@@ -384,8 +382,6 @@ def test_ARAXRanker_test9_asset619():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
-
-@pytest.mark.skip(reason="Skipping test_ARAXRanker_test9_asset615() because the probablity < 0.8, thus not included in the xDTD database")
 def test_ARAXRanker_test9_asset623():
     # test 'rabeprazole treats Gastroesophageal Reflux Disease'
     expected_answer = 'rabeprazole'
