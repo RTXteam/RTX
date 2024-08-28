@@ -315,7 +315,7 @@ class BiolinkHelper:
             canonical_predicate = self._convert_to_biolink_snakecase(canonical_predicate_english)
             predicate_dag.nodes[slot_name]["canonical_predicate"] = canonical_predicate
 
-        # Last, filter out things that are not predicates (Biolink 'slots' includes other things too, weirdly..)
+        # Last, filter out things that are not predicates (Biolink 'slots' includes other things too..)
         non_predicate_node_ids = [node_id for node_id, data in predicate_dag.nodes(data=True)
                                   if not (self.root_predicate in self._get_ancestors_nx(predicate_dag, node_id)
                                           or data.get("is_mixin"))]
@@ -345,6 +345,13 @@ class BiolinkHelper:
             self._add_node_if_doesnt_exist(category_dag, class_name)
             if info.get("mixin"):
                 category_dag.nodes[class_name]["is_mixin"] = True
+
+        # Last, filter out things that are not categories (Biolink 'classes' includes other things too..)
+        non_category_node_ids = [node_id for node_id, data in category_dag.nodes(data=True)
+                                  if not (self.root_category in self._get_ancestors_nx(category_dag, node_id)
+                                          or data.get("is_mixin"))]
+        for non_category_node_id in non_category_node_ids:
+            category_dag.remove_node(non_category_node_id)
 
         return category_dag
 
@@ -458,6 +465,8 @@ def main():
     assert "biolink:treats_or_applied_or_studied_to_treat" in treats_ancestors
     related_to_descendants = bh.get_descendants("biolink:related_to", include_mixins=True)
     assert "biolink:treats" in related_to_descendants
+    assert "biolink:same_as" in bh.get_descendants("biolink:close_match")
+    assert "biolink:close_match" in bh.get_ancestors("biolink:same_as")
 
     # Test lists
     combined_ancestors = bh.get_ancestors(["biolink:Gene", "biolink:Drug"])
@@ -480,6 +489,7 @@ def main():
     assert canonical_treats == ["biolink:treats"]
     canonical_related_to = bh.get_canonical_predicates("biolink:related_to")
     assert canonical_related_to == ["biolink:related_to"]
+    assert bh.get_canonical_predicates("biolink:superclass_of") == ["biolink:subclass_of"]
 
     # Test filtering out mixins
     mixin_less_list = bh.filter_out_mixins(["biolink:Protein", "biolink:Drug", "biolink:PhysicalEssence"])
