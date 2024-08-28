@@ -13,6 +13,7 @@ import pickle
 from collections import defaultdict
 from typing import Optional, List, Set, Dict, Union, Tuple
 
+import networkx as nx
 import requests
 import yaml
 from treelib import Tree
@@ -99,8 +100,6 @@ class BiolinkHelper:
         input_item_set = self._convert_to_set(biolink_items)
         categories = input_item_set.intersection(set(self.biolink_lookup_map["categories"]))
         predicates = input_item_set.intersection(set(self.biolink_lookup_map["predicates"]))
-        category_mixins = input_item_set.intersection(set(self.biolink_lookup_map["category_mixins"]))
-        predicate_mixins = input_item_set.intersection(set(self.biolink_lookup_map["predicate_mixins"]))
         aspects = input_item_set.intersection(set(self.biolink_lookup_map["aspects"]))
         directions = input_item_set.intersection(set(self.biolink_lookup_map["directions"]))
         descendants = input_item_set.copy()
@@ -111,10 +110,6 @@ class BiolinkHelper:
             descendants.update(self.biolink_lookup_map["categories"][category][descendant_property])
         for predicate in predicates:
             descendants.update(self.biolink_lookup_map["predicates"][predicate][descendant_property])
-        for category_mixin in category_mixins:
-            descendants.update(self.biolink_lookup_map["category_mixins"][category_mixin]["descendants"])
-        for predicate_mixin in predicate_mixins:
-            descendants.update(self.biolink_lookup_map["predicate_mixins"][predicate_mixin]["descendants"])
         for aspect in aspects:
             descendants.update(self.biolink_lookup_map["aspects"][aspect]["descendants"])
         for direction in directions:
@@ -151,26 +146,15 @@ class BiolinkHelper:
 
     def replace_mixins_with_direct_mappings(self, biolink_items: Union[str, List[str], Set[str]]) -> List[str]:
         input_item_set = self._convert_to_set(biolink_items)
-        category_mixins = input_item_set.intersection(set(self.biolink_lookup_map["category_mixins"]))
-        predicate_mixins = input_item_set.intersection(set(self.biolink_lookup_map["predicate_mixins"]))
-        non_mixins = input_item_set.difference(category_mixins).difference(predicate_mixins)
-        mixin_direct_mappings = set()
-        for category_mixin in category_mixins:
-            raw_direct_mappings = self.biolink_lookup_map["category_mixins"][category_mixin]["direct_mappings"]
-            mixin_direct_mappings.update(raw_direct_mappings.intersection(self.biolink_lookup_map["categories"]))
-        for predicate_mixin in predicate_mixins:
-            raw_direct_mappings = self.biolink_lookup_map["predicate_mixins"][predicate_mixin]["direct_mappings"]
-            mixin_direct_mappings.update(raw_direct_mappings.intersection(self.biolink_lookup_map["predicates"]))
-        return list(non_mixins.union(mixin_direct_mappings))
+        return list(input_item_set)
 
     def filter_out_mixins(self, biolink_items: Union[List[str], Set[str]]) -> List[str]:
         """
         Removes any predicate or category mixins in the input list.
         """
         input_item_set = self._convert_to_set(biolink_items)
-        all_predicate_mixins = set(self.biolink_lookup_map["predicate_mixins"])
-        all_category_mixins = set(self.biolink_lookup_map["category_mixins"])
-        non_mixin_items = input_item_set.difference(all_predicate_mixins).difference(all_category_mixins)
+        non_mixin_items = set(item for item in biolink_items if not (self.biolink_lookup_map["predicates"].get(item, dict()).get("is_mixin") or
+                                                                     self.biolink_lookup_map["categories"].get(item, dict()).get("is_mixin")))
         return list(non_mixin_items)
 
     def add_conflations(self, categories: Union[str, List[str], Set[str]]) -> List[str]:
@@ -231,7 +215,6 @@ class BiolinkHelper:
         eprint(f"{timestamp}: INFO: Building local Biolink {self.biolink_version} ancestor/descendant lookup map "
                f"because one doesn't yet exist")
         biolink_lookup_map = {"predicates": dict(), "categories": dict(),
-                              "predicate_mixins": dict(), "category_mixins": dict(),
                               "aspects": dict(), "directions": dict()}
         # Grab the relevant Biolink yaml file
         response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{self.biolink_version}/biolink-model.yaml",
@@ -241,74 +224,62 @@ class BiolinkHelper:
                                     timeout=10)
 
         if response.status_code == 200:
-            # Build predicate, category, and mixin trees from the Biolink yaml
             biolink_model = yaml.safe_load(response.text)
-            predicate_tree, canonical_predicate_map, predicate_to_mixins_map, \
-                predicate_mixin_tree, symmetric_predicates = self._build_predicate_trees(biolink_model)
-            mixin_to_predicates_map = self._reverse_map(predicate_to_mixins_map)
-            category_tree, category_to_mixins_map, category_mixin_tree = self._build_category_trees(biolink_model)
-            mixin_to_categories_map = self._reverse_map(category_to_mixins_map)
+
+            predicate_dag = self._build_predicate_dag(biolink_model)
+            # Build our map of ancestors/descendants for easy lookup, first WITH mixins
+            print(list(predicate_dag.nodes))
+            for node_id in list(predicate_dag.nodes):
+                node_info = predicate_dag.nodes[node_id]
+                print(f"for node {node_id}, info is {node_info}")
+                ancestors_with_mixins = nx.ancestors(predicate_dag, node_id).union({node_id})
+                print(f'on node {node_id}')
+                print(ancestors_with_mixins)
+                descendants_with_mixins = nx.descendants(predicate_dag, node_id).union({node_id})
+                biolink_lookup_map["predicates"][node_id] = {
+                    "ancestors_with_mixins": list(ancestors_with_mixins),
+                    "descendants_with_mixins": list(descendants_with_mixins),
+                    "is_symmetric": node_info.get("is_symmetric", False),
+                    "canonical_predicate": node_info.get("canonical_predicate"),
+                    "is_mixin": node_info.get("is_mixin", False)
+                }
+            # Now build our ancestor/descendant lookup maps WITHOUT mixins
+            mixin_node_ids = [node_id for node_id, data in predicate_dag.nodes(data=True) if data.get("is_mixin")]
+            print(f"mixin node ids: {mixin_node_ids}")
+            for mixin_node_id in mixin_node_ids:
+                predicate_dag.remove_node(mixin_node_id)
+            for node_id in list(predicate_dag.nodes):
+                ancestors_plain = nx.ancestors(predicate_dag, node_id).union({node_id})
+                print(f"On node {node_id}, ancestors plain is {ancestors_plain}")
+                descendants_plain = nx.descendants(predicate_dag, node_id).union({node_id})
+                biolink_lookup_map["predicates"][node_id]["ancestors"] = list(ancestors_plain)
+                biolink_lookup_map["predicates"][node_id]["descendants"] = list(descendants_plain)
+
+            category_dag = self._build_category_dag(biolink_model)
+            # Build our map of ancestors/descendants for easy lookup, first WITH mixins
+            print(list(category_dag.nodes))
+            for node_id in list(category_dag.nodes):
+                node_info = category_dag.nodes[node_id]
+                ancestors_with_mixins = nx.ancestors(category_dag, node_id).union({node_id})
+                descendants_with_mixins = nx.descendants(category_dag, node_id).union({node_id})
+                biolink_lookup_map["categories"][node_id] = {
+                    "ancestors_with_mixins": list(ancestors_with_mixins),
+                    "descendants_with_mixins": list(descendants_with_mixins),
+                    "is_mixin": node_info.get("is_mixin", False)
+                }
+            # Now build our ancestor/descendant lookup maps WITHOUT mixins
+            mixin_node_ids = [node_id for node_id, data in category_dag.nodes(data=True) if data.get("is_mixin")]
+            for mixin_node_id in mixin_node_ids:
+                category_dag.remove_node(mixin_node_id)
+            for node_id in list(category_dag.nodes):
+                ancestors_plain = nx.ancestors(category_dag, node_id).union({node_id})
+                descendants_plain = nx.descendants(category_dag, node_id).union({node_id})
+                biolink_lookup_map["categories"][node_id]["ancestors"] = list(ancestors_plain)
+                biolink_lookup_map["categories"][node_id]["descendants"] = list(descendants_plain)
+
+
             aspect_tree = self._build_aspect_tree(biolink_model)
             direction_tree = self._build_direction_tree(biolink_model)
-
-            # Then flatmap all info we need (for mixins, predicates, and categories) for easy access
-            for predicate_mixin_node in predicate_mixin_tree.all_nodes():
-                predicate_mixin = predicate_mixin_node.identifier
-                ancestors = self._get_ancestors_from_tree(predicate_mixin, predicate_mixin_tree)
-                biolink_lookup_map["predicate_mixins"][predicate_mixin] = {
-                    "ancestors": ancestors.difference({"MIXIN"}),  # Our made-up root doesn't count as an ancestor
-                    "descendants": self._get_descendants_from_tree(predicate_mixin, predicate_mixin_tree),
-                    "direct_mappings": mixin_to_predicates_map.get(predicate_mixin, set()),
-                    "canonical_predicate": canonical_predicate_map.get(predicate_mixin, predicate_mixin),
-                    "is_symmetric": predicate_mixin in symmetric_predicates
-                }
-            del biolink_lookup_map["predicate_mixins"]["MIXIN"]  # No longer need this imaginary root node
-            for category_mixin_node in category_mixin_tree.all_nodes():
-                category_mixin = category_mixin_node.identifier
-                ancestors = self._get_ancestors_from_tree(category_mixin, category_mixin_tree)
-                biolink_lookup_map["category_mixins"][category_mixin] = {
-                    "ancestors": ancestors.difference({"MIXIN"}),  # Our made-up root doesn't count as an ancestor
-                    "descendants": self._get_descendants_from_tree(category_mixin, category_mixin_tree),
-                    "direct_mappings": mixin_to_categories_map.get(category_mixin, set())
-                }
-            del biolink_lookup_map["category_mixins"]["MIXIN"]  # No longer need this imaginary root node
-            predicate_mixins_in_tree = {mixin_node.identifier for mixin_node in predicate_mixin_tree.all_nodes()}
-            for predicate_node in predicate_tree.all_nodes():
-                predicate = predicate_node.identifier
-                ancestors = self._get_ancestors_from_tree(predicate, predicate_tree)
-                descendants = self._get_descendants_from_tree(predicate, predicate_tree)
-                mixin_ancestors = {mixin_ancestor for ancestor in ancestors
-                                   for mixin in predicate_to_mixins_map[ancestor].intersection(predicate_mixins_in_tree)  # Skip weird mixins that have non-mixin parents
-                                   for mixin_ancestor in biolink_lookup_map["predicate_mixins"][mixin]["ancestors"]}
-                mixin_descendants = {mixin_descendant for descendant in descendants
-                                     for mixin in predicate_to_mixins_map[descendant].intersection(predicate_mixins_in_tree)  # Skip weird mixins that have non-mixin parents
-                                     for mixin_descendant in biolink_lookup_map["predicate_mixins"][mixin]["descendants"]}
-                biolink_lookup_map["predicates"][predicate] = {
-                    "ancestors": ancestors,
-                    "descendants": descendants,
-                    "ancestors_with_mixins": ancestors.union(mixin_ancestors),
-                    "descendants_with_mixins": descendants.union(mixin_descendants),
-                    "canonical_predicate": canonical_predicate_map.get(predicate, predicate),
-                    "direct_mixins": predicate_to_mixins_map[predicate],
-                    "is_symmetric": predicate in symmetric_predicates
-                }
-            for category_node in category_tree.all_nodes():
-                category = category_node.identifier
-                ancestors = self._get_ancestors_from_tree(category, category_tree)
-                descendants = self._get_descendants_from_tree(category, category_tree)
-                mixin_ancestors = {mixin_ancestor for ancestor in ancestors
-                                   for mixin in category_to_mixins_map[ancestor]
-                                   for mixin_ancestor in biolink_lookup_map["category_mixins"][mixin]["ancestors"]}
-                mixin_descendants = {mixin_descendant for descendant in descendants
-                                     for mixin in category_to_mixins_map[descendant]
-                                     for mixin_descendant in biolink_lookup_map["category_mixins"][mixin]["descendants"]}
-                biolink_lookup_map["categories"][category] = {
-                    "ancestors": ancestors,
-                    "descendants": descendants,
-                    "ancestors_with_mixins": ancestors.union(mixin_ancestors),
-                    "descendants_with_mixins": descendants.union(mixin_descendants),
-                    "direct_mixins": category_to_mixins_map[category],
-                }
             for aspect_node in aspect_tree.all_nodes():
                 aspect = aspect_node.identifier
                 ancestors = self._get_ancestors_from_tree(aspect, aspect_tree)
@@ -341,31 +312,30 @@ class BiolinkHelper:
 
         return biolink_lookup_map
 
-    def _build_predicate_trees(self, biolink_model: dict) -> Tuple[Tree, Dict[str, str], Dict[str, Set[str]], Tree, Set[str]]:
-        root_mixin = "MIXIN"  # This is made up for easier parsing
+    def _build_predicate_dag(self, biolink_model: dict) -> nx.DiGraph:
+        predicate_dag = nx.DiGraph()
 
-        # Build helper maps for predicates and their mixins
-        parent_to_child_dict = defaultdict(set)
-        canonical_predicate_map = dict()
-        predicate_to_mixins_map = dict()
-        symmetric_predicates = set()
+        # NOTE: 'slots' includes some things that aren't predicates, but we don't care; doesn't hurt to include them
         for slot_name_english, info in biolink_model["slots"].items():
             slot_name = self._convert_english_snakecase_to_trapi_format(slot_name_english)
-            # Record this node underneath its parent
+            # Record relationship between this node and its parent, if provided
             parent_name_english = info.get("is_a")
             if parent_name_english:
                 parent_name = self._convert_english_snakecase_to_trapi_format(parent_name_english)
-                parent_to_child_dict[parent_name].add(slot_name)
-            # Or if it's a top-level mixin, force it to have the (made-up) root mixin as parent
-            elif info.get("mixin"):
-                parent_to_child_dict[root_mixin].add(slot_name)
-            # Record this node's direct mixins
-            mixins_english = info.get("mixins", [])
-            mixins = {self._convert_english_snakecase_to_trapi_format(mixin_english) for mixin_english in mixins_english}
-            predicate_to_mixins_map[slot_name] = mixins
-            # Record whether this predicate is symmetric
+                predicate_dag.add_edge(parent_name, slot_name)
+            # Record relationship between this node and any direct 'mixins', if provided (treat same as is_a)
+            direct_mappings_english = info.get("mixins", [])
+            direct_mappings = {self._convert_english_snakecase_to_trapi_format(mapping_english)
+                               for mapping_english in direct_mappings_english}
+            for direct_mapping in direct_mappings:
+                predicate_dag.add_edge(direct_mapping, slot_name)
+
+            # Record node metadata
+            self._add_node_if_doesnt_exist(predicate_dag, slot_name)
+            if info.get("mixin"):
+                predicate_dag.nodes[slot_name]["is_mixin"] = True
             if info.get("symmetric"):
-                symmetric_predicates.add(slot_name)
+                predicate_dag.nodes[slot_name]["is_symmetric"] = True
             # Record the canonical form of this predicate
             inverse_predicate_english = info.get("inverse")
             is_canonical_predicate = info.get("annotations", dict()).get("canonical_predicate")
@@ -373,51 +343,38 @@ class BiolinkHelper:
             # so we work around that below (see https://github.com/biolink/biolink-model/issues/1112)
             canonical_predicate_english = slot_name_english if is_canonical_predicate or not inverse_predicate_english else inverse_predicate_english
             canonical_predicate = self._convert_english_snakecase_to_trapi_format(canonical_predicate_english)
-            canonical_predicate_map[slot_name] = canonical_predicate
+            predicate_dag.nodes[slot_name]["canonical_predicate"] = canonical_predicate
 
-        # Recursively build the predicates trees starting with the root
-        predicate_tree = Tree()
-        predicate_tree.create_node(self.root_predicate, self.root_predicate)
-        self._create_tree_recursive(self.root_predicate, parent_to_child_dict, predicate_tree)
-        predicate_mixin_tree = Tree()
-        predicate_mixin_tree.create_node(root_mixin, root_mixin)
-        self._create_tree_recursive(root_mixin, parent_to_child_dict, predicate_mixin_tree)
+        return predicate_dag
 
-        return predicate_tree, canonical_predicate_map, predicate_to_mixins_map, predicate_mixin_tree, symmetric_predicates
+    def _build_category_dag(self, biolink_model: dict) -> nx.DiGraph:
+        category_dag = nx.DiGraph()
 
-    def _build_category_trees(self, biolink_model: dict) -> Tuple[Tree, Dict[str, Set[str]], Tree]:
-        root_mixin = "MIXIN"  # This is made up for easier parsing
-
-        # Build helper maps for categories and their mixins
-        parent_to_child_dict = defaultdict(set)
-        category_to_mixins_map = dict()
         for class_name_english, info in biolink_model["classes"].items():
             class_name = self._convert_english_category_to_trapi_format(class_name_english)
-            # Record this node underneath its parent
+            # Record relationship between this node and its parent, if provided
             parent_name_english = info.get("is_a")
-            # Temp patch: override parent for ExposureEvent (see https://github.com/biolink/biolink-model/issues/1111)
-            if self.biolink_version.startswith("3.0") and class_name == "biolink:ExposureEvent":
-                parent_name_english = "ontology class"
             if parent_name_english:
                 parent_name = self._convert_english_category_to_trapi_format(parent_name_english)
-                parent_to_child_dict[parent_name].add(class_name)
-            # Or if it's a top-level mixin, force it to have the (made-up) root mixin as parent
-            elif info.get("mixin"):
-                parent_to_child_dict[root_mixin].add(class_name)
-            # Record this node's direct mixins
-            mixins_english = info.get("mixins", [])
-            mixins = {self._convert_english_category_to_trapi_format(mixin_english) for mixin_english in mixins_english}
-            category_to_mixins_map[class_name] = mixins
+                category_dag.add_edge(parent_name, class_name)
+            # Record relationship between this node and any direct 'mixins', if provided (treat same as is_a)
+            direct_mappings_english = info.get("mixins", [])
+            direct_mappings = {self._convert_english_category_to_trapi_format(mapping_english)
+                               for mapping_english in direct_mappings_english}
+            for direct_mapping in direct_mappings:
+                category_dag.add_edge(direct_mapping, class_name)
 
-        # Recursively build the category trees starting with the root
-        category_tree = Tree()
-        category_tree.create_node(self.root_category, self.root_category)
-        self._create_tree_recursive(self.root_category, parent_to_child_dict, category_tree)
-        category_mixin_tree = Tree()
-        category_mixin_tree.create_node(root_mixin, root_mixin)
-        self._create_tree_recursive(root_mixin, parent_to_child_dict, category_mixin_tree)
+            # Record node metadata
+            self._add_node_if_doesnt_exist(category_dag, class_name)
+            if info.get("mixin"):
+                category_dag.nodes[class_name]["is_mixin"] = True
 
-        return category_tree, category_to_mixins_map, category_mixin_tree
+        return category_dag
+
+    @staticmethod
+    def _add_node_if_doesnt_exist(nx_graph: nx.DiGraph, node_id: str):
+        if not nx_graph.has_node(node_id):
+            nx_graph.add_node(node_id)
 
     def _build_aspect_tree(self, biolink_model: dict) -> Tree:
         # Build helper map of parents to children
@@ -515,6 +472,7 @@ def main():
 
     # Test descendants
     chemical_entity_descendants = bh.get_descendants("biolink:ChemicalEntity", include_mixins=True)
+    print(chemical_entity_descendants)
     assert "biolink:Drug" in chemical_entity_descendants
     assert "biolink:PhysicalEssence" in chemical_entity_descendants
     assert "biolink:NamedThing" not in chemical_entity_descendants
@@ -535,8 +493,8 @@ def main():
     # Test predicates
     treats_ancestors = bh.get_ancestors("biolink:treats")
     assert "biolink:treats_or_applied_or_studied_to_treat" in treats_ancestors
-    affects_descendants = bh.get_descendants("biolink:affects", include_mixins=True)
-    assert "biolink:treats" in affects_descendants
+    related_to_descendants = bh.get_descendants("biolink:related_to", include_mixins=True)
+    assert "biolink:treats" in related_to_descendants
 
     # Test lists
     combined_ancestors = bh.get_ancestors(["biolink:Gene", "biolink:Drug"])
@@ -562,13 +520,15 @@ def main():
     mixin_less_list = bh.filter_out_mixins(["biolink:Protein", "biolink:Drug", "biolink:PhysicalEssence"])
     assert set(mixin_less_list) == {"biolink:Protein", "biolink:Drug"}
 
-    # Test replacing mixins with regular items (direct mappings)
-    regular_list = bh.replace_mixins_with_direct_mappings(["biolink:Disease", "biolink:PhysicalEssence"])
-    assert "biolink:Disease" in regular_list
-    assert "biolink:PhysicalEssence" not in regular_list
-    assert "biolink:ChemicalEntity" in regular_list
-    filtered_out_mixins = bh.filter_out_mixins(regular_list)
-    assert set(regular_list) == set(filtered_out_mixins)
+    # Test treats predicates
+    treats_or_descendants = bh.get_descendants("biolink:treats_or_applied_or_studied_to_treat",
+                                               include_mixins=True)
+    print(treats_or_descendants)
+    assert "biolink:treats" in treats_or_descendants
+    assert "biolink:applied_to_treat" in treats_or_descendants
+    assert "biolink:ameliorates_condition" in treats_or_descendants
+    assert "biolink:treats" in bh.get_descendants("biolink:related_to",
+                                                  include_mixins=True)
 
     # Test predicate symmetry
     assert bh.is_symmetric("biolink:related_to")
@@ -586,6 +546,9 @@ def main():
     # Test directions
     assert "increased" in bh.get_ancestors("upregulated")
     assert "downregulated" in bh.get_descendants("decreased")
+
+    # Test excluding mixins
+    assert "biolink:treats" not in bh.get_descendants("biolink:related_to", include_mixins=False)
 
     print("All BiolinkHelper tests passed!")
 
