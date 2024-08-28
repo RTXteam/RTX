@@ -30,17 +30,14 @@ class NGDRepository:
         sqlite_connection_read = sqlite3.connect(self.db_path)
         cursor = sqlite_connection_read.cursor()
         query = f"""
-        SELECT curie
-        FROM your_table_name
+        SELECT curie, pmid_length
+        FROM curie_ngd
         WHERE curie IN ({','.join('?' for _ in curies)})
         ORDER BY pmid_length DESC
         LIMIT {limit};
         """
         cursor.execute(query, curies)
         rows = cursor.fetchall()
-        result = []
-        for row in rows:
-            result.append(row[0])
         cursor.close()
         sqlite_connection_read.close()
-        return result
+        return rows

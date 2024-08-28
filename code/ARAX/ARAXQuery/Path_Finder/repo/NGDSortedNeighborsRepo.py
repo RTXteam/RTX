@@ -38,13 +38,13 @@ class NGDSortedNeighborsRepo(Repository):
 
         number_of_curie_left_to_fill_the_limit = limit - len(curie_ngd_list)
 
-        node_pmids_length = self.get_curie_ngd.get_curies_pmid_length(neighbors_ids,
-                                                                      number_of_curie_left_to_fill_the_limit)
+        node_pmids_length = self.ngd_repo.get_curies_pmid_length(neighbors_ids,
+                                                                 number_of_curie_left_to_fill_the_limit)
         node_pmids_length = [(key, length) for key, length in node_pmids_length if length > 0]
 
         curies_sorted_by_their_pmids_length = sorted(node_pmids_length, key=lambda x: (x[1]), reverse=True)
 
-        nonzero_length_pmids_curie_with_none_ngd_value = [(curie, None) for curie in
+        nonzero_length_pmids_curie_with_none_ngd_value = [(curie, None) for curie, _ in
                                                           curies_sorted_by_their_pmids_length]
 
         sorted_neighbors_tuple = sorted(ngd_by_curie_dict.items(),
