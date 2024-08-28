@@ -181,6 +181,8 @@ class RTXConfiguration:
         self.cohd_database_version = self.cohd_database_path.split('/')[-1].split('_v')[-1].replace('.db', '')
         self.curie_to_pmids_path = database_downloads["curie_to_pmids"]
         self.curie_to_pmids_version = self.curie_to_pmids_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
+        self.curie_ngd_path = database_downloads["curie_ngd"]
+        self.curie_ngd_version = self.curie_ngd_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.node_synonymizer_path = database_downloads["node_synonymizer"]
         self.node_synonymizer_version = self.node_synonymizer_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.kg2c_sqlite_path = database_downloads["kg2c_sqlite"]

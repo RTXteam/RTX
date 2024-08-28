@@ -13,6 +13,6 @@ def get_kg2c_db_path():
 def get_curie_ngd_path():
     pathlist = os.path.realpath(__file__).split(os.path.sep)
     RTXindex = pathlist.index("RTX")
-    filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NormalizedGoogleDistance', 'curie_ngd'])
-    sqlite_name = RTXConfiguration().curie_ngd.split("/")[-1]
+    filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
+    sqlite_name = RTXConfiguration().curie_ngd_path.split("/")[-1]
     return f"{filepath}{os.path.sep}{sqlite_name}"
