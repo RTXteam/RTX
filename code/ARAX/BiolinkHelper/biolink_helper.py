@@ -315,6 +315,13 @@ class BiolinkHelper:
             canonical_predicate = self._convert_to_biolink_snakecase(canonical_predicate_english)
             predicate_dag.nodes[slot_name]["canonical_predicate"] = canonical_predicate
 
+        # Last, filter out things that are not predicates (Biolink 'slots' includes other things too, weirdly..)
+        non_predicate_node_ids = [node_id for node_id, data in predicate_dag.nodes(data=True)
+                                  if not (self.root_predicate in self._get_ancestors_nx(predicate_dag, node_id)
+                                          or data.get("is_mixin"))]
+        for non_predicate_node_id in non_predicate_node_ids:
+            predicate_dag.remove_node(non_predicate_node_id)
+
         return predicate_dag
 
     def _build_category_dag(self, biolink_model: dict) -> nx.DiGraph:
@@ -422,6 +429,9 @@ def main():
 
     bh = BiolinkHelper(biolink_version=args.version, is_test=True)
 
+    assert bh.root_predicate in bh.biolink_lookup_map["predicates"]
+    assert bh.root_category in bh.biolink_lookup_map["categories"]
+
     # Test descendants
     chemical_entity_descendants = bh.get_descendants("biolink:ChemicalEntity", include_mixins=True)
     assert "biolink:Drug" in chemical_entity_descendants
@@ -478,7 +488,7 @@ def main():
     # Test treats predicates
     treats_or_descendants = bh.get_descendants("biolink:treats_or_applied_or_studied_to_treat",
                                                include_mixins=True)
-    print(f"Descendants of 'biolink:treats_or_applied_or_studied_to_treat are: {treats_or_descendants}")
+    print(f"Descendants of 'biolink:treats_or_applied_or_studied_to_treat are: \n{treats_or_descendants}")
     assert "biolink:treats" in treats_or_descendants
     assert "biolink:applied_to_treat" in treats_or_descendants
     assert "biolink:ameliorates_condition" in treats_or_descendants
