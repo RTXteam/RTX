@@ -65,22 +65,17 @@ class BiolinkHelper:
         input_item_set = self._convert_to_set(biolink_items)
         categories = input_item_set.intersection(set(self.biolink_lookup_map["categories"]))
         predicates = input_item_set.intersection(set(self.biolink_lookup_map["predicates"]))
-        category_mixins = input_item_set.intersection(set(self.biolink_lookup_map["category_mixins"]))
-        predicate_mixins = input_item_set.intersection(set(self.biolink_lookup_map["predicate_mixins"]))
         aspects = input_item_set.intersection(set(self.biolink_lookup_map["aspects"]))
         directions = input_item_set.intersection(set(self.biolink_lookup_map["directions"]))
         ancestors = input_item_set.copy()
-        ancestor_property = "ancestors_with_mixins" if include_mixins else "ancestors"
         if include_conflations:
             categories = set(self.add_conflations(categories))
         for category in categories:
+            ancestor_property = "ancestors" if not include_mixins and "ancestors" in self.biolink_lookup_map["categories"][category] else "ancestors_with_mixins"
             ancestors.update(self.biolink_lookup_map["categories"][category][ancestor_property])
         for predicate in predicates:
+            ancestor_property = "ancestors" if not include_mixins and "ancestors" in self.biolink_lookup_map["predicates"][predicate] else "ancestors_with_mixins"
             ancestors.update(self.biolink_lookup_map["predicates"][predicate][ancestor_property])
-        for category_mixin in category_mixins:
-            ancestors.update(self.biolink_lookup_map["category_mixins"][category_mixin]["ancestors"])
-        for predicate_mixin in predicate_mixins:
-            ancestors.update(self.biolink_lookup_map["predicate_mixins"][predicate_mixin]["ancestors"])
         for aspect in aspects:
             ancestors.update(self.biolink_lookup_map["aspects"][aspect]["ancestors"])
         for direction in directions:
@@ -103,12 +98,13 @@ class BiolinkHelper:
         aspects = input_item_set.intersection(set(self.biolink_lookup_map["aspects"]))
         directions = input_item_set.intersection(set(self.biolink_lookup_map["directions"]))
         descendants = input_item_set.copy()
-        descendant_property = "descendants_with_mixins" if include_mixins else "descendants"
         if include_conflations:
             categories = set(self.add_conflations(categories))
         for category in categories:
+            descendant_property = "descendants" if not include_mixins and "descendants" in self.biolink_lookup_map["categories"][category] else "descendants_with_mixins"
             descendants.update(self.biolink_lookup_map["categories"][category][descendant_property])
         for predicate in predicates:
+            descendant_property = "descendants" if not include_mixins and "descendants" in self.biolink_lookup_map["predicates"][predicate] else "descendants_with_mixins"
             descendants.update(self.biolink_lookup_map["predicates"][predicate][descendant_property])
         for aspect in aspects:
             descendants.update(self.biolink_lookup_map["aspects"][aspect]["descendants"])
@@ -122,16 +118,12 @@ class BiolinkHelper:
         input and always returns the canonical predicate(s) in a list. Works with both proper and mixin predicates.
         """
         input_predicate_set = self._convert_to_set(predicates)
-        valid_predicates_proper = input_predicate_set.intersection(self.biolink_lookup_map["predicates"])
-        valid_predicate_mixins = input_predicate_set.intersection(self.biolink_lookup_map["predicate_mixins"])
-        valid_predicates = valid_predicates_proper.union(valid_predicate_mixins)
+        valid_predicates = input_predicate_set.intersection(self.biolink_lookup_map["predicates"])
         invalid_predicates = input_predicate_set.difference(valid_predicates)
         if invalid_predicates:
             eprint(f"WARNING: Provided predicate(s) {invalid_predicates} do not exist in Biolink {self.biolink_version}")
         canonical_predicates = {self.biolink_lookup_map["predicates"][predicate]["canonical_predicate"]
-                                for predicate in valid_predicates_proper}
-        canonical_predicates.update({self.biolink_lookup_map["predicate_mixins"][predicate]["canonical_predicate"]
-                                     for predicate in valid_predicate_mixins})
+                                for predicate in valid_predicates}
         canonical_predicates.update(invalid_predicates)  # Go ahead and include those we don't have canonical info for
         return list(canonical_predicates)
 
@@ -226,15 +218,12 @@ class BiolinkHelper:
         if response.status_code == 200:
             biolink_model = yaml.safe_load(response.text)
 
+            # --------------------------------  PREDICATES --------------------------------- #
             predicate_dag = self._build_predicate_dag(biolink_model)
-            # Build our map of ancestors/descendants for easy lookup, first WITH mixins
-            print(list(predicate_dag.nodes))
+            # Build our map of predicate ancestors/descendants for easy lookup, first WITH mixins
             for node_id in list(predicate_dag.nodes):
                 node_info = predicate_dag.nodes[node_id]
-                print(f"for node {node_id}, info is {node_info}")
                 ancestors_with_mixins = nx.ancestors(predicate_dag, node_id).union({node_id})
-                print(f'on node {node_id}')
-                print(ancestors_with_mixins)
                 descendants_with_mixins = nx.descendants(predicate_dag, node_id).union({node_id})
                 biolink_lookup_map["predicates"][node_id] = {
                     "ancestors_with_mixins": list(ancestors_with_mixins),
@@ -243,21 +232,19 @@ class BiolinkHelper:
                     "canonical_predicate": node_info.get("canonical_predicate"),
                     "is_mixin": node_info.get("is_mixin", False)
                 }
-            # Now build our ancestor/descendant lookup maps WITHOUT mixins
+            # Now build our predicate ancestor/descendant lookup maps WITHOUT mixins
             mixin_node_ids = [node_id for node_id, data in predicate_dag.nodes(data=True) if data.get("is_mixin")]
-            print(f"mixin node ids: {mixin_node_ids}")
             for mixin_node_id in mixin_node_ids:
                 predicate_dag.remove_node(mixin_node_id)
             for node_id in list(predicate_dag.nodes):
                 ancestors_plain = nx.ancestors(predicate_dag, node_id).union({node_id})
-                print(f"On node {node_id}, ancestors plain is {ancestors_plain}")
                 descendants_plain = nx.descendants(predicate_dag, node_id).union({node_id})
                 biolink_lookup_map["predicates"][node_id]["ancestors"] = list(ancestors_plain)
                 biolink_lookup_map["predicates"][node_id]["descendants"] = list(descendants_plain)
 
+            # --------------------------------  CATEGORIES --------------------------------- #
             category_dag = self._build_category_dag(biolink_model)
-            # Build our map of ancestors/descendants for easy lookup, first WITH mixins
-            print(list(category_dag.nodes))
+            # Build our map of category ancestors/descendants for easy lookup, first WITH mixins
             for node_id in list(category_dag.nodes):
                 node_info = category_dag.nodes[node_id]
                 ancestors_with_mixins = nx.ancestors(category_dag, node_id).union({node_id})
@@ -267,7 +254,7 @@ class BiolinkHelper:
                     "descendants_with_mixins": list(descendants_with_mixins),
                     "is_mixin": node_info.get("is_mixin", False)
                 }
-            # Now build our ancestor/descendant lookup maps WITHOUT mixins
+            # Now build our category ancestor/descendant lookup maps WITHOUT mixins
             mixin_node_ids = [node_id for node_id, data in category_dag.nodes(data=True) if data.get("is_mixin")]
             for mixin_node_id in mixin_node_ids:
                 category_dag.remove_node(mixin_node_id)
@@ -277,9 +264,8 @@ class BiolinkHelper:
                 biolink_lookup_map["categories"][node_id]["ancestors"] = list(ancestors_plain)
                 biolink_lookup_map["categories"][node_id]["descendants"] = list(descendants_plain)
 
-
+            # --------------------------------  ASPECTS --------------------------------- #
             aspect_tree = self._build_aspect_tree(biolink_model)
-            direction_tree = self._build_direction_tree(biolink_model)
             for aspect_node in aspect_tree.all_nodes():
                 aspect = aspect_node.identifier
                 ancestors = self._get_ancestors_from_tree(aspect, aspect_tree)
@@ -289,6 +275,9 @@ class BiolinkHelper:
                     "descendants": descendants
                 }
             del biolink_lookup_map["aspects"][self.root_imaginary]  # No longer need this imaginary root node
+
+            # --------------------------------  DIRECTIONS --------------------------------- #
+            direction_tree = self._build_direction_tree(biolink_model)
             for direction_node in direction_tree.all_nodes():
                 direction = direction_node.identifier
                 ancestors = self._get_ancestors_from_tree(direction, direction_tree)
@@ -472,22 +461,23 @@ def main():
 
     # Test descendants
     chemical_entity_descendants = bh.get_descendants("biolink:ChemicalEntity", include_mixins=True)
-    print(chemical_entity_descendants)
     assert "biolink:Drug" in chemical_entity_descendants
-    assert "biolink:PhysicalEssence" in chemical_entity_descendants
+    assert "biolink:ChemicalEntity" in chemical_entity_descendants
+    assert "biolink:SmallMolecule" in chemical_entity_descendants
     assert "biolink:NamedThing" not in chemical_entity_descendants
     chemical_entity_descenants_no_mixins = bh.get_descendants("biolink:ChemicalEntity", include_mixins=False)
     assert "biolink:Drug" in chemical_entity_descenants_no_mixins
-    assert "biolink:PhysicalEssence" not in chemical_entity_descenants_no_mixins
     assert "biolink:NamedThing" not in chemical_entity_descenants_no_mixins
 
     # Test ancestors
     protein_ancestors = bh.get_ancestors("biolink:Protein", include_mixins=True)
     assert "biolink:NamedThing" in protein_ancestors
     assert "biolink:ProteinIsoform" not in protein_ancestors
+    assert "biolink:GeneProductMixin" in protein_ancestors
     protein_ancestors_no_mixins = bh.get_ancestors("biolink:Protein", include_mixins=False)
     assert "biolink:NamedThing" in protein_ancestors_no_mixins
     assert "biolink:ProteinIsoform" not in protein_ancestors_no_mixins
+    assert "biolink:GeneProductMixin" not in protein_ancestors_no_mixins
     assert len(protein_ancestors_no_mixins) < len(protein_ancestors)
 
     # Test predicates
@@ -523,7 +513,7 @@ def main():
     # Test treats predicates
     treats_or_descendants = bh.get_descendants("biolink:treats_or_applied_or_studied_to_treat",
                                                include_mixins=True)
-    print(treats_or_descendants)
+    print(f"Descendants of 'biolink:treats_or_applied_or_studied_to_treat are: {treats_or_descendants}")
     assert "biolink:treats" in treats_or_descendants
     assert "biolink:applied_to_treat" in treats_or_descendants
     assert "biolink:ameliorates_condition" in treats_or_descendants
