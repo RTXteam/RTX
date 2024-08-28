@@ -525,6 +525,9 @@ def main():
     # Test excluding mixins
     assert "biolink:treats" not in bh.get_descendants("biolink:related_to", include_mixins=False)
 
+    # Test replacing mixins with direct mappings TODO: remove after usages of this method in Plover are removed..
+    assert ["biolink:treats"] == bh.replace_mixins_with_direct_mappings(["biolink:treats"])
+
     print("All BiolinkHelper tests passed!")
 
 
