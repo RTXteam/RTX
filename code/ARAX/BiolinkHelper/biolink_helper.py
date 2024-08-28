@@ -16,7 +16,6 @@ from typing import Optional, List, Set, Dict, Union, Tuple
 import networkx as nx
 import requests
 import yaml
-from treelib import Tree
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -28,11 +27,11 @@ class BiolinkHelper:
 
         self.biolink_version = biolink_version if biolink_version else self.get_current_arax_biolink_version()
         if self.biolink_version == "4.2.0":
-            print(f"Overriding Biolink version from 4.2.0 to 4.2.1 due to issues with treats predicates in 4.2.0")
+            eprint(f"{timestamp}: DEBUG: Overriding Biolink version from 4.2.0 to 4.2.1 due to issues with "
+                   f"treats predicates in 4.2.0")
             self.biolink_version = "4.2.1"
         self.root_category = "biolink:NamedThing"
         self.root_predicate = "biolink:related_to"
-        self.root_imaginary = "ROOT"
         biolink_helper_dir = os.path.dirname(os.path.abspath(__file__))
         self.biolink_lookup_map_path = f"{biolink_helper_dir}/biolink_lookup_map_{self.biolink_version}_v4.pickle"
 
@@ -130,13 +129,11 @@ class BiolinkHelper:
     def is_symmetric(self, predicate: str) -> Optional[bool]:
         if predicate in self.biolink_lookup_map["predicates"]:
             return self.biolink_lookup_map["predicates"][predicate]["is_symmetric"]
-        elif predicate in self.biolink_lookup_map["predicate_mixins"]:
-            # TODO: Starting with Biolink 4.2.0, predicate mixins are missing the 'symmetric:' slot. why??
-            return None
         else:
             return True  # Consider unrecognized predicates symmetric (rather than throw error)
 
     def replace_mixins_with_direct_mappings(self, biolink_items: Union[str, List[str], Set[str]]) -> List[str]:
+        # TODO: After Plover is revised to not use this method, delete it.. (nothing else uses it)
         input_item_set = self._convert_to_set(biolink_items)
         return list(input_item_set)
 
@@ -223,11 +220,9 @@ class BiolinkHelper:
             # Build our map of predicate ancestors/descendants for easy lookup, first WITH mixins
             for node_id in list(predicate_dag.nodes):
                 node_info = predicate_dag.nodes[node_id]
-                ancestors_with_mixins = nx.ancestors(predicate_dag, node_id).union({node_id})
-                descendants_with_mixins = nx.descendants(predicate_dag, node_id).union({node_id})
                 biolink_lookup_map["predicates"][node_id] = {
-                    "ancestors_with_mixins": list(ancestors_with_mixins),
-                    "descendants_with_mixins": list(descendants_with_mixins),
+                    "ancestors_with_mixins": self._get_ancestors_nx(predicate_dag, node_id),
+                    "descendants_with_mixins": self._get_descendants_nx(predicate_dag, node_id),
                     "is_symmetric": node_info.get("is_symmetric", False),
                     "canonical_predicate": node_info.get("canonical_predicate"),
                     "is_mixin": node_info.get("is_mixin", False)
@@ -237,21 +232,17 @@ class BiolinkHelper:
             for mixin_node_id in mixin_node_ids:
                 predicate_dag.remove_node(mixin_node_id)
             for node_id in list(predicate_dag.nodes):
-                ancestors_plain = nx.ancestors(predicate_dag, node_id).union({node_id})
-                descendants_plain = nx.descendants(predicate_dag, node_id).union({node_id})
-                biolink_lookup_map["predicates"][node_id]["ancestors"] = list(ancestors_plain)
-                biolink_lookup_map["predicates"][node_id]["descendants"] = list(descendants_plain)
+                biolink_lookup_map["predicates"][node_id]["ancestors"] = self._get_ancestors_nx(predicate_dag, node_id)
+                biolink_lookup_map["predicates"][node_id]["descendants"] = self._get_descendants_nx(predicate_dag, node_id)
 
             # --------------------------------  CATEGORIES --------------------------------- #
             category_dag = self._build_category_dag(biolink_model)
             # Build our map of category ancestors/descendants for easy lookup, first WITH mixins
             for node_id in list(category_dag.nodes):
                 node_info = category_dag.nodes[node_id]
-                ancestors_with_mixins = nx.ancestors(category_dag, node_id).union({node_id})
-                descendants_with_mixins = nx.descendants(category_dag, node_id).union({node_id})
                 biolink_lookup_map["categories"][node_id] = {
-                    "ancestors_with_mixins": list(ancestors_with_mixins),
-                    "descendants_with_mixins": list(descendants_with_mixins),
+                    "ancestors_with_mixins": self._get_ancestors_nx(category_dag, node_id),
+                    "descendants_with_mixins": self._get_descendants_nx(category_dag, node_id),
                     "is_mixin": node_info.get("is_mixin", False)
                 }
             # Now build our category ancestor/descendant lookup maps WITHOUT mixins
@@ -259,36 +250,26 @@ class BiolinkHelper:
             for mixin_node_id in mixin_node_ids:
                 category_dag.remove_node(mixin_node_id)
             for node_id in list(category_dag.nodes):
-                ancestors_plain = nx.ancestors(category_dag, node_id).union({node_id})
-                descendants_plain = nx.descendants(category_dag, node_id).union({node_id})
-                biolink_lookup_map["categories"][node_id]["ancestors"] = list(ancestors_plain)
-                biolink_lookup_map["categories"][node_id]["descendants"] = list(descendants_plain)
+                biolink_lookup_map["categories"][node_id]["ancestors"] = self._get_ancestors_nx(category_dag, node_id)
+                biolink_lookup_map["categories"][node_id]["descendants"] = self._get_descendants_nx(category_dag, node_id)
 
             # --------------------------------  ASPECTS --------------------------------- #
-            aspect_tree = self._build_aspect_tree(biolink_model)
-            for aspect_node in aspect_tree.all_nodes():
-                aspect = aspect_node.identifier
-                ancestors = self._get_ancestors_from_tree(aspect, aspect_tree)
-                descendants = self._get_descendants_from_tree(aspect, aspect_tree)
-                biolink_lookup_map["aspects"][aspect] = {
-                    "ancestors": ancestors.difference({self.root_imaginary}),  # Our made-up root doesn't count as an ancestor
-                    "descendants": descendants
+            aspect_dag = self._build_aspect_dag(biolink_model)
+            for node_id in list(aspect_dag.nodes):
+                biolink_lookup_map["aspects"][node_id] = {
+                    "ancestors": self._get_ancestors_nx(aspect_dag, node_id),
+                    "descendants": self._get_descendants_nx(aspect_dag, node_id)
                 }
-            del biolink_lookup_map["aspects"][self.root_imaginary]  # No longer need this imaginary root node
 
             # --------------------------------  DIRECTIONS --------------------------------- #
-            direction_tree = self._build_direction_tree(biolink_model)
-            for direction_node in direction_tree.all_nodes():
-                direction = direction_node.identifier
-                ancestors = self._get_ancestors_from_tree(direction, direction_tree)
-                descendants = self._get_descendants_from_tree(direction, direction_tree)
-                biolink_lookup_map["directions"][direction] = {
-                    "ancestors": ancestors.difference({self.root_imaginary}),  # Our made-up root doesn't count as an ancestor
-                    "descendants": descendants
+            direction_dag = self._build_direction_dag(biolink_model)
+            for node_id in list(direction_dag.nodes):
+                biolink_lookup_map["directions"][node_id] = {
+                    "ancestors": self._get_ancestors_nx(direction_dag, node_id),
+                    "descendants": self._get_descendants_nx(direction_dag, node_id)
                 }
-            del biolink_lookup_map["directions"][self.root_imaginary]  # No longer need this imaginary root node
 
-            # And cache it (never needs to be refreshed for the given Biolink version)
+            # Cache our Biolink lookup map (never needs to be refreshed for the given Biolink version)
             with open(self.biolink_lookup_map_path, "wb") as output_file:
                 pickle.dump(biolink_lookup_map, output_file)  # Use pickle so we can save Sets
             # Also save a JSON version to help with debugging
@@ -306,15 +287,15 @@ class BiolinkHelper:
 
         # NOTE: 'slots' includes some things that aren't predicates, but we don't care; doesn't hurt to include them
         for slot_name_english, info in biolink_model["slots"].items():
-            slot_name = self._convert_english_snakecase_to_trapi_format(slot_name_english)
+            slot_name = self._convert_to_biolink_snakecase(slot_name_english)
             # Record relationship between this node and its parent, if provided
             parent_name_english = info.get("is_a")
             if parent_name_english:
-                parent_name = self._convert_english_snakecase_to_trapi_format(parent_name_english)
+                parent_name = self._convert_to_biolink_snakecase(parent_name_english)
                 predicate_dag.add_edge(parent_name, slot_name)
             # Record relationship between this node and any direct 'mixins', if provided (treat same as is_a)
             direct_mappings_english = info.get("mixins", [])
-            direct_mappings = {self._convert_english_snakecase_to_trapi_format(mapping_english)
+            direct_mappings = {self._convert_to_biolink_snakecase(mapping_english)
                                for mapping_english in direct_mappings_english}
             for direct_mapping in direct_mappings:
                 predicate_dag.add_edge(direct_mapping, slot_name)
@@ -331,7 +312,7 @@ class BiolinkHelper:
             # A couple 'inverse' pairs of predicates in Biolink 3.0.3 seem to be missing a 'canonical_predicate' label,
             # so we work around that below (see https://github.com/biolink/biolink-model/issues/1112)
             canonical_predicate_english = slot_name_english if is_canonical_predicate or not inverse_predicate_english else inverse_predicate_english
-            canonical_predicate = self._convert_english_snakecase_to_trapi_format(canonical_predicate_english)
+            canonical_predicate = self._convert_to_biolink_snakecase(canonical_predicate_english)
             predicate_dag.nodes[slot_name]["canonical_predicate"] = canonical_predicate
 
         return predicate_dag
@@ -340,15 +321,15 @@ class BiolinkHelper:
         category_dag = nx.DiGraph()
 
         for class_name_english, info in biolink_model["classes"].items():
-            class_name = self._convert_english_category_to_trapi_format(class_name_english)
+            class_name = self._convert_to_biolink_camelcase(class_name_english)
             # Record relationship between this node and its parent, if provided
             parent_name_english = info.get("is_a")
             if parent_name_english:
-                parent_name = self._convert_english_category_to_trapi_format(parent_name_english)
+                parent_name = self._convert_to_biolink_camelcase(parent_name_english)
                 category_dag.add_edge(parent_name, class_name)
             # Record relationship between this node and any direct 'mixins', if provided (treat same as is_a)
             direct_mappings_english = info.get("mixins", [])
-            direct_mappings = {self._convert_english_category_to_trapi_format(mapping_english)
+            direct_mappings = {self._convert_to_biolink_camelcase(mapping_english)
                                for mapping_english in direct_mappings_english}
             for direct_mapping in direct_mappings:
                 category_dag.add_edge(direct_mapping, class_name)
@@ -360,73 +341,63 @@ class BiolinkHelper:
 
         return category_dag
 
+    def _build_aspect_dag(self, biolink_model: dict) -> nx.DiGraph:
+        aspect_dag = nx.DiGraph()
+
+        aspect_enum_field_name = "gene_or_gene_product_or_chemical_entity_aspect_enum" if self.biolink_version.startswith("3.0") else "GeneOrGeneProductOrChemicalEntityAspectEnum"
+        parent_to_child_dict = defaultdict(set)
+        for aspect_name_english, info in biolink_model["enums"][aspect_enum_field_name]["permissible_values"].items():
+            aspect_name_trapi = self._convert_to_biolink_snakecase(aspect_name_english, add_biolink_prefix=False)
+            parent_name_english = info.get("is_a") if info else None
+            if parent_name_english:
+                parent_name_trapi = self._convert_to_biolink_snakecase(parent_name_english, add_biolink_prefix=False)
+                aspect_dag.add_edge(parent_name_trapi, aspect_name_trapi)
+
+        return aspect_dag
+
+    def _build_direction_dag(self, biolink_model: dict) -> nx.DiGraph:
+        direction_dag = nx.DiGraph()
+
+        direction_enum_field_name = "direction_qualifier_enum" if self.biolink_version.startswith("3.0") else "DirectionQualifierEnum"
+        parent_to_child_dict = defaultdict(set)
+        for direction_name_english, info in biolink_model["enums"][direction_enum_field_name]["permissible_values"].items():
+            direction_name_trapi = self._convert_to_biolink_snakecase(direction_name_english, add_biolink_prefix=False)
+            parent_name_english = info.get("is_a") if info else None
+            if parent_name_english:
+                parent_name_trapi = self._convert_to_biolink_snakecase(parent_name_english, add_biolink_prefix=False)
+                direction_dag.add_edge(parent_name_trapi, direction_name_trapi)
+
+        return direction_dag
+
+    @staticmethod
+    def _get_ancestors_nx(nx_graph: nx.DiGraph, node_id: str) -> List[str]:
+        return list(nx.ancestors(nx_graph, node_id).union({node_id}))
+
+    @staticmethod
+    def _get_descendants_nx(nx_graph: nx.DiGraph, node_id: str) -> List[str]:
+        return list(nx.descendants(nx_graph, node_id).union({node_id}))
+
     @staticmethod
     def _add_node_if_doesnt_exist(nx_graph: nx.DiGraph, node_id: str):
         if not nx_graph.has_node(node_id):
             nx_graph.add_node(node_id)
 
-    def _build_aspect_tree(self, biolink_model: dict) -> Tree:
-        # Build helper map of parents to children
-        aspect_enum_field_name = "gene_or_gene_product_or_chemical_entity_aspect_enum" if self.biolink_version.startswith("3.0") else "GeneOrGeneProductOrChemicalEntityAspectEnum"
-        parent_to_child_dict = defaultdict(set)
-        for aspect_name_english, info in biolink_model["enums"][aspect_enum_field_name]["permissible_values"].items():
-            aspect_name_trapi = self._convert_english_snakecase_to_trapi_format(aspect_name_english, add_biolink_prefix=False)
-            parent_name_english = info.get("is_a", self.root_imaginary) if info else self.root_imaginary
-            parent_name_trapi = self._convert_english_snakecase_to_trapi_format(parent_name_english, add_biolink_prefix=False)
-            parent_to_child_dict[parent_name_trapi].add(aspect_name_trapi)
-
-        # Recursively build the tree starting with the root
-        aspect_tree = Tree()
-        aspect_tree.create_node(self.root_imaginary, self.root_imaginary)
-        self._create_tree_recursive(self.root_imaginary, parent_to_child_dict, aspect_tree)
-        return aspect_tree
-
-    def _build_direction_tree(self, biolink_model: dict) -> Tree:
-        # Build helper map of parents to children
-        direction_enum_field_name = "direction_qualifier_enum" if self.biolink_version.startswith("3.0") else "DirectionQualifierEnum"
-        parent_to_child_dict = defaultdict(set)
-        for direction_name_english, info in biolink_model["enums"][direction_enum_field_name]["permissible_values"].items():
-            direction_name_trapi = self._convert_english_snakecase_to_trapi_format(direction_name_english, add_biolink_prefix=False)
-            parent_name_english = info.get("is_a", self.root_imaginary) if info else self.root_imaginary
-            parent_name_trapi = self._convert_english_snakecase_to_trapi_format(parent_name_english, add_biolink_prefix=False)
-            parent_to_child_dict[parent_name_trapi].add(direction_name_trapi)
-
-        # Recursively build the tree starting with the root
-        direction_tree = Tree()
-        direction_tree.create_node(self.root_imaginary, self.root_imaginary)
-        self._create_tree_recursive(self.root_imaginary, parent_to_child_dict, direction_tree)
-        return direction_tree
-
-    def _create_tree_recursive(self, root_id: str, parent_to_child_map: defaultdict, tree: Tree):
-        for child_id in parent_to_child_map.get(root_id, []):
-            tree.create_node(child_id, child_id, parent=root_id)
-            self._create_tree_recursive(child_id, parent_to_child_map, tree)
-
     @staticmethod
-    def _get_ancestors_from_tree(node_identifier: str, tree: Tree) -> Set[str]:
-        ancestors = {node_identifier for node_identifier in tree.rsearch(node_identifier)}
-        return ancestors
-
-    @staticmethod
-    def _get_descendants_from_tree(node_identifier: str, tree: Tree) -> Set[str]:
-        sub_tree = tree.subtree(node_identifier)
-        descendants = {node.identifier for node in sub_tree.all_nodes()}
-        return descendants
-
-    def _convert_english_snakecase_to_trapi_format(self, english_snakecase_term: str, add_biolink_prefix: bool = True):
-        if english_snakecase_term == self.root_imaginary:
-            return self.root_imaginary
+    def _convert_to_biolink_snakecase(english_term: str, add_biolink_prefix: bool = True):
+        # NOTE: aspects/directions should *not* have 'biolink' prefix, that's why that is controlled via a flag..
+        snakecase_term = english_term.replace(' ', '_')
+        if add_biolink_prefix and not snakecase_term.startswith("biolink:"):
+            return f"biolink:{snakecase_term}"
         else:
-            snakecase_term = english_snakecase_term.replace(' ', '_')
-            if add_biolink_prefix:
-                return f"biolink:{snakecase_term}"
-            else:
-                return snakecase_term
+            return snakecase_term
 
     @staticmethod
-    def _convert_english_category_to_trapi_format(english_category: str):
-        camel_case_class_name = "".join([f"{word[0].upper()}{word[1:]}" for word in english_category.split(" ")])
-        return f"biolink:{camel_case_class_name}"
+    def _convert_to_biolink_camelcase(english_term: str):
+        camel_case_class_name = "".join([f"{word[0].upper()}{word[1:]}" for word in english_term.split(" ")])
+        if camel_case_class_name.startswith("biolink:"):
+            return camel_case_class_name
+        else:
+            return f"biolink:{camel_case_class_name}"
 
     @staticmethod
     def _convert_to_set(items: any) -> Set[str]:
@@ -442,14 +413,6 @@ class BiolinkHelper:
     @staticmethod
     def _serialize_with_sets(obj: any) -> any:
         return list(obj) if isinstance(obj, set) else obj
-
-    @staticmethod
-    def _reverse_map(str_to_set_map: Dict[str, Set[str]]) -> Dict[str, Set[str]]:
-        reversed_map = defaultdict(set)
-        for key, value_set in str_to_set_map.items():
-            for value in value_set:
-                reversed_map[value].add(key)
-        return dict(reversed_map)
 
 
 def main():
@@ -505,6 +468,8 @@ def main():
     canonical_treats = bh.get_canonical_predicates("biolink:treats")
     assert canonical_treated_by == ["biolink:treats"]
     assert canonical_treats == ["biolink:treats"]
+    canonical_related_to = bh.get_canonical_predicates("biolink:related_to")
+    assert canonical_related_to == ["biolink:related_to"]
 
     # Test filtering out mixins
     mixin_less_list = bh.filter_out_mixins(["biolink:Protein", "biolink:Drug", "biolink:PhysicalEssence"])
