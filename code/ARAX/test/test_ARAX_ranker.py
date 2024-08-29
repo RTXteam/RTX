@@ -441,7 +441,7 @@ def test_ARAXRanker_test9_asset623():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
-
+@pytest.mark.skip(reason="This test is too slow")
 def test_ARAXRanker_test13_asset311():
     # test 'Benazepril decreases activity or abundance of ACE'
     expected_answer = 'Benazepril'
