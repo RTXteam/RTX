@@ -85,7 +85,7 @@ def _ranker_tester(query: dict = None, response_id: str = None) -> Message:
     message = _do_arax_rank(response)
     return message
 
-
+@pytest.mark.slow
 def test_ARAXRanker_test1_asset12():
     # test 'rituximab treats Castleman Disease'
     expected_answer = 'rituximab'
@@ -145,6 +145,7 @@ def test_ARAXRanker_test1_asset12():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
+@pytest.mark.slow
 def test_ARAXRanker_test5_asset70():
     # test 'Miglustat treats Niemann-Pick type C'
     expected_answer = 'Miglustat'
@@ -204,6 +205,7 @@ def test_ARAXRanker_test5_asset70():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
+@pytest.mark.slow
 def test_ARAXRanker_test6_asset72():
     # test 'Lomitapide treats Homozygous Familial Hypercholesterolemia'
     expected_answer = 'Lomitapide'
@@ -322,7 +324,7 @@ def test_ARAXRanker_test9_asset614():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
-
+@pytest.mark.slow
 def test_ARAXRanker_test9_asset619():
     # test 'lansoprazole treats Gastroesophageal Reflux Disease'
     expected_answer = 'lansoprazole'
@@ -382,6 +384,7 @@ def test_ARAXRanker_test9_asset619():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
+@pytest.mark.slow
 def test_ARAXRanker_test9_asset623():
     # test 'rabeprazole treats Gastroesophageal Reflux Disease'
     expected_answer = 'rabeprazole'
@@ -441,7 +444,7 @@ def test_ARAXRanker_test9_asset623():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
-@pytest.mark.skip(reason="This test is too slow")
+@pytest.mark.slow
 def test_ARAXRanker_test13_asset311():
     # test 'Benazepril decreases activity or abundance of ACE'
     expected_answer = 'Benazepril'
@@ -514,7 +517,7 @@ def test_ARAXRanker_test13_asset311():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
-@pytest.mark.skip(reason="This test is too slow")
+@pytest.mark.slow
 def test_ARAXRanker_test13_asset355():
     # test 'Fosinopril decreases activity or abundance of ACE'
     expected_answer = 'Fosinopril'
@@ -587,7 +590,7 @@ def test_ARAXRanker_test13_asset355():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
-
+@pytest.mark.slow
 def test_ARAXRanker_test13_asset360():
     # test 'Trandolapril decreases activity or abundance of ACE'
     expected_answer = 'Trandolapril'
@@ -660,7 +663,7 @@ def test_ARAXRanker_test13_asset360():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
     
-    
+@pytest.mark.slow
 def test_ARAXRanker_test13_asset361():
     # test 'Moexipril decreases activity or abundance of ACE'
     expected_answer = 'Moexipril'
@@ -733,7 +736,7 @@ def test_ARAXRanker_test13_asset361():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
-
+@pytest.mark.slow
 def test_ARAXRanker_test21_asset338():
     # test 'canagliflozin decreases activity or abundance of SLC5A2 (human)'
     expected_answer = 'canagliflozin'
@@ -806,7 +809,7 @@ def test_ARAXRanker_test21_asset338():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
-
+@pytest.mark.slow
 def test_ARAXRanker_test23_asset381():
     # test 'atenolol decreases activity or abundance of ADRB2'
     expected_answer = 'atenolol'
@@ -880,6 +883,7 @@ def test_ARAXRanker_test23_asset381():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 
+@pytest.mark.slow
 def test_ARAXRanker_test23_asset378():
     # test 'propranolol decreases activity or abundance of ADRB2'
     expected_answer = 'propranolol'
