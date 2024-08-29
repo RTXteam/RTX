@@ -79,7 +79,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     # make sure two or more values were added
     assert len(values) >= num_different_values
 
-
+@pytest.mark.slow
 def test_connect_ulcerative_colitis_to_adalimumab():
     query = {"operations": {"actions": [
         "create_message",
@@ -93,7 +93,7 @@ def test_connect_ulcerative_colitis_to_adalimumab():
     assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
-
+@pytest.mark.slow
 def test_connect_resveratrol_glyoxalase():
     query = {"operations": {"actions": [
         "create_message",
@@ -122,7 +122,7 @@ def test_connect_pde5i_alzheimer():
     assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
-
+@pytest.mark.slow
 def test_glucose_diabetes():
     query = {"operations": {"actions": [
         "create_message",
