@@ -12,8 +12,8 @@ from model.PathContainer import PathContainer
 
 class BidirectionalPathFinder:
 
-    def __init__(self, repository):
-        self.repo = repository
+    def __init__(self, repository_name):
+        self.repo_name = repository_name
 
     def find_all_paths(self, node_id_1, node_id_2, hops_numbers=1):
         result = set()
@@ -26,10 +26,10 @@ class BidirectionalPathFinder:
         hops_numbers_2 = math.floor(hops_numbers / 2)
 
         path_container_1 = PathContainer()
-        bfs_1 = BreadthFirstSearch(self.repo, path_container_1)
+        bfs_1 = BreadthFirstSearch(self.repo_name, path_container_1)
 
         path_container_2 = PathContainer()
-        bfs_2 = BreadthFirstSearch(self.repo, path_container_2)
+        bfs_2 = BreadthFirstSearch(self.repo_name, path_container_2)
 
         thread_1 = threading.Thread(target=lambda: bfs_1.traverse(node_id_1, hops_numbers_1))
         thread_2 = threading.Thread(target=lambda: bfs_2.traverse(node_id_2, hops_numbers_2))

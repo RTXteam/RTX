@@ -6,6 +6,7 @@
       "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.10.0/fda_approved_drugs_v1.0_KG2.10.0c.pickle",
       "autocomplete": "/translator/data/orangeboard/databases/KG2.10.0/autocomplete_v1.0_KG2.10.0.sqlite",
       "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.10.0/curie_to_pmids_v1.0_KG2.10.0.sqlite",
+      "curie_ngd": "/translator/data/orangeboard/databases/KG2.10.0/curie_ngd_v1.0_KG2.10.0.sqlite",
       "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.10.0/ExplainableDTD_v1.0_KG2.10.0.db",
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
       "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.10.0/chemical_gene_embeddings_v1.0.KG2.10.0.npz",

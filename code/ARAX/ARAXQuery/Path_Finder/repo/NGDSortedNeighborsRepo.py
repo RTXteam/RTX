@@ -1,91 +1,58 @@
 import sys
 import os
-import sqlite3
-
-from RTXConfiguration import RTXConfiguration
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
-from repo.NGDCalculator import calculate_ngd
 from repo.Repository import Repository
 from repo.NodeDegreeRepo import NodeDegreeRepo
+from repo.RedisConnector import RedisConnector
+from repo.NGDRepository import NGDRepository
 from model.Node import Node
-
-
-def get_curie_to_pmids_path():
-    pathlist = os.path.realpath(__file__).split(os.path.sep)
-    RTXindex = pathlist.index("RTX")
-    ngd_filepath = os.path.sep.join(
-        [*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
-    return f"{ngd_filepath}{os.path.sep}{RTXConfiguration().curie_to_pmids_path.split('/')[-1]}"
-
-
-def get_node_pmids(node_id):
-    query_to_find_pmids_for_node_id = f"SELECT pmids FROM curie_to_pmids WHERE curie == '{node_id}'"
-    conn = sqlite3.connect(get_curie_to_pmids_path())
-    cursor = conn.cursor()
-    cursor.execute(query_to_find_pmids_for_node_id)
-    node_pmids = cursor.fetchone()
-    conn.close()
-    return node_pmids
-
-
-def get_neighbors_pmids(neighbors):
-    chunk_size = 100000
-    connection = sqlite3.connect(get_curie_to_pmids_path())
-    base_query = "SELECT curie, pmids FROM curie_to_pmids WHERE curie IN ({})"
-    results = []
-    for i in range(0, len(neighbors), chunk_size):
-        chunk = neighbors[i:i + chunk_size]
-        placeholders = ', '.join('?' * len(chunk))
-        query = base_query.format(placeholders)
-        cursor = connection.cursor()
-        cursor.execute(query, chunk)
-        results.extend(cursor.fetchall())
-    connection.close()
-    return results
 
 
 class NGDSortedNeighborsRepo(Repository):
 
-    def __init__(self, repo, degree_repo=NodeDegreeRepo()):
+    def __init__(self, repo, degree_repo=NodeDegreeRepo(), redis_connector=RedisConnector(), ngd_repo=NGDRepository()):
         self.repo = repo
         self.degree_repo = degree_repo
+        self.redis_connector = redis_connector
+        self.ngd_repo = ngd_repo
 
     def get_neighbors(self, node, limit=-1):
+        if limit <= 0:
+            raise Exception(f"The limit:{limit} could not be negative or zero.")
+        curie_ngd_list = self.ngd_repo.get_curie_ngd(node.id)
+        ngd_by_curie_dict = {}
+        if curie_ngd_list is not None:
+            if len(curie_ngd_list) >= limit:
+                return [Node(curie, ngd_value) for curie, ngd_value in
+                        curie_ngd_list[0:min(limit, len(curie_ngd_list))]]
+            else:
+                for curie, ngd in curie_ngd_list:
+                    ngd_by_curie_dict[curie] = ngd
 
         neighbors = self.repo.get_neighbors(node, limit=limit)
+        neighbors_ids = []
+        for neighbor in neighbors:
+            if neighbor.id not in ngd_by_curie_dict:
+                neighbors_ids.append(neighbor.id)
 
-        node_pmids = get_node_pmids(node.id)
-        if node_pmids is None:
-            if limit == -1:
-                return neighbors
-            else:
-                return neighbors[0:min(limit, len(neighbors))]
+        number_of_curie_left_to_fill_the_limit = limit - len(curie_ngd_list)
 
-        neighbors_to_pmids = get_neighbors_pmids([neighbor.id for neighbor in neighbors])
-        if neighbors_to_pmids is None:
-            if limit == -1:
-                return neighbors
-            else:
-                return neighbors[0:min(limit, len(neighbors))]
+        node_pmids_length = self.ngd_repo.get_curies_pmid_length(neighbors_ids,
+                                                                 number_of_curie_left_to_fill_the_limit)
+        node_pmids_length = [(key, length) for key, length in node_pmids_length if length > 0]
 
-        curie_pmids_dict = dict(neighbors_to_pmids)
-        ngd_key_value = dict()
-        node_pmids_set = set(node_pmids[0].strip('][').split(','))
-        for key, value in curie_pmids_dict.items():
-            second_element_pmids = value.strip('][').split(',')
-            ngd_key_value[key] = calculate_ngd(node_pmids_set, set(second_element_pmids))
+        curies_sorted_by_their_pmids_length = sorted(node_pmids_length, key=lambda x: (x[1]), reverse=True)
 
-        sorted_neighbors_tuple = sorted(ngd_key_value.items(),
+        nonzero_length_pmids_curie_with_none_ngd_value = [(curie, None) for curie, _ in
+                                                          curies_sorted_by_their_pmids_length]
+
+        sorted_neighbors_tuple = sorted(ngd_by_curie_dict.items(),
                                         key=lambda x: (x[1] is None, x[1] if x[1] is not None else float('inf')))
+        sorted_neighbors_tuple.extend(nonzero_length_pmids_curie_with_none_ngd_value)
 
-        if limit == -1:
-            sorted_neighbors = [Node(item[0], item[1]) for item in sorted_neighbors_tuple]
-        else:
-            sorted_neighbors = [Node(item[0], item[1]) for item in
-                                sorted_neighbors_tuple[0:min(limit, len(sorted_neighbors_tuple))]]
-
-        return sorted_neighbors
+        return [Node(item[0], item[1]) for item in
+                sorted_neighbors_tuple[0:min(limit, len(sorted_neighbors_tuple))]]
 
     def get_node_degree(self, node):
         return self.degree_repo.get_node_degree(node)
