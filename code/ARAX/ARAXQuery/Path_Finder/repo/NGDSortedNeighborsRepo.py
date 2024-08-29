@@ -4,17 +4,15 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 from repo.Repository import Repository
 from repo.NodeDegreeRepo import NodeDegreeRepo
-from repo.RedisConnector import RedisConnector
 from repo.NGDRepository import NGDRepository
 from model.Node import Node
 
 
 class NGDSortedNeighborsRepo(Repository):
 
-    def __init__(self, repo, degree_repo=NodeDegreeRepo(), redis_connector=RedisConnector(), ngd_repo=NGDRepository()):
+    def __init__(self, repo, degree_repo=NodeDegreeRepo(), ngd_repo=NGDRepository()):
         self.repo = repo
         self.degree_repo = degree_repo
-        self.redis_connector = redis_connector
         self.ngd_repo = ngd_repo
 
     def get_neighbors(self, node, limit=-1):
