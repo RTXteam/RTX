@@ -85,6 +85,7 @@ Host arax.ncats.io
 The following databases should be rebuilt and copies of them should be put in `/home/rtxconfig/KG2.X.Y` on `arax-databases.rtx.ai`. Please use this kind of naming format: `mydatabase_v1.0_KG2.X.Y.sqlite`.
 
 - [ ] NGD database (how-to is [here](https://github.com/RTXteam/RTX/blob/master/code/ARAX/ARAXQuery/Overlay/ngd/README.md))
+- [ ] Build CURIE NGD database @mohsenht
 - [ ] refreshed XDTD database @chunyuma 
 - [ ] XDTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
 
