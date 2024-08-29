@@ -47,17 +47,10 @@ jobs:
 
     - name: Download databases into CICD instance
       run: |
-        mkdir -p /home/ubuntu/temp
-        cd /home/ubuntu/temp
-        git clone https://github.com/RTXteam/RTX.git
-        echo ${GITHUB_REF#refs/heads/}
-        source /home/ubuntu/venv3.9/bin/activate
-        cd RTX
-        git checkout ${GITHUB_REF#refs/heads/}
-        pip install -r requirements.txt
-        python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
-        rm -rf /home/ubuntu/temp
-        deactivate
+        cd /home/ubuntu/RTX
+        git pull origin ${GITHUB_REF#refs/heads/}
+        /home/ubuntu/venv3.9/bin/pip3 install -r requirements.txt
+        /home/ubuntu/venv3.9/bin/python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
 
 
 
