@@ -32,7 +32,7 @@ class PloverDBRepo(Repository):
                     "categories": ["biolink:NamedThing"]
                 }
             },
-            "include_metadata": True,
+            "include_metadata": False,
             "respect_predicate_symmetry": True
         }
         result = []
@@ -40,7 +40,7 @@ class PloverDBRepo(Repository):
             response = requests.post(self.plover_url + endpoint, headers={'accept': 'application/json'}, json=data)
             response.raise_for_status()
             json = response.json()
-            result = [Node(i) for i in json['nodes']['n01'].keys()]
+            result = [Node(i) for i in json['nodes']['n01']]
         except requests.exceptions.RequestException as e:
             # log here print(f"Request error: {e}")
             pass

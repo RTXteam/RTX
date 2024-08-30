@@ -15,24 +15,22 @@ class GraphToKnowledgeGraphConverter:
     def __init__(
             self,
             qnode_1_id,
-            qnode_2_id
+            qnode_2_id,
+            edge_extractor
     ):
         self.qnode_1_id = qnode_1_id
         self.qnode_2_id = qnode_2_id
+        self.edge_extractor = edge_extractor
 
     def convert(self, response, paths):
-        plover_url = RTXConfiguration().plover_url
-
         nodes, edges = PathListToGraphConverter(self.qnode_1_id, self.qnode_2_id).convert(paths)
 
         nodes, edges = SimpleGraphToContentGraphConverter(
-            EdgeExtractorFromPloverDB(
-                plover_url
-            )
-        ).convert(nodes, edges)
+            self.edge_extractor
+        ).convert(nodes, edges, response)
 
         qg_organized_knowledge_graph = (
-            KG2Querier(response, plover_url)._load_plover_answer_into_object_model(
+            KG2Querier(response, self.edge_extractor.get_extractor_url())._load_plover_answer_into_object_model(
                 {
                     "nodes": nodes,
                     "edges": edges

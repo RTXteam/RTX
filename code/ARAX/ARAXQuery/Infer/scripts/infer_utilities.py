@@ -58,7 +58,14 @@ class InferUtilities:
         self.bh = BiolinkHelper()
 
     def __get_formated_edge_key(self, edge: Edge, primary_knowledge_source: str, kp: str = 'infores:rtx-kg2') -> str:
-        return f"{kp}:{edge.subject}-{edge.predicate}-{edge.object}-{primary_knowledge_source}"
+        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
+        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
+        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
+        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
+        qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+        edge_key = f"{kp}:{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_knowledge_source}"
+        
+        return edge_key
 
     def __none_to_zero(self, val):
         if val is None:

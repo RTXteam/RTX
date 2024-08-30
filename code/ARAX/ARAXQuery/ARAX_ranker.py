@@ -760,8 +760,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         results = message.results
 
-        for edge_key in edge_ids_manual_agent:
-            print(f"setting max confidence for edge_key: {edge_key}")
+        # for edge_key in edge_ids_manual_agent:
+        #     print(f"setting max confidence for edge_key: {edge_key}")
 
         ###################################
         # TODO: Replace this with a more "intelligent" separate function
@@ -807,8 +807,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # break ties and preserve order, round to 3 digits and make sure none are < 0
         scores_with_ties = [result.analyses[0].score for result in message.results]
         scores_without_ties = _break_ties_and_preserve_order(scores_with_ties)
-        print(scores_with_ties)
-        print(scores_without_ties)
+        # print(scores_with_ties)
+        # print(scores_without_ties)
         # reinsert these scores into the results
         for result, score in zip(message.results, scores_without_ties):
             result.analyses[0].score = score
