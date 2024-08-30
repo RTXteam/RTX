@@ -58,7 +58,14 @@ class InferUtilities:
         self.bh = BiolinkHelper()
 
     def __get_formated_edge_key(self, edge: Edge, primary_knowledge_source: str, kp: str = 'infores:rtx-kg2') -> str:
-        return f"{kp}:{edge.subject}-{edge.predicate}-{edge.object}-{primary_knowledge_source}"
+        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
+        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
+        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
+        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
+        qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+        edge_key = f"{kp}:{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_knowledge_source}"
+        
+        return edge_key
 
     def __none_to_zero(self, val):
         if val is None:
@@ -619,7 +626,7 @@ class InferUtilities:
                         message.knowledge_graph.edges[new_edge_key].filled = True
                         message.knowledge_graph.edges[new_edge_key].qedge_keys = [qedge_id]
             else:
-                node_ids = list(top_predictions['gene_id'].to_numpy())
+                node_ids = list(top_predictions['chemical_id'].to_numpy())
                 node_info = synonymizer.get_canonical_curies(node_ids)
                 node_id_to_canonical_id = {k: v['preferred_curie'] for k, v in node_info.items() if v is not None}
                 node_id_to_score = dict(zip(node_ids, top_predictions['tp_prob']))
@@ -706,16 +713,18 @@ class InferUtilities:
         # FW: code that will add resulting paths to the query graph and knowledge graph goes here
         essence_scores = {}
         for (curie1, curie2), paths in top_paths.items():
+            if query_chemical:
+                chemical_curie = curie1
+                gene_curie = curie2
+                    
+            else:
+                chemical_curie = curie2
+                gene_curie = curie1
             path_added = False
             for path in paths:
-                if query_chemical:
-                    chemical_curie = curie1
-                    gene_curie = curie2
-                    
-                else:
-                    chemical_curie = curie2
-                    gene_curie = curie1
+                if not query_chemical:
                     path.reverse()
+                    
                 n_elements = len(path)
                 # Creates edge tuples of the form (node name 1, edge predicate, node name 2)
                 edge_tuples = [(path[i],path[i+1],path[i+2]) for i in range(0,n_elements-2,2)]

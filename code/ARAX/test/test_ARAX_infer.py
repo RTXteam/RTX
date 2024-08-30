@@ -245,7 +245,7 @@ def test_xcrg_infer_bomeol():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:regulates'
+        assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
 
 @pytest.mark.slow
 def test_xcrg_with_qg1():
@@ -263,7 +263,7 @@ def test_xcrg_with_qg1():
                 "r_edge": {
                     "object": "gene",
                     "subject": "chemical",
-                    "predicates": ["biolink:regulates"],
+                    "predicates": ['biolink:regulates', 'biolink:affects'],
                     "knowledge_type": "inferred",
                     "qualifier_constraints": [
                         {
@@ -313,7 +313,7 @@ def test_xcrg_with_qg2():
                 "r_edge": {
                     "object": "gene",
                     "subject": "chemical",
-                    "predicates": ["biolink:regulates"],
+                    "predicates": ['biolink:regulates', 'biolink:affects'],
                     "knowledge_type": "inferred",
                     "qualifier_constraints": [
                         {
@@ -362,7 +362,7 @@ def test_xcrg_with_only_qg():
                 "r_edge": {
                     "object": "gene",
                     "subject": "chemical",
-                    "predicates": ["biolink:regulates"],
+                    "predicates": ["biolink:regulates", "biolink:affects"],
                     "knowledge_type": "inferred",
                     "qualifier_constraints": [
                         {
