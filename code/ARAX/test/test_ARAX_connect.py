@@ -93,7 +93,6 @@ def test_connect_ulcerative_colitis_to_adalimumab():
     assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
-@pytest.mark.slow
 def test_connect_resveratrol_glyoxalase():
     query = {"operations": {"actions": [
         "create_message",
@@ -122,7 +121,6 @@ def test_connect_pde5i_alzheimer():
     assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
-@pytest.mark.slow
 def test_glucose_diabetes():
     query = {"operations": {"actions": [
         "create_message",
