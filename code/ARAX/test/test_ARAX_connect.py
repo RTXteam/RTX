@@ -79,7 +79,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     # make sure two or more values were added
     assert len(values) >= num_different_values
 
-@pytest.mark.slow
+
 def test_connect_ulcerative_colitis_to_adalimumab():
     query = {"operations": {"actions": [
         "create_message",
