@@ -282,7 +282,8 @@ connect_nodes adds paths between two nodes specified in the query.
             self.response.error(f"Need to have two nodes to find paths between them. Number of nodes: {len(nodes)}")
 
         path_finder = BidirectionalPathFinder(
-            "NGDSortedNeighborsRepo"
+            "NGDSortedNeighborsRepo",
+            self.response
         )
         qnode_1_id = self.parameters['qnode_keys'][0]
         qnode_2_id = self.parameters['qnode_keys'][1]
