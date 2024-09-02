@@ -48,7 +48,7 @@ jobs:
       run: |
         cd /home/ubuntu/RTX
         git checkout ${GITHUB_REF#refs/heads/}
-        git pull origin ${GITHUB_REF#refs/heads/}
+        git pull
         /home/ubuntu/venv3.9/bin/pip3 install -r requirements.txt
         /home/ubuntu/venv3.9/bin/python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
         git checkout master
