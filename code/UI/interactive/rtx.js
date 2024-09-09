@@ -1109,8 +1109,8 @@ function sendId(is_ars_refresh) {
 	var urlid = id.replace(/\//g,"$");
         retrieve_response(providers["ARAX"].url+"/response/"+urlid,urlid,"all");
     }
-    else if (0) // previous!
-	retrieve_response(id,id,"all");
+    else if (id.startsWith("hhttp"))
+	retrieve_response(id.substring(1),id.substring(1),"all");
     else
 	retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
     if (!is_ars_refresh)
@@ -3678,15 +3678,30 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	    row.appendChild(cell);
             cell = document.createElement("td");
 
-	    if (att[nom].toString().startsWith("http")) {
-		var a = document.createElement("a");
-		a.target = '_blank';
-		a.href = att[nom];
-		a.innerHTML = att[nom];
-		cell.appendChild(a);
+	    // handle all as arrays  (hope no objects creep in...)
+	    if (!Array.isArray(att[nom]))
+		att[nom] = [ att[nom] ];
+
+	    var br = false;
+	    for (var val of att[nom]) {
+		if (br)
+		    cell.appendChild(document.createElement("br"));
+
+		if (val == null)
+		    cell.appendChild(document.createTextNode("--NULL--"));
+
+		if (val.toString().startsWith("http")) {
+		    var a = document.createElement("a");
+		    a.target = '_blank';
+		    a.href = val;
+		    a.innerHTML = val;
+		    cell.appendChild(a);
+		}
+		else
+		    cell.appendChild(document.createTextNode(val));
+
+		br = true;
 	    }
-	    else
-		cell.appendChild(document.createTextNode(att[nom]));
 
 	    row.appendChild(cell);
 	    tab.appendChild(row);
@@ -5868,7 +5883,8 @@ function retrieveRecentQs(active) {
 			qend = query[field] * 1000; //ms
 
 			qdur = new Date(qend);
-			qdur = qdur.getUTCHours()+"h " + qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
+			var days = qdur.getUTCDate()-1;
+			qdur = (days>0?days+"d ":"") + qdur.getUTCHours()+"h " + qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
 		    }
                     else if (field == "state") {
                         td.style.whiteSpace = "nowrap";
