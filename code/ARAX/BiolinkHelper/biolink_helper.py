@@ -232,7 +232,6 @@ class BiolinkHelper:
 
             # --------------------------------  PREDICATES --------------------------------- #
             predicate_dag = self._build_predicate_dag(biolink_model)
-            import pdb;pdb.set_trace()
             # Build our map of predicate ancestors/descendants for easy lookup, first WITH mixins
             for node_id in list(predicate_dag.nodes):
                 node_info = predicate_dag.nodes[node_id]
