@@ -19,7 +19,7 @@ SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
 
 
 def download_kg2pre_tsvs(kg2pre_version: str):
-    kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
+    kg2pre_tarball_name = f"kg2-tsv-for-neo4j-{kg2pre_version}.tar.gz"
     kg2pre_tsv_version_dir = f"{KG2PRE_TSVS_DIR}/{kg2pre_version}"
     if not pathlib.Path(kg2pre_tsv_version_dir).exists():
         os.system(f"mkdir -p {kg2pre_tsv_version_dir}")
