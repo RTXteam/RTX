@@ -4,9 +4,6 @@
 
 - Contains the code for the ARAX system; see the [RTX/ARAX main repository page](..) for a high-level overview.
 
-### Subdirectory `NLPCode`
-
-- Contains the natural language processing code to be used in the RTX software (not yet implemented).
 
 ### Subdirectory `UI`
 
@@ -19,6 +16,11 @@
 ### Subdirectory `kg2`
 
 - Contains the code for the RTX-KG2 knowledge graph.
+
+### Subdirectory `kg2c`
+
+- Contains the code for building the canonicalized KG2c knowledge graph.
+
 
 ### Subdirectory `reasoningtool`
 
