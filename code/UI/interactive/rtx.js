@@ -7025,6 +7025,7 @@ function displayARSResults(parentnode,arsdata) {
     for (var agent of arsdata['ara_list']) {
 	stats[agent] = {};
 	stats[agent]['PASSED'] = 0;
+	stats[agent]['TOTAL'] = 0;
     }
 
     var tdiv = document.createElement("div");
@@ -7212,6 +7213,7 @@ function displayARSResults(parentnode,arsdata) {
     }
     sumtable.appendChild(tr);
 
+    stats.status_list['TOTAL'] = 1;
     for (var status in stats.status_list) {
 	tr = document.createElement("tr");
         tr.className = 'hoverable';
@@ -7237,6 +7239,9 @@ function displayARSResults(parentnode,arsdata) {
 	else if (status.startsWith('Status code:')) {
 	    span.innerHTML = status.split(":")[1];
 	    span.className = 'explevel p3';
+	}
+	else if (status == 'TOTAL') {
+	    tr.style.borderTop = "2px solid black";
 	}
         td.appendChild(span);
 	tr.appendChild(td);
@@ -7267,6 +7272,9 @@ function displayARSResults(parentnode,arsdata) {
 		td.appendChild(span);
 	    }
 	    tr.appendChild(td);
+
+	    if (status != 'TOTAL' && stats[agent][status]!=null)
+		stats[agent]['TOTAL'] += stats[agent][status];
 	}
 	sumtable.appendChild(tr);
     }
