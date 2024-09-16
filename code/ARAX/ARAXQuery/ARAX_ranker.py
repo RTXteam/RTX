@@ -33,8 +33,8 @@ def _get_nx_edges_by_attr(G: Union[nx.MultiDiGraph, nx.MultiGraph], key: str, va
 
 def _get_query_graph_networkx_from_query_graph(query_graph: QueryGraph) -> nx.MultiDiGraph:
     query_graph_nx = nx.MultiDiGraph()
-    query_graph_nx.add_nodes_from([key for key,node in query_graph.nodes.items()])
-    edge_list = [[edge.subject, edge.object, key, {'weight': 0.0}] for key,edge in query_graph.edges.items()]
+    query_graph_nx.add_nodes_from([key for key, node in query_graph.nodes.items() if 'creative_DTD_qnode' not in key and 'creative_CRG_qnode' not in key])
+    edge_list = [[edge.subject, edge.object, key, {'weight': 0.0}] for key,edge in query_graph.edges.items() if 'creative_DTD_qedge' not in key and 'creative_CRG_qedge' not in key]
     query_graph_nx.add_edges_from(edge_list)
     return query_graph_nx
 
@@ -124,8 +124,9 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
     qg_edge_key_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
     for analysis in result.analyses:  # For now we only ever have one Analysis per Result
         for qedge_key, edge_binding_list in analysis.edge_bindings.items():
-            qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
-            res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_tuple[2]]['weight'] = _calculate_final_result_score(kg_edge_id_to_edge, edge_binding_list)
+            if 'creative_DTD_qedge' not in qedge_key and 'creative_CRG_qedge' not in qedge_key:
+                qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
+                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_tuple[2]]['weight'] = _calculate_final_result_score(kg_edge_id_to_edge, edge_binding_list)
                 
     return res_graph
 
@@ -187,13 +188,13 @@ def _score_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGr
                                                                                             capacity="weight"))
             max_flow_value = 0.0
             if len(max_flow_values_for_node_pairs) > 0:
-                max_flow_value = sum(max_flow_values_for_node_pairs)/float(len(max_flow_values_for_node_pairs))
+                max_flow_value = _calculate_final_individual_edge_confidence(0, max_flow_values_for_node_pairs)
         else:
             max_flow_value = 1.0
         max_flow_values.append(max_flow_value)
     return max_flow_values
 
-
+_calculate_final_individual_edge_confidence
 def _score_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.MultiDiGraph,
                                                                         nx.MultiGraph]]) -> List[float]:
     result_scores = []
@@ -209,7 +210,7 @@ def _score_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.Multi
         adj_matrix_power = np.linalg.matrix_power(adj_matrix, max_path_len)/math.factorial(max_path_len)
         score_list = [adj_matrix_power[map_node_name_to_index[node_i],
                                        map_node_name_to_index[node_j]] for node_i, node_j in pairs_with_max_path_len]
-        result_score = np.mean(score_list)
+        result_score = _calculate_final_individual_edge_confidence(0, score_list)
         result_scores.append(result_score)
     return result_scores
 
@@ -365,7 +366,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         elif 'infores' in edge_key.split('--')[-1]: # default score for other data sources
             base = edge_default_base
         else: # virtual edges or inferred edges
-            base = 0 # no base score for these edges. Its core is based on
+            base = 0 # no base score for these edges. Its score is based on its attribute scores.
         
         if edge.attributes is not None:
             for edge_attribute in edge.attributes:
