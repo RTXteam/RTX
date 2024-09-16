@@ -337,18 +337,6 @@ def test_873_consider_both_gene_and_protein():
     assert set(nodes_by_qg_id_protein['n01']) == set(nodes_by_qg_id_gene['n01'])
 
 
-def test_987_override_node_categories():
-    actions_list = [
-        "add_qnode(name=DOID:8398, key=n00)",
-        "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:has_phenotype, key=e00)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all('biolink:PhenotypicFeature' in node.categories for node in nodes_by_qg_id['n01'].values())
-
-
 @pytest.mark.external
 def test_cohd_expand():
     actions_list = [

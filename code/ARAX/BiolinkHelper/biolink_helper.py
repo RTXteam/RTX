@@ -125,7 +125,18 @@ class BiolinkHelper:
                                 for predicate in valid_predicates}
         canonical_predicates.update(invalid_predicates)  # Go ahead and include those we don't have canonical info for
         return list(canonical_predicates)
-
+    
+    def get_predicate_depth_map(self)->Dict[str,int]:
+        response = self._download_biolink_model()
+        if response.status_code == 200:
+            biolink_model = yaml.safe_load(response.text)
+            predicate_dag = self._build_predicate_dag(biolink_model)
+            
+        else:
+            raise RuntimeError(f"ERROR: Request to get Biolink {self.biolink_version} YAML file returned "
+                               f"{response.status_code} response. Cannot load BiolinkHelper.")
+        return self._get_depths_from_root(predicate_dag)
+    
     def is_symmetric(self, predicate: str) -> Optional[bool]:
         if predicate in self.biolink_lookup_map["predicates"]:
             return self.biolink_lookup_map["predicates"][predicate]["is_symmetric"]
@@ -198,7 +209,15 @@ class BiolinkHelper:
             with open(self.biolink_lookup_map_path, "rb") as biolink_map_file:
                 biolink_lookup_map = pickle.load(biolink_map_file)
             return biolink_lookup_map
-
+        
+    def _download_biolink_model(self):
+        response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{self.biolink_version}/biolink-model.yaml",
+                                timeout=10)
+        if response.status_code != 200:  # Sometimes Biolink's tags start with 'v', so try that
+            response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/v{self.biolink_version}/biolink-model.yaml",
+                                    timeout=10)
+        return response
+    
     def _create_biolink_lookup_map(self) -> Dict[str, Dict[str, Dict[str, Union[str, List[str], bool]]]]:
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: INFO: Building local Biolink {self.biolink_version} ancestor/descendant lookup map "
@@ -206,11 +225,7 @@ class BiolinkHelper:
         biolink_lookup_map = {"predicates": dict(), "categories": dict(),
                               "aspects": dict(), "directions": dict()}
         # Grab the relevant Biolink yaml file
-        response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/{self.biolink_version}/biolink-model.yaml",
-                                timeout=10)
-        if response.status_code != 200:  # Sometimes Biolink's tags start with 'v', so try that
-            response = requests.get(f"https://raw.githubusercontent.com/biolink/biolink-model/v{self.biolink_version}/biolink-model.yaml",
-                                    timeout=10)
+        response = self._download_biolink_model()
 
         if response.status_code == 200:
             biolink_model = yaml.safe_load(response.text)
@@ -382,7 +397,23 @@ class BiolinkHelper:
                 direction_dag.add_edge(parent_name_trapi, direction_name_trapi)
 
         return direction_dag
-
+    
+    def _get_depths_from_root(self, dag)-> Dict[str,int]:
+        node_depths = {}
+        for node in nx.topological_sort(dag):
+            # Skip if the node is the start node
+            
+            # Get all predecessors of the current node
+            predecessors = list(dag.predecessors(node))
+            
+            # If the node has predecessors, calculate its depth as max(depth of predecessors) + 1
+            if predecessors:
+                node_depths[node] = max(node_depths[pred] for pred in predecessors) + 1
+            else:
+                node_depths[node] = 0  # Handle nodes that have no predecessors (if any)
+        
+        return node_depths
+    
     @staticmethod
     def _get_ancestors_nx(nx_graph: nx.DiGraph, node_id: str) -> List[str]:
         return list(nx.ancestors(nx_graph, node_id).union({node_id}))

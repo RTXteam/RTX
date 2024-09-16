@@ -293,6 +293,8 @@ connect_nodes adds paths between two nodes specified in the query.
 
         paths = path_finder.find_all_paths(node_1_id, node_2_id, hops_numbers=self.parameters['max_path_length'])
 
+        self.response.debug(f"PathFinder found {len(paths)} paths")
+
         if len(paths) == 0:
             self.response.warning(f"Could not connect the nodes {qnode_1_id} and {qnode_2_id} "
                                   f"with a max path length of {self.parameters['max_path_length']}.")

@@ -27,6 +27,9 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.node import Node
+from openapi_server.models.qualifier import Qualifier
+from openapi_server.models.qualifier_constraint import QualifierConstraint as QConstraint
+
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
@@ -36,6 +39,7 @@ from infer_utilities import InferUtilities
 # from creativeDTD import creativeDTD
 from creativeCRG import creativeCRG
 from ExplianableDTD_db import ExplainableDTD
+
 # from ExplianableCRG import ExplianableCRG
 
 # sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
@@ -615,7 +619,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 f"The `n_result_curies` value must be a positive integer. The provided value was {self.parameters['n_result_curies']}.",
                 error_code="ValueError")
         else:
-            self.parameters['n_result_curies'] = 10
+            self.parameters['n_result_curies'] = 30
 
         if 'n_paths' in self.parameters:
             if isinstance(self.parameters['n_paths'], str):
@@ -678,9 +682,26 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 if not preferred_subject_curie and not preferred_object_curie:
                     self.response.error(f"Both parameters 'subject_curie' and 'object_curie' are not provided. Please provide the curie for either one of them")
                     return self.response
+                qedges = message.query_graph.edges
+                
 
             else:
                 self.response.error(f"The 'query_graph' is detected. One of 'subject_qnode_id' or 'object_qnode_id' should be specified.")
+            
+            if self.parameters['regulation_type'] == 'increase':
+                edge_qualifier_direction = 'increased'
+            else:
+                edge_qualifier_direction = 'decreased'
+            edge_qualifier_list = [
+                Qualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
+                Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)]
+                
+            for qedge in qedges:
+                edge = message.query_graph.edges[qedge]
+                edge.knowledge_type = "inferred"
+                edge.predicates = ["biolink:affects"]
+                edge.qualifier_constraints = [QConstraint(qualifier_set=edge_qualifier_list)]
+                   
 
         else:
             if 'subject_curie' in parameters or 'object_curie' in parameters:
@@ -763,6 +784,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
 
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
+            
             self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, None, normalized_object_curie, top_predictions, top_paths, qedge_id,  self.parameters['regulation_type'], self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
 
         return self.response
