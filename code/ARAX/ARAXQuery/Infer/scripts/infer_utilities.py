@@ -350,7 +350,7 @@ class InferUtilities:
                             ]
                         else:
                             edge_attribute_list += [
-                                Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from RTX-KG2.8.4c by ARAXInfer."),
+                                Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from RTX-KG2.10.0c by ARAXInfer."),
                             ]
                             retrieval_source = [
                                 RetrievalSource(resource_id=primary_knowledge_source, resource_role="primary_knowledge_source"),
