@@ -28,7 +28,11 @@ def load():
     database_name = f"{autocomplete_filepath}{os.path.sep}{RTXConfig.autocomplete_path.split('/')[-1]}"
     conn = sqlite3.connect(database_name)
     cursor = conn.cursor()
-    print(f"INFO: Connected to {database_name}",file=sys.stderr)
+    try:
+        conn.execute(f"SELECT term FROM terms LIMIT 1")
+        print(f"INFO: Connected to {database_name}",file=sys.stderr)
+    except:
+        print(f"WARN: Could NOT connect to {database_name}. Please check that file and database exist!",file=sys.stderr)
 
     cache_database_name = os.path.dirname(os.path.abspath(__file__)) + '/rtxcomplete_cache.sqlite'
     cache_conn = sqlite3.connect(cache_database_name)
