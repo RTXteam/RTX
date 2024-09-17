@@ -60,9 +60,7 @@ class ARAXExpander:
                                                       "aggregator_knowledge_source": {"==": "*"}}
         self.supported_qedge_qualifier_constraints = {"biolink:qualified_predicate", "biolink:object_direction_qualifier",
                                                       "biolink:object_aspect_qualifier"}
-        self.higher_level_treats_predicates = {"biolink:treats_or_applied_or_studied_to_treat",
-                                               "biolink:applied_to_treat",
-                                               "biolink:studied_to_treat"}
+        self.treats_like_predicates = set(self.bh.get_descendants("biolink:treats_or_applied_or_studied_to_treat")).difference({"biolink:treats"})
 
     def describe_me(self):
         """
@@ -512,7 +510,7 @@ class ARAXExpander:
                 # Remove KG2 SemMedDB treats_or_applied-type edges if this is an inferred treats query
                 if alter_kg2_treats_edges:
                     edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
-                                           if edge.predicate in self.higher_level_treats_predicates and
+                                           if edge.predicate in self.treats_like_predicates and
                                            any(source.resource_id == "infores:rtx-kg2" for source in edge.sources) and
                                            any(source.resource_id == "infores:semmeddb" for source in edge.sources)}
                     log.debug(f"Removing {len(edge_keys_to_remove)} KG2 semmeddb treats_or_applied-type edges "
@@ -593,7 +591,7 @@ class ARAXExpander:
             num_edges_altered = 0
             for edge in message.knowledge_graph.edges.values():
                 is_kg2_edge = any(source.resource_id == "infores:rtx-kg2" for source in edge.sources)
-                if is_kg2_edge and edge.predicate in self.higher_level_treats_predicates:
+                if is_kg2_edge and edge.predicate in self.treats_like_predicates:
                     # Record the original KG2 predicate in an attribute
                     edge.attributes.append(Attribute(attribute_type_id="biolink:original_predicate",
                                                      value=edge.predicate,
