@@ -98,7 +98,7 @@ def test_connect_resveratrol_glyoxalase():
         "create_message",
         "add_qnode(ids=PUBCHEM.COMPOUND:445154, key=n00)",
         "add_qnode(ids=NCBIGene:2739, key=n01)",
-        "connect(action=connect_nodes, max_path_length=3)",
+        "connect(action=connect_nodes, max_path_length=4)",
         "return(message=true, store=false)"
     ]}}
     [response, message] = _do_arax_query(query)
