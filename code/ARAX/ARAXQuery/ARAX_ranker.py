@@ -194,7 +194,7 @@ def _score_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGr
         max_flow_values.append(max_flow_value)
     return max_flow_values
 
-_calculate_final_individual_edge_confidence
+
 def _score_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.MultiDiGraph,
                                                                         nx.MultiGraph]]) -> List[float]:
     result_scores = []
