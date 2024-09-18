@@ -93,10 +93,8 @@ class TRAPIQuerier:
         # Patch to address lack of answers from KG2 for treats queries after treats refactor #2328
         if alter_kg2_treats_edges and self.kp_infores_curie == "infores:rtx-kg2":
             for qedge in qg_copy.edges.values():  # Note there's only ever one qedge per QG here
-                qedge.predicates = list(set(qedge.predicates).union({"biolink:treats_or_applied_or_studied_to_treat",
-                                                                     "biolink:applied_to_treat",
-                                                                     "biolink:studied_to_treat"}))
-                log.info(f"For querying infores:rtx-kg2, edited {qedge_key} to use higher treats-type predicates: "
+                qedge.predicates = list(set(qedge.predicates).union({"biolink:treats_or_applied_or_studied_to_treat"}))
+                log.info(f"For querying infores:rtx-kg2, edited {qedge_key} to use higher treats-type predicate: "
                          f"{qedge.predicates}")
 
         # Answer the query using the KP and load its answers into our object model
