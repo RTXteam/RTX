@@ -102,7 +102,8 @@ def check_kg2pre_tsvs_version(kg2pre_version: str, biolink_version: Optional[str
         biolink_build_node_id = "biolink_download_source:"
         if biolink_build_node_id in nodes_df.index:
             biolink_build_node = nodes_df.loc[biolink_build_node_id]
-            biolink_build_node_version = biolink_build_node["iri"].split("/")[-4].replace("v", "")
+            
+            biolink_build_node_version = biolink_build_node["name"].split(" ")[1].replace("v", "")
             if biolink_build_node_version == biolink_version:
                 logging.info(f"Confirmed that the version on the Biolink node in the local KG2pre TSVs matches "
                              f"the requested Biolink version ({biolink_version}).")
