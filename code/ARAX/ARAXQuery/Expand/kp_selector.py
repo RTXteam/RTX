@@ -42,10 +42,7 @@ class KPSelector:
                 self.log.error(f"Failed to load KP info caches due to {e}", error_code="LoadKPCachesFailed")
                 return None, None, None, None
 
-            # Record None URLs for our local KPs
-            allowed_kp_urls = smart_api_info["allowed_kp_urls"]
-
-            return (meta_map, allowed_kp_urls, smart_api_info["kps_excluded_by_version"],
+            return (meta_map, smart_api_info["allowed_kp_urls"], smart_api_info["kps_excluded_by_version"],
                     smart_api_info["kps_excluded_by_maturity"])
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[Set[str]]:
