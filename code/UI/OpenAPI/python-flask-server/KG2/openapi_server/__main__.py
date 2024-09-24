@@ -41,12 +41,12 @@ CONFIG_FILE = 'openapi_server/flask_config.json'
 def instrument(app, host, port):
     
     service_name = "RTX-KG2"
-
-    trace.set_tracer_provider(TracerProvider(
+    tracer_provider = TracerProvider(
         resource=Resource.create({
             ResourceAttributes.SERVICE_NAME: service_name
         })
-    ))
+    )
+    trace.set_tracer_provider(tracer_provider)
     trace.get_tracer_provider().add_span_processor(
         BatchSpanProcessor(
             JaegerExporter(
@@ -56,10 +56,10 @@ def instrument(app, host, port):
         )
     )
     # trace.get_tracer_provider().get_tracer(__name__)
-    tracer_provider = trace.get_tracer(__name__)
-    FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=trace)
-    RequestsInstrumentor().instrument(tracer_provider=trace)
-    AioHttpClientInstrumentor().instrument(tracer_provider=trace)
+    tracer = trace.get_tracer(__name__)
+    FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=tracer_provider)
+    RequestsInstrumentor().instrument(tracer_provider=tracer_provider)
+    AioHttpClientInstrumentor().instrument(tracer_provider=tracer_provider)
 
 def main():
 
