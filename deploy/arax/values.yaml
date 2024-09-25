@@ -74,8 +74,8 @@ affinity:
 resources:
   requests:
     memory: 50Gi
-    cpu: 10000m
+    cpu: 8000m
   limits:
     memory: 58Gi
-    cpu: 14000m 
+    cpu: 11000m 
 

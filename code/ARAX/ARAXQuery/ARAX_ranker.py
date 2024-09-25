@@ -20,7 +20,7 @@ from openapi_server.models.result import Result
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 
-edge_confidence_manual_agent = 0.999
+edge_confidence_manual_agent = 0.99
 
 def _get_nx_edges_by_attr(G: Union[nx.MultiDiGraph, nx.MultiGraph], key: str, val: str) -> Set[tuple]:
     res_set = set()
@@ -455,7 +455,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             pub_value = np.log(n_publications)
             max_value = 1.0
             curve_steepness = 3.16993
-            logistic_midpoint = 1.38629
+            logistic_midpoint = 1.60943 # log(5) = 1.60943 meaning having 5 publications is a mid point
             normalized_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
         return normalized_value
 
