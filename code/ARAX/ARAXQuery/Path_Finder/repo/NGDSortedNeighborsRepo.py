@@ -28,11 +28,18 @@ class NGDSortedNeighborsRepo(Repository):
                 for curie, ngd in curie_ngd_list:
                     ngd_by_curie_dict[curie] = ngd
 
+        id_set = set(ngd_by_curie_dict.keys())
         neighbors = self.repo.get_neighbors(node, limit=limit)
         neighbors_ids = []
         for neighbor in neighbors:
-            if neighbor.id not in ngd_by_curie_dict:
+            if neighbor.id not in id_set:
                 neighbors_ids.append(neighbor.id)
+            else:
+                id_set.remove(neighbor.id)
+
+        for remove_id in id_set:
+            del ngd_by_curie_dict[remove_id]
+
 
         number_of_curie_left_to_fill_the_limit = limit - len(curie_ngd_list)
 
