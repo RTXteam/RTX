@@ -9,9 +9,9 @@
       "curie_ngd": "/translator/data/orangeboard/databases/KG2.10.0/curie_ngd_v1.0_KG2.10.0.sqlite",
       "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.10.1/ExplainableDTD_v1.0_KG2.10.0_refreshedTo_KG2.10.1.db",
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
-      "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.10.0/chemical_gene_embeddings_v1.0.KG2.10.0.npz",
-      "xcrg_increase_model": "/translator/data/orangeboard/databases/KG2.10.0/xcrg_increase_model_v1.0.KG2.10.0.pt",
-      "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.10.0/xcrg_decrease_model_v1.0.KG2.10.0.pt"
+      "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.10.1/chemical_gene_embeddings_v1.0.KG2.10.0_refreshedTo_KG2.10.1.npz",
+      "xcrg_increase_model": "/translator/data/orangeboard/databases/KG2.10.1/xcrg_increase_model_v1.0_KG2.10.0_refreshedTo_KG2.10.1.pt",
+      "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.10.1/xcrg_decrease_model_v1.0_KG2.10.0_refreshedTo_KG2.10.1.pt"
    },
    "plover": {
       "dev": "https://kg2cploverdb.ci.transltr.io",
