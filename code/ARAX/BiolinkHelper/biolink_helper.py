@@ -33,7 +33,7 @@ class BiolinkHelper:
         self.root_category = "biolink:NamedThing"
         self.root_predicate = "biolink:related_to"
         biolink_helper_dir = os.path.dirname(os.path.abspath(__file__))
-        self.biolink_lookup_map_path = f"{biolink_helper_dir}/biolink_lookup_map_{self.biolink_version}_v4.pickle"
+        self.biolink_lookup_map_path = f"{biolink_helper_dir}/biolink_lookup_map_{self.biolink_version}_v5.pickle"
 
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: DEBUG: Loading BL lookup map...")
