@@ -588,6 +588,7 @@ class ARAXExpander:
 
         # Second half of patch for #2328; edit KG2 'treats_or_applied_or_studied_to_treat' edges to just 'treats'
         response.info(f"Treats-like predicates are: {self.treats_like_predicates}")
+        response.info(f"BiolinkHelper Biolink version is: {self.bh.biolink_version}")
         response.info(f"Mode is {mode}, do_issue_2328_patch is {do_issue_2328_patch}, "
                       f"inferred_qedge_keys is {inferred_qedge_keys}")
         if mode != "RTXKG2" and do_issue_2328_patch and inferred_qedge_keys:
