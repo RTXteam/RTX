@@ -26,11 +26,11 @@ class EdgeExtractorFromPloverDB:
             else:
                 i += 1
 
+        query = {"pairs": pairs}
         try:
             knowledge_graph = {'edges': {}, 'nodes': {}}
             if len(pairs) != 0:
                 endpoint = "/get_edges"
-                query = {"pairs": pairs}
                 response = requests.post(self.plover_url + endpoint, headers={'accept': 'application/json'}, json=query)
                 json = response.json()
                 self.pairs_to_edge_ids.update(json["pairs_to_edge_ids"])
