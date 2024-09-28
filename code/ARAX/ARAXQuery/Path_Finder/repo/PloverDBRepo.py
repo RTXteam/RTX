@@ -16,31 +16,14 @@ class PloverDBRepo(Repository):
         self.degree_repo = degree_repo
 
     def get_neighbors(self, node, limit=-1):
-        endpoint = "/query"
-        data = {
-            "edges": {
-                "e00": {
-                    "subject": "n00",
-                    "object": "n01"
-                }
-            },
-            "nodes": {
-                "n00": {
-                    "ids": [node.id]
-                },
-                "n01": {
-                    "categories": ["biolink:NamedThing"]
-                }
-            },
-            "include_metadata": False,
-            "respect_predicate_symmetry": True
-        }
+        endpoint = "/get_neighbors"
+        data = {"node_ids": [node.id], "categories": ["biolink:NamedThing"]}
         result = []
         try:
             response = requests.post(self.plover_url + endpoint, headers={'accept': 'application/json'}, json=data)
             response.raise_for_status()
             json = response.json()
-            result = [Node(i) for i in json['nodes']['n01']]
+            result = [Node(i) for i in json[node.id]]
         except requests.exceptions.RequestException as e:
             # log here print(f"Request error: {e}")
             pass
