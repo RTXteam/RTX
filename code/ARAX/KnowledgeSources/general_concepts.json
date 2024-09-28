@@ -344,7 +344,10 @@
         "umls:c0040616",
         "umls:c0302837",
         "chebi:50847",
-        "umls:c0003209"
+        "umls:c0003209",
+        "umls:c4045974",
+        "umls:c0005522"
+
     ],
     "synonyms": [
         "used in nicotine dependence",
