@@ -26,12 +26,12 @@ class EdgeExtractorFromPloverDB:
             else:
                 i += 1
 
+        url = self.plover_url + "/get_edges"
         query = {"pairs": pairs}
         try:
             knowledge_graph = {'edges': {}, 'nodes': {}}
             if len(pairs) != 0:
-                endpoint = "/get_edges"
-                response = requests.post(self.plover_url + endpoint, headers={'accept': 'application/json'}, json=query)
+                response = requests.post(url, headers={'accept': 'application/json'}, json=query)
                 json = response.json()
                 self.pairs_to_edge_ids.update(json["pairs_to_edge_ids"])
                 knowledge_graph = json["knowledge_graph"]
@@ -40,11 +40,13 @@ class EdgeExtractorFromPloverDB:
             for cached_pair in cached_pairs:
                 list_of_edges = self.pairs_to_edge_ids[cached_pair]
                 cached_nodes = cached_pair.split("--")
-                knowledge_graph['nodes'][cached_nodes[0]] = self.knowledge_graph['nodes'][cached_nodes[0]]
-                knowledge_graph['nodes'][cached_nodes[1]] = self.knowledge_graph['nodes'][cached_nodes[1]]
+                if cached_nodes[0] in self.knowledge_graph['nodes']:
+                    knowledge_graph['nodes'][cached_nodes[0]] = self.knowledge_graph['nodes'][cached_nodes[0]]
+                if cached_nodes[1] in self.knowledge_graph['nodes']:
+                    knowledge_graph['nodes'][cached_nodes[1]] = self.knowledge_graph['nodes'][cached_nodes[1]]
                 for edge in list_of_edges:
                     knowledge_graph['edges'][edge] = self.knowledge_graph['edges'][edge]
             return knowledge_graph
         except Exception as e:
-            arax_response.warning(f"Cannot retrieve {query} from plover DB with error: {e}")
+            arax_response.warning(f"Cannot retrieve {query} from plover DB with url: {url}, Error: {e}")
             return None
