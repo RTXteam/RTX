@@ -14,7 +14,7 @@
       "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.10.1/xcrg_decrease_model_v1.0_KG2.10.0_refreshedTo_KG2.10.1.pt"
    },
    "plover": {
-      "dev": "https://kg2cploverdb.ci.transltr.io",
+      "dev": "https://kg2cplover.rtx.ai:9990",
       "test": "https://kg2cploverdb.test.transltr.io",
       "prod": "https://kg2cploverdb.transltr.io"
    },
