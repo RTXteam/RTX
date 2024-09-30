@@ -55,10 +55,11 @@ def instrument(app, host, port):
         )
         )
     )
-    trace.get_tracer_provider().get_tracer(__name__)
-    FlaskInstrumentor().instrument_app(app=app.app)
-    RequestsInstrumentor().instrument()
-    AioHttpClientInstrumentor().instrument()
+    # trace.get_tracer_provider().get_tracer(__name__)
+    tracer_provider = trace.get_tracer(__name__)
+    FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=trace)
+    RequestsInstrumentor().instrument(tracer_provider=trace)
+    AioHttpClientInstrumentor().instrument(tracer_provider=trace)
 
 def main():
 

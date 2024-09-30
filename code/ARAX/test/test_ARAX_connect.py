@@ -127,8 +127,7 @@ def test_glucose_diabetes():
         "add_qnode(name=CHEBI:37626, key=n0)",
         "add_qnode(name=MONDO:0005015, key=n1)",
         "connect(action=connect_nodes, max_path_length=3)",
-        "filter_results(action=limit_number_of_results, max_results=30)",
-        "return(message=true, store=true)"
+        "return(message=true, store=false)"
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
