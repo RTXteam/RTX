@@ -51,7 +51,7 @@ servers:
   url: https://kg2.ci.transltr.io/api/rtxkg2/v1.4
   x-maturity: staging
 - description: RTX-KG2 TRAPI 1.5 endpoint - development
-  url: https://kg2cplover3.rtx.ai:9990
+  url: https://kg2cploverdb.ci.transltr.io
   x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web

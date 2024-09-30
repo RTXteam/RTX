@@ -51,11 +51,10 @@ class HugeGraphConverter:
             self.qnode_2_id,
             self.edge_extractor).convert(response, self.paths)
 
-        essence = ''
         if self.node_in_between_id in knowledge_graph_src_dest.nodes:
             essence = knowledge_graph_src_dest.nodes[self.node_in_between_id].name
         else:
-            response.warning("Could not find main node id name to fill essence variable!")
+            response.warning(f"Could not find main node id name: {self.node_in_between_id} to fill essence variable!")
             return
 
         if (self.node_category_constraint != ''
