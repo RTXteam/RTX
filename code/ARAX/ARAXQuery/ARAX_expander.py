@@ -643,22 +643,37 @@ class ARAXExpander:
                     if object_qnode.ids and len(object_qnode.ids) >= 1:
                         object_curie = object_qnode.ids[0]  # FIXME: will need a way to handle multiple IDs
                     else:
+                        # object_curie = None
                         response.error(f"No CURIEs found for qnode {qedge.object}; ARAXInfer/XDTD requires that the"
-                                       f" object qnode has 'ids' specified", error_code="NoCURIEs")
-                        # raise Exception(f"No CURIEs found for {object_qnode.name}")
+                                f" object qnode has 'ids' specified", error_code="NoCURIEs")
                         return response, overarching_kg
                     if subject_qnode.ids and len(subject_qnode.ids) >= 1:
                         subject_curie = subject_qnode.ids  # FIXME: will need a way to handle multiple IDs
                     else:
                         subject_curie = None
-                    response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {object_curie}")
+                    
+                    # Check if the existence of subject_curie and object_curie
+                    if not subject_curie and not object_curie:
+                        response.error(f"No CURIEs found for both query subject node {qedge.subject} and query object node {qedge.object}; ARAXInfer/XDTD requires "
+                                       f"that at least subject qnode or object qnode has 'ids' specified",
+                                       error_code="NoCURIEs")
+                        return response, overarching_kg
+                    
+                    if subject_curie and object_curie:    
+                        response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
+                    elif subject_curie:
+                        response.warning(f"Currently ARAXInfer/XDTD disables 'given a drug CURIE, it predicts predicts what potential disease this drug can treat'.")
+                        # response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie}")
+                    else:
+                        response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the object is {object_curie}")
+                    
                     response.update_query_plan(inferred_qedge_key, "arax-xdtd",
                                                "Waiting", f"Waiting for response")
                     start = time.time()
 
                     from ARAX_infer import ARAXInfer
                     infer_input_parameters = {"action": "drug_treatment_graph_expansion",
-                                              'node_curie': object_curie, 'qedge_id': inferred_qedge_key,
+                                              'disease_curie': object_curie, 'qedge_id': inferred_qedge_key,
                                               'drug_curie': subject_curie}
                     inferer = ARAXInfer()
                     infer_response = inferer.apply(response, infer_input_parameters)

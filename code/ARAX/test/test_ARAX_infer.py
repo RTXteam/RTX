@@ -82,7 +82,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
 def test_xdtd_infer_castleman_disease_1():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0015564)",
+            "infer(action=drug_treatment_graph_expansion,disease_curie=MONDO:0015564)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -94,7 +94,7 @@ def test_xdtd_infer_castleman_disease_1():
 def test_xdtd_infer_castleman_disease_2():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0015564,n_drugs=2,n_paths=15)",
+            "infer(action=drug_treatment_graph_expansion,disease_curie=MONDO:0015564,n_drugs=2,n_paths=15)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -125,7 +125,7 @@ def test_xdtd_with_qg():
         }
         },
         "operations": {"actions": [
-            "infer(action=drug_treatment_graph_expansion,node_curie=test_xdtd_with_qg,qedge_id=t_edge)",
+            "infer(action=drug_treatment_graph_expansion, disease_curie=test_xdtd_with_qg, qedge_id=t_edge)",
             "return(message=true, store=true)"
         ]}
     }
@@ -158,7 +158,7 @@ def test_xdtd_with_qg2():
         }
         },
         "operations": {"actions": [
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0015564,qedge_id=t_edge)",
+            "infer(action=drug_treatment_graph_expansion, disease_curie=MONDO:0015564, qedge_id=t_edge)",
             "return(message=true, store=true)"
         ]}
     }
@@ -191,7 +191,7 @@ def test_xdtd_with_qg3():
         }
         },
         "operations": {"actions": [
-            "infer(action=drug_treatment_graph_expansion,node_curie=MONDO:0015564,qedge_id=t_edge,n_drugs=10,n_paths=10)",
+            "infer(action=drug_treatment_graph_expansion, disease_curie=MONDO:0015564, qedge_id=t_edge, n_drugs=10, n_paths=10)",
             "return(message=true, store=true)"
         ]}
     }
