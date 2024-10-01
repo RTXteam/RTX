@@ -265,6 +265,7 @@ def test_ARAXRanker_test6_asset72():
     assert rank_right_answer != -1
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
+@pytest.mark.slow
 def test_ARAXRanker_test9_asset614():
     # test 'famotidine treats Gastroesophageal Reflux Disease'
     expected_answer = 'famotidine'
