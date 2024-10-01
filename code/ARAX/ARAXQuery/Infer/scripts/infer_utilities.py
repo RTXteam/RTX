@@ -91,9 +91,9 @@ class InferUtilities:
                     f"Error retrieving score for result essence {result.essence}. Setting result score to None.")
         message.results.sort(key=lambda x: self.__none_to_zero(x.score), reverse=True)
 
-    def genrete_treat_subgraphs(self, response: ARAXResponse, top_drugs: pd.DataFrame, top_paths: dict, qedge_id=None, kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
+    def genrete_treat_subgraphs(self, response: ARAXResponse, top_scores: pd.DataFrame, top_paths: dict, qedge_id=None, kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
         """
-        top_drugs and top_paths returned by Chunyu's createDTD.py code (predict_top_n_drugs and predict_top_m_paths respectively).
+        top_scores and top_paths returned by Chunyu's creativeDTD.py code (get_score_table and get_top_path respectively).
         Ammends the response effectively TRAPI-ifying the paths returned by Chunyu's code.
         May not work on partially filled out response (as it assumes fresh QG and KG, i.e. not stuff partially filled out).
         The *_global_iter vars are to keep count of qedge and kedge if this is run multiple times. But see previous line for proviso.
@@ -133,8 +133,8 @@ class InferUtilities:
         if len(message.query_graph.edges) !=0 and not hasattr(self.response, 'original_query_graph'):
             self.response.original_query_graph = copy.deepcopy(message.query_graph)
 
-        disease_curie = top_drugs['disease_id'].tolist()[0]
-        disease_name = top_drugs['disease_name'].tolist()[0]
+        disease_curie = top_scores['disease_id'].tolist()[0]
+        disease_name = top_scores['disease_name'].tolist()[0]
         disease_info = xdtdmapping.get_node_info(node_id=disease_curie)
         if disease_info is None:
             self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table due to using refreshed xDTD database")
@@ -195,8 +195,8 @@ class InferUtilities:
         # If the max path len is 0, that means there are no paths found, so just insert the drugs with the probability_treats on them
         if max_path_len == 0:
             essence_scores = {}
-            node_ids = top_drugs['drug_id']
-            node_id_to_score = dict(zip(node_ids, top_drugs['tp_score']))
+            node_ids = top_scores['drug_id']
+            node_id_to_score = dict(zip(node_ids, top_scores['tp_score']))
             # Add the drugs to the knowledge graph
             for drug_canonical_id in node_ids:
                 try:
@@ -366,7 +366,7 @@ class InferUtilities:
                         break
                 path_added = True
             if path_added:
-                treat_score = top_drugs.loc[top_drugs['drug_id'] == drug]["tp_score"].iloc[0]
+                treat_score = top_scores.loc[top_scores['drug_id'] == drug]["tp_score"].iloc[0]
                 drug_node_info = xdtdmapping.get_node_info(node_id=drug_curie)
                 disease_node_info = xdtdmapping.get_node_info(node_id=disease_curie)
                 essence_scores[drug_node_info.name] = treat_score

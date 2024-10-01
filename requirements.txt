@@ -10,7 +10,7 @@ graphviz==0.20.1
 lxml==4.9.1
 nltk==3.7
 scipy==1.10.1
-scikit-learn==1.5.0
+scikit-learn==1.1.2
 connexion==2.14.1
 connexion[swagger-ui]
 Flask==2.2.5
