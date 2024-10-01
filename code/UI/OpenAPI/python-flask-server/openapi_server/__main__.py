@@ -14,7 +14,7 @@ from opentelemetry.instrumentation.aiohttp_client import (
 from opentelemetry import trace
 from opentelemetry.trace.span import Span
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.sdk.resources import SERVICE_NAME as telemetery_service_name_key, Resource
@@ -48,7 +48,7 @@ def instrument(app, host, port):
         })
     ))
     trace.get_tracer_provider().add_span_processor(
-        BatchSpanProcessor(
+        SimpleSpanProcessor(
             JaegerExporter(
                         agent_host_name=host,
                         agent_port=port
