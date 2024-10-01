@@ -648,7 +648,7 @@ class ARAXExpander:
                                 f" object qnode has 'ids' specified", error_code="NoCURIEs")
                         return response, overarching_kg
                     if subject_qnode.ids and len(subject_qnode.ids) >= 1:
-                        subject_curie = subject_qnode.ids  # FIXME: will need a way to handle multiple IDs
+                        subject_curie = subject_qnode.ids[0]  # FIXME: will need a way to handle multiple IDs
                     else:
                         subject_curie = None
                     

@@ -461,9 +461,10 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         # Make sure that if at least either drug_curie or disease_curie is provided. If provided, check if it/they also exist(s) in the query graph        
         if hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and message.query_graph.nodes:
             qnodes = message.query_graph.nodes
+            all_qnode_curie_ids = []
             for qnode_id in qnodes:
                 if qnodes[qnode_id].ids:
-                    all_qnode_curie_ids = [curie_id for curie_id in qnodes[qnode_id].ids]
+                    all_qnode_curie_ids += [curie_id for curie_id in qnodes[qnode_id].ids]
 
             if 'drug_curie' in parameters or 'disease_curie' in parameters:
                 if 'drug_curie' in parameters and parameters['drug_curie']:
@@ -560,19 +561,20 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         try:
             top_scores = XDTD.get_score_table(drug_curie_ids=preferred_drug_curie, disease_curie_ids=preferred_disease_curie)
             top_paths = XDTD.get_top_path(drug_curie_ids=preferred_drug_curie, disease_curie_ids=preferred_disease_curie)
-        except:
+        except Exception as e:
             self.response.warning(f"Could not get top drugs and paths for drug {preferred_drug_curie} and disease {preferred_disease_curie}")
             return self.response
         
-        
         if preferred_drug_curie and preferred_disease_curie:
             if len(top_scores) == 0:
-                self.response.warning(f"Could not get predicted scores for drug {preferred_drug_curie} and disease {preferred_disease_curie}. Likely the model was not trained with this drug-disease pair. Or No predicted score >=0.5 for this drug-disease pair.")
+                self.response.warning(f"Could not get predicted scores for drug {preferred_drug_curie} and disease {preferred_disease_curie}. Likely the model was not trained with this drug-disease pair. Or No predicted score >=0.3 for this drug-disease pair.")
+                return self.response
             if len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for drug {preferred_drug_curie} and disease {preferred_disease_curie}. Likely the model considers there is no reasonable path for this drug-disease pair.")
         elif preferred_drug_curie:
             if len(top_scores) == 0:
-                self.response.warning(f"Could not get top diseases for drug {preferred_drug_curie}. Likely the model was not trained with this drug. Or No predicted diseses for this drug with score >= 0.5.")
+                self.response.warning(f"Could not get top diseases for drug {preferred_drug_curie}. Likely the model was not trained with this drug. Or No predicted diseses for this drug with score >= 0.3.")
+                return self.response
             if len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for drug {preferred_drug_curie}. Likely the model considers there is no reasonable path for this drug.")
             
@@ -580,7 +582,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             top_scores = top_scores.iloc[:parameters['n_drugs'],:].reset_index(drop=True)
         elif preferred_disease_curie:
             if len(top_scores) == 0:
-                self.response.warning(f"Could not get top drugs for disease {preferred_disease_curie}. Likely the model was not trained with this disease. Or No predicted drugs for this disease with score >= 0.5.")
+                self.response.warning(f"Could not get top drugs for disease {preferred_disease_curie}. Likely the model was not trained with this disease. Or No predicted drugs for this disease with score >= 0.3.")
+                return self.response
             if len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for disease {preferred_disease_curie}. Likely the model considers there is no reasonable path for this disease.")
         
@@ -845,8 +848,10 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             try:
                 top_predictions = XCRG.predict_top_N_genes(query_chemical=preferred_subject_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
                 top_paths = XCRG.predict_top_M_paths(query_chemical=preferred_subject_curie, query_gene=None, model_type=self.parameters['regulation_type'], N=self.parameters['n_result_curies'], M=self.parameters['n_paths'], threshold=self.parameters['threshold'], kp=self.parameters['kp'], path_len=self.parameters['path_len'], interm_ids=None, interm_names= None, interm_categories=None)
-            except:
-                self.response.error(f"Something error occurred to get top genes or paths for chemical {preferred_subject_curie}", error_code="ValueError")
+            except Exception as e:
+                error_type = type(e).__name__  # Get the type of the exception
+                error_message = str(e)  # Get the exception message
+                self.response.error(f"An error of type {error_type} occurred while trying to get top genes or paths for chemical {preferred_subject_curie}. Error message: {error_message}", error_code="ValueError")
                 return self.response
             if top_predictions is None or len(top_predictions) == 0:
                 self.response.warning(f"Could not get predicted genes for chemical {preferred_subject_curie}. Likely the model was not trained with this chemical.")
@@ -861,8 +866,10 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             try:
                 top_predictions = XCRG.predict_top_N_chemicals(query_gene=preferred_object_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
                 top_paths = XCRG.predict_top_M_paths(query_chemical=None, query_gene=preferred_object_curie, model_type=self.parameters['regulation_type'], N=self.parameters['n_result_curies'], M=self.parameters['n_paths'], threshold=self.parameters['threshold'], kp=self.parameters['kp'], path_len=self.parameters['path_len'], interm_ids=None, interm_names= None, interm_categories=None)
-            except:
-                self.response.error(f"Something error occurred to get top chemicals or paths for gene {preferred_object_curie}", error_code="ValueError")
+            except Exception as e:
+                error_type = type(e).__name__  # Get the type of the exception
+                error_message = str(e)  # Get the exception message
+                self.response.error(f"An error of type {error_type} occurred while trying to get top chemicals or paths for gene {preferred_object_curie}. Error message: {error_message}", error_code="ValueError")
                 return self.response
             if top_predictions is None or len(top_predictions) == 0:
                 self.response.warning(f"Could not get predicted chemicals for gene {preferred_object_curie}. Likely the model was not trained with this gene.")
