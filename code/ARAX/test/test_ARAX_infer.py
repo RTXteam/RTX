@@ -103,6 +103,49 @@ def test_xdtd_infer_castleman_disease_2():
     assert message.auxiliary_graphs
     assert len(message.results) > 0
 
+def test_xdtd_issue2160():
+    query = {
+        "message": {"query_graph": 
+            {
+                "edges": {
+                    "t_edge": {
+                    "attribute_constraints": [],
+                    "knowledge_type": "inferred",
+                    "object": "on",
+                    "predicates": [
+                        "biolink:treats"
+                    ],
+                    "qualifier_constraints": [],
+                    "subject": "sn"
+                    }
+                },
+                "nodes": {
+                    "on": {
+                    "categories": [
+                        "biolink:Disease"
+                    ],
+                    "constraints": [],
+                    "ids": [
+                        "MONDO:0019600"
+                    ],
+                    },
+                    "sn": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ],
+                    "constraints": [],
+                    "ids": [
+                        "PUBCHEM.COMPOUND:23931"
+                    ],
+                    }
+                }
+            }
+        }
+    }
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+
 def test_xdtd_with_qg():
     query = {
         "message": {"query_graph": {
