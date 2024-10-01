@@ -508,7 +508,7 @@ class ARAXExpander:
                             if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
                                 del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
                 # Remove KG2 SemMedDB treats_or_applied-type edges if this is an inferred treats query
-                if alter_kg2_treats_edges:
+                if alter_kg2_treats_edges and qedge_key in overarching_kg.edges_by_qg_id:  # Skip if no answers
                     edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
                                            if edge.predicate in self.treats_like_predicates and
                                            any(source.resource_id == "infores:rtx-kg2" for source in edge.sources) and
