@@ -857,8 +857,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 self.response.warning(f"Could not get predicted genes for chemical {preferred_subject_curie}. Likely the model was not trained with this chemical.")
                 return self.response
             if top_paths is None or len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for chemical {preferred_subject_curie}. Likely the model considers there is no reasonable path for this chemical.")
-
+                self.response.warning(f"Could not get any predicted paths for chemical {preferred_subject_curie}. Either Plover is not reachable or no paths found")
+                return self.response
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
             self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, normalized_subject_curie, None, top_predictions, top_paths, qedge_id, self.parameters['regulation_type'], self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
@@ -875,8 +875,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 self.response.warning(f"Could not get predicted chemicals for gene {preferred_object_curie}. Likely the model was not trained with this gene.")
                 return self.response
             if top_paths is None or len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for gene {preferred_object_curie}. Likely the model considers there is no reasonable path for this gene.")
-
+                self.response.warning(f"Could not get any predicted paths for gene {preferred_object_curie}. Either Plover is not reachable or no paths found")
+                return self.response
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
             

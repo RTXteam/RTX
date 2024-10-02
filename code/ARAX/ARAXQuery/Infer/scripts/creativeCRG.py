@@ -28,6 +28,7 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 def call_plover(curies: List, respect_predicate_symmetry: bool=False):
         json = {}
         plover_url = RTXConfig.plover_url
+        status_code = 500
         endpoint = "/query"
         body = {
                 "edges": {
@@ -49,33 +50,12 @@ def call_plover(curies: List, respect_predicate_symmetry: bool=False):
             }
         try:
             response = requests.post(plover_url + endpoint, headers={'accept': 'application/json'}, json=body)
+            status_code = response.status_code
             json = response.json()
         except Exception as e:
             pass
-        return json
+        return status_code, json
 
-# class TFDatabase:
-#     def __init__(self):
-#         database = '/Users/kevin/Documents/GitHub/RTX/code/ARAX/ARAXQuery/Infer/data/xCRG_data/tf_db_kg2.10.0.db'
-#         self.connection = sqlite3.connect(database)
-#         self.connection.row_factory = sqlite3.Row
-
-#     def _query_database(self, query):
-#         cursor = self.connection.cursor()
-#         cursor.execute(query)
-#         res = cursor.fetchall()
-#         return res
-
-#     # def get_tf_neighbors(self):
-#     #     query = "select * from edges ;"
-#     #     return self._query_database(query)
-
-#     def __del__(self):
-#         try:
-#             self.connection.commit()
-#             self.connection.close()
-#         except:
-#             pass
 
 def load_ML_CRGmodel(response: ARAXResponse, model_path: str, model_type: str):
 
@@ -216,7 +196,7 @@ class creativeCRG:
                 self.tf_list = json.loads(fp.read())['tf']
 
     def get_tf_neighbors(self):        
-        response = call_plover(self.tf_list,respect_predicate_symmetry=False)
+        status_code, response = call_plover(self.tf_list,respect_predicate_symmetry=False)
         edges = response.get("edges",{}).get("e00",{})
         query_tf_neighbor_data = []
         answer_tf_neigbor_data = []
@@ -236,7 +216,7 @@ class creativeCRG:
                 curie = c1
                 tf = c2
                 query_tf_neighbor_data.append({"edge_id": edge, "transcription_factor":tf, "neighbour": curie, "depth": depth})
-        return query_tf_neighbor_data,answer_tf_neigbor_data, edges
+        return status_code, query_tf_neighbor_data,answer_tf_neigbor_data, edges
     
     def add_node_ids_to_path(self, paths, tf_edges,chemical_edges, gene_edges):
         kg2_querier = KG2Querier(self.response, RTXConfig.plover_url)
@@ -255,6 +235,8 @@ class creativeCRG:
                     _path_to_add.append({edge:trapi_edge})
                     _path_to_add.append(plover_edge[1])
                 final_paths[(query,answer)].append(_path_to_add)
+            if len(final_paths[(query,answer)]) == 0:
+                del final_paths[(query,answer)]
         return final_paths
 
         
@@ -493,12 +475,21 @@ class creativeCRG:
                 self.response.warning(f"There is no chemical-gene pair satisfying the requirement of top {N} with threshold >={threshold}. Perhaps try using more loose threshold.")
                 return None
             top_paths = dict()
-            chemical_neighbors = call_plover([query_chemical])
+            status_code, chemical_neighbors = call_plover([query_chemical])
+            if status_code != 200:
+                self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                return None
             answers = res['gene_id'].tolist()
             self.preferred_curies = self.get_preferred_curies(answers)
             valid_genes = [item for item in self.preferred_curies.values() if item]
-            gene_neighbors = call_plover(valid_genes)
-            query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
+            status_code, gene_neighbors = call_plover(valid_genes)
+            if status_code != 200:
+                self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                return None
+            status_code, query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
+            if status_code != 200:
+                self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                return None
             
             
             paths = self.get_paths(preferred_query_chemical, res['gene_id'].tolist(), chemical_neighbors, gene_neighbors, query_tf_neighbors, answer_tf_neigbors, self.tf_list, M)
@@ -520,12 +511,21 @@ class creativeCRG:
 
                     top_paths = dict()
                     
-                    gene_neighbors = call_plover([preferred_query_gene])
+                    status_code, gene_neighbors = call_plover([preferred_query_gene])
+                    if status_code != 200:
+                        self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                        return None
                     answers = res['chemical_id'].tolist()
                     self.preferred_curies = self.get_preferred_curies(answers)
                     valid_chemicals = [item for item in self.preferred_curies.values() if item]
-                    chemical_neighbors = call_plover(valid_chemicals)
-                    query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
+                    status_code, chemical_neighbors = call_plover(valid_chemicals)
+                    if status_code != 200:
+                        self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                        return None
+                    status_code, query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
+                    if status_code != 200:
+                        self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                        return None
                     paths = self.get_paths(preferred_query_gene, res['chemical_id'].tolist(), gene_neighbors, chemical_neighbors,  query_tf_neighbors, answer_tf_neigbors,self.tf_list, M)
                     final_paths = self.add_node_ids_to_path(paths, tf_edges, chemical_neighbors, gene_neighbors)
                     return final_paths
@@ -542,12 +542,52 @@ class creativeCRG:
         for answer in answer_curies:
             valid_answer_tf_list[answer] = []
 
+        edges_to_ignore = set()
+        for edge_id, edge in answer_neighbors['edges']['e00'].items():
+            if edge[1] not in self.preferred_curies.values():
+                continue
+            relevant_node = False
+            answer = edge[1]
+            neighbor = edge[0]
+            # ignoring lookup edges
+            if neighbor == query_curie:
+                edges_to_ignore.add(edge_id)
+                continue
+            neighbor_category = answer_neighbors['nodes']['n01'][neighbor][1]
+            if neighbor_category  in self.relevant_node_categories:
+                relevant_node = True
+            # one hop from answer
+            if answer not in answer_path:
+                answer_path[answer] = dict()
+            if neighbor in tf_list and neighbor not in answer_path[answer]:
+                valid_answer_tf_list[answer].append(neighbor)
+                answer_path[answer][neighbor] = [edge_id, self.predicate_depth_map[edge[2]]]
+            elif neighbor in tf_list and neighbor in answer_path[answer]:
+                if answer_path[answer][neighbor][-1] < self.predicate_depth_map[edge[2]]:
+                    answer_path[answer][neighbor] = [edge_id, self.predicate_depth_map[edge[2]]]
+
+            # two hop from answer
+            for item in answer_tf_neighbors_dict.get(neighbor,[]):
+                neighbor_category = answer_neighbors['nodes']['n01'][neighbor][1]
+                if relevant_node and item[1] not in valid_answer_tf_list[answer]:
+                    valid_answer_tf_list[answer].append(item[1])
+                if item[1] not in answer_path[answer]:
+                    answer_path[answer][item[1]] = [item[0],edge_id, item[2]]
+                elif answer_path[answer][item[1]][-1] < item[2] and ((item[1] not in valid_answer_tf_list[answer]) or relevant_node):
+                        answer_path[answer][item[1]] = [item[0], edge_id, min(item[2],self.predicate_depth_map[edge[2]])] 
+
         for record in query_tf_neighbors:
+            if record['edge_id'] in edges_to_ignore:
+                continue
             query_tf_neighbors_dict[record['neighbour']] = query_tf_neighbors_dict.get(record['neighbour'],[]) + [(record['edge_id'],record['transcription_factor'], record['depth'])]
         for record in answer_tf_neighbors:
+            if record['edge_id'] in edges_to_ignore:
+                continue
             answer_tf_neighbors_dict[record['neighbour']] = answer_tf_neighbors_dict.get(record['neighbour'],[]) + [(record['edge_id'],record['transcription_factor'], record['depth'])]
         # one hop from query
         for edge_id, edge in query_neighbors['edges']['e00'].items():
+            if edge_id in  edges_to_ignore:
+                continue
             if edge[1] in tf_list and edge[1] not in query_path:
                 valid_query_tf_list.append(edge[1])
                 query_path[edge[1]] = [edge_id,self.predicate_depth_map[edge[2]]]
@@ -575,34 +615,6 @@ class creativeCRG:
                 
                     
         
-        for edge_id, edge in answer_neighbors['edges']['e00'].items():
-            if edge[1] not in self.preferred_curies.values():
-                continue
-            relevant_node = False
-            answer = edge[1]
-            neighbor = edge[0]
-            neighbor_category = answer_neighbors['nodes']['n01'][neighbor][1]
-            if neighbor_category  in self.relevant_node_categories:
-                relevant_node = True
-            # one hop from answer
-            if answer not in answer_path:
-                answer_path[answer] = dict()
-            if neighbor in tf_list and neighbor not in answer_path[answer]:
-                valid_answer_tf_list[answer].append(neighbor)
-                answer_path[answer][neighbor] = [edge_id, self.predicate_depth_map[edge[2]]]
-            elif neighbor in tf_list and neighbor in answer_path[answer]:
-                if answer_path[answer][neighbor][-1] < self.predicate_depth_map[edge[2]]:
-                    answer_path[answer][neighbor] = [edge_id, self.predicate_depth_map[edge[2]]]
-
-            # two hop from answer
-            for item in answer_tf_neighbors_dict.get(neighbor,[]):
-                neighbor_category = answer_neighbors['nodes']['n01'][neighbor][1]
-                if relevant_node and item[1] not in valid_answer_tf_list[answer]:
-                    valid_answer_tf_list[answer].append(item[1])
-                if item[1] not in answer_path[answer]:
-                    answer_path[answer][item[1]] = [item[0],edge_id, item[2]]
-                elif answer_path[answer][item[1]][-1] < item[2] and ((item[1] not in valid_answer_tf_list[answer]) or relevant_node):
-                        answer_path[answer][item[1]] = [item[0], edge_id, min(item[2],self.predicate_depth_map[edge[2]])] 
         # joining paths
         for answer in answer_curies:
             combined_path[(query_curie,answer)] = list()
