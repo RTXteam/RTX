@@ -156,6 +156,26 @@ class RemoveNodes:
 
         return self.response
     
+    def _is_general_concept(self, node):
+        curies = []
+        synonyms = []
+        if not node['attributes']:
+            return False
+        for attribute in node['attributes']:
+            if attribute['attribute_type_id'] == 'biolink:xref':
+                curies += attribute.get('value',[])
+            if attribute['attribute_type_id'] == 'biolink:synonym':
+                synonyms += attribute.get('value',[])
+        if node['name']:
+                synonyms.append(node['name'].lower())
+        if self.block_list_curies.intersection([curie.lower() for curie in curies if curie]):
+            return True
+        for synonym in synonyms:
+            for block_list_synonym in self.block_list_synonyms:
+                if isinstance(synonym,str) and isinstance(block_list_synonym,str) and re.match(block_list_synonym, synonym,re.IGNORECASE):
+                    return True
+        return False
+    
     def remove_general_concept_nodes(self):
         node_params = self.node_parameters
         if 'perform_action' not in node_params:
@@ -177,44 +197,14 @@ class RemoveNodes:
             file_name = 'general_concepts.json'
             with open(blocklist_file_path) as fp:
                 block_list_dict = json.loads(fp.read())
-            block_list_synonyms = set(block_list_dict["synonyms"])
-            block_list_curies = set(block_list_dict["curies"])
-            nodes_to_remove = set()
-            names = []
-            for key, node in self.message.knowledge_graph.nodes.items():
-                node_dict = node.to_dict()
-                synonyms = []
-                curies = []
-                if not node_dict['attributes']:
-                    continue
-                for attribute in node_dict['attributes']:
-                    if attribute['attribute_type_id'] == 'biolink:xref':
-                        curies += attribute.get('value',[])
-                    if attribute['attribute_type_id'] == 'biolink:synonym':
-                        synonyms += attribute.get('value',[])
-                if node_dict['name']:
-                     synonyms.append(node_dict['name'].lower())
-                if block_list_curies.intersection([curie.lower() for curie in curies if curie]):
-                    nodes_to_remove.add(key)
-                    continue
-                for synonym in synonyms:
-                    for block_list_synonym in block_list_synonyms:
-                        if isinstance(synonym,str) and isinstance(block_list_synonym,str) and re.match(block_list_synonym, synonym,re.IGNORECASE):
-                            nodes_to_remove.add(key)
-
-
-            for key in nodes_to_remove:
-                del self.message.knowledge_graph.nodes[key]
-            self.response.info(f"Removed {len(nodes_to_remove)} nodes from the knowledge graph which are general concepts")
-            edges_to_remove = set()
+            self.block_list_synonyms = set(block_list_dict["synonyms"])
+            self.block_list_curies = set(block_list_dict["curies"])
             # iterate over edges find edges connected to the nodes
             for key, edge in self.message.knowledge_graph.edges.items():
-                if edge.subject in nodes_to_remove or edge.object in nodes_to_remove:
-                    edges_to_remove.add(key)
-            # remove edges
-            #self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
-            for key in edges_to_remove:
-                del self.message.knowledge_graph.edges[key]
+                subject_node = self.message.knowledge_graph.nodes[edge.subject].to_dict()
+                object_node = self.message.knowledge_graph.nodes[edge.object].to_dict()
+                if self._is_general_concept(subject_node) or self._is_general_concept(object_node):
+                    del self.message.knowledge_graph.edges[key]
             self.remove_orphaned_nodes()
         except:
             tb = traceback.format_exc()
