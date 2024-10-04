@@ -199,12 +199,24 @@ class RemoveNodes:
                 block_list_dict = json.loads(fp.read())
             self.block_list_synonyms = set(block_list_dict["synonyms"])
             self.block_list_curies = set(block_list_dict["curies"])
+            node_to_remove = set()
             # iterate over edges find edges connected to the nodes
             for key, edge in self.message.knowledge_graph.edges.items():
+                if set({edge.subject, edge.object}).intersection(node_to_remove):
+                    del self.message.knowledge_graph.edges[key]
+                    continue
                 subject_node = self.message.knowledge_graph.nodes[edge.subject].to_dict()
                 object_node = self.message.knowledge_graph.nodes[edge.object].to_dict()
-                if self._is_general_concept(subject_node) or self._is_general_concept(object_node):
+                
+                if self._is_general_concept(subject_node):
+                    node_to_remove.add(edge.subject)
                     del self.message.knowledge_graph.edges[key]
+                    continue
+
+                if self._is_general_concept(object_node):
+                    node_to_remove.add(edge.object)
+                    del self.message.knowledge_graph.edges[key]
+                    continue
             self.remove_orphaned_nodes()
         except:
             tb = traceback.format_exc()
