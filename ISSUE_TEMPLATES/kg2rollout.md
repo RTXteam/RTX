@@ -75,7 +75,7 @@ Host arax.ncats.io
     - [ ] make sure `node_synonymizer.sqlite`'s last modified date is today (or whatever day the build was run)
     - [ ] make sure `kg2c_lite.json.gz`'s last modified date is today (or whatever day the build was run)
     - [ ] the entire build runtime (synonymizer + KG2c) shouldn't have been more than 24 hours
-    - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax-databases.rtx.ai` (`/home/rtxconfig/KG2.X.Y`) if `--uploadartifacts` flag during the KG2c build. If not, manyally upload files using `scp`.
+    - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax-databases.rtx.ai` (`/home/rtxconfig/KG2.X.Y`) if `--uploadartifacts` flag during the KG2c build is set. If not, manually upload the files using `scp`.
 - [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/ (how to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#host-kg2canonicalized-in-neo4j))
   - [ ] verify the correct KG2 version was uploaded by running this query: `match (n {id:"RTX:KG2c"}) return n`
 - [ ] update `RTX/code/config_dbs.json` in the branch:
