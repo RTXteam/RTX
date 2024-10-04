@@ -107,6 +107,8 @@ The following databases should be rebuilt and copies of them should be put in `/
 - [ ] Build CURIE NGD database @mohsenht
 - [ ] refreshed XDTD database @chunyuma 
 - [ ] XDTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
+- [ ] refreshed XCRG database @chunyuma
+- [ ] XCRG database @chunyuma (may be skipped - depends on the changes in this KG2 version)
 
 **NOTE**: As databases are rebuilt, `RTX/code/config_dbs.json` will need to be updated to point to their new paths! Push these changes to the branch for this KG2 version, unless the rollout of this KG2 version has already occurred, in which case you should push to `master` (but first follow the steps described [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#config_dbsjson)). 
 
