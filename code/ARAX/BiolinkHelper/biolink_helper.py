@@ -111,7 +111,7 @@ class BiolinkHelper:
             descendants.update(self.biolink_lookup_map["directions"][direction]["descendants"])
         return list(descendants)
 
-    def get_canonical_predicates(self, predicates: Union[str, List[str], Set[str]]) -> List[str]:
+    def get_canonical_predicates(self, predicates: Union[str, List[str], Set[str]], print_warnings: bool = True) -> List[str]:
         """
         Returns the canonical version of the input predicate(s). Accepts a single predicate or multiple predicates as
         input and always returns the canonical predicate(s) in a list. Works with both proper and mixin predicates.
@@ -119,7 +119,7 @@ class BiolinkHelper:
         input_predicate_set = self._convert_to_set(predicates)
         valid_predicates = input_predicate_set.intersection(self.biolink_lookup_map["predicates"])
         invalid_predicates = input_predicate_set.difference(valid_predicates)
-        if invalid_predicates:
+        if invalid_predicates and print_warnings:
             eprint(f"WARNING: Provided predicate(s) {invalid_predicates} do not exist in Biolink {self.biolink_version}")
         canonical_predicates = {self.biolink_lookup_map["predicates"][predicate]["canonical_predicate"]
                                 for predicate in valid_predicates}
