@@ -162,9 +162,9 @@ class RemoveNodes:
         if not node['attributes']:
             return False
         for attribute in node['attributes']:
-            if attribute['attribute_type_id'] == 'biolink:xref':
+            if attribute['attribute_type_id'] == 'biolink:xref' and isinstance(attribute.get('value', []),list):
                 curies.update(map(str.lower, attribute.get('value', [])))
-            if attribute['attribute_type_id'] == 'biolink:synonym':
+            if attribute['attribute_type_id'] == 'biolink:synonym' and  isinstance(attribute.get('value', []),list):
                 synonyms.update(map(str.lower, attribute.get('value', [])))
         if node['name']:
                 synonyms.add(node['name'].lower())
