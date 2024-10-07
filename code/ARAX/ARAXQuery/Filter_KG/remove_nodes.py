@@ -157,23 +157,25 @@ class RemoveNodes:
         return self.response
     
     def _is_general_concept(self, node):
-        curies = []
-        synonyms = []
+        curies = set()
+        synonyms = set()
         if not node['attributes']:
             return False
         for attribute in node['attributes']:
             if attribute['attribute_type_id'] == 'biolink:xref':
-                curies += attribute.get('value',[])
+                curies.update(map(str.lower, attribute.get('value', [])))
             if attribute['attribute_type_id'] == 'biolink:synonym':
-                synonyms += attribute.get('value',[])
+                synonyms.update(map(str.lower, attribute.get('value', [])))
         if node['name']:
-                synonyms.append(node['name'].lower())
-        if self.block_list_curies.intersection([curie.lower() for curie in curies if curie]):
+                synonyms.add(node['name'].lower())
+        if self.block_list_curies.intersection(curies) or self.block_list_synonyms.intersection(synonyms):
             return True
+        
         for synonym in synonyms:
-            for block_list_synonym in self.block_list_synonyms:
-                if isinstance(synonym,str) and isinstance(block_list_synonym,str) and re.match(block_list_synonym, synonym,re.IGNORECASE):
-                    return True
+            if not isinstance(synonym,str):
+                continue 
+            if any(p.match(synonym) for p in self.block_list_patterns):
+                return True
         return False
     
     def remove_general_concept_nodes(self):
@@ -200,6 +202,7 @@ class RemoveNodes:
             self.block_list_synonyms = set(block_list_dict["synonyms"])
             self.block_list_curies = set(block_list_dict["curies"])
             node_to_remove = set()
+            self.block_list_patterns = [re.compile(pattern,re.IGNORECASE) for pattern in block_list_dict["patterns"]]
             # iterate over edges find edges connected to the nodes
             for key, edge in self.message.knowledge_graph.edges.items():
                 if set({edge.subject, edge.object}).intersection(node_to_remove):
