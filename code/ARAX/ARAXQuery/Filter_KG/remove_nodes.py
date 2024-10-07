@@ -204,22 +204,26 @@ class RemoveNodes:
             node_to_remove = set()
             self.block_list_patterns = [re.compile(pattern,re.IGNORECASE) for pattern in block_list_dict["patterns"]]
             # iterate over edges find edges connected to the nodes
+            edges_to_remove = []
             for key, edge in self.message.knowledge_graph.edges.items():
                 if set({edge.subject, edge.object}).intersection(node_to_remove):
-                    del self.message.knowledge_graph.edges[key]
+                    edges_to_remove.append(key)
+                    
                     continue
                 subject_node = self.message.knowledge_graph.nodes[edge.subject].to_dict()
                 object_node = self.message.knowledge_graph.nodes[edge.object].to_dict()
                 
                 if self._is_general_concept(subject_node):
                     node_to_remove.add(edge.subject)
-                    del self.message.knowledge_graph.edges[key]
+                    edges_to_remove.append(key)
                     continue
 
                 if self._is_general_concept(object_node):
                     node_to_remove.add(edge.object)
-                    del self.message.knowledge_graph.edges[key]
+                    edges_to_remove.append(key)
                     continue
+            for edge_id in edges_to_remove:
+                del self.message.knowledge_graph.edges[edge_id]
             self.remove_orphaned_nodes()
         except:
             tb = traceback.format_exc()
