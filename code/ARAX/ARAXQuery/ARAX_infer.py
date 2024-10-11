@@ -863,20 +863,22 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             qedge_id = self.parameters.get('qedge_id')
             self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, normalized_subject_curie, None, top_predictions, top_paths, qedge_id, self.parameters['regulation_type'], self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
         elif not preferred_subject_curie and preferred_object_curie:
-            try:
-                top_predictions = XCRG.predict_top_N_chemicals(query_gene=preferred_object_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
-                top_paths = XCRG.predict_top_M_paths(query_chemical=None, query_gene=preferred_object_curie, model_type=self.parameters['regulation_type'], N=self.parameters['n_result_curies'], M=self.parameters['n_paths'], threshold=self.parameters['threshold'], kp=self.parameters['kp'], path_len=self.parameters['path_len'], interm_ids=None, interm_names= None, interm_categories=None)
-            except Exception as e:
-                error_type = type(e).__name__  # Get the type of the exception
-                error_message = str(e)  # Get the exception message
-                self.response.error(f"An error of type {error_type} occurred while trying to get top chemicals or paths for gene {preferred_object_curie}. Error message: {error_message}", error_code="ValueError")
-                return self.response
-            if top_predictions is None or len(top_predictions) == 0:
-                self.response.warning(f"Could not get predicted chemicals for gene {preferred_object_curie}. Likely the model was not trained with this gene.")
-                return self.response
-            if top_paths is None or len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for gene {preferred_object_curie}. Either Plover is not reachable or no paths found")
-                return self.response
+            top_predictions = XCRG.predict_top_N_chemicals(query_gene=preferred_object_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
+            top_paths = XCRG.predict_top_M_paths(query_chemical=None, query_gene=preferred_object_curie, model_type=self.parameters['regulation_type'], N=self.parameters['n_result_curies'], M=self.parameters['n_paths'], threshold=self.parameters['threshold'], kp=self.parameters['kp'], path_len=self.parameters['path_len'], interm_ids=None, interm_names= None, interm_categories=None)
+            # try:
+            #     top_predictions = XCRG.predict_top_N_chemicals(query_gene=preferred_object_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
+            #     top_paths = XCRG.predict_top_M_paths(query_chemical=None, query_gene=preferred_object_curie, model_type=self.parameters['regulation_type'], N=self.parameters['n_result_curies'], M=self.parameters['n_paths'], threshold=self.parameters['threshold'], kp=self.parameters['kp'], path_len=self.parameters['path_len'], interm_ids=None, interm_names= None, interm_categories=None)
+            # except Exception as e:
+            #     error_type = type(e).__name__  # Get the type of the exception
+            #     error_message = str(e)  # Get the exception message
+            #     self.response.error(f"An error of type {error_type} occurred while trying to get top chemicals or paths for gene {preferred_object_curie}. Error message: {error_message}", error_code="ValueError")
+            #     return self.response
+            # if top_predictions is None or len(top_predictions) == 0:
+            #     self.response.warning(f"Could not get predicted chemicals for gene {preferred_object_curie}. Likely the model was not trained with this gene.")
+            #     return self.response
+            # if top_paths is None or len(top_paths) == 0:
+            #     self.response.warning(f"Could not get any predicted paths for gene {preferred_object_curie}. Either Plover is not reachable or no paths found")
+            #     return self.response
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
             
