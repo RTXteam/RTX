@@ -481,6 +481,7 @@ class creativeCRG:
                 return None
             answers = res['gene_id'].tolist()
             self.preferred_curies = self.get_preferred_curies(answers)
+            self.preferred_to_original_curie = {value: key for key, value in self.preferred_curies.items() if value}
             valid_genes = [item for item in self.preferred_curies.values() if item]
             status_code, gene_neighbors = call_plover(valid_genes)
             if status_code != 200:
@@ -492,7 +493,7 @@ class creativeCRG:
                 return None
             
             
-            paths = self.get_paths(preferred_query_chemical, valid_genes, chemical_neighbors, gene_neighbors, query_tf_neighbors, answer_tf_neigbors, self.tf_list, M)
+            paths = self.get_paths(preferred_query_chemical, res['gene_id'].tolist(), chemical_neighbors, gene_neighbors, query_tf_neighbors, answer_tf_neigbors, self.tf_list, M)
             final_paths = self.add_node_ids_to_path(paths, tf_edges, chemical_neighbors, gene_neighbors)
             #TODO: check for subclass & check the actual path
             return final_paths
@@ -517,6 +518,7 @@ class creativeCRG:
                         return None
                     answers = res['chemical_id'].tolist()
                     self.preferred_curies = self.get_preferred_curies(answers)
+                    self.preferred_to_original_curie = {value: key for key, value in self.preferred_curies.items() if value}
                     valid_chemicals = [item for item in self.preferred_curies.values() if item]
                     status_code, chemical_neighbors = call_plover(valid_chemicals)
                     if status_code != 200:
@@ -527,7 +529,7 @@ class creativeCRG:
                         self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
                         return None
                     
-                    paths = self.get_paths(preferred_query_gene, valid_chemicals, gene_neighbors, chemical_neighbors,  query_tf_neighbors, answer_tf_neigbors,self.tf_list, M)
+                    paths = self.get_paths(preferred_query_gene, res['chemical_id'].tolist(), gene_neighbors, chemical_neighbors,  query_tf_neighbors, answer_tf_neigbors,self.tf_list, M)
                     final_paths = self.add_node_ids_to_path(paths, tf_edges, chemical_neighbors, gene_neighbors)
                     return final_paths
     
@@ -542,13 +544,15 @@ class creativeCRG:
         valid_answer_tf_list = {}
         for answer in answer_curies:
             valid_answer_tf_list[answer] = []
-
         edges_to_ignore = set()
         for edge_id, edge in answer_neighbors['edges']['e00'].items():
-            if edge[1] not in self.preferred_curies.values():
+            if edge[1] not in self.preferred_to_original_curie:
+                continue
+            if edge[0] == query_curie or edge[1] == query_curie:
+                edges_to_ignore.add(edge_id)
                 continue
             relevant_node = False
-            answer = edge[1]
+            answer = self.preferred_to_original_curie[edge[1]]
             neighbor = edge[0]
             # ignoring lookup edges
             if neighbor == query_curie:
@@ -589,6 +593,10 @@ class creativeCRG:
         for edge_id, edge in query_neighbors['edges']['e00'].items():
             if edge_id in  edges_to_ignore:
                 continue
+            if edge[0] in self.preferred_to_original_curie or edge[1] in self.preferred_to_original_curie:
+                continue
+            if (edge[1] == query_curie and edge[0] in self.preferred_to_original_curie) or (edge[0] == query_curie and edge[1] in self.preferred_to_original_curie):
+                continue
             if edge[1] in tf_list and edge[1] not in query_path:
                 valid_query_tf_list.append(edge[1])
                 query_path[edge[1]] = [edge_id,self.predicate_depth_map[edge[2]]]
@@ -598,6 +606,8 @@ class creativeCRG:
 
         # two hop from query
         for edge_id, edge in query_neighbors['edges']['e00'].items():
+            if edge[0] in self.preferred_to_original_curie or edge[1] in self.preferred_to_original_curie:
+                continue
             if edge[0] != query_curie:
                 continue
             relevant_node = False
@@ -619,6 +629,8 @@ class creativeCRG:
         # joining paths
         for answer in answer_curies:
             combined_path[(query_curie,answer)] = list()
+            if answer not in self.preferred_curies or not self.preferred_curies[answer]:
+                continue
             key = answer
             if key not in answer_path:
                 continue
