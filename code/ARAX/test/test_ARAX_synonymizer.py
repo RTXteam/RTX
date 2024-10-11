@@ -20,7 +20,7 @@ PARKINSONS_CURIE = "DOID:14330"
 PARKINSONS_CURIE_2 = "MONDO:0005180"
 IBUPROFEN_CURIE = "DRUGBANK:DB01050"
 ACETAMINOPHEN_CURIE = "CHEMBL.COMPOUND:CHEMBL112"
-ACETAMINOPHEN_CURIE_2 = "DRUGBANK:DB00316"
+ACETAMINOPHEN_CURIE_2 = "CHEBI:46195"
 SNCA_CURIE = "NCBIGene:6622"
 FAKE_CURIE = "NOTAREALCURIE!"
 
@@ -133,7 +133,7 @@ def test_get_canonical_curies_simple():
     synonymizer = NodeSynonymizer()
     results = synonymizer.get_canonical_curies(curies)
     print(results)
-    assert(len(results) == 3)
+    assert len(results) == 3
     for curie in curies:
         assert results.get(curie)
         assert {"preferred_name", "preferred_category", "preferred_curie"} == set(results[curie])
@@ -267,6 +267,28 @@ def test_get_equivalent_nodes_by_curies_and_names():
     assert PARKINSONS_CURIE_2 in results[PARKINSONS_NAME]
     assert ACETAMINOPHEN_CURIE in results[ACETAMINOPHEN_CURIE]
     assert ACETAMINOPHEN_CURIE_2 in results[ACETAMINOPHEN_CURIE]
+
+
+def test_get_curie_names():
+    curies = [ACETAMINOPHEN_CURIE, ACETAMINOPHEN_CURIE_2]
+    synonymizer = NodeSynonymizer()
+    results = synonymizer.get_curie_names(curies)
+    print(results)
+    assert len(results) == 2
+    for curie in curies:
+        assert results.get(curie)
+        assert len(set(results.values())) == 2  # Names should be distinct
+
+
+def test_get_preferred_names():
+    curies = [ATRIAL_FIBRILLATION_CURIE, IBUPROFEN_CURIE, SNCA_CURIE]
+    synonymizer = NodeSynonymizer()
+    results = synonymizer.get_preferred_names(curies)
+    print(results)
+    assert len(results) == 3
+    for curie in curies:
+        assert results.get(curie)
+        assert len(set(results.values())) == 3  # Preferred names for different concepts should be distinct
 
 
 def test_get_normalizer_results():

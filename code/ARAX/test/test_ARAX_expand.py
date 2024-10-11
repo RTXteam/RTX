@@ -1302,7 +1302,7 @@ def test_xdtd_curie_not_in_db():
             "t_edge": {
                 "object": "disease",
                 "subject": "chemical",
-                "predicates": ["biolink:affects"],
+                "predicates": ["biolink:treats"],
                 "knowledge_type": "inferred"
             }
         }

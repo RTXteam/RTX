@@ -204,7 +204,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 
 #### 7. Roll-out to ITRB TEST
 - [ ] In GitHub, for the RTXteam/RTX project, merge `master` to `itrb-test`. Record this issue number in the merge message.
-- [ ] In GitHub, for the RTXteam/PloverDB project, merge `main` to `itrb-test`. Record this issue number in the merge message.
+- [ ] In GitHub, for the RTXteam/PloverDB project, merge `main` to `itrb-test`.
 - [ ] Tag the release using the `master` branch of RTXteam/RTX project.
 - [ ] Tag the release using the `main` branch of RTXteam/PloverDB project.
 - [ ] Via a message in the `#devops-teamexpanderagent` channel in the `NCATSTranslator` Slack workspace, put in a request to `@Sarah Stemann` to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB test
@@ -215,7 +215,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 - [ ] Check proper functioning of `arax.test.transltr.io` (look at messages log `debug` mesages to verify that ARAX-Expand is indeed querying `kg2.test.transltr.io`)
 
 #### 8. Roll-out to ITRB PRODUCTION
-- [ ] In GitHub, merge `master` to `production`. Record this issue number in the merge message.
+- [ ] In GitHub, for the RTXteam/RTX project, merge `master` to `production`. Record this issue number in the merge message.
+- [ ] In GitHub, for the RTXteam/PloverDB project, merge `main` to `production`.
 - [ ] Via a message in the `#devops-teamexpanderagent` channel in the `NCATSTranslator` Slack workspace, put in a request to `@Sarah Stemann` to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB production
 - [ ] Monitor the `#devops-teamexpanderagent` channel to follow (i.e., to see if there are any errors reported by ITRB) the roll-out of the updated services in ITRB production (this could take several days, as there is a formal approval process for deployments to ITRB production)
 - [ ] Check proper functioning of `kg2cploverdb.transltr.io`
