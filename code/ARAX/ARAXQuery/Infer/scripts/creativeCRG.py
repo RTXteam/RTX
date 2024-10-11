@@ -619,9 +619,7 @@ class creativeCRG:
         # joining paths
         for answer in answer_curies:
             combined_path[(query_curie,answer)] = list()
-            if not self.preferred_curies[answer]:
-                continue
-            key = self.preferred_curies[answer]
+            key = answer
             if key not in answer_path:
                 continue
             
