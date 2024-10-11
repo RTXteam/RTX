@@ -492,7 +492,7 @@ class creativeCRG:
                 return None
             
             
-            paths = self.get_paths(preferred_query_chemical, res['gene_id'].tolist(), chemical_neighbors, gene_neighbors, query_tf_neighbors, answer_tf_neigbors, self.tf_list, M)
+            paths = self.get_paths(preferred_query_chemical, valid_genes, chemical_neighbors, gene_neighbors, query_tf_neighbors, answer_tf_neigbors, self.tf_list, M)
             final_paths = self.add_node_ids_to_path(paths, tf_edges, chemical_neighbors, gene_neighbors)
             #TODO: check for subclass & check the actual path
             return final_paths
@@ -526,7 +526,8 @@ class creativeCRG:
                     if status_code != 200:
                         self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
                         return None
-                    paths = self.get_paths(preferred_query_gene, res['chemical_id'].tolist(), gene_neighbors, chemical_neighbors,  query_tf_neighbors, answer_tf_neigbors,self.tf_list, M)
+                    
+                    paths = self.get_paths(preferred_query_gene, valid_chemicals, gene_neighbors, chemical_neighbors,  query_tf_neighbors, answer_tf_neigbors,self.tf_list, M)
                     final_paths = self.add_node_ids_to_path(paths, tf_edges, chemical_neighbors, gene_neighbors)
                     return final_paths
     
