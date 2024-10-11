@@ -156,6 +156,7 @@ class QueryGraphInfo:
                 continue
 
             edge_info[key] = { 'key': key, 'has_predicates': False, 'subject': qedge.subject, 'object': qedge.object, 'predicates': None, 'exclude': False }
+            edge_info[key]['knowledge_type'] = qedge.knowledge_type
 
             if qedge.exclude is not None:
                 edge_info[key]['exclude'] = qedge.exclude

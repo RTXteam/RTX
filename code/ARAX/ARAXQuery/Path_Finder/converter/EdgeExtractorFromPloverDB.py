@@ -45,7 +45,8 @@ class EdgeExtractorFromPloverDB:
                 if cached_nodes[1] in self.knowledge_graph['nodes']:
                     knowledge_graph['nodes'][cached_nodes[1]] = self.knowledge_graph['nodes'][cached_nodes[1]]
                 for edge in list_of_edges:
-                    knowledge_graph['edges'][edge] = self.knowledge_graph['edges'][edge]
+                    if str(edge) in self.knowledge_graph['edges']:
+                        knowledge_graph['edges'][str(edge)] = self.knowledge_graph['edges'][str(edge)]
             return knowledge_graph
         except Exception as e:
             arax_response.warning(f"Cannot retrieve {query} from plover DB with url: {url}, Error: {e}")
