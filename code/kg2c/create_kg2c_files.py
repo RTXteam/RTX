@@ -24,6 +24,7 @@ from typing import List, Dict, Tuple, Union, Optional, Set
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from utils import select_best_description
+import convert_kg2c_tsvs_to_jsonl
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/BiolinkHelper/")
@@ -329,17 +330,6 @@ def _write_list_to_neo4j_ready_tsv(input_list: List[Dict[str, any]], file_name_r
     with open(f"{KG2C_DIR}/{file_name_root}.tsv{'_TEST' if is_test else ''}", "w+") as data_file:
         dict_writer = csv.DictWriter(data_file, column_headers, delimiter='\t')
         dict_writer.writerows(input_list)
-
-
-def create_kg2c_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
-                          canonicalized_edges_dict: Dict[str, Dict[str, any]],
-                          meta_info_dict: Dict[str, str], is_test: bool):
-    logging.info(f" Creating KG2c JSON file..")
-    kgx_format_json = {"nodes": list(canonicalized_nodes_dict.values()),
-                       "edges": list(canonicalized_edges_dict.values())}
-    kgx_format_json.update(meta_info_dict)
-    with open(f"{KG2C_DIR}/kg2c.json{'_TEST' if is_test else ''}", "w+") as output_file:
-        json.dump(kgx_format_json, output_file)
 
 
 def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
@@ -722,8 +712,8 @@ def create_kg2c_files(kg2pre_version: str, sub_version: str, biolink_version: st
     meta_info_dict = {"kg2_version": kg2pre_version, "sub_version": sub_version, "biolink_version": biolink_version}
     logging.info(f"Saving KG2c in various file formats..")
     create_kg2c_lite_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
-    create_kg2c_json_file(canonicalized_nodes_dict, canonicalized_edges_dict, meta_info_dict, is_test)
     create_kg2c_tsv_files(canonicalized_nodes_dict, canonicalized_edges_dict, biolink_version, is_test)
+    convert_kg2c_tsvs_to_jsonl.run(is_test)
     create_kg2c_sqlite_db(canonicalized_nodes_dict, canonicalized_edges_dict, is_test)
 
 

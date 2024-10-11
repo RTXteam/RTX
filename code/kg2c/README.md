@@ -117,7 +117,9 @@ If the machine you'll be using has never previously built a KG2c, you need to do
         1. You will need read and write permission for the `rtx-kg2` S3 bucket
 1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
     1. Create a copy of `config_secrets.json` that contains the proper secrets for your own KG2pre Neo4j endpoint
-
+1. Make sure you've installed packages from **both** of these requirements.txt files:
+   1. `pip install -r RTX/requirements.txt`
+   2. `pip install -r RTX/code/kg2c/requirements.txt`
 
 ### Building KG2c
 
@@ -140,7 +142,7 @@ flags/options.
    1. `cd RTX/code/kg2c/synonymizer_build`
    2. `python build_synonymizer.py 2.10.0 v1.0 --downloadkg2pre --uploadartifacts`
    1. once the build finishes, run the regression test suite:
-      1. `pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.X.Y.sqlite`
+      1. `pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.10.0.sqlite`
 1. **Do a test KG2c build**: If you're satisfied with the synonymizer, proceed with a test KG2c build:
    1. `screen -S kg2c`
    1. `pyenv activate rtx` if you're using buildkg2c.rtx.ai; otherwise activate your python environment however necessary
