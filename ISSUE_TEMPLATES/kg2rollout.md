@@ -52,29 +52,18 @@ Host arax.ncats.io
     - [ ] make sure there is enough disk space available on `arax-databases.rtx.ai` (need at least 100G, ideally >120G). delete old KG2 database directories as needed (warn the team on Slack in advance).
 
   **NOTE:** For detailed deployment instructions, follow the instructions [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#building-kg2c)
-    - [ ] to do a standard build of a new synonymizer (expected runtime: 2-4 hours), run
-          
-          cd RTX/code/kg2c/synonymizer_build
-          python build_synonymizer.py 2.X.Y v1.0 --downloadkg2pre --uploadartifacts
-        
-      - [ ] After the build, run the Synonymizer pytest regression test suite:
-      
-            pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.X.Y.sqlite
-    
-    - [ ]  to do a standard full build of a new KG2c (expected runtime: 8-10 hours), run
-       
-           cd RTX/code/kg2c
-           python build_kg2c.py 2.X.Y v1.0 4.2.1 --uploadartifacts
-
-    **NOTE:** 4.2.1 is the Biolink version, please use the latest biolink version based on the KG2pre build's biolink version. Add a `--test` flag to the KG2c build execution to do a test build. 
-
-            
-          
-  - [ ] after the build is done, verify it looks ok:
-    - [ ] `node_synonymizer.sqlite` should be around 8-15 GB
-    - [ ] make sure `node_synonymizer.sqlite`'s last modified date is today (or whatever day the build was run)
-    - [ ] make sure `kg2c_lite.json.gz`'s last modified date is today (or whatever day the build was run)
-    - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax-databases.rtx.ai` (`/home/rtxconfig/KG2.X.Y`) if `--uploadartifacts` flag during the KG2c build is set. If not, manually upload the files using `scp`.
+    - [ ] to do a standard build of a new synonymizer (expected runtime: 2-4 hours), run:
+      - [ ] `cd RTX/code/kg2c/synonymizer_build`
+      - [ ] `python build_synonymizer.py 2.X.Y v1.0 --downloadkg2pre --uploadartifacts`
+      - [ ] after the build, run the Synonymizer pytest regression test suite:
+        - [ ] `pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.X.Y.sqlite`
+      - [ ] make sure that `node_synonymizer_v1.0_KG2.X.Y.sqlite` is about 8-15 GB and its last modified date is today
+    - [ ] to do a standard full build of a new KG2c (expected runtime: 8-10 hours), run:
+      - [ ] `cd RTX/code/kg2c`
+      - [ ] `python build_kg2c.py 2.X.Y v1.0 4.2.1 --uploadartifacts`
+        - **NOTE:** 4.2.1 is the Biolink version, please use the latest biolink version based on the KG2pre build's biolink version. Add a `--test` flag to the KG2c build execution to do a test build.
+      - [ ] after the build is done, make sure `kg2c_lite.json.gz`'s last modified date is today (or whatever day the build was run)
+    - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax-databases.rtx.ai` (`/home/rtxconfig/KG2.X.Y`) and to `kg2webhost.rtx.ai` (if `--uploadartifacts` flag during the KG2c build is set). If not, manually upload the files using `scp`.
 - [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/ (how to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#host-kg2canonicalized-in-neo4j))
   - [ ] verify the correct KG2 version was uploaded by running this query: `match (n {id:"RTX:KG2c"}) return n`
 - [ ] update `RTX/code/config_dbs.json` in the branch:
@@ -86,7 +75,6 @@ Host arax.ncats.io
   - [ ] update the KG2pre and KG2c Neo4j endpoints
 - [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-how-tos#to-build-plover-from-a-new-kg2-version)) 
   - [ ] update `config_kg2c.json` in the `kg2.X.Yc` branch of the Plover repo to point to the new KG2.X.Yc json lines nodes and edges files on `kg2webhost.rtx.ai` (push this change)
-- [ ] start the new self-hosted PloverDB on `kg2cploverN.rtx.ai`:
   - [ ] `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] `cd PloverDB && git pull origin kg2.X.Yc`
   - [ ] if you have **not** yet built the 2.X.Y docker image/container on this instance, run:
@@ -94,8 +82,8 @@ Host arax.ncats.io
   - [ ] otherwise, simply run:
     - [ ] `sudo docker start plovercontainer` (takes about ten minutes)
 - [ ] verify that Plover's regression tests pass, and fix any broken tests; from any instance/computer, run:
-  - [ ] `cd PloverDB`
-  - [ ] `pytest -v test/test_kg2c.py --endpoint https://kg2cploverN.rtx.ai:9990`
+  - [ ] `cd PloverDB/test`
+  - [ ] `pytest -v --endpoint https://kg2cploverN.rtx.ai:9990`
 - [ ] update `config_dbs.json` in the branch for this KG2 version in the RTX repo to point to the new Plover in the `plover_url_override` slot
 
 #### 2. Rebuild downstream databases:
@@ -200,9 +188,9 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
     - [ ] wait about 70 minutes for Jenkins to build the PloverDB project and deploy it to `kg2cploverdb.ci.transltr.io`
     - [ ] verify that the CI Plover is running the new KG2 version by:
       - [ ] going to https://kg2cploverdb.ci.transltr.io/code_version and verifying that the correct nodes and edges jsonlines files were used
-      - [ ] running the following test and inspecting the command line output: `cd PloverDB && pytest -vs test/test_kg2c.py -k test_version --endpoint https://kg2cploverdb.ci.transltr.io`
-    - [ ] run Plover tests to verify it's working: `cd PloverDB && pytest -v test/test_kg2c.py --endpoint https://kg2cploverdb.ci.transltr.io`
-    - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in (locally remove the `plover_url_override` in `RTX/code/config_dbs.json` by setting it to `null`)
+      - [ ] running the following test and inspecting the command line output: `cd PloverDB/test && pytest -vsk test_version --endpoint https://kg2cploverdb.ci.transltr.io`
+    - [ ] run the full Plover test suite to verify everything is working: `cd PloverDB/test && pytest -v --endpoint https://kg2cploverdb.ci.transltr.io`
+    - [ ] run the ARAX pytest suite using the CI KG2 Plover (locally remove the `plover_url_override` in `RTX/code/config_dbs.json` by setting it to `null`)
     - [ ] if all tests pass, update `RTX/code/config_dbs.json` in the `master` branch with your local change: (`plover_url_override: null`)
     - [ ] push the latest `master` branch code commit to the various endpoints on `arax.ncats.io` that you previously updated (this is in order to get the changed `config_dbs.json` file) and restart ARAX services
     - [ ] check the [Test Build](https://github.com/RTXteam/RTX/actions/workflows/pytest.yml) (CI/CD tests) to make sure all non-skipped pytest tests have passed
