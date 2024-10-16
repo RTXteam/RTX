@@ -289,7 +289,7 @@ def test_xcrg_infer_bomeol():
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
         assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
-
+        
 @pytest.mark.slow
 def test_xcrg_with_qg1():
     query = {
@@ -356,7 +356,7 @@ def test_xcrg_with_qg2():
                 "r_edge": {
                     "object": "gene",
                     "subject": "chemical",
-                    "predicates": ['biolink:regulates', 'biolink:affects'],
+                    "predicates": ['biolink:affects'],
                     "knowledge_type": "inferred",
                     "qualifier_constraints": [
                         {
@@ -388,39 +388,52 @@ def test_xcrg_with_qg2():
         edge_result = message.knowledge_graph.edges[edge_key]
         assert edge_result.predicate == 'biolink:regulates'
 
-
 @pytest.mark.slow
 def test_xcrg_with_only_qg():
     query = {
-        "message": {"query_graph": {
-            "nodes": {
-                "gene": {
-                    "ids": ["UniProtKB:P48736"]
-                },
-                "chemical": {
-                    "categories": ['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule']
-                }
-            },
+            "message": {"query_graph": {
             "edges": {
-                "r_edge": {
-                    "object": "gene",
-                    "subject": "chemical",
-                    "predicates": ["biolink:regulates", "biolink:affects"],
-                    "knowledge_type": "inferred",
-                    "qualifier_constraints": [
+                "t_edge": {
+                "knowledge_type": "inferred",
+                "object": "ON",
+                "predicates": [
+                    "biolink:affects"
+                ],
+                "qualifier_constraints": [
+                    {
+                    "qualifier_set": [
                         {
-                            "qualifier_set": [
-                                {
-                                    "qualifier_type_id": "biolink:object_direction_qualifier",
-                                    "qualifier_value": "decreased"
-                                }
-                            ]
+                        "qualifier_type_id": "biolink:object_aspect_qualifier",
+                        "qualifier_value": "activity_or_abundance"
+                        },
+                        {
+                        "qualifier_type_id": "biolink:object_direction_qualifier",
+                        "qualifier_value": "decreased"
                         }
                     ]
+                    }
+                ],
+                "subject": "SN"
+                }
+            },
+            "nodes": {
+                "ON": {
+                "categories": [
+                    "biolink:Gene",
+                    "biolink:Protein"
+                ],
+                "ids": [
+                    "NCBIGene:3043"
+                ]
+                },
+                "SN": {
+                "categories": [
+                    "biolink:ChemicalEntity"
+                ]
                 }
             }
-        }
-        }
+            }
+    }
     }
     [response, message] = _do_arax_query(query)
     # return response, message
@@ -431,7 +444,7 @@ def test_xcrg_with_only_qg():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:regulates'
+        assert edge_result.predicate == 'biolink:affects'
 
 @pytest.mark.slow
 def test_xcrg_infer_dsl():

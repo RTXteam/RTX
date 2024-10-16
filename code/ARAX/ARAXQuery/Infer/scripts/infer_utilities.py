@@ -750,7 +750,7 @@ class InferUtilities:
                         message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
                     new_edge = edge_tuples[i][1]
                     for key in new_edge:
-                        edge_name = decorator._get_kg2c_edge_key(new_edge[key])
+                        edge_name = 'infores:rtx-kg2:' + decorator._get_kg2c_edge_key(new_edge[key])
                         message.knowledge_graph.edges[edge_name] = new_edge[key]
                         message.knowledge_graph.edges[edge_name].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
 

@@ -248,7 +248,9 @@ class creativeCRG:
             return preferred_curies
         normalizer_res = self.synonymizer.get_canonical_curies(curies)
         for curie in curies:
-            preferred_curies[curie] = normalizer_res.get(curie,{}).get('preferred_curie',None)
+            synonymizer_result = normalizer_res.get(curie)
+            if synonymizer_result is not None:
+                preferred_curies[curie] = synonymizer_result.get('preferred_curie',None)
         return preferred_curies        
 
     def predict_top_N_chemicals(self, query_gene: str, N: int = 10, threshold: float = 0.5, model_type: str = 'increase'):
