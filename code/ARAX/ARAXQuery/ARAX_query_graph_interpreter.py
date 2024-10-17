@@ -61,11 +61,34 @@ class ARAXQueryGraphInterpreter:
         result = query_graph_info.assess(message)
         response.merge(result)
         if result.status != 'OK':
-            #print(response.show(level=ARAXResponse.DEBUG))
+            #eprint(response.show(level=ARAXResponse.DEBUG))
+            return response
+
+        # Add some bespoke code to detect "pathfinder" queries and branch off to different behavior
+        # Perhaps this could be done through the templating, but seems difficult and may change soon,
+        # so put in this patch for now and see if we need to change it later.
+        # Current trigger:
+        # - Any edge has knowledge_type = pathfinder OR
+        # - Two or more edges have knowledge_type = inferred
+        #eprint(json.dumps(query_graph_info.edge_info,sort_keys=True,indent=2))
+        pathfinder = False
+        n_inferred_edges = 0
+        for edge_id, edge in query_graph_info.edge_info.items():
+            if edge['knowledge_type'] == 'pathfinder':
+                pathfinder = True
+            if edge['knowledge_type'] == 'inferred':
+                n_inferred_edges += 1
+        if n_inferred_edges > 1:
+            pathfinder = True
+        if pathfinder is True:
+            response.info("QueryGraphInterpreter recognized query_graph as a 'pathfinder' query: triggering pathfinder subsystem.")
+            response.data['araxi_commands'] = [
+                'connect(action=connect_nodes, max_path_length=4)',
+            ]
             return response
 
         query_graph_template = query_graph_info.query_graph_templates['detailed']
-        #print(json.dumps(query_graph_template,sort_keys=True,indent=2))
+        #eprint(json.dumps(query_graph_template,sort_keys=True,indent=2))
 
         # Check the number of nodes since the tree is based on the number of nodes
         n_nodes = query_graph_template['n_nodes']
@@ -80,7 +103,7 @@ class ARAXQueryGraphInterpreter:
         # Now look over each component looking for matches
         possible_next_steps = []
         for component in query_graph_template['components']:
-            if debug: print(f"- Component is {component}")
+            if debug: eprint(f"- Component is {component}")
             possible_next_steps = []
 
             #### If the component is a node, then score it
@@ -127,20 +150,20 @@ class ARAXQueryGraphInterpreter:
             new_tree_pointers = []
             for tree_pointer in tree_pointers:
                 if debug:
-                    #print(f"    - pointer={tree_pointer}")
-                    #print(f"    - pointer...")
+                    #eprint(f"    - pointer={tree_pointer}")
+                    #eprint(f"    - pointer...")
                     #for tp_key,tp_pointer in tree_pointer['pointer'].items():
-                    #    print(f"        - {tp_key} = {tp_pointer}")
+                    #    eprint(f"        - {tp_key} = {tp_pointer}")
                     pass
 
                 # Consider each of the new possibilities
                 for possible_next_step in possible_next_steps:
                     component_string = f"{component['component_id']}({possible_next_step['content']})"
-                    if debug: print(f"    - component_string={component_string}")
+                    if debug: eprint(f"    - component_string={component_string}")
 
                     # If this component is a possible next step in the tree, then add the next step to new_tree_pointers
                     if component_string in tree_pointer['pointer']:
-                        if debug: print(f"      - Found this component with score {possible_next_step['score']}")
+                        if debug: eprint(f"      - Found this component with score {possible_next_step['score']}")
                         new_tree_pointers.append( { 'pointer': tree_pointer['pointer'][component_string], 'score': tree_pointer['score'] + possible_next_step['score'] })
                         #tree_pointer = tree_pointer[component_string]
 
@@ -152,7 +175,7 @@ class ARAXQueryGraphInterpreter:
         best_score = -1
         for tree_pointer in tree_pointers:
             if 'name' in tree_pointer['pointer']:
-                if debug: print(f"==> Found template is {tree_pointer['pointer']['name']} with score {tree_pointer['score']}")
+                if debug: eprint(f"==> Found template is {tree_pointer['pointer']['name']} with score {tree_pointer['score']}")
                 if tree_pointer['score'] > best_score:
                     query_graph_template_name = tree_pointer['pointer']['name']
                     best_score = tree_pointer['score']
@@ -685,6 +708,7 @@ def QGI_test6():
     with open('QGI_test6.json', 'w', encoding='utf-8') as f:
         json.dump(ast.literal_eval(repr(envelope)), f, ensure_ascii=False, indent=4)
 
+
 def QGI_test7():
     # This is to test a three hop query with one end pinned (should result in FET ARAXi commands), and actually run the query
     input_query_graph = {
@@ -776,6 +800,81 @@ def QGI_test7():
     # save message to file (since I can't get the UI working locally for some reason)
     with open('QGI_test7.json', 'w', encoding='utf-8') as f:
         json.dump(ast.literal_eval(repr(envelope)), f, ensure_ascii=False, indent=4)
+
+
+def QGI_test8():
+    # Test of the Pathfinder query recognition
+    input_query_graph = {
+        "message": {
+            "query_graph": {
+            "nodes": {
+                "n0": {
+                "ids": [
+                    "CHEBI:49662"
+                ]
+                },
+                "un": {
+                "categories": [
+                    "biolink:NamedThing"
+                ]
+                },
+                "n2": {
+                "ids": [
+                    "NCBIGene:1719"
+                ]
+                }
+            },
+            "edges": {
+                "e0": {
+                "subject": "n0",
+                "object": "un",
+                "predicates": [
+                    "biolink:related_to"
+                ],
+                "knowledge_type": "inferred"
+                },
+                "e1": {
+                "subject": "un",
+                "object": "n2",
+                "predicates": [
+                    "biolink:related_to"
+                ],
+                "knowledge_type": "inferred"
+                },
+                "e2": {
+                "subject": "n0",
+                "object": "n2",
+                "predicates": [
+                    "biolink:related_to"
+                ],
+                "knowledge_type": "inferred"
+                }
+            }
+            }
+        }
+    }
+
+    #### Create a template Message
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    message = ARAXMessenger().from_dict(input_query_graph['message'])
+    response.envelope.message.query_graph = message.query_graph
+
+    interpreter = ARAXQueryGraphInterpreter()
+    interpreter.translate_to_araxi(response)
+    if response.status != 'OK':
+        print(response.show(level=ARAXResponse.DEBUG))
+        return response
+
+    araxi_commands = response.data['araxi_commands']
+    eprint("Series of ARAXi commands:")
+    for cmd in araxi_commands:
+        print(f"  - {cmd}")
+
+    return
+
+
 ##########################################################################################
 def main():
 
@@ -798,6 +897,8 @@ def main():
         QGI_test6()
     elif params.test_number[0] == '7':
         QGI_test7()
+    elif params.test_number[0] == '8':
+        QGI_test8()
     else:
         QGI_test1()
 

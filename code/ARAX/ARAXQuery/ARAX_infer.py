@@ -27,6 +27,9 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.node import Node
+from openapi_server.models.qualifier import Qualifier
+from openapi_server.models.qualifier_constraint import QualifierConstraint as QConstraint
+
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
@@ -36,6 +39,7 @@ from infer_utilities import InferUtilities
 # from creativeDTD import creativeDTD
 from creativeCRG import creativeCRG
 from ExplianableDTD_db import ExplainableDTD
+
 # from ExplianableCRG import ExplianableCRG
 
 # sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
@@ -64,18 +68,37 @@ class ARAXInfer:
         self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
 
         #parameter descriptions
-        self.xdtd_node_curie_info = {
+        self.xdtd_drug_curie_info = {
+            "is_required": True,
+            "examples": ["CHEMBL.COMPOUND:CHEMBL55643","CHEBI:8378","RXNORM:1011"],
+            "type": "string",
+            "description": "The CURIE for a drug node used to predict what potential diseases it may treat."
+        }
+        self.xdtd_disease_curie_info = {
             "is_required": True,
             "examples": ["DOID:9352","MONDO:0005306","HP:0001945"],
             "type": "string",
-            "description": "The curie for the node you wish to predict drugs which will treat."
+            "description": "The CURIE for a disease node used to predict what potential drugs can potentially treat it."
+        }
+        self.xdtd_qedge_id_info = {
+            "is_required": False,
+            "examples": ["qedge_id_1","qedge_id_2","qedge_id_3"],
+            "type": "string",
+            "description": "The id of the qedge you wish to perform the drug-disease treatment inference expansion."
         }
         self.xdtd_n_drugs_info = {
             "is_required": False,
             "examples": [5,15,25],
             "default": 50,
             "type": "integer",
-            "description": "The number of drug nodes to return. If not provided defaults to 50. Considering the response speed, the maximum number of drugs returned is only allowed to be 50."
+            "description": "Given an interested disease CURIE, the number of drug nodes to return. If not provided defaults to 50. Considering the response speed, the maximum number of drugs returned is only allowed to be 50."
+        }
+        self.xdtd_n_diseases_info = {
+            "is_required": False,
+            "examples": [5,15,25],
+            "default": 50,
+            "type": "integer",
+            "description": "Given an interested drug CURIE, The number of disease nodes to return. If not provided defaults to 50. Considering the response speed, the maximum number of diseases returned is only allowed to be 50."
         }
         self.xdtd_n_paths_info = {
             "is_required": False,
@@ -107,6 +130,12 @@ class ARAXInfer:
             "examples": ["n01","n02"],
             "type": "string",
             "description": "The query graph node ID of a gene. **Note that although this parameter is said to be required, this parameter is valid only when a query graph is used. Additionally, exactly one of 'subject_qnode_id' or 'object_qnode_id' is required when a query graph is used.**"
+        }
+        self.xcrg_qedge_id_info = {
+            "is_required": False,
+            "examples": ["qedge_id_1","qedge_id_2","qedge_id_3"],
+            "type": "string",
+            "description": "The id of the qedge you wish to perform the chemical-gene regulation inference expansion."
         }
         self.xcrg_regulation_type = {
             "is_required": False,
@@ -149,12 +178,6 @@ class ARAXInfer:
             "default": 10,
             "type": "integer",
             "description": "The number of paths connecting to each returned node. If not provided defaults to 10."
-        } 
-        self.qedge_id_info = {
-            "is_required": False,
-            "examples": ["qedge_id_1","qedge_id_2","qedge_id_3"],
-            "type": "string",
-            "description": "The id of the qedge you wish to perform the drug treatment/chemical regulation inference expansion."
         }
 
         #command descriptions
@@ -162,19 +185,24 @@ class ARAXInfer:
             "drug_treatment_graph_expansion": {
                 "dsl_command": "infer(action=drug_treatment_graph_expansion)",
                 "description": """
-`drug_treatment_graph_expansion` predicts drug treatments for a given disease curie. It returns the top n results along with predicted graph explanations.  
+`drug_treatment_graph_expansion` predicts drug-disease treatment relationship including:
+    1. Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
+    2. Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
+    3. Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
+    
+It returns the top n results along with predicted graph explanations. You have the option to limit the maximum number of disease (via `n_diseases=<n>`)/drug (via `n_drugs=<n>`) nodes to return.
             
-You have the option to limit the maximum number of drug nodes to return (via `n_drugs=<n>`)
-            
-This cannot be applied to non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
+This cannot be applied to non drug nodes (nodes that do not belong to either of 'biolink:biolink:Drug', 'biolink:ChemicalEntity', or 'biolink:SmallMolecule'), and non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
                     """,
                 'brief_description': """
 drug_treatment_graph_expansion predicts drug treatments for a given node curie and provides along with an explination graph for each prediction.
                     """,
                 "parameters": {
-                    "node_curie": self.xdtd_node_curie_info,
-                    "qedge_id": self.qedge_id_info,
+                    "drug_curie": self.xdtd_drug_curie_info,
+                    "disease_curie": self.xdtd_disease_curie_info,
+                    "qedge_id": self.xdtd_qedge_id_info,
                     "n_drugs": self.xdtd_n_drugs_info,
+                    "n_diseases": self.xdtd_n_diseases_info,
                     "n_paths": self.xdtd_n_paths_info
                 }
             },
@@ -197,7 +225,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                     "object_curie": self.xcrg_object_curie_info,
                     "subject_qnode_id": self.xcrg_subject_qnode_id,
                     "object_qnode_id": self.xcrg_object_qnode_id,
-                    "qedge_id": self.qedge_id_info,
+                    "qedge_id": self.xcrg_qedge_id_info,
                     "threshold": self.xcrg_threshold,
                     "kp": self.xcrg_kp,
                     "path_len": self.xcrg_path_len,
@@ -265,8 +293,6 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                     error_code="UnknownParameter")
                 return -1
             elif type(item) == list or type(item) == set:
-                    if key == 'drug_curie':
-                        continue 
                     for item_val in item:
                         if item_val not in allowable_parameters[key]:
                             self.response.error(
@@ -279,9 +305,9 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                     continue
                 elif any([x is None for x in allowable_parameters[key]]):
                     continue
-                elif key == "node_curie":  #FIXME: For now, if it's a node curie, just accept it as it is
+                elif key == "drug_curie":  #FIXME: For now, if it's a node curie, just accept it as it is
                     continue
-                elif key == "drug_curie":
+                elif key == "disease_curie":  #FIXME: same as above
                     continue
                 elif key == "subject_curie": #FIXME: same as above
                     continue
@@ -349,10 +375,11 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
     def __drug_treatment_graph_expansion(self, describe=False):
         """
         Run "drug_treatment_graph_expansion" action.
-        Allowable parameters: {'node_curie': str,
-                                'drug_curie': list 
+        Allowable parameters: {'drug_curie': str,
+                                'disease_curie': str,
                                 'qedge_id': str,
-                                'n_drugs': int
+                                'n_drugs': int,
+                                'n_diseases': int,
                                 'n_paths': int}
         :return:
         """
@@ -363,18 +390,20 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
-                                    'node_curie': {str()},
                                     'drug_curie': {str()},
+                                    'disease_curie': {str()},
                                     'qedge_id': set([key for key in self.message.query_graph.edges.keys()]),
                                     'n_drugs': {int()},
+                                    'n_diseases': {int()},
                                     'n_paths': {int()}
                                 }
         else:
             allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
-                                    'node_curie': {'The node to predict drug treatments for.'},
-                                    'drug_curie': {'This node contains a list of drug curies for which xDTD will try to find the path for between node_curie and itself'},
+                                    'drug_curie': {'The drug CURIE used to predict what potential diseases it may treat.'},
+                                    'disease_curie': {'The disease CURIE used to predict what potential drugs can potentially treat it.'},
                                     'qedge_id': {'The edge to place the predicted mechanism of action on. If none is provided, the query graph must be empty and a new one will be inserted.'},
                                     'n_drugs': {'The number of drugs to return. Defaults to 50. Maxiumum is only allowable to be 50.'},
+                                    'n_diseases': {'The number of diseases to return. Defaults to 50. Maxiumum is only allowable to be 50.'},
                                     'n_paths': {'The number of paths connecting each drug to return. Defaults to 25.  Maxiumum is only allowable to be 25.'}
                                 }
 
@@ -382,125 +411,191 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         if describe:
             allowable_parameters['brief_description'] = self.command_definitions['connect_nodes']
             return allowable_parameters
-
         
         # Make sure only allowable parameters and values have been passed
         resp = self.check_params(allowable_parameters)
-        # Make sure that if ARAXi node_curie is provided, that node is actually in the query graph
-        if 'node_curie' in parameters and parameters['node_curie'] and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and message.query_graph.nodes:
-            ids_in_qg = set()
-            for node in message.query_graph.nodes.values():
-                if node.ids:
-                    ids_in_qg.update(node.ids)
-            if parameters['node_curie'] not in ids_in_qg:
-                self.response.error(f"Supplied node_curie {parameters['node_curie']} is not in the query graph. I was given the curies: {ids_in_qg}", error_code="UnknownNode")
-                return self.response
-        # return if bad parameters have been passed
-        if self.response.status != 'OK' or resp == -1:
-            return self.response
-
+        
         # Set defaults and check parameters:
-        if 'n_drugs' in self.parameters:
+        if 'n_drugs' in parameters and parameters['n_drugs']:
             try:
-                self.parameters['n_drugs'] = int(self.parameters['n_drugs'])
+                parameters['n_drugs'] = int(parameters['n_drugs'])
             except ValueError:
-                self.response.error(f"The `n_drugs` value must be a positive integer. The provided value was {self.parameters['n_drugs']}.", error_code="ValueError")
-            if self.parameters['n_drugs'] <= 0:
-                self.response.error(f"The `n_drugs` value should be larger than 0. The provided value was {self.parameters['n_drugs']}.", error_code="ValueError")
-            if self.parameters['n_drugs'] > 50:
-                self.response.warning(f"The `n_drugs` value was set to {self.parameters['n_drugs']}, but the maximum allowable value is 50. Setting `n_drugs` to 50.")
-                self.parameters['n_drugs'] = 50
+                self.response.error(f"The `n_drugs` value must be a positive integer. The provided value was {parameters['n_drugs']}.", error_code="ValueError")
+            if parameters['n_drugs'] <= 0:
+                self.response.error(f"The `n_drugs` value should be larger than 0. The provided value was {parameters['n_drugs']}.", error_code="ValueError")
+            if parameters['n_drugs'] > 50:
+                self.response.warning(f"The `n_drugs` value was set to {parameters['n_drugs']}, but the maximum allowable value is 50. Setting `n_drugs` to 50.")
+                parameters['n_drugs'] = 50
         else:
-            self.parameters['n_drugs'] = 50
+            parameters['n_drugs'] = 50
 
-        if 'n_paths' in self.parameters:
+        if 'n_diseases' in parameters and parameters['n_diseases']:
             try:
-                self.parameters['n_paths'] = int(self.parameters['n_paths'])
+                parameters['n_diseases'] = int(parameters['n_diseases'])
             except ValueError:
-                self.response.error(f"The `n_paths` value must be a positive integer. The provided value was {self.parameters['n_paths']}.", error_code="ValueError")
-            if self.parameters['n_paths'] <= 0:
-                self.response.error(f"The `n_paths` value should be larger than 0. The provided value was {self.parameters['n_paths']}.", error_code="ValueError")
-            if self.parameters['n_paths'] > 25:
-                self.response.warning(f"The `n_paths` value was set to {self.parameters['n_paths']}, but the maximum allowable value is 25. Setting `n_paths` to 25.")
-                self.parameters['n_paths'] = 25
+                self.response.error(f"The `n_diseases` value must be a positive integer. The provided value was {parameters['n_diseases']}.", error_code="ValueError")
+            if parameters['n_diseases'] <= 0:
+                self.response.error(f"The `n_diseases` value should be larger than 0. The provided value was {parameters['n_diseases']}.", error_code="ValueError")
+            if parameters['n_diseases'] > 50:
+                self.response.warning(f"The `n_diseases` value was set to {parameters['n_diseases']}, but the maximum allowable value is 50. Setting `n_diseases` to 50.")
+                parameters['n_diseases'] = 50
         else:
-            self.parameters['n_paths'] = 25
+            parameters['n_diseases'] = 50
+
+        if 'n_paths' in parameters and parameters['n_paths']:
+            try:
+                parameters['n_paths'] = int(parameters['n_paths'])
+            except ValueError:
+                self.response.error(f"The `n_paths` value must be a positive integer. The provided value was {parameters['n_paths']}.", error_code="ValueError")
+            if parameters['n_paths'] <= 0:
+                self.response.error(f"The `n_paths` value should be larger than 0. The provided value was {parameters['n_paths']}.", error_code="ValueError")
+            if parameters['n_paths'] > 25:
+                self.response.warning(f"The `n_paths` value was set to {parameters['n_paths']}, but the maximum allowable value is 25. Setting `n_paths` to 25.")
+                parameters['n_paths'] = 25
+        else:
+            parameters['n_paths'] = 25
 
         if self.response.status != 'OK':
             return self.response
 
-        if 'drug_curie' not in self.parameters:
-            self.parameters['drug_curie'] = None
-        # normalized_curie = self.synonymizer.get_canonical_curies(self.parameters['node_curie'])[self.parameters['node_curie']]
-        # if normalized_curie:
-        #     preferred_curie = normalized_curie['preferred_curie']
-        #     self.response.debug(f"Get a preferred sysnonym {preferred_curie} from Node Synonymizer for {self.parameters['node_curie']}")
-        # else:
-        #     self.response.warning(f"Could not get a preferred sysnonym for disease {self.parameters['node_curie']}")
-        #     return self.response
-        
-        #FIXME: Considering kg2 version is changed frequently but xdtd training is time consuming, 
-        # to make it more robust to the different version of kg2, we temporarily utlize all equivalent curies.
-        all_equivalent_curies = self.synonymizer.get_equivalent_nodes(self.parameters['node_curie'])[self.parameters['node_curie']]
-        if all_equivalent_curies:
-            self.response.debug(f"Get equivalent curies {all_equivalent_curies} from Node Synonymizer for {self.parameters['node_curie']}")
-        else:
-            self.response.warning(f"Could not get equivalent curies for disease {self.parameters['node_curie']}")
-            return self.response
-        if self.parameters['drug_curie']:
-            
-            drug_equivalent_curies_dict = self.synonymizer.get_equivalent_nodes(self.parameters['drug_curie'])
-            drug_equivalent_curies = []
-            for key,value in drug_equivalent_curies_dict.items():
-                if not value:
-                    continue
-                drug_equivalent_curies += list(value)
+        # Make sure that if at least either drug_curie or disease_curie is provided. If provided, check if it/they also exist(s) in the query graph        
+        if hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and message.query_graph.nodes:
+            qnodes = message.query_graph.nodes
+            all_qnode_curie_ids = []
+            for qnode_id in qnodes:
+                if qnodes[qnode_id].ids:
+                    all_qnode_curie_ids += [curie_id for curie_id in qnodes[qnode_id].ids]
 
-            [self.parameters['drug_curie']]
-            if drug_equivalent_curies:
-                    self.response.debug(f"Get equivalent curies for Drug Curie {drug_equivalent_curies} from Node Synonymizer for {self.parameters['drug_curie']}")
-            else:
-                self.response.warning(f"Could not get equivalent curies for Drug {self.parameters['drug_curie']}")
-                return self.response
-        for preferred_curie in all_equivalent_curies:
-            try:
-                top_drugs = XDTD.get_top_drugs_for_disease(disease_ids=preferred_curie)
-                top_paths = XDTD.get_top_paths_for_disease(disease_ids=preferred_curie)
-            except:
-                self.response.warning(f"Could not get top drugs and paths for disease {preferred_curie}")
-                continue
+            if 'drug_curie' in parameters or 'disease_curie' in parameters:
+                if 'drug_curie' in parameters and parameters['drug_curie']:
+                    if parameters['drug_curie'] in all_qnode_curie_ids:
+                        drug_curie = parameters['drug_curie']
+                        normalized_drug_curie = self.synonymizer.get_canonical_curies(drug_curie)[drug_curie]
+                        if normalized_drug_curie:
+                            preferred_drug_curie = normalized_drug_curie['preferred_curie']
+                        else:
+                            preferred_drug_curie = drug_curie
+                    else:
+                        self.response.error(f"Could not find drug_curie '{parameters['drug_curie']}' in the query graph")
+                        return self.response
+                else:
+                    preferred_drug_curie = None
 
-            if len(top_drugs) == 0:
-                self.response.warning(f"Could not get predicted drugs for disease {preferred_curie}. Likely the model was not trained with this disease. Or No predicted drugs for this disease with score >= 0.5.")
-                continue
-            if len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for disease {preferred_curie}. Likely the model considers there is no reasonable path for this disease.")
+                if 'disease_curie' in parameters and parameters['disease_curie']:
+                    if parameters['disease_curie'] in all_qnode_curie_ids:
+                        disease_curie = parameters['disease_curie']
+                        normalized_disease_curie = self.synonymizer.get_canonical_curies(disease_curie)[disease_curie]
+                        if normalized_disease_curie:
+                            preferred_disease_curie = normalized_disease_curie['preferred_curie']
+                        else:
+                            preferred_disease_curie = disease_curie
+                    else:
+                        self.response.error(f"Could not find disease_curie '{parameters['disease_curie']}' in the query graph")
+                        return self.response
+                else:
+                    preferred_disease_curie = None
 
-            # FW: temp fix to use the pickle fil for dev work rather than recomputing
-            # Comment out the following 3 lines and uncomment the above for prod deploy
-            # top_drugs = pd.read_csv(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"top_n_drugs.csv"]))
-            # with open(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data',"result_from_self_predict_top_M_paths.pkl"]),"rb") as fid:
-            #     top_paths = pickle.load(fid)
-            
-            ## Filter useless nodes
-            filtered_list = ['UMLS:C1611640']
-            top_drugs = top_drugs.loc[~top_drugs['drug_id'].isin(filtered_list),:].reset_index(drop=True)
-            
-            ## Limit the number of drugs and paths to the top n
-            top_drugs = top_drugs.iloc[:self.parameters['n_drugs'],:].reset_index(drop=True)
-            top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:self.parameters['n_paths']] for row in top_drugs.to_numpy() if (row[0], row[2]) in top_paths}
-            if self.parameters['drug_curie']:
-                drugs_set = set(top_drugs['drug_id'])
-                intersecting_drug_curies = list(drugs_set.intersection(drug_equivalent_curies))
-                if not intersecting_drug_curies:
-                    continue
-                top_drugs = top_drugs[top_drugs['drug_id'].isin(intersecting_drug_curies)].reset_index(drop=True)
+                if not preferred_drug_curie and not preferred_disease_curie:
+                    self.response.error(f"Both parameters 'drug_curie' and 'disease_curie' are not provided. Please provide the curie for either one of them")
+                    return self.response
+                qedges = message.query_graph.edges
                 
-                top_paths = {pair:path for pair,path in top_paths.items() if pair[0] in intersecting_drug_curies}
 
-            # # TRAPI-ifies the results of the model
-            qedge_id = self.parameters.get('qedge_id')
-            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_drugs, top_paths, qedge_id, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
+            else:
+                self.response.error(f"The 'query_graph' is detected. One of 'drug_curie' or 'disease_curie' should be specified.")
+                
+            for qedge in qedges:
+                edge = message.query_graph.edges[qedge]
+                edge.knowledge_type = "inferred"
+                edge.predicates = ["biolink:treats"]
+
+        else:
+            if 'drug_curie' in parameters or 'disease_curie' in parameters:
+                if 'drug_curie' in parameters:
+                    parameters['drug_curie'] = eval(parameters['drug_curie']) if parameters['drug_curie'] == 'None' else parameters['drug_curie']
+                    if parameters['drug_curie']:
+                        ## if 'drug_curie' passes, return its normalized curie
+                        normalized_drug_curie = self.synonymizer.get_canonical_curies(parameters['drug_curie'])[parameters['drug_curie']]
+                        if normalized_drug_curie:
+                            preferred_drug_curie = normalized_drug_curie['preferred_curie']
+                            self.response.debug(f"Get a preferred sysnonym {preferred_drug_curie} from Node Synonymizer for drug curie {parameters['drug_curie']}")
+                        else:
+                            preferred_drug_curie = parameters['drug_curie']
+                            self.response.warning(f"Could not get a preferred sysnonym for the queried drug {parameters['drug_curie']} and thus keep it as it")
+                    else:
+                        preferred_drug_curie = None
+                else:
+                    preferred_drug_curie = None
+
+                if 'disease_curie' in parameters:
+                    parameters['disease_curie'] = eval(parameters['disease_curie']) if parameters['disease_curie'] == 'None' else parameters['disease_curie']
+                    if parameters['disease_curie']:
+                        ## if 'disease_curie' passes, return its normalized curie
+                        normalized_disease_curie = self.synonymizer.get_canonical_curies(parameters['disease_curie'])[parameters['disease_curie']]
+                        if normalized_disease_curie:
+                            preferred_disease_curie = normalized_disease_curie['preferred_curie']
+                            self.response.debug(f"Get a preferred sysnonym {preferred_disease_curie} from Node Synonymizer for disease curie {parameters['disease_curie']}")
+                        else:
+                            preferred_disease_curie = parameters['disease_curie']
+                            self.response.warning(f"Could not get a preferred sysnonym for the queried disease {parameters['disease_curie']}")
+                    else:
+                        preferred_disease_curie = None
+                else:
+                    preferred_disease_curie = None
+
+                if not preferred_drug_curie and not preferred_disease_curie:
+                    self.response.error(f"Both parameters 'drug_curie' and 'disease_curie' are not provided. Please provide the curie for either one of them")
+                    return self.response
+            else:
+                self.response.error(f"No 'query_graph' is found and thus either 'drug_curie' or 'disease_curie' should be specified.")
+
+        # return if bad parameters have been passed
+        if self.response.status != 'OK' or resp == -1:
+            return self.response
+
+        # disable 'given a drug, predict what potential diseases it may treat'
+        if preferred_drug_curie and not preferred_disease_curie:
+            self.response.warning(f"Given a drug, predict what potential diseases it may treat is currently disabled.")
+            return self.response
+
+        try:
+            top_scores = XDTD.get_score_table(drug_curie_ids=preferred_drug_curie, disease_curie_ids=preferred_disease_curie)
+            top_paths = XDTD.get_top_path(drug_curie_ids=preferred_drug_curie, disease_curie_ids=preferred_disease_curie)
+        except Exception as e:
+            self.response.warning(f"Could not get top drugs and paths for drug {preferred_drug_curie} and disease {preferred_disease_curie}")
+            return self.response
+        
+        if preferred_drug_curie and preferred_disease_curie:
+            if len(top_scores) == 0:
+                self.response.warning(f"Could not get predicted scores for drug {preferred_drug_curie} and disease {preferred_disease_curie}. Likely the model was not trained with this drug-disease pair. Or No predicted score >=0.3 for this drug-disease pair.")
+                return self.response
+            if len(top_paths) == 0:
+                self.response.warning(f"Could not get any predicted paths for drug {preferred_drug_curie} and disease {preferred_disease_curie}. Likely the model considers there is no reasonable path for this drug-disease pair.")
+        elif preferred_drug_curie:
+            if len(top_scores) == 0:
+                self.response.warning(f"Could not get top diseases for drug {preferred_drug_curie}. Likely the model was not trained with this drug. Or No predicted diseses for this drug with score >= 0.3.")
+                return self.response
+            if len(top_paths) == 0:
+                self.response.warning(f"Could not get any predicted paths for drug {preferred_drug_curie}. Likely the model considers there is no reasonable path for this drug.")
+            
+            # Limit the number of drugs to the top n
+            top_scores = top_scores.iloc[:parameters['n_drugs'],:].reset_index(drop=True)
+        elif preferred_disease_curie:
+            if len(top_scores) == 0:
+                self.response.warning(f"Could not get top drugs for disease {preferred_disease_curie}. Likely the model was not trained with this disease. Or No predicted drugs for this disease with score >= 0.3.")
+                return self.response
+            if len(top_paths) == 0:
+                self.response.warning(f"Could not get any predicted paths for disease {preferred_disease_curie}. Likely the model considers there is no reasonable path for this disease.")
+        
+            # Limit the number of diseases to the top n
+            top_scores = top_scores.iloc[:parameters['n_diseases'],:].reset_index(drop=True)
+        
+        # Limit the number of paths to the top n
+        top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:parameters['n_paths']] for row in top_scores.to_numpy() if (row[0], row[2]) in top_paths}
+    
+        iu = InferUtilities()
+        qedge_id = parameters.get('qedge_id')
+        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_scores, top_paths, qedge_id, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
 
         return self.response
 
@@ -615,7 +710,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 f"The `n_result_curies` value must be a positive integer. The provided value was {self.parameters['n_result_curies']}.",
                 error_code="ValueError")
         else:
-            self.parameters['n_result_curies'] = 10
+            self.parameters['n_result_curies'] = 30
 
         if 'n_paths' in self.parameters:
             if isinstance(self.parameters['n_paths'], str):
@@ -678,9 +773,26 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 if not preferred_subject_curie and not preferred_object_curie:
                     self.response.error(f"Both parameters 'subject_curie' and 'object_curie' are not provided. Please provide the curie for either one of them")
                     return self.response
+                qedges = message.query_graph.edges
+                
 
             else:
                 self.response.error(f"The 'query_graph' is detected. One of 'subject_qnode_id' or 'object_qnode_id' should be specified.")
+            
+            if self.parameters['regulation_type'] == 'increase':
+                edge_qualifier_direction = 'increased'
+            else:
+                edge_qualifier_direction = 'decreased'
+            edge_qualifier_list = [
+                Qualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
+                Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)]
+                
+            for qedge in qedges:
+                edge = message.query_graph.edges[qedge]
+                edge.knowledge_type = "inferred"
+                edge.predicates = ["biolink:affects"]
+                edge.qualifier_constraints = [QConstraint(qualifier_set=edge_qualifier_list)]
+                   
 
         else:
             if 'subject_curie' in parameters or 'object_curie' in parameters:
@@ -736,15 +848,17 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             try:
                 top_predictions = XCRG.predict_top_N_genes(query_chemical=preferred_subject_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
                 top_paths = XCRG.predict_top_M_paths(query_chemical=preferred_subject_curie, query_gene=None, model_type=self.parameters['regulation_type'], N=self.parameters['n_result_curies'], M=self.parameters['n_paths'], threshold=self.parameters['threshold'], kp=self.parameters['kp'], path_len=self.parameters['path_len'], interm_ids=None, interm_names= None, interm_categories=None)
-            except:
-                self.response.error(f"Something error occurred to get top genes or paths for chemical {preferred_subject_curie}", error_code="ValueError")
+            except Exception as e:
+                error_type = type(e).__name__  # Get the type of the exception
+                error_message = str(e)  # Get the exception message
+                self.response.error(f"An error of type {error_type} occurred while trying to get top genes or paths for chemical {preferred_subject_curie}. Error message: {error_message}", error_code="ValueError")
                 return self.response
             if top_predictions is None or len(top_predictions) == 0:
                 self.response.warning(f"Could not get predicted genes for chemical {preferred_subject_curie}. Likely the model was not trained with this chemical.")
                 return self.response
             if top_paths is None or len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for chemical {preferred_subject_curie}. Likely the model considers there is no reasonable path for this chemical.")
-
+                self.response.warning(f"Could not get any predicted paths for chemical {preferred_subject_curie}. Either Plover is not reachable or no paths found")
+                return self.response
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
             self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, normalized_subject_curie, None, top_predictions, top_paths, qedge_id, self.parameters['regulation_type'], self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
@@ -752,17 +866,20 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             try:
                 top_predictions = XCRG.predict_top_N_chemicals(query_gene=preferred_object_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
                 top_paths = XCRG.predict_top_M_paths(query_chemical=None, query_gene=preferred_object_curie, model_type=self.parameters['regulation_type'], N=self.parameters['n_result_curies'], M=self.parameters['n_paths'], threshold=self.parameters['threshold'], kp=self.parameters['kp'], path_len=self.parameters['path_len'], interm_ids=None, interm_names= None, interm_categories=None)
-            except:
-                self.response.error(f"Something error occurred to get top chemicals or paths for gene {preferred_object_curie}", error_code="ValueError")
+            except Exception as e:
+                error_type = type(e).__name__  # Get the type of the exception
+                error_message = str(e)  # Get the exception message
+                self.response.error(f"An error of type {error_type} occurred while trying to get top chemicals or paths for gene {preferred_object_curie}. Error message: {error_message}", error_code="ValueError")
                 return self.response
             if top_predictions is None or len(top_predictions) == 0:
                 self.response.warning(f"Could not get predicted chemicals for gene {preferred_object_curie}. Likely the model was not trained with this gene.")
                 return self.response
             if top_paths is None or len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for gene {preferred_object_curie}. Likely the model considers there is no reasonable path for this gene.")
-
+                self.response.warning(f"Could not get any predicted paths for gene {preferred_object_curie}. Either Plover is not reachable or no paths found")
+                return self.response
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
+            
             self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, None, normalized_object_curie, top_predictions, top_paths, qedge_id,  self.parameters['regulation_type'], self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
 
         return self.response

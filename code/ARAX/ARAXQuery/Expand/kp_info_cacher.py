@@ -102,19 +102,8 @@ class KPInfoCacher:
 
             # Handle the special case of RTX-KG2
             if kp_smart_api_registration["infores_name"] == "infores:rtx-kg2":
-                # Choose which KG2 URL to use based on whether this is an ITRB instance and any potential overrides
-                all_kg2_urls = {server["url"] for server in kp_smart_api_registration["servers"]}
-                if self.rtx_config.rtx_kg2_url:
-                    # This means there's an override in place; we'll use whatever URL was specified
-                    raw_url = self.rtx_config.rtx_kg2_url
-                elif self.rtx_config.is_itrb_instance:
-                    itrb_kg2_urls = [url for url in all_kg2_urls if "transltr.io" in url]
-                    if itrb_kg2_urls:
-                        raw_url = itrb_kg2_urls[0]  # Should really only be one KG2 per TRAPI version / maturity level
-                else:
-                    non_itrb_kg2_urls = [url for url in all_kg2_urls if "transltr.io" not in url]
-                    if non_itrb_kg2_urls:
-                        raw_url = non_itrb_kg2_urls[0]
+                # Captures an override if one is in place; otherwise server is read from our SmartAPI yaml/JSON
+                raw_url = self.rtx_config.plover_url
 
             # Remove any trailing slashes
             return raw_url.strip("/") if isinstance(raw_url, str) else raw_url

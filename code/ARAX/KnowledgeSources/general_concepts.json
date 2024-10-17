@@ -344,7 +344,9 @@
         "umls:c0040616",
         "umls:c0302837",
         "chebi:50847",
-        "umls:c0003209"
+        "umls:c0003209",
+        "umls:c4045974",
+        "umls:c0005522"
     ],
     "synonyms": [
         "used in nicotine dependence",
@@ -456,6 +458,7 @@
         "antidiarrheals in atc",
         "poisoning",
         "proteins",
+        "plasma proteins",
         "mineral supplements in atc",
         "virology",
         "antifungals for topical use in atc",
@@ -681,7 +684,6 @@
         "secondary",
         "uterotonics",
         "radiotherapy",
-        "pharmacolog.*",
         "medicament",
         "Anesthetics",
         "vaccines",
@@ -701,7 +703,12 @@
         "Antidepressive Agents",
         "Anti-Anxiety Agents",
         "immunological adjuvant",
-        "Anti-Inflammatory Agents"
-
+        "Anti-Inflammatory Agents",
+        "Introns",
+        "antioxidant",
+        "Oils"
+    ],
+    "patterns": [
+        "pharmacolog.*"
     ]
 }

@@ -23,7 +23,7 @@ from opentelemetry import trace
 from opentelemetry.trace.span import Span
 from opentelemetry.sdk.resources import  Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 
@@ -48,17 +48,18 @@ def instrument(app, host, port):
         })
     ))
     trace.get_tracer_provider().add_span_processor(
-        BatchSpanProcessor(
+        SimpleSpanProcessor(
             JaegerExporter(
                         agent_host_name=host,
                         agent_port=port
         )
         )
     )
-    trace.get_tracer_provider().get_tracer(__name__)
-    FlaskInstrumentor().instrument_app(app=app.app)
-    RequestsInstrumentor().instrument()
-    AioHttpClientInstrumentor().instrument()
+    # trace.get_tracer_provider().get_tracer(__name__)
+    tracer_provider = trace.get_tracer(__name__)
+    FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=trace)
+    RequestsInstrumentor().instrument(tracer_provider=trace)
+    AioHttpClientInstrumentor().instrument(tracer_provider=trace)
 
 def main():
 
