@@ -45,7 +45,7 @@ servers:
   url: https://kg2.transltr.io/api/rtxkg2/v1.4
   x-maturity: production
 - description: RTX-KG2 TRAPI 1.5 endpoint - testing
-  url: https://kg2.test.transltr.io/api/rtxkg2/v1.4
+  url: https://kg2cploverdb.test.transltr.io
   x-maturity: testing
 - description: RTX-KG2 TRAPI 1.5 endpoint - staging
   url: https://kg2cploverdb.ci.transltr.io
