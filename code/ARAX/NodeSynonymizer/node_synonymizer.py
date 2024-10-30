@@ -297,6 +297,15 @@ class NodeSynonymizer:
             entities = entities_dict.get("terms")
             output_format = entities_dict.get("format")
 
+            # Allow the caller to encode the max_synonyms in the input dict (used by web UI)
+            max_synonyms_raw = entities_dict.get("max_synonyms")
+            try:
+                max_synonyms_int = int(max_synonyms_raw)
+                if max_synonyms_int > 0:
+                    max_synonyms = max_synonyms_int
+            except:
+                pass
+
         # Convert any input curies to Set format
         entities_set = self._convert_to_set_format(entities)
 
