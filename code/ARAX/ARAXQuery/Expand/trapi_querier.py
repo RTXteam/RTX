@@ -381,20 +381,13 @@ class TRAPIQuerier:
                 continue
             
             try:
-                preferred_subject, preferred_object = eu.get_canonical_curies_list([returned_edge.subject, returned_edge.object], self.log)
-                if not preferred_subject:
-                    self.log.debug(f"{self.kp_infores_curie}: Edge has no preferred subject, skipping. "
-                                    f"subject: '{returned_edge.subject}'")
-                else: 
-                    returned_edge.subject = preferred_subject
-            
-                if not preferred_object:
-                    self.log.debug(f"{self.kp_infores_curie}: Edge has no preferred object, skipping. "
-                                    f"object: '{returned_edge.object}'")
-                else:
-                    returned_edge.object = preferred_object
+                preferred_curies = eu.get_canonical_curies_dict([returned_edge.subject, returned_edge.object], self.log)
+                if preferred_curies[returned_edge.subject]:
+                    returned_edge.subject = preferred_curies[returned_edge.subject]["preferred_curie"]
+                if preferred_curies[returned_edge.object]:
+                    returned_edge.object = preferred_curies[returned_edge.object]["preferred_curie"]
             except:
-                self.log.debug(f"{self.kp_infores_curie}: Could not find a preferred curie for {returned_edge.subject} or {returned_edge.object}")
+                self.log.debug(f"{self.kp_infores_curie}: Could not find a preferred curie for edges {returned_edge.subject} or {returned_edge.object}")
 
 
             arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
@@ -528,12 +521,14 @@ class TRAPIQuerier:
                             parent_node.query_ids = []   # Does not need a mapping since it appears in the QG
                             answer_kg.add_node(edge.object, parent_node, qnode_key)
                         try:
-                            preferred_curies = eu.get_canonical_curies_list([edge.subject, edge.object], self.log)
-                            if preferred_curies:
+                            preferred_curies = eu.get_canonical_curies_dict([edge.subject, edge.object], self.log)
+                            if preferred_curies[edge.subject]:
                                 
-                                edge.subject, edge.object = preferred_curies
+                                edge.subject = preferred_curies[edge.subject]["preferred_curie"]
+                            if preferred_curies[edge.object]:
+                                edge.object = preferred_curies[edge.object]["preferred_curie"]
                         except:
-                            self.log.debug(f"{self.kp_infores_curie}: Could not find a preferred curie for {edge.subject} or {edge.object}")
+                            self.log.debug(f"{self.kp_infores_curie}: Could not find a preferred curie for sub-edges {edge.subject} or {edge.object}")
 
                         edge_key = self._get_arax_edge_key(edge)
                         qedge_key = f"subclass:{qnode_key}--{qnode_key}"  # Technically someone could have used this key in their query, but seems highly unlikely..
