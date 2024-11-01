@@ -525,11 +525,11 @@ class TRAPIQuerier:
                                 parent_node = Node()
                             parent_node.query_ids = []   # Does not need a mapping since it appears in the QG
                             answer_kg.add_node(edge.object, parent_node, qnode_key)
-                        preferred_subject, preferred_object = eu.get_canonical_curies_list([edge.subject, edge.object], self.log)
-                        if preferred_subject:
-                            edge.subject = preferred_subject
-                        if preferred_object:
-                            edge.object = preferred_object
+                        preferred_curies = eu.get_canonical_curies_list([edge.subject, edge.object], self.log)
+                        if preferred_curies:
+                            edge.subject, edge.object = preferred_curies
+                        else:
+                            self.log.debug(f"{self.kp_infores_curie}: Could not find a preferred curie for {edge.subject} or {edge.object}")
                         
                         edge_key = self._get_arax_edge_key(edge)
                         qedge_key = f"subclass:{qnode_key}--{qnode_key}"  # Technically someone could have used this key in their query, but seems highly unlikely..
