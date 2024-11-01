@@ -380,6 +380,21 @@ class TRAPIQuerier:
                                  f"subject: '{returned_edge.subject}', object: '{returned_edge.object}'")
                 continue
 
+            preferred_subject, preferred_object = eu.get_canonical_curies_list([returned_edge.subject, returned_edge.object], self.log)
+            if not preferred_subject:
+                self.log.debug(f"{self.kp_infores_curie}: Edge has no preferred subject, skipping. "
+                                 f"subject: '{returned_edge.subject}'")
+            else: 
+                returned_edge.subject = preferred_subject
+        
+            if not preferred_object:
+                self.log.debug(f"{self.kp_infores_curie}: Edge has no preferred object, skipping. "
+                                 f"object: '{returned_edge.object}'")
+            else:
+                returned_edge.object = preferred_object
+
+
+
             arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
 
             # Put in a placeholder for missing required attribute fields to try to keep our answer TRAPI-compliant
@@ -510,6 +525,12 @@ class TRAPIQuerier:
                                 parent_node = Node()
                             parent_node.query_ids = []   # Does not need a mapping since it appears in the QG
                             answer_kg.add_node(edge.object, parent_node, qnode_key)
+                        preferred_subject, preferred_object = eu.get_canonical_curies_list([edge.subject, edge.object], self.log)
+                        if preferred_subject:
+                            edge.subject = preferred_subject
+                        if preferred_object:
+                            edge.object = preferred_object
+                        
                         edge_key = self._get_arax_edge_key(edge)
                         qedge_key = f"subclass:{qnode_key}--{qnode_key}"  # Technically someone could have used this key in their query, but seems highly unlikely..
                         answer_kg.add_edge(edge_key, edge, qedge_key)
