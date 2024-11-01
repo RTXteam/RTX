@@ -382,9 +382,9 @@ class TRAPIQuerier:
             
             try:
                 preferred_curies = eu.get_canonical_curies_dict([returned_edge.subject, returned_edge.object], self.log)
-                if preferred_curies[returned_edge.subject]:
+                if preferred_curies[returned_edge.subject]["preferred_curie"]:
                     returned_edge.subject = preferred_curies[returned_edge.subject]["preferred_curie"]
-                if preferred_curies[returned_edge.object]:
+                if preferred_curies[returned_edge.object]["preferred_curie"]:
                     returned_edge.object = preferred_curies[returned_edge.object]["preferred_curie"]
             except:
                 self.log.debug(f"{self.kp_infores_curie}: Could not find a preferred curie for edges {returned_edge.subject} or {returned_edge.object}")
@@ -522,10 +522,10 @@ class TRAPIQuerier:
                             answer_kg.add_node(edge.object, parent_node, qnode_key)
                         try:
                             preferred_curies = eu.get_canonical_curies_dict([edge.subject, edge.object], self.log)
-                            if preferred_curies[edge.subject]:
+                            if preferred_curies[edge.subject]["preferred_curie"]:
                                 
                                 edge.subject = preferred_curies[edge.subject]["preferred_curie"]
-                            if preferred_curies[edge.object]:
+                            if preferred_curies[edge.object]["preferred_curie"]:
                                 edge.object = preferred_curies[edge.object]["preferred_curie"]
                         except:
                             self.log.debug(f"{self.kp_infores_curie}: Could not find a preferred curie for sub-edges {edge.subject} or {edge.object}")
