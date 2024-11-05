@@ -7,6 +7,7 @@ import sqlite3
 import string
 import sys
 import time
+import math
 from collections import defaultdict, Counter
 from typing import Optional, Union, List, Set, Dict, Tuple
 
@@ -402,6 +403,17 @@ class NodeSynonymizer:
             for normalizer_info in results_dict.values():
                 if normalizer_info:
                     normalizer_info["knowledge_graph"] = self._get_cluster_graph(normalizer_info)
+
+        # Attempt to squash NaNs, which are not legal in JSON. Turn them into nulls
+        if 'knowledge_graph' in normalizer_info and 'edges' in normalizer_info["knowledge_graph"]:
+            for edge_name, edge_data in normalizer_info["knowledge_graph"]['edges'].items():
+                if 'attributes' in edge_data:
+                    for attribute in edge_data['attributes']:
+                        try:
+                            if 'value' in attribute and math.isnan(attribute['value']):
+                                attribute['value'] = None
+                        except:
+                            pass
 
         if debug:
             print(f"Took {round(time.time() - start, 5)} seconds")
