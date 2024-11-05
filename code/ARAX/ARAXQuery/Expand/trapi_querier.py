@@ -390,7 +390,7 @@ class TRAPIQuerier:
                 self.log.debug(f"{self.kp_infores_curie}: Could not find a preferred curie for edges {returned_edge.subject} or {returned_edge.object}")
 
 
-            arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
+            arax_edge_key = eu.get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
 
             # Put in a placeholder for missing required attribute fields to try to keep our answer TRAPI-compliant
             if returned_edge.attributes:
@@ -454,16 +454,7 @@ class TRAPIQuerier:
                          if dict_version_of_object.get(property_name) not in [None, []]}
         return stripped_dict
 
-    def _get_arax_edge_key(self, edge: Edge) -> str:
-        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
-        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
-        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
-        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
-        qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
-        primary_ks = eu.get_primary_knowledge_source(edge)
-        edge_key = f"{self.kp_infores_curie}:{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_ks}"
-        return edge_key
-
+    
     def _get_query_timeout_length(self) -> int:
         # Returns the number of seconds we should wait for a response
         if self.kp_infores_curie == "infores:rtx-kg2":
@@ -530,7 +521,7 @@ class TRAPIQuerier:
                         except:
                             self.log.debug(f"{self.kp_infores_curie}: Could not find a preferred curie for sub-edges {edge.subject} or {edge.object}")
 
-                        edge_key = self._get_arax_edge_key(edge)
+                        edge_key = eu.get_arax_edge_key(edge)
                         qedge_key = f"subclass:{qnode_key}--{qnode_key}"  # Technically someone could have used this key in their query, but seems highly unlikely..
                         answer_kg.add_edge(edge_key, edge, qedge_key)
             final_edge_count = sum([len(edges) for edges in answer_kg.edges_by_qg_id.values()])

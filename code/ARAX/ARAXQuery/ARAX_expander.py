@@ -980,10 +980,13 @@ class ARAXExpander:
             for edge_key, edge in edges.items():
                 edge.subject = curie_mappings.get(edge.subject)
                 edge.object = curie_mappings.get(edge.object)
+                canonicalized_arax_edge_key = eu.get_arax_edge_key(edge)
+
+                
                 if not edge.subject or not edge.object:
                     log.error(f"{kp_name}: Could not find preferred curie mappings for edge {edge_key}'s node(s)")
                     return deduplicated_kg
-                deduplicated_kg.add_edge(edge_key, edge, qedge_key)
+                deduplicated_kg.add_edge(canonicalized_arax_edge_key, edge, qedge_key)
 
         log.debug(f"{kp_name}: After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg

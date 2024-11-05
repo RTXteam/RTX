@@ -491,6 +491,16 @@ def flip_qedge(qedge: QEdge, new_predicates: List[str]):
     qedge.subject = qedge.object
     qedge.object = original_subject
 
+def get_arax_edge_key(edge: Edge) -> str:
+        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
+        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
+        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
+        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
+        qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+        primary_ks = get_primary_knowledge_source(edge)
+        edge_key = f"{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_ks}"
+        return edge_key
+
 
 def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
     non_canonical_predicates_used = set()
