@@ -465,6 +465,14 @@
   <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newsynonym" name="newsynonym" onkeydown="submit_on_enter(this);" size="100" maxlength="1000"/>
   <input type="button" class="questionBox button" name="action" value="Look Up" onClick="sendSyn();"/>
   <span title="clear" class="clq" onclick="pasteSyn('');">&#9587;</span>
+  <br>
+  <label id="showConceptGraphText" class="tiny">
+    <span class="switch">
+      <input id="showConceptGraph" type="checkbox" onchange="togglecolor(this,'showConceptGraphText');">
+      <span class="slider"></span>
+    </span>
+    Show Concept Graph (can be very slow for large graphs)</label>
+
   <div id="synonym_result_container"></div>
 </div>
 
@@ -575,17 +583,15 @@
       <input type="button" class="qprob sbte" value="BTE" onClick="update_url('EXT','https://api.bte.ncats.io/v1');"/>
       <input type="button" class="qprob schp" value="CHP" onClick="update_url('EXT','http://chp.thayer.dartmouth.edu');"/>
       <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
+      <input type="button" class="qprob p3" value="ClinicalTrialsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/ctkp');"/>
       <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
+      <input type="button" class="qprob p5" value="DrugApprovalsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/dakp');"/>
       <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
       <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.5');"/>
-      <input type="button" class="qprob p1" value="ICEES-Asthma" onClick="update_url('EXT','https://icees.renci.org:16339');"/>
-      <input type="button" class="qprob p1" value="ICEES-DILI" onClick="update_url('EXT','https://icees.renci.org:16341');"/>
       <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.5');"/>
       <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.4');"/>
       <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
       <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
-      <input type="button" class="qprob p3" value="ClinicalTrialsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/ctkp');"/>
-      <input type="button" class="qprob p5" value="DrugApprovalsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/dakp');"/>
     </span>
     <span>
     </span>
@@ -603,7 +609,7 @@
     </span>
 
     <span>
-      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF SYNONYMS TO DISPLAY (values above 100 may slow down UI):</h3>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF SYNONYMS TO DISPLAY (values above 1000 may slow down UI):</h3>
       <input type="text" class="questionBox" id="maxsyns_url" onkeyup="enter_url(this,'maxsyns');" size="4" maxlength="4"/>
       nodes
     </span>
