@@ -58,7 +58,14 @@ class InferUtilities:
         self.bh = BiolinkHelper()
 
     def __get_formated_edge_key(self, edge: Edge, primary_knowledge_source: str, kp: str = 'infores:rtx-kg2') -> str:
-        return f"{kp}:{edge.subject}-{edge.predicate}-{edge.object}-{primary_knowledge_source}"
+        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
+        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
+        qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
+        qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
+        qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+        edge_key = f"{kp}:{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_knowledge_source}"
+        
+        return edge_key
 
     def __none_to_zero(self, val):
         if val is None:
@@ -84,9 +91,9 @@ class InferUtilities:
                     f"Error retrieving score for result essence {result.essence}. Setting result score to None.")
         message.results.sort(key=lambda x: self.__none_to_zero(x.score), reverse=True)
 
-    def genrete_treat_subgraphs(self, response: ARAXResponse, top_drugs: pd.DataFrame, top_paths: dict, qedge_id=None, kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
+    def genrete_treat_subgraphs(self, response: ARAXResponse, top_scores: pd.DataFrame, top_paths: dict, qedge_id=None, kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
         """
-        top_drugs and top_paths returned by Chunyu's createDTD.py code (predict_top_n_drugs and predict_top_m_paths respectively).
+        top_scores and top_paths returned by Chunyu's creativeDTD.py code (get_score_table and get_top_path respectively).
         Ammends the response effectively TRAPI-ifying the paths returned by Chunyu's code.
         May not work on partially filled out response (as it assumes fresh QG and KG, i.e. not stuff partially filled out).
         The *_global_iter vars are to keep count of qedge and kedge if this is run multiple times. But see previous line for proviso.
@@ -126,8 +133,8 @@ class InferUtilities:
         if len(message.query_graph.edges) !=0 and not hasattr(self.response, 'original_query_graph'):
             self.response.original_query_graph = copy.deepcopy(message.query_graph)
 
-        disease_curie = top_drugs['disease_id'].tolist()[0]
-        disease_name = top_drugs['disease_name'].tolist()[0]
+        disease_curie = top_scores['disease_id'].tolist()[0]
+        disease_name = top_scores['disease_name'].tolist()[0]
         disease_info = xdtdmapping.get_node_info(node_id=disease_curie)
         if disease_info is None:
             self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table due to using refreshed xDTD database")
@@ -188,8 +195,8 @@ class InferUtilities:
         # If the max path len is 0, that means there are no paths found, so just insert the drugs with the probability_treats on them
         if max_path_len == 0:
             essence_scores = {}
-            node_ids = top_drugs['drug_id']
-            node_id_to_score = dict(zip(node_ids, top_drugs['tp_score']))
+            node_ids = top_scores['drug_id']
+            node_id_to_score = dict(zip(node_ids, top_scores['tp_score']))
             # Add the drugs to the knowledge graph
             for drug_canonical_id in node_ids:
                 try:
@@ -343,7 +350,7 @@ class InferUtilities:
                             ]
                         else:
                             edge_attribute_list += [
-                                Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from RTX-KG2.8.4c by ARAXInfer."),
+                                Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from RTX-KG2.10.0c by ARAXInfer."),
                             ]
                             retrieval_source = [
                                 RetrievalSource(resource_id=primary_knowledge_source, resource_role="primary_knowledge_source"),
@@ -359,7 +366,7 @@ class InferUtilities:
                         break
                 path_added = True
             if path_added:
-                treat_score = top_drugs.loc[top_drugs['drug_id'] == drug]["tp_score"].iloc[0]
+                treat_score = top_scores.loc[top_scores['drug_id'] == drug]["tp_score"].iloc[0]
                 drug_node_info = xdtdmapping.get_node_info(node_id=drug_curie)
                 disease_node_info = xdtdmapping.get_node_info(node_id=disease_curie)
                 essence_scores[drug_node_info.name] = treat_score
@@ -743,7 +750,7 @@ class InferUtilities:
                         message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
                     new_edge = edge_tuples[i][1]
                     for key in new_edge:
-                        edge_name = decorator._get_kg2c_edge_key(new_edge[key])
+                        edge_name = 'infores:rtx-kg2:' + decorator._get_kg2c_edge_key(new_edge[key])
                         message.knowledge_graph.edges[edge_name] = new_edge[key]
                         message.knowledge_graph.edges[edge_name].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
 

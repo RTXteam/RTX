@@ -12,15 +12,16 @@ from collections import Counter
 import copy
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from Path_Finder.converter.paths_to_response_converter_factory import paths_to_response_converter_factory
+from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
+from Path_Finder.converter.SuperNodeConverter import SuperNodeConverter
 from Path_Finder.converter.Names import Names
 from Path_Finder.BidirectionalPathFinder import BidirectionalPathFinder
-from Path_Finder.repo.NGDSortedNeighborsRepo import NGDSortedNeighborsRepo
-from Path_Finder.repo.PloverDBRepo import PloverDBRepo
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.q_edge import QEdge
+from openapi_server.models.q_node import QNode
 from openapi_server.models.knowledge_graph import KnowledgeGraph
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
@@ -51,12 +52,11 @@ class ARAXConnect:
             "type": "list",
             "description": "List with just two qnode keys to connect. example: [n1, n2]"
         }
-        self.result_as_info = {
+        self.node_category_constraint_info = {
             "is_required": False,
-            "examples": ['betweenness_centrality', 'all_in_one', 'one_by_one'],
+            "examples": ['biolink:Disease', 'biolink:Gene', 'biolink:ChemicalEntity'],
             "type": "string",
-            "description": "It determines how to receive the results. For instance, one_by_one means that it will "
-                           "return each path in one subgraph. The default value is betweenness_centrality"
+            "description": "This constraint will display paths that only pass through the user-specified category."
         }
 
         # command descriptions
@@ -78,7 +78,7 @@ connect_nodes adds paths between two nodes specified in the query.
                 "parameters": {
                     "max_path_length": self.max_path_length_info,
                     "qnode_keys": self.qnode_keys_info,
-                    "result_as": self.result_as_info
+                    "node_category_constraint": self.node_category_constraint_info
                 }
             }
         }
@@ -147,6 +147,8 @@ connect_nodes adds paths between two nodes specified in the query.
                         allowable_parameters[key]]):  # if it's a float, just accept it as it is
                     continue
                 elif any([type(x) == int for x in allowable_parameters[key]]):
+                    continue
+                elif any([type(x) == str for x in allowable_parameters[key]]):
                     continue
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.warning(
@@ -217,15 +219,15 @@ connect_nodes adds paths between two nodes specified in the query.
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             allowable_parameters = {'action': {'connect_nodes'},
                                     'max_path_length': {int()},
-                                    'result_as': {'betweenness_centrality', 'all_in_one', 'one_by_one'},
+                                    'node_category_constraint': {str()},
                                     'qnode_keys': set(self.message.query_graph.nodes.keys())
                                     }
         else:
             allowable_parameters = {'action': {'connect_nodes'},
                                     'max_path_length': {
-                                        'a maximum path length to use to connect qnodes. Defaults to 2.'},
-                                    'result_as': {
-                                        'How to show results?'},
+                                        'A maximum path length to use to connect qnodes. Defaults to 2.'},
+                                    'node_category_constraint': {
+                                        'All paths must include at least one node from this category constraint.'},
                                     'qnode_keys': {'A list with just two query keys to connect'}
                                     }
 
@@ -253,8 +255,8 @@ connect_nodes adds paths between two nodes specified in the query.
 
         if 'max_path_length' not in self.parameters:
             self.parameters['max_path_length'] = 2
-        if 'result_as' not in self.parameters:
-            self.parameters['result_as'] = 'betweenness_centrality'
+        if 'node_category_constraint' not in self.parameters:
+            self.parameters['node_category_constraint'] = ''
         # convert path length to int if it isn't already
         if type(self.parameters['max_path_length']) != int:
             self.parameters['max_path_length'] = int(self.parameters['max_path_length'])
@@ -281,43 +283,89 @@ connect_nodes adds paths between two nodes specified in the query.
             self.response.error(f"Need to have two nodes to find paths between them. Number of nodes: {len(nodes)}")
 
         path_finder = BidirectionalPathFinder(
-            NGDSortedNeighborsRepo(
-                PloverDBRepo(plover_url=RTXConfiguration().plover_url)
-            )
+            "NGDSortedNeighborsRepo",
+            self.response
         )
         qnode_1_id = self.parameters['qnode_keys'][0]
         qnode_2_id = self.parameters['qnode_keys'][1]
         synonymizer = NodeSynonymizer()
-        node_1_id = synonymizer.get_canonical_curies(curies=nodes[qnode_1_id].ids[0])[nodes[qnode_1_id].ids[0]]['preferred_curie']
-        node_2_id = synonymizer.get_canonical_curies(curies=nodes[qnode_2_id].ids[0])[nodes[qnode_2_id].ids[0]]['preferred_curie']
+        try:
+            node_1_id = synonymizer.get_canonical_curies(curies=nodes[qnode_1_id].ids[0])[nodes[qnode_1_id].ids[0]][
+                'preferred_curie']
+        except Exception as e:
+            self.response.error(f"PathFinder could not get canonical CURIE for the node: {qnode_1_id}."
+                                f" You need to provide id (CURIE) or name for this node"
+                                f" Error message is: {e}")
+            return self.response
+
+        try:
+            node_2_id = synonymizer.get_canonical_curies(curies=nodes[qnode_2_id].ids[0])[nodes[qnode_2_id].ids[0]][
+                'preferred_curie']
+        except Exception as e:
+            self.response.error(f"PathFinder could not get canonical CURIE for the node: {qnode_2_id}"
+                                f" You need to provide id (CURIE) or name for this node."
+                                f" Error message is: {e}")
+            return self.response
 
         paths = path_finder.find_all_paths(node_1_id, node_2_id, hops_numbers=self.parameters['max_path_length'])
+
+        self.response.debug(f"PathFinder found {len(paths)} paths")
 
         if len(paths) == 0:
             self.response.warning(f"Could not connect the nodes {qnode_1_id} and {qnode_2_id} "
                                   f"with a max path length of {self.parameters['max_path_length']}.")
             return self.response
 
-        q_edge_name = 'q_edge_path_finder'
-        self.response.envelope.message.query_graph.edges[q_edge_name] = QEdge(
+        qnode_mid_id = "qnode_mid_id"
+        self.response.envelope.message.query_graph.nodes[qnode_mid_id] = QNode(
+            ids=[],
+            categories=None,
+            is_set=False,
+            set_interpretation='BATCH',
+            set_id=None,
+            constraints=[],
+            option_group_id=None
+        )
+
+        q_edge_src_dest = 'q_edge_src_dest'
+        self.response.envelope.message.query_graph.edges[q_edge_src_dest] = QEdge(
             object=qnode_1_id,
+            subject=qnode_2_id
+        )
+        q_edge_src_mid = 'q_edge_src_mid'
+        self.response.envelope.message.query_graph.edges[q_edge_src_mid] = QEdge(
+            object=qnode_1_id,
+            subject=qnode_mid_id
+        )
+        q_edge_mid_dest = 'q_edge_mid_dest'
+        self.response.envelope.message.query_graph.edges[q_edge_mid_dest] = QEdge(
+            object=qnode_mid_id,
             subject=qnode_2_id
         )
 
         names = Names(
-            q_edge_name=q_edge_name,
+            q_src_dest_edge_name=q_edge_src_dest,
+            q_src_mid_edge_name=q_edge_src_mid,
+            q_mid_dest_edge_name=q_edge_mid_dest,
             result_name="result",
             auxiliary_graph_name="aux",
-            kg_edge_name="kg_edge"
+            kg_src_dest_edge_name="kg_src_dest_edge",
+            kg_src_mid_edge_name="kg_src_mid_edge",
+            kg_mid_dest_edge_name="kg_mid_dest_edge",
         )
-        paths_to_response_converter_factory(
-            self.parameters['result_as'],
+        edge_extractor = EdgeExtractorFromPloverDB(
+            RTXConfiguration().plover_url
+        )
+        SuperNodeConverter(
             paths,
             node_1_id,
             node_2_id,
             qnode_1_id,
             qnode_2_id,
-            names
+            qnode_mid_id,
+            names,
+            edge_extractor,
+            self.parameters['node_category_constraint']
         ).convert(self.response)
 
         if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):

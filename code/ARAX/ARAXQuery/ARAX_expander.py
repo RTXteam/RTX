@@ -27,6 +27,7 @@ from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute_constraint import AttributeConstraint
+from openapi_server.models.attribute import Attribute
 from Expand.kg2_querier import KG2Querier
 from Expand.trapi_querier import TRAPIQuerier
 
@@ -59,6 +60,7 @@ class ARAXExpander:
                                                       "aggregator_knowledge_source": {"==": "*"}}
         self.supported_qedge_qualifier_constraints = {"biolink:qualified_predicate", "biolink:object_direction_qualifier",
                                                       "biolink:object_aspect_qualifier"}
+        self.treats_like_predicates = set(self.bh.get_descendants("biolink:treats_or_applied_or_studied_to_treat")).difference({"biolink:treats"})
 
     def describe_me(self):
         """
@@ -349,7 +351,8 @@ class ARAXExpander:
                 if inferred_qedge_keys and len(query_graph.edges) == 1:
                     for edge in query_sub_graph.edges.keys():
                         query_sub_graph.edges[edge].knowledge_type = 'lookup'
-            # Expand the query graph edge-by-edge
+
+            # Expand the query graph edge-by-edge (in regular 'lookup' fashion)
             for qedge_key in ordered_qedge_keys_to_expand:
                 log.debug(f"Expanding qedge {qedge_key}")
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Expanding')
@@ -504,6 +507,16 @@ class ARAXExpander:
                         for kedge_key in kedges_to_remove:
                             if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
                                 del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
+                # Remove KG2 SemMedDB treats_or_applied-type edges if this is an inferred treats query
+                if alter_kg2_treats_edges and qedge_key in overarching_kg.edges_by_qg_id:  # Skip if no answers
+                    edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
+                                           if edge.predicate in self.treats_like_predicates and
+                                           any(source.resource_id == "infores:rtx-kg2" for source in edge.sources) and
+                                           any(source.resource_id == "infores:semmeddb" for source in edge.sources)}
+                    log.debug(f"Removing {len(edge_keys_to_remove)} KG2 semmeddb treats_or_applied-type edges "
+                              f"fulfilling {qedge_key}")
+                    for edge_key in edge_keys_to_remove:
+                        del overarching_kg.edges_by_qg_id[qedge_key][edge_key]
 
                 if mode != "RTXKG2":
                     # Apply any kryptonite ("not") qedges
@@ -569,21 +582,29 @@ class ARAXExpander:
             decorator = ARAXDecorator()
             decorator.decorate_nodes(response)
             decorator.decorate_edges(response, kind="RTX-KG2")
-
-            # Override node types to only include descendants of what was asked for in the QG (where applicable) #1360
-            self._override_node_categories(message.knowledge_graph, message.query_graph, log)
         elif mode == "RTXKG2":
             decorator = ARAXDecorator()
             decorator.decorate_edges(response, kind="SEMMEDDB")
 
         # Second half of patch for #2328; edit KG2 'treats_or_applied_or_studied_to_treat' edges to just 'treats'
+        response.info(f"Treats-like predicates are: {self.treats_like_predicates}")
+        response.info(f"BiolinkHelper Biolink version is: {self.bh.biolink_version}")
+        response.info(f"Mode is {mode}, do_issue_2328_patch is {do_issue_2328_patch}, "
+                      f"inferred_qedge_keys is {inferred_qedge_keys}")
         if mode != "RTXKG2" and do_issue_2328_patch and inferred_qedge_keys:
+            response.info(f"Made it into block where KG2 treats-like edge alteration happens")
             num_edges_altered = 0
-            higher_level_treats_predicates = {"biolink:treats_or_applied_or_studied_to_treat",
-                                              "biolink:applied_to_treat"}
             for edge in message.knowledge_graph.edges.values():
                 is_kg2_edge = any(source.resource_id == "infores:rtx-kg2" for source in edge.sources)
-                if is_kg2_edge and edge.predicate in higher_level_treats_predicates:
+                if is_kg2_edge and edge.predicate in self.treats_like_predicates:
+                    # Record the original KG2 predicate in an attribute
+                    edge.attributes.append(Attribute(attribute_type_id="biolink:original_predicate",
+                                                     value=edge.predicate,
+                                                     value_type_id="biolink:predicate",
+                                                     description="Predicate as it appears in RTX-KG2, prior to "
+                                                                 "alteration by ARAX.",
+                                                     attribute_source="infores:arax"))
+                    # Then change the predicate to treats
                     edge.predicate = "biolink:treats"
                     num_edges_altered += 1
             if num_edges_altered:
@@ -622,22 +643,37 @@ class ARAXExpander:
                     if object_qnode.ids and len(object_qnode.ids) >= 1:
                         object_curie = object_qnode.ids[0]  # FIXME: will need a way to handle multiple IDs
                     else:
+                        # object_curie = None
                         response.error(f"No CURIEs found for qnode {qedge.object}; ARAXInfer/XDTD requires that the"
-                                       f" object qnode has 'ids' specified", error_code="NoCURIEs")
-                        # raise Exception(f"No CURIEs found for {object_qnode.name}")
+                                f" object qnode has 'ids' specified", error_code="NoCURIEs")
                         return response, overarching_kg
                     if subject_qnode.ids and len(subject_qnode.ids) >= 1:
-                        subject_curie = subject_qnode.ids  # FIXME: will need a way to handle multiple IDs
+                        subject_curie = subject_qnode.ids[0]  # FIXME: will need a way to handle multiple IDs
                     else:
                         subject_curie = None
-                    response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {object_curie}")
+                    
+                    # Check if the existence of subject_curie and object_curie
+                    if not subject_curie and not object_curie:
+                        response.error(f"No CURIEs found for both query subject node {qedge.subject} and query object node {qedge.object}; ARAXInfer/XDTD requires "
+                                       f"that at least subject qnode or object qnode has 'ids' specified",
+                                       error_code="NoCURIEs")
+                        return response, overarching_kg
+                    
+                    if subject_curie and object_curie:    
+                        response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
+                    elif subject_curie:
+                        response.warning(f"Currently ARAXInfer/XDTD disables 'given a drug CURIE, it predicts predicts what potential disease this drug can treat'.")
+                        # response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie}")
+                    else:
+                        response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the object is {object_curie}")
+                    
                     response.update_query_plan(inferred_qedge_key, "arax-xdtd",
                                                "Waiting", f"Waiting for response")
                     start = time.time()
 
                     from ARAX_infer import ARAXInfer
                     infer_input_parameters = {"action": "drug_treatment_graph_expansion",
-                                              'node_curie': object_curie, 'qedge_id': inferred_qedge_key,
+                                              'disease_curie': object_curie, 'qedge_id': inferred_qedge_key,
                                               'drug_curie': subject_curie}
                     inferer = ARAXInfer()
                     infer_response = inferer.apply(response, infer_input_parameters)
@@ -1132,7 +1168,7 @@ class ARAXExpander:
                     organized_kg.edges_by_qg_id[qedge_key].pop(edge_key)
 
             if not organized_kg.edges_by_qg_id[qedge_key]:
-                log.warning(f"All {qedge_key} edges have been deleted due to an Exclude=true (i.e., 'kryptonite') edge!")
+                log.warning(f"All {qedge_key} edges have been deleted!")
 
     @staticmethod
     def _prune_kg(qnode_key_to_prune: str, prune_threshold: int, kg: QGOrganizedKnowledgeGraph,
@@ -1379,31 +1415,6 @@ class ARAXExpander:
         with open(pickle_file_path, "rb") as fda_pickle:
             fda_approved_drug_ids = pickle.load(fda_pickle)
         return fda_approved_drug_ids
-
-    def _override_node_categories(self, kg: KnowledgeGraph, qg: QueryGraph, log: ARAXResponse):
-        # Clean up what we list as the TRAPI node.categories; list descendants of what was asked for in the QG
-        log.debug(f"Overriding node categories to better align with what's in the QG")
-        qnode_descendant_categories_map = {qnode_key: set(self.bh.get_descendants(qnode.categories))
-                                           for qnode_key, qnode in qg.nodes.items() if qnode.categories}
-        for node_key, node in kg.nodes.items():
-            final_categories = set()
-            for qnode_key in node.qnode_keys:
-                # If qnode has categories specified, use node's all_categories that are descendants of qnode categories
-                if qnode_key in qnode_descendant_categories_map:
-                    all_categories_attributes = [attribute for attribute in eu.convert_to_list(node.attributes)
-                                                 if attribute.attribute_type_id == "biolink:category"]
-                    node_categories = all_categories_attributes[0].value if all_categories_attributes else node.categories
-                    relevant_categories = set(node_categories).intersection(qnode_descendant_categories_map[qnode_key])
-                # Otherwise just use what's already in the node's categories (for KG2 this is the 'preferred' category)
-                else:
-                    relevant_categories = set(node.categories)
-                final_categories = final_categories.union(relevant_categories)
-            if final_categories:
-                node.categories = list(final_categories)
-            else:
-                # Leave categories as they are but issue a warning
-                log.warning(f"None of the categories KPs gave node {node_key} ({node.categories}) are descendants of "
-                            f"those asked for in the QG (for qnode {node.qnode_keys})")
 
     @staticmethod
     def _map_back_to_input_curies(kg: KnowledgeGraph, qg: QueryGraph, log: ARAXResponse):

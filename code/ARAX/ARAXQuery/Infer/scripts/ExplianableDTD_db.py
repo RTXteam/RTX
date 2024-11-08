@@ -228,67 +228,131 @@ class ExplainableDTD(object):
 
             self.logger.info(f"INFO: Creating INDEXes is completed")
 
-    def get_top_drugs_for_disease(self, disease_ids):
-        """get top drugs predicted by DTD model for given disease ids
+    def get_score_table(self, drug_curie_ids=None, disease_curie_ids=None):
+        """get the score table for given drug and/or disease curie ids
 
         Args:
-            disease_ids (str|list): a string of disease curie id or a list of disease curies, e.g. "MONDO:0008753" or ["MONDO:0008753","MONDO:0005148","MONDO:0005155"]
+            drug_curie_ids (str|list): a string of drug curie id or a list of drug curies, e.g. "CHEMBL.COMPOUND:CHEMBL55643" or ["CHEMBL.COMPOUND:CHEMBL55643","CHEBI:6908"]
+            disease_curie_ids (str|list): a string of disease curie id or a list of disease curies, e.g. "MONDO:0008753" or ["MONDO:0008753","MONDO:0005148","MONDO:0005155"]
 
         Returns:
-            top_drugs (pd.DataFrame): the top drugs predicted by DTD model for given disease ids
+            res_table (pd.DataFrame): the score table for given drug and/or disease curie ids
         """
-
-        cursor = self.connection.cursor()
-        columns = ["drug_id","drug_name","disease_id","disease_name","tn_score","tp_score","unknown_score"]
-        if isinstance(disease_ids, str):
-            cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,tn_score,tp_score,unknown_score from PREDICTION_SCORE_TABLE where disease_id='{disease_ids}';")
-            res = cursor.fetchall()
-            top_drugs= pd.DataFrame(res, columns=columns)
-            return top_drugs
-        elif isinstance(disease_ids, list):
-            cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,tn_score,tp_score,unknown_score from PREDICTION_SCORE_TABLE where disease_id in {tuple(set(disease_ids))};")
-            res = cursor.fetchall()
-            top_drugs = pd.DataFrame(res, columns=columns)
-            return top_drugs
+        
+        if drug_curie_ids or disease_curie_ids:
+            cursor = self.connection.cursor()
+            columns = ["drug_id","drug_name","disease_id","disease_name","tn_score","tp_score","unknown_score"]
+            if drug_curie_ids and disease_curie_ids:
+                if isinstance(drug_curie_ids, str) and isinstance(disease_curie_ids, str):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,tn_score,tp_score,unknown_score from PREDICTION_SCORE_TABLE where drug_id='{drug_curie_ids}' and disease_id='{disease_curie_ids}';")
+                    res = cursor.fetchall()
+                    return pd.DataFrame(res, columns=columns)
+                elif isinstance(drug_curie_ids, list) and isinstance(disease_curie_ids, list):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,tn_score,tp_score,unknown_score from PREDICTION_SCORE_TABLE where drug_id in {tuple(set(drug_curie_ids))} and disease_id in {tuple(set(disease_curie_ids))};")
+                    res = cursor.fetchall()
+                    return pd.DataFrame(res, columns=columns)
+                elif isinstance(drug_curie_ids, str) and isinstance(disease_curie_ids, list):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,tn_score,tp_score,unknown_score from PREDICTION_SCORE_TABLE where drug_id='{drug_curie_ids}' and disease_id in {tuple(set(disease_curie_ids))};")
+                    res = cursor.fetchall()
+                    return pd.DataFrame(res, columns=columns)
+                elif isinstance(drug_curie_ids, list) and isinstance(disease_curie_ids, str):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,tn_score,tp_score,unknown_score from PREDICTION_SCORE_TABLE where drug_id in {tuple(set(drug_curie_ids))} and disease_id='{disease_curie_ids}';")
+                    res = cursor.fetchall()
+                    return pd.DataFrame(res, columns=columns)
+                else:
+                    print("The 'drug_curie_ids' and 'disease_curie_ids' in get_score_table should be a string or a list", flush=True)
+                    return pd.DataFrame([], columns=columns)
+            elif drug_curie_ids:
+                if isinstance(drug_curie_ids, str):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,tn_score,tp_score,unknown_score from PREDICTION_SCORE_TABLE where drug_id='{drug_curie_ids}';")
+                    res = cursor.fetchall()
+                    return pd.DataFrame(res, columns=columns)
+                elif isinstance(drug_curie_ids, list):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,tn_score,tp_score,unknown_score from PREDICTION_SCORE_TABLE where drug_id in {tuple(set(drug_curie_ids))};")
+                    res = cursor.fetchall()
+                    return pd.DataFrame(res, columns=columns)
+                else:
+                    print("The 'drug_curie_ids' in get_score_table should be a string or a list", flush=True)
+                    return pd.DataFrame([], columns=columns)
+            elif disease_curie_ids:
+                if isinstance(disease_curie_ids, str):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,tn_score,tp_score,unknown_score from PREDICTION_SCORE_TABLE where disease_id='{disease_curie_ids}';")
+                    res = cursor.fetchall()
+                    res_table = pd.DataFrame(res, columns=columns)
+                elif isinstance(disease_curie_ids, list):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,tn_score,tp_score,unknown_score from PREDICTION_SCORE_TABLE where disease_id in {tuple(set(disease_curie_ids))};")
+                    res = cursor.fetchall()
+                    res_table = pd.DataFrame(res, columns=columns)
+                else:
+                    print("The 'disease_curie_ids' in get_score_table should be a string or a list", flush=True)
+                    res_table = pd.DataFrame([], columns=columns)
+                return res_table
         else:
-            print("The 'dataset_id' in get_top_drugs_for_disease should be a string or a list", flush=True)
-            top_drugs = pd.DataFrame([], columns=columns)
-            return top_drugs
+            print("Please provide at least one of drug_curie_ids or disease_curie_ids", flush=True)
+            return pd.DataFrame([], columns=columns)
 
-    def get_top_paths_for_disease(self, disease_ids):
-        """get top paths predicted by DTD model for given disease ids
+    def get_top_path(self, drug_curie_ids=None, disease_curie_ids=None):
+        """get the top path for given drug and/or disease curie ids
 
         Args:
-            disease_ids (str|list): a string of disease curie id or a list of disease curies, e.g. "MONDO:0008753" or ["MONDO:0008753","MONDO:0005148","MONDO:0005155"]
+            drug_curie_ids (str|list): a string of drug curie id or a list of drug curies, e.g. "CHEMBL.COMPOUND:CHEMBL55643" or ["CHEMBL.COMPOUND:CHEMBL55643","CHEBI:6908"]
+            disease_curie_ids (str|list): a string of disease curie id or a list of disease curies, e.g. "MONDO:0008753" or ["MONDO:0008753","MONDO:0005148","MONDO:0005155"]
 
         Returns:
-            top_paths (dict): the top paths predicted by DTD model for given disease ids
+            top_paths (dict): the top paths for given drug and/or disease curie ids
         """
+        if drug_curie_ids or disease_curie_ids:
+            cursor = self.connection.cursor()
+            columns = ["drug_id","drug_name","disease_id","disease_name","path","path_score"]
+            top_paths = dict()
+            if drug_curie_ids and disease_curie_ids:
+                if isinstance(drug_curie_ids, str) and isinstance(disease_curie_ids, str):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,path,path_score from PATH_RESULT_TABLE where drug_id='{drug_curie_ids}' and disease_id='{disease_curie_ids}';")
+                    self._extracted_from_get_top_path(cursor, columns, top_paths)
+                elif isinstance(drug_curie_ids, list) and isinstance(disease_curie_ids, list):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,path,path_score from PATH_RESULT_TABLE where drug_id in {tuple(set(drug_curie_ids))} and disease_id in {tuple(set(disease_curie_ids))};")
+                    self._extracted_from_get_top_path(cursor, columns, top_paths)
+                elif isinstance(drug_curie_ids, str) and isinstance(disease_curie_ids, list):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,path,path_score from PATH_RESULT_TABLE where drug_id='{drug_curie_ids}' and disease_id in {tuple(set(disease_curie_ids))};")
+                    self._extracted_from_get_top_path(cursor, columns, top_paths)
+                elif isinstance(drug_curie_ids, list) and isinstance(disease_curie_ids, str):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,path,path_score from PATH_RESULT_TABLE where drug_id in {tuple(set(drug_curie_ids))} and disease_id='{disease_curie_ids}';")
+                    self._extracted_from_get_top_path(cursor, columns, top_paths)
+                else:
+                    print("The 'drug_curie_ids' and 'disease_curie_ids' in get_top_path should be a string or a list", flush=True)
+                return top_paths
+            elif drug_curie_ids:
+                if isinstance(drug_curie_ids, str):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,path,path_score from PATH_RESULT_TABLE where drug_id='{drug_curie_ids}';")
+                    self._extracted_from_get_top_path(cursor, columns, top_paths)
+                elif isinstance(drug_curie_ids, list):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,path,path_score from PATH_RESULT_TABLE where drug_id in {tuple(set(drug_curie_ids))};")
+                    self._extracted_from_get_top_path(cursor, columns, top_paths)
+                else:
+                    print("The 'drug_curie_ids' in get_top_path should be a string or a list", flush=True)
+                return top_paths
+            elif disease_curie_ids:
+                if isinstance(disease_curie_ids, str):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,path,path_score from PATH_RESULT_TABLE where disease_id='{disease_curie_ids}';")
+                    self._extracted_from_get_top_path(cursor, columns, top_paths)
+                elif isinstance(disease_curie_ids, list):
+                    cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,path,path_score from PATH_RESULT_TABLE where disease_id in {tuple(set(disease_curie_ids))};")
+                    self._extracted_from_get_top_path(cursor, columns, top_paths)
+                else:
+                    print("The 'disease_curie_ids' in get_top_path should be a string or a list", flush=True)
 
-        cursor = self.connection.cursor()
-        columns = ["drug_id","drug_name","disease_id","disease_name","path","path_score"]
-        top_paths = dict()
-        if isinstance(disease_ids, str):
-            cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,path,path_score from PATH_RESULT_TABLE where disease_id='{disease_ids}';")
-            res = cursor.fetchall()
-            temp_df = pd.DataFrame(res, columns=columns)
-            for drug_id, disease_id in temp_df[['drug_id','disease_id']].drop_duplicates().values:
-                temp = np.array(temp_df.loc[(temp_df['drug_id']==drug_id) & (temp_df['disease_id']==disease_id),['path','path_score']].values).tolist()
-                if len(temp) > 0:
-                    top_paths[(drug_id, disease_id)] = temp
-            return top_paths
-        elif isinstance(disease_ids, list):
-            cursor.execute(f"select drug_id,drug_name,disease_id,disease_name,path,path_score from PATH_RESULT_TABLE where disease_id in {tuple(set(disease_ids))};")
-            res = cursor.fetchall()
-            temp_df = pd.DataFrame(res, columns=columns)
-            for drug_id, disease_id in temp_df[['drug_id','disease_id']].drop_duplicates().values:
-                temp = np.array(temp_df.loc[(temp_df['drug_id']==drug_id) & (temp_df['disease_id']==disease_id),['path','path_score']].values).tolist()
-                if len(temp) > 0:
-                    top_paths[(drug_id, disease_id)] = temp
-            return top_paths
+                return top_paths
         else:
-            print("The 'dataset_id' in get_top_drugs_for_disease should be a string or a list", flush=True)
-            return top_paths
+            print("Please provide at least one of drug_curie_ids or disease_curie_ids", flush=True)
+            return dict()
+
+    def _extracted_from_get_top_path(self, cursor, columns, top_paths):
+        res = cursor.fetchall()
+        temp_df = pd.DataFrame(res, columns=columns)
+        for drug_id, disease_id in temp_df[['drug_id','disease_id']].drop_duplicates().values:
+            temp = np.array(temp_df.loc[(temp_df['drug_id']==drug_id) & (temp_df['disease_id']==disease_id),['path','path_score']].values).tolist()
+            if len(temp) > 0:
+                top_paths[(drug_id, disease_id)] = temp
 
 ####################################################################################################
 

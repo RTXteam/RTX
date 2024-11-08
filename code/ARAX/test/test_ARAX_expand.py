@@ -337,18 +337,6 @@ def test_873_consider_both_gene_and_protein():
     assert set(nodes_by_qg_id_protein['n01']) == set(nodes_by_qg_id_gene['n01'])
 
 
-def test_987_override_node_categories():
-    actions_list = [
-        "add_qnode(name=DOID:8398, key=n00)",
-        "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
-        "add_qedge(subject=n00, object=n01, predicates=biolink:has_phenotype, key=e00)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert all('biolink:PhenotypicFeature' in node.categories for node in nodes_by_qg_id['n01'].values())
-
-
 @pytest.mark.external
 def test_cohd_expand():
     actions_list = [
@@ -1531,7 +1519,15 @@ def test_treats_patch_issue_2328():
                 "object": "disease",
                 "subject": "chemical",
                 "predicates": ["biolink:treats"],
-                "knowledge_type": "inferred"
+                "knowledge_type": "inferred",
+                "attribute_constraints": [
+                    {
+                        "id": "knowledge_source",
+                        "name": "knowledge source",
+                        "value": ["infores:rtx-kg2"],
+                        "operator": "=="
+                    }
+                ]
             }
         }
     }
@@ -1541,9 +1537,11 @@ def test_treats_patch_issue_2328():
                         if any(source.resource_id == "infores:rtx-kg2" for source in edge.sources)]
     print(f"Answer includes {len(kg2_edges_treats)} edges from KG2")
     assert kg2_edges_treats
+    print(kg2_edges_treats)
     for edge in kg2_edges_treats:
         assert edge.predicate == "biolink:treats"
         assert edge.attributes
+        assert not any(source.resource_id == "infores:semmeddb" for source in edge.sources)
 
     # Verify that the predicate editing doesn't happen outside of inferred mode
     query = {
@@ -1559,7 +1557,15 @@ def test_treats_patch_issue_2328():
             "t_edge": {
                 "object": "disease",
                 "subject": "chemical",
-                "predicates": ["biolink:treats_or_applied_or_studied_to_treat", "biolink:applied_to_treat"]
+                "predicates": ["biolink:treats_or_applied_or_studied_to_treat", "biolink:applied_to_treat"],
+                "attribute_constraints": [
+                    {
+                        "id": "knowledge_source",
+                        "name": "knowledge source",
+                        "value": ["infores:rtx-kg2"],
+                        "operator": "=="
+                    }
+                ]
             }
         }
     }
@@ -1570,6 +1576,7 @@ def test_treats_patch_issue_2328():
     print(f"Answer includes {len(kg2_edges_treats_or)} edges from KG2")
     assert kg2_edges_treats_or
     assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:treats_or_applied_or_studied_to_treat")
+    assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:applied_to_treat")
 
 
 if __name__ == "__main__":

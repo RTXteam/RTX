@@ -214,23 +214,23 @@ class KG2Querier:
         # Load returned nodes into TRAPI object model
         for qnode_key, nodes in plover_answer["nodes"].items():
             num_nodes = len(nodes)
-            log.debug(f"Loading {num_nodes} {qnode_key} nodes into TRAPI object model")
+            #log.debug(f"Loading {num_nodes} {qnode_key} nodes into TRAPI object model")
             start = time.time()
             for node_key, node_tuple in nodes.items():
                 node = self._convert_kg2c_plover_node_to_trapi_node(node_tuple)
                 answer_kg.add_node(node_key, node, qnode_key)
-            log.debug(f"Loading {num_nodes} {qnode_key} nodes into TRAPI object model took "
-                      f"{round(time.time() - start, 2)} seconds")
+            # log.debug(f"Loading {num_nodes} {qnode_key} nodes into TRAPI object model took "
+            #           f"{round(time.time() - start, 2)} seconds")
         # Load returned edges into TRAPI object model
         for qedge_key, edges in plover_answer["edges"].items():
             num_edges = len(edges)
-            log.debug(f"Loading {num_edges} edges into TRAPI object model")
+            #log.debug(f"Loading {num_edges} edges into TRAPI object model")
             start = time.time()
             for edge_key, edge_tuple in edges.items():
                 edge = self._convert_kg2c_plover_edge_to_trapi_edge(edge_tuple)
                 answer_kg.add_edge(edge_key, edge, qedge_key)
-            log.debug(f"Loading {num_edges} {qedge_key} edges into TRAPI object model took "
-                      f"{round(time.time() - start, 2)} seconds")
+            # log.debug(f"Loading {num_edges} {qedge_key} edges into TRAPI object model took "
+            #           f"{round(time.time() - start, 2)} seconds")
         return answer_kg
 
     @staticmethod

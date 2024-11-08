@@ -79,6 +79,7 @@ class ARAXDatabaseManager:
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
+            'curie_ngd': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_ngd_path.split('/')[-1]}",
             'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
             'kg2c_meta_kg': f"{kg2c_meta_kg_filepath}{os.path.sep}{self.RTXConfig.kg2c_meta_kg_path.split('/')[-1]}",
@@ -95,6 +96,7 @@ class ARAXDatabaseManager:
         self.database_subpaths = {
             'cohd_database': self.get_database_subpath(self.RTXConfig.cohd_database_path),
             'curie_to_pmids': self.get_database_subpath(self.RTXConfig.curie_to_pmids_path),
+            'curie_ngd': self.get_database_subpath(self.RTXConfig.curie_ngd_path),
             'node_synonymizer': self.get_database_subpath(self.RTXConfig.node_synonymizer_path),
             'kg2c_sqlite': self.get_database_subpath(self.RTXConfig.kg2c_sqlite_path),
             'kg2c_meta_kg': self.get_database_subpath(self.RTXConfig.kg2c_meta_kg_path),
@@ -110,6 +112,7 @@ class ARAXDatabaseManager:
         self.remote_locations = {
             'cohd_database': self.get_remote_location('cohd_database'),
             'curie_to_pmids': self.get_remote_location('curie_to_pmids'),
+            'curie_ngd': self.get_remote_location('curie_ngd'),
             'node_synonymizer': self.get_remote_location('node_synonymizer'),
             'kg2c_sqlite': self.get_remote_location('kg2c_sqlite'),
             'kg2c_meta_kg': self.get_remote_location('kg2c_meta_kg'),
@@ -125,6 +128,7 @@ class ARAXDatabaseManager:
         self.docker_central_paths = {
             'cohd_database': self.get_docker_path('cohd_database'),
             'curie_to_pmids': self.get_docker_path('curie_to_pmids'),
+            'curie_ngd': self.get_docker_path('curie_ngd'),
             'node_synonymizer': self.get_docker_path('node_synonymizer'),
             'kg2c_sqlite': self.get_docker_path('kg2c_sqlite'),
             'kg2c_meta_kg': self.get_docker_path('kg2c_meta_kg'),
@@ -145,6 +149,10 @@ class ARAXDatabaseManager:
             'curie_to_pmids': {
                 'path': self.local_paths['curie_to_pmids'],
                 'version': self.RTXConfig.curie_to_pmids_version
+            },
+            'curie_ngd': {
+                'path': self.local_paths['curie_ngd'],
+                'version': self.RTXConfig.curie_ngd_version
             },
             'node_synonymizer': {
                 'path': self.local_paths['node_synonymizer'],

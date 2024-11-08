@@ -14,7 +14,7 @@ class Path:
         self.links = links
 
     def __str__(self):
-        return "_".join([link.id for link in self.links])
+        return f"{'_'.join([link.id for link in self.links])}_{self.path_limit}"
 
     def __eq__(self, other):
         if isinstance(other, Path):
@@ -41,3 +41,20 @@ class Path:
         if len(self.links) == 0:
             raise Exception("Path is empty.")
         return self.links[-1]
+
+    def path_src_to_id(self, id):
+        new_links = []
+        for link in self.links:
+            new_links.append(Node(link.id, link.weight, link.name, link.degree))
+            if link.id == id:
+                break
+        return Path(len(new_links) - 1, new_links)
+
+    def path_id_to_dest(self, id):
+        new_links = []
+        for link in reversed(self.links):
+            new_links.append(Node(link.id, link.weight, link.name, link.degree))
+            if link.id == id:
+                break
+        new_links.reverse()
+        return Path(len(new_links) - 1, new_links)
