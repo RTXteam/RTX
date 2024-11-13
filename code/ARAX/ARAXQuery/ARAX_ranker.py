@@ -828,7 +828,7 @@ def main():
 
     import argparse
     argparser = argparse.ArgumentParser(description='Ranker system')
-    argparser.add_argument('--local', action='store_true', help='If set, use local RTXFeedback database to fetch messages')
+    argparser.add_argument('--local', action='store_true', help='If set, use local ResponseCache database to fetch messages')
     params = argparser.parse_args()
 
     # --- Create a response object
