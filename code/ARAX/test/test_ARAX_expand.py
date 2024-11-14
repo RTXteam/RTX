@@ -1579,5 +1579,41 @@ def test_treats_patch_issue_2328():
     assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:applied_to_treat")
 
 
+@pytest.mark.external
+def test_creative_treats_predicate_alteration_2412():
+    query = {
+        "nodes": {
+            "n00": {
+                "ids": ["MONDO:0018958"]
+            },
+            "n01": {
+                "categories": ["biolink:SmallMolecule"]
+            }
+        },
+        "edges": {
+            "e00": {
+                "subject": "n01",
+                "object": "n00",
+                "predicates": ["biolink:treats"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    primary_sources_all = set()
+    aggregator_sources_all = set()
+    for edge in edges_by_qg_id["e00"].values():
+        primary_ks = next(source for source in edge.sources if source.resource_role == "primary_knowledge_source")
+        primary_sources_all.add(primary_ks.resource_id)
+        aggregator_sources = [source for source in edge.sources if source.resource_role == "aggregator_knowledge_source"]
+        for aggregator_source in aggregator_sources:
+            aggregator_sources_all.add(aggregator_source.resource_id)
+    print(f"primary_knowledge_sources are: {primary_sources_all}")
+    print(f"aggregator_knowledge_sources are: {aggregator_sources_all}")
+    sources = primary_sources_all.union(aggregator_sources_all)
+    assert "infores:automat-robokop" in sources
+
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
