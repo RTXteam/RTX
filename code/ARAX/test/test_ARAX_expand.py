@@ -1547,10 +1547,8 @@ def test_treats_patch_issue_2328_a():
     support_edge_keys = set()
     for edge in creative_expand_treats_edges:
         aux_graph_keys = get_support_graphs_attribute(edge).value
-        creative_expand_aux_graph_keys = [aux_graph_key for aux_graph_key in aux_graph_keys
-                                          if "creative_expand" in aux_graph_key]
-        assert creative_expand_aux_graph_keys
-        for aux_graph_key in creative_expand_aux_graph_keys:
+        assert aux_graph_keys
+        for aux_graph_key in aux_graph_keys:
             aux_graph = message.auxiliary_graphs[aux_graph_key]
             support_edge_keys.update(set(aux_graph.edges))
     support_edges = [message.knowledge_graph.edges[edge_key] for edge_key in support_edge_keys]
