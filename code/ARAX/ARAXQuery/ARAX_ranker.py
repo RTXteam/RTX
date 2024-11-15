@@ -33,8 +33,8 @@ def _get_nx_edges_by_attr(G: Union[nx.MultiDiGraph, nx.MultiGraph], key: str, va
 
 def _get_query_graph_networkx_from_query_graph(query_graph: QueryGraph) -> nx.MultiDiGraph:
     query_graph_nx = nx.MultiDiGraph()
-    query_graph_nx.add_nodes_from([key for key, node in query_graph.nodes.items() if 'creative_DTD_qnode' not in key and 'creative_CRG_qnode' not in key])
-    edge_list = [[edge.subject, edge.object, key, {'weight': 0.0}] for key,edge in query_graph.edges.items() if 'creative_DTD_qedge' not in key and 'creative_CRG_qedge' not in key]
+    query_graph_nx.add_nodes_from([key for key, node in query_graph.nodes.items() if 'creative_' not in key])
+    edge_list = [[edge.subject, edge.object, key, {'weight': 0.0}] for key,edge in query_graph.edges.items() if 'creative_' not in key]
     query_graph_nx.add_edges_from(edge_list)
     return query_graph_nx
 
@@ -124,7 +124,7 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
     qg_edge_key_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
     for analysis in result.analyses:  # For now we only ever have one Analysis per Result
         for qedge_key, edge_binding_list in analysis.edge_bindings.items():
-            if 'creative_DTD_qedge' not in qedge_key and 'creative_CRG_qedge' not in qedge_key:
+            if 'creative_' not in qedge_key:
                 qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
                 res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_tuple[2]]['weight'] = _calculate_final_result_score(kg_edge_id_to_edge, edge_binding_list)
                 
