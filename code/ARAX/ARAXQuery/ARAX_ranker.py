@@ -828,7 +828,7 @@ def main():
 
     import argparse
     argparser = argparse.ArgumentParser(description='Ranker system')
-    argparser.add_argument('--local', action='store_true', help='If set, use local RTXFeedback database to fetch messages')
+    argparser.add_argument('--local', action='store_true', help='If set, use local ResponseCache database to fetch messages')
     params = argparser.parse_args()
 
     # --- Create a response object
@@ -849,10 +849,10 @@ def main():
 
     # For local messages due to local changes in code not rolled out to production:
     if params.local:
-        sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/Feedback")
-        from RTXFeedback import RTXFeedback
-        araxdb = RTXFeedback()
-        message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../ResponseCache")
+        from response_cache import ResponseCache
+        response_cache = ResponseCache()
+        message_dict = response_cache.get_response(314204)
         # message_dict = araxdb.getMessage(297)
         # message_dict = araxdb.getMessage(298)
         # message_dict = araxdb.getMessage(299)  # observed_expected_ratio different disease
