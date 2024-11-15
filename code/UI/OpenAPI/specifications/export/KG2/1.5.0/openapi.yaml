@@ -42,7 +42,7 @@ externalDocs:
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
 - description: RTX-KG2 TRAPI 1.5 endpoint - production
-  url: https://kg2.transltr.io/api/rtxkg2/v1.4
+  url: https://kg2cploverdb.transltr.io
   x-maturity: production
 - description: RTX-KG2 TRAPI 1.5 endpoint - testing
   url: https://kg2cploverdb.test.transltr.io

@@ -1,5 +1,5 @@
 #!/bin/env python3
-# Reinitialize the Message/Feedback MySQL database
+# Reinitialize the ResponseCache MySQL database
 
 import os
 import sys
@@ -13,11 +13,11 @@ if len(sys.argv) < 2:
     sys.exit(0)
 
 if sys.argv[1] != 'yes':
-    print("If you really want to delete and re-create the feedback/Message database, use:")
+    print("If you really want to delete and re-create the ResponseCache database, use:")
     print("  python reinitialize_database.py yes")
     sys.exit(0)
 
-#### Create an RTX Feedback management object
+#### Create an RTX ResponseCache management object
 response_cache = ResponseCache()
 
 #### Purge and re-create the database
