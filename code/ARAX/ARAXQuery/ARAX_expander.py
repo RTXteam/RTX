@@ -28,6 +28,7 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute_constraint import AttributeConstraint
 from openapi_server.models.attribute import Attribute
+from openapi_server.models.retrieval_source import RetrievalSource
 from Expand.kg2_querier import KG2Querier
 from Expand.trapi_querier import TRAPIQuerier
 
@@ -506,15 +507,51 @@ class ARAXExpander:
                         for kedge_key in kedges_to_remove:
                             if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
                                 del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
-                # Remove SemMedDB treats_or_applied-type edges if this is a creative treats query
+                # Handle Expand's creative treats predicate answers
                 if be_creative_treats and qedge_key in overarching_kg.edges_by_qg_id:  # Skip if no answers
+                    # First remove any SemMedDB treats_or_applied-type edges (not trustworthy)
                     edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
                                            if edge.predicate in self.treats_like_predicates and
                                            any(source.resource_id == "infores:semmeddb" for source in edge.sources)}
-                    log.debug(f"Removing {len(edge_keys_to_remove)} KG2 semmeddb treats_or_applied-type edges "
+                    log.debug(f"Removing {len(edge_keys_to_remove)} semmeddb treats_or_applied-type edges "
                               f"fulfilling {qedge_key}")
                     for edge_key in edge_keys_to_remove:
                         del overarching_kg.edges_by_qg_id[qedge_key][edge_key]
+
+                    # Use remaining treats-like edges as support for one merged 'treats' edge (per subj/obj pair)
+                    higher_level_treats_edges = {edge_key: edge
+                                                 for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
+                                                 if edge.predicate in self.treats_like_predicates}
+                    if higher_level_treats_edges:
+                        # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
+                        virtual_qedge_key = f"creative_expand_treats_{qedge_key}"
+                        virtual_qedge = QEdge(subject=qedge.subject,
+                                              object=qedge.object,
+                                              option_group_id=f"creative_expand_treats_group_{qedge_key}")
+                        virtual_qedge.filled = True  # Resultify needs this flag
+                        message.query_graph.edges[virtual_qedge_key] = virtual_qedge
+                        overarching_kg.edges_by_qg_id[virtual_qedge_key] = dict()
+
+                        # Lump the higher-level treats edges together by subject/object
+                        subj_obj_map = defaultdict(set)
+                        for higher_treats_edge_key, higher_treats_edge in higher_level_treats_edges.items():
+                            hash_key = (higher_treats_edge.subject, higher_treats_edge.object)
+                            subj_obj_map[hash_key].add(higher_treats_edge_key)
+
+                        for (subj_key, obj_key), higher_treats_edge_keys in subj_obj_map.items():
+                            # Create a lumped edge to represent all of these edges
+                            lumped_edge = Edge(subject=subj_key, object=obj_key, predicate="biolink:treats",
+                                               sources=[RetrievalSource(resource_id="infores:arax",
+                                                                        resource_role="primary_knowledge_source")])
+                            lumped_edge_key = f"creative_expand_treats_edge:{subj_key}--treats--{obj_key}--infores:arax"
+                            overarching_kg.edges_by_qg_id[qedge_key][lumped_edge_key] = lumped_edge
+
+                            # Move the higher-level treats edges so that they fulfill the virtual qedge instead
+                            for higher_treats_edge_key in higher_treats_edge_keys:
+                                higher_treats_edge = overarching_kg.edges_by_qg_id[qedge_key][higher_treats_edge_key]
+                                overarching_kg.edges_by_qg_id[virtual_qedge_key][higher_treats_edge_key] = higher_treats_edge
+                                del overarching_kg.edges_by_qg_id[qedge_key][higher_treats_edge_key]
+
 
                 if mode != "RTXKG2":
                     # Apply any kryptonite ("not") qedges
@@ -583,26 +620,6 @@ class ARAXExpander:
         elif mode == "RTXKG2":
             decorator = ARAXDecorator()
             decorator.decorate_edges(response, kind="SEMMEDDB")
-
-        # TODO: For creative treats queries, combine higher-level treats-like edges from KPs into one edge with support graph
-        response.info(f"Treats-like predicates are: {self.treats_like_predicates}")
-        if mode != "RTXKG2" and inferred_qedge_keys:
-            response.info(f"Made it into block where KG2 treats-like edge alteration happens")
-            num_edges_altered = 0
-            for edge in message.knowledge_graph.edges.values():
-                if edge.predicate in self.treats_like_predicates:
-                    # Record the original treats-like predicate in an attribute
-                    edge.attributes.append(Attribute(attribute_type_id="biolink:original_predicate",
-                                                     value=edge.predicate,
-                                                     value_type_id="biolink:predicate",
-                                                     description="Predicate as it appears in KP, prior to "
-                                                                 "alteration by ARAX.",
-                                                     attribute_source="infores:arax"))
-                    # Then change the predicate to treats
-                    edge.predicate = "biolink:treats"
-                    num_edges_altered += 1
-            if num_edges_altered:
-                log.info(f"Modified the predicate of {num_edges_altered} KP edges to biolink:treats")
 
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
