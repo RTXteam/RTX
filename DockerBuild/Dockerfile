@@ -32,16 +32,13 @@ RUN chmod -R 700 /home/rt/.ssh
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt.rt /mnt/data/orangeboard/production
 RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git
-# 08/12/2022 NCATS change
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && git checkout ${BUILD_BRANCH}
-RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -yq apache2
 COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
 RUN cd /var/www && mv html html-orig && ln -s /mnt/data/orangeboard/production/RTX/code/UI/interactive html
 RUN cd /var/www && a2enmod proxy && a2enmod proxy_html && a2enmod proxy_http && a2enmod rewrite && a2enmod headers
-RUN a2enmod remoteip
+RUN a2enconf remoteip
 COPY remoteip.conf /etc/apache2/conf-available/remoteip.conf
 RUN a2enconf remoteip
 RUN cd /var/www && /usr/sbin/apachectl configtest
