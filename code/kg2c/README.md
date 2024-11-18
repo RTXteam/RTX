@@ -1,14 +1,14 @@
 # What is KG2canonicalized?
 
-RTX-KG2canonicalized (RTX-KG2c, or simply KG2c) is a version of RTX-KG2 in which synonymous nodes have been merged. 
+RTX-KG2canonicalized (RTX-KG2c, or simply KG2c) is a version of the RTX-KG2 knowledge graph in which synonymous nodes have been merged. 
 Its build process consists of:
 1) [building a NodeSynonymizer](https://github.com/RTXteam/RTX/tree/master/code/kg2c/synonymizer_build) based on information in [RTX-KG2pre](https://github.com/RTXteam/RTX-KG2) as well as two other sources,
 1) using that NodeSynonymizer to identify synonymous nodes in [RTX-KG2pre](https://github.com/RTXteam/RTX-KG2), and
-1) merging the synonymous nodes (i.e., doing entity resolution).
+1) merging the synonymous nodes and their corresponding edges (i.e., doing entity resolution).
 
 ### Graph schema
 
-Like RTX-KG2pre, KG2c adheres to the [Biolink model](https://github.com/biolink/biolink-model) for its semantic layer and schema.
+Like [RTX-KG2pre](https://github.com/RTXteam/RTX-KG2) (the uncanonicalized version of RTX-KG2), KG2c adheres to the [Biolink model](https://github.com/biolink/biolink-model) for its semantic layer and schema.
 
 ###### Example KG2c node:
 ```

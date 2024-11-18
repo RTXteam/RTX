@@ -52,13 +52,13 @@ class TRAPIQuerier:
                                                      upstream_resource_ids=[self.kp_infores_curie])
 
     async def answer_one_hop_query_async(self, query_graph: QueryGraph,
-                                         alter_kg2_treats_edges: bool = False) -> QGOrganizedKnowledgeGraph:
+                                         be_creative_treats: bool = False) -> QGOrganizedKnowledgeGraph:
         """
         This function answers a one-hop (single-edge) query using the specified KP.
         :param query_graph: A TRAPI query graph.
-        :param alter_kg2_treats_edges: If true, will query KG2 for higher-level treats-type predicates instead of just
-                                        'treats'. Any higher-level returned edges will later be altered to have 'treats'
-                                        predicates in ARAX_expander.py.
+        :param be_creative_treats: If true, will query KP for higher-level treats-type predicates instead of just
+                                    'treats'. Any higher-level returned edges will later be altered appropriately
+                                    in ARAX_expander.py.
         :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
                 results for the query. (Organized by QG IDs.)
         """
@@ -90,12 +90,13 @@ class TRAPIQuerier:
             log.update_query_plan(qedge_key, self.kp_infores_curie, "Skipped", skipped_message)
             return final_kg
 
-        # Patch to address lack of answers from KG2 for treats queries after treats refactor #2328
-        if alter_kg2_treats_edges and self.kp_infores_curie == "infores:rtx-kg2":
+        # Treat this as a creative 'treats' query
+        if be_creative_treats:
             for qedge in qg_copy.edges.values():  # Note there's only ever one qedge per QG here
-                qedge.predicates = list(set(qedge.predicates).union({"biolink:treats_or_applied_or_studied_to_treat"}))
-                log.info(f"For querying infores:rtx-kg2, edited {qedge_key} to use higher treats-type predicate: "
-                         f"{qedge.predicates}")
+                qedge.predicates = list(set(qedge.predicates).union({"biolink:treats_or_applied_or_studied_to_treat",
+                                                                     "biolink:applied_to_treat"}))  # Just to be safe
+                log.info(f"For querying {self.kp_infores_curie}, edited {qedge_key} to use higher treats-type "
+                         f"predicates: {qedge.predicates}")
 
         # Answer the query using the KP and load its answers into our object model
         final_kg = await self._answer_query_using_kp_async(qg_copy)

@@ -69,7 +69,7 @@ function main() {
     UIstate["version"] = checkUIversion(false);
     UIstate["scorestep"] = 0.1;
     UIstate["maxresults"] = 1000;
-    UIstate["maxsyns"] = 50;
+    UIstate["maxsyns"] = 1000;
     UIstate["prevtimestampobj"] = null;
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
@@ -752,7 +752,7 @@ async function sendSyn() {
     syndiv.innerHTML = "";
 
     var maxsyn = UIstate["maxsyns"];
-    var allweknow = await check_entity(word,true,maxsyn);
+    var allweknow = await check_entity(word,true,maxsyn,document.getElementById("showConceptGraph").checked);
 
     if (0) { // set to 1 if you just want full JSON dump instead of html tables
 	syndiv.innerHTML = "<pre>"+JSON.stringify(allweknow,null,2)+"</pre>";
@@ -870,6 +870,9 @@ async function sendSyn() {
 	    span.append(' to change this value ]');
             text.appendChild(span);
 	}
+	else
+	    text.append(' ('+allweknow[word].total_synonyms+")");
+
 	div.appendChild(text);
 
 	table = document.createElement("table");
@@ -7654,6 +7657,8 @@ function check_entities_batch(batchsize) {
     if (thisbatch) batches.push(thisbatch);
 
     for (let batch of batches) {
+	if (batch.length < 1)
+	    continue;
 	fetch(providers["ARAX"].url + "/entity", {
 	    method: 'post',
 	    body: JSON.stringify({"format":"minimal","terms":batch}),
@@ -7756,7 +7761,7 @@ function check_entities() {
 }
 
 
-async function check_entity(term,wantall,maxsyn=0) {
+async function check_entity(term,wantall,maxsyn=0,getgraph=false) {
     var data = {};
     var ent  = {};
     ent.found = false;
@@ -7772,6 +7777,8 @@ async function check_entity(term,wantall,maxsyn=0) {
 	queryObj['terms'] = [term];
 	if(maxsyn > 0)
 	    queryObj['max_synonyms'] = maxsyn;
+	if(!getgraph)
+	    queryObj['format'] = 'slim';
 
 	var response = await fetch(providers["ARAX"].url + "/entity", {
 	    method: 'post',
@@ -7933,7 +7940,7 @@ function update_url(urlkey,value) {
     else if (urlkey == 'maxsyns') {
         var sy = parseInt(document.getElementById(urlkey+"_url").value.trim());
         if (isNaN(sy))
-	    sy = 50;
+	    sy = 1000;
         UIstate[urlkey] = sy;
         document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
