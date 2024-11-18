@@ -141,9 +141,6 @@ class ARAXExpander:
         return parameter_info_dict
 
     def apply(self, response, input_parameters, mode: str = "ARAX"):
-        force_local = False  # Flip this to `True` in order to make your machine
-                             # act as the KG2 'API' (do not commit that edit!
-                             # `force_local = True` is for local use only)
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
@@ -402,7 +399,6 @@ class ARAXExpander:
                                                      kp_to_use,
                                                      user_specified_kp,
                                                      kp_timeout,
-                                                     force_local,
                                                      kp_selector,
                                                      log,
                                                      multiple_kps=True,
@@ -567,7 +563,6 @@ class ARAXExpander:
                                               query_graph,
                                               user_specified_kp,
                                               kp_timeout,
-                                              force_local,
                                               log,
                                               self.plover_url)
                 if log.status != 'OK':
@@ -748,7 +743,6 @@ class ARAXExpander:
                                  kp_to_use: str,
                                  user_specified_kp: bool,
                                  kp_timeout: Optional[int],
-                                 force_local: bool,
                                  kp_selector: KPSelector,
                                  log: ARAXResponse,
                                  multiple_kps: bool = False,
@@ -776,8 +770,7 @@ class ARAXExpander:
                                       kp_name=kp_to_use,
                                       user_specified_kp=user_specified_kp,
                                       kp_timeout=kp_timeout,
-                                      kp_selector=kp_selector,
-                                      force_local=force_local)
+                                      kp_selector=kp_selector)
             answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg,
                                                                     be_creative_treats=be_creative_treats)
         except Exception:
@@ -814,7 +807,6 @@ class ARAXExpander:
                      query_graph: QueryGraph,
                      user_specified_kp: bool,
                      kp_timeout: Optional[int],
-                     force_local: bool,
                      log: ARAXResponse,
                      url: str) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider (for now only KG2 is supported)
@@ -833,8 +825,7 @@ class ARAXExpander:
             kp_querier = TRAPIQuerier(response_object=log,
                                       kp_name=kps_to_use[0],
                                       user_specified_kp=user_specified_kp,
-                                      kp_timeout=kp_timeout,
-                                      force_local=force_local)
+                                      kp_timeout=kp_timeout)
             answer_kg = kp_querier.answer_single_node_query(single_node_qg)
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
             return answer_kg
