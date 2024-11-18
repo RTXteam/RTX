@@ -1487,7 +1487,7 @@ def test_kg2_version():
 
     # Then grab KG2 version from the OpenAPI spec
     code_dir = os.path.dirname(os.path.abspath(__file__)) + "/../../"
-    kg2_openapi_yaml_path = f"{code_dir}/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml"
+    kg2_openapi_yaml_path = f"{code_dir}/UI/OpenAPI/specifications/export/KG2/1.5.0/openapi.yaml"
     with open(kg2_openapi_yaml_path) as kg2_api_file:
         kg2_openapi_configuration = yaml.safe_load(kg2_api_file)
         kg2_openapi_version = kg2_openapi_configuration["info"]["version"]
