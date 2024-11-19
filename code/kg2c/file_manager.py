@@ -257,9 +257,6 @@ def upload_kg2c_files_to_arax_databases_server(kg2pre_version: str, sub_version:
     upload_file_to_arax_databases_server(local_file_path=f"{KG2C_DIR}/kg2c.sqlite{test_suffix}",
                                          remote_file_name=f"kg2c_{sub_version}_KG{kg2pre_version}.sqlite{test_suffix}",
                                          kg2pre_version=kg2pre_version)
-    upload_file_to_arax_databases_server(local_file_path=f"{KG2C_DIR}/meta_kg.json{test_suffix}",
-                                         remote_file_name=f"meta_kg_{sub_version}_KG{kg2pre_version}c.json{test_suffix}",
-                                         kg2pre_version=kg2pre_version)
     upload_file_to_arax_databases_server(local_file_path=f"{KG2C_DIR}/fda_approved_drugs.pickle{test_suffix}",
                                          remote_file_name=f"fda_approved_drugs_{sub_version}_KG{kg2pre_version}c.pickle{test_suffix}",
                                          kg2pre_version=kg2pre_version)
