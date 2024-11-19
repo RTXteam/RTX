@@ -56,7 +56,6 @@ class SuperNodeConverter:
         )
 
         for key, values in sorted_occurrence_list_by_node_id.items():
-            response.envelope.message.query_graph.nodes[self.qnode_mid_id].ids.append(key)
             new_path = []
             for value in values:
                 new_path.append(self.paths[value])

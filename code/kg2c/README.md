@@ -1,14 +1,14 @@
 # What is KG2canonicalized?
 
-RTX-KG2canonicalized (RTX-KG2c, or simply KG2c) is a version of RTX-KG2 in which synonymous nodes have been merged. 
+RTX-KG2canonicalized (RTX-KG2c, or simply KG2c) is a version of the RTX-KG2 knowledge graph in which synonymous nodes have been merged. 
 Its build process consists of:
 1) [building a NodeSynonymizer](https://github.com/RTXteam/RTX/tree/master/code/kg2c/synonymizer_build) based on information in [RTX-KG2pre](https://github.com/RTXteam/RTX-KG2) as well as two other sources,
 1) using that NodeSynonymizer to identify synonymous nodes in [RTX-KG2pre](https://github.com/RTXteam/RTX-KG2), and
-1) merging the synonymous nodes (i.e., doing entity resolution).
+1) merging the synonymous nodes and their corresponding edges (i.e., doing entity resolution).
 
 ### Graph schema
 
-Like RTX-KG2pre, KG2c adheres to the [Biolink model](https://github.com/biolink/biolink-model) for its semantic layer and schema.
+Like [RTX-KG2pre](https://github.com/RTXteam/RTX-KG2) (the uncanonicalized version of RTX-KG2), KG2c adheres to the [Biolink model](https://github.com/biolink/biolink-model) for its semantic layer and schema.
 
 ###### Example KG2c node:
 ```
@@ -117,7 +117,9 @@ If the machine you'll be using has never previously built a KG2c, you need to do
         1. You will need read and write permission for the `rtx-kg2` S3 bucket
 1. Otherwise if you are creating this KG2c from your own **custom KG2pre**:
     1. Create a copy of `config_secrets.json` that contains the proper secrets for your own KG2pre Neo4j endpoint
-
+1. Make sure you've installed packages from **both** of these requirements.txt files:
+   1. `pip install -r RTX/requirements.txt`
+   2. `pip install -r RTX/code/kg2c/requirements.txt`
 
 ### Building KG2c
 
@@ -140,7 +142,7 @@ flags/options.
    1. `cd RTX/code/kg2c/synonymizer_build`
    2. `python build_synonymizer.py 2.10.0 v1.0 --downloadkg2pre --uploadartifacts`
    1. once the build finishes, run the regression test suite:
-      1. `pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.X.Y.sqlite`
+      1. `pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.10.0.sqlite`
 1. **Do a test KG2c build**: If you're satisfied with the synonymizer, proceed with a test KG2c build:
    1. `screen -S kg2c`
    1. `pyenv activate rtx` if you're using buildkg2c.rtx.ai; otherwise activate your python environment however necessary

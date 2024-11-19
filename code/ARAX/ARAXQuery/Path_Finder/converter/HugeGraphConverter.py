@@ -57,7 +57,7 @@ class HugeGraphConverter:
             response.warning(f"Could not find main node id name: {self.node_in_between_id} to fill essence variable!")
             return
 
-        if (self.node_category_constraint != ''
+        if (self.node_category_constraint != 'biolink:NamedThing'
                 and self.node_category_constraint not in
                 knowledge_graph_src_dest.nodes[self.node_in_between_id].categories):
             return

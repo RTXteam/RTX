@@ -113,9 +113,12 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
     bh = BiolinkHelper()
     for node_id_batch in kg2pre_node_id_batches:
         # Send the batch to the SRI NN RestAPI
-        query_body = {"curies": node_id_batch,
-                      "conflate": True,
-                      "drug_chemical_conflate": True}
+        query_body = {
+                        "curies": node_id_batch,
+                        "conflate": True,
+                        "drug_chemical_conflate": True,
+                        "individual_types":True
+                     }
         response = requests.post(SRI_NN_URL, json=query_body)
 
         # Add nodes and edges to our SRI match graph based on the returned info
@@ -127,13 +130,14 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
                         # Create nodes for all members of this cluster
                         cluster_nodes_dict = dict()
                         # TODO: Update once Gaurav adds per-identifier type info to the API https://github.com/TranslatorSRI/NodeNormalization/issues/281
-                        cluster_category = determine_cluster_category(normalized_info["type"], category_map, bh)
+                        #cluster_category = determine_cluster_category(normalized_info["type"], category_map, bh)
                         for equivalent_node in normalized_info["equivalent_identifiers"]:
                             node_id = equivalent_node["identifier"]
+                            cluster_category = equivalent_node.get("type")
                             node = (node_id, equivalent_node.get("label"), cluster_category, cluster_id)
                             cluster_nodes_dict[node_id] = node
                         sri_nodes_dict.update(cluster_nodes_dict)
-
+                        
                         # Create within-cluster edges (form a complete graph for the clique)
                         cluster_node_ids = list(cluster_nodes_dict.keys())
                         for node_pair in list(itertools.combinations(cluster_node_ids, 2)):

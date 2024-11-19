@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=15">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=16">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="config.js"></script>
@@ -465,6 +465,14 @@
   <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newsynonym" name="newsynonym" onkeydown="submit_on_enter(this);" size="100" maxlength="1000"/>
   <input type="button" class="questionBox button" name="action" value="Look Up" onClick="sendSyn();"/>
   <span title="clear" class="clq" onclick="pasteSyn('');">&#9587;</span>
+  <br>
+  <label id="showConceptGraphText" class="tiny">
+    <span class="switch">
+      <input id="showConceptGraph" type="checkbox" onchange="togglecolor(this,'showConceptGraphText');">
+      <span class="slider"></span>
+    </span>
+    Show Concept Graph (can be very slow for large graphs)</label>
+
   <div id="synonym_result_container"></div>
 </div>
 
@@ -520,61 +528,102 @@
 
 <div class="pagesection" id="settingsDiv">
   <div class="statushead">API Settings</div>
-  <div class="status">
-    <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">REMOTE API TIMEOUT DURING ARAX EXPANSION (leave blank for default):</h3>
-    <input type="text" class="questionBox" id="timeout_url" onkeyup="enter_url(this,'timeout');" size="3" maxlength="3" value="30"/>
-    seconds
-    <input type="button" style="margin-left:14px;" class="questionBox button" id="timeout_url_button" value="Update" onClick="update_url('timeout',null);"/>
-    <br><br>
-    <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">DEFAULT PRUNING THRESHOLD DURING ARAX EXPANSION:</h3>
-    <input type="text" class="questionBox" id="pruning_url" onkeyup="enter_url(this,'pruning');" size="5" maxlength="5" value="50"/>
-    nodes
-    <input type="button" style="margin-left:107px;" class="questionBox button" id="pruning_url_button" value="Update" onClick="update_url('pruning',null);"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
-    <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX',null);"/>
-    <br>
-    <h3 style="margin-bottom:0px;">ARAX QUERY URL:</h3>
-    <input type="text" class="questionBox" id="ARAXQ_url" onkeyup="enter_url(this,'ARAXQ');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ARAXQ_url_button" value="Update" onClick="update_url('ARAXQ',null);"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">ARS API (post query):</h3>
-    <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ARS_url_button" value="Update" onClick="update_url('ARS',null);"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">EXTERNAL API (post query):</h3>
-    <input type="text" class="questionBox" id="EXT_url" onkeyup="enter_url(this,'EXT');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="EXT_url_button" value="Update" onClick="update_url('EXT',null);"/>
-    <br>
-    <input type="button" class="qprob sbte" value="BTE" onClick="update_url('EXT','https://api.bte.ncats.io/v1');"/>
-    <input type="button" class="qprob schp" value="CHP" onClick="update_url('EXT','http://chp.thayer.dartmouth.edu');"/>
-    <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
-    <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
-    <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
-    <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.5');"/>
-    <input type="button" class="qprob p1" value="ICEES-Asthma" onClick="update_url('EXT','https://icees.renci.org:16339');"/>
-    <input type="button" class="qprob p1" value="ICEES-DILI" onClick="update_url('EXT','https://icees.renci.org:16341');"/>
-    <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.5');"/>
-    <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.4');"/>
-    <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
-    <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
-    <input type="button" class="qprob p3" value="ClinicalTrialsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/ctkp');"/>
-    <input type="button" class="qprob p5" value="DrugApprovalsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/dakp');"/>
-    <br><br>
+  <div class="status settings">
+    <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">REMOTE API TIMEOUT DURING ARAX EXPANSION (leave blank for default):</h3>
+      <input type="text" class="questionBox" id="timeout_url" onkeyup="enter_url(this,'timeout');" size="3" maxlength="3" value="30"/>
+      seconds
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="timeout_url_button" value="Update" onClick="update_url('timeout',null);"/>
+    </span>
+
+    <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">DEFAULT PRUNING THRESHOLD DURING ARAX EXPANSION:</h3>
+      <input type="text" class="questionBox" id="pruning_url" onkeyup="enter_url(this,'pruning');" size="5" maxlength="5" value="50"/>
+      nodes
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="pruning_url_button" value="Update" onClick="update_url('pruning',null);"/>
+    </span>
+
+    <span>
+      <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
+      <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX',null);"/>
+    </span>
+
+    <span>
+      <h3 style="margin-bottom:0px;">ARAX QUERY URL:</h3>
+      <input type="text" class="questionBox" id="ARAXQ_url" onkeyup="enter_url(this,'ARAXQ');" size="100" maxlength="1000"/>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="ARAXQ_url_button" value="Update" onClick="update_url('ARAXQ',null);"/>
+    </span>
+
+    <span>
+      <h3 style="margin-bottom:0px;">ARS API (post query):</h3>
+      <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="ARS_url_button" value="Update" onClick="update_url('ARS',null);"/>
+    </span>
+
+    <span>
+      <h3 style="margin-bottom:0px;">EXTERNAL API (post query):</h3>
+      <input type="text" class="questionBox" id="EXT_url" onkeyup="enter_url(this,'EXT');" size="100" maxlength="1000"/>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="EXT_url_button" value="Update" onClick="update_url('EXT',null);"/>
+    </span>
+
+    <span>
+      <input type="button" class="qprob sbte" value="BTE" onClick="update_url('EXT','https://api.bte.ncats.io/v1');"/>
+      <input type="button" class="qprob schp" value="CHP" onClick="update_url('EXT','http://chp.thayer.dartmouth.edu');"/>
+      <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
+      <input type="button" class="qprob p3" value="ClinicalTrialsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/ctkp');"/>
+      <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
+      <input type="button" class="qprob p5" value="DrugApprovalsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/dakp');"/>
+      <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
+      <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.5');"/>
+      <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.5');"/>
+      <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.4');"/>
+      <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
+      <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
+    </span>
+    <span>
+    </span>
   </div>
 
   <div class="statushead">Session Settings</div>
-  <div class="status">
-    <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF RESULTS TO DISPLAY (very large values may crash UI):</h3>
-    <input type="text" class="questionBox" id="maxresults_url" onkeyup="enter_url(this,'maxresults');" size="6" maxlength="6"/>
-    <input type="button" style="margin-left:15px;" class="questionBox button" id="maxresults_url_button" value="Update" onClick="update_url('maxresults',null);"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">SUBMITTER (enter a generic name to help track queries):</h3>
-    <input type="text" class="questionBox" id="submitter_url" onkeyup="enter_url(this,'submitter');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="submitter_url_button" value="Update" onClick="update_url('submitter',null);"/>
-    <br><br>
+  <div class="status settings">
+    <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF RESULTS TO DISPLAY (very large values may crash UI):</h3>
+      <input type="text" class="questionBox" id="maxresults_url" onkeyup="enter_url(this,'maxresults');" size="6" maxlength="6"/>
+      results
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="maxresults_url_button" value="Update" onClick="update_url('maxresults',null);"/>
+    </span>
 
+    <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF SYNONYMS TO DISPLAY (values above 1000 may slow down UI):</h3>
+      <input type="text" class="questionBox" id="maxsyns_url" onkeyup="enter_url(this,'maxsyns');" size="4" maxlength="4"/>
+      nodes
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="maxsyns_url_button" value="Update" onClick="update_url('maxsyns',null);"/>
+    </span>
+
+    <span>
+      <h3 style="margin-bottom:0px;">SUBMITTER (enter a generic name to help track queries):</h3>
+      <input type="text" class="questionBox" id="submitter_url" onkeyup="enter_url(this,'submitter');" size="100" maxlength="1000"/>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="submitter_url_button" value="Update" onClick="update_url('submitter',null);"/>
+    </span>
 
     <!-- label id="useCacheText" class="tiny blue">
       <span class="switch">

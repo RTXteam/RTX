@@ -347,7 +347,6 @@
         "umls:c0003209",
         "umls:c4045974",
         "umls:c0005522"
-
     ],
     "synonyms": [
         "used in nicotine dependence",
@@ -459,6 +458,7 @@
         "antidiarrheals in atc",
         "poisoning",
         "proteins",
+        "plasma proteins",
         "mineral supplements in atc",
         "virology",
         "antifungals for topical use in atc",
@@ -684,7 +684,6 @@
         "secondary",
         "uterotonics",
         "radiotherapy",
-        "pharmacolog.*",
         "medicament",
         "Anesthetics",
         "vaccines",
@@ -708,6 +707,8 @@
         "Introns",
         "antioxidant",
         "Oils"
-
+    ],
+    "patterns": [
+        "pharmacolog.*"
     ]
 }

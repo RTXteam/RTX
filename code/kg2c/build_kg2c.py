@@ -124,8 +124,10 @@ def main():
     # Upload artifacts to the relevant places
     file_manager.make_kg2c_tarball(args.test)
     if args.upload_artifacts:
+        file_manager.zip_and_upload_artifacts_to_kg2webhost(args.kg2pre_version, args.sub_version, args.test)
         file_manager.upload_kg2c_files_to_arax_databases_server(args.kg2pre_version, args.sub_version, args.test)
-        file_manager.upload_kg2c_files_to_s3(args.test)
+        file_manager.upload_file_to_s3(f"{KG2C_DIR}/kg2c-tsv.tar.gz{'_TEST' if args.test else ''}")
+        file_manager.upload_file_to_s3(f"{KG2C_DIR}/kg2c_lite.json{'_TEST' if args.test else ''}.gz")
 
     logging.info(f"DONE WITH KG2c {'TEST ' if args.test else ''}BUILD! Took {round(((time.time() - start) / 60) / 60, 1)} hours.")
 

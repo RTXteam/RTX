@@ -7,7 +7,8 @@ import sqlite3
 import string
 import sys
 import time
-from collections import defaultdict
+import math
+from collections import defaultdict, Counter
 from typing import Optional, Union, List, Set, Dict, Tuple
 
 import pandas as pd
@@ -286,6 +287,7 @@ class NodeSynonymizer:
         return results_dict
 
     def get_normalizer_results(self, entities: Optional[Union[str, Set[str], List[str]]],
+                               max_synonyms: int = 1000000,
                                debug: bool = False) -> dict:
         start = time.time()
 
@@ -295,6 +297,15 @@ class NodeSynonymizer:
             entities_dict = entities
             entities = entities_dict.get("terms")
             output_format = entities_dict.get("format")
+
+            # Allow the caller to encode the max_synonyms in the input dict (used by web UI)
+            max_synonyms_raw = entities_dict.get("max_synonyms")
+            try:
+                max_synonyms_int = int(max_synonyms_raw)
+                if max_synonyms_int > 0:
+                    max_synonyms = max_synonyms_int
+            except:
+                pass
 
         # Convert any input curies to Set format
         entities_set = self._convert_to_set_format(entities)
@@ -306,6 +317,26 @@ class NodeSynonymizer:
         if unrecognized_entities:
             equivalent_curies_dict_names = self.get_equivalent_nodes(names=unrecognized_entities, include_unrecognized_entities=False)
             equivalent_curies_dict.update(equivalent_curies_dict_names)
+
+        # Truncate synonyms to max number allowed per node
+        # First record counts for full list of equivalent curies before trimming
+        equiv_curie_counts_untrimmed = {input_entity: len(equivalent_curies) if equivalent_curies else 0
+                                        for input_entity, equivalent_curies in equivalent_curies_dict.items()}
+        all_node_ids_untrimmed = set().union(*equivalent_curies_dict.values())
+        sql_query_template = f"""
+                    SELECT N.id, N.category
+                    FROM nodes as N
+                    WHERE N.id in ('{self.placeholder_lookup_values_str}')"""
+        matching_rows = self._run_sql_query_in_batches(sql_query_template, all_node_ids_untrimmed)
+        categories_map_untrimmed = {row[0]: f"biolink:{row[1]}" for row in matching_rows}
+        category_counts_untrimmed = dict()
+        equivalent_curies_dict_trimmed = dict()
+        for input_entity, equivalent_curies in equivalent_curies_dict.items():
+            category_counts_untrimmed[input_entity] = dict(Counter([categories_map_untrimmed[equiv_curie]
+                                                                    for equiv_curie in equivalent_curies]))
+            equivalent_curies_trimmed = equivalent_curies[:max_synonyms] if equivalent_curies else None
+            equivalent_curies_dict_trimmed[input_entity] = equivalent_curies_trimmed
+        equivalent_curies_dict = equivalent_curies_dict_trimmed
 
         # Then get info for all of those equivalent nodes
         # Note: We don't need to query by capitalized curies because these are all curies that exist in the synonymizer
@@ -340,13 +371,13 @@ class NodeSynonymizer:
                                                  "SRI_normalizer_name": cluster_rep["name_sri"],
                                                  "SRI_normalizer_category": cluster_rep["category_sri"],
                                                  "SRI_normalizer_curie": cluster_id if cluster_rep["category_sri"] else None},
-                                          "categories": defaultdict(int),
+                                          "total_synonyms": equiv_curie_counts_untrimmed[input_entity],
+                                          "categories": category_counts_untrimmed[input_entity],
                                           "nodes": [nodes_dict[equivalent_curie] for equivalent_curie in equivalent_curies]}
 
-        # Do some post-processing (tally up category counts and remove no-longer-needed 'cluster_id' property)
+        # Do some post-processing (remove no-longer-needed 'cluster_id' property)
         for normalizer_info in results_dict.values():
             for equivalent_node in normalizer_info["nodes"]:
-                normalizer_info["categories"][equivalent_node["category"]] += 1
                 if "cluster_id" in equivalent_node:
                     del equivalent_node["cluster_id"]
                 if "cluster_preferred_name" in equivalent_node:
@@ -368,10 +399,25 @@ class NodeSynonymizer:
                 for dict_key in keys_to_delete:
                     del normalizer_info[dict_key]
         # Otherwise add in cluster graphs
+        elif output_format == "slim":
+            pass
         else:
             for normalizer_info in results_dict.values():
                 if normalizer_info:
                     normalizer_info["knowledge_graph"] = self._get_cluster_graph(normalizer_info)
+
+        # Attempt to squash NaNs, which are not legal in JSON. Turn them into nulls
+        if ( normalizer_info is not None and 'knowledge_graph' in normalizer_info and
+                normalizer_info["knowledge_graph"] is not None and 'edges' in normalizer_info["knowledge_graph"] and
+                isinstance(normalizer_info["knowledge_graph"]['edges'],dict) ):
+            for edge_name, edge_data in normalizer_info["knowledge_graph"]['edges'].items():
+                if 'attributes' in edge_data and isinstance(edge_data['attributes'], list):
+                    for attribute in edge_data['attributes']:
+                        try:
+                            if 'value' in attribute and math.isnan(attribute['value']):
+                                attribute['value'] = None
+                        except:
+                            pass
 
         if debug:
             print(f"Took {round(time.time() - start, 5)} seconds")
@@ -495,7 +541,13 @@ class NodeSynonymizer:
             intra_cluster_edge_ids_str = "[]" if cluster_row[0] == "nan" else cluster_row[0]
             intra_cluster_edge_ids = ast.literal_eval(intra_cluster_edge_ids_str)  # Lists are stored as strings in sqlite
 
-            edges_query = f"SELECT * FROM edges WHERE id IN ('{self._convert_to_str_format(intra_cluster_edge_ids)}')"
+            # Get rid of any orphan edges (may be present if max_synonyms is specified in get_normalizer_results())
+            subj_obj_query = f"SELECT id, subject, object FROM edges WHERE id IN ('{self._convert_to_str_format(intra_cluster_edge_ids)}')"
+            subj_obj_rows = self._execute_sql_query(subj_obj_query)
+            intra_cluster_edge_ids_trimmed = {edge_id for edge_id, subject_id, object_id in subj_obj_rows
+                                              if subject_id in kg.nodes and object_id in kg.nodes}
+
+            edges_query = f"SELECT * FROM edges WHERE id IN ('{self._convert_to_str_format(intra_cluster_edge_ids_trimmed)}')"
             edge_rows = self._execute_sql_query(edges_query)
             edges_df = self._load_records_into_dataframe(edge_rows, "edges")
             edge_dicts = edges_df.to_dict(orient="records")
