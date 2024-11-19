@@ -584,8 +584,7 @@ class ARAXExpander:
         # Decorate all nodes with additional attributes info from KG2c if requested (iri, description, etc.)
         if not parameters.get("return_minimal_metadata"):
             decorator = ARAXDecorator()
-            decorator.decorate_nodes(response)
-            decorator.decorate_edges(response, kind="RTX-KG2")
+            decorator.decorate_nodes(response, only_decorate_bare=True)
 
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
