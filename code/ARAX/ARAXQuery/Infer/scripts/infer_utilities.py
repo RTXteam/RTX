@@ -225,7 +225,7 @@ class InferUtilities:
                                     description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score)),
                     Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
-                    Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction")
+                    Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
                 ]
                 retrieval_source = [
                                     RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
@@ -342,7 +342,7 @@ class InferUtilities:
                         edge_attribute_list = [
                             Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                             Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
-                            Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction")
+                            Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
                         ]
                         if predicate == "biolink:self_loop_relation":
                             edge_attribute_list += [
@@ -378,7 +378,7 @@ class InferUtilities:
                     Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score)),
                     Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
-                    Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction")
+                    Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
                 ]
                 retrieval_source = [
                         RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
@@ -612,7 +612,7 @@ class InferUtilities:
                                     description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                         Attribute(attribute_type_id="EDAM-OPERATION:2434", original_attribute_name=f"probably_{model_type}_activity", value=str(prob_score)),
                         Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
-                        Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction")
+                        Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
                     ]
                     retrieval_source = [
                                     RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
@@ -663,7 +663,7 @@ class InferUtilities:
                                     description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                         Attribute(attribute_type_id="EDAM-OPERATION:2434", original_attribute_name=f"probably_{model_type}_activity", value=str(prob_score)),
                         Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
-                        Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction")
+                        Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
                     ]
                     if model_type == 'increase':
                         edge_qualifier_direction = 'increased'
@@ -779,7 +779,7 @@ class InferUtilities:
                     Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     Attribute(attribute_type_id="EDAM-OPERATION:2434", original_attribute_name=f"probably_{model_type}_activity", value=str(regulate_score)),
                     Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
-                    Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction")
+                    Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
                 ]
                 retrieval_source = [
                                         RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
