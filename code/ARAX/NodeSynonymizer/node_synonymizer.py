@@ -399,15 +399,19 @@ class NodeSynonymizer:
                 for dict_key in keys_to_delete:
                     del normalizer_info[dict_key]
         # Otherwise add in cluster graphs
+        elif output_format == "slim":
+            pass
         else:
             for normalizer_info in results_dict.values():
                 if normalizer_info:
                     normalizer_info["knowledge_graph"] = self._get_cluster_graph(normalizer_info)
 
         # Attempt to squash NaNs, which are not legal in JSON. Turn them into nulls
-        if 'knowledge_graph' in normalizer_info and 'edges' in normalizer_info["knowledge_graph"]:
+        if ( normalizer_info is not None and 'knowledge_graph' in normalizer_info and
+                normalizer_info["knowledge_graph"] is not None and 'edges' in normalizer_info["knowledge_graph"] and
+                isinstance(normalizer_info["knowledge_graph"]['edges'],dict) ):
             for edge_name, edge_data in normalizer_info["knowledge_graph"]['edges'].items():
-                if 'attributes' in edge_data:
+                if 'attributes' in edge_data and isinstance(edge_data['attributes'], list):
                     for attribute in edge_data['attributes']:
                         try:
                             if 'value' in attribute and math.isnan(attribute['value']):

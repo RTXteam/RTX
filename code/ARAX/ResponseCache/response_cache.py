@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# Database definition and RTXFeedback class
+# Database definition and ResponseCache class
 
 import sys
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
