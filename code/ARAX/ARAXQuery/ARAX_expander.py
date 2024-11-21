@@ -511,10 +511,10 @@ class ARAXExpander:
                                                sources=[RetrievalSource(resource_id="infores:arax",
                                                                         resource_role="primary_knowledge_source")],
                                                attributes=[Attribute(attribute_type_id="biolink:agent_type",
-                                                                     value="computational_model",
+                                                                     value="automated_agent",
                                                                      attribute_source="infores:arax"),
                                                            Attribute(attribute_type_id="biolink:knowledge_level",
-                                                                     value="not_provided",
+                                                                     value="prediction",
                                                                      attribute_source="infores:arax")])
                             lumped_edge_key = f"creative_expand_treats_edge:{subj_key}--treats--{obj_key}--infores:arax"
                             overarching_kg.edges_by_qg_id[qedge_key][lumped_edge_key] = lumped_edge
