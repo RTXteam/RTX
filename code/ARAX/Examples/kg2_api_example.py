@@ -6,6 +6,7 @@ import requests
 
 with open("kg2_api_example.json", "r") as input_file:
     trapi_message = json.load(input_file)
-    result = requests.post("https://arax.ncats.io/api/rtxkg2/v1.0/query?bypass_cache=false",
-                           json=trapi_message)
+    result = requests.post("https://kg2cploverdb.transltr.io/query",
+                           json=trapi_message,
+                           headers={"Content-Type": "application/json"})
     pprint.pprint(result.json())
