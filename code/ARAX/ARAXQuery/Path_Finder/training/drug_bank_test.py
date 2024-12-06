@@ -2,8 +2,6 @@ import json
 import os
 import sys
 import logging
-import sqlite3
-import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -13,6 +11,7 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 from path_finder_service import get_paths_from_path_finder
+from DrugDiseaseMatchedDB import DrugDiseaseMatchedDB
 
 
 def extract_intermediate_nodes(paths):
@@ -24,8 +23,8 @@ def extract_intermediate_nodes(paths):
     return nodes
 
 
-def run_tests():
-    with open('./Path_Finder/training/data/DrugBank_aligned_with_KG2.json', 'r') as file:
+def run_tests(db):
+    with open('./Path_Finder/training/data/drug_bank_sample.json', 'r') as file:
         data = json.load(file)
 
     counter = 0
@@ -36,8 +35,8 @@ def run_tests():
             intermediate_node_from_path_finder = extract_intermediate_nodes(paths)
             matched = intermediate_node_from_path_finder & test_nodes
             containment_index = len(matched) / len(test_nodes)
-            insert(source, destination, str(matched), containment_index, len(intermediate_node_from_path_finder),
-                   len(test_nodes))
+            db.insert(source, destination, str(matched), containment_index, len(intermediate_node_from_path_finder),
+                      len(test_nodes))
             logging.info(f"{++counter}: {source} - {destination}:  {containment_index}")
 
 
@@ -51,55 +50,8 @@ def number_of_test_data():
     logging.info(f"Number of test pairs: {counter}")
 
 
-def insert(drug, disease, matched, containment_index, number_of_found_nodes, number_of_test_nodes):
-    conn = sqlite3.connect('drug_disease.db')
-    cursor = conn.cursor()
-
-    insert_query = """
-    INSERT INTO DrugDiseaseMatch (drug, disease, matched, containment_index, number_of_found_nodes, number_of_test_nodes)
-    VALUES (?, ?, ?, ?, ?, ?);
-    """
-
-    cursor.execute(insert_query,
-                   (drug, disease, matched, containment_index, number_of_found_nodes, number_of_test_nodes))
-
-    conn.commit()
-    conn.close()
-
-
-def create_table():
-    conn = sqlite3.connect('drug_disease.db')
-
-    cursor = conn.cursor()
-
-    create_table_query = """
-    CREATE TABLE IF NOT EXISTS DrugDiseaseMatch (
-        drug TEXT,
-        disease TEXT,
-        matched TEXT,
-        containment_index REAL,
-        number_of_found_nodes INTEGER,
-        number_of_test_nodes INTEGER
-    );
-    """
-
-    cursor.execute(create_table_query)
-
-    conn.commit()
-    conn.close()
-
-
-def read_all():
-    conn = sqlite3.connect('drug_disease.db')
-
-    query = "SELECT containment_index FROM DrugDiseaseMatch"
-    data = pd.read_sql_query(query, conn)
-    conn.close()
-    return data
-
-
-def depict_pdf():
-    data = read_all()
+def depict_pdf(db):
+    data = db.read_all()
 
     data = data[data['containment_index'] != 0]
 
@@ -122,7 +74,8 @@ def depict_pdf():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    # create_table()
-    # number_of_test_data()
-    # run_tests()
-    depict_pdf()
+    db = DrugDiseaseMatchedDB('drug_disease.db')
+    db.create_table()
+    number_of_test_data()
+    run_tests(db)
+    depict_pdf(db)
