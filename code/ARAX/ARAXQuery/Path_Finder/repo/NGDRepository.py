@@ -29,17 +29,25 @@ class NGDRepository:
 
         return []
 
-    def get_curies_pmid_length(self, curies, limit):
+    def get_curies_pmid_length(self, curies, limit=-1):
         try:
             sqlite_connection_read = sqlite3.connect(self.db_path)
             cursor = sqlite_connection_read.cursor()
-            query = f"""
-            SELECT curie, pmid_length
-            FROM curie_ngd
-            WHERE curie IN ({','.join('?' for _ in curies)})
-            ORDER BY pmid_length DESC
-            LIMIT {limit};
-            """
+            if limit != -1:
+                query = f"""
+                    SELECT curie, pmid_length
+                    FROM curie_ngd
+                    WHERE curie IN ({','.join('?' for _ in curies)})
+                    ORDER BY pmid_length DESC
+                    LIMIT {limit};
+                    """
+            else:
+                query = f"""
+                    SELECT curie, pmid_length
+                    FROM curie_ngd
+                    WHERE curie IN ({','.join('?' for _ in curies)})
+                    ORDER BY pmid_length DESC;
+                    """
             cursor.execute(query, curies)
             rows = cursor.fetchall()
             cursor.close()
