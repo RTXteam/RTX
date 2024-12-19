@@ -64,7 +64,10 @@ class ResultTransformer:
                         message.auxiliary_graphs[aux_graph_key] = AuxiliaryGraph(edges=list(group_edge_keys),attributes=[])
 
                     # Refer to this aux graph from the current Result or Edge (if this is an Infer support graph)
-                    if group_id and (group_id.startswith("creative_DTD_") or group_id.startswith("creative_CRG_")):
+                    if group_id and group_id.startswith("creative_"):
+                        # Figure out which creative tool/method we're dealing with (e.g. creative_DTD, creative_expand)
+                        group_id_prefix = "_".join(group_id.split("_")[:2])
+
                         # Create an attribute for the support graph that we'll tack onto the treats edge for this result
                         support_graph_attribute = Attribute(attribute_type_id="biolink:support_graphs",
                                                             value=[aux_graph_key],
@@ -83,18 +86,19 @@ class ResultTransformer:
                         else:
                             inferred_qedge_key = inferred_qedge_keys[0]
                             inferred_edge_keys = {edge_binding.id for edge_binding in
-                                                  result.analyses[0].edge_bindings[inferred_qedge_key] if "creative_" in edge_binding.id}
+                                                  result.analyses[0].edge_bindings[inferred_qedge_key]
+                                                  if group_id_prefix in edge_binding.id}
                             # Refer to the support graph from the proper edge(s)
                             for inferred_edge_key in inferred_edge_keys:
                                 inferred_edge = message.knowledge_graph.edges[inferred_edge_key]
                                 if inferred_edge.attributes:
-                                    support_graph_attributes = [attribute for attribute in inferred_edge.attributes
+                                    existing_sg_attributes = [attribute for attribute in inferred_edge.attributes
                                                                 if attribute.attribute_type_id == "biolink:support_graphs"]
-                                    if support_graph_attributes:
+                                    if existing_sg_attributes:
                                         # Refer to this support graph from the first existing support graph attribute
-                                        existing_support_graph_attribute = support_graph_attributes[0]
-                                        if aux_graph_key not in existing_support_graph_attribute.value:
-                                            existing_support_graph_attribute.value.append(aux_graph_key)
+                                        existing_sg_attribute = existing_sg_attributes[0]
+                                        if aux_graph_key not in existing_sg_attribute.value:
+                                            existing_sg_attribute.value.append(aux_graph_key)
                                     else:
                                         inferred_edge.attributes.append(support_graph_attribute)
                                 else:

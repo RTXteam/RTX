@@ -942,9 +942,9 @@ def main():
     actions = result.data['actions']
 
     #### Read message #2 from the database. This should be the acetaminophen proteins query result message
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/Feedback")
-    from RTXFeedback import RTXFeedback
-    araxdb = RTXFeedback()
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../ResponseCache")
+    from response_cache import ResponseCache
+    response_cache = ResponseCache()
 
     #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
@@ -952,7 +952,7 @@ def main():
     # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
     # message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
     # message_dict = araxdb.getMessage(10)
-    message_dict = araxdb.getMessage(40)
+    message_dict = response_cache.get_response(314204)
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger

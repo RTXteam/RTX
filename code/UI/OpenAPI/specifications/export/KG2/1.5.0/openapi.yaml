@@ -9,7 +9,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2 - TRAPI 1.5.0
-  version: 2.10.0
+  version: 2.10.1
   x-translator:
     component: KP
     team:
@@ -42,7 +42,7 @@ externalDocs:
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
 - description: RTX-KG2 TRAPI 1.5 endpoint - production
-  url: https://kg2.transltr.io/api/rtxkg2/v1.4
+  url: https://kg2cploverdb.transltr.io
   x-maturity: production
 - description: RTX-KG2 TRAPI 1.5 endpoint - testing
   url: https://kg2cploverdb.test.transltr.io
