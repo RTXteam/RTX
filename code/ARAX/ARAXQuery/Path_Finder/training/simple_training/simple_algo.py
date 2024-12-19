@@ -33,16 +33,29 @@ def read_training_data():
     return training
 
 
-def get_sorted_neighbors(curie):
+def get_neighbors_info(curie):
     ngd_repo = NGDRepository()
     repo = PloverDBRepo(plover_url=RTXConfiguration().plover_url)
     curie_ngd_list = ngd_repo.get_curie_ngd(curie)
     neighbors = repo.trapi_query(Node(id=curie))
     neighbors_id = [curie.id for curie in neighbors]
     node_pmids_length = ngd_repo.get_curies_pmid_length(neighbors_id)
+    content_by_curie = {item: dict() for item in neighbors_id}
+    for curie, num_of_pmids in node_pmids_length:
+        content_by_curie[curie]["pmids"] = num_of_pmids
+    for ngd in curie_ngd_list:
+        content_by_curie[ngd[0]]["ngd"] = ngd[1]
+    for node in neighbors:
+        content_by_curie[node.id]["category"] = node.category
+    return content_by_curie
 
 
 if __name__ == "__main__":
     training_data = read_training_data()
+    i = 0
+    print(len(training_data))
+
     for key_nodes_pair in training_data:
-        neighbors_list = get_sorted_neighbors(key_nodes_pair[0])
+        content_by_curie = get_neighbors_info(key_nodes_pair[0])
+        i += 1
+        print(i)
