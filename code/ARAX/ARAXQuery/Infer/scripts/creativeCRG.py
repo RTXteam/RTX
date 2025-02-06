@@ -17,14 +17,54 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'Ope
 import openapi_server
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
-from kg2_querier import KG2Querier
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery','']))
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'BiolinkHelper','']))
 from biolink_helper import BiolinkHelper
+from openapi_server.models.edge import Edge
+from openapi_server.models.qualifier import Qualifier
+from openapi_server.models.retrieval_source import RetrievalSource
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
+def _convert_kg2c_plover_edge_to_trapi_edge(edge_tuple: list) -> Edge:
+        edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2])
+        primary_knowledge_source = edge_tuple[3]
+        qualified_predicate = edge_tuple[4]
+        qualified_object_direction = edge_tuple[5]
+        qualified_object_aspect = edge_tuple[6]
+
+        sources = list()
+        # Add this edge's primary knowledge source
+        sources.append(RetrievalSource(resource_id=primary_knowledge_source,
+                                       resource_role="primary_knowledge_source"))
+
+        # Indicate that this edge came from the KG2 KP
+        sources.append(RetrievalSource(resource_id="infores:rtx-kg2",
+                                       resource_role="aggregator_knowledge_source",
+                                       upstream_resource_ids=[primary_knowledge_source]))
+        edge.sources = sources
+
+        # Add any qualifiers as appropriate
+        qualifiers = []
+        if qualified_predicate:
+            predicate_qualifier = Qualifier(qualifier_type_id="biolink:qualified_predicate",
+                                            qualifier_value=qualified_predicate)
+            qualifiers.append(predicate_qualifier)
+        if qualified_object_direction:
+            direction_qualifier = Qualifier(qualifier_type_id="biolink:object_direction_qualifier",
+                                            qualifier_value=qualified_object_direction)
+            qualifiers.append(direction_qualifier)
+        if qualified_object_aspect:
+            aspect_qualifier = Qualifier(qualifier_type_id="biolink:object_aspect_qualifier",
+                                         qualifier_value=qualified_object_aspect)
+            qualifiers.append(aspect_qualifier)
+        if qualifiers:
+            edge.qualifiers = qualifiers
+
+        return edge
+
 def call_plover(curies: List, respect_predicate_symmetry: bool=False):
         json = {}
         plover_url = RTXConfig.plover_url
@@ -219,7 +259,6 @@ class creativeCRG:
         return status_code, query_tf_neighbor_data,answer_tf_neigbor_data, edges
     
     def add_node_ids_to_path(self, paths, tf_edges,chemical_edges, gene_edges):
-        kg2_querier = KG2Querier(self.response, RTXConfig.plover_url)
         tf_edges.update(chemical_edges['edges']['e00'])
         tf_edges.update(gene_edges['edges']['e00'])
         final_paths = {}
@@ -231,7 +270,7 @@ class creativeCRG:
                 _path_to_add = [query]
                 for edge in path:
                     plover_edge = tf_edges[edge]
-                    trapi_edge = kg2_querier._convert_kg2c_plover_edge_to_trapi_edge(plover_edge)
+                    trapi_edge = _convert_kg2c_plover_edge_to_trapi_edge(plover_edge)
                     _path_to_add.append({edge:trapi_edge})
                     _path_to_add.append(plover_edge[1])
                 final_paths[(query,answer)].append(_path_to_add)
