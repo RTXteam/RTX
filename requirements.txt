@@ -54,4 +54,5 @@ opentelemetry-proto==1.17.0
 opentelemetry-sdk==1.17.0
 opentelemetry-semantic-conventions==0.38b0
 opentelemetry-util-http==0.38b0
+xgboost
 
