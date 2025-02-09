@@ -10,6 +10,14 @@ import queue
 from repo.repo_factory import get_repo
 
 
+def split_input(path):
+    ids = path.split("_")
+    links = []
+    for i in range(0, len(ids) - 2):
+        links.append(Node(ids[i]))
+    return Path(int(ids[-2]), links), ids[-1]
+
+
 def get_path(path):
     ids = path.split("_")
     links = []
@@ -20,11 +28,11 @@ def get_path(path):
 
 def process_path(path_string):
     try:
-        path = get_path(path_string)
+        path, repo_name = split_input(path_string)
         result = []
         if path.path_limit > 0:
             last_link = path.last()
-            repo = get_repo()
+            repo = get_repo(repo_name)
             node_degree = repo.get_node_degree(last_link)
             if node_degree > NODE_DEGREE_LIMIT:
                 return path_string, result, None
@@ -62,7 +70,7 @@ class BreadthFirstSearch:
                 paths = []
                 for _ in range(4 * num_cores):
                     if not path_queue.empty():
-                        paths.append(str(path_queue.get()))
+                        paths.append(str(path_queue.get()) + "_" + self.repo_name)
 
                 new_paths_list = pool.map(process_path, paths)
 
