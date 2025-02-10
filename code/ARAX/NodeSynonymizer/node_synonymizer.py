@@ -286,6 +286,51 @@ class NodeSynonymizer:
             print(f"Took {round(time.time() - start, 5)} seconds")
         return results_dict
 
+    def get_curie_category(self, curies: Union[str, Set[str], List[str]], debug: bool = False) -> dict:
+        """
+        Returns NON-preferred names for input curies; i.e., the curie's direct name, not the name of its canonical
+        identifier.
+        """
+        start = time.time()
+
+        # Convert any input values to Set format
+        curies_set = self._convert_to_set_format(curies)
+        results_dict = dict()
+
+        if curies_set:
+            # First transform curies so that their prefixes are entirely uppercase
+            curies_to_capitalized_curies, capitalized_curies = self._map_to_capitalized_curies(curies_set)
+
+            # Query the synonymizer sqlite database for these identifiers (in batches, if necessary)
+            sql_query_template = f"""
+                        SELECT N.id_simplified, N.category
+                        FROM nodes as N
+                        WHERE N.id_simplified in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, capitalized_curies)
+
+            # Transform the results into the proper response format
+            results_dict_capitalized = {row[0]: row[1] for row in matching_rows}
+            results_dict = {input_curie: results_dict_capitalized[capitalized_curie]
+                            for input_curie, capitalized_curie in curies_to_capitalized_curies.items()
+                            if capitalized_curie in results_dict_capitalized}
+
+        if debug:
+            print(f"Took {round(time.time() - start, 5)} seconds")
+        return results_dict
+
+    def get_distinct_category_list(self, debug: bool = False) -> list:
+        start = time.time()
+
+        sql_query = f"""SELECT DISTINCT category FROM nodes"""
+        matching_rows = self._execute_sql_query(sql_query)
+        result = []
+        for row in matching_rows:
+            result.append(row[0])
+
+        if debug:
+            print(f"Took {round(time.time() - start, 5)} seconds")
+        return result
+
     def get_normalizer_results(self, entities: Optional[Union[str, Set[str], List[str]]],
                                max_synonyms: int = 1000000,
                                debug: bool = False) -> dict:
