@@ -421,6 +421,7 @@ class NodeSynonymizer:
                                           "nodes": [nodes_dict[equivalent_curie] for equivalent_curie in equivalent_curies]}
 
         # Do some post-processing (remove no-longer-needed 'cluster_id' property)
+        normalizer_info = None
         for normalizer_info in results_dict.values():
             for equivalent_node in normalizer_info["nodes"]:
                 if "cluster_id" in equivalent_node:
