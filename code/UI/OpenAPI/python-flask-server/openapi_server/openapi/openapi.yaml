@@ -562,14 +562,10 @@ components:
         a log level could allow a user to override the default log level in order
         to receive more fine-grained log information when debugging an issue.
       example:
-        submitter: submitter
+        submitter: TryItOutExample
         bypass_cache: false
         page_number: 1
-        operations: ""
-        workflow:
-        - ""
-        - ""
-        log_level: ""
+        log_level: "DEBUG"
         enforce_edge_directionality: false
         return_minimal_metadata: false
         max_results: 100
