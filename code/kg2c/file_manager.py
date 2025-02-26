@@ -1,4 +1,5 @@
 import csv
+import gzip
 import logging
 import os
 import pathlib
@@ -18,7 +19,7 @@ SYNONYMIZER_BUILD_DIR = f"{KG2C_DIR}/synonymizer_build"
 
 
 def download_kg2pre_tsvs(kg2pre_version: str):
-    kg2pre_tarball_name = "kg2-tsv-for-neo4j.tar.gz"
+    kg2pre_tarball_name = f"kg2-tsv-for-neo4j-{kg2pre_version}.tar.gz"
     kg2pre_tsv_version_dir = f"{KG2PRE_TSVS_DIR}/{kg2pre_version}"
     if not pathlib.Path(kg2pre_tsv_version_dir).exists():
         os.system(f"mkdir -p {kg2pre_tsv_version_dir}")
@@ -101,7 +102,8 @@ def check_kg2pre_tsvs_version(kg2pre_version: str, biolink_version: Optional[str
         biolink_build_node_id = "biolink_download_source:"
         if biolink_build_node_id in nodes_df.index:
             biolink_build_node = nodes_df.loc[biolink_build_node_id]
-            biolink_build_node_version = biolink_build_node["iri"].split("/")[-4].replace("v", "")
+            
+            biolink_build_node_version = biolink_build_node["name"].split(" ")[1].replace("v", "")
             if biolink_build_node_version == biolink_version:
                 logging.info(f"Confirmed that the version on the Biolink node in the local KG2pre TSVs matches "
                              f"the requested Biolink version ({biolink_version}).")
@@ -202,53 +204,80 @@ def make_kg2c_tarball(is_test: bool):
                            f"edges_c.tsv{test_suffix}", f"edges_c_header.tsv{test_suffix}"])
 
 
-def upload_kg2c_files_to_s3(is_test: bool):
-    logging.info("Uploading KG2c json and TSV files to S3..")
-    tarball_name = f"kg2c-tsv.tar.gz{'_TEST' if is_test else ''}"
+def upload_file_to_s3(local_file_path: str):
+    logging.info(f"Uploading file to s3 {local_file_path}")
     subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2",
-                           f"{KG2C_DIR}/{tarball_name}", "s3://rtx-kg2/"])
+                           local_file_path, "s3://rtx-kg2/"])
 
-    unzipped_lite_json_name = f"kg2c_lite.json{'_TEST' if is_test else ''}"
-    subprocess.check_call(["gzip", "-f", f"{KG2C_DIR}/{unzipped_lite_json_name}"])
-    zipped_lite_json_name = f"{unzipped_lite_json_name}.gz"
-    subprocess.check_call(["aws", "s3", "cp", "--no-progress", "--region", "us-west-2",
-                           f"{KG2C_DIR}/{zipped_lite_json_name}", "s3://rtx-kg2/"])
+
+def upload_file_to_arax_databases_server(local_file_path: str, remote_file_name: str, kg2pre_version: str,
+                                         is_extra_file: bool = False):
+    # First make sure the specified remote directory exists on arax-databases.rtx.ai (will not hurt if already does)
+    rtx_config = RTXConfiguration()
+    remote_dir_path = f"/home/rtxconfig/KG{kg2pre_version}{'/extra_files' if is_extra_file else ''}"
+    os.system(f'ssh rtxconfig@{rtx_config.db_host} "mkdir -p {remote_dir_path}"')
+    logging.info(f"Uploading {local_file_path} to arax-databases server..")
+    os.system(f"scp {local_file_path} rtxconfig@{rtx_config.db_host}:{remote_dir_path}/{remote_file_name}")
+
+
+def upload_file_to_kg2webhost(local_file_path: str, remote_file_name: str):
+    if not local_file_path.endswith(".gz") and remote_file_name.endswith(".gz"):
+        gzip_file(local_file_path)
+        local_file_path = f"{local_file_path}.gz"
+    logging.info(f"Uploading {local_file_path} to kg2webhost server..")
+    remote_dir_path = f"/home/ubuntu/nginx-document-root"
+    os.system(f"scp {local_file_path} ubuntu@kg2webhost.rtx.ai:{remote_dir_path}/{remote_file_name}")
+
+
+def gzip_file(file_path: str):
+    logging.info(f"Zipping file {file_path}")
+    subprocess.check_call(["gzip", "-f", file_path])
+
+
+def zip_and_upload_artifacts_to_kg2webhost(kg2pre_version: str, sub_version: str, is_test: bool):
+    logging.info(f"Uploading KG2c artifacts to kg2webhost server")
+    test_suffix = "_TEST" if is_test else ""
+    upload_file_to_kg2webhost(local_file_path=f"{KG2C_DIR}/kg2c_lite.json{test_suffix}",
+                              remote_file_name=f"kg2c_lite_{kg2pre_version}_{sub_version}{test_suffix}.json.gz")
+    upload_file_to_kg2webhost(local_file_path=f"{KG2C_DIR}/nodes_c.jsonl{test_suffix}",
+                              remote_file_name=f"kg2c-{kg2pre_version}-{sub_version}-nodes{test_suffix}.jsonl.gz")
+    upload_file_to_kg2webhost(local_file_path=f"{KG2C_DIR}/edges_c.jsonl{test_suffix}",
+                              remote_file_name=f"kg2c-{kg2pre_version}-{sub_version}-edges{test_suffix}.jsonl.gz")
+    upload_file_to_kg2webhost(local_file_path=f"{KG2C_DIR}/nodes_c_lite.jsonl{test_suffix}",
+                              remote_file_name=f"kg2c-{kg2pre_version}-{sub_version}-nodes-lite{test_suffix}.jsonl.gz")
+    upload_file_to_kg2webhost(local_file_path=f"{KG2C_DIR}/edges_c_lite.jsonl{test_suffix}",
+                              remote_file_name=f"kg2c-{kg2pre_version}-{sub_version}-edges-lite{test_suffix}.jsonl.gz")
 
 
 def upload_kg2c_files_to_arax_databases_server(kg2pre_version: str, sub_version: str, is_test: bool):
-    rtx_config = RTXConfiguration()
     logging.info(f"Uploading KG2c artifacts to arax-databases server")
-    # TODO: Add log statement for each file
-
-    # Make sure the necessary directories exist on arax-databases.rtx.ai (will not hurt if they already exist)
-    remote_dbs_dir = f"/home/rtxconfig/KG{kg2pre_version}"
-    remote_dbs_subdir = f"{remote_dbs_dir}/extra_files"
-    os.system(f'ssh rtxconfig@{rtx_config.db_host} "mkdir -p {remote_dbs_dir}"')
-    os.system(f'ssh rtxconfig@{rtx_config.db_host} "mkdir -p {remote_dbs_subdir}"')
 
     # First upload required files
     test_suffix = "_TEST" if is_test else ""
-    os.system(f"scp kg2c.sqlite{test_suffix} rtxconfig@{rtx_config.db_host}:{remote_dbs_dir}/kg2c_{sub_version}_KG{kg2pre_version}.sqlite{test_suffix}")
-    os.system(f"scp meta_kg.json{test_suffix} rtxconfig@{rtx_config.db_host}:{remote_dbs_dir}/meta_kg_{sub_version}_KG{kg2pre_version}c.json{test_suffix}")
-    os.system(f"scp fda_approved_drugs.pickle{test_suffix} rtxconfig@{rtx_config.db_host}:{remote_dbs_dir}/fda_approved_drugs_{sub_version}_KG{kg2pre_version}c.pickle{test_suffix}")
+    upload_file_to_arax_databases_server(local_file_path=f"{KG2C_DIR}/kg2c.sqlite{test_suffix}",
+                                         remote_file_name=f"kg2c_{sub_version}_KG{kg2pre_version}.sqlite{test_suffix}",
+                                         kg2pre_version=kg2pre_version)
+    upload_file_to_arax_databases_server(local_file_path=f"{KG2C_DIR}/fda_approved_drugs.pickle{test_suffix}",
+                                         remote_file_name=f"fda_approved_drugs_{sub_version}_KG{kg2pre_version}c.pickle{test_suffix}",
+                                         kg2pre_version=kg2pre_version)
 
     # Then upload files not actually needed for running ARAX code
-    os.system(f"scp kg2c-tsv.tar.gz{test_suffix} rtxconfig@{rtx_config.db_host}:{remote_dbs_subdir}/kg2c-tsv.tar.gz{test_suffix}")
+    upload_file_to_arax_databases_server(local_file_path=f"{KG2C_DIR}/kg2c-tsv.tar.gz{test_suffix}",
+                                         remote_file_name=f"kg2c-tsv.tar.gz{test_suffix}",
+                                         kg2pre_version=kg2pre_version,
+                                         is_extra_file=True)
 
 
 def upload_synonymizer_files_to_arax_databases_server(kg2pre_version: str, sub_version: str):
-    rtx_config = RTXConfiguration()
     logging.info(f"Uploading synonymizer artifacts to arax-databases server")
 
-    # Make sure the necessary directories exist on arax-databases.rtx.ai (will not hurt if they already exist)
-    remote_dbs_dir = f"/home/rtxconfig/KG{kg2pre_version}"
-    remote_dbs_subdir = f"{remote_dbs_dir}/extra_files"
-    os.system(f'ssh rtxconfig@{rtx_config.db_host} "mkdir -p {remote_dbs_dir}"')
-    os.system(f'ssh rtxconfig@{rtx_config.db_host} "mkdir -p {remote_dbs_subdir}"')
-
     # Upload required databases
-    os.system(f"scp {SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite rtxconfig@{rtx_config.db_host}:{remote_dbs_dir}/node_synonymizer_{sub_version}_KG{kg2pre_version}.sqlite")
-    os.system(f"scp {SYNONYMIZER_BUILD_DIR}/autocomplete.sqlite rtxconfig@{rtx_config.db_host}:{remote_dbs_dir}/autocomplete_{sub_version}_KG{kg2pre_version}.sqlite")
+    upload_file_to_arax_databases_server(local_file_path=f"{SYNONYMIZER_BUILD_DIR}/node_synonymizer.sqlite",
+                                         remote_file_name=f"node_synonymizer_{sub_version}_KG{kg2pre_version}.sqlite",
+                                         kg2pre_version=kg2pre_version)
+    upload_file_to_arax_databases_server(local_file_path=f"{SYNONYMIZER_BUILD_DIR}/autocomplete.sqlite",
+                                         remote_file_name=f"autocomplete_{sub_version}_KG{kg2pre_version}.sqlite",
+                                         kg2pre_version=kg2pre_version)
 
     # Upload 'extra files' (nice for debugging; not needed by running ARAX code)
     file_names = ["3_merged_match_nodes.tsv", "3_merged_match_edges.tsv", "4_match_nodes_preprocessed.tsv",
@@ -258,7 +287,10 @@ def upload_synonymizer_files_to_arax_databases_server(kg2pre_version: str, sub_v
                   "5_report_primary_knowledge_source_counts.tsv", "5_report_upstream_resource_counts.tsv",
                   "kg2_nodes_not_in_sri_nn.tsv"]
     for file_name in file_names:
-        os.system(f"scp {SYNONYMIZER_BUILD_DIR}/{file_name} rtxconfig@{rtx_config.db_host}:{remote_dbs_subdir}/{file_name}")
+        upload_file_to_arax_databases_server(local_file_path=f"{SYNONYMIZER_BUILD_DIR}/{file_name}",
+                                             remote_file_name=file_name,
+                                             kg2pre_version=kg2pre_version,
+                                             is_extra_file=True)
     logging.info(f"Done uploading synonymizer artifacts to arax databases server.")
 
 
@@ -275,8 +307,8 @@ def main():
     arg_parser.add_argument("-c", "--checkversion", dest="check_version", action="store_true")
     arg_parser.add_argument("-f", "--testfiles", dest="test_files", action="store_true")
     arg_parser.add_argument("-m", "--maketarball", dest="make_tarball", action="store_true")
-    arg_parser.add_argument("-s", "--uploads3", dest="upload_s3", action="store_true")
     arg_parser.add_argument("-u", "--uploaddatabases", dest="upload_databases", action="store_true")
+    arg_parser.add_argument("-w", "--uploadkg2webhost", dest="upload_kg2webhost", action="store_true")
     args = arg_parser.parse_args()
     if args.download:
         download_kg2pre_tsvs(args.kg2pre_version)
@@ -288,8 +320,8 @@ def main():
         create_kg2pre_tsv_test_files(args.kg2pre_version)
     if args.make_tarball:
         make_kg2c_tarball(args.test)
-    if args.upload_s3:
-        upload_kg2c_files_to_s3(args.test)
+    if args.upload_kg2webhost:
+        zip_and_upload_artifacts_to_kg2webhost(args.kg2pre_version, args.sub_version, args.test)
     if args.upload_databases:
         upload_kg2c_files_to_arax_databases_server(args.kg2pre_version, args.sub_version, args.test)
 

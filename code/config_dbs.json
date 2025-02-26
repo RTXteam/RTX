@@ -1,25 +1,21 @@
 {
    "database_downloads": {
-      "node_synonymizer": "/translator/data/orangeboard/databases/KG2.10.0/node_synonymizer_v1.0_KG2.10.0.sqlite",
-      "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.10.0/kg2c_v1.0_KG2.10.0.sqlite",
-      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.10.0/meta_kg_v1.0_KG2.10.0c.json",
-      "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.10.0/fda_approved_drugs_v1.0_KG2.10.0c.pickle",
-      "autocomplete": "/translator/data/orangeboard/databases/KG2.10.0/autocomplete_v1.0_KG2.10.0.sqlite",
-      "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.10.0/curie_to_pmids_v1.0_KG2.10.0.sqlite",
-      "curie_ngd": "/translator/data/orangeboard/databases/KG2.10.0/curie_ngd_v1.0_KG2.10.0.sqlite",
-      "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.10.0/ExplainableDTD_v1.0_KG2.10.0.db",
+      "node_synonymizer": "/translator/data/orangeboard/databases/KG2.10.1/node_synonymizer_v1.0_KG2.10.1.sqlite",
+      "kg2c_sqlite": "/translator/data/orangeboard/databases/KG2.10.1/kg2c_v1.0_KG2.10.1.sqlite",
+      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.10.1/meta_kg_v1.0_KG2.10.1c.json",
+      "fda_approved_drugs": "/translator/data/orangeboard/databases/KG2.10.1/fda_approved_drugs_v1.0_KG2.10.1c.pickle",
+      "autocomplete": "/translator/data/orangeboard/databases/KG2.10.1/autocomplete_v1.0_KG2.10.1.sqlite",
+      "curie_to_pmids": "/translator/data/orangeboard/databases/KG2.10.1/curie_to_pmids_v1.0_KG2.10.1.sqlite",
+      "curie_ngd": "/translator/data/orangeboard/databases/KG2.10.1/curie_ngd_v1.0_KG2.10.1.sqlite",
+      "explainable_dtd_db": "/translator/data/orangeboard/databases/KG2.10.1/ExplainableDTD_v1.0_KG2.10.0_refreshedTo_KG2.10.1.db",
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
-      "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.10.0/chemical_gene_embeddings_v1.0.KG2.10.0.npz",
-      "xcrg_increase_model": "/translator/data/orangeboard/databases/KG2.10.0/xcrg_increase_model_v1.0.KG2.10.0.pt",
-      "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.10.0/xcrg_decrease_model_v1.0.KG2.10.0.pt"
+      "xcrg_embeddings": "/translator/data/orangeboard/databases/KG2.10.1/chemical_gene_embeddings_v1.0.KG2.10.0_refreshedTo_KG2.10.1.npz",
+      "xcrg_increase_model": "/translator/data/orangeboard/databases/KG2.10.1/xcrg_increase_model_v1.0_KG2.10.0_refreshedTo_KG2.10.1.pt",
+      "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.10.1/xcrg_decrease_model_v1.0_KG2.10.0_refreshedTo_KG2.10.1.pt"
    },
-   "plover": {
-      "dev": "https://kg2cploverdb.ci.transltr.io",
-      "test": "https://kg2cploverdb.test.transltr.io",
-      "prod": "https://kg2cploverdb.transltr.io"
-   },
+   "plover_url_override": null,
    "neo4j": {
-      "KG2pre": "kg2endpoint-kg2-10-0.rtx.ai",
-      "KG2c": "kg2-10-0c.rtx.ai"
+      "KG2pre": "kg2endpoint-kg2-10-1.rtx.ai",
+      "KG2c": "kg2-10-1c.rtx.ai"
    }
 }

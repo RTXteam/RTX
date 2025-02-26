@@ -83,8 +83,12 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
 def test_connect_ulcerative_colitis_to_adalimumab():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=MONDO:0005101, key=n00)",
-        "add_qnode(ids=UNII:FYS6T7F842, key=n01)",
+        "add_qnode(ids=MONDO:0005101, key=n_src)",
+        "add_qnode(ids=UNII:FYS6T7F842, key=n_dst)",
+        "add_qnode(categories=biolink:NamedThing, key=n_cns)",
+        "add_qedge(key=e_src_dst,subject=n_src,object=n_dst,predicates=biolink:related_to)",
+        "add_qedge(key=e_src_cns,subject=n_src,object=n_cns,predicates=biolink:related_to)",
+        "add_qedge(key=e_cns_dst,subject=n_cns,object=n_dst,predicates=biolink:related_to)",
         "connect(action=connect_nodes, max_path_length=3)",
         "return(message=true, store=false)"
     ]}}
@@ -93,27 +97,16 @@ def test_connect_ulcerative_colitis_to_adalimumab():
     assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
-@pytest.mark.slow
+
 def test_connect_resveratrol_glyoxalase():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(ids=PUBCHEM.COMPOUND:445154, key=n00)",
-        "add_qnode(ids=NCBIGene:2739, key=n01)",
-        "connect(action=connect_nodes, max_path_length=3)",
-        "return(message=true, store=false)"
-    ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 3
-    assert len(message.results) > 0
-
-
-@pytest.mark.slow
-def test_connect_pde5i_alzheimer():
-    query = {"operations": {"actions": [
-        "create_message",
-        "add_qnode(ids=MONDO:0004975, key=n00)",
-        "add_qnode(ids=UMLS:C1318700, key=n01)",
+        "add_qnode(ids=PUBCHEM.COMPOUND:445154, key=n_src)",
+        "add_qnode(ids=NCBIGene:2739, key=n_dst)",
+        "add_qnode(categories=biolink:NamedThing, key=n_cns)",
+        "add_qedge(key=e_src_dst,subject=n_src,object=n_dst,predicates=biolink:related_to)",
+        "add_qedge(key=e_src_cns,subject=n_src,object=n_cns,predicates=biolink:related_to)",
+        "add_qedge(key=e_cns_dst,subject=n_cns,object=n_dst,predicates=biolink:related_to)",
         "connect(action=connect_nodes, max_path_length=4)",
         "return(message=true, store=false)"
     ]}}
@@ -122,21 +115,97 @@ def test_connect_pde5i_alzheimer():
     assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
-@pytest.mark.slow
-def test_glucose_diabetes():
+def test_connect_pde5i_alzheimer():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=CHEBI:37626, key=n0)",
-        "add_qnode(name=MONDO:0005015, key=n1)",
-        "connect(action=connect_nodes, max_path_length=3)",
-        "filter_results(action=limit_number_of_results, max_results=30)",
-        "return(message=true, store=true)"
+        "add_qnode(ids=MONDO:0004975, key=n_src)",
+        "add_qnode(ids=UMLS:C1318700, key=n_dst)",
+        "add_qnode(categories=biolink:NamedThing, key=n_cns)",
+        "add_qedge(key=e_src_dst,subject=n_src,object=n_dst,predicates=biolink:related_to)",
+        "add_qedge(key=e_src_cns,subject=n_src,object=n_cns,predicates=biolink:related_to)",
+        "add_qedge(key=e_cns_dst,subject=n_cns,object=n_dst,predicates=biolink:related_to)",
+        "connect(action=connect_nodes, max_path_length=4)",
+        "return(message=true, store=false)"
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
+
+def test_glucose_diabetes():
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=CHEBI:37626, key=n_src)",
+        "add_qnode(name=MONDO:0005015, key=n_dst)",
+        "add_qnode(categories=biolink:NamedThing, key=n_cns)",
+        "add_qedge(key=e_src_dst,subject=n_src,object=n_dst,predicates=biolink:related_to)",
+        "add_qedge(key=e_src_cns,subject=n_src,object=n_cns,predicates=biolink:related_to)",
+        "add_qedge(key=e_cns_dst,subject=n_cns,object=n_dst,predicates=biolink:related_to)",
+        "connect(action=connect_nodes, max_path_length=3)",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) == 3
+    assert len(message.results) > 0
+
+def test_query_by_query_graph_2():
+    query = {
+      "message": {
+        "query_graph": {
+          "nodes": {
+            "n0": {
+              "ids": [
+                "CHEBI:37626"
+              ]
+            },
+            "un": {
+              "categories": [
+                "biolink:NamedThing"
+              ]
+            },
+            "n2": {
+              "ids": [
+                "MONDO:0005015"
+              ]
+            }
+          },
+          "edges": {
+            "e0": {
+              "subject": "n0",
+              "object": "un",
+              "predicates": [
+                "biolink:related_to"
+              ],
+              "knowledge_type": "inferred"
+            },
+            "e1": {
+              "subject": "un",
+              "object": "n2",
+              "predicates": [
+                "biolink:related_to"
+              ],
+              "knowledge_type": "inferred"
+            },
+            "e2": {
+              "subject": "n0",
+              "object": "n2",
+              "predicates": [
+                "biolink:related_to"
+              ],
+              "knowledge_type": "inferred"
+            }
+          }
+        }
+      }
+    }
+    araxq = ARAXQuery()
+    araxq.query(query)
+    response = araxq.response
+    assert response.status == 'OK'
+    assert len(response.envelope.message.query_graph.edges) == 3
+    assert len(response.envelope.message.results) > 0
 
 if __name__ == "__main__":
     pytest.main(['-v'])

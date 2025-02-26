@@ -9,13 +9,13 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2 - TRAPI 1.5.0
-  version: 2.10.0
+  version: 2.10.1
   x-translator:
     component: KP
     team:
     - Expander Agent
     infores: infores:rtx-kg2
-    biolink-version: 4.2.0
+    biolink-version: 4.2.1
     externalDocs:
       description: The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
@@ -42,16 +42,16 @@ externalDocs:
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
 - description: RTX-KG2 TRAPI 1.5 endpoint - production
-  url: https://kg2.transltr.io/api/rtxkg2/v1.4
+  url: https://kg2cploverdb.transltr.io
   x-maturity: production
 - description: RTX-KG2 TRAPI 1.5 endpoint - testing
-  url: https://kg2.test.transltr.io/api/rtxkg2/v1.4
+  url: https://kg2cploverdb.test.transltr.io
   x-maturity: testing
 - description: RTX-KG2 TRAPI 1.5 endpoint - staging
-  url: https://kg2.ci.transltr.io/api/rtxkg2/v1.4
+  url: https://kg2cploverdb.ci.transltr.io
   x-maturity: staging
 - description: RTX-KG2 TRAPI 1.5 endpoint - development
-  url: https://arax.ncats.io/beta/api/rtxkg2/v1.4
+  url: https://kg2cploverdb.ci.transltr.io
   x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web

@@ -1,14 +1,10 @@
 import sys
 import os
-from RTXConfiguration import RTXConfiguration
-from kg2_querier import KG2Querier
-import expand_utilities as eu
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 from converter.PathListToGraphConverter import PathListToGraphConverter
-from converter.SimpleGraphToContentGraphConverter import SimpleGraphToContentGraphConverter
-from converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.knowledge_graph import KnowledgeGraph
 
 class GraphToKnowledgeGraphConverter:
 
@@ -25,17 +21,10 @@ class GraphToKnowledgeGraphConverter:
     def convert(self, response, paths):
         nodes, edges = PathListToGraphConverter(self.qnode_1_id, self.qnode_2_id).convert(paths)
 
-        nodes, edges = SimpleGraphToContentGraphConverter(
-            self.edge_extractor
-        ).convert(nodes, edges, response)
+        pairs = []
+        for _, edge in edges.items():
+            pairs.append([nodes[edge[0]], nodes[edge[1]]])
 
-        qg_organized_knowledge_graph = (
-            KG2Querier(response, self.edge_extractor.get_extractor_url())._load_plover_answer_into_object_model(
-                {
-                    "nodes": nodes,
-                    "edges": edges
-                },
-                response
-            )
-        )
-        return eu.convert_qg_organized_kg_to_standard_kg(qg_organized_knowledge_graph)
+        knowledge_graph = self.edge_extractor.get_edges(pairs, response)
+
+        return KnowledgeGraph().from_dict(knowledge_graph)

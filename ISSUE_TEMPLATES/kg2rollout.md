@@ -27,8 +27,8 @@ You will need:
 
 ##### Slack workspaces
 You will also need access to the following Slack workspaces:
-- [ ] ARAXTeam (subscribe to #deployment)
-- [ ] NCATSTranslator (subscribe to `#devops-teamexpanderagent)
+- [ ] ARAXTeam (subscribe to `#deployment`)
+- [ ] NCATSTranslator (subscribe to `#devops-teamexpanderagent`)
 
 #### Example ssh config for setting up login into `arax.ncats.io`:
 ```
@@ -45,18 +45,25 @@ Host arax.ncats.io
 - [ ] update the four hardcoded biolink version numbers in the branch (as needed):
   - [ ] in `code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml))
   - [ ] in `code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml))
-  - [ ] in `code/UI/OpenAPI/specifications/export/ARAX/1.5.0/openapi.yaml`([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/specifications/export/ARAX/1.5.0/openapi.yaml))
-  - [ ] in `code/UI/OpenAPI/specifications/export/KG2/1.5.0/openapi.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/specifications/export/KG2/1.5.0/openapi.yaml))
+  - [ ] in `code/UI/OpenAPI/specifications/export/ARAX/1.5.0/openapi.yaml`([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/specifications/export/ARAX/1.5.0/openapi.yaml#L18))
+  - [ ] in `code/UI/OpenAPI/specifications/export/KG2/1.5.0/openapi.yaml` ([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/specifications/export/KG2/1.5.0/openapi.yaml#L18))
 - [ ] build a new KG2c on `buildkg2c.rtx.ai` from the branch (how-to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#build-kg2canonicalized))
   - [ ] before starting the build:
     - [ ] make sure there is enough disk space available on `arax-databases.rtx.ai` (need at least 100G, ideally >120G). delete old KG2 database directories as needed (warn the team on Slack in advance).
-    - [ ] make sure to choose to build a new synonymizer in `kg2c_config.json`, as described in the how-to
-  - [ ] after the build is done, verify it looks ok:
-    - [ ] `node_synonymizer.sqlite` should be around 8-15 GB
-    - [ ] make sure `node_synonymizer.sqlite`'s last modified date is today (or whatever day the build was run)
-    - [ ] make sure `kg2c_lite.json.gz`'s last modified date is today (or whatever day the build was run)
-    - [ ] the entire build runtime (synonymizer + KG2c) shouldn't have been more than 24 hours
-    - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax-databases.rtx.ai` (`/home/rtxconfig/KG2.X.Y`)
+
+  **NOTE:** For detailed deployment instructions, follow the instructions [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#building-kg2c)
+    - [ ] to do a standard build of a new synonymizer (expected runtime: 2-4 hours), run:
+      - [ ] `cd RTX/code/kg2c/synonymizer_build`
+      - [ ] `python build_synonymizer.py 2.X.Y v1.0 --downloadkg2pre --uploadartifacts`
+      - [ ] after the build, run the Synonymizer pytest regression test suite:
+        - [ ] `pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.X.Y.sqlite`
+      - [ ] make sure that `node_synonymizer_v1.0_KG2.X.Y.sqlite` is about 8-15 GB and its last modified date is today
+    - [ ] to do a standard full build of a new KG2c (expected runtime: 8-10 hours), run:
+      - [ ] `cd RTX/code/kg2c`
+      - [ ] `python build_kg2c.py 2.X.Y v1.0 4.2.1 --uploadartifacts`
+        - **NOTE:** 4.2.1 is the Biolink version, please use the latest biolink version based on the KG2pre build's biolink version. Add a `--test` flag to the KG2c build execution to do a test build.
+      - [ ] after the build is done, make sure `kg2c_lite.json.gz`'s last modified date is today (or whatever day the build was run)
+    - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax-databases.rtx.ai` (`/home/rtxconfig/KG2.X.Y`) and to `kg2webhost.rtx.ai` (if `--uploadartifacts` flag during the KG2c build is set). If not, manually upload the files using `scp`.
 - [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/ (how to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#host-kg2canonicalized-in-neo4j))
   - [ ] verify the correct KG2 version was uploaded by running this query: `match (n {id:"RTX:KG2c"}) return n`
 - [ ] update `RTX/code/config_dbs.json` in the branch:
@@ -66,19 +73,18 @@ Host arax.ncats.io
   - [ ] update the meta_kg version number/path
   - [ ] update the kg2c sqlite version number/path
   - [ ] update the KG2pre and KG2c Neo4j endpoints
-- [ ] copy the `kg2c_lite_2.X.Y.json.gz` file (which you can get from the S3 bucket `s3://rtx-kg2/kg2c_lite.json.gz` (but CHECK THE DATE AND MD5 HASH TO BE SURE YOU ARE NOT GETTING AN OLD FILE) to the directory `/home/ubuntu/nginx-document-root/` on `kg2webhost.rtx.ai`
-- [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-how-tos#to-build-plover-from-a-new-kg2-version))
-- [ ] start the new self-hosted PloverDB on `kg2cploverN.rtx.ai`:
+- [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-how-tos#to-build-plover-from-a-new-kg2-version)) 
+  - [ ] update `config_kg2c.json` in the `kg2.X.Yc` branch of the Plover repo to point to the new KG2.X.Yc json lines nodes and edges files on `kg2webhost.rtx.ai` (push this change)
   - [ ] `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] `cd PloverDB && git pull origin kg2.X.Yc`
   - [ ] if you have **not** yet built the 2.X.Y docker image/container on this instance, run:
-    - [ ] `./run.sh ploverimage2.X.Y plovercontainer2.X.Y "sudo docker"` (takes about an hour)
+    - [ ] `bash -x run.sh` (takes about an hour)
   - [ ] otherwise, simply run:
-    - [ ] `sudo docker start plovercontainer2.X.Y` (takes about five minutes)
-- [ ] verify that Plover's regression tests pass, and fix any broken tests (note: tests must use **canonical** curies!); from any instance/computer, run:
-  - [ ] `cd PloverDB`
-  - [ ] `pytest -v test/test.py --endpoint http://kg2cploverN.rtx.ai:9990`
-- [ ] update `config_dbs.json` in the branch for this KG2 version in the RTX repo to point to the new Plover **for the 'dev' maturity level**
+    - [ ] `sudo docker start plovercontainer` (takes about ten minutes)
+- [ ] verify that Plover's regression tests pass, and fix any broken tests; from any instance/computer, run:
+  - [ ] `cd PloverDB/test`
+  - [ ] `pytest -v --endpoint https://kg2cploverN.rtx.ai:9990`
+- [ ] update `config_dbs.json` in the branch for this KG2 version in the RTX repo to point to the new Plover in the `plover_url_override` slot
 
 #### 2. Rebuild downstream databases:
 
@@ -88,6 +94,8 @@ The following databases should be rebuilt and copies of them should be put in `/
 - [ ] Build CURIE NGD database @mohsenht
 - [ ] refreshed XDTD database @chunyuma 
 - [ ] XDTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
+- [ ] refreshed XCRG database @chunyuma
+- [ ] XCRG database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
 
 **NOTE**: As databases are rebuilt, `RTX/code/config_dbs.json` will need to be updated to point to their new paths! Push these changes to the branch for this KG2 version, unless the rollout of this KG2 version has already occurred, in which case you should push to `master` (but first follow the steps described [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#config_dbsjson)). 
 
@@ -95,16 +103,10 @@ The following databases should be rebuilt and copies of them should be put in `/
 
 All code changes should **go in the branch for this KG2 version**!
 
-- [ ] regenerate the KG2c test triples file in the branch for this KG2 version
-  - [ ] ensure the new KG2c Neo4j is currently running
-  - [ ] check out the branch and pull to get the latest changes (this is important for ensuring the correct KG2c Neo4j is used)
-  - [ ] run [create_json_of_kp_predicate_triples.py](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/create_json_of_kp_predicate_triples.py)
-  - [ ] push the regenerated file to `RTX/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json`
 - [ ] update Expand code as needed
 - [ ] update any other modules as needed
 - [ ] test everything together:
   - [ ] check out the branch and pull to get the latest changes
-  - [ ] locally set `force_local = True` in `ARAX_expander.py` (to avoid using the old KG2 API)
   - [ ] then run the entire ARAX pytest suite (i.e., `pytest -v`)
   - [ ] address any failing tests
 - [ ] update the KG2 and ARAX version numbers in the appropriate places (in the branch for this KG2 version)
@@ -121,8 +123,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 - [ ] copy the new databases from `arax-databases.rtx.ai` to `arax.ncats.io:/translator/data/orangeboard/databases/KG2.X.Y`; example for KG2.8.0:
   - [ ] `ssh myuser@arax.ncats.io`
   - [ ] `cd /translator/data/orangeboard/databases/`
-  - [ ] `mkdir -m 777 KG2.8.0`
-  - [ ] `scp rtxconfig@arax-databases.rtx.ai:/home/rtxconfig/KG2.8.0/*2.8.0* KG2.8.0/`
+  - [ ] `mkdir -m 777 KG2.X.Y`
+  - [ ] `scp rtxconfig@arax-databases.rtx.ai:/home/rtxconfig/KG2.X.Y/*2.X.Y* KG2.X.Y/`
 - [ ] upload the new databases and their md5 checksums to ITRB's SFTP server using the steps detailed [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#steps-for-all-databases-at-once)
 
 #### 5. Rollout new KG2c version to `arax.ncats.io` development endpoints
@@ -148,9 +150,7 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] look up `RTX:KG2` in the Synonyms tab in the UI
 - [ ] roll `master` out to the various `arax.ncats.io` development endpoints. Usually in this order:
   - [ ] `devED`
-  - [ ] `kg2beta`
   - [ ] `beta`
-  - [ ] `kg2test`
   - [ ] `test`
   - [ ] `devLM`
 - [ ] inside the Docker `rtx1` container, run the pytest suite on the various ARAX development endpoints (that means `devED`, `devLM`, `test`, and `beta`):
@@ -176,8 +176,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `ssh ubuntu@kg2-X-Zc.rtx.ai` 
   - [ ] `sudo service neo4j stop`
   - [ ] In the AWS console, stop the instance `kg2canonicalizedN.rtx.ai`
-- [ ] turn off the old KG2c version's plover instance (if it has not already been turned off during the previous KG2c roll-out; under normal circumstances, we turn off the self-hosted PloverDB for the new KG2c, during clean-up)
-  - [ ] Determine what is the DNS A record hostname for `kg2-X-Zcplover.rtx.ai` (where `Z` is one less than the new minor release version): run `nslookup kg2-X-Zploverc.rtx.ai` (it will return either `kg2cplover.rtx.ai`, `kg2cplover2.rtx.ai`, or `kg2cplover3.rtx.ai`; we'll call it `kg2cploverN.rtx.ai`).
+- [ ] turn off the **old** KG2c version's plover instance (if it has not already been turned off during the previous KG2c roll-out; under normal circumstances, we turn off the self-hosted PloverDB for the new KG2c, during clean-up)
+  - [ ] Determine what is the DNS A record hostname for `kg2-X-Zcplover.rtx.ai` (where `Z` is one less than the new minor release version): run `nslookup kg2-X-Zploverc.rtx.ai` (it will return either `kg2cplover.rtx.ai` or `kg2cplover3.rtx.ai`; we'll call it `kg2cploverN.rtx.ai`).
   - [ ] message the `#deployment` channel in the `ARAXTeam` Slack workspace that you will be stopping the `kg2-X-Zcplover.rtx.ai` PloverDB service
   - [ ] Log into `kg2cploverN.rtx.ai`: `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] Stop the PloverDB container: `sudo docker stop plovercontainer2.X.Z` (if you are not sure of the container name, use `sudo docker container ls -a` to get the container name).
@@ -185,42 +185,20 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 - [ ] deploy new PloverDB service into ITRB CI that is backed by the new KG2c database: 
     - [ ] merge PloverDB `main` branch into `kg2.X.Yc` branch (if `main` has any commits ahead of `kg2.X.Yc`). Reference this issue (via its full GitHub URL) in the merge message.
     - [ ] merge PloverDB `kg2.X.Yc` branch into `main` branch. Reference this issue (via its full GitHub URL) in the merge message.
-    - [ ] update `kg_config.json` in the `main` branch of the Plover repo to point to the new `kg2c_lite_2.X.Y.json.gz` file (push this change)
-    - [ ] wait about 60 minutes for Jenkins to build the PloverDB project and deploy it to `kg2cploverdb.ci.transltr.io`
-    - [ ] verify the CI Plover is running the new KG2 version by running the following test and inspecting the command line output: `cd PloverDB && pytest -vs test/test.py -k test_version --endpoint https://kg2cploverdb.ci.transltr.io`
-    - [ ] run Plover tests to verify it's working: `cd PloverDB && pytest -v test/test.py --endpoint https://kg2cploverdb.ci.transltr.io`
-    - [ ] run the ARAX pytest suite with the NCATS endpoint plugged in (locally change the URL in `RTX/code/config_dbs.json` and set `force_local = True` in Expand)
-    - [ ] if all tests pass, update `RTX/code/config_dbs.json` in the `master` branch to point to the ITRB Plover endpoints (all maturity levels): (`dev`: `kg2cploverdb.ci.transltr.io`; `test`: `kg2cploverdb.test.transltr.io`; `prod`: `kg2cploverdb.transltr.io`)
-    - [ ] push the latest `master` branch code commit to the various endpoints on `arax.ncats.io` that you previously updated (this is in order to get the changed `config_dbs.json` file) and restart ARAX and KG2 services
+    - [ ] wait about 70 minutes for Jenkins to build the PloverDB project and deploy it to `kg2cploverdb.ci.transltr.io`
+    - [ ] verify that the CI Plover is running the new KG2 version by:
+      - [ ] going to https://kg2cploverdb.ci.transltr.io/code_version and verifying that the correct nodes and edges jsonlines files were used
+      - [ ] running the following test and inspecting the command line output: `cd PloverDB/test && pytest -vsk test_version --endpoint https://kg2cploverdb.ci.transltr.io`
+    - [ ] run the full Plover test suite to verify everything is working: `cd PloverDB/test && pytest -v --endpoint https://kg2cploverdb.ci.transltr.io`
+    - [ ] run the ARAX pytest suite using the CI KG2 Plover (locally remove the `plover_url_override` in `RTX/code/config_dbs.json` by setting it to `null`)
+    - [ ] if all tests pass, update `RTX/code/config_dbs.json` in the `master` branch with your local change: (`plover_url_override: null`)
+    - [ ] push the latest `master` branch code commit to the various endpoints on `arax.ncats.io` that you previously updated (this is in order to get the changed `config_dbs.json` file) and restart ARAX services
     - [ ] check the [Test Build](https://github.com/RTXteam/RTX/actions/workflows/pytest.yml) (CI/CD tests) to make sure all non-skipped pytest tests have passed
     - [ ] turn off the self-hosted plover endpoint for the new version of KG2c
       - [ ] message the `#deployment` channel to notify people what you are about to do
       - [ ] `ssh ubuntu@kg2cploverM.rtx.ai`
-      - [ ] `sudo docker container ls -a` (gives you the name of the container; assume it is `plovercontainer2.X.Y`)
-      - [ ] `sudo docker stop plovercontainer2.X.Y`
+      - [ ] `sudo docker container ls -a` (gives you the name of the container; assume it is `plovercontainer`)
+      - [ ] `sudo docker stop plovercontainer`
     - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
     - [ ] delete the `kg2.X.Yc` branch in the PloverDB repo (since it has been merged into `main` at this point)
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen or Sundar Pullela, who have permission to do this)
-- [ ] upload the new `kg2_nodes_not_in_sri_nn.tsv` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo 
-
-#### 7. Roll-out to ITRB TEST
-- [ ] In GitHub, for the RTXteam/RTX project, merge `master` to `itrb-test`. Record this issue number in the merge message.
-- [ ] In GitHub, for the RTXteam/PloverDB project, merge `main` to `itrb-test`.
-- [ ] Tag the release using the `master` branch of RTXteam/RTX project.
-- [ ] Tag the release using the `main` branch of RTXteam/PloverDB project.
-- [ ] Via a message in the `#devops-teamexpanderagent` channel in the `NCATSTranslator` Slack workspace, put in a request to `@Sarah Stemann` to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB test
-- [ ] Monitor the `#devops-teamexpanderagent` channel to follow the roll-out of the updated services in ITRB test (i.e., to see if there are any errors reported by ITRB) 
-- [ ] Check proper functioning of `kg2cploverdb.test.transltr.io`
-  - [ ] from any git checkout of `RTXteam/PloverDB` project's `master` branch, do : `cd PloverDB && pytest -v test/test.py --endpoint https://kg2cploverdb.test.transltr.io`
-- [ ] Check proper functioning of `kg2.test.transltr.io` (look at messages log `debug` mesages to verify that it is indeed querying `kg2cploverdb.test.transltr.io`)
-- [ ] Check proper functioning of `arax.test.transltr.io` (look at messages log `debug` mesages to verify that ARAX-Expand is indeed querying `kg2.test.transltr.io`)
-
-#### 8. Roll-out to ITRB PRODUCTION
-- [ ] In GitHub, for the RTXteam/RTX project, merge `master` to `production`. Record this issue number in the merge message.
-- [ ] In GitHub, for the RTXteam/PloverDB project, merge `main` to `production`.
-- [ ] Via a message in the `#devops-teamexpanderagent` channel in the `NCATSTranslator` Slack workspace, put in a request to `@Sarah Stemann` to open a ticket to re-deploy ARAX, RTX-KG2, and PloverDB to ITRB production
-- [ ] Monitor the `#devops-teamexpanderagent` channel to follow (i.e., to see if there are any errors reported by ITRB) the roll-out of the updated services in ITRB production (this could take several days, as there is a formal approval process for deployments to ITRB production)
-- [ ] Check proper functioning of `kg2cploverdb.transltr.io`
-- [ ] Check proper functioning of `kg2.transltr.io` (look at messages log `debug` mesages to verify that it is indeed querying `kg2cploverdb.transltr.io`)
-- [ ] Check proper functioning of `arax.transltr.io` (look at messages log `debug` mesages to verify that ARAX-Expand is indeed querying `kg2.transltr.io`)
-

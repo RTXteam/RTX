@@ -185,6 +185,13 @@ hr {
     font-size: 16px;
 }
 
+.settings {
+    display: grid;
+    grid-gap: 5px;
+    grid-template-columns: 780px 350px;
+    align-items:last baseline;
+}
+
 #dslText, #wfJSON, #jsonText, #responseText {
     width: 80%;
     height: 20em;

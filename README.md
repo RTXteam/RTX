@@ -82,7 +82,7 @@ it.
 
 ARAX is a tool for querying, manipulating, filtering, and exploring biomedical
 knowledge graphs. It is designed to be a type of middleware&mdash;an *autonomous
-relay agent*&mdash;within the Translator system. The top-level layer of
+relay agent*&mdash;within the [Translator system](https://github.com/NCATSTranslator/Translator-All/wiki). The top-level layer of
 Translator (which is called the *autonomous relay system*) will issue structured
 queries to ARAX via ARAX's web application programming interface. Then, based on the
 query type, ARAX will determine which *knowledge providers* it needs to consult in

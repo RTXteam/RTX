@@ -69,6 +69,7 @@ function main() {
     UIstate["version"] = checkUIversion(false);
     UIstate["scorestep"] = 0.1;
     UIstate["maxresults"] = 1000;
+    UIstate["maxsyns"] = 1000;
     UIstate["prevtimestampobj"] = null;
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
@@ -86,7 +87,7 @@ function main() {
 	document.getElementById(prov+"_url").value = providers[prov].url;
 	document.getElementById(prov+"_url_button").disabled = true;
     }
-    for (var setting of ["submitter","timeout","pruning","maxresults"]) {
+    for (var setting of ["submitter","timeout","pruning","maxresults","maxsyns"]) {
 	document.getElementById(setting+"_url").value = UIstate[setting];
 	document.getElementById(setting+"_url_button").disabled = true;
     }
@@ -749,7 +750,9 @@ async function sendSyn() {
 
     var syndiv = document.getElementById("synonym_result_container");
     syndiv.innerHTML = "";
-    var allweknow = await check_entity(word,true);
+
+    var maxsyn = UIstate["maxsyns"];
+    var allweknow = await check_entity(word,true,maxsyn,document.getElementById("showConceptGraph").checked);
 
     if (0) { // set to 1 if you just want full JSON dump instead of html tables
 	syndiv.innerHTML = "<pre>"+JSON.stringify(allweknow,null,2)+"</pre>";
@@ -846,7 +849,30 @@ async function sendSyn() {
     if (allweknow[word].nodes) {
 	text = document.createElement("h3");
         text.className = "qprob p5";
-	text.appendChild(document.createTextNode('Nodes'));
+	text.append('Nodes');
+	if (allweknow[word].total_synonyms > maxsyn) {
+	    text.append(' (truncated to '+maxsyn+' from a total of '+allweknow[word].total_synonyms+")");
+	    text.title = "* You can change this value in the Settings section on the left menu";
+	    var span = document.createElement("span");
+	    span.className = "qprob p9";
+	    span.style.marginLeft = '20px';
+	    span.append('New!');
+	    text.append(span);
+
+	    span = document.createElement("span");
+	    span.className = 'tiny';
+	    span.style.marginLeft = '15px';
+	    span.append('[ Go to ');
+	    var link =document.createElement("a");
+	    link.href="javascript:openSection('settings');"
+	    link.append('Settings');
+	    span.append(link);
+	    span.append(' to change this value ]');
+            text.appendChild(span);
+	}
+	else
+	    text.append(' ('+allweknow[word].total_synonyms+")");
+
 	div.appendChild(text);
 
 	table = document.createElement("table");
@@ -1109,8 +1135,8 @@ function sendId(is_ars_refresh) {
 	var urlid = id.replace(/\//g,"$");
         retrieve_response(providers["ARAX"].url+"/response/"+urlid,urlid,"all");
     }
-    else if (0) // previous!
-	retrieve_response(id,id,"all");
+    else if (id.startsWith("hhttp"))
+	retrieve_response(id.substring(1),id.substring(1),"all");
     else
 	retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
     if (!is_ars_refresh)
@@ -3171,7 +3197,10 @@ function add_cyto(i,dataid) {
 		'opacity': 0.8,
 		'content': function(ele) {
 		    if ((ele.data().parentdivnum > 0) && ele.data().type) {
-			return ele.data().type + (ele.data().qualifiers ? ' [q]': ele.data().__has_sgs ? ' [sg]' : '');
+			var types = '';
+			types += ele.data().qualifiers ? ' [q]' : '';
+			types += ele.data().__has_sgs ? ' [sg]' : '';
+			return ele.data().type + types;
 		    }
 		    return '';
 		}
@@ -3678,15 +3707,30 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	    row.appendChild(cell);
             cell = document.createElement("td");
 
-	    if (att[nom].toString().startsWith("http")) {
-		var a = document.createElement("a");
-		a.target = '_blank';
-		a.href = att[nom];
-		a.innerHTML = att[nom];
-		cell.appendChild(a);
+	    // handle all as arrays  (hope no objects creep in...)
+	    if (!Array.isArray(att[nom]))
+		att[nom] = [ att[nom] ];
+
+	    var br = false;
+	    for (var val of att[nom]) {
+		if (br)
+		    cell.appendChild(document.createElement("br"));
+
+		if (val == null)
+		    cell.appendChild(document.createTextNode("--NULL--"));
+
+		if (val.toString().startsWith("http")) {
+		    var a = document.createElement("a");
+		    a.target = '_blank';
+		    a.href = val;
+		    a.innerHTML = val;
+		    cell.appendChild(a);
+		}
+		else
+		    cell.appendChild(document.createTextNode(val));
+
+		br = true;
 	    }
-	    else
-		cell.appendChild(document.createTextNode(att[nom]));
 
 	    row.appendChild(cell);
 	    tab.appendChild(row);
@@ -5868,7 +5912,9 @@ function retrieveRecentQs(active) {
 			qend = query[field] * 1000; //ms
 
 			qdur = new Date(qend);
-			qdur = qdur.getUTCHours()+"h " + qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
+			var days = qdur.getUTCDate()-1;
+			var months = qdur.getUTCMonth();
+			qdur = (months>0?months+" months! ":"") + (days>0?days+"d ":"") + qdur.getUTCHours()+"h " + qdur.getMinutes()+"m " + qdur.getSeconds()+"s";
 		    }
                     else if (field == "state") {
                         td.style.whiteSpace = "nowrap";
@@ -7009,6 +7055,7 @@ function displayARSResults(parentnode,arsdata) {
     for (var agent of arsdata['ara_list']) {
 	stats[agent] = {};
 	stats[agent]['PASSED'] = 0;
+	stats[agent]['TOTAL'] = 0;
     }
 
     var tdiv = document.createElement("div");
@@ -7196,6 +7243,7 @@ function displayARSResults(parentnode,arsdata) {
     }
     sumtable.appendChild(tr);
 
+    stats.status_list['TOTAL'] = 1;
     for (var status in stats.status_list) {
 	tr = document.createElement("tr");
         tr.className = 'hoverable';
@@ -7221,6 +7269,9 @@ function displayARSResults(parentnode,arsdata) {
 	else if (status.startsWith('Status code:')) {
 	    span.innerHTML = status.split(":")[1];
 	    span.className = 'explevel p3';
+	}
+	else if (status == 'TOTAL') {
+	    tr.style.borderTop = "2px solid black";
 	}
         td.appendChild(span);
 	tr.appendChild(td);
@@ -7251,6 +7302,9 @@ function displayARSResults(parentnode,arsdata) {
 		td.appendChild(span);
 	    }
 	    tr.appendChild(td);
+
+	    if (status != 'TOTAL' && stats[agent][status]!=null)
+		stats[agent]['TOTAL'] += stats[agent][status];
 	}
 	sumtable.appendChild(tr);
     }
@@ -7603,6 +7657,8 @@ function check_entities_batch(batchsize) {
     if (thisbatch) batches.push(thisbatch);
 
     for (let batch of batches) {
+	if (batch.length < 1)
+	    continue;
 	fetch(providers["ARAX"].url + "/entity", {
 	    method: 'post',
 	    body: JSON.stringify({"format":"minimal","terms":batch}),
@@ -7705,7 +7761,7 @@ function check_entities() {
 }
 
 
-async function check_entity(term,wantall) {
+async function check_entity(term,wantall,maxsyn=0,getgraph=false) {
     var data = {};
     var ent  = {};
     ent.found = false;
@@ -7717,9 +7773,16 @@ async function check_entity(term,wantall) {
 	data = entities[term];
     }
     else {
+	var queryObj = {};
+	queryObj['terms'] = [term];
+	if(maxsyn > 0)
+	    queryObj['max_synonyms'] = maxsyn;
+	if(!getgraph)
+	    queryObj['format'] = 'slim';
+
 	var response = await fetch(providers["ARAX"].url + "/entity", {
 	    method: 'post',
-	    body: JSON.stringify({"terms":[term]}),
+	    body: JSON.stringify(queryObj),
 	    headers: { 'Content-type': 'application/json' }
 	});
 	var fulldata = await response.json();
@@ -7874,6 +7937,13 @@ function update_url(urlkey,value) {
 	UIstate[urlkey] = mx;
 	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
+    else if (urlkey == 'maxsyns') {
+        var sy = parseInt(document.getElementById(urlkey+"_url").value.trim());
+        if (isNaN(sy))
+	    sy = 1000;
+        UIstate[urlkey] = sy;
+        document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
     else if (urlkey == 'submitter') {
 	UIstate[urlkey] = document.getElementById(urlkey+"_url").value.trim();
         document.getElementById(urlkey+"_url").value = UIstate[urlkey];
@@ -7886,7 +7956,7 @@ function update_url(urlkey,value) {
     var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
 function update_submit_button(urlkey) {
-    var currval = (urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxresults') ? UIstate[urlkey] : providers[urlkey].url;
+    var currval = (urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxresults' || urlkey == 'maxsyns') ? UIstate[urlkey] : providers[urlkey].url;
 
     if (currval == document.getElementById(urlkey+"_url").value)
 	document.getElementById(urlkey+"_url_button").disabled = true;

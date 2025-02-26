@@ -417,5 +417,26 @@ def test_cluster_graphs():
         assert node["attributes"]
 
 
+def test_truncate_cluster():
+    synonymizer = NodeSynonymizer()
+    results = synonymizer.get_normalizer_results([ACETAMINOPHEN_CURIE, PARKINSONS_CURIE], max_synonyms=2)
+
+    print(json.dumps(results[ACETAMINOPHEN_CURIE]["nodes"], indent=2))
+    assert len(results[ACETAMINOPHEN_CURIE]["nodes"]) == 2
+    assert len(results[ACETAMINOPHEN_CURIE]["knowledge_graph"]["nodes"]) == 2
+    assert len(results[ACETAMINOPHEN_CURIE]["knowledge_graph"]["edges"]) < 20
+    assert results[ACETAMINOPHEN_CURIE]["total_synonyms"] > 2
+    assert results[ACETAMINOPHEN_CURIE]["categories"]["biolink:Drug"] > 2
+    assert "biolink:Disease" not in results[ACETAMINOPHEN_CURIE]["categories"]
+
+    print(json.dumps(results[PARKINSONS_CURIE]["nodes"], indent=2))
+    assert len(results[PARKINSONS_CURIE]["nodes"]) == 2
+    assert len(results[PARKINSONS_CURIE]["knowledge_graph"]["nodes"]) == 2
+    assert len(results[PARKINSONS_CURIE]["knowledge_graph"]["edges"]) < 20
+    assert results[PARKINSONS_CURIE]["total_synonyms"] > 2
+    assert results[PARKINSONS_CURIE]["categories"]["biolink:Disease"] > 2
+    assert "biolink:Drug" not in results[PARKINSONS_CURIE]["categories"]
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_synonymizer.py'])

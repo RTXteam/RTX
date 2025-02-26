@@ -30,7 +30,7 @@ from openapi_server.models.retrieval_source import RetrievalSource
 
 DIABETES_CURIE = "MONDO:0005015"
 TYPE_1_DIABETES_CURIE = "MONDO:0005147"
-INSULIN_CURIE = "PUBCHEM.COMPOUND:16137271"
+INSULIN_CURIE = "UNII:4FT78T86XV"
 HEART_DISEASE_CURIE = "MONDO:0005267"
 
 
@@ -1478,6 +1478,7 @@ def test_node_binding_query_id_one_hop_single_input_curie():
     assert any(edge.predicate == "biolink:subclass_of" for edge in message.knowledge_graph.edges.values())
     insulin_results = [result for result in message.results if any([node_binding.id == INSULIN_CURIE
                                                                     for node_binding in result.node_bindings["n01"]])]
+    
     assert len(insulin_results) == 1
 
 
