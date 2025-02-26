@@ -6,7 +6,6 @@ on:
   push:
     branches: [ master, production, itrb-test, dev ]
     paths:
-      - '/.github/**'
       - 'code/**'
       - 'DockerBuild/**'
       - 'requirements.txt'
@@ -44,7 +43,7 @@ jobs:
 
 
     - name: Download databases into CICD instance
-      # continue-on-error: true
+      continue-on-error: true
       run: |
         cd /home/ubuntu/RTX
         git checkout ${GITHUB_REF#refs/heads/}
@@ -61,11 +60,11 @@ jobs:
     
     - name: Clean up any left over containers
       continue-on-error: true
-      run: docker container prune -f
+      run: sudo docker rm $(sudo docker ps -aq)
         
     - name: Clean up any left over images
       continue-on-error: true
-      run: docker image prune -f
+      run: sudo docker rmi $(sudo docker images -q)
     
     - name: Build docker image 
       run: sudo docker build --no-cache=true --rm -t rtx:test DockerBuild/ -f DockerBuild/CICD-Dockerfile
