@@ -2,6 +2,8 @@ pandas==1.5.3
 numpy==1.24.2
 requests==2.32.0
 requests-cache
+matplotlib
+seaborn
 psutil
 neo4j-driver>=1.7.0,<=1.7.6
 ipython-cypher==0.2.6
@@ -52,4 +54,5 @@ opentelemetry-proto==1.17.0
 opentelemetry-sdk==1.17.0
 opentelemetry-semantic-conventions==0.38b0
 opentelemetry-util-http==0.38b0
+xgboost
 
