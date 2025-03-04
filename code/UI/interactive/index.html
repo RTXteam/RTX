@@ -97,7 +97,8 @@
       <span class="qgbutton" title="add new node" class="clq" onclick="qg_node('new',true);">&#10010; Node</span>
       <span class="qgbutton" title="add new edge" class="clq" onclick="qg_edge('new');">&#10010; Edge</span>
       <span class="qgbutton" title="new query graph" class="clq" onclick="qg_new(true,true);">&#8886; New Graph</span>
-    </span><br><br>
+      <span class="qgbutton" title="new Pathfinder query graph" class="clq" onclick="qg_new(true,true,'Pathfinder');">&#10699; New Pathfinder&nbsp;&nbsp;&nbsp;<span class="explevel msgINFO">new!</span>
+    </span></span><br><br>
     <div class="cytograph_q">
       <div style="height: 100%; width: 100%" id="cy99999"></div>
     </div>
@@ -216,7 +217,7 @@
 	    <td style="text-align:right;"><input type="text" class="questionBox" id="qedgepredicatebox" onkeydown="submit_on_enter(this);" size="30"></td>
 	  </tr>
 
-	  <tr style="background:#fff;"><td>qualifier constraints</td><td style="display:grid; grid-template-columns: max-content max-content auto;" id="edgeeditor_quals"></td></tr>
+	  <tr style="background:#fff;"><td>qualifier constraints</td><td><span style="display:grid; grid-template-columns: max-content max-content auto;" id="edgeeditor_quals">&nbsp;</span></td></tr>
 	  <!-- tr style="background:#fff;"><td style="border:0;">qualifier constraints</td><td style="border:0;" id="edgeeditor_quals"></td></tr>
 	  <tr style="background:#fff;">
 	    <td class="tiny" style="border:0;text-align:right;vertical-align:revert;">New qualifier type Id:</td>
@@ -293,6 +294,8 @@
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
             <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
 	    <br>
+	    <a style="margin-left: 50px;" href="javascript:display_QG_from_JSON();">Edit in Visual QueryGraph pane</a>
+	    <br><br>
 	    <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('JSON','ARAX');">
 	    <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('JSON','ARS');">
 	    <input type="button" class="questionBox button" name="action" value="Post to OTHER" onClick="postQuery('JSON','EXT');" title="Post to a non-ARAX TRAPI-supporting API endpoint">
@@ -445,6 +448,26 @@
   <div id="kg_container">
     <div class="statushead">KNOWLEDGE GRAPH</div>
     <div id="a0_div" class="status"><table class="t100"><tr><td class="cytograph_controls"><a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br><a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br><a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br><a title="circle layout" onclick="cylayout(0,'circle');">C</a><br><a title="random layout" onclick="cylayout(0,'random');">R</a>  </td><td class="cytograph_kg" style="width:100%;"><div style="height: 100%; width: 100%" id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div></td></tr></table></div>
+    <br><br>
+    <a href="https://www.flaticon.com/free-icons/action" title="action icons">Action</a>,
+    <a href="https://www.flaticon.com/free-icons/chemical" title="chemical icons">Chemical</a>,
+    <a href="https://www.flaticon.com/free-icons/choose" title="choose icons">Choose</a>,
+    <a href="https://www.flaticon.com/free-icons/drug" title="drug icons">Drug</a>,
+    <a href="https://www.flaticon.com/free-icons/mixture" title="mixture icons">Mixture</a>,
+    <a href="https://www.flaticon.com/free-icons/molecule" title="molecule icons">Molecule</a>,
+    <a href="https://www.flaticon.com/free-icons/nano" title="nano icons">Nano</a>,
+    <a href="https://www.flaticon.com/free-icons/physiology" title="physiology icons">Physiology</a>, and
+    <a href="https://www.flaticon.com/free-icons/protein" title="protein icons">Protein</a> icons created by Freepik - Flaticon
+    <br>
+    <a href="https://www.flaticon.com/free-icons/diseases" title="diseases icons">Diseases</a> icons created by Vector Stall - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/medicine" title="medicine icons">Medicine</a> icons created by max.icons - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/personality" title="personality icons">Personality</a> icons created by Parzival 1997 - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/biotech" title="biotech icons">Biotech</a> icons created by kliwir art - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/gene" title="gene icons">Gene</a> icons created by Iconiic - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/cell" title="cell icons">Cell</a> icons created by dDara - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/nutrition" title="nutrition icons">Nutrition</a> icons created by FBJan - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/body" title="body icons">Body</a> icons created by SBTS2018 - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/generic" title="generic icons">Generic</a> icons created by Archival - Flaticon<br>
   </div>
 </div>
 
@@ -511,7 +534,7 @@
 
 <div class="pagesection" style="overflow:visible;" id="systestDiv">
   <div class="statushead">Translator Testing
-    <span style="float:right;"><a href="?systest=1">[ Direct link to this page ]</a></span>
+    <span style="float:right;"><a href="?systest=1" id="systest_link">[ Direct link to this page ]</a></span>
   </div>
   <div class="status">
     Select Test Report to view: 
