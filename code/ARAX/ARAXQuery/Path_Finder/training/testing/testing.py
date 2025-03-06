@@ -24,7 +24,7 @@ def extract_intermediate_nodes(paths):
 
 
 def run_tests(db, pathfinder_type):
-    with open(os.path.dirname(os.path.abspath(__file__)) + '/data/testing.json', 'r') as file:
+    with open(os.path.dirname(os.path.abspath(__file__)) + '/../data/testing.json', 'r') as file:
         data = json.load(file)
 
     counter = 0
@@ -41,7 +41,7 @@ def run_tests(db, pathfinder_type):
 
 
 def number_of_test_data():
-    with open(os.path.dirname(os.path.abspath(__file__)) + '/data/testing.json', 'r') as file:
+    with open(os.path.dirname(os.path.abspath(__file__)) + '/../data/testing.json', 'r') as file:
         data = json.load(file)
     counter = 0
     for source, value in data.items():
@@ -53,14 +53,15 @@ def number_of_test_data():
 def depict_pdf(db, file_name):
     data = db.read_all()
 
-    data = data[data['containment_index'] != 0]
+    # logging.info(len(data[data['containment_index'] == 0]))
+    # data = data[data['containment_index'] != 0]
 
     mean_containment_index = data['containment_index'].mean()
     std_dev_containment_index = data['containment_index'].std()
 
     plt.figure(figsize=(10, 6))
     sns.kdeplot(data['containment_index'], bw_adjust=0.5, fill=True, color='skyblue', alpha=0.6)
-    plt.title("Probability Density Function of Containment Index (Non-Zero Values)")
+    plt.title("Probability Density Function of Containment Index (Zero Values Included)")
     plt.xlabel("Containment Index")
     plt.ylabel("Density")
     plt.axvline(mean_containment_index, color='red', linestyle='--', label=f'Mean: {mean_containment_index:.2f}')
@@ -72,11 +73,16 @@ def depict_pdf(db, file_name):
     plt.savefig(f"{file_name}.png")
 
 
-if __name__ == "__main__":
-    pathfinder_type = "new"
+def test(pathfinder_type):
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     db = DrugDiseaseMatchedDB(f"drug_disease_{pathfinder_type}.db")
     db.create_table()
     number_of_test_data()
     run_tests(db, pathfinder_type)
     depict_pdf(db, pathfinder_type)
+
+
+if __name__ == "__main__":
+    pathfinder_type = "new"
+    paths = get_paths_from_path_finder(pathfinder_type, "CHV:0000005486", "UNII:FYS6T7F842")
+    print(len(paths))

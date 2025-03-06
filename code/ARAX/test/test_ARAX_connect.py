@@ -94,7 +94,6 @@ def test_connect_ulcerative_colitis_to_adalimumab():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
 
@@ -112,7 +111,6 @@ def test_connect_resveratrol_glyoxalase():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
 def test_connect_pde5i_alzheimer():
@@ -129,7 +127,6 @@ def test_connect_pde5i_alzheimer():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
 
@@ -147,7 +144,6 @@ def test_glucose_diabetes():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.query_graph.edges) == 3
     assert len(message.results) > 0
 
 def test_query_by_query_graph_2():

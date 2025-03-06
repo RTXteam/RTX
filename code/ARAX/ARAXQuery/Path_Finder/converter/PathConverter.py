@@ -1,0 +1,80 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from GraphToKnowledgeGraphConverter import GraphToKnowledgeGraphConverter
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph
+from openapi_server.models.analysis import Analysis
+from openapi_server.models.node_binding import NodeBinding
+from openapi_server.models.result import Result
+
+
+class PathConverter:
+
+    def __init__(
+            self,
+            paths,
+            node_1_id,
+            node_2_id,
+            node_in_between_id,
+            qnode_1_id,
+            qnode_2_id,
+            qnode_in_between_id,
+            names,
+            edge_extractor,
+            node_category_constraint,
+            score
+    ):
+        self.paths = paths
+        self.node_1_id = node_1_id
+        self.node_2_id = node_2_id
+        self.node_in_between_id = node_in_between_id
+        self.qnode_1_id = qnode_1_id
+        self.qnode_2_id = qnode_2_id
+        self.qnode_in_between_id = qnode_in_between_id
+        self.names = names
+        self.edge_extractor = edge_extractor
+        self.node_category_constraint = node_category_constraint
+        self.score = score
+
+    def convert(self, response):
+        knowledge_graph_src_dest = GraphToKnowledgeGraphConverter(
+            self.qnode_1_id,
+            self.qnode_2_id,
+            self.edge_extractor).convert(response, self.paths)
+
+        response.envelope.message.knowledge_graph.edges.update(knowledge_graph_src_dest.edges)
+        response.envelope.message.knowledge_graph.nodes.update(knowledge_graph_src_dest.nodes)
+
+        analyses = Analysis(
+            edge_bindings={
+            },
+            resource_id="infores:arax",
+            support_graphs=[self.names.auxiliary_graph_name],
+            score=self.score
+        )
+
+        if response.envelope.message.results is None:
+            response.envelope.message.results = []
+
+        response.envelope.message.results.append(
+            Result(
+                id=self.names.result_name,
+                analyses=[analyses],
+                node_bindings={
+                    self.qnode_1_id: [NodeBinding(id=self.node_1_id, attributes=[])],
+                    self.qnode_2_id: [NodeBinding(id=self.node_2_id, attributes=[])],
+                    self.qnode_in_between_id: [NodeBinding(id=self.node_in_between_id, attributes=[])]
+                },
+                # essence=essence TODO
+            )
+        )
+
+        if response.envelope.message.auxiliary_graphs is None:
+            response.envelope.message.auxiliary_graphs = {}
+
+        response.envelope.message.auxiliary_graphs[self.names.auxiliary_graph_name] = AuxiliaryGraph(
+            edges=list(knowledge_graph_src_dest.edges.keys()),
+            attributes=[]
+        )

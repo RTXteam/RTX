@@ -12,7 +12,7 @@ import copy
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
-from Path_Finder.converter.SuperNodeConverter import SuperNodeConverter
+from Path_Finder.converter.ResultPerPathConverter import ResultPerPathConverter
 from Path_Finder.converter.Names import Names
 from Path_Finder.BidirectionalPathFinder import BidirectionalPathFinder
 
@@ -276,7 +276,7 @@ class ARAXConnect:
         normalize_dst_node_id = self.get_normalize_nodes(self.message.query_graph.nodes, dst_pinned_node)
 
         path_finder = BidirectionalPathFinder(
-            "NGDSortedNeighborsRepo",
+            "MLRepo",
             self.response
         )
         paths = path_finder.find_all_paths(
@@ -305,7 +305,7 @@ class ARAXConnect:
         edge_extractor = EdgeExtractorFromPloverDB(
             RTXConfiguration().plover_url
         )
-        SuperNodeConverter(
+        ResultPerPathConverter(
             paths,
             normalize_src_node_id,
             normalize_dst_node_id,

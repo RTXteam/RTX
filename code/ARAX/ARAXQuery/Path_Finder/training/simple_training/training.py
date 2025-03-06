@@ -49,14 +49,19 @@ def gather_data():
     category_list = node_synonymizer.get_distinct_category_list()
     category_list_sorted = sorted(category_list)
     category_to_idx = {cat_name: idx for idx, cat_name in enumerate(category_list_sorted)}
+    edge_category_to_idx = {}
+    edge_category_counter = 0
     ngd_repo = NGDRepository()
     plover_repo = PloverDBRepo(plover_url=RTXConfiguration().plover_url)
     group = []
     curie = []
+    curies = []
     y = []
     x_list = []
     for key_nodes_pair in training_data:
-        content_by_curie = get_neighbors_info(key_nodes_pair[0], node_synonymizer, ngd_repo, plover_repo)
+        content_by_curie = get_neighbors_info(key_nodes_pair[0], ngd_repo, plover_repo)
+        if content_by_curie is None:
+            continue
         group.append(len(content_by_curie))
         curie.append(key_nodes_pair[0])
         logging.info(f"neighbors length: {len(content_by_curie)}")
@@ -66,15 +71,28 @@ def gather_data():
             else:
                 y.append(0)
 
-            x_list.append(get_np_array_features(value, category_to_idx))
+            for category, _ in value['edges'].items():
+                if category not in edge_category_to_idx:
+                    edge_category_to_idx[category] = edge_category_counter
+                    edge_category_counter = edge_category_counter + 1
+            curies.append(key)
+            x_list.append(get_np_array_features(value, category_to_idx, edge_category_to_idx))
 
         i = i + 1
         logging.info(f"training data counter: {i}")
 
-    x = np.empty((len(x_list), 60), dtype=float)
+    len_edge_category_to_idx = len(edge_category_to_idx)
+    number_of_features = 60 + len_edge_category_to_idx
+
+    x = np.empty((len(x_list), number_of_features), dtype=float)
 
     for i in range(len(x_list)):
-        x[i] = x_list[i]
+        features = x_list[i]
+        len_features = len(features)
+        if len_features < number_of_features:
+            x[i] = np.concatenate([features, np.zeros((number_of_features - len_features), dtype=float)])
+        else:
+            x[i] = x_list[i]
 
     np.save("X_data.npy", x)
     np.save("y_data.npy", y)
@@ -82,6 +100,10 @@ def gather_data():
         pickle.dump(group, f)
     with open("curie.pkl", "wb") as f:
         pickle.dump(curie, f)
+    with open("curies.pkl", "wb") as f:
+        pickle.dump(curies, f)
+    with open("edge_categories.pkl", "wb") as f:
+        pickle.dump(edge_category_to_idx, f)
 
 
 def train():
