@@ -35,7 +35,7 @@ var providers = {
     "ARAX" : { "url" : baseAPI },
     "ARAXQ": { "url" : araxQuery },
     "ARS"  : { "url" : "https://ars-prod.transltr.io/ars/api/submit" },
-    "EXT"  : { "url" : "https://translator.broadinstitute.org/molepro/trapi/v1.4" }
+    "EXT"  : { "url" : "https://kg2cploverdb.ci.transltr.io" }
 };
 
 // these attributes are floats; truncate them
@@ -1841,7 +1841,17 @@ function render_response(respObj,dispjson) {
 		respreas = respObj.reasoner_id;
 
 	    var auxiliary_graphs = respObj.message["auxiliary_graphs"] ? respObj.message["auxiliary_graphs"] : null;
-	    process_results(respObj.message["results"],respObj.message["knowledge_graph"],auxiliary_graphs,respObj["schema_version"],respreas);
+	    try {
+		process_results(respObj.message["results"],respObj.message["knowledge_graph"],auxiliary_graphs,respObj["schema_version"],respreas);
+	    }
+	    catch(e) {
+		var span = document.createElement("span");
+		span.className = 'error';
+		span.append("ERROR:: "+e);
+		statusdiv.append(span);
+		console.error("Bad Response:"+e);
+		return;
+	    }
 
             if (respObj.message.results.length > UIstate["maxresults"])
 		document.getElementById("result_container").appendChild(h2.cloneNode(true));
@@ -2627,6 +2637,45 @@ function add_to_summary(rowdata, num) {
 }
 
 
+function display_QG_from_JSON() {
+    var statusdiv = document.getElementById("statusdiv");
+    var jsonInput;
+    try {
+        jsonInput = JSON.parse(document.getElementById("jsonText").value);
+    }
+    catch(e) {
+        statusdiv.appendChild(document.createElement("br"));
+        if (e.name == "SyntaxError")
+            statusdiv.innerHTML += "<b>Error</b> parsing JSON input. Please correct errors and try again: ";
+        else
+            statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and try again: ";
+        statusdiv.appendChild(document.createElement("br"));
+        statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+        sesame('openmax',statusdiv);
+        return;
+    }
+
+    if ("message" in jsonInput)
+	jsonInput = jsonInput['message'];
+    if ("query_graph" in jsonInput)
+	jsonInput = jsonInput['query_graph'];
+
+    if ("nodes" in jsonInput &&
+	"edges" in jsonInput) {
+	process_graph(jsonInput,'QG',"1.5");
+
+	if (cyobj[99999]) { cyobj[99999].elements().remove(); }
+	else add_cyto(99999,'QG');
+
+	qg_edit(true);
+	selectInput('qgraph');
+    }
+    else {
+        statusdiv.innerHTML += "<span class='error'>Error: no nodes and edges detected: cannot use input as a query_graph</span>";
+    }
+}
+
+
 // used for gid = 0 [KG] and 99999 [QG]
 function process_graph(gne,graphid,trapi) {
     cytodata[graphid] = [];
@@ -2812,7 +2861,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	div.title = 'Click to expand / collapse result '+num;
         div.className = 'accordion';
 	div.setAttribute('onclick', 'add_cyto('+num+',"R'+num+'A0");sesame(this,a'+num+'_div);');
-	div.appendChild(document.createTextNode("Result "+num));
+	div.append("Result "+num);
 	if (ess)
 	    div.innerHTML += " :: <b>"+ess+"</b>"; // meh...
 
@@ -2826,17 +2875,17 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
             span.className += ' cytograph_controls';
             span.title = "NORMALIZED "+span.title;
 	}
-        span.appendChild(document.createTextNode(cnf));
-	span100.appendChild(span);
+        span.append(cnf);
+	span100.append(span);
 
         span = document.createElement("span");
 	span.className = rscl+' qprob';
 	span.title = "source="+rsrc;
-	span.appendChild(document.createTextNode(rsrc));
-	span100.appendChild(span);
+	span.append(rsrc);
+	span100.append(span);
 
-	div.appendChild(span100);
-	results_fragment.appendChild(div);
+	div.append(span100);
+	results_fragment.append(div);
 
         div = document.createElement("div");
         div.id = 'a'+num+'_div';
@@ -2845,16 +2894,20 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
         var table = document.createElement("table");
         table.className = 't100';
 
+        cytodata['R'+num+'A0'] = [];
         var tr,td,link;
+	var ranal = -1;
 
 	if (result.analyses && result.analyses.length > 0) {
-            for (var ranal in result.analyses) {
+            for (ranal in result.analyses) {
+		cytodata['R'+num+'A'+ranal] = [];
+
 		tr = document.createElement("tr");
 		td = document.createElement("td");
 		td.className = 'cytograph_controls';
 		td.colSpan = "2";
 		td.style.paddingLeft = "40px";
-                td.appendChild(document.createTextNode(" Analysis "+ranal+" :: "));
+                td.append(" Analysis "+ranal+" :: ");
 
 		link = document.createElement("a");
 		link.style.fontWeight = "bold";
@@ -2862,11 +2915,11 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		link.style.marginRight = "20px";
 		link.title = 'View Main Result Graph';
 		link.setAttribute('onclick', 'add_cyto('+num+',"R'+num+'A'+ranal+'");');
-		link.appendChild(document.createTextNode("Result Graph"));
-		td.appendChild(link);
+		link.append("Result Graph");
+		td.append(link);
 
                 if (result.analyses[ranal].support_graphs && result.analyses[ranal].support_graphs.length > 0) {
-		    td.appendChild(document.createTextNode(" Analysis Support Graphs: "));
+		    td.append(" Analysis Support Graphs: ");
 
 		    for (var sg in result.analyses[ranal].support_graphs) {
 			link = document.createElement("a");
@@ -2876,12 +2929,12 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 			var sgid = result.analyses[ranal].support_graphs[sg];
 			link.title = 'Graph ID: '+ sgid;
 			link.setAttribute('onclick', 'add_cyto('+num+',"AUX'+sgid+'");');
-			link.appendChild(document.createTextNode(Number(sg)+1));
-			td.appendChild(link);
+			link.append(Number(sg)+1);
+			td.append(link);
 		    }
 		}
 		else {
-                    td.appendChild(document.createTextNode(" No Analysis Support Graphs found"));
+                    td.append(" No Analysis Support Graphs found");
 		}
 
                 var cnf = 'n/a';
@@ -2904,30 +2957,29 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 
                 var span = document.createElement("span");
 		span.className = pcl+' qprob';
-		span.title = "score="+cnf;
-		span.appendChild(document.createTextNode(cnf));
-		span100.appendChild(span);
+		span.title = "score = "+cnf;
+		span.append(cnf);
+		span100.append(span);
 
 		span = document.createElement("span");
 		span.className = rscl+' qprob';
-		span.title = "source="+rsrc;
-		span.appendChild(document.createTextNode(rsrc));
-		span100.appendChild(span);
+		span.title = "source = "+rsrc;
+		span.append(rsrc.replace("infores:",""));
+		span100.append(span);
 
 		//td = document.createElement("td");
-		td.appendChild(span100);
+		td.append(span100);
 
-		tr.appendChild(td);
-		table.appendChild(tr);
+		tr.append(td);
+		table.append(tr);
 	    }
 	}
 
 	add_graph_to_table(table,num);
 
-	div.appendChild(table);
-	results_fragment.appendChild(div);
+	div.append(table);
+	results_fragment.append(div);
 
-        cytodata['R'+num+'A0'] = [];
 	//console.log("=================== CYTO num:"+num+"  #nb:"+result.node_bindings.length);
 
         for (var nbid in result.node_bindings) {
@@ -2941,47 +2993,67 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		else if (node.detail_lookup)
 		    kmne.node_binding_attributes_lookup_key = node.detail_lookup;
 		var tmpdata = { "data" : kmne };
-		cytodata['R'+num+'A0'].push(tmpdata);
+
+		if (ranal >= 0) {
+		    for (var rraa in result.analyses)
+			cytodata['R'+num+'A'+rraa].push(tmpdata);
+		}
+		else
+		    cytodata['R'+num+'A0'].push(tmpdata);
 	    }
 	}
 
-	//FIX THIS for multiple result.analyses...
-	let da_edge_bindings = result.edge_bindings ? result.edge_bindings : result.analyses[0].edge_bindings;
-	for (var ebid in da_edge_bindings) {
-	    for (var edge of da_edge_bindings[ebid]) {
-		var kmne = Object.create(kg.edges[edge.id]);
-		kmne.parentdivnum = num;
-		kmne.trapiversion = trapi;
-		kmne.id = edge.id;
-		kmne.source = kmne.subject;
-		kmne.target = kmne.object;
-		if (kmne.predicate)
-		    kmne.type = kmne.predicate;
-		if (kmne.qualifiers && kmne.qualifiers.length == 0)
-		    kmne.qualifiers = null;
-		if (edge.attributes)
-		    kmne.edge_binding_attributes = edge.attributes;
-                else if (edge.detail_lookup)
-		    kmne.edge_binding_attributes_lookup_key = edge.detail_lookup;
+	//FIXed? for multiple result.analyses...
+	var full_edge_bindings_collection = [];
+	if (ranal >= 0) {
+	    for (var rraa in result.analyses)
+		full_edge_bindings_collection[rraa] = result.analyses[rraa].edge_bindings;
+	}
+	else
+	    full_edge_bindings_collection[0] = result.edge_bindings;
 
-		// confirm...
-		if (kmne.has_these_support_graphs && kmne.has_these_support_graphs.length > 0) {
-                    kmne.__has_sgs = true;
-                    for (var sgid of kmne.has_these_support_graphs)
-			add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
-		}
-		else if (kmne.attributes) {
-		    for (var att of kmne.attributes) {
-			if (att.attribute_type_id == "biolink:support_graphs" && att.value && att.value.length > 0) {
-			    kmne.__has_sgs = true;
-			    for (var sgid of att.value)
-				add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+        for (var ebcidx in full_edge_bindings_collection) {
+	    for (var ebid in full_edge_bindings_collection[ebcidx]) {
+		for (var edge of full_edge_bindings_collection[ebcidx][ebid]) {
+
+		    // console.log("ebcidx:"+ebcidx+"  ebid:"+ebid+"  edge:"+JSON.stringify(edge));
+		    if (!(edge.id in kg.edges))
+			throw Error("Result graph edge not defined in KG: "+edge.id);
+
+		    var kmne = Object.create(kg.edges[edge.id]);
+		    kmne.parentdivnum = num;
+		    kmne.trapiversion = trapi;
+		    kmne.id = edge.id;
+		    kmne.source = kmne.subject;
+		    kmne.target = kmne.object;
+		    if (kmne.predicate)
+			kmne.type = kmne.predicate;
+		    if (kmne.qualifiers && kmne.qualifiers.length == 0)
+			kmne.qualifiers = null;
+		    if (edge.attributes)
+			kmne.edge_binding_attributes = edge.attributes;
+                    else if (edge.detail_lookup)
+			kmne.edge_binding_attributes_lookup_key = edge.detail_lookup;
+
+		    // confirm...
+		    if (kmne.has_these_support_graphs && kmne.has_these_support_graphs.length > 0) {
+			kmne.__has_sgs = true;
+			for (var sgid of kmne.has_these_support_graphs)
+			    add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+		    }
+		    else if (kmne.attributes) {
+			for (var att of kmne.attributes) {
+			    if (att.attribute_type_id == "biolink:support_graphs" && att.value && att.value.length > 0) {
+				kmne.__has_sgs = true;
+				for (var sgid of att.value)
+				    add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+			    }
 			}
 		    }
-		}
 
-		var tmpdata = { "data" : kmne };
-		cytodata['R'+num+'A0'].push(tmpdata);
+		    var tmpdata = { "data" : kmne };
+		    cytodata['R'+num+'A'+ebcidx].push(tmpdata);
+		}
 	    }
 	}
 
@@ -2995,7 +3067,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 
     }
 
-    document.getElementById("result_container").appendChild(results_fragment);
+    document.getElementById("result_container").append(results_fragment);
 }
 
 function add_aux_graph(kg,sgid,auxedges,parentnum,trapi) {
@@ -3003,6 +3075,9 @@ function add_aux_graph(kg,sgid,auxedges,parentnum,trapi) {
     var nodes = {};
 
     for (var edgeid of auxedges) {
+	if (!(edgeid in kg.edges))
+	    throw Error("AUX graph edge not defined in KG: "+edgeid);
+
 	var kmne = Object.create(kg.edges[edgeid]);
 	kmne.parentdivnum = parentnum;
 	kmne.trapiversion = trapi;
@@ -3077,64 +3152,64 @@ function add_graph_to_table(table,num) {
     var link = document.createElement("a");
     link.title = 'reset zoom and center';
     link.setAttribute('onclick', 'cyobj['+num+'].reset();');
-    link.appendChild(document.createTextNode("\u21BB"));
-    td.appendChild(link);
-    td.appendChild(document.createElement("br"));
-    tr.appendChild(td);
+    link.append("\u21BB");
+    td.append(link);
+    td.append(document.createElement("br"));
+    tr.append(td);
 
     link = document.createElement("a");
     link.title = 'breadthfirst layout';
     link.setAttribute('onclick', 'cylayout('+num+',"breadthfirst");');
-    link.appendChild(document.createTextNode("B"));
-    td.appendChild(link);
-    td.appendChild(document.createElement("br"));
+    link.append("B");
+    td.append(link);
+    td.append(document.createElement("br"));
 
     link = document.createElement("a");
     link.title = 'force-directed layout';
     link.setAttribute('onclick', 'cylayout('+num+',"cose");');
-    link.appendChild(document.createTextNode("F"));
-    td.appendChild(link);
-    td.appendChild(document.createElement("br"));
+    link.append("F");
+    td.append(link);
+    td.append(document.createElement("br"));
 
     link = document.createElement("a");
     link.title = 'circle layout';
     link.setAttribute('onclick', 'cylayout('+num+',"circle");');
-    link.appendChild(document.createTextNode("C"));
-    td.appendChild(link);
-    td.appendChild(document.createElement("br"));
+    link.append("C");
+    td.append(link);
+    td.append(document.createElement("br"));
 
     link = document.createElement("a");
     link.title = 'random layout';
     link.setAttribute('onclick', 'cylayout('+num+',"random");');
-    link.appendChild(document.createTextNode("R"));
-    td.appendChild(link);
-    td.appendChild(document.createElement("br"));
+    link.append("R");
+    td.append(link);
+    td.append(document.createElement("br"));
 
     link = document.createElement("a");
-    link.style.marginTop = "80px";
+    link.style.marginTop = "40px";
     link.title = 'small graph';
     link.setAttribute('onclick', 'cyresize('+num+',"s");');
-    link.appendChild(document.createTextNode("s"));
-    td.appendChild(link);
-    td.appendChild(document.createElement("br"));
+    link.append("s");
+    td.append(link);
+    td.append(document.createElement("br"));
 
     link = document.createElement("a");
     link.title = 'medium-sized graph';
     link.setAttribute('onclick', 'cyresize('+num+',"m");');
-    link.appendChild(document.createTextNode("M"));
-    td.appendChild(link);
-    td.appendChild(document.createElement("br"));
+    link.append("M");
+    td.append(link);
+    td.append(document.createElement("br"));
 
     link = document.createElement("a");
     link.style.fontWeight = "bold";
     link.style.fontSize = "larger";
     link.title = 'Large graph';
     link.setAttribute('onclick', 'cyresize('+num+',"L");');
-    link.appendChild(document.createTextNode("L"));
-    td.appendChild(link);
-    td.appendChild(document.createElement("br"));
+    link.append("L");
+    td.append(link);
+    td.append(document.createElement("br"));
 
-    tr.appendChild(td);
+    tr.append(td);
 
     td = document.createElement("td");
     td.className = 'cytograph';
@@ -3142,9 +3217,9 @@ function add_graph_to_table(table,num) {
     div.id = 'cy'+num;
     div.style.height = '100%';
     div.style.width  = '100%';
-    td.appendChild(div);
-    tr.appendChild(td);
-    table.appendChild(tr);
+    td.append(div);
+    tr.append(td);
+    table.append(tr);
 
     tr = document.createElement("tr");
 
@@ -3154,13 +3229,13 @@ function add_graph_to_table(table,num) {
     div.id = 'd'+num+'_div';
     div.className = 'panel';
     link = document.createElement("i");
-    link.appendChild(document.createTextNode("Click on a node or edge to get details, or click on graph background to see a full list of nodes and edges for this result"));
-    div.appendChild(link);
+    link.append("Click on a node or edge to get details, or click on graph background to see a full list of nodes and edges for this result");
+    div.append(link);
 
-    td.appendChild(div);
-    tr.appendChild(td);
+    td.append(div);
+    tr.append(td);
 
-    table.appendChild(tr);
+    table.append(tr);
 }
 
 
@@ -3177,12 +3252,12 @@ function add_cyto(i,dataid) {
 	style: cytoscape.stylesheet()
 	    .selector('node')
 	    .css({
-		'background-color': function(ele) { return mapNodeColor(ele); } ,
-		'shape': function(ele) { return mapNodeShape(ele); } ,
-		'border-color' : '#000',
-		'border-width' : '2',
-		'width': '20',
-		'height': '20',
+		'background-image': function(ele) { return mapNodeIcon(ele); } ,
+		'background-fit': 'contain',
+		'background-opacity': '0',
+		'shape': 'rectangle',
+		'width': '40',
+		'height': '40',
 		'content': function(ele) { return ele.data().idname ? ele.data().idname : ele.data().name ? ele.data().name : ele.data().id; }
 	    })
 	    .selector('edge')
@@ -3209,6 +3284,7 @@ function add_cyto(i,dataid) {
 	    .css({
 		'background-color': '#ff0',
 		'border-color': '#f80',
+		'border-width' : '2',
 		'line-color': '#f80',
 		'target-arrow-color': '#f80',
 		'source-arrow-color': '#f80',
@@ -3930,36 +4006,66 @@ function cylayout(index,layname) {
     layout.run();
 }
 
+// unused in favor of icons
 function mapNodeShape(ele) {
     var ntype = ele.data().categories ? ele.data().categories[0] ? ele.data().categories[0] : "NA" : "NA";
     if (ntype.endsWith("microRNA"))           { return "hexagon";} //??
     if (ntype.endsWith("Metabolite"))         { return "heptagon";}
-    if (ntype.endsWith("Protein"))            { return "octagon";}
+    if (ntype.endsWith("XXProtein"))            { return "octagon";}
     if (ntype.endsWith("Pathway"))            { return "vee";}
-    if (ntype.endsWith("Disease"))            { return "triangle";}
+    if (ntype.endsWith("XXDisease"))            { return "triangle";}
     if (ntype.endsWith("MolecularFunction"))  { return "rectangle";} //??
     if (ntype.endsWith("CellularComponent"))  { return "ellipse";}
     if (ntype.endsWith("BiologicalProcess"))  { return "tag";}
     if (ntype.endsWith("ChemicalEntity"))     { return "diamond";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "rhomboid";}
-    if (ntype.endsWith("PhenotypicFeature"))  { return "star";}
+    if (ntype.endsWith("XXPhenotypicFeature"))  { return "star";}
     return "rectangle";
 }
-
+// unused in favor of icons
 function mapNodeColor(ele) {
     var ntype = ele.data().categories ? ele.data().categories[0] ? ele.data().categories[0] : "NA" : "NA";
+    if (ntype.endsWith("BehavioralFeature"))  { return "white";}
+    if (ntype.endsWith("Cell"))               { return "white";}
+    if (ntype.endsWith("ChemicalOrDrugOrTreatment")) { return "white";}
+    if (ntype.endsWith("Disease"))            { return "white";}
+    if (ntype.endsWith("Gene"))               { return "white";}
+    if (ntype.endsWith("PhenotypicFeature"))  { return "white";}
+    if (ntype.endsWith("Protein"))            { return "white";}
+    if (ntype.endsWith("SmallMolecule"))      { return "white";}
+
     if (ntype.endsWith("microRNA"))           { return "orange";} //??
     if (ntype.endsWith("Metabolite"))         { return "aqua";}
-    if (ntype.endsWith("Protein"))            { return "black";}
     if (ntype.endsWith("Pathway"))            { return "gray";}
-    if (ntype.endsWith("Disease"))            { return "red";}
     if (ntype.endsWith("MolecularFunction"))  { return "blue";} //??
     if (ntype.endsWith("CellularComponent"))  { return "purple";}
     if (ntype.endsWith("BiologicalProcess"))  { return "green";}
     if (ntype.endsWith("ChemicalEntity"))     { return "yellowgreen";}
     if (ntype.endsWith("AnatomicalEntity"))   { return "violet";}
-    if (ntype.endsWith("PhenotypicFeature"))  { return "indigo";}
     return "#04c";
+}
+
+function mapNodeIcon(ele) {
+    var ntype = ele.data().categories ? ele.data().categories[0] ? ele.data().categories[0] : "NA" : "NA";
+    if (ntype.endsWith("AnatomicalEntity"))   { return "./icons/humanoid.png";}
+    if (ntype.endsWith("BehavioralFeature"))  { return "./icons/behavior.png";}
+    if (ntype.endsWith("BiologicalProcess"))  { return "./icons/biological.png";}
+    if (ntype.endsWith("Cell"))               { return "./icons/cell.png";}
+    if (ntype.endsWith("ChemicalEntity"))     { return "./icons/chemical.png";}
+    if (ntype.endsWith("ChemicalOrDrugOrTreatment"))  { return "./icons/drugs.png";}
+    if (ntype.endsWith("Disease"))            { return "./icons/iv.png";}
+    if (ntype.endsWith("Drug"))               { return "./icons/drug.png";}
+    if (ntype.endsWith("Food"))               { return "./icons/food.png";}
+    if (ntype.endsWith("Gene"))               { return "./icons/gene.png";}
+    if (ntype.endsWith("GrossAnatomicalStructure"))   { return "./icons/humanoid.png";}
+    if (ntype.endsWith("MolecularActivity"))  { return "./icons/molecular.png";}
+    if (ntype.endsWith("MolecularMixture"))   { return "./icons/blend.png";}
+    if (ntype.endsWith("Pathway"))            { return "./icons/pathways.png";}
+    if (ntype.endsWith("PhenotypicFeature"))  { return "./icons/pheno.png";}
+    if (ntype.endsWith("PhysiologicalProcess"))       { return "./icons/physiology.png";}
+    if (ntype.endsWith("Protein"))            { return "./icons/protein.png";}
+    if (ntype.endsWith("SmallMolecule"))      { return "./icons/molecule.png";}
+    return "./icons/generic.png";
 }
 
 function mapEdgeLineStyle(ele) {
@@ -3999,7 +4105,7 @@ function mapEdgeColor(ele,num) {
 
 
 // build-a-qGraph
-function qg_new(msg,nodes) {
+function qg_new(msg,nodes,type='basic') {
     if (cyobj[99999]) { cyobj[99999].elements().remove(); }
     else add_cyto(99999,'QG');
     input_qg = { "edges": {}, "nodes": {} };
@@ -4008,14 +4114,31 @@ function qg_new(msg,nodes) {
     UIstate.editnodeid = null;
 
     if (msg)
-	document.getElementById("statusdiv").innerHTML = "<p>A new Query Graph has been created.</p>";
+	document.getElementById("statusdiv").innerHTML = "<p>A new "+type+" Query Graph has been created.</p>";
     else
 	document.getElementById("showQGjson").checked = false;
 
     if (nodes) {
-	qg_node('new',false);
+	var n0 = qg_node('new',false);
 	qg_node('new',false);
 	qg_edge('new');
+
+	if (type == "Pathfinder") {
+            qg_add_category_to_qnode('biolink:NamedThing');
+	    qg_add_predicate_to_qedge('biolink:related_to');
+	    qg_add_property_to_qedge('knowledge_type','inferred');
+
+	    var n2 = qg_node('new',false);
+	    qg_edge('new');
+	    qg_add_predicate_to_qedge('biolink:related_to');
+	    qg_add_property_to_qedge('knowledge_type','inferred');
+
+            qg_edge('new',n0,n2);
+	    qg_add_predicate_to_qedge('biolink:related_to');
+	    qg_add_property_to_qedge('knowledge_type','inferred');
+
+	    display_qg_popup('edge','hide');
+	}
     }
 }
 
@@ -4049,14 +4172,14 @@ function qg_node(id,render) {
 	UIstate.shakeit = true;
     }
     else {  // need to update name?
-	if (input_qg.nodes[id]['_names'].length > 0) {
+	if (input_qg.nodes[id]['_names'] && input_qg.nodes[id]['_names'].length > 0) {
 	    daname = input_qg.nodes[id]['_names'][0];
 	    if (input_qg.nodes[id]['_names'].length == 2)
 		daname = "[ "+daname+", "+input_qg.nodes[id]['_names'][1]+" ]";
 	    else if (input_qg.nodes[id]['_names'].length > 2)
 		daname = "[ "+daname+" +"+(input_qg.nodes[id]['_names'].length - 1)+" ]";
 	}
-        else if (input_qg.nodes[id]['categories'].length > 0) {
+        else if (input_qg.nodes[id]['categories'] && input_qg.nodes[id]['categories'].length > 0) {
 	    daname = input_qg.nodes[id]['categories'][0];
 
 	    if (input_qg.nodes[id]['categories'].length == 2)
@@ -4163,6 +4286,8 @@ function qg_node(id,render) {
     qg_update_qnode_list();
     qg_display_edge_predicates(false);
     show_qgjson();
+
+    return id;
 }
 
 function qg_remove_qnode() {
@@ -4417,7 +4542,7 @@ function qg_setset_for_qnode() {
     cylayout(99999,"breadthfirst");
 }
 
-function qg_edge(id) {
+function qg_edge(id,node1=null,node2=null) {
     if (id == 'new') {
 	var nodes = Object.keys(input_qg.nodes);
 	if (nodes.length < 2) { // just add them...
@@ -4435,9 +4560,15 @@ function qg_edge(id) {
 	newqedge.qualifier_constraints = [];
         newqedge.exclude = false;
 	newqedge.option_group_id = null;
-	// join last two nodes if not specified otherwise [ToDo: specify]
-	newqedge.subject = nodes[nodes.length - 2];
-	newqedge.object = nodes[nodes.length - 1];
+	// join last two nodes if not specified otherwise
+	if (node1&&node2) {
+	    newqedge.subject = node1;
+	    newqedge.object = node2;
+	}
+	else {
+	    newqedge.subject = nodes[nodes.length - 2];
+	    newqedge.object = nodes[nodes.length - 1];
+	}
 
 	input_qg.edges[id] = newqedge;
 
@@ -4574,6 +4705,7 @@ function qg_edge(id) {
 	input_qg.edges[id].option_group_id = null;
 
     show_qgjson();
+    return id;
 }
 
 function qg_update_qnode_list() {
@@ -4609,6 +4741,14 @@ function qg_remove_qedge() {
 
     display_qg_popup('edge','hide');
     UIstate.editedgeid = null;
+}
+
+function qg_add_property_to_qedge(prop,val) {
+    var id = UIstate.editedgeid;
+    if (!id || !prop || !val) return;
+
+    input_qg.edges[id][prop] = val
+    qg_edge(id);
 }
 
 function qg_add_predicate_to_qedge(pred) {
@@ -6283,10 +6423,11 @@ function retrieveKPInfo() {
 	    wspan.innerHTML = '';
 	    var components = {};
 	    for (let item of data) {
-		if (item['component'])
-		    components[item['component']] = true;
-		else
+		if (!item['component']) {
 		    console.log("Found empty component: "+item['component']);
+		    item['component'] = 'MISSING';
+		}
+		components[item['component']] = true;
 	    }
 
 	    if (Object.keys(components).length < 1) {
@@ -6550,7 +6691,7 @@ function retrieveTestRunnerResultsList(thisone=null) {
 	    }
 	})
         .catch(error => {
-	    div.appendChild(document.createTextNode("ERROR: "+error));
+	    div.append("ERROR: "+error);
 	    console.error(error);
 	});
 
@@ -6582,7 +6723,7 @@ function retrieveSysTestResultsList(num) {
 	    }
 	})
         .catch(error => {
-	    div.appendChild(document.createTextNode("ERROR: "+error));
+	    div.append("ERROR: "+error);
 	    console.error(error);
 	});
 
