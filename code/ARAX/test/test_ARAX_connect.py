@@ -85,7 +85,7 @@ def test_connect_ulcerative_colitis_to_adalimumab():
         "create_message",
         "add_qnode(ids=MONDO:0005101, key=n_src)",
         "add_qnode(ids=UNII:FYS6T7F842, key=n_dst)",
-        "add_qnode(categories=biolink:NamedThing, key=n_cns)",
+        "add_qnode(categories=biolink:Gene, key=n_cns)",
         "add_qedge(key=e_src_dst,subject=n_src,object=n_dst,predicates=biolink:related_to)",
         "add_qedge(key=e_src_cns,subject=n_src,object=n_cns,predicates=biolink:related_to)",
         "add_qedge(key=e_cns_dst,subject=n_cns,object=n_dst,predicates=biolink:related_to)",

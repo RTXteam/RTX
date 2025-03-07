@@ -1,5 +1,6 @@
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from GraphToKnowledgeGraphConverter import GraphToKnowledgeGraphConverter
 
@@ -17,26 +18,34 @@ class PathConverter:
             path,
             node_1_id,
             node_2_id,
-            node_in_between_id,
             qnode_1_id,
             qnode_2_id,
             qnode_in_between_id,
             names,
             edge_extractor,
-            node_category_constraint,
-            score
+            score,
+            descendants
     ):
         self.path = path
         self.node_1_id = node_1_id
         self.node_2_id = node_2_id
-        self.node_in_between_id = node_in_between_id
         self.qnode_1_id = qnode_1_id
         self.qnode_2_id = qnode_2_id
         self.qnode_in_between_id = qnode_in_between_id
         self.names = names
         self.edge_extractor = edge_extractor
-        self.node_category_constraint = node_category_constraint
         self.score = score
+        self.descendants = descendants
+
+    def path_has_category_constraint(self, knowledge_graph_src_dest):
+        if len(self.path.links) > 2:
+            for i in range(1, len(self.path.links) - 1):
+                if self.path.links[i].id in knowledge_graph_src_dest.nodes:
+                    intermediate_node = knowledge_graph_src_dest.nodes[self.path.links[i].id]
+                    for category in intermediate_node.categories:
+                        if category in self.descendants:
+                            return self.path.links[i].id
+        return None
 
     def convert(self, response):
         knowledge_graph_src_dest = GraphToKnowledgeGraphConverter(
@@ -44,15 +53,19 @@ class PathConverter:
             self.qnode_2_id,
             self.edge_extractor).convert(response, [self.path])
 
+        category_constraint_id = self.path_has_category_constraint(knowledge_graph_src_dest)
+        if category_constraint_id is None:
+            return
+
         essence = "Direct path"
         if len(self.path.links) > 2:
             essence = ""
-            for i in range(1,len(self.path.links)-1):
+            for i in range(1, len(self.path.links) - 1):
                 if self.path.links[i].id in knowledge_graph_src_dest.nodes:
                     intermediate_node = knowledge_graph_src_dest.nodes[self.path.links[i].id]
                     if intermediate_node.name is not None:
                         essence = f"{essence}{intermediate_node.name}"
-                if i != len(self.path.links)-2:
+                if i != len(self.path.links) - 2:
                     essence = f"{essence} - "
 
         response.envelope.message.knowledge_graph.edges.update(knowledge_graph_src_dest.edges)
@@ -76,7 +89,7 @@ class PathConverter:
                 node_bindings={
                     self.qnode_1_id: [NodeBinding(id=self.node_1_id, attributes=[])],
                     self.qnode_2_id: [NodeBinding(id=self.node_2_id, attributes=[])],
-                    self.qnode_in_between_id: [NodeBinding(id=self.node_in_between_id, attributes=[])]
+                    self.qnode_in_between_id: [NodeBinding(id=category_constraint_id, attributes=[])]
                 },
                 essence=essence
             )

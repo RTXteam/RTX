@@ -1,6 +1,9 @@
 import os
 import sys
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Names import Names
 from PathConverter import PathConverter
@@ -31,15 +34,15 @@ class ResultPerPathConverter:
         self.node_category_constraint = node_category_constraint
 
     def convert(self, response):
+        biolink_helper = BiolinkHelper()
+        descendants = biolink_helper.get_descendants(self.node_category_constraint)
         i = 0
         for path in self.paths:
-            node_id = path.links[1].id # TODO find the middle node
             i = i + 1
             PathConverter(
                 path,
                 self.node_1_id,
                 self.node_2_id,
-                node_id,
                 self.qnode_1_id,
                 self.qnode_2_id,
                 self.qnode_mid_id,
@@ -48,6 +51,6 @@ class ResultPerPathConverter:
                     auxiliary_graph_name=f"{self.names.auxiliary_graph_name}_{i}",
                 ),
                 self.edge_extractor,
-                self.node_category_constraint,
-                path.compute_weight()
+                path.compute_weight(),
+                set(descendants)
             ).convert(response)
