@@ -14,7 +14,7 @@ class PathConverter:
 
     def __init__(
             self,
-            paths,
+            path,
             node_1_id,
             node_2_id,
             node_in_between_id,
@@ -26,7 +26,7 @@ class PathConverter:
             node_category_constraint,
             score
     ):
-        self.paths = paths
+        self.path = path
         self.node_1_id = node_1_id
         self.node_2_id = node_2_id
         self.node_in_between_id = node_in_between_id
@@ -42,7 +42,18 @@ class PathConverter:
         knowledge_graph_src_dest = GraphToKnowledgeGraphConverter(
             self.qnode_1_id,
             self.qnode_2_id,
-            self.edge_extractor).convert(response, self.paths)
+            self.edge_extractor).convert(response, [self.path])
+
+        essence = "Direct path"
+        if len(self.path.links) > 2:
+            essence = ""
+            for i in range(1,len(self.path.links)-1):
+                if self.path.links[i].id in knowledge_graph_src_dest.nodes:
+                    intermediate_node = knowledge_graph_src_dest.nodes[self.path.links[i].id]
+                    if intermediate_node.name is not None:
+                        essence = f"{essence}{intermediate_node.name}"
+                if i != len(self.path.links)-2:
+                    essence = f"{essence} - "
 
         response.envelope.message.knowledge_graph.edges.update(knowledge_graph_src_dest.edges)
         response.envelope.message.knowledge_graph.nodes.update(knowledge_graph_src_dest.nodes)
@@ -67,7 +78,7 @@ class PathConverter:
                     self.qnode_2_id: [NodeBinding(id=self.node_2_id, attributes=[])],
                     self.qnode_in_between_id: [NodeBinding(id=self.node_in_between_id, attributes=[])]
                 },
-                # essence=essence TODO
+                essence=essence
             )
         )
 

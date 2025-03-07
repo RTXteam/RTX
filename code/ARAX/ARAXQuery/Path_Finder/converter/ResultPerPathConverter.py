@@ -33,11 +33,10 @@ class ResultPerPathConverter:
     def convert(self, response):
         i = 0
         for path in self.paths:
-            new_path = [path]
             node_id = path.links[1].id # TODO find the middle node
             i = i + 1
             PathConverter(
-                new_path,
+                path,
                 self.node_1_id,
                 self.node_2_id,
                 node_id,
