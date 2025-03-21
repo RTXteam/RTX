@@ -63,7 +63,7 @@ class PloverDBRepo(Repository):
             "respect_predicate_symmetry": True
         }
         try:
-            response = requests.post("https://kg2cplover.rtx.ai:9990" + endpoint, headers={'accept': 'application/json'}, json=data) # TODO change URL
+            response = requests.post("https://kg2cploverdb.ci.transltr.io" + endpoint, headers={'accept': 'application/json'}, json=data)
             response.raise_for_status()
             json = response.json()
             nodes = {}
@@ -80,12 +80,12 @@ class PloverDBRepo(Repository):
                     edges[neighbor_id] = [edge_info]
                 else:
                     edges[neighbor_id].append(edge_info)
-            return nodes, edges
+            return json['nodes']['n1'][node_id_input][1], nodes, edges
         except requests.exceptions.RequestException as e:
             logging.error("A requests error occurred: %s", e, exc_info=True)
         except Exception as e:
             logging.error("An unexpected error occurred: %s", e, exc_info=True)
-        return None, None
+        return None, None, None
 
     def get_node_degree(self, node):
         return self.degree_repo.get_node_degree(node)

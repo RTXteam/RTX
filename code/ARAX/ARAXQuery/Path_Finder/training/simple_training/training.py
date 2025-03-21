@@ -7,12 +7,16 @@ import sys
 import numpy as np
 import xgboost as xgb
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
+
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 from feature_extractor import get_neighbors_info
+from feature_extractor import get_category
 from feature_extractor import get_np_array_features
 from repo.NGDRepository import NGDRepository
 from repo.PloverDBRepo import PloverDBRepo
@@ -42,6 +46,56 @@ def create_training_data():
 
 
 def gather_data():
+    edge_category_to_idx = {'biolink:related_to': 0, 'biolink:close_match': 1, 'biolink:subclass_of': 2,
+                            'biolink:interacts_with': 3,
+                            'biolink:treats_or_applied_or_studied_to_treat': 4, 'biolink:affects': 5,
+                            'biolink:has_input': 6,
+                            'biolink:causes': 7, 'biolink:disrupts': 8,
+                            'biolink:preventative_for_condition': 9,
+                            'biolink:predisposes_to_condition': 10, 'biolink:produces': 11,
+                            'biolink:coexists_with': 12,
+                            'biolink:precedes': 13, 'biolink:exacerbates_condition': 14,
+                            'biolink:manifestation_of': 15,
+                            'biolink:located_in': 16, 'biolink:diagnoses': 17, 'biolink:occurs_in': 18,
+                            'biolink:has_participant': 19,
+                            'biolink:in_clinical_trials_for': 20, 'biolink:treats': 21,
+                            'biolink:contraindicated_in': 22,
+                            'biolink:physically_interacts_with': 23, 'biolink:has_metabolite': 24,
+                            'biolink:has_member': 25,
+                            'biolink:has_part': 26, 'biolink:transcribed_from': 27, 'biolink:regulates': 28,
+                            'biolink:gene_associated_with_condition': 29, 'biolink:translates_to': 30,
+                            'biolink:enables': 31,
+                            'biolink:actively_involved_in': 32, 'biolink:capable_of': 33,
+                            'biolink:colocalizes_with': 34,
+                            'biolink:in_taxon': 35, 'biolink:expressed_in': 36, 'biolink:gene_product_of': 37,
+                            'biolink:directly_physically_interacts_with': 38, 'biolink:contributes_to': 39,
+                            'biolink:applied_to_treat': 40,
+                            'biolink:biomarker_for': 41, 'biolink:overlaps': 42, 'biolink:has_phenotype': 43,
+                            'biolink:same_as': 44,
+                            'biolink:has_output': 45, 'biolink:chemically_similar_to': 46,
+                            'biolink:derives_from': 47,
+                            'biolink:is_sequence_variant_of': 48, 'biolink:associated_with': 49,
+                            'biolink:correlated_with': 50,
+                            'biolink:disease_has_location': 51, 'biolink:exact_match': 52,
+                            'biolink:temporally_related_to': 53,
+                            'biolink:composed_primarily_of': 54, 'biolink:has_plasma_membrane_part': 55,
+                            'biolink:has_not_completed': 56,
+                            'biolink:develops_from': 57, 'biolink:has_increased_amount': 58,
+                            'biolink:lacks_part': 59,
+                            'biolink:has_decreased_amount': 60, 'biolink:opposite_of': 61,
+                            'biolink:beneficial_in_models_for': 62,
+                            'biolink:disease_has_basis_in': 63,
+                            'biolink:indirectly_physically_interacts_with': 64}
+    ancestors_by_indices = {}
+    biolink_helper = BiolinkHelper()
+    for key, value in edge_category_to_idx.items():
+        ancestors = biolink_helper.get_ancestors(key)
+        indices_of_ancestors = []
+        for ancestor in ancestors:
+            if ancestor in edge_category_to_idx:
+                indices_of_ancestors.append(edge_category_to_idx[ancestor])
+        ancestors_by_indices[value] = indices_of_ancestors
+
     training_data = create_training_data()
     i = 0
     logging.info(len(training_data))
@@ -49,8 +103,6 @@ def gather_data():
     category_list = node_synonymizer.get_distinct_category_list()
     category_list_sorted = sorted(category_list)
     category_to_idx = {cat_name: idx for idx, cat_name in enumerate(category_list_sorted)}
-    edge_category_to_idx = {}
-    edge_category_counter = 0
     ngd_repo = NGDRepository()
     plover_repo = PloverDBRepo(plover_url=RTXConfiguration().plover_url)
     group = []
@@ -59,9 +111,10 @@ def gather_data():
     y = []
     x_list = []
     for key_nodes_pair in training_data:
-        content_by_curie = get_neighbors_info(key_nodes_pair[0], ngd_repo, plover_repo)
+        content_by_curie, curie_category = get_neighbors_info(key_nodes_pair[0], ngd_repo, plover_repo)
         if content_by_curie is None:
             continue
+        curie_category_onehot = get_category(curie_category.split(":")[-1], category_to_idx)
         group.append(len(content_by_curie))
         curie.append(key_nodes_pair[0])
         logging.info(f"neighbors length: {len(content_by_curie)}")
@@ -71,28 +124,17 @@ def gather_data():
             else:
                 y.append(0)
 
-            for category, _ in value['edges'].items():
-                if category not in edge_category_to_idx:
-                    edge_category_to_idx[category] = edge_category_counter
-                    edge_category_counter = edge_category_counter + 1
             curies.append(key)
-            x_list.append(get_np_array_features(value, category_to_idx, edge_category_to_idx))
+            x_list.append(get_np_array_features(value, category_to_idx, edge_category_to_idx, curie_category_onehot,
+                                                ancestors_by_indices))
 
         i = i + 1
         logging.info(f"training data counter: {i}")
 
-    len_edge_category_to_idx = len(edge_category_to_idx)
-    number_of_features = 60 + len_edge_category_to_idx
-
-    x = np.empty((len(x_list), number_of_features), dtype=float)
+    x = np.empty((len(x_list), 183), dtype=float)
 
     for i in range(len(x_list)):
-        features = x_list[i]
-        len_features = len(features)
-        if len_features < number_of_features:
-            x[i] = np.concatenate([features, np.zeros((number_of_features - len_features), dtype=float)])
-        else:
-            x[i] = x_list[i]
+        x[i] = x_list[i]
 
     np.save("X_data.npy", x)
     np.save("y_data.npy", y)
@@ -102,8 +144,8 @@ def gather_data():
         pickle.dump(curie, f)
     with open("curies.pkl", "wb") as f:
         pickle.dump(curies, f)
-    with open("edge_categories.pkl", "wb") as f:
-        pickle.dump(edge_category_to_idx, f)
+    with open("ancestors_by_indices.pkl", "wb") as f:
+        pickle.dump(ancestors_by_indices, f)
 
 
 def train():

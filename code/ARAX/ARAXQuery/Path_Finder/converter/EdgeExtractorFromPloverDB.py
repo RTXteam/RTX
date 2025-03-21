@@ -26,7 +26,7 @@ class EdgeExtractorFromPloverDB:
             else:
                 i += 1
 
-        url = "https://kg2cplover.rtx.ai:9990" + "/get_edges" # TODO change URL
+        url = "https://kg2cploverdb.ci.transltr.io" + "/get_edges" # TODO change URL
         query = {"pairs": pairs}
         try:
             knowledge_graph = {'edges': {}, 'nodes': {}}

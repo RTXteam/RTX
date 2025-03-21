@@ -1,3 +1,4 @@
+import pickle
 import sys
 import os
 
@@ -9,6 +10,7 @@ from node_synonymizer import NodeSynonymizer
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 from feature_extractor import get_neighbors_info
+from feature_extractor import get_category
 from feature_extractor import get_np_array_features
 from repo.Repository import Repository
 from repo.NodeDegreeRepo import NodeDegreeRepo
@@ -82,22 +84,26 @@ class MLRepo(Repository):
                                      'biolink:disease_has_basis_in': 63,
                                      'biolink:indirectly_physically_interacts_with': 64}
         self.category_to_idx = {cat_name: idx for idx, cat_name in enumerate(self.sorted_category_list)}
+        with open((os.path.dirname(os.path.abspath(__file__)) + '/ancestors_by_indices.pkl'), "rb") as f:
+            self.ancestors_by_id = pickle.load(f)
 
     def get_neighbors(self, node, limit=-1):
         if limit <= 0:
             raise Exception(f"The limit:{limit} could not be negative or zero.")
-        content_by_curie = get_neighbors_info(node.id, self.ngd_repo, self.repo)
+        content_by_curie, curie_category = get_neighbors_info(node.id, self.ngd_repo, self.repo)
 
         if content_by_curie is None:
             return []
+        curie_category_onehot = get_category(curie_category.split(":")[-1], self.category_to_idx)
 
         X_list = []
         curie_list = []
         for key, value in content_by_curie.items():
             curie_list.append(key)
-            X_list.append(get_np_array_features(value, self.category_to_idx, self.edge_category_to_idx))
+            X_list.append(
+                get_np_array_features(value, self.category_to_idx, self.edge_category_to_idx, curie_category_onehot, self.ancestors_by_id))
 
-        X = np.empty((len(X_list), 125), dtype=float)
+        X = np.empty((len(X_list), 183), dtype=float)
 
         for i in range(len(X_list)):
             X[i] = X_list[i]

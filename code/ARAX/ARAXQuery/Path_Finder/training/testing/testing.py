@@ -83,6 +83,4 @@ def test(pathfinder_type):
 
 
 if __name__ == "__main__":
-    pathfinder_type = "new"
-    paths = get_paths_from_path_finder(pathfinder_type, "CHV:0000005486", "UNII:FYS6T7F842")
-    print(len(paths))
+    test("new")
