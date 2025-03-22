@@ -63,9 +63,14 @@ class PloverDBRepo(Repository):
             "respect_predicate_symmetry": True
         }
         try:
-            response = requests.post("https://kg2cploverdb.ci.transltr.io" + endpoint, headers={'accept': 'application/json'}, json=data)
+            response = requests.post("https://kg2cplover3.rtx.ai:9990" + endpoint,
+                                     headers={'accept': 'application/json'}, json=data)
             response.raise_for_status()
             json = response.json()
+
+            if len(json['nodes']['n1']) == 0 or len(json['nodes']['n2']) == 0:
+                return None, None, None
+
             nodes = {}
             for id, info in json['nodes']['n2'].items():
                 nodes[id] = info[1]
