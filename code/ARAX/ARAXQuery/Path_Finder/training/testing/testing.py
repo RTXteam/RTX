@@ -53,18 +53,23 @@ def number_of_test_data():
     logging.info(f"Number of test pairs: {counter}")
 
 
-def depict_pdf(db, file_name):
+def depict_pdf(db, file_name, zero_included = False):
     data = db.read_all()
 
-    logging.info(len(data[data['containment_index'] == 0]))
-    data = data[data['containment_index'] != 0]
+    if not zero_included:
+        logging.info(len(data[data['containment_index'] == 0]))
+        data = data[data['containment_index'] != 0]
 
     mean_containment_index = data['containment_index'].mean()
     std_dev_containment_index = data['containment_index'].std()
 
     plt.figure(figsize=(10, 6))
     sns.kdeplot(data['containment_index'], bw_adjust=0.5, fill=True, color='skyblue', alpha=0.6)
-    plt.title("Probability Density Function of Containment Index (Zero Values Included)")
+    zero_inclusion_title = "Zero Values Excluded"
+    if zero_included:
+        zero_inclusion_title = "Zero Values Included"
+    title = f"Probability Density Function of Containment Index ({zero_inclusion_title})"
+    plt.title(title)
     plt.xlabel("Containment Index")
     plt.ylabel("Density")
     plt.axvline(mean_containment_index, color='red', linestyle='--', label=f'Mean: {mean_containment_index:.2f}')
@@ -73,17 +78,18 @@ def depict_pdf(db, file_name):
     plt.axvline(mean_containment_index - std_dev_containment_index, color='purple', linestyle='--',
                 label=f'Mean - 1 SD: {(mean_containment_index - std_dev_containment_index):.2f}')
     plt.legend()
-    plt.savefig(f"{file_name}.png")
+    plt.savefig(f"{file_name}-{zero_inclusion_title}.png")
 
 
-def test(pathfinder_type):
+def test(pathfinder_type, file_name):
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     db = DrugDiseaseMatchedDB(f"drug_disease_{pathfinder_type}.db")
     db.create_table()
     number_of_test_data()
     run_tests(db, pathfinder_type)
-    depict_pdf(db, pathfinder_type)
+    depict_pdf(db, file_name, False)
+    depict_pdf(db, file_name, True)
 
 
 if __name__ == "__main__":
-    test("new")
+    test("new", "without_edge")
