@@ -31,13 +31,16 @@ def run_tests(db, pathfinder_type):
     for source, value in data.items():
         test_nodes = set(value['mechanistic_intermediate_nodes'].keys())
         for destination, _ in value['indication_NER_aligned'].items():
+            counter += 1
+            if db.has_pair(source, destination):
+                continue
             paths = get_paths_from_path_finder(pathfinder_type, source, destination)
             intermediate_node_from_path_finder = extract_intermediate_nodes(paths)
             matched = intermediate_node_from_path_finder & test_nodes
             containment_index = len(matched) / len(test_nodes)
             db.insert(source, destination, str(matched), containment_index, len(intermediate_node_from_path_finder),
                       len(test_nodes))
-            logging.info(f"{++counter}: {source} - {destination}:  {containment_index}")
+            logging.info(f"{counter}: {source} - {destination}:  {containment_index}")
 
 
 def number_of_test_data():
@@ -53,8 +56,8 @@ def number_of_test_data():
 def depict_pdf(db, file_name):
     data = db.read_all()
 
-    # logging.info(len(data[data['containment_index'] == 0]))
-    # data = data[data['containment_index'] != 0]
+    logging.info(len(data[data['containment_index'] == 0]))
+    data = data[data['containment_index'] != 0]
 
     mean_containment_index = data['containment_index'].mean()
     std_dev_containment_index = data['containment_index'].std()
