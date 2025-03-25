@@ -116,7 +116,7 @@ class QueryGraph(Model):
         """
         return self._paths
 
-    @edges.setter
+    @paths.setter
     def paths(self, paths):
         """Sets the paths of this QueryGraph.
 
