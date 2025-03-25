@@ -65,7 +65,7 @@ class ARAXQueryGraphInterpreter:
             return response
 
         # Detect a "pathfinder" QueryGraph pattern in the query and branch off to different behavior
-        if hasattr(message.query_graph, 'paths'):
+        if hasattr(message.query_graph, 'paths') and message.query_graph.paths is not None and len(message.query_graph.paths) > 0:
             response.info("QueryGraphInterpreter recognized query_graph as a 'pathfinder' query: triggering pathfinder subsystem.")
             response.data['araxi_commands'] = [
                 'connect(action=connect_nodes, max_path_length=4)',
