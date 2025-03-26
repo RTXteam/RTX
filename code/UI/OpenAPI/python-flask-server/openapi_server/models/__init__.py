@@ -74,6 +74,7 @@ from openapi_server.models.operation_sort_results_score_parameters import Operat
 from openapi_server.models.operations import Operations
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
+from openapi_server.models.q_path import QPath
 from openapi_server.models.qualifier import Qualifier
 from openapi_server.models.qualifier_constraint import QualifierConstraint
 from openapi_server.models.query import Query
