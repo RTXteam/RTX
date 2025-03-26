@@ -58,6 +58,7 @@ Host arax.ncats.io
       - [ ] after the build, run the Synonymizer pytest regression test suite:
         - [ ] `pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.X.Y.sqlite`
       - [ ] make sure that `node_synonymizer_v1.0_KG2.X.Y.sqlite` is about 8-15 GB and its last modified date is today
+      - [ ] copy `node_synonymizer_v1.0_KG2.X.Y.sqlite` to the public S3 bucket for RTX-KG2: `aws s3 cp node_synonymizer_v1.0_KG2.X.Y.sqlite s3://rtx-kg2-public/`
     - [ ] to do a standard full build of a new KG2c (expected runtime: 8-10 hours), run:
       - [ ] `cd RTX/code/kg2c`
       - [ ] `python build_kg2c.py 2.X.Y v1.0 4.2.1 --uploadartifacts`
