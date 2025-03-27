@@ -63,7 +63,7 @@ class PloverDBRepo(Repository):
             "respect_predicate_symmetry": True
         }
         try:
-            response = requests.post("https://kg2cploverdb.ci.transltr.io" + endpoint,
+            response = requests.post(self.plover_url + endpoint,
                                      headers={'accept': 'application/json'}, json=data)
             response.raise_for_status()
             json = response.json()
