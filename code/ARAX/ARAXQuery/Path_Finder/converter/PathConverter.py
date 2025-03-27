@@ -53,9 +53,11 @@ class PathConverter:
             self.qnode_2_id,
             self.edge_extractor).convert(response, [self.path])
 
-        category_constraint_id = self.path_has_category_constraint(knowledge_graph_src_dest)
-        if category_constraint_id is None:
-            return
+        category_constraint_id = None
+        if self.descendants:
+            category_constraint_id = self.path_has_category_constraint(knowledge_graph_src_dest)
+            if category_constraint_id is None:
+                return
 
         essence = "Direct path"
         if len(self.path.links) > 2:
@@ -82,15 +84,18 @@ class PathConverter:
         if response.envelope.message.results is None:
             response.envelope.message.results = []
 
+        node_bindings = {
+            self.qnode_1_id: [NodeBinding(id=self.node_1_id, attributes=[])],
+            self.qnode_2_id: [NodeBinding(id=self.node_2_id, attributes=[])]
+        }
+        if category_constraint_id:
+            node_bindings[self.qnode_in_between_id] = [NodeBinding(id=category_constraint_id, attributes=[])]
+
         response.envelope.message.results.append(
             Result(
                 id=self.names.result_name,
                 analyses=[analyses],
-                node_bindings={
-                    self.qnode_1_id: [NodeBinding(id=self.node_1_id, attributes=[])],
-                    self.qnode_2_id: [NodeBinding(id=self.node_2_id, attributes=[])],
-                    self.qnode_in_between_id: [NodeBinding(id=category_constraint_id, attributes=[])]
-                },
+                node_bindings= node_bindings,
                 essence=essence
             )
         )

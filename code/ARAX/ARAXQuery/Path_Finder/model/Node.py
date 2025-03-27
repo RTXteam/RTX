@@ -19,9 +19,6 @@ class Node:
     def __hash__(self):
         return hash(self.id)
 
-    def copy(self):
-        return Node(self.id, self.weight, self.name, self.degree, self.category)
-
     def serialize(self):
         return pickle.dumps(self)
 

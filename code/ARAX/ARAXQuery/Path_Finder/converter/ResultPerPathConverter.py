@@ -34,8 +34,13 @@ class ResultPerPathConverter:
         self.node_category_constraint = node_category_constraint
 
     def convert(self, response):
-        biolink_helper = BiolinkHelper()
-        descendants = biolink_helper.get_descendants(self.node_category_constraint)
+        descendants = None
+        if self.node_category_constraint:
+            biolink_helper = BiolinkHelper()
+            descendants = set(biolink_helper.get_descendants(self.node_category_constraint))
+
+        self.extract_edges(response)
+
         i = 0
         for path in self.paths:
             i = i + 1
@@ -52,5 +57,28 @@ class ResultPerPathConverter:
                 ),
                 self.edge_extractor,
                 path.compute_weight(),
-                set(descendants)
+                descendants
             ).convert(response)
+
+    def extract_edges(self, response):
+        pairs = set()
+        for path in self.paths:
+            n1 = path.links[0]
+            for i in range(1, len(path.links)):
+                n2 = path.links[i]
+                if f"{n2.id}--{n1.id}" not in pairs:
+                    pairs.add(f"{n1.id}--{n2.id}")
+                n1 = n2
+            if len(pairs) > 200:
+                pair_list = []
+                for pair in pairs:
+                    s = pair.split("--")
+                    pair_list.append([s[0], s[1]])
+                self.edge_extractor.get_edges(pair_list, response)
+                pairs = set()
+        if len(pairs) > 0:
+            pair_list = []
+            for pair in pairs:
+                s = pair.split("--")
+                pair_list.append([s[0], s[1]])
+            self.edge_extractor.get_edges(pair_list, response)
