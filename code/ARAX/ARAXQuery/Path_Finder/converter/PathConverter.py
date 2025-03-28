@@ -25,7 +25,9 @@ class PathConverter:
             names,
             edge_extractor,
             score,
-            descendants
+            descendants,
+            blocked_curies,
+            blocked_synonyms
     ):
         self.path = path
         self.node_1_id = node_1_id
@@ -37,6 +39,8 @@ class PathConverter:
         self.edge_extractor = edge_extractor
         self.score = score
         self.descendants = descendants
+        self.block_curies = blocked_curies
+        self.blocked_synonyms = blocked_synonyms
 
     def path_has_category_constraint(self, knowledge_graph_src_dest):
         if len(self.path.links) > 2:
@@ -59,6 +63,9 @@ class PathConverter:
             category_constraint_id = self.path_has_category_constraint(knowledge_graph_src_dest)
             if category_constraint_id is None:
                 return
+
+        if self.path_has_blocked_node(knowledge_graph_src_dest):
+            return
 
         essence = "Direct path"
         if len(self.path.links) > 2:
@@ -107,3 +114,14 @@ class PathConverter:
             edges=list(knowledge_graph_src_dest.edges.keys()),
             attributes=[]
         )
+
+    def path_has_blocked_node(self, kg):
+        if len(self.path.links) > 2:
+            for i in range(1, len(self.path.links) - 1):
+                if self.path.links[i].id in self.block_curies:
+                    return True
+                if self.path.links[i].id in kg.nodes:
+                    intermediate_node = kg.nodes[self.path.links[i].id]
+                    if intermediate_node.name.lower() in self.blocked_synonyms:
+                        return True
+        return False
