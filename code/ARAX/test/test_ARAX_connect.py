@@ -176,8 +176,10 @@ def test_query_by_query_graph_2():
     araxq.query(query)
     response = araxq.response
     assert response.status == 'OK'
-    assert len(response.envelope.message.query_graph.edges) == 3
     assert len(response.envelope.message.results) > 0
+    assert len(response.envelope.message.auxiliary_graphs) > 0
+    assert len(response.envelope.message.query_graph.nodes) == 2
+    assert len(response.envelope.message.query_graph.paths) == 1
 
 
 if __name__ == "__main__":
