@@ -85,12 +85,17 @@ def test_connect_ulcerative_colitis_to_adalimumab():
         "create_message",
         "add_qnode(ids=MONDO:0005101, key=n_src)",
         "add_qnode(ids=UNII:FYS6T7F842, key=n_dst)",
-        "add_qpath(key=p0,subject=n_src,object=n_dst,predicates=biolink:related_to)",
+        "add_qnode(categories=biolink:Disease, key=n_cns)",
+        "add_qpath(key=p0,subject=n_src,object=n_dst,predicates=biolink:related_to,intermediate_nodes=n_cns)",
         "connect(action=connect_nodes, max_path_length=3)",
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.results) > 0
+    assert len(response.envelope.message.results) > 0
+    assert len(response.envelope.message.results[0].node_bindings) == 3
+    assert len(response.envelope.message.auxiliary_graphs) > 0
+    assert len(response.envelope.message.query_graph.nodes) == 3
+    assert len(response.envelope.message.query_graph.paths) == 1
 
 
 def test_connect_resveratrol_glyoxalase():
@@ -103,7 +108,11 @@ def test_connect_resveratrol_glyoxalase():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.results) > 0
+    assert len(response.envelope.message.results) > 0
+    assert len(response.envelope.message.results[0].node_bindings) == 2
+    assert len(response.envelope.message.auxiliary_graphs) > 0
+    assert len(response.envelope.message.query_graph.nodes) == 2
+    assert len(response.envelope.message.query_graph.paths) == 1
 
 
 def test_connect_pde5i_alzheimer():
@@ -116,7 +125,11 @@ def test_connect_pde5i_alzheimer():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.results) > 0
+    assert len(response.envelope.message.results) > 0
+    assert len(response.envelope.message.results[0].node_bindings) == 2
+    assert len(response.envelope.message.auxiliary_graphs) > 0
+    assert len(response.envelope.message.query_graph.nodes) == 2
+    assert len(response.envelope.message.query_graph.paths) == 1
 
 
 def test_glucose_diabetes():
@@ -129,7 +142,11 @@ def test_glucose_diabetes():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert len(message.results) > 0
+    assert len(response.envelope.message.results) > 0
+    assert len(response.envelope.message.results[0].node_bindings) == 2
+    assert len(response.envelope.message.auxiliary_graphs) > 0
+    assert len(response.envelope.message.query_graph.nodes) == 2
+    assert len(response.envelope.message.query_graph.paths) == 1
 
 
 def test_TRAPI_unconstrained_query():
