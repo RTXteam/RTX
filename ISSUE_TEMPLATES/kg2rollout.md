@@ -58,12 +58,14 @@ Host arax.ncats.io
       - [ ] after the build, run the Synonymizer pytest regression test suite:
         - [ ] `pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.X.Y.sqlite`
       - [ ] make sure that `node_synonymizer_v1.0_KG2.X.Y.sqlite` is about 8-15 GB and its last modified date is today
+      - [ ] copy `node_synonymizer_v1.0_KG2.X.Y.sqlite` to the public S3 bucket for RTX-KG2: `aws s3 cp node_synonymizer_v1.0_KG2.X.Y.sqlite s3://rtx-kg2-public/`
     - [ ] to do a standard full build of a new KG2c (expected runtime: 8-10 hours), run:
       - [ ] `cd RTX/code/kg2c`
       - [ ] `python build_kg2c.py 2.X.Y v1.0 4.2.1 --uploadartifacts`
         - **NOTE:** 4.2.1 is the Biolink version, please use the latest biolink version based on the KG2pre build's biolink version. Add a `--test` flag to the KG2c build execution to do a test build.
       - [ ] after the build is done, make sure `kg2c_lite.json.gz`'s last modified date is today (or whatever day the build was run)
     - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax-databases.rtx.ai` (`/home/rtxconfig/KG2.X.Y`) and to `kg2webhost.rtx.ai` (if `--uploadartifacts` flag during the KG2c build is set). If not, manually upload the files using `scp`.
+    - [ ] Upload the JSON-lines files (`kg2c-2.X.Y-v1.0-nodes.jsonl.gz` and `kg2c-2.X.y-v1.0-edges.jsonl.gz`) to the public S3 bucket, `s3://rtx-kg2-public`
 - [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/ (how to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#host-kg2canonicalized-in-neo4j))
   - [ ] verify the correct KG2 version was uploaded by running this query: `match (n {id:"RTX:KG2c"}) return n`
 - [ ] update `RTX/code/config_dbs.json` in the branch:
@@ -91,6 +93,7 @@ Host arax.ncats.io
 The following databases should be rebuilt and copies of them should be put in `/home/rtxconfig/KG2.X.Y` on `arax-databases.rtx.ai`. Please use this kind of naming format: `mydatabase_v1.0_KG2.X.Y.sqlite`.
 
 - [ ] NGD database (how-to is [here](https://github.com/RTXteam/RTX/blob/master/code/ARAX/ARAXQuery/Overlay/ngd/README.md))
+    - [ ] Upload the file `curie_to_pmids_v1.0_KG2.X.Y.sqlite` to the public S3 bucket `s3://rtx-kg2-public`.
 - [ ] Build CURIE NGD database @mohsenht
 - [ ] refreshed XDTD database @chunyuma 
 - [ ] XDTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
@@ -202,3 +205,4 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
     - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
     - [ ] delete the `kg2.X.Yc` branch in the PloverDB repo (since it has been merged into `main` at this point)
 - [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen or Sundar Pullela, who have permission to do this)
+- [ ] Download, update, and re-upload to `s3://rtx-kg2-public` the index file `index.html` to add a new section with four hyperlinks for the four information artifacts from the new build (KG2c nodes, KG2c edges, node synonymizer, and curie-to-pmids).
