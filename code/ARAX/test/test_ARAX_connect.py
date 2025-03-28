@@ -85,12 +85,8 @@ def test_connect_ulcerative_colitis_to_adalimumab():
         "create_message",
         "add_qnode(ids=MONDO:0005101, key=n_src)",
         "add_qnode(ids=UNII:FYS6T7F842, key=n_dst)",
-        "add_qnode(categories=biolink:Gene, key=n_cns)",
-        "add_qedge(key=e_src_dst,subject=n_src,object=n_dst,predicates=biolink:related_to)",
-        "add_qedge(key=e_src_cns,subject=n_src,object=n_cns,predicates=biolink:related_to)",
-        "add_qedge(key=e_cns_dst,subject=n_cns,object=n_dst,predicates=biolink:related_to)",
+        "add_qpath(key=p0,subject=n_src,object=n_dst,predicates=biolink:related_to)",
         "connect(action=connect_nodes, max_path_length=3)",
-        "return(message=true, store=false)"
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
@@ -102,12 +98,8 @@ def test_connect_resveratrol_glyoxalase():
         "create_message",
         "add_qnode(ids=PUBCHEM.COMPOUND:445154, key=n_src)",
         "add_qnode(ids=NCBIGene:2739, key=n_dst)",
-        "add_qnode(categories=biolink:NamedThing, key=n_cns)",
-        "add_qedge(key=e_src_dst,subject=n_src,object=n_dst,predicates=biolink:related_to)",
-        "add_qedge(key=e_src_cns,subject=n_src,object=n_cns,predicates=biolink:related_to)",
-        "add_qedge(key=e_cns_dst,subject=n_cns,object=n_dst,predicates=biolink:related_to)",
+        "add_qpath(key=p0,subject=n_src,object=n_dst,predicates=biolink:related_to)",
         "connect(action=connect_nodes, max_path_length=4)",
-        "return(message=true, store=false)"
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
@@ -119,12 +111,8 @@ def test_connect_pde5i_alzheimer():
         "create_message",
         "add_qnode(ids=MONDO:0004975, key=n_src)",
         "add_qnode(ids=UMLS:C1318700, key=n_dst)",
-        "add_qnode(categories=biolink:NamedThing, key=n_cns)",
-        "add_qedge(key=e_src_dst,subject=n_src,object=n_dst,predicates=biolink:related_to)",
-        "add_qedge(key=e_src_cns,subject=n_src,object=n_cns,predicates=biolink:related_to)",
-        "add_qedge(key=e_cns_dst,subject=n_cns,object=n_dst,predicates=biolink:related_to)",
+        "add_qpath(key=p0,subject=n_src,object=n_dst,predicates=biolink:related_to)",
         "connect(action=connect_nodes, max_path_length=4)",
-        "return(message=true, store=false)"
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
@@ -136,19 +124,15 @@ def test_glucose_diabetes():
         "create_message",
         "add_qnode(name=CHEBI:37626, key=n_src)",
         "add_qnode(name=MONDO:0005015, key=n_dst)",
-        "add_qnode(categories=biolink:NamedThing, key=n_cns)",
-        "add_qedge(key=e_src_dst,subject=n_src,object=n_dst,predicates=biolink:related_to)",
-        "add_qedge(key=e_src_cns,subject=n_src,object=n_cns,predicates=biolink:related_to)",
-        "add_qedge(key=e_cns_dst,subject=n_cns,object=n_dst,predicates=biolink:related_to)",
-        "connect(action=connect_nodes, max_path_length=3)",
-        "return(message=true, store=false)"
+        "add_qpath(key=p0,subject=n_src,object=n_dst,predicates=biolink:related_to)",
+        "connect(action=connect_nodes, max_path_length=3)"
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert len(message.results) > 0
 
 
-def test_query_by_query_graph_2():
+def test_TRAPI_unconstrained_query():
     query = {
         "message": {
             "query_graph": {
@@ -180,6 +164,44 @@ def test_query_by_query_graph_2():
     assert len(response.envelope.message.results[0].node_bindings) == 2
     assert len(response.envelope.message.auxiliary_graphs) > 0
     assert len(response.envelope.message.query_graph.nodes) == 2
+    assert len(response.envelope.message.query_graph.paths) == 1
+
+
+def test_TRAPI_constrained_query():
+    query = {
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "ids": ["CHEBI:37626"]
+                    },
+                    "n1": {
+                        "ids": ["MONDO:0005015"]
+                    },
+                    "n2": {
+                        "categories": ["biolink:Disease"]
+                    }
+                },
+                "paths": {
+                    "p0": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "intermediate_nodes": ["n2"],
+                        "predicates": ["biolink:related_to"]
+                    }
+                }
+            }
+        }
+    }
+
+    araxq = ARAXQuery()
+    araxq.query(query)
+    response = araxq.response
+    assert response.status == 'OK'
+    assert len(response.envelope.message.results) > 0
+    assert len(response.envelope.message.results[0].node_bindings) == 3
+    assert len(response.envelope.message.auxiliary_graphs) > 0
+    assert len(response.envelope.message.query_graph.nodes) == 3
     assert len(response.envelope.message.query_graph.paths) == 1
 
 
