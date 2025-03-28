@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../BiolinkHelper/")
 from biolink_helper import BiolinkHelper
@@ -7,6 +8,14 @@ from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Names import Names
 from PathConverter import PathConverter
+
+
+def get_block_list():
+    with open(os.path.dirname(os.path.abspath(__file__)) + '/../../../KnowledgeSources/general_concepts.json',
+              'r') as file:
+        json_block_list = json.load(file)
+    synonyms = set(s.lower() for s in json_block_list['synonyms'])
+    return set(json_block_list['curies']), synonyms
 
 
 class ResultPerPathConverter:
@@ -38,6 +47,7 @@ class ResultPerPathConverter:
         if self.node_category_constraint:
             biolink_helper = BiolinkHelper()
             descendants = set(biolink_helper.get_descendants(self.node_category_constraint))
+        blocked_curies, blocked_synonyms = get_block_list()
 
         self.extract_edges(response)
 
@@ -57,7 +67,9 @@ class ResultPerPathConverter:
                 ),
                 self.edge_extractor,
                 path.compute_weight(),
-                descendants
+                descendants,
+                blocked_curies,
+                blocked_synonyms
             ).convert(response)
 
     def extract_edges(self, response):
