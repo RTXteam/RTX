@@ -220,21 +220,21 @@ class ARAXConnect:
         self.response.error(f"Pathfinder cannot find {path.object} in pinned nodes.")
 
     def get_constraint_node(self, path):
-        constraint_nodes = []
-        for key, node in self.message.query_graph.nodes.items():
-            if node.categories and len(node.categories) > 0:
-                constraint_nodes.append(key)
-        if len(constraint_nodes) > 1:
+        if len(path.intermediate_nodes) > 1:
             self.response.error(f"Currently, PathFinder can only handle one constraint node. "
-                                f"Number of constraint nodes: {len(constraint_nodes)}")
-        if len(constraint_nodes) == 0:
+                                f"Number of constraint nodes: {len(path.intermediate_nodes)}")
+        if len(path.intermediate_nodes) == 0:
             return None
 
-        constraint_node = constraint_nodes[0]
-        if constraint_node not in path.intermediate_nodes:
-            self.response.error(
-                f"Constrained node: {constraint_node} is not in the path intermediate_nodes argument.{path.intermediate_nodes}")
-        return constraint_node
+        constraint_qnode = path.intermediate_nodes[0]
+
+        for key, node in self.message.query_graph.nodes.items():
+            if node.categories and len(node.categories) > 0:
+                if constraint_qnode == key:
+                    return constraint_qnode
+
+        self.response.error(
+            f"Intermediate node: {constraint_qnode} is not defined in the nodes list.")
 
     def __connect_nodes(self, describe=False):
         """
