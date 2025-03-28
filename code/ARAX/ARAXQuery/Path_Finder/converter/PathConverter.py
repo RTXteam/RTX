@@ -7,6 +7,7 @@ from GraphToKnowledgeGraphConverter import GraphToKnowledgeGraphConverter
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 from openapi_server.models.analysis import Analysis
+from openapi_server.models.path_binding import PathBinding
 from openapi_server.models.node_binding import NodeBinding
 from openapi_server.models.result import Result
 
@@ -74,13 +75,12 @@ class PathConverter:
         response.envelope.message.knowledge_graph.nodes.update(knowledge_graph_src_dest.nodes)
 
         analyses = Analysis(
-            edge_bindings={
-            },
             resource_id="infores:arax",
-            support_graphs=[self.names.auxiliary_graph_name],
+            path_bindings={
+                "p0": [PathBinding(id=self.names.auxiliary_graph_name, attributes=[])]
+            },
             score=self.score
         )
-
         if response.envelope.message.results is None:
             response.envelope.message.results = []
 
