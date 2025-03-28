@@ -17,6 +17,12 @@ class ResultTransformer:
     def transform(response: ARAXResponse):
         message = response.envelope.message
         if message.results:
+            if ( #Bypassing pathfinder queries
+                    message.query_graph
+                    and message.query_graph.paths
+                    and len(message.query_graph.paths) > 0
+            ):
+                return #This would need to be changed if you wanted to mix connect with other DSL commands (like overlaying NGD and the like)
             if not hasattr(response, "original_query_graph") or not response.original_query_graph.nodes:
                 response.error(f"The original QG was never saved before ARAX edited it! So we can't transform results "
                                f"to TRAPI 1.4 format (i.e., support_graphs).", error_code="NoOriginalQG")
