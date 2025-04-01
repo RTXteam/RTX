@@ -98,7 +98,7 @@
       <span class="qgbutton" title="add new node" class="clq" onclick="qg_node('new',true);">&#10010; Node</span>
       <span class="qgbutton" title="add new edge" class="clq" onclick="qg_edge('new');">&#10010; Edge</span>
       <span class="qgbutton" title="new query graph" class="clq" onclick="qg_new(true,true);">&#8886; New Graph</span>
-      <span class="qgbutton" title="new Pathfinder query graph" class="clq" onclick="qg_new(true,true,'Pathfinder');">&#10699; New Pathfinder&nbsp;&nbsp;&nbsp;<span class="explevel msgINFO">new!</span>
+      <!-- span class="qgbutton" title="new Pathfinder query graph" class="clq" onclick="qg_new(true,true,'Pathfinder');">&#10699; New Pathfinder&nbsp;&nbsp;&nbsp;<span class="explevel msgINFO">new!</span -->
     </span></span><br><br>
     <div class="cytograph_q">
       <div style="height: 100%; width: 100%" id="cy99999"></div>
@@ -291,7 +291,12 @@
   
   <div class="inputsection" id="qjson_input">
     <h3 style="display:inline;">JSON Input:</h3>
-    <span class="tiny" style="position:relative; left:150px;">Enter a <b>full Query object</b> <u>&nbsp;&nbsp;or&nbsp;&nbsp;</u> the value of the <b>query_graph</b> element<a href="javascript:pasteExample('JSON1');" style="position:relative; left:100px;">Example 1</a><a href="javascript:pasteExample('JSON2');" style="position:relative; left:110px;">Example 2</a><a href="javascript:pasteExample('JSON3');" style="position:relative; left:120px;">Example 3</a></span>
+    <span class="tiny" style="position:relative; left:150px;">Enter a <b>full Query object</b> <u>&nbsp;&nbsp;or&nbsp;&nbsp;</u> the value of the <b>query_graph</b> element
+      <a href="javascript:pasteExample('JSON1');" style="position:relative; left:100px;">Example 1</a>
+      <a href="javascript:pasteExample('JSON2');" style="position:relative; left:110px;">Example 2</a>
+      <a href="javascript:pasteExample('JSON3');" style="position:relative; left:120px;">Example 3</a>
+      <a href="javascript:pasteExample('PATH1');" style="position:relative; left:140px;">Pathfinder</a>
+    </span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
             <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
 	    <br>

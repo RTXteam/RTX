@@ -242,6 +242,9 @@ function pasteExample(type) {
     else if (type == "JSON3") {
 	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:affects"\n      ],\n      "qualifier_constraints": [\n        {\n          "qualifier_set": [\n            {\n              "qualifier_type_id": "biolink:object_aspect_qualifier",\n              "qualifier_value": "activity_or_abundance"\n            },\n            {\n              "qualifier_type_id": "biolink:object_direction_qualifier",\n              "qualifier_value": "increased"\n            }\n          ]\n        }\n      ],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Gene"\n      ],\n      "ids": [\n        "NCBIGene:51341"\n      ]\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ]\n    }\n  }\n}\n';
     }
+    else if (type == "PATH1") {
+	document.getElementById("jsonText").value = '{\n   "nodes": {\n      "n0": {\n         "ids": [ "MONDO:0005011" ]\n      },\n      "n1": {\n         "ids": [ "MONDO:0005180" ]\n      }\n   },\n   "paths": {\n      "p0": {\n         "subject":   "n0",\n         "object":    "n1",\n         "intermediate_nodes": [],\n         "predicates": [ "biolink:related_to" ]\n      }\n   }\n}\n';
+    }
 
 }
 
@@ -4211,6 +4214,7 @@ function qg_new(msg,nodes,type='basic') {
 	qg_node('new',false);
 	qg_edge('new');
 
+	// UNUSED :: may revisit if want to extend "edge" definitions to include "paths"
 	if (type == "Pathfinder") {
             qg_add_category_to_qnode('biolink:NamedThing');
 	    qg_add_predicate_to_qedge('biolink:related_to');
