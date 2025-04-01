@@ -789,7 +789,7 @@ input:checked + .slider:before {
     position: fixed;
     top: 100px;
     left: 100px;
-    z-index: 100;
+    z-index: 1000;
     min-width: 500px;
     color: #fff;
     background-color: rgba(221,221,221,0.7);

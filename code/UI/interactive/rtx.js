@@ -589,7 +589,7 @@ function postQuery_ARAX(qtype,queryObj) {
 
 			    div.innerHTML = '';
 			    div.appendChild(document.createElement("br"));
-			    render_queryplan_table(jsonMsg, div);
+			    div.append(render_queryplan_table(jsonMsg));
 			    div.appendChild(document.createElement("br"));
 			}
                         else if (jsonMsg.pid) {
@@ -1964,7 +1964,7 @@ function render_response(respObj,dispjson) {
 	div.appendChild(document.createElement("br"));
         document.getElementById("queryplan_container").appendChild(div);
 
-	render_queryplan_table(respObj.query_options.query_plan, div);
+	div.append(render_queryplan_table(respObj.query_options.query_plan));
 	div.appendChild(document.createElement("br"));
     }
 
@@ -2198,7 +2198,7 @@ function render_response(respObj,dispjson) {
     sesame('openmax',statusdiv);
 }
 
-function render_queryplan_table(qp,node) {
+function render_queryplan_table(qp) {
     var status_map = {};
     status_map["Done"] = 'p9';
     status_map["Expanding"] = 'p5 working';
@@ -2210,14 +2210,10 @@ function render_queryplan_table(qp,node) {
     var table = document.createElement("table");
     table.className = 'sumtab';
     var tr = document.createElement("tr");
-    var td;
-
-    for (var head of ["Query Edge","KP","Status","Description","Query"] ) {
-	td = document.createElement("th")
-	td.appendChild(document.createTextNode(head));
-	tr.appendChild(td);
-    }
-    table.appendChild(tr);
+    var td = document.createElement("td");
+    td.append(" No Expansion data in response ");
+    tr.append(td);
+    table.append(tr);
 
     for (let edge in qp.qedge_keys) {
 	var ep = null;
@@ -2238,87 +2234,87 @@ function render_queryplan_table(qp,node) {
 	    span.style.position = "relative";
 	    span.style.left = "-10px";
 	    span.className = "explevel " + status_map[ep["status"]];
-	    span.appendChild(document.createTextNode('\u00A0'));
-	    span.appendChild(document.createTextNode('\u00A0'));
-            td.appendChild(span);
+	    span.append('\u00A0');
+	    span.append('\u00A0');
+            td.append(span);
 	    td.title = ep.status;
 	}
 	var text = document.createElement("h2");
 	text.style.display = "inline-block";
-	text.appendChild(document.createTextNode(edge));
-	td.appendChild(text);
+	text.append(edge);
+	td.append(text);
 	if (ep) {
-	    td.appendChild(document.createElement("br"));
-	    td.appendChild(document.createElement("br"));
+	    td.append(document.createElement("br"));
+	    td.append(document.createElement("br"));
 	    var span = document.createElement("span");
 	    span.className = 'qprob p7';
             span.style.display = "inline-block";
             if (ep.subject == null)
-		span.appendChild(document.createTextNode('--any--'));
+		span.append('--any--');
 	    else {
 		for (var s of ep.subject) {
-		    span.appendChild(document.createTextNode(s));
-		    span.appendChild(document.createElement("br"));
+		    span.append(s);
+		    span.append(document.createElement("br"));
 		}
 	    }
-            td.appendChild(span);
-	    td.appendChild(document.createElement("br"));
-            td.appendChild(document.createTextNode("|"));
-            td.appendChild(document.createElement("br"));
+            td.append(span);
+	    td.append(document.createElement("br"));
+            td.append("|");
+            td.append(document.createElement("br"));
 	    span = document.createElement("span");
             span.className = 'qprob scam';
             span.style.display = "inline-block";
 	    if (ep.predicate == null)
-                span.appendChild(document.createTextNode('--any--'));
+                span.append('--any--');
             else {
 		for (var p of ep.predicate) {
-		    span.appendChild(document.createTextNode(p));
-                    span.appendChild(document.createElement("br"));
+		    span.append(p);
+                    span.append(document.createElement("br"));
 		}
 	    }
-	    td.appendChild(span);
-	    td.appendChild(document.createElement("br"));
-            td.appendChild(document.createTextNode("|"));
-	    td.appendChild(document.createElement("br"));
+	    td.append(span);
+	    td.append(document.createElement("br"));
+            td.append("|");
+	    td.append(document.createElement("br"));
             span = document.createElement("span");
             span.className = 'qprob p7';
             span.style.display = "inline-block";
             if (ep.object == null)
-		span.appendChild(document.createTextNode('--any--'));
+		span.append('--any--');
 	    else {
 		for (var o of ep.object) {
-		    span.appendChild(document.createTextNode(o));
-                    span.appendChild(document.createElement("br"));
+		    span.append(o);
+                    span.append(document.createElement("br"));
 		}
 	    }
-	    td.appendChild(span);
+	    td.append(span);
 	}
 
-	tr.appendChild(td);
+	tr.append(td);
 
 	var is_first = true;
 	for (let kp in qp.qedge_keys[edge]) {
             if (!is_first)
 		tr = document.createElement("tr");
             td = document.createElement("td");
-            td.appendChild(document.createTextNode(kp));
-            tr.appendChild(td);
+            td.append(kp);
+            tr.append(td);
 
 	    td = document.createElement("td");
             var span = document.createElement("span");
 	    span.className = "explevel " + status_map[qp.qedge_keys[edge][kp]["status"]];
-	    span.appendChild(document.createTextNode('\u00A0'));
-	    span.appendChild(document.createTextNode('\u00A0'));
-	    td.appendChild(span);
-            td.appendChild(document.createTextNode('\u00A0'));
-	    td.appendChild(document.createTextNode(qp.qedge_keys[edge][kp]["status"]));
-	    tr.appendChild(td);
+	    span.append('\u00A0');
+	    span.append('\u00A0');
+	    td.append(span);
+            td.append('\u00A0');
+	    td.append(qp.qedge_keys[edge][kp]["status"]);
+	    tr.append(td);
 
 	    td = document.createElement("td");
 	    if (qp.qedge_keys[edge][kp]["status"] == "Skipped")
 		td.className = "DEBUG";
-            td.appendChild(document.createTextNode(qp.qedge_keys[edge][kp]["description"]));
-	    tr.appendChild(td);
+            td.append(qp.qedge_keys[edge][kp]["description"]);
+	    tr.append(td);
 
 	    td = document.createElement("td");
             if (qp.qedge_keys[edge][kp]["query"] && qp.qedge_keys[edge][kp]["query"] != null) {
@@ -2326,16 +2322,25 @@ function render_queryplan_table(qp,node) {
 		link.title = 'view the posted query (JSON)';
 		link.style.cursor = "pointer";
 		link.onclick = function () { showJSONpopup("Query sent to "+kp, qp.qedge_keys[edge][kp]["query"], false); };
-		link.appendChild(document.createTextNode("query"));
-		td.appendChild(link);
+		link.append("query");
+		td.append(link);
 	    }
-            tr.appendChild(td);
+            tr.append(td);
 
-	    table.appendChild(tr);
+	    table.append(tr);
 	    is_first = false;
 	}
+
+	tr = table.deleteRow(0);
+	tr = table.insertRow(0);
+	for (var head of ["Query Edge","KP","Status","Description","Query"] ) {
+            td = document.createElement("th")
+            td.append(head);
+            tr.append(td);
+	}
     }
-    node.appendChild(table);
+
+    return table;
 }
 
 function showJSONpopup(wtitle,query,footer) {
@@ -3209,6 +3214,22 @@ function add_graph_to_table(table,num) {
     td.append(link);
     td.append(document.createElement("br"));
 
+    // ///////
+    link = document.createElement("a");
+    link.style.marginTop = "40px";
+    link.title = 'collapse edges';
+    link.setAttribute('onclick', 'cyedges('+num+',"collapse");');
+    link.append("c");
+    td.append(link);
+    td.append(document.createElement("br"));
+
+    link = document.createElement("a");
+    link.title = 'expand edges';
+    link.setAttribute('onclick', 'cyedges('+num+',"expand");');
+    link.append("E");
+    td.append(link);
+    td.append(document.createElement("br"));
+
     tr.append(td);
 
     td = document.createElement("td");
@@ -3280,6 +3301,21 @@ function add_cyto(i,dataid) {
 		    return '';
 		}
 	    })
+            .selector('edge.cy-expand-collapse-collapsed-edge')
+            .css({
+		"text-outline-color": "#ffffff",
+		"text-outline-width": "2px",
+		'label': (ele) => {
+		    return '(' + ele.data('collapsedEdges').length + ')';
+		},
+		'width': function (ele) {
+		    const n = ele.data('collapsedEdges').length;
+		    //return n + 'px';
+		    return (1 + Math.log2(n)) + 'px';
+		},
+                'line-color': '#aaa',
+		'line-style': 'dashed'
+            })
 	    .selector(':selected')
 	    .css({
 		'background-color': '#ff0',
@@ -3309,6 +3345,7 @@ function add_cyto(i,dataid) {
 	    // ready 1
 	}
     });
+    cyobj[i].expandCollapse();
 
     if (i > 99998) {
 	cyobj[i].on('tap','node', function() {
@@ -3323,8 +3360,8 @@ function add_cyto(i,dataid) {
 	return;
     }
 
-    cyobj[i].on('tap', function(evt) {
-	if (evt.target === cyobj[i]) {
+    cyobj[i].on('tap', function(evt, forcetextgraph=false) {
+	if (evt.target === cyobj[i] || forcetextgraph) {
             var div = document.getElementById('d'+i+'_div');
 	    div.innerHTML = "";
 
@@ -3332,18 +3369,18 @@ function add_cyto(i,dataid) {
 	    var tr = document.createElement("tr");
 	    var td = document.createElement("td");
 	    td.colSpan = '3';
-	    td.appendChild(document.createTextNode("All nodes and edges:"));
-	    tr.appendChild(td);
-	    ne_table.appendChild(tr);
+	    td.append("All nodes and edges:");
+	    tr.append(td);
+	    ne_table.append(tr);
 
 	    var allnodes = cyobj[i].nodes();
 	    for (var n = 0; n < allnodes.length; n++) {
 		tr = document.createElement("tr");
 		td = document.createElement("td");
 		td.colSpan = '3';
-		td.appendChild(document.createElement("hr"));
-		tr.appendChild(td);
-		ne_table.appendChild(tr);
+		td.append(document.createElement("hr"));
+		tr.append(td);
+		ne_table.append(tr);
 
 		tr = document.createElement("tr");
 		td = document.createElement("td");
@@ -3353,78 +3390,109 @@ function add_cyto(i,dataid) {
                 link.style.cursor = "pointer";
 		link.dataset.nn = allnodes[n].id();
 		link.title = 'View node details';
-		link.onclick = function () { cyobj[i].getElementById(this.dataset.nn).emit("tap"); cyobj[i].getElementById(this.dataset.nn).select(); };
-		link.appendChild(document.createTextNode(allnodes[n].data('id')));
-		td.appendChild(link);
+		link.onclick = function () {
+		    cyobj[i].getElementById(this.dataset.nn).emit("tap");
+		    cyobj[i].getElementById(this.dataset.nn).select();
+		};
+		link.append(allnodes[n].data('id'));
+		td.append(link);
 
-		tr.appendChild(td);
+		tr.append(td);
 		td = document.createElement("td");
                 td.colSpan = '2';
 		td.style.paddingLeft = "15px";
 		td.style.fontStyle = "italic";
 		if (allnodes[n].data('name') != null)
-		    td.appendChild(document.createTextNode(' '+allnodes[n].data('name')));
-		tr.appendChild(td);
-		ne_table.appendChild(tr);
+		    td.append(' '+allnodes[n].data('name'));
+		tr.append(td);
+		ne_table.append(tr);
 
 		var nodedges = cyobj[i].edges('[source = "'+allnodes[n].data("id")+'"]');
 		for (var e = 0; e < nodedges.length; e++) {
 		    tr = document.createElement("tr");
 		    td = document.createElement("td");
-		    tr.appendChild(td);
+		    tr.append(td);
 		    td = document.createElement("td");
                     var link = document.createElement("a");
 		    link.style.cursor = "pointer";
 		    link.dataset.ee = nodedges[e].id();
-		    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
-		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+
+		    if (nodedges[e].data('collapsedEdges')) {
+			link.append(nodedges[e].data('collapsedEdges').length + " edges");
+			link.onclick = function () {
+			    cyobj[i].getElementById(this.dataset.ee).emit("tap");
+			    cyobj[i].emit("tap", [true]);
+			};
+		    }
+		    else {
+			link.append(nodedges[e].data('predicate'));
+			link.onclick = function () {
+			    cyobj[i].getElementById(this.dataset.ee).emit("tap");
+			    cyobj[i].getElementById(this.dataset.ee).select();
+			};
+		    }
+
 		    if (nodedges[e].data('__has_sgs'))
-			link.appendChild(document.createTextNode(' [sg]'));
+			link.append(' [sg]');
 		    if (nodedges[e].data('qualifiers')) {
-			link.appendChild(document.createTextNode(' [q]'));
+			link.append(' [q]');
 			link.title = 'View QUALIFIED edge details';
 		    }
 		    else
 			link.title = 'View edge details';
-		    td.appendChild(link);
-		    td.appendChild(document.createTextNode(" \u{1F87A} "))
-		    tr.appendChild(td);
+		    td.append(link);
+		    td.append(" \u{1F87A} ");
+		    tr.append(td);
 		    td = document.createElement("td");
-		    td.appendChild(document.createTextNode(nodedges[e].data('target')));
-		    tr.appendChild(td);
-		    ne_table.appendChild(tr);
+		    td.append(nodedges[e].data('target'));
+		    tr.append(td);
+		    ne_table.append(tr);
 		}
 
 		nodedges = cyobj[i].edges('[target = "'+allnodes[n].data("id")+'"]');
 		for (var e = 0; e < nodedges.length; e++) {
 		    tr = document.createElement("tr");
 		    td = document.createElement("td");
-		    tr.appendChild(td);
+		    tr.append(td);
 		    td = document.createElement("td");
-		    td.appendChild(document.createTextNode(" \u{1F878} "))
+		    td.append(" \u{1F878} ");
                     var link = document.createElement("a");
 		    link.style.cursor = "pointer";
 		    link.dataset.ee = nodedges[e].id();
-                    link.onclick = function () { cyobj[i].getElementById(this.dataset.ee).emit("tap"); cyobj[i].getElementById(this.dataset.ee).select(); };
-		    link.appendChild(document.createTextNode(nodedges[e].data('predicate')));
+
+                    if (nodedges[e].data('collapsedEdges')) {
+                        link.append(nodedges[e].data('collapsedEdges').length + " edges");
+                        link.onclick = function () {
+                            cyobj[i].getElementById(this.dataset.ee).emit("tap");
+                            cyobj[i].emit("tap", [true]);
+                        };
+                    }
+                    else {
+                        link.append(nodedges[e].data('predicate'));
+			link.onclick = function () {
+			    cyobj[i].getElementById(this.dataset.ee).emit("tap");
+			    cyobj[i].getElementById(this.dataset.ee).select();
+			};
+		    }
+
                     if (nodedges[e].data('__has_sgs'))
-			link.appendChild(document.createTextNode(' [sg]'));
+			link.append(' [sg]');
 		    if (nodedges[e].data('qualifiers')) {
-			link.appendChild(document.createTextNode(' [q]'));
+			link.append(' [q]');
 			link.title = 'View QUALIFIED edge details';
 		    }
 		    else
 			link.title = 'View edge details';
-		    td.appendChild(link);
-		    tr.appendChild(td);
+		    td.append(link);
+		    tr.append(td);
 		    td = document.createElement("td");
-		    td.appendChild(document.createTextNode(nodedges[e].data('source')));
-		    tr.appendChild(td);
-		    ne_table.appendChild(tr);
+		    td.append(nodedges[e].data('source'));
+		    tr.append(td);
+		    ne_table.append(tr);
 		}
 	    }
 
-	    div.appendChild(ne_table);
+	    div.append(ne_table);
 	    sesame('openmax',document.getElementById('a'+i+'_div'));
 	}
     });
@@ -3437,8 +3505,8 @@ function add_cyto(i,dataid) {
 	var span = document.createElement("span");
 	span.style.float = "right";
 	span.style.fontStyle = "italic";
-	span.appendChild(document.createTextNode("Click on graph background to see a full list of nodes and edges"));
-	div.appendChild(span);
+	span.append("Click on graph background to see a full list of nodes and edges");
+	div.append(span);
 
 	var fields = [ "name","id","categories" ];
 	for (var field of fields) {
@@ -3446,16 +3514,16 @@ function add_cyto(i,dataid) {
 
 	    var span = document.createElement("span");
 	    span.className = "fieldname";
-	    span.appendChild(document.createTextNode(field+": "));
-	    div.appendChild(span);
+	    span.append(field+": ");
+	    div.append(span);
 
             var a = document.createElement("a");
 	    a.title = 'view ARAX synonyms';
 	    a.href = "javascript:lookup_synonym('"+this.data(field)+"',true)";
 	    a.innerHTML = this.data(field);
-	    div.appendChild(a);
+	    div.append(a);
 
-	    div.appendChild(document.createElement("br"));
+	    div.append(document.createElement("br"));
 	}
 
 
@@ -3466,7 +3534,7 @@ function add_cyto(i,dataid) {
 
 
 	if (this.data('node_binding_attributes')) {
-	    div.appendChild(document.createElement("br"));
+	    div.append(document.createElement("br"));
 	    show_attributes(i,div, this.data('node_binding_attributes'),"Node Binding Attributes:","value");
 	}
 
@@ -3474,28 +3542,34 @@ function add_cyto(i,dataid) {
     });
 
     cyobj[i].on('tap','edge', function() {
-        var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
+	if (this.data('collapsedEdges')) {
+	    var api = cyobj[i].expandCollapse('get');
+	    api.expandEdges(this);
+	    return;
+	}
+
+	var div = document.getElementById('d'+this.data('parentdivnum')+'_div');
 	div.innerHTML = "";
 
 	var span = document.createElement("span");
 	span.style.float = "right";
 	span.style.fontStyle = "italic";
-	span.appendChild(document.createTextNode("Click on graph background to see a full list of nodes and edges"));
-	div.appendChild(span);
+	span.append("Click on graph background to see a full list of nodes and edges");
+	div.append(span);
 
 	var a = document.createElement("a");
 	a.className = 'attvalue';
 	a.title = 'view ARAX synonyms';
 	a.href = "javascript:lookup_synonym('"+this.data('source')+"',true)";
 	a.innerHTML = this.data('source');
-	div.appendChild(a);
+	div.append(a);
 
         var span = document.createElement("span");
 	span.className = 'attvalue';
-        span.appendChild(document.createTextNode("----"));
-	span.appendChild(document.createTextNode(this.data('predicate')));
-        span.appendChild(document.createTextNode("----"));
-        div.appendChild(span);
+        span.append("----");
+	span.append(this.data('predicate'));
+        span.append("----");
+        div.append(span);
 
         a = document.createElement("a");
 	a.className = 'attvalue';
@@ -3503,17 +3577,17 @@ function add_cyto(i,dataid) {
 	a.title = 'view ARAX synonyms';
 	a.href = "javascript:lookup_synonym('"+this.data('target')+"',true)";
 	a.innerHTML = this.data('target');
-	div.appendChild(a);
+	div.append(a);
 
 	UIstate["edgesg"] = 0;
         span = document.createElement("span");
 	if (!this.data('__has_sgs'))
 	    span.style.display = 'none';
 	span.id = 'd'+this.data('parentdivnum')+'_div_edge';
-	span.appendChild(document.createTextNode(" Edge Support Graphs: "));
-        div.appendChild(span);
+	span.append(" Edge Support Graphs: ");
+        div.append(span);
 
-	div.appendChild(document.createElement("br"));
+	div.append(document.createElement("br"));
 
 	var fields = [ "relation","id" ];
 	for (var field of fields) {
@@ -3521,19 +3595,19 @@ function add_cyto(i,dataid) {
 
 	    span = document.createElement("span");
 	    span.className = "fieldname";
-	    span.appendChild(document.createTextNode(field+": "));
-	    div.appendChild(span);
+	    span.append(field+": ");
+	    div.append(span);
 	    if (this.data(field).toString().startsWith("http")) {
 		var link = document.createElement("a");
 		link.href = this.data(field);
 		link.target = "_blank";
-		link.appendChild(document.createTextNode(this.data(field)));
-		div.appendChild(link);
+		link.append(this.data(field));
+		div.append(link);
 	    }
 	    else {
-		div.appendChild(document.createTextNode(this.data(field)));
+		div.append(this.data(field));
 	    }
-	    div.appendChild(document.createElement("br"));
+	    div.append(document.createElement("br"));
 	}
 
 	show_qualifiers(div,
@@ -3549,7 +3623,7 @@ function add_cyto(i,dataid) {
         if (this.data('attributes')) {
 	    show_attributes(i,div, this.data('attributes'),null,"value");
 	    if (this.data('sources')) {
-		div.appendChild(document.createElement("br"));
+		div.append(document.createElement("br"));
 		show_attributes(i,div, this.data('sources'),"Edge Sources:","resource_id");
 		//show_attributes(i,div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
 	    }
@@ -3559,7 +3633,7 @@ function add_cyto(i,dataid) {
 
 
 	if (this.data('edge_binding_attributes')) {
-            div.appendChild(document.createElement("br"));
+            div.append(document.createElement("br"));
             show_attributes(i,div, this.data('edge_binding_attributes'),"Edge Binding Attributes:","value");
 	}
 
@@ -3974,6 +4048,16 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 }
 
 
+function cyedges(index,what) {
+    var api = cyobj[index].expandCollapse('get');
+
+    if (what == 'collapse')
+	api.collapseAllEdges();
+    else
+	api.expandAllEdges();
+
+}
+
 function cyresize(index,size) {
     var height = 300;
     if (size == 'm')
@@ -4047,25 +4131,29 @@ function mapNodeColor(ele) {
 
 function mapNodeIcon(ele) {
     var ntype = ele.data().categories ? ele.data().categories[0] ? ele.data().categories[0] : "NA" : "NA";
-    if (ntype.endsWith("AnatomicalEntity"))   { return "./icons/humanoid.png";}
-    if (ntype.endsWith("BehavioralFeature"))  { return "./icons/behavior.png";}
-    if (ntype.endsWith("BiologicalProcess"))  { return "./icons/biological.png";}
-    if (ntype.endsWith("Cell"))               { return "./icons/cell.png";}
-    if (ntype.endsWith("ChemicalEntity"))     { return "./icons/chemical.png";}
-    if (ntype.endsWith("ChemicalOrDrugOrTreatment"))  { return "./icons/drugs.png";}
-    if (ntype.endsWith("Disease"))            { return "./icons/iv.png";}
-    if (ntype.endsWith("Drug"))               { return "./icons/drug.png";}
-    if (ntype.endsWith("Food"))               { return "./icons/food.png";}
-    if (ntype.endsWith("Gene"))               { return "./icons/gene.png";}
-    if (ntype.endsWith("GrossAnatomicalStructure"))   { return "./icons/humanoid.png";}
-    if (ntype.endsWith("MolecularActivity"))  { return "./icons/molecular.png";}
-    if (ntype.endsWith("MolecularMixture"))   { return "./icons/blend.png";}
-    if (ntype.endsWith("Pathway"))            { return "./icons/pathways.png";}
-    if (ntype.endsWith("PhenotypicFeature"))  { return "./icons/pheno.png";}
-    if (ntype.endsWith("PhysiologicalProcess"))       { return "./icons/physiology.png";}
-    if (ntype.endsWith("Protein"))            { return "./icons/protein.png";}
-    if (ntype.endsWith("SmallMolecule"))      { return "./icons/molecule.png";}
-    return "./icons/generic.png";
+    if (ntype.endsWith("AnatomicalEntity"))   { return "./ui_icons/humanoid.png";}
+    if (ntype.endsWith("BehavioralFeature"))  { return "./ui_icons/behavior.png";}
+    if (ntype.endsWith("BiologicalProcess"))  { return "./ui_icons/biological.png";}
+    if (ntype.endsWith("Cell"))               { return "./ui_icons/cell.png";}
+    if (ntype.endsWith("ChemicalEntity"))     { return "./ui_icons/chemical.png";}
+    if (ntype.endsWith("ChemicalMixture"))    { return "./ui_icons/blend.png";}
+    if (ntype.endsWith("ChemicalOrDrugOrTreatment"))  { return "./ui_icons/drugs.png";}
+    if (ntype.endsWith("Disease"))            { return "./ui_icons/iv.png";}
+    if (ntype.endsWith("Drug"))               { return "./ui_icons/drug.png";}
+    if (ntype.endsWith("Food"))               { return "./ui_icons/food.png";}
+    if (ntype.endsWith("Gene"))               { return "./ui_icons/gene.png";}
+    if (ntype.endsWith("GrossAnatomicalStructure"))   { return "./ui_icons/humanoid.png";}
+    if (ntype.endsWith("MolecularActivity"))  { return "./ui_icons/molecular.png";}
+    if (ntype.endsWith("MolecularEntity"))    { return "./ui_icons/molecule.png";}
+    if (ntype.endsWith("MolecularMixture"))   { return "./ui_icons/blend.png";}
+    if (ntype.endsWith("OntologyClass"))      { return "./ui_icons/map.png";}
+    if (ntype.endsWith("OrganismTaxon"))      { return "./ui_icons/taxonomy.png";}
+    if (ntype.endsWith("Pathway"))            { return "./ui_icons/pathways.png";}
+    if (ntype.endsWith("PhenotypicFeature"))  { return "./ui_icons/pheno.png";}
+    if (ntype.endsWith("PhysiologicalProcess"))       { return "./ui_icons/physiology.png";}
+    if (ntype.endsWith("Protein"))            { return "./ui_icons/protein.png";}
+    if (ntype.endsWith("SmallMolecule"))      { return "./ui_icons/molecule.png";}
+    return "./ui_icons/generic.png";
 }
 
 function mapEdgeLineStyle(ele) {
@@ -4193,7 +4281,7 @@ function qg_node(id,render) {
 
 	if (daname != cyobj[99999].getElementById(id).data('name'))
 	    cyobj[99999].getElementById(id).data('name',daname);
-
+	cyobj[99999].getElementById(id).data('categories',input_qg.nodes[id]['categories']);
     }
 
     display_qg_popup('node','show');

@@ -4,9 +4,10 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=16">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=17">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
+<script src="cytoscape-expand-collapse.js"></script>
 <script src="config.js"></script>
 <script src="rtx.js"></script>
 <script src="araxi.js"></script>
@@ -447,7 +448,25 @@
 <div class="pagesection" id="kgDiv">
   <div id="kg_container">
     <div class="statushead">KNOWLEDGE GRAPH</div>
-    <div id="a0_div" class="status"><table class="t100"><tr><td class="cytograph_controls"><a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br><a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br><a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br><a title="circle layout" onclick="cylayout(0,'circle');">C</a><br><a title="random layout" onclick="cylayout(0,'random');">R</a>  </td><td class="cytograph_kg" style="width:100%;"><div style="height: 100%; width: 100%" id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div></td></tr></table></div>
+    <div id="a0_div" class="status">
+      <table class="t100">
+	<tr>
+	  <td class="cytograph_controls">
+	    <a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br>
+	    <a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br>
+	    <a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br>
+	    <a title="circle layout" onclick="cylayout(0,'circle');">C</a><br>
+	    <a title="random layout" onclick="cylayout(0,'random');">R</a>
+	    <br><br><br><br>
+	    <span class="explevel msgINFO">new!</span>
+	    <a title="collapse all edges" onclick="cyedges(0,'collapse');">c</a><br>
+	    <a title="expand all edges" onclick="cyedges(0,'expand');">E</a><br>
+	  </td>
+	  <td class="cytograph_kg" style="width:100%;"><div style="height: 100%; width: 100%" id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div>
+	  </td>
+	</tr>
+      </table>
+    </div>
     <br><br>
     <a href="https://www.flaticon.com/free-icons/action" title="action icons">Action</a>,
     <a href="https://www.flaticon.com/free-icons/chemical" title="chemical icons">Chemical</a>,
@@ -462,11 +481,13 @@
     <a href="https://www.flaticon.com/free-icons/diseases" title="diseases icons">Diseases</a> icons created by Vector Stall - Flaticon<br>
     <a href="https://www.flaticon.com/free-icons/medicine" title="medicine icons">Medicine</a> icons created by max.icons - Flaticon<br>
     <a href="https://www.flaticon.com/free-icons/personality" title="personality icons">Personality</a> icons created by Parzival 1997 - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/body" title="body icons">Body</a> icons created by SBTS2018 - Flaticon<br>
     <a href="https://www.flaticon.com/free-icons/biotech" title="biotech icons">Biotech</a> icons created by kliwir art - Flaticon<br>
     <a href="https://www.flaticon.com/free-icons/gene" title="gene icons">Gene</a> icons created by Iconiic - Flaticon<br>
     <a href="https://www.flaticon.com/free-icons/cell" title="cell icons">Cell</a> icons created by dDara - Flaticon<br>
     <a href="https://www.flaticon.com/free-icons/nutrition" title="nutrition icons">Nutrition</a> icons created by FBJan - Flaticon<br>
-    <a href="https://www.flaticon.com/free-icons/body" title="body icons">Body</a> icons created by SBTS2018 - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/ontology" title="ontology icons">Ontology</a> icons created by Alla Afanasenko - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/taxonomy" title="taxonomy icons">Taxonomy</a> icons created by Talha Dogar - Flaticon<br>
     <a href="https://www.flaticon.com/free-icons/generic" title="generic icons">Generic</a> icons created by Archival - Flaticon<br>
   </div>
 </div>
