@@ -1,6 +1,7 @@
 import pickle
 import sys
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import xgboost as xgb
@@ -30,43 +31,57 @@ class MLRepo(Repository):
         self.degree_repo = degree_repo
         self.ngd_repo = ngd_repo
         self.node_synonymizer = node_synonymizer
+        self.bst_loaded = None
+        self.ancestors_by_id = None
+        self.category_to_idx = None
+        self.edge_category_to_idx = None
+        self.sorted_category_list = None
 
-        with open((os.path.dirname(os.path.abspath(__file__)) + '/sorted_category_list.pkl'), "rb") as f:
+    def load_data(self):
+        abs_path = os.path.dirname(os.path.abspath(__file__))
+        with open(abs_path + '/sorted_category_list.pkl', "rb") as f:
             self.sorted_category_list = pickle.load(f)
 
-        with open((os.path.dirname(os.path.abspath(__file__)) + '/edge_category_to_idx.pkl'), "rb") as f:
+        with open(abs_path + '/edge_category_to_idx.pkl', "rb") as f:
             self.edge_category_to_idx = pickle.load(f)
         self.category_to_idx = {cat_name: idx for idx, cat_name in enumerate(self.sorted_category_list)}
 
-        with open((os.path.dirname(os.path.abspath(__file__)) + '/ancestors_by_indices.pkl'), "rb") as f:
+        with open(abs_path + '/ancestors_by_indices.pkl', "rb") as f:
             self.ancestors_by_id = pickle.load(f)
 
         self.bst_loaded = xgb.Booster()
-        self.bst_loaded.load_model(os.path.dirname(os.path.abspath(__file__)) + '/pathfinder_xgboost_model')
-
+        self.bst_loaded.load_model(abs_path + '/pathfinder_xgboost_model')
 
     def get_neighbors(self, node, limit=-1):
         if limit <= 0:
             raise Exception(f"The limit:{limit} could not be negative or zero.")
-        content_by_curie, curie_category = get_neighbors_info(node.id, self.ngd_repo, self.repo)
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_get_neighbors = executor.submit(
+                get_neighbors_info, node.id, self.ngd_repo, self.repo
+            )
+            future_load_data = executor.submit(self.load_data)
+
+            content_by_curie, curie_category = future_get_neighbors.result()
 
         if content_by_curie is None:
             return []
         curie_category_onehot = get_category(curie_category.split(":")[-1], self.category_to_idx)
 
-        X_list = []
+        feature_list = []
         curie_list = []
         for key, value in content_by_curie.items():
             curie_list.append(key)
-            X_list.append(
-                get_np_array_features(value, self.category_to_idx, self.edge_category_to_idx, curie_category_onehot, self.ancestors_by_id))
+            feature_list.append(
+                get_np_array_features(value, self.category_to_idx, self.edge_category_to_idx, curie_category_onehot,
+                                      self.ancestors_by_id))
 
-        X = np.empty((len(X_list), 183), dtype=float)
+        feature_np = np.empty((len(feature_list), 183), dtype=float)
 
-        for i in range(len(X_list)):
-            X[i] = X_list[i]
+        for i in range(len(feature_list)):
+            feature_np[i] = feature_list[i]
 
-        dtest = xgb.DMatrix(X)
+        dtest = xgb.DMatrix(feature_np)
 
         scores = self.bst_loaded.predict(dtest)
 
