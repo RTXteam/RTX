@@ -8,8 +8,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../UI/Op
 from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 from openapi_server.models.analysis import Analysis
 from openapi_server.models.path_binding import PathBinding
-from openapi_server.models.node_binding import NodeBinding
-from openapi_server.models.result import Result
+
 
 
 class PathConverter:
@@ -81,29 +80,16 @@ class PathConverter:
         response.envelope.message.knowledge_graph.edges.update(knowledge_graph_src_dest.edges)
         response.envelope.message.knowledge_graph.nodes.update(knowledge_graph_src_dest.nodes)
 
-        analyses = Analysis(
-            resource_id="infores:arax",
-            path_bindings={
-                "p0": [PathBinding(id=self.names.auxiliary_graph_name, attributes=[])]
-            },
-            score=self.score
-        )
-        if response.envelope.message.results is None:
-            response.envelope.message.results = []
+        # if category_constraint_id:
+        #     node_bindings[self.qnode_in_between_id] = [NodeBinding(id=category_constraint_id, attributes=[])]
 
-        node_bindings = {
-            self.qnode_1_id: [NodeBinding(id=self.node_1_id, attributes=[])],
-            self.qnode_2_id: [NodeBinding(id=self.node_2_id, attributes=[])]
-        }
-        if category_constraint_id:
-            node_bindings[self.qnode_in_between_id] = [NodeBinding(id=category_constraint_id, attributes=[])]
-
-        response.envelope.message.results.append(
-            Result(
-                id=self.names.result_name,
-                analyses=[analyses],
-                node_bindings= node_bindings,
-                essence=essence
+        response.envelope.message.results[0].analyses.append(
+            Analysis(
+                resource_id="infores:arax",
+                path_bindings={
+                    "p0": [PathBinding(id=self.names.auxiliary_graph_name, attributes=[])]
+                },
+                score=self.score
             )
         )
 

@@ -9,6 +9,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Names import Names
 from PathConverter import PathConverter
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.node_binding import NodeBinding
+from openapi_server.models.result import Result
+
 
 def get_block_list():
     with open(os.path.dirname(os.path.abspath(__file__)) + '/../../../KnowledgeSources/general_concepts.json',
@@ -50,6 +54,23 @@ class ResultPerPathConverter:
         blocked_curies, blocked_synonyms = get_block_list()
 
         self.extract_edges(response)
+
+        if response.envelope.message.results is None:
+            response.envelope.message.results = []
+
+        node_bindings = {
+            self.qnode_1_id: [NodeBinding(id=self.node_1_id, attributes=[])],
+            self.qnode_2_id: [NodeBinding(id=self.node_2_id, attributes=[])]
+        }
+
+        response.envelope.message.results.append(
+            Result(
+                id=self.names.result_name,
+                analyses=[],
+                node_bindings= node_bindings,
+                essence=self.names.result_name
+            )
+        )
 
         i = 0
         for path in self.paths:
