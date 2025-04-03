@@ -1,3 +1,4 @@
+import pickle
 class Node:
 
     def __init__(self, id, weight=float('inf'), name="", degree=0, category=""):
@@ -17,3 +18,10 @@ class Node:
 
     def __hash__(self):
         return hash(self.id)
+
+    def serialize(self):
+        return pickle.dumps(self)
+
+    @staticmethod
+    def deserialize(data):
+        return pickle.loads(data)

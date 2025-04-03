@@ -7,12 +7,16 @@ import sys
 import numpy as np
 import xgboost as xgb
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
+
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 from feature_extractor import get_neighbors_info
+from feature_extractor import get_category
 from feature_extractor import get_np_array_features
 from repo.NGDRepository import NGDRepository
 from repo.PloverDBRepo import PloverDBRepo
@@ -42,21 +46,37 @@ def create_training_data():
 
 
 def gather_data():
+    with open((os.path.dirname(os.path.abspath(__file__)) + '/edge_category_to_idx.pkl'), "rb") as f:
+        edge_category_to_idx = pickle.load(f)
+    ancestors_by_indices = {}
+    biolink_helper = BiolinkHelper()
+    for key, value in edge_category_to_idx.items():
+        ancestors = biolink_helper.get_ancestors(key)
+        indices_of_ancestors = []
+        for ancestor in ancestors:
+            if ancestor in edge_category_to_idx:
+                indices_of_ancestors.append(edge_category_to_idx[ancestor])
+        ancestors_by_indices[value] = indices_of_ancestors
+
     training_data = create_training_data()
     i = 0
     logging.info(len(training_data))
     node_synonymizer = NodeSynonymizer()
     category_list = node_synonymizer.get_distinct_category_list()
-    category_list_sorted = sorted(category_list)
-    category_to_idx = {cat_name: idx for idx, cat_name in enumerate(category_list_sorted)}
+    sorted_category_list = sorted(category_list)
+    category_to_idx = {cat_name: idx for idx, cat_name in enumerate(sorted_category_list)}
     ngd_repo = NGDRepository()
     plover_repo = PloverDBRepo(plover_url=RTXConfiguration().plover_url)
     group = []
     curie = []
+    curies = []
     y = []
     x_list = []
     for key_nodes_pair in training_data:
-        content_by_curie = get_neighbors_info(key_nodes_pair[0], node_synonymizer, ngd_repo, plover_repo)
+        content_by_curie, curie_category = get_neighbors_info(key_nodes_pair[0], ngd_repo, plover_repo)
+        if content_by_curie is None:
+            continue
+        curie_category_onehot = get_category(curie_category.split(":")[-1], category_to_idx)
         group.append(len(content_by_curie))
         curie.append(key_nodes_pair[0])
         logging.info(f"neighbors length: {len(content_by_curie)}")
@@ -66,12 +86,14 @@ def gather_data():
             else:
                 y.append(0)
 
-            x_list.append(get_np_array_features(value, category_to_idx))
+            curies.append(key)
+            x_list.append(get_np_array_features(value, category_to_idx, edge_category_to_idx, curie_category_onehot,
+                                                ancestors_by_indices))
 
         i = i + 1
         logging.info(f"training data counter: {i}")
 
-    x = np.empty((len(x_list), 60), dtype=float)
+    x = np.empty((len(x_list), 183), dtype=float)
 
     for i in range(len(x_list)):
         x[i] = x_list[i]
@@ -82,6 +104,12 @@ def gather_data():
         pickle.dump(group, f)
     with open("curie.pkl", "wb") as f:
         pickle.dump(curie, f)
+    with open("curies.pkl", "wb") as f:
+        pickle.dump(curies, f)
+    with open("ancestors_by_indices.pkl", "wb") as f:
+        pickle.dump(ancestors_by_indices, f)
+    with open("sorted_category_list.pkl", "wb") as f:
+        pickle.dump(sorted_category_list, f)
 
 
 def train():

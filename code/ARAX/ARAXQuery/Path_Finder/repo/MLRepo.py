@@ -1,5 +1,7 @@
+import pickle
 import sys
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import xgboost as xgb
@@ -9,11 +11,16 @@ from node_synonymizer import NodeSynonymizer
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 from feature_extractor import get_neighbors_info
+from feature_extractor import get_category
 from feature_extractor import get_np_array_features
 from repo.Repository import Repository
 from repo.NodeDegreeRepo import NodeDegreeRepo
 from repo.NGDRepository import NGDRepository
 from model.Node import Node
+
+
+def sigmoid(x):
+    return 1.0 / (1.0 + np.exp(-x))
 
 
 class MLRepo(Repository):
@@ -24,50 +31,69 @@ class MLRepo(Repository):
         self.degree_repo = degree_repo
         self.ngd_repo = ngd_repo
         self.node_synonymizer = node_synonymizer
-        self.sorted_category_list = ['Activity', 'Agent', 'AnatomicalEntity', 'Behavior', 'BehavioralFeature',
-                                     'BiologicalEntity', 'BiologicalProcess', 'Cell', 'CellLine', 'CellularComponent',
-                                     'ChemicalEntity', 'ChemicalMixture', 'ClinicalAttribute', 'Cohort',
-                                     'ComplexMolecularMixture', 'Device', 'Disease', 'DiseaseOrPhenotypicFeature',
-                                     'Drug', 'EnvironmentalProcess', 'Event', 'Exon', 'Food', 'Gene', 'GeneFamily',
-                                     'GenomicEntity', 'GeographicLocation', 'GrossAnatomicalStructure', 'Human',
-                                     'IndividualOrganism', 'InformationContentEntity', 'LifeStage', 'MaterialSample',
-                                     'MicroRNA', 'MolecularActivity', 'MolecularEntity', 'MolecularMixture',
-                                     'NamedThing', 'NoncodingRNAProduct', 'NucleicAcidEntity', 'OrganismAttribute',
-                                     'OrganismTaxon', 'PathologicalProcess', 'Pathway', 'Phenomenon',
-                                     'PhenotypicFeature', 'PhysicalEntity', 'PhysiologicalProcess', 'Polypeptide',
-                                     'PopulationOfIndividualOrganisms', 'Procedure', 'Protein', 'Publication',
-                                     'RNAProduct', 'RetrievalSource', 'SmallMolecule', 'Transcript', 'Treatment']
+        self.bst_loaded = None
+        self.ancestors_by_id = None
+        self.category_to_idx = None
+        self.edge_category_to_idx = None
+        self.sorted_category_list = None
+
+    def load_data(self):
+        abs_path = os.path.dirname(os.path.abspath(__file__))
+        with open(abs_path + '/sorted_category_list.pkl', "rb") as f:
+            self.sorted_category_list = pickle.load(f)
+
+        with open(abs_path + '/edge_category_to_idx.pkl', "rb") as f:
+            self.edge_category_to_idx = pickle.load(f)
         self.category_to_idx = {cat_name: idx for idx, cat_name in enumerate(self.sorted_category_list)}
+
+        with open(abs_path + '/ancestors_by_indices.pkl', "rb") as f:
+            self.ancestors_by_id = pickle.load(f)
+
+        self.bst_loaded = xgb.Booster()
+        self.bst_loaded.load_model(abs_path + '/pathfinder_xgboost_model')
 
     def get_neighbors(self, node, limit=-1):
         if limit <= 0:
             raise Exception(f"The limit:{limit} could not be negative or zero.")
-        content_by_curie = get_neighbors_info(node.id, self.node_synonymizer, self.ngd_repo, self.repo)
-        X_list = []
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future_get_neighbors = executor.submit(
+                get_neighbors_info, node.id, self.ngd_repo, self.repo
+            )
+            future_load_data = executor.submit(self.load_data)
+
+            content_by_curie, curie_category = future_get_neighbors.result()
+
+        if content_by_curie is None:
+            return []
+        curie_category_onehot = get_category(curie_category.split(":")[-1], self.category_to_idx)
+
+        feature_list = []
         curie_list = []
         for key, value in content_by_curie.items():
             curie_list.append(key)
-            X_list.append(get_np_array_features(value, self.category_to_idx))
+            feature_list.append(
+                get_np_array_features(value, self.category_to_idx, self.edge_category_to_idx, curie_category_onehot,
+                                      self.ancestors_by_id))
 
-        X = np.empty((len(X_list), 60), dtype=float)
+        feature_np = np.empty((len(feature_list), 183), dtype=float)
 
-        for i in range(len(X_list)):
-            X[i] = X_list[i]
+        for i in range(len(feature_list)):
+            feature_np[i] = feature_list[i]
 
-        dtest = xgb.DMatrix(X)
+        dtest = xgb.DMatrix(feature_np)
 
-        bst_loaded = xgb.Booster()
-        bst_loaded.load_model(os.path.dirname(os.path.abspath(__file__)) + '/model')
+        scores = self.bst_loaded.predict(dtest)
 
-        scores = bst_loaded.predict(dtest)
+        probabilities = sigmoid(scores)
 
         ranked_items = sorted(
-            zip(curie_list, scores),
+            zip(curie_list, probabilities),
             key=lambda x: x[1],
             reverse=True
         )
 
-        return [Node(item[0]) for item in
+        return [Node(id=item[0], weight=float(item[1])) for item in
                 ranked_items[0:limit]]
 
     def get_node_degree(self, node):

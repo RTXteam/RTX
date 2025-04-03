@@ -51,3 +51,20 @@ class DrugDiseaseMatchedDB:
 
         conn.commit()
         conn.close()
+
+    def has_pair(self, source, destination):
+        conn = sqlite3.connect(self.db_address)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT * FROM DrugDiseaseMatch
+            WHERE drug = ? AND disease = ? AND containment_index > 0
+        """, (source, destination))
+
+        results = cursor.fetchall()
+
+        conn.close()
+        if results:
+            return True
+        else:
+            return False

@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 
 import requests
 
@@ -37,47 +38,60 @@ class PloverDBRepo(Repository):
             pass
         return result
 
-    def trapi_query(self, node, limit=-1):
+    def get_neighbors_with_edges(self, node_id_input, limit=-1):
         endpoint = "/query"
         data = {
-            "message": {
-                "query_graph": {
-                    "edges": {
-                        "e1": {
-                            "object": "n1",
-                            "subject": "n2"
-                        }
-                    },
-                    "nodes": {
-                        "n1": {
-                            "ids": [
-                                node.id
-                            ]
-                        },
-                        "n2": {
-                            "categories": ["biolink:NamedThing"]
-                        }
-                    }
+            "edges": {
+                "e": {
+                    "subject": "n1",
+                    "object": "n2"
                 }
-            }
+            },
+            "nodes": {
+                "n1": {
+                    "ids": [
+                        node_id_input
+                    ]
+                },
+                "n2": {
+                    "categories": [
+                        "biolink:NamedThing"
+                    ]
+                }
+            },
+            "include_metadata": True,
+            "respect_predicate_symmetry": True
         }
-        result = []
         try:
-            response = requests.post(self.plover_url + endpoint, headers={'accept': 'application/json'}, json=data)
+            response = requests.post(self.plover_url + endpoint,
+                                     headers={'accept': 'application/json'}, json=data)
             response.raise_for_status()
             json = response.json()
-            result = []
-            for node_id, node_attributes in json['message']['knowledge_graph']['nodes'].items():
-                if node_id != node.id:
-                    result.append(Node(id=node_id, category=node_attributes['categories'][0]))
-            return result
+
+            if len(json['nodes']['n1']) == 0 or len(json['nodes']['n2']) == 0:
+                return None, None, None
+
+            nodes = {}
+            for id, info in json['nodes']['n2'].items():
+                nodes[id] = info[1]
+            edges = {}
+            for _, info in json['edges']['e'].items():
+                if info[0] != node_id_input:
+                    neighbor_id = info[0]
+                else:
+                    neighbor_id = info[1]
+                edge_info = (info[2], info[3])
+                if neighbor_id not in edges:
+                    edges[neighbor_id] = [edge_info]
+                else:
+                    edges[neighbor_id].append(edge_info)
+            return json['nodes']['n1'][node_id_input][1], nodes, edges
         except requests.exceptions.RequestException as e:
-            #  todo log here print(f"Request error: {e}")
-            pass
+            logging.error("A requests error occurred: %s", e, exc_info=True)
+            raise e
         except Exception as e:
-            #  todo log here print(f"Request error: {e}")
-            pass
-        return result
+            logging.error("An unexpected error occurred: %s", e, exc_info=True)
+            raise e
 
     def get_node_degree(self, node):
         return self.degree_repo.get_node_degree(node)

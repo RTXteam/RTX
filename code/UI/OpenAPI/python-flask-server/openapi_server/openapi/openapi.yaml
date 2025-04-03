@@ -1365,6 +1365,14 @@ components:
             schema type (see below). This value is an array of EdgeBindings since
             a given query edge may resolve to multiple Knowledge Graph Edges.
           type: object
+        path_bindings:
+          additionalProperties:
+            items:
+              $ref: '#/components/schemas/PathBinding'
+            type: array
+          description: The dictionary of input Query Graph paths to Analysis paths,
+            specifically only for pathfinder queries.
+          type: object
         support_graphs:
           description: This is a list of references to Auxiliary Graph instances that
             supported the analysis of a Result as performed by the reasoning service.
@@ -1385,7 +1393,6 @@ components:
           nullable: true
           type: array
       required:
-      - edge_bindings
       - resource_id
       title: Analysis
       type: object
@@ -1412,6 +1419,26 @@ components:
       required:
       - id
       title: EdgeBinding
+      type: object
+    PathBinding:
+      additionalProperties: true
+      description: A instance of PathBinding is a single binding of an input Query
+        Graph path (the key to this object) with the auxiary graph id containing
+        a list of edges in the path.
+      properties:
+        id:
+          description: The key identifier of a specific auxiliary graph.
+          type: string
+        attributes:
+          description: A list of attributes providing further information about the
+            path binding.
+          items:
+            $ref: '#/components/schemas/Attribute'
+          nullable: true
+          type: array
+      required:
+      - id
+      title: PathBinding
       type: object
     AuxiliaryGraph:
       additionalProperties: true
@@ -1485,8 +1512,16 @@ components:
             identifiers and the corresponding values include the constraints on bound
             edges, in addition to specifying the subject and object QNodes.
           type: object
+        paths:
+          additionalProperties:
+            $ref: '#/components/schemas/QPath'
+          description: The QueryGraph path specification, used only for pathfinder
+            type queries. The keys of this map are unique path
+            identifiers and the corresponding values include the constraints on bound
+            paths, in addition to specifying the subject, object, and intermediate
+            QNodes.
+          type: object
       required:
-      - edges
       - nodes
       type: object
     QNode:
@@ -1626,6 +1661,51 @@ components:
       - object
       - subject
       title: QEdge
+      type: object
+    QPath:
+      additionalProperties: true
+      description: A path in the QueryGraph used for pathfinder queries only, flowing
+        from subject to intermediate nodes, if any, to object.
+      properties:
+        subject:
+          description: Corresponds to the map key identifier of the subject concept
+            node for the start of the queried path.
+          example: n0
+          type: string
+        object:
+          description: Corresponds to the map key identifier of the object concept
+            node for the end of the queried path.
+          example: n1
+          type: string
+        intermediate_nodes:
+          default: []
+          description: An ordered list of intermediate nodes, if any, in the direction of
+            subject to object in the query path.
+          items:
+            type: string
+          type: array
+        predicates:
+          description: These should be Biolink Model predicates and are allowed to
+            be of type 'abstract' or 'mixin' (only in QGraphs!). Use of 'deprecated'
+            predicates should be avoided.
+          items:
+            $ref: '#/components/schemas/BiolinkPredicate'
+          minItems: 1
+          nullable: true
+          type: array
+        attribute_constraints:
+          default: []
+          description: A list of attribute contraints applied to a query edge. If
+            there are multiple items, they must all be true (equivalent to AND)
+          items:
+            $ref: '#/components/schemas/AttributeConstraint'
+          type: array
+      required:
+      - intermediate_nodes
+      - object
+      - predicates
+      - subject
+      title: QPath
       type: object
     Node:
       additionalProperties: false

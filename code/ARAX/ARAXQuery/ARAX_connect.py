@@ -12,7 +12,7 @@ import copy
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
-from Path_Finder.converter.SuperNodeConverter import SuperNodeConverter
+from Path_Finder.converter.ResultPerPathConverter import ResultPerPathConverter
 from Path_Finder.converter.Names import Names
 from Path_Finder.BidirectionalPathFinder import BidirectionalPathFinder
 
@@ -181,15 +181,7 @@ class ARAXConnect:
                                 f"Number of pinned nodes: {len(pinned_nodes)}")
         return pinned_nodes
 
-    def get_constraint_node(self):
-        constraint_node = []
-        for key, node in self.message.query_graph.nodes.items():
-            if node.categories and len(node.categories) > 0:
-                constraint_node.append(key)
-        if len(constraint_node) > 1:
-            self.response.error(f"For now PathFinder can only handle one constraint node. "
-                                f"Number of pinned nodes: {len(constraint_node)}")
-        return constraint_node
+
 
     def get_normalize_nodes(self, nodes, pinned_qnode_id):
         synonymizer = NodeSynonymizer()
@@ -203,37 +195,46 @@ class ARAXConnect:
                                 f" Error message is: {e}")
             return self.response
 
-    def get_src_node(self, pinned_nodes):
-        for key_node in pinned_nodes:
-            for key_edge, edge in self.message.query_graph.edges.items():
-                if edge.subject == key_node:
-                    return key_node
-        self.response.error(f"Could not find source node")
+    def get_path(self):
+        if not self.message.query_graph.paths:
+            self.response.error(f"Query graph does not have paths argument. Paths is None")
+        if len(self.message.query_graph.paths) != 1:
+            self.response.error(f"Query graph has more than one path. This is not supported yet.")
+        path = next(iter(self.message.query_graph.paths.values()))
+        if path.subject is None:
+            self.response.error(f"The path does not have a subject.")
+        if path.object is None:
+            self.response.error(f"The path does not have a subject.")
+        return path
 
-    def get_dst_node(self, pinned_nodes):
-        for key_node in pinned_nodes:
-            for key_edge, edge in self.message.query_graph.edges.items():
-                if edge.object == key_node:
-                    return key_node
-        self.response.error(f"Could not find destination node")
+    def get_src_node(self, pinned_nodes, path):
+        for pinned_node in pinned_nodes:
+            if path.subject == pinned_node:
+                return path.subject
+        self.response.error(f"Pathfinder cannot find {path.subject} in pinned nodes.")
 
-    def get_q_src_dest_edge_name(self, src_key, dst_key):
-        for key_edge, edge in self.message.query_graph.edges.items():
-            if edge.subject == src_key and edge.object == dst_key:
-                return key_edge
-        self.response.error(f"Could not find source to destination edge")
+    def get_dst_node(self, pinned_nodes, path):
+        for pinned_node in pinned_nodes:
+            if path.object == pinned_node:
+                return path.object
+        self.response.error(f"Pathfinder cannot find {path.object} in pinned nodes.")
 
-    def get_q_src_mid_edge_name(self, src_key, mid_key):
-        for key_edge, edge in self.message.query_graph.edges.items():
-            if edge.subject == src_key and edge.object == mid_key:
-                return key_edge
-        self.response.error(f"Could not find source to constraint edge")
+    def get_constraint_node(self, path):
+        if len(path.intermediate_nodes) > 1:
+            self.response.error(f"Currently, PathFinder can only handle one constraint node. "
+                                f"Number of constraint nodes: {len(path.intermediate_nodes)}")
+        if len(path.intermediate_nodes) == 0:
+            return None
 
-    def get_q_mid_dest_edge_name(self, mid_key, dst_key):
-        for key_edge, edge in self.message.query_graph.edges.items():
-            if edge.subject == mid_key and edge.object == dst_key:
-                return key_edge
-        self.response.error(f"Could not find constraint to destination edge")
+        constraint_qnode = path.intermediate_nodes[0]
+
+        for key, node in self.message.query_graph.nodes.items():
+            if node.categories and len(node.categories) > 0:
+                if constraint_qnode == key:
+                    return constraint_qnode
+
+        self.response.error(
+            f"Intermediate node: {constraint_qnode} is not defined in the nodes list.")
 
     def __connect_nodes(self, describe=False):
         """
@@ -263,12 +264,10 @@ class ARAXConnect:
             return self.response
 
         pinned_nodes = self.get_pinned_nodes()
-        src_pinned_node = self.get_src_node(pinned_nodes)
-        dst_pinned_node = self.get_dst_node(pinned_nodes)
-        constraint_node = self.get_constraint_node()[0]
-        q_src_dest_edge_name = self.get_q_src_dest_edge_name(src_pinned_node, dst_pinned_node)
-        q_src_mid_edge_name = self.get_q_src_mid_edge_name(src_pinned_node, constraint_node)
-        q_mid_dest_edge_name = self.get_q_mid_dest_edge_name(constraint_node, dst_pinned_node)
+        path = self.get_path()
+        src_pinned_node = self.get_src_node(pinned_nodes, path)
+        dst_pinned_node = self.get_dst_node(pinned_nodes, path)
+        constraint_node = self.get_constraint_node(path)
         if self.response.status != 'OK' or resp == -1:
             return self.response
 
@@ -276,7 +275,7 @@ class ARAXConnect:
         normalize_dst_node_id = self.get_normalize_nodes(self.message.query_graph.nodes, dst_pinned_node)
 
         path_finder = BidirectionalPathFinder(
-            "NGDSortedNeighborsRepo",
+            "MLRepo",
             self.response
         )
         paths = path_finder.find_all_paths(
@@ -293,19 +292,16 @@ class ARAXConnect:
             return self.response
 
         names = Names(
-            q_src_dest_edge_name=q_src_dest_edge_name,
-            q_src_mid_edge_name=q_src_mid_edge_name,
-            q_mid_dest_edge_name=q_mid_dest_edge_name,
             result_name="result",
             auxiliary_graph_name="aux",
-            kg_src_dest_edge_name="kg_src_dest_edge",
-            kg_src_mid_edge_name="kg_src_mid_edge",
-            kg_mid_dest_edge_name="kg_mid_dest_edge",
         )
         edge_extractor = EdgeExtractorFromPloverDB(
             RTXConfiguration().plover_url
         )
-        SuperNodeConverter(
+        category_constraint = None
+        if constraint_node:
+            category_constraint = self.message.query_graph.nodes[constraint_node].categories[0]
+        ResultPerPathConverter(
             paths,
             normalize_src_node_id,
             normalize_dst_node_id,
@@ -314,7 +310,7 @@ class ARAXConnect:
             constraint_node,
             names,
             edge_extractor,
-            self.message.query_graph.nodes[constraint_node].categories[0]
+            category_constraint
         ).convert(self.response)
 
         mode = 'ARAX'
