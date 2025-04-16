@@ -57,8 +57,8 @@ jobs:
     - name: Stop any running containers
       continue-on-error: true
       run: |
-            if [[ -n $(sudo docker ps -aq) ]]; then
-                  sudo docker stop $(sudo docker ps -aq)
+            if [[ -n $(sudo docker ps -q) ]]; then
+                  sudo docker stop $(sudo docker ps -q)
             else
                   echo "No left over containers"
             fi
@@ -76,8 +76,8 @@ jobs:
     - name: Clean up any left over images
       continue-on-error: true
       run: |
-            if [[ -n $(sudo docker images -q) ]]; then
-                  sudo docker rmi -f $(sudo docker images -q)
+            if [[ -n $(sudo docker images -aq) ]]; then
+                  sudo docker rmi -f $(sudo docker images -aq)
             else
                   echo "No left over images"
             fi
