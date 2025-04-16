@@ -57,7 +57,7 @@ jobs:
     - name: Stop any running containers
       continue-on-error: true
       run: |
-            if [[ $(sudo docker ps -q) != 0 ]]; then
+            if [[ $(sudo docker ps -aq) != 0 ]]; then
                   sudo docker stop $(sudo docker ps -aq)
             else
                   echo "No left over containers"
@@ -66,7 +66,7 @@ jobs:
     - name: Clean up any left over containers
       continue-on-error: true
       run: |
-           if [[ $(sudo docker ps -q) != 0 ]]; then
+           if [[ $(sudo docker ps -aq) != 0 ]]; then
                   sudo docker rm $(sudo docker ps -aq)
             else
                   echo "No left over containers"
