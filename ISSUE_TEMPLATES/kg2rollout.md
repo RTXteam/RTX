@@ -75,7 +75,7 @@ Host arax.ncats.io
   - [ ] update the meta_kg version number/path
   - [ ] update the kg2c sqlite version number/path
   - [ ] update the KG2pre and KG2c Neo4j endpoints
-- [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-how-tos#to-build-plover-from-a-new-kg2-version)) 
+- [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-notes#to-build-plover-from-a-new-kg2-version))
   - [ ] update `config_kg2c.json` in the `kg2.X.Yc` branch of the Plover repo to point to the new KG2.X.Yc json lines nodes and edges files on `kg2webhost.rtx.ai` (push this change)
   - [ ] `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] `cd PloverDB && git pull origin kg2.X.Yc`
