@@ -60,7 +60,7 @@ PROPERTIES_LOOKUP = {
         "qualified_predicate": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_object_aspect": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
         "qualified_object_direction": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
-        "domain_range_exclusion": {"type": str, "in_kg2pre": True, "in_kg2c_lite": True},
+        "domain_range_exclusion": {"type": bool, "in_kg2pre": True, "in_kg2c_lite": True},
         "knowledge_level": {"type": str, "in_kg2pre": True, "in_kg2c_lite": False},
         "agent_type": {"type": str, "in_kg2pre": True, "in_kg2c_lite": False}
     }
@@ -111,12 +111,18 @@ def _get_kg2pre_headers(header_file_path: str) -> List[str]:
     return processed_headers
 
 
-def _load_property(raw_property_value_from_tsv: str, property_type: any) -> Union[list, str, dict]:
+def _load_property(raw_property_value_from_tsv: str, property_type: any) -> Union[list, str, dict, bool]:
     if property_type is str:
         if raw_property_value_from_tsv == "None":
             return ""
         else:
             return raw_property_value_from_tsv
+    elif property_type is bool:
+        if not raw_property_value_from_tsv:
+            return ""
+        else:
+            # elegant one-liner that handles case-insensitive conversion of string boolean representations to actual Python boolean values.
+            return raw_property_value_from_tsv.lower() == "true"
     elif property_type is list:
         split_string = raw_property_value_from_tsv.split(KG2PRE_ARRAY_DELIMITER)
         processed_list = [item.strip() for item in split_string if item]
@@ -285,7 +291,7 @@ def _create_node(preferred_curie: str, name: Optional[str], category: str, all_c
 def _create_edge(subject: str, object: str, predicate: str, primary_knowledge_source: str, publications: List[str],
                  publications_info: Dict[str, any], kg2_ids: List[str],
                  qualified_predicate: str, qualified_object_aspect: str, qualified_object_direction: str,
-                 domain_range_exclusion: str, knowledge_level: str, agent_type: str) -> Dict[str, any]:
+                 domain_range_exclusion: bool, knowledge_level: str, agent_type: str) -> Dict[str, any]:
     edge_properties_lookup = PROPERTIES_LOOKUP["edges"]
     assert isinstance(subject, edge_properties_lookup["subject"]["type"])
     assert isinstance(object, edge_properties_lookup["object"]["type"])
