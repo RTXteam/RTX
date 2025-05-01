@@ -72,14 +72,15 @@ class PloverDBRepo(Repository):
                 return None, None, None
 
             nodes = {}
-            for id, info in json['nodes']['n2'].items():
-                nodes[id] = info[1]
             edges = {}
             for _, info in json['edges']['e'].items():
-                if info[0] != node_id_input:
+                if info[0] == node_id_input:
+                    neighbor_id = info[1]
+                elif info[1] == node_id_input:
                     neighbor_id = info[0]
                 else:
-                    neighbor_id = info[1]
+                    continue
+                nodes[neighbor_id] = json['nodes']['n2'][neighbor_id][1]
                 edge_info = (info[2], info[3])
                 if neighbor_id not in edges:
                     edges[neighbor_id] = [edge_info]
