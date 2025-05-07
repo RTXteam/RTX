@@ -43,7 +43,7 @@ jobs:
 
 
     - name: Download databases into CICD instance
-      continue-on-error: true
+      # continue-on-error: true
       run: |
         cd /home/ubuntu/RTX
         git checkout ${GITHUB_REF#refs/heads/}
@@ -56,15 +56,32 @@ jobs:
 
     - name: Stop any running containers
       continue-on-error: true
-      run: sudo docker stop $(sudo docker ps -aq)
-    
+      run: |
+            if [[ -n $(sudo docker ps -q) ]]; then
+                  sudo docker stop $(sudo docker ps -q)
+            else
+                  echo "No left over containers"
+            fi
+
     - name: Clean up any left over containers
       continue-on-error: true
-      run: sudo docker rm $(sudo docker ps -aq)
-        
+      run: |
+           if [[ -n $(sudo docker ps -aq) ]]; then
+                  sudo docker rm $(sudo docker ps -aq)
+            else
+                  echo "No left over containers"
+            fi
+    
+    
     - name: Clean up any left over images
       continue-on-error: true
-      run: sudo docker rmi $(sudo docker images -q)
+      run: |
+            if [[ -n $(sudo docker images -aq) ]]; then
+                  sudo docker rmi -f $(sudo docker images -aq)
+            else
+                  echo "No left over images"
+            fi
+      
     
     - name: Build docker image 
       run: sudo docker build --no-cache=true --rm -t rtx:test DockerBuild/ -f DockerBuild/CICD-Dockerfile

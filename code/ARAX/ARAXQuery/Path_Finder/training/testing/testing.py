@@ -28,11 +28,15 @@ def run_tests(db, pathfinder_type):
         data = json.load(file)
 
     counter = 0
+    zeros = 0
     for source, value in data.items():
         test_nodes = set(value['mechanistic_intermediate_nodes'].keys())
         for destination, _ in value['indication_NER_aligned'].items():
             counter += 1
             if db.has_pair(source, destination):
+                continue
+            if zeros < 176:
+                zeros += 1
                 continue
             paths = get_paths_from_path_finder(pathfinder_type, source, destination)
             intermediate_node_from_path_finder = extract_intermediate_nodes(paths)
@@ -40,6 +44,9 @@ def run_tests(db, pathfinder_type):
             containment_index = len(matched) / len(test_nodes)
             db.insert(source, destination, str(matched), containment_index, len(intermediate_node_from_path_finder),
                       len(test_nodes))
+            if containment_index == 0:
+                zeros += 1
+                logging.info(f"Zeros:  {zeros}")
             logging.info(f"{counter}: {source} - {destination}:  {containment_index}")
 
 
@@ -92,4 +99,4 @@ def test(pathfinder_type, file_name):
 
 
 if __name__ == "__main__":
-    test("new", "without_edge")
+    test("new", "true_neighbors")

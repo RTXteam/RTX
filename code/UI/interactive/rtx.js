@@ -71,6 +71,7 @@ function main() {
     UIstate["maxresults"] = 1000;
     UIstate["maxsyns"] = 1000;
     UIstate["prevtimestampobj"] = null;
+    UIstate["curiefilter"] = [];
     document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
 
     load_meta_knowledge_graph();
@@ -1818,7 +1819,7 @@ function render_response(respObj,dispjson) {
             update_response_stats_on_error(respObj.araxui_response,'n/a',false);
 	}
 	else {
-	    var rtext = respObj.message.results.length == 1 ? " result" : " results";
+	    var rtext = respObj.message.results.length == 1 ? " result [ triggering PathFinder mode ]" : " results";
 	    if (respObj.total_results_count && respObj.total_results_count > respObj.message.results.length)
 		rtext += " (truncated from a total of " + respObj.total_results_count + ")";
 	    var h2 = document.createElement("h2");
@@ -1845,7 +1846,10 @@ function render_response(respObj,dispjson) {
 
 	    var auxiliary_graphs = respObj.message["auxiliary_graphs"] ? respObj.message["auxiliary_graphs"] : null;
 	    try {
-		process_results(respObj.message["results"],respObj.message["knowledge_graph"],auxiliary_graphs,respObj["schema_version"],respreas);
+		if (respObj.message.results.length == 1)  // ASSUME PATHFINDER, revisit later...
+		    process_pathfinder(respObj.message["results"][0],respObj.message["knowledge_graph"],auxiliary_graphs,respObj["schema_version"],respreas);
+		else
+		    process_results(respObj.message["results"],respObj.message["knowledge_graph"],auxiliary_graphs,respObj["schema_version"],respreas);
 	    }
 	    catch(e) {
 		var span = document.createElement("span");
@@ -2785,6 +2789,179 @@ function process_graph(gne,graphid,trapi) {
 
 }
 
+
+function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
+    if (!result.analyses || result.analyses.length < 1)
+	return;
+
+    var div = document.createElement("h3");
+    div.id = 'pathfilterstatus';
+    div.append("loading...");
+    document.getElementById("result_container").append(div);
+
+    var results_fragment = document.createDocumentFragment();
+
+    var num = 0;
+    for (ranal of result.analyses) {
+	num++;
+
+	div = document.createElement("div");
+        div.id = 'pathdivhead_'+num;
+	div.title = 'Click to expand / collapse analysis '+num;
+        div.className = 'accordion';
+
+	var auxgraph = ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'];  // TODO: deal with more than one...
+        add_aux_graph(kg,auxgraph,aux[auxgraph]["edges"],num,trapi);
+	div.setAttribute('onclick', 'add_cyto('+num+',"AUX'+auxgraph+'");sesame(this,a'+num+'_div);');
+
+	div.dataset.pnodes = "|filter|";
+        div.append(" Analysis "+num+" :: ");
+
+	for (pnode of get_node_list_in_paths(ranal.path_bindings,kg,aux).sort()) {
+            var span = document.createElement("span");
+            // span.className = 'numnew explevel';
+            span.className = 'qprob';
+	    span.title = "Filter all Paths that contain ["+pnode+"]";
+            span.append(kg.nodes[pnode]["name"]);
+	    span.setAttribute('onclick', 'filter_results("paths","'+pnode+'");');
+	    span.dataset.curie = pnode;
+	    div.append(span);
+
+	    div.dataset.pnodes += "|"+pnode+"|";
+	}
+
+        var cnf = 'n/a';
+        if (Number(ranal.score))
+            cnf = Number(ranal.score).toFixed(3);
+        var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
+
+        var rsrc = 'n/a';
+        if (ranal.resource_id)
+            rsrc = ranal.resource_id;
+        else if (ranal.reasoner_id)
+            rsrc = ranal.reasoner_id;
+
+        var rscl = get_css_class_from_reasoner(rsrc);
+
+        var span100 = document.createElement("span");
+        span100.style.float = 'right';
+        span100.style.marginRight = '70px';
+        span100.style.marginTop = '5px';
+
+        var span = document.createElement("span");
+        span.className = pcl+' qprob';
+        span.title = "score = "+cnf;
+        span.append(cnf);
+        span100.append(span);
+
+        span = document.createElement("span");
+        span.className = rscl+' qprob';
+        span.title = "source = "+rsrc;
+        span.append(rsrc.replace("infores:",""));
+        span100.append(span);
+
+	div.append(span100);
+
+        results_fragment.append(div);
+
+        div = document.createElement("div");
+        div.id = 'a'+num+'_div';
+        div.className = 'panel';
+
+        var table = document.createElement("table");
+        table.className = 't100';
+
+        add_graph_to_table(table,num);
+
+        div.append(table);
+        results_fragment.append(div);
+    }
+
+    document.getElementById("result_container").append(results_fragment);
+
+    document.getElementById("pathfilterstatus").innerHTML = '';
+    document.getElementById("pathfilterstatus").append(result.analyses.length+' total analyses  (Click on the node bubbles below to set/remove filters)');
+}
+
+function filter_results(which, what) {
+    var fstat_node = document.getElementById("pathfilterstatus");
+    fstat_node.innerHTML = '';
+
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginRight = "10px";
+    fstat_node.append(wait);
+    fstat_node.append('Filtering...');
+    window.scrollTo(0,0);
+
+    var timeout = setTimeout(function() {
+	var howmany = filter_paths(what);
+
+	fstat_node.innerHTML = '';
+	fstat_node.append('Displaying '+howmany+' analyses');
+
+	if (UIstate["curiefilter"].length == 0)
+	    fstat_node.append(' (all)');
+	else
+	    fstat_node.append(' (filtering on: '+UIstate["curiefilter"]+')');
+    }, 150 );  // give it time so animation can start
+
+    event.stopPropagation();
+}
+
+function filter_paths(curie) {
+    if (UIstate["curiefilter"].includes(curie))
+	UIstate["curiefilter"].splice(UIstate["curiefilter"].indexOf(curie),1);
+    else
+	UIstate["curiefilter"].push(curie);
+
+    var showing = 0;
+    for (var pathhead of document.querySelectorAll('[id^="pathdivhead_"]')) {
+	var showit = true;
+
+        for (var curiefilter of UIstate["curiefilter"]) {
+	    if(!pathhead.dataset.pnodes.includes("|"+curiefilter+"|")) {
+		showit = false;
+		break;
+	    }
+	}
+
+	if (showit) {
+	    showing++;
+	    pathhead.style.display = '';
+            for (var curielabel of pathhead.children) {
+                if (curielabel.dataset && curielabel.dataset.curie) {
+                    if (UIstate["curiefilter"].includes(curielabel.dataset.curie))
+			curielabel.classList.add('p3');
+		    else
+			curielabel.classList.remove('p3');
+		}
+	    }
+	}
+	else {
+	    if (pathhead.classList.contains('openaccordion'))
+		pathhead.click();
+	    pathhead.style.display = 'none';
+	}
+    }
+
+    return showing;
+}
+
+function get_node_list_in_paths(path_bindings,kg,aux) {
+    var pathnodes = {};
+    for (pb in path_bindings) {
+	for (path in path_bindings[pb]) {
+	    for (var edgeid of aux[path_bindings[pb][path]["id"]]["edges"]) {
+		pathnodes[kg.edges[edgeid]["subject"]] = 1;
+		pathnodes[kg.edges[edgeid]["object"]] = 1;
+	    }
+	}
+    }
+
+    return Object.keys(pathnodes);
+}
+
+
 // a watered-down essence, if you will...
 function eau_du_essence(result) {
     var guessence = 'n/a';
@@ -3218,20 +3395,22 @@ function add_graph_to_table(table,num) {
     td.append(document.createElement("br"));
 
     // ///////
-    link = document.createElement("a");
-    link.style.marginTop = "40px";
-    link.title = 'collapse edges';
-    link.setAttribute('onclick', 'cyedges('+num+',"collapse");');
-    link.append("c");
-    td.append(link);
-    td.append(document.createElement("br"));
+    if (!window.chrome) {
+	link = document.createElement("a");
+	link.style.marginTop = "40px";
+	link.title = 'collapse edges';
+	link.setAttribute('onclick', 'cyedges('+num+',"collapse");');
+	link.append("c");
+	td.append(link);
+	td.append(document.createElement("br"));
 
-    link = document.createElement("a");
-    link.title = 'expand edges';
-    link.setAttribute('onclick', 'cyedges('+num+',"expand");');
-    link.append("E");
-    td.append(link);
-    td.append(document.createElement("br"));
+	link = document.createElement("a");
+	link.title = 'expand edges';
+	link.setAttribute('onclick', 'cyedges('+num+',"expand");');
+	link.append("E");
+	td.append(link);
+	td.append(document.createElement("br"));
+    }
 
     tr.append(td);
 
@@ -3348,7 +3527,8 @@ function add_cyto(i,dataid) {
 	    // ready 1
 	}
     });
-    cyobj[i].expandCollapse();
+    if (!window.chrome)
+	cyobj[i].expandCollapse();
 
     if (i > 99998) {
 	cyobj[i].on('tap','node', function() {

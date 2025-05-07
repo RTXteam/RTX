@@ -224,7 +224,7 @@ class ARAXResponse:
         :type edge_key: str
         :param provider: knowledge provider name (e.g. 'infores:molepro).
         :type level: int
-        :param status: status the KP (one of: Skipped, Waiting, Timed out, Error, Done).
+        :param status: status the KP (one of: Skipped, Waiting, Timed out, Error, Warning, Done).
         :type code: str
         :param description: Description of the result (see below for examples).
         :type code: str

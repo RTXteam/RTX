@@ -921,14 +921,26 @@ class ARAXExpander:
 
         # Then update the edges to reflect changes made to the nodes
         for qedge_key, edges in answer_kg.edges_by_qg_id.items():
+            dropped_edge_count = 0
             for edge_key, edge in edges.items():
-                edge.subject = curie_mappings.get(edge.subject)
-                edge.object = curie_mappings.get(edge.object)
-                if not edge.subject or not edge.object:
-                    log.error(f"{kp_name}: Could not find preferred curie mappings for edge {edge_key}'s node(s)")
-                    return deduplicated_kg
-                deduplicated_kg.add_edge(edge_key, edge, qedge_key)
-
+                drop_edge = False
+                if edge.subject not in curie_mappings:
+                    log.warning(f"{kp_name}: edge subject not in curie mappings; qedge key: {qedge_key}; subject ID: {edge.subject}")
+                    drop_edge = True
+                    dropped_edge_count += 1
+                else:
+                    edge.subject = curie_mappings.get(edge.subject)
+                if edge.object not in curie_mappings:
+                    log.warning(f"{kp_name}: edge object not in curie mappings; qedge key: {qedge_key}; object ID: {edge.object}")
+                    drop_edge = True
+                    dropped_edge_count += 1
+                else:
+                    edge.object = curie_mappings.get(edge.object)
+                if not drop_edge:
+                    deduplicated_kg.add_edge(edge_key, edge, qedge_key)
+            if dropped_edge_count > 0:
+                log.update_query_plan(qedge_key, kp_name, "Warning",
+                                      f"{dropped_edge_count} edges dropped due to node reference failure")
         log.debug(f"{kp_name}: After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
         return deduplicated_kg
 
