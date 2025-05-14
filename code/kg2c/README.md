@@ -49,7 +49,7 @@ Like [RTX-KG2pre](https://github.com/RTXteam/RTX-KG2) (the uncanonicalized versi
 ```
 The node `id` is the 'preferred' curie for the group of synonymous nodes this KG2c node represents (according to the `NodeSynonymizer`). Similarly, the node `category` and `name` are the 'preferred' category/name, according to the `NodeSynonymizer`.
 
-In the Neo4j instantiation of KG2c (see [below section](#host-kg2canonicalized-in-neo4j) for how to host KG2c in Neo4j), nodes are labeled with their `all_categories` and ancestors of those categories.
+In the Neo4j instantiation of KG2c (see [below section](#hosting-kg2c-in-neo4j) for how to host KG2c in Neo4j), nodes are labeled with their `all_categories` and ancestors of those categories.
 
 ###### Example KG2c edge:
 ```
