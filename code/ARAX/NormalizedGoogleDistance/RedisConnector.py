@@ -1,11 +1,9 @@
 import logging
 
-import redis
-
 
 class RedisConnector:
-    def __init__(self):
-        self.redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
+    def __init__(self, redis_client):
+        self.redis_client = redis_client
 
     def has_pmids(self, key):
         return self.redis_client.exists(key) == 1

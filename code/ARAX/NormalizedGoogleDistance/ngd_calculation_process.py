@@ -1,37 +1,29 @@
-import redis
+import logging
+import os
+import sys
 import json
 import sqlite3
 import multiprocessing
-import logging
 import time
 from datetime import datetime
+
 from NGDSortedNeighborsRepo import NGDSortedNeighborsRepo
 from PloverDBRepo import PloverDBRepo
-from curie_pmids_into_memory import curie_pmids_into_memory
-from RedisConnector import RedisConnector
 
-
-def set_up_log():
-    logging.basicConfig(
-        filename='NGD_script.log',
-        filemode='a',
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
-        level=logging.INFO
-    )
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+from RTXConfiguration import RTXConfiguration
 
 def calculate_neighbor_NGD_list(data):
     try:
-        return data[0], NGDSortedNeighborsRepo().get_neighbors(data[0], data[1]), None
+        return data[0], NGDSortedNeighborsRepo().get_neighbors(data[0], data[1], data[2]), None
     except Exception as e:
         logging.error(f"Exception occurred while get_neighbors called with key: {data[0]}")
         logging.error(f"Exception: {e}")
         return data[0], None, e
 
 
-def run_ngd_calculation_process(curie_pmid_db_name, ngd_db_name):
-    repo = PloverDBRepo("https://kg2cplover.rtx.ai:9990")
+def run_ngd_calculation_process(curie_to_pmids_path, ngd_db_name, log_of_NGD_normalizer, redis_connector):
+    repo = PloverDBRepo(plover_url=RTXConfiguration().plover_url)
     sqlite_connection_write = sqlite3.connect(ngd_db_name)
     cursor_write = sqlite_connection_write.cursor()
     cursor_write.execute('''
@@ -44,10 +36,10 @@ def run_ngd_calculation_process(curie_pmid_db_name, ngd_db_name):
     cursor_write.close()
     sqlite_connection_write.close()
 
-    sqlite_connection_read = sqlite3.connect(curie_pmid_db_name)
+    sqlite_connection_read = sqlite3.connect(curie_to_pmids_path)
     cursor_read = sqlite_connection_read.cursor()
     num_cores = multiprocessing.cpu_count()
-    batch_size = 10 * num_cores
+    batch_size = min(128, num_cores * 10)
     offset = 0
 
     while True:
@@ -67,14 +59,12 @@ def run_ngd_calculation_process(curie_pmid_db_name, ngd_db_name):
         logging.info("After Getting Neighbors: %s", datetime.now())
         offset += batch_size
 
-        CURIEs_and_neighbors = [(curie, neighbors_by_curie[curie]) for curie in CURIEs]
+        CURIEs_and_neighbors = [(curie, neighbors_by_curie[curie], log_of_NGD_normalizer) for curie in CURIEs]
 
         with multiprocessing.Pool(num_cores) as pool:
             results = pool.map(calculate_neighbor_NGD_list, CURIEs_and_neighbors)
 
-        redis_client = RedisConnector()
-
-        curie_pmid_length_zip = redis_client.get_len_of_keys(CURIEs)
+        curie_pmid_length_zip = redis_connector.get_len_of_keys(CURIEs)
 
         pmid_length_by_curie = {}
         for curie, pmid_length in curie_pmid_length_zip:
@@ -104,14 +94,3 @@ def run_ngd_calculation_process(curie_pmid_db_name, ngd_db_name):
 
     cursor_read.close()
     sqlite_connection_read.close()
-
-
-if __name__ == "__main__":
-    set_up_log()
-    logging.info(f"Start time: {datetime.now()}")
-    curie_pmid_db_name = 'curie_to_pmids_v1.0_KG2.10.1.sqlite'
-    redis_client = redis.Redis(host='localhost', port=6379, db=0)
-    redis_client.flushall()
-    curie_pmids_into_memory(curie_pmid_db_name, redis_client)
-    logging.info(f"{curie_pmid_db_name} inserted completely into Redis")
-    run_ngd_calculation_process(curie_pmid_db_name, "curie_ngd_v1.0_KG2.10.1.sqlite")

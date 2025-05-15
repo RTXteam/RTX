@@ -1,10 +1,18 @@
-import sqlite3
 import logging
-import ast
+import sqlite3
 
 
-def curie_pmids_into_memory(db_name, redis_client):
-    sqlite_connection = sqlite3.connect(db_name)
+def curie_pmids_into_memory(curie_to_pmids_path, curie_to_pmids_version, redis_client):
+
+    version = redis_client.get('version')
+    if version is not None:
+        version = version.decode('utf-8')
+        if version == curie_to_pmids_version:
+            return
+
+
+    redis_client.flushall()
+    sqlite_connection = sqlite3.connect(curie_to_pmids_path)
     cursor = sqlite_connection.cursor()
 
     batch_size = 1000
@@ -39,7 +47,10 @@ def curie_pmids_into_memory(db_name, redis_client):
             logging.error(f"Exception: {e}")
             logging.error(f"Offset: {offset}")
             logging.error(f"Batch size: {batch_size}")
-
+            cursor.close()
+            sqlite_connection.close()
+            raise e
+    redis_client.set('version', curie_to_pmids_version)
     cursor.close()
     sqlite_connection.close()
 
