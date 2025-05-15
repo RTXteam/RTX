@@ -1465,7 +1465,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
                 table.style.width = "100%";
                 table.style.borderCollapse = "collapse";
 
-		for (var vtype of ["critical","error","warning","info","skipped"] ) {
+		for (var vtype of ["critical","error","warning","info","skipped"]) {
                     if (Object.keys(jsonObj2.validation_result.validation_messages[vtype]).length > 0) {
 			tr = document.createElement("tr");
 			td = document.createElement("th");
@@ -1857,6 +1857,7 @@ function render_response(respObj,dispjson) {
 		span.append("ERROR:: "+e);
 		statusdiv.append(span);
 		console.error("Bad Response:"+e);
+		update_response_stats_on_error(respObj.araxui_response,'n/a',false);
 		return;
 	    }
 
@@ -2211,6 +2212,7 @@ function render_queryplan_table(qp) {
     status_map["Expanding"] = 'p5 working';
     status_map["Waiting"] = 'p5';
     status_map["Timed out"] = 'p3';
+    status_map["Warning"] = 'p3';
     status_map["Error"] = 'p1';
     status_map["Skipped"] = 'p0';
 
@@ -2780,7 +2782,7 @@ function process_graph(gne,graphid,trapi) {
 			    "predicates" : gedge.predicates ? gedge.predicates : [],
 			    "exclude"    : gedge.exclude ? gedge.exclude : false,
 			    "option_group_id" : gedge.option_group_id ? gedge.option_group_id : null,
-			    "constraints": gedge.constraints ? gedge.constraints : [],
+			    "attribute_constraints": gedge.attribute_constraints ? gedge.attribute_constraints : [],
 			    "qualifier_constraints": gedge.qualifier_constraints ? gedge.qualifier_constraints : []
 			  };
 	    input_qg.edges[id] = tmpdata;
@@ -2812,15 +2814,28 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 
 	var auxgraph = ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'];  // TODO: deal with more than one...
         add_aux_graph(kg,auxgraph,aux[auxgraph]["edges"],num,trapi);
-	div.setAttribute('onclick', 'add_cyto('+num+',"AUX'+auxgraph+'");sesame(this,a'+num+'_div);');
+	div.setAttribute('onclick', 'add_cyto('+num+',"AUX'+auxgraph+'","grid");sesame(this,a'+num+'_div);');
 
 	div.dataset.pnodes = "|filter|";
         div.append(" Analysis "+num+" :: ");
 
+	// deal with other node_binding ids (and multiple curie/ids per binding...?)  ToDo /////
+	var path_src = result.node_bindings['n0'][0].id;
+	var path_end = result.node_bindings['n1'][0].id;
+
+        var span = document.createElement("span");
+        span.className = 'qprob p0';
+        span.title = "Source node";
+        span.append(kg.nodes[path_src]["name"]);
+        div.append(span);
+
 	for (pnode of get_node_list_in_paths(ranal.path_bindings,kg,aux).sort()) {
-            var span = document.createElement("span");
+	    if (pnode == path_src || pnode == path_end)
+		continue;
+
+	    span = document.createElement("span");
             // span.className = 'numnew explevel';
-            span.className = 'qprob';
+            span.className = 'qprob hoverable';
 	    span.title = "Filter all Paths that contain ["+pnode+"]";
             span.append(kg.nodes[pnode]["name"]);
 	    span.setAttribute('onclick', 'filter_results("paths","'+pnode+'");');
@@ -2830,7 +2845,14 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 	    div.dataset.pnodes += "|"+pnode+"|";
 	}
 
-        var cnf = 'n/a';
+	span = document.createElement("span");
+        span.className = 'qprob p0';
+        span.title = "Target node";
+        span.append(kg.nodes[path_end]["name"]);
+        div.append(span);
+
+
+	var cnf = 'n/a';
         if (Number(ranal.score))
             cnf = Number(ranal.score).toFixed(3);
         var pcl = (cnf>=0.9) ? "p9" : (cnf>=0.7) ? "p7" : (cnf>=0.5) ? "p5" : (cnf>=0.3) ? "p3" : (cnf>0.0) ? "p1" : "p0";
@@ -3224,7 +3246,9 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		    if (kmne.has_these_support_graphs && kmne.has_these_support_graphs.length > 0) {
 			kmne.__has_sgs = true;
 			for (var sgid of kmne.has_these_support_graphs)
-			    add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+			    if (!(sgid in aux))
+				throw Error("Aux graph not found: "+sgid);
+			add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
 		    }
 		    else if (kmne.attributes) {
 			for (var att of kmne.attributes) {
@@ -3364,9 +3388,9 @@ function add_graph_to_table(table,num) {
     td.append(document.createElement("br"));
 
     link = document.createElement("a");
-    link.title = 'random layout';
-    link.setAttribute('onclick', 'cylayout('+num+',"random");');
-    link.append("R");
+    link.title = 'grid layout';
+    link.setAttribute('onclick', 'cylayout('+num+',"grid");');
+    link.append("G");
     td.append(link);
     td.append(document.createElement("br"));
 
@@ -3443,7 +3467,7 @@ function add_graph_to_table(table,num) {
 
 
 
-function add_cyto(i,dataid) {
+function add_cyto(i,dataid, layout='breadthfirst') {
     // once rendered, data is set to null so as to only do this once per graph
     // //////if (cytodata[i] == null) return;
 
@@ -3519,7 +3543,7 @@ function add_cyto(i,dataid) {
 	wheelSensitivity: 0.2,
 
 	layout: {
-	    name: 'breadthfirst',
+	    name: layout,
 	    padding: 10
 	},
 
@@ -4325,6 +4349,7 @@ function mapNodeIcon(ele) {
     if (ntype.endsWith("Drug"))               { return "./ui_icons/drug.png";}
     if (ntype.endsWith("Food"))               { return "./ui_icons/food.png";}
     if (ntype.endsWith("Gene"))               { return "./ui_icons/gene.png";}
+    if (ntype.endsWith("GeneOrGeneProduct"))  { return "./ui_icons/gene.png";}
     if (ntype.endsWith("GrossAnatomicalStructure"))   { return "./ui_icons/humanoid.png";}
     if (ntype.endsWith("MolecularActivity"))  { return "./ui_icons/molecular.png";}
     if (ntype.endsWith("MolecularEntity"))    { return "./ui_icons/molecule.png";}
@@ -4740,7 +4765,7 @@ function qg_add_constraint_to_qgitem(what) {
     document.getElementById(what+"constraintOPERATOR").value = '==';
 
     if (what == 'qedge') {
-	input_qg.edges[id]['constraints'].push(constraint);
+	input_qg.edges[id]['attribute_constraints'].push(constraint);
 	qg_edge(id);
     }
     else {
@@ -4763,7 +4788,7 @@ function qg_remove_constraint_from_qedge(idx) {
     if (!id) return;
 
     if (idx > -1)
-	input_qg.edges[id]['constraints'].splice(idx, 1);
+	input_qg.edges[id]['attribute_constraints'].splice(idx, 1);
 
     qg_edge(id);
 }
@@ -4828,7 +4853,7 @@ function qg_edge(id,node1=null,node2=null) {
 	id = get_qg_id('e');
 	var newqedge = {};
 	newqedge.predicates = [];
-	newqedge.constraints = [];
+	newqedge.attribute_constraints = [];
 	newqedge.qualifier_constraints = [];
         newqedge.exclude = false;
 	newqedge.option_group_id = null;
@@ -4898,9 +4923,9 @@ function qg_edge(id,node1=null,node2=null) {
 
     htmlnode = document.getElementById('edgeeditor_cons');
     htmlnode.innerHTML = '';
-    if (input_qg.edges[id].constraints) {
+    if (input_qg.edges[id].attribute_constraints) {
 	var cindex = 0;
-	for (constraint of input_qg.edges[id].constraints) {
+	for (constraint of input_qg.edges[id].attribute_constraints) {
 	    htmlnode.appendChild(document.createTextNode(constraint.name+" "));
 	    if (constraint.not)
 		htmlnode.appendChild(document.createTextNode("NOT "));
@@ -5322,8 +5347,8 @@ function qg_clean_up(xfer) {
 	var gedge = input_qg.edges[eid];
 	if (gedge.predicates && gedge.predicates[0] == null)
 	    delete gedge.predicates;
-	if (gedge.constraints && gedge.constraints[0] == null)
-	    delete gedge.constraints;
+	if (gedge.attribute_constraints && gedge.attribute_constraints[0] == null)
+	    delete gedge.attribute_constraints;
 	if (gedge.qualifier_constraints && gedge.qualifier_constraints[0] == null)
 	    delete gedge.qualifier_constraints;
         if (gedge.option_group_id == null)
