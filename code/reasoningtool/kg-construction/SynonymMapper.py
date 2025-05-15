@@ -4,7 +4,6 @@ import os
 #sys.path.insert(0, new_path)
 
 from NormGoogleDistance import NormGoogleDistance
-#from SemMedInterface import SemMedInterface
 from QueryMyGene import QueryMyGene
 import mygene
 import requests
@@ -17,11 +16,6 @@ import pandas
 class SynonymMapper():
 
     def __init__(self):
-        #try:
-        #    self.smi = SemMedInterface()
-        #except _mysql_exceptions.OperationalError:
-        #    print('Warning: No connection was made to the SemMEdDB MySQL server.')
-        #    self.smi = None
         self.biothings_url = "http://c.biothings.io/v1/query?q="
         self.mygene_obj = mygene.MyGeneInfo()
         self.qmg = QueryMyGene()
