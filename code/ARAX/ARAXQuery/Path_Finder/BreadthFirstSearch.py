@@ -48,7 +48,7 @@ class BreadthFirstSearch:
         if hops_numbers == 0:
             return
 
-        num_cores = multiprocessing.cpu_count()
+        num_cores = min(multiprocessing.cpu_count(), 5)
 
         with multiprocessing.Pool(num_cores) as pool:
             while not path_queue.empty():
