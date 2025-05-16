@@ -9,7 +9,7 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2 - TRAPI 1.5.0
-  version: 2.10.1
+  version: 2.10.2
   x-translator:
     component: KP
     team:
