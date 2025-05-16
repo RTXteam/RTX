@@ -42,7 +42,7 @@ Host arax.ncats.io
 #### 1. Build and load KG2c:
 
 - [ ] merge `master` into the branch being used for this KG2 version (which would typically be named like `KG2.X.Yc`).  Record this issue number in the merge message.
-- [ ] update the four hardcoded biolink version numbers in the branch (as needed):
+- [ ] update the four hardcoded biolink and KG2c version numbers in the branch (as needed):
   - [ ] in `code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml))
   - [ ] in `code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml))
   - [ ] in `code/UI/OpenAPI/specifications/export/ARAX/1.5.0/openapi.yaml`([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/specifications/export/ARAX/1.5.0/openapi.yaml#L18))
