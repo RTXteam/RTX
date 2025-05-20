@@ -180,6 +180,7 @@ function openSection(sect) {
 
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
+    display_qg_popup('filters','hide');
 
     var e = document.getElementsByClassName("menucurrent");
     if (e) e[0].className = "menuleftitem";
@@ -202,8 +203,9 @@ function selectInput (input_id) {
 
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
+    display_qg_popup('filters','hide');
 
-    for (var s of ['qgraph_input','qjson_input','qdsl_input','qwf_input','qid_input','resp_input','qnew_input']) {
+    for (var s of ['qgraph_input','qjson_input','qdsl_input','qwf_input','qpf_input','qid_input','resp_input','qnew_input']) {
 	document.getElementById(s).style.maxHeight = null;
 	document.getElementById(s).style.visibility = 'hidden';
     }
@@ -255,11 +257,15 @@ function reset_vars() {
     if (cyobj[0]) {cyobj[0].elements().remove();}
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
+    display_qg_popup('filters','hide');
     document.getElementById("queryplan_container").innerHTML = "";
     if (document.getElementById("queryplan_stream")) {
 	document.getElementById("queryplan_streamhead").remove();
 	document.getElementById("queryplan_stream").remove();
     }
+    document.getElementById("filter_container").style.display = 'none';
+    document.getElementById("filter_nodelist").innerHTML = "";
+    document.getElementById("result_container").style.marginLeft = '';
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("provenance_container").innerHTML = "";
@@ -272,6 +278,7 @@ function reset_vars() {
     summary_tsv = [];
     columnlist = [];
     all_nodes = {};
+    UIstate["curiefilter"] = [];
     cyobj = [];
     cytodata['QG'] = 'dummy';
 }
@@ -298,6 +305,67 @@ function viewResponse() {
     }
 
     render_response(jsonInput,true);
+}
+
+
+async function postPathfinder(agent) {
+    var pf_query_graph = { "edges": {}, "nodes": {}, "paths": {} };
+    pf_query_graph.nodes['n0'] = {};
+    pf_query_graph.nodes['n0'].ids = [];
+    pf_query_graph.nodes['n0'].is_set = false;
+    pf_query_graph.nodes['n0'].set_interpretation = "BATCH";
+    pf_query_graph.nodes['n0'].constraints = [];
+    pf_query_graph.nodes['n1'] = {};
+    pf_query_graph.nodes['n1'].ids = [];
+    pf_query_graph.nodes['n1'].is_set = false;
+    pf_query_graph.nodes['n1'].set_interpretation = "BATCH";
+    pf_query_graph.nodes['n1'].constraints = [];
+    pf_query_graph.paths['p0'] = {};
+    pf_query_graph.paths['p0'].subject = 'n0';
+    pf_query_graph.paths['p0'].object = 'n1';
+    pf_query_graph.paths['p0'].predicates = ['biolink:related_to'];
+    pf_query_graph.paths['p0'].intermediate_nodes = [];
+    pf_query_graph.paths['p0'].attribute_constraints = [];
+
+    var statusdiv = document.getElementById("statusdiv");
+
+    try {
+	var pf_subject = document.getElementById("pf_subject").value.trim();
+	var pf_object = document.getElementById("pf_object").value.trim();
+	var pf_inter = document.getElementById("pf_inter").value.trim();
+
+	if (!pf_subject)
+	    throw new Error("Pathfinder Subject missing; please add.");
+	else if (!pf_object)
+	    throw new Error("Pathfinder Object missing; please add.");
+
+	var bestthing = await check_entity(pf_subject,false);
+	document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
+	if (bestthing.found) {
+            statusdiv.innerHTML += "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+pf_subject+"</i> in our knowledge graph.</p>";
+            sesame('openmax',statusdiv);
+	    pf_query_graph.nodes['n0'].ids.push(bestthing.curie);
+	}
+
+	bestthing = await check_entity(pf_object,false);
+        document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
+        if (bestthing.found) {
+            statusdiv.innerHTML += "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+pf_object+"</i> in our knowledge graph.</p>";
+            sesame('openmax',statusdiv);
+            pf_query_graph.nodes['n1'].ids.push(bestthing.curie);
+        }
+
+        if (pf_inter)
+	    pf_query_graph.paths['p0'].intermediate_nodes.push(pf_inter);
+
+	document.getElementById("jsonText").value = JSON.stringify(pf_query_graph,null,2);
+	postQuery('JSON','ARAX');
+    }
+    catch(e) {
+	console.error(e);
+        statusdiv.append(document.createElement("br"));
+        statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+    }
 }
 
 
@@ -1806,8 +1874,13 @@ function render_response(respObj,dispjson) {
         document.getElementById("logdiv").innerHTML = "<h2 style='margin-left:20px;'>No log messages in this response</h2>";
 
     // Do this *before* processing results
+    let isPathFinder = false;
     if ( respObj["table_column_names"] )
 	add_to_summary(respObj["table_column_names"],0);
+    else if (respObj.message.results.length == 1) {
+	isPathFinder = true; // might need refining...
+	add_to_summary(["Node","Curie","Count"],0);
+    }
     else
 	add_to_summary(["score","'guessence'"],0);
 
@@ -1819,16 +1892,24 @@ function render_response(respObj,dispjson) {
             update_response_stats_on_error(respObj.araxui_response,'n/a',false);
 	}
 	else {
-	    var rtext = respObj.message.results.length == 1 ? " result [ triggering PathFinder mode ]" : " results";
+	    var h2 = document.createElement("h2");
+
+	    var rtext = respObj.message.results.length == 1 ? " result" : " results";
+	    if (isPathFinder) {
+		rtext += " [ triggering PathFinder mode ]";
+		h2.className = 'statushead';
+		h2.style.marginBottom = "-15px";
+	    }
+
 	    if (respObj.total_results_count && respObj.total_results_count > respObj.message.results.length)
 		rtext += " (truncated from a total of " + respObj.total_results_count + ")";
-	    var h2 = document.createElement("h2");
-	    h2.appendChild(document.createTextNode(respObj.message.results.length + rtext));
+
+	    h2.append(respObj.message.results.length + rtext);
 	    if (respObj.message.results.length > UIstate["maxresults"]) {
-		h2.appendChild(document.createTextNode(" (*only showing first "+UIstate["maxresults"]+") [ ? ]"));
+		h2.append(" (*only showing first "+UIstate["maxresults"]+") [ ? ]");
 		h2.title = "* You can change this value in the Settings section on the left menu";
 	    }
-	    document.getElementById("result_container").appendChild(h2);
+	    document.getElementById("result_container").append(h2);
 
 	    document.getElementById("menunumresults").innerHTML = respObj.message.results.length;
             if (respObj.message.results.length > UIstate["maxresults"])
@@ -1846,7 +1927,7 @@ function render_response(respObj,dispjson) {
 
 	    var auxiliary_graphs = respObj.message["auxiliary_graphs"] ? respObj.message["auxiliary_graphs"] : null;
 	    try {
-		if (respObj.message.results.length == 1)  // ASSUME PATHFINDER, revisit later...
+		if (isPathFinder)
 		    process_pathfinder(respObj.message["results"][0],respObj.message["knowledge_graph"],auxiliary_graphs,respObj["schema_version"],respreas);
 		else
 		    process_results(respObj.message["results"],respObj.message["knowledge_graph"],auxiliary_graphs,respObj["schema_version"],respreas);
@@ -2521,39 +2602,39 @@ function add_status_divs() {
 
     var div = document.createElement("div");
     div.className = 'statushead';
-    div.appendChild(document.createTextNode("Status"));
-    document.getElementById("status_container").appendChild(div);
+    div.append("Status");
+    document.getElementById("status_container").append(div);
 
     div = document.createElement("div");
     div.className = 'status';
     div.id = 'statusdiv';
-    document.getElementById("status_container").appendChild(div);
+    document.getElementById("status_container").append(div);
 
     // results
     document.getElementById("dev_result_json_container").innerHTML = '';
 
     div = document.createElement("div");
     div.className = 'statushead';
-    div.appendChild(document.createTextNode("Dev Info"));
+    div.append("Dev Info");
     var span = document.createElement("span");
     span.style.fontStyle = "italic";
     span.style.fontWeight = 'normal';
     span.style.float = "right";
-    span.appendChild(document.createTextNode("( json responses )"));
+    span.append("( json responses )");
     div.appendChild(span);
-    document.getElementById("dev_result_json_container").appendChild(div);
+    document.getElementById("dev_result_json_container").append(div);
 
     div = document.createElement("div");
     div.className = 'status';
     div.id = 'devdiv';
-    document.getElementById("dev_result_json_container").appendChild(div);
+    document.getElementById("dev_result_json_container").append(div);
 
     // messages
     document.getElementById("messages_container").innerHTML = '';
 
     div = document.createElement("div");
     div.className = 'statushead';
-    div.appendChild(document.createTextNode("Filter Messages:"));
+    div.append("Filter Messages:");
 
     for (var status of ["Error","Warning","Info","Debug"]) {
 	span = document.createElement("span");
@@ -2563,16 +2644,16 @@ function add_status_divs() {
 	span.className = 'qprob msg'+status.toUpperCase();
 	if (status == "Debug") span.classList.add('hide');
 	span.setAttribute('onclick', 'filtermsgs(this,\"'+status.toUpperCase()+'\");');
-	span.appendChild(document.createTextNode(status));
-	div.appendChild(span);
+	span.append(status);
+	div.append(span);
     }
 
-    document.getElementById("messages_container").appendChild(div);
+    document.getElementById("messages_container").append(div);
 
     div = document.createElement("div");
     div.className = 'status';
     div.id = 'logdiv';
-    document.getElementById("messages_container").appendChild(div);
+    document.getElementById("messages_container").append(div);
 }
 
 function filtermsgs(span, type) {
@@ -2798,13 +2879,15 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 
     var div = document.createElement("h3");
     div.id = 'pathfilterstatus';
+    div.className = 'status';
+    div.style.padding = '15px';
     div.append("loading...");
     document.getElementById("result_container").append(div);
 
     var results_fragment = document.createDocumentFragment();
 
     var num = 0;
-    for (ranal of result.analyses) {
+    for (var ranal of result.analyses) {
 	num++;
 
 	div = document.createElement("div");
@@ -2824,19 +2907,29 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 	var path_end = result.node_bindings['n1'][0].id;
 
         var span = document.createElement("span");
-        span.className = 'qprob p0';
+        span.className = 'filtertag p0';
         span.title = "Source node";
         span.append(kg.nodes[path_src]["name"]);
         div.append(span);
 
-	for (pnode of get_node_list_in_paths(ranal.path_bindings,kg,aux).sort()) {
+	for (var pnode of get_node_list_in_paths(ranal.path_bindings,kg,aux).sort((a, b) => kg.nodes[a]['name'].localeCompare(kg.nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
+	    if (all_nodes[pnode]) {
+                all_nodes[pnode]['total']++;
+                all_nodes[pnode]['filtered']++;
+	    }
+            else {
+                all_nodes[pnode] = {};
+                all_nodes[pnode]['name'] = kg.nodes[pnode]["name"];
+		all_nodes[pnode]['total'] = 1;
+		all_nodes[pnode]['filtered'] = 1;
+	    }
+
 	    if (pnode == path_src || pnode == path_end)
 		continue;
 
 	    span = document.createElement("span");
-            // span.className = 'numnew explevel';
-            span.className = 'qprob hoverable';
-	    span.title = "Filter all Paths that contain ["+pnode+"]";
+            span.className = 'filterbutton';
+	    span.title = "Filter for all Paths that contain ["+pnode+"]";
             span.append(kg.nodes[pnode]["name"]);
 	    span.setAttribute('onclick', 'filter_results("paths","'+pnode+'");');
 	    span.dataset.curie = pnode;
@@ -2846,7 +2939,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 	}
 
 	span = document.createElement("span");
-        span.className = 'qprob p0';
+        span.className = 'filtertag p0';
         span.title = "Target node";
         span.append(kg.nodes[path_end]["name"]);
         div.append(span);
@@ -2901,13 +2994,27 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 
     document.getElementById("result_container").append(results_fragment);
 
+    var num = 1;
+    for (let pnode of Object.keys(all_nodes).sort(function(a, b) { return all_nodes[a]['total'] > all_nodes[b]['total'] ? -1 : 1; }))
+        add_to_summary([kg.nodes[pnode]["name"], pnode,
+			//all_nodes[pnode]]
+			"<a title='display all paths that contain this node' href='javascript:filter_results(\"paths\", \""+pnode+"\",true)'>"+all_nodes[pnode]['total']+"</a>"]
+		       ,num++);
+
+
     document.getElementById("pathfilterstatus").innerHTML = '';
     document.getElementById("pathfilterstatus").append(result.analyses.length+' total analyses  (Click on the node bubbles below to set/remove filters)');
+    filter_results("paths");
 }
 
-function filter_results(which, what) {
+function filter_results(which, what="CURRENT", only=false) {
     var fstat_node = document.getElementById("pathfilterstatus");
     fstat_node.innerHTML = '';
+
+    if (event)
+	event.stopPropagation();
+    else
+	openSection('results');
 
     var wait = getAnimatedWaitBar("100px");
     wait.style.marginRight = "10px";
@@ -2916,7 +3023,7 @@ function filter_results(which, what) {
     window.scrollTo(0,0);
 
     var timeout = setTimeout(function() {
-	var howmany = filter_paths(what);
+	var howmany = filter_paths(what, only);
 
 	fstat_node.innerHTML = '';
 	fstat_node.append('Displaying '+howmany+' analyses');
@@ -2924,24 +3031,193 @@ function filter_results(which, what) {
 	if (UIstate["curiefilter"].length == 0)
 	    fstat_node.append(' (all)');
 	else
-	    fstat_node.append(' (filtering on: '+UIstate["curiefilter"]+')');
+	    fstat_node.append(display_pathfilter());
+	display_filterbar();
+
+	var span = document.createElement("span");
+	//span.className = 'filterbutton';
+	span.className = 'questionBox button';
+	span.style.marginLeft = '15px';
+	span.title = "Show all filter-nodes";
+	span.append('Node Filters');
+	span.setAttribute('onclick', 'display_qg_popup("filters");');
+	fstat_node.append(span);
+
     }, 150 );  // give it time so animation can start
 
-    event.stopPropagation();
 }
 
-function filter_paths(curie) {
+function display_filternodes(howmany=null) {
+    for (let fnode of Object.keys(all_nodes).sort((a, b) => all_nodes[a]['name'].localeCompare(all_nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
+	let htmlnode;
+	if (document.getElementById("nodefilter_"+fnode))
+	    htmlnode = document.getElementById("nodefilter_"+fnode);
+	else {
+	    htmlnode = document.createElement("span");
+	    htmlnode.id = "nodefilter_"+fnode;
+	    document.getElementById('nodefilter_div').append(htmlnode);
+	}
+	htmlnode.innerHTML = '';
+
+        var count = document.createElement("span");
+	count.style.float = 'right';
+        count.className = 'filtertag';
+        count.style.padding = '0px 4px';
+        count.style.border = '0';
+
+	if (UIstate["curiefilter"].includes("X::"+fnode)) {
+            count.className = 'filtertag p3';
+	    htmlnode.className = 'filterbutton p1';
+            htmlnode.title = "Remove this filter";
+            htmlnode.setAttribute('onclick', 'filter_paths("'+"X::"+fnode+'", false, false);');
+	}
+	else if (UIstate["curiefilter"].includes(fnode)) {
+            count.className = 'filtertag p7';
+	    htmlnode.className = 'filterbutton p9';
+            htmlnode.title = "Remove this filter";
+            htmlnode.setAttribute('onclick', 'filter_paths("'+fnode+'", false, false);');
+	}
+	else {
+	    htmlnode.className = 'filtertag simp';
+	    htmlnode.setAttribute('onclick', '');
+
+	    var minus = document.createElement("span");
+            minus.className = 'filtertag simp';
+            minus.style.float = 'right';
+            minus.style.padding = '0px 4px';
+            minus.style.border = '0';
+            minus.title = "filter inactive";
+            //minus.innerHTML = '&minus;';
+            minus.innerHTML = '&times;';
+	    htmlnode.append(minus);
+
+	    var check = document.createElement("span");
+	    check.className = 'filtertag simp';
+	    check.style.float = 'right';
+            check.style.padding = '0px 4px';
+            check.style.border = '0';
+            check.title = "filter inactive";
+            check.append('+');
+	    htmlnode.append(check);
+
+	    if (all_nodes[fnode]['filtered'] > 0) {
+		htmlnode.className = 'filtertag';
+		minus.className = 'filterbutton p1';
+		minus.title = "EXCLUDE results with this node";
+		check.className = 'filterbutton p9';
+		check.title = "Add this filter";
+		minus.setAttribute('onclick', 'filter_paths("X::'+fnode+'", false, false);');
+		check.setAttribute('onclick', 'filter_paths("'+fnode+'", false, false);');
+	    }
+	    else {
+		count.className = 'filtertag simp';
+		count.style.color = '#98afc7';
+	    }
+	}
+
+	count.append(all_nodes[fnode]['filtered']);
+        htmlnode.append(count);
+
+	htmlnode.append(all_nodes[fnode]['name']);
+    }
+
+    if (howmany!=null)
+	document.getElementById("nodefilterbutton").value = "View " + howmany + " Results";
+}
+
+
+function display_pathfilter() {
+    var filterspan = document.createElement("span");
+    filterspan.append('. Filters (click to remove) : ');
+
+    for (var fcur of UIstate["curiefilter"]) {
+	var span = document.createElement("span");
+        if (fcur.startsWith("X::")) {
+            span.className = 'filterbutton p1';
+            span.append(all_nodes[fcur.replace("X::","")]['name']);
+	}
+	else {
+            span.className = 'filterbutton p9';
+            span.append(all_nodes[fcur]['name']);
+	}
+        span.title = "Remove this filter";
+        span.setAttribute('onclick', 'filter_results("paths","'+fcur+'");');
+	filterspan.append(span);
+    }
+    return filterspan;
+}
+
+
+function display_filterbar(howmany=4000) {
+    var filterbar = document.getElementById("filter_nodelist");
+    filterbar.innerHTML = '';
+
+    var num = 0;
+    for (let pnode of Object.keys(all_nodes).sort(function(a, b) { return all_nodes[a]['filtered'] > all_nodes[b]['filtered'] ? -1 : 1; })) {
+	if (UIstate["curiefilter"].includes(pnode))
+	    continue;
+        if ((num++ == howmany) || (all_nodes[pnode]['filtered'] == 0))
+	    break;
+
+	var fnode = document.createElement("a");
+	fnode.className = 'hoverable';
+	fnode.href = "javascript:filter_results(\"paths\", \""+pnode+"\")";
+	fnode.title = pnode;
+        fnode.append(all_nodes[pnode]['name']+" ("+all_nodes[pnode]['filtered']+")");
+	filterbar.append(fnode);
+	filterbar.append(document.createElement("br"));
+    }
+    if (num > 0) {
+	document.getElementById("filter_container").style.display = 'block';
+	document.getElementById("result_container").style.marginLeft = '240px';
+    }
+    else {
+	document.getElementById("filter_container").style.display = 'none';
+	document.getElementById("result_container").style.marginLeft = '';
+    }
+}
+
+
+function cancel_filter_paths() {
+    if ('curiefilter_prev' in UIstate) {
+	UIstate["curiefilter"] = UIstate["curiefilter_prev"].slice();
+	delete UIstate["curiefilter_prev"];
+    }
+    filter_paths("CURRENT",false, false);
+}
+
+function filter_paths(curie="CURRENT",only=false, display=true) {
+    if (event)
+        event.stopPropagation();
+
+    if (display)
+	delete UIstate["curiefilter_prev"];
+    else if (!('curiefilter_prev' in UIstate))
+	UIstate["curiefilter_prev"] = UIstate["curiefilter"].slice(); // creates a new array
+
+    if (only)
+	UIstate["curiefilter"] = [];
     if (UIstate["curiefilter"].includes(curie))
 	UIstate["curiefilter"].splice(UIstate["curiefilter"].indexOf(curie),1);
-    else
+    else if (curie != "CURRENT")
 	UIstate["curiefilter"].push(curie);
+
+    for (var pnode in all_nodes)
+        all_nodes[pnode]['filtered'] = 0;
 
     var showing = 0;
     for (var pathhead of document.querySelectorAll('[id^="pathdivhead_"]')) {
 	var showit = true;
 
         for (var curiefilter of UIstate["curiefilter"]) {
-	    if(!pathhead.dataset.pnodes.includes("|"+curiefilter+"|")) {
+
+            if (curiefilter.startsWith("X::")) {
+		if (pathhead.dataset.pnodes.includes("|"+curiefilter.replace("X::","")+"|")) {
+                    showit = false;
+                    break;
+		}
+	    }
+	    else if (!pathhead.dataset.pnodes.includes("|"+curiefilter+"|")) {
 		showit = false;
 		break;
 	    }
@@ -2949,22 +3225,29 @@ function filter_paths(curie) {
 
 	if (showit) {
 	    showing++;
-	    pathhead.style.display = '';
+	    if (display)
+		pathhead.style.display = '';
             for (var curielabel of pathhead.children) {
                 if (curielabel.dataset && curielabel.dataset.curie) {
-                    if (UIstate["curiefilter"].includes(curielabel.dataset.curie))
-			curielabel.classList.add('p3');
-		    else
-			curielabel.classList.remove('p3');
+                    all_nodes[curielabel.dataset.curie]['filtered']++;
+
+		    if (display) {
+			if (UIstate["curiefilter"].includes(curielabel.dataset.curie))
+			    curielabel.classList.add('p9');
+			else
+			    curielabel.classList.remove('p9');
+		    }
 		}
 	    }
 	}
-	else {
+	else if (display) {
 	    if (pathhead.classList.contains('openaccordion'))
 		pathhead.click();
 	    pathhead.style.display = 'none';
 	}
     }
+
+    display_filternodes(showing);
 
     return showing;
 }
@@ -3160,7 +3443,6 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		var span100 = document.createElement("span");
 		span100.style.float = 'right';
 		span100.style.marginRight = '70px';
-		span100.style.marginTop = '5px';
 
                 var span = document.createElement("span");
 		span.className = pcl+' qprob';
@@ -5375,7 +5657,9 @@ function qg_select(what) {
 
 function display_qg_popup(which,how) {
     var popup;
-    if (which == 'edge')
+    if (which == 'filters')
+	popup = document.getElementById('nodefilter_container');
+    else if (which == 'edge')
 	popup = document.getElementById('edgeeditor');
     else
 	popup = document.getElementById('nodeeditor');
@@ -5416,16 +5700,15 @@ function populate_dsl_commands() {
     dsl_node.innerHTML = '';
 
     var opt = document.createElement('option');
-    opt.style.borderBottom = "1px solid black";
     opt.value = '';
     opt.innerHTML = "Select DSL Command&nbsp;&nbsp;&nbsp;&#8675;";
-    dsl_node.appendChild(opt);
+    dsl_node.append(opt);
 
     for (var com in araxi_commands) {
 	opt = document.createElement('option');
 	opt.value = com;
-	opt.innerHTML = com;
-	dsl_node.appendChild(opt);
+	opt.append(com);
+	dsl_node.append(opt);
     }
 }
 
@@ -5496,7 +5779,6 @@ function show_dsl_command_options(command) {
 	    sel.id = "__param__"+par;
 
 	    var opt = document.createElement('option');
-	    opt.style.borderBottom = "1px solid black";
 	    opt.value = '';
 	    opt.innerHTML = "Select&nbsp;&nbsp;&nbsp;&#8675;";
 	    sel.appendChild(opt);
@@ -5727,7 +6009,6 @@ function populate_wf_operations() {
     var arax = document.getElementById("arax_only").checked;
 
     var opt = document.createElement('option');
-    opt.style.borderBottom = "1px solid black";
     opt.value = '';
     opt.innerHTML = "Workflow Operation&nbsp;&nbsp;&nbsp;&#8675;";
     wf_node.appendChild(opt);
@@ -5832,7 +6113,6 @@ function show_wf_operation_options(operation, index) {
 	    sel.id = "__param__"+par;
 
 	    var opt = document.createElement('option');
-	    opt.style.borderBottom = "1px solid black";
 	    opt.value = '';
 	    opt.innerHTML = "Select&nbsp;&nbsp;&nbsp;&#8675;";
 	    sel.appendChild(opt);
@@ -6021,6 +6301,7 @@ async function import_intowf(what,fromqg) {
 
 function load_meta_knowledge_graph() {
     var allnodes_node = document.getElementById("allnodetypes");
+    var pf_inter_node = document.getElementById("pf_inter");
 
     fetch(providers["ARAX"].url + "/meta_knowledge_graph?format=simple")
         .then(response => {
@@ -6032,22 +6313,27 @@ function load_meta_knowledge_graph() {
 	    all_predicates = data.supported_predicates;
 
 	    allnodes_node.innerHTML = '';
+	    pf_inter_node.innerHTML = '';
 	    var opt = document.createElement('option');
 	    opt.value = '';
-	    opt.style.borderBottom = "1px solid black";
-	    opt.innerHTML = "Add Category to Node&nbsp;&nbsp;&nbsp;&#8675;";
-	    allnodes_node.appendChild(opt);
+	    opt.append("Add Category to Node\u00A0\u00A0\u00A0\u00A0\u21E3");
+	    allnodes_node.append(opt);
+	    opt = document.createElement('option');
+            opt.value = '';
+            opt.append("[Optional] Intermediate Node Category\u00A0\u00A0\u00A0\u00A0\u21E3 ---- disabled until implemented");
+	    pf_inter_node.append(opt);
 
             for (const n in data.predicates_by_categories) {
 		opt = document.createElement('option');
 		opt.value = n;
-		opt.innerHTML = n;
-		allnodes_node.appendChild(opt);
+		opt.append(n);
+		allnodes_node.append(opt);
+		//pf_inter_node.append(opt.cloneNode(true)); // uncomment once feature is ready
 	    }
             opt = document.createElement('option');
 	    opt.value = 'NONSPECIFIC';
-	    opt.innerHTML = "Unspecified/Non-specific";
-	    allnodes_node.appendChild(opt);
+	    opt.append("Unspecified/Non-specific");
+	    allnodes_node.append(opt);
 
 	    qg_display_edge_predicates(true);
 
@@ -6055,22 +6341,23 @@ function load_meta_knowledge_graph() {
 	    all_preds_node.innerHTML = '';
 	    opt = document.createElement('option');
 	    opt.value = '';
-	    opt.innerHTML = "Full List of Predicates&nbsp;("+all_predicates.length+")&nbsp;&nbsp;&nbsp;&#8675;";
-	    all_preds_node.appendChild(opt);
+	    opt.append("Full List of Predicates ("+all_predicates.length+")\u00A0\u00A0\u00A0\u21E3");
+	    all_preds_node.append(opt);
 	    for (const p of all_predicates.sort()) {
 		opt = document.createElement('option');
 		opt.value = p;
-		opt.innerHTML = p;
-		all_preds_node.appendChild(opt);
+		opt.append(p);
+		all_preds_node.append(opt);
 	    }
 	})
         .catch(error => {
 	    allnodes_node.innerHTML = '';
+            pf_inter_node.innerHTML = '';
 	    var opt = document.createElement('option');
 	    opt.value = '';
-	    opt.style.borderBottom = "1px solid black";
-	    opt.innerHTML = "-- Error Loading Node Types --";
-	    allnodes_node.appendChild(opt);
+	    opt.append("-- Error Loading Node Categories --");
+	    allnodes_node.append(opt);
+            pf_inter_node.append(opt.cloneNode(true));
 	    console.error(error);
 	});
 
@@ -8503,20 +8790,20 @@ function showVersionAlert(version) {
 
     var div = document.createElement("div");
     div.className = 'statushead';
-    div.appendChild(document.createTextNode("Version Alert"));
-    popup.appendChild(div);
+    div.append("Version Alert");
+    popup.append(div);
 
     div = document.createElement("div");
     div.className = 'status error';
-    div.appendChild(document.createElement("br"));
-    div.appendChild(document.createTextNode("You are using an out-of-date version of this interface ("+UIstate["version"]+")"));
-    div.appendChild(document.createElement("br"));
-    div.appendChild(document.createElement("br"));
-    div.appendChild(document.createTextNode("Please use the Reload button below to load the latest version ("+version+")"));
-    div.appendChild(document.createElement("br"));
-    div.appendChild(document.createElement("br"));
-    div.appendChild(document.createElement("br"));
-    popup.appendChild(div);
+    div.append(document.createElement("br"));
+    div.append("You are using an out-of-date version of this interface ("+UIstate["version"]+")");
+    div.append(document.createElement("br"));
+    div.append(document.createElement("br"));
+    div.append("Please use the Reload button below to load the latest version ("+version+")");
+    div.append(document.createElement("br"));
+    div.append(document.createElement("br"));
+    div.append(document.createElement("br"));
+    popup.append(div);
 
     var button = document.createElement("input");
     button = document.createElement("input");
@@ -8525,7 +8812,7 @@ function showVersionAlert(version) {
     button.title = 'Reload to update';
     button.value = 'Reload';
     button.setAttribute('onclick', 'window.location.reload();');
-    popup.appendChild(button);
+    popup.append(button);
 
     button = document.createElement("input");
     button.className = "questionBox button";
@@ -8534,11 +8821,39 @@ function showVersionAlert(version) {
     button.title = 'Dismiss alert';
     button.value = 'Dismiss';
     button.setAttribute('onclick', 'document.body.removeChild(document.getElementById("valert"))');
-    popup.appendChild(button);
+    popup.append(button);
 
     dragElement(popup);
-    document.body.appendChild(popup);
+    document.body.append(popup);
 }
+
+
+function allowDrop(event) {
+    event.preventDefault();
+    event.target.classList.add("drophere");
+}
+function stopDrop(event) {
+    event.preventDefault();
+    event.target.classList.remove("drophere");
+}
+function dropFile(event) {
+    stopDrop(event);
+
+    if (!event.dataTransfer.files)
+        return false;
+
+    var file = event.dataTransfer.files[0];
+    reader = new FileReader();
+    reader.onload = function(ev) {
+        event.target.value = ev.target.result;
+        const lineCount = ev.target.result.split('\n').length;
+        document.getElementById("statusdiv").append(document.createElement("br"));
+        document.getElementById("statusdiv").append("Read in "+lineCount+" lines from dropped file.");
+        document.getElementById("statusdiv").append(document.createElement("br"));
+    };
+    reader.readAsText(file);
+}
+
 
 
 // from w3schools (mostly)

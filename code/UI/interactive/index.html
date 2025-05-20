@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=17">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=18">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="cytoscape-expand-collapse.js"></script>
@@ -26,35 +26,34 @@
 <body onload="main();">
 
 <div class="menuleft">
-<br><br><br>
-&nbsp;Input<br>
-<div id="queryMenu" onclick="openSection('query');" class="menucurrent">Queries</div>
-<div id="settingsMenu" onclick="openSection('settings');" class="menuleftitem">Settings</div>
-<div id="listaMenu" onclick="openSection('lista');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
-<div id="listbMenu" onclick="openSection('listb');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
-<div id="compareMenu" onclick="openSection('compare');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
-<br>
-<div id="historyMenu" onclick="openSection('history');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
-<!-- div onclick="openSection('status');" class="menuleftitem">Status</div -->
-<hr>
-&nbsp;Output<br>
-<div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
-<div id="provenanceMenu" onclick="openSection('provenance');" class="menuleftitem" title="List of Knowledge Providers that were invoked when answering this query">Provenance</div>
-<div id="kgMenu" onclick="openSection('kg');add_cyto(0,'KG');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
-<div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
-<div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
-<hr>
-&nbsp;Tools<br>
-<div id="synonymMenu" onclick="openSection('synonym');" class="menuleftitem">Synonyms</div>
-<div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
-<br><br>
-<div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">System Activity</div>
-<div id="kpinfoMenu" onclick="openSection('kpinfo');" class="menuleftitem">SmartAPI Info</div>
-<div id="systestMenu" onclick="openSection('systest');" class="menuleftitem">Translator Testing</div>
-<div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
-<hr>
-<div title="ARAX UI version" class="tiny" id="uiversionstring">version...</div>
-<br>
+  <br><br><br>
+  &nbsp;Input<br>
+  <div id="queryMenu" onclick="openSection('query');" class="menucurrent">Queries</div>
+  <div id="settingsMenu" onclick="openSection('settings');" class="menuleftitem">Settings</div>
+  <div id="listaMenu" onclick="openSection('lista');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
+  <div id="listbMenu" onclick="openSection('listb');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
+  <div id="compareMenu" onclick="openSection('compare');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
+  <br>
+  <div id="historyMenu" onclick="openSection('history');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
+  <hr>
+  &nbsp;Output<br>
+  <div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
+  <div id="provenanceMenu" onclick="openSection('provenance');" class="menuleftitem" title="List of Knowledge Providers that were invoked when answering this query">Provenance</div>
+  <div id="kgMenu" onclick="openSection('kg');add_cyto(0,'KG');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
+  <div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
+  <div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
+  <hr>
+  &nbsp;Tools<br>
+  <div id="synonymMenu" onclick="openSection('synonym');" class="menuleftitem">Synonyms</div>
+  <div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
+  <br><br>
+  <div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">System Activity</div>
+  <div id="kpinfoMenu" onclick="openSection('kpinfo');" class="menuleftitem">SmartAPI Info</div>
+  <div id="systestMenu" onclick="openSection('systest');" class="menuleftitem">Translator Testing</div>
+  <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
+  <hr>
+  <div title="ARAX UI version" class="tiny" id="uiversionstring">version...</div>
+  <br>
 </div>
 
 <div class="banner" banner-bg-text="ARAX User Interface">
@@ -87,6 +86,7 @@
   <img src="qwf.png"   class="slink" id="qwf_link"    onclick="selectInput('qwf');"    title="Enter Query via Workflow"/>
   <img src="qjson.png" class="slink" id="qjson_link"  onclick="selectInput('qjson');"  title="Enter JSON representation of Query Graph"/>
   <img src="qdsl.png"  class="slink" id="qdsl_link"   onclick="selectInput('qdsl');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
+  <img src="qpf.png"   class="slink" id="qpf_link"    onclick="selectInput('qpf'); "   title="Enter PathFinder Query"/>
   <img src="qid.png"   class="slink" id="qid_link"    onclick="selectInput('qid');"    title="Retrieve stored response by id"/>
   <img src="resp.png"  class="slink" id="resp_link"   onclick="selectInput('resp');"   title="View/Render Response JSON object"/>
   <img src="qnew.png"  class="slink" id="qnew_link"   onclick="selectInput('qnew');"   title="View list of most recent queries"/>
@@ -298,14 +298,32 @@
       <a href="javascript:pasteExample('PATH1');" style="position:relative; left:140px;">Pathfinder</a>
     </span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
-            <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
-	    <br>
-	    <a style="margin-left: 50px;" href="javascript:display_QG_from_JSON();">Edit in Visual QueryGraph pane</a>
-	    <br><br>
-	    <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('JSON','ARAX');">
-	    <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('JSON','ARS');">
-	    <input type="button" class="questionBox button" name="action" value="Post to OTHER" onClick="postQuery('JSON','EXT');" title="Post to a non-ARAX TRAPI-supporting API endpoint">
-	    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
+      <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
+      <br>
+      <a style="margin-left: 50px;" href="javascript:display_QG_from_JSON();">Edit in Visual QueryGraph pane</a>
+      <br><br>
+      <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('JSON','ARAX');">
+      <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('JSON','ARS');">
+      <input type="button" class="questionBox button" name="action" value="Post to OTHER" onClick="postQuery('JSON','EXT');" title="Post to a non-ARAX TRAPI-supporting API endpoint">
+      Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
+    </form>
+  </div>
+
+  <div class="inputsection" id="qpf_input">
+    <h3>PathFinder Input:</h3>
+    <p>Pathfinder queries allow you to explore pathways connecting two concepts, optionally with a required intermediate category in the returned paths</p>
+    <form id="pfForm" name="pfForm" style="display:inline-grid; grid-template-columns: max-content max-content;"  method="post" action="postQuery('JSON','ARAX');">
+      <span style="margin-top:14px;text-align:right;">Subject:</span>
+      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="pf_subject" name="pf_subject" size="100" maxlength="1000"/>
+      <span style="margin-top:14px;text-align:right;">Intermediate:</span>
+      <select disabled="disabled" class="questionBox" id="pf_inter">
+        <option style="border-bottom:1px solid black;" value="">[Optional] Intermediate Node Category&nbsp;&nbsp;&nbsp;&#8675;</option>
+        <option>...loading</option>
+      </select>
+      <span style="margin-top:14px;text-align:right;">Object:</span>
+      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="pf_object" name="pf_object" size="100" maxlength="1000"/>
+      <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postPathfinder('ARAX');">
+      <br/>
     </form>
   </div>
 
@@ -389,14 +407,13 @@
 
   <div class="inputsection" id="resp_input">
     <h3 style="display:inline;">Response Input:</h3>
-        <span class="tiny" style="position:relative; left:150px;">Copy-paste a <b>JSON TRAPI Response</b> into the box below</span>
-	<form id="responseForm" name="responseForm" method="post" action="viewResponse();">
-	  <textarea class="questionBox" wrap="off" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
-	  <br/>
-	  <input type="button" class="questionBox button" name="action" value="VIEW" onClick="viewResponse();">
-	</form>
+    <span class="tiny" style="position:relative; left:150px;">DRAG a file (or copy-paste) with a <b>JSON TRAPI Response</b> into the box below</span>
+    <form id="responseForm" name="responseForm" method="post" action="viewResponse();">
+      <textarea placeholder="PASTE a TRAPI response document, or DRAG a file into this box" class="questionBox" wrap="off" ondrop="dropFile(event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
+      <br/>
+      <input type="button" class="questionBox button" name="action" value="VIEW" onClick="viewResponse();">
+    </form>
   </div>
-
 
   <div class="inputsection" id="qnew_input">
     <h3 style="display:inline;">Latest Responses:</h3>
@@ -421,18 +438,18 @@
 
 
 <div class="pagesection" id="listaDiv">
-<div class="statushead">List A (<span id="numlistitemsA">-</span>)</div>
-<div class="status" id="listdivA">Items in this list can be compared to those in List B, or added to a node in the query_graph via the bulk import functionality.</div>
+  <div class="statushead">List A (<span id="numlistitemsA">-</span>)</div>
+  <div class="status" id="listdivA">Items in this list can be compared to those in List B, or added to a node in the query_graph via the bulk import functionality.</div>
 </div>
 
 <div class="pagesection" id="listbDiv">
-<div class="statushead">List B (<span id="numlistitemsB">-</span>)</div>
-<div class="status" id="listdivB">Items in this list can be compared to those in List A, or added to a node in the query_graph via the bulk import functionality.</div>
+  <div class="statushead">List B (<span id="numlistitemsB">-</span>)</div>
+  <div class="status" id="listdivB">Items in this list can be compared to those in List A, or added to a node in the query_graph via the bulk import functionality.</div>
 </div>
 
 <div class="pagesection" id="compareDiv">
-<div class="statushead">Compare Lists A and B </div>
-<div class="status" id="comparelists">Items in lists A and B will be automatically displayed side-by-side for ease of comparison.</div>
+  <div class="statushead">Compare Lists A and B </div>
+  <div class="status" id="comparelists">Items in lists A and B will be automatically displayed side-by-side for ease of comparison.</div>
 </div>
 
 <div class="pagesection" id="statusDiv">
@@ -501,7 +518,21 @@
 
 <div class="pagesection" id="resultsDiv">
   <div id="queryplan_container"></div>
+  <div id="filter_container">
+    <div class="statushead">Quick Filter</div>
+    <div id="filter_nodelist" class="status tiny" style="padding:5px;"></div>
+  </div>
   <div id="result_container"></div>
+  <!-- div id="nodefilter_container" style="max-height:85%;overflow:auto;top:100px;left:50px;visibility:hidden;" tabindex="9999" class="alertbox" -->
+  <div id="nodefilter_container" tabindex="9999" class="alertbox">
+    <div style="margin-top:0;" class="statushead">Filter Paths by Nodes<span title="Close window" class="clq clwin" onclick="cancel_filter_paths();display_qg_popup('filters','hide');">&#9587;</span></div>
+    <div style="padding-top:10px;" class="status">
+      <div id="nodefilter_div" class="filterlist"></div>
+      <input id="nodefilterbutton" type="button" style="float:right;" class="questionBox button" name="action" title="Filter by Selected Nodes" value="Apply Filter" onClick="filter_results('paths');display_qg_popup('filters','hide');">
+      <a style="cursor:pointer; margin-right:30px;margin-top:10px; float:right;" title="dismiss changes and close window" onclick="cancel_filter_paths();display_qg_popup('filters','hide');">Dismiss</a>
+      <br clear="all"><br>
+    </div>
+  </div>
 </div>
 
 <div class="pagesection" id="messagesDiv">
