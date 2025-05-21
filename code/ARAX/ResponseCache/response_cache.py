@@ -821,12 +821,12 @@ class ResponseCache:
                     eprint(f"attribute_caching={attribute_caching}")
                     if attribute_caching is True and 'edges' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['edges'] is not None:
                         for edge_key, edge in envelope['message']['knowledge_graph']['edges'].items():
-                            eprint(f"edge {edge_key}")
+                            #eprint(f"edge {edge_key}")
                             if 'attributes' in edge and edge['attributes'] is not None:
                                 for attribute in edge['attributes']:
                                     if 'attribute_type_id' in attribute and attribute['attribute_type_id'] is not None and attribute['attribute_type_id'] == 'biolink:support_graphs':
                                         edge['has_these_support_graphs'] = attribute['value']
-                                        eprint(f"has_these_support_graphs={attribute['value']}")
+                                        #eprint(f"has_these_support_graphs={attribute['value']}")
                             component_uuid = 'Z' + str(uuid.uuid4())
                             filename = f"{component_cache_dir}/{component_uuid}.json"
                             with open(filename, 'w') as outfile:

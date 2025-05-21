@@ -36,11 +36,11 @@ class NormGoogleDistance:
         try:
             res = requests.get(url_str, headers={'accept': 'application/json'}, timeout=120)
         except requests.exceptions.Timeout:
-            print('HTTP timeout in SemMedInterface.py; URL: ' + url_str, file=sys.stderr)
+            print('HTTP timeout in NormGoogleDistance.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  ## take a timeout because NCBI rate-limits connections
             return None
         except requests.exceptions.ConnectionError:
-            print('HTTP connection error in SemMedInterface.py; URL: ' + url_str, file=sys.stderr)
+            print('HTTP connection error in NormGoogleDistance.py; URL: ' + url_str, file=sys.stderr)
             time.sleep(1)  ## take a timeout because NCBI rate-limits connections
             return None
         except sqlite3.OperationalError:

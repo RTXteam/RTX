@@ -35,7 +35,7 @@ def run_tests(db, pathfinder_type):
             counter += 1
             if db.has_pair(source, destination):
                 continue
-            if zeros < 176:
+            if zeros < 0:
                 zeros += 1
                 continue
             paths = get_paths_from_path_finder(pathfinder_type, source, destination)
@@ -99,4 +99,4 @@ def test(pathfinder_type, file_name):
 
 
 if __name__ == "__main__":
-    test("new", "true_neighbors")
+    test("new", "tuned_hyperparameters")

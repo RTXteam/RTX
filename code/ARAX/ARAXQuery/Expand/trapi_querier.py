@@ -5,6 +5,7 @@ import sys
 import os
 import time
 from collections import defaultdict
+import math
 
 import aiohttp
 import asyncio
@@ -30,6 +31,36 @@ from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.retrieval_source import RetrievalSource
+
+
+def _remove_attributes_with_invalid_values(response_json: dict,
+                                           kp_curie: str,
+                                           log: ARAXResponse) -> \
+                                           tuple[dict, int]:
+    r = response_json
+    count_att_dropped = 0
+    for ekey, edge_obj in r['message']['knowledge_graph']['edges'].items():
+        new_attributes = []
+        if 'attributes' in edge_obj:
+            for attribute_obj in edge_obj['attributes']:
+                att_source = attribute_obj.get('attribute_source', 'Unknown')
+                if 'value' in attribute_obj:
+                    value_obj = attribute_obj['value']
+                    if isinstance(value_obj, float) and \
+                       ((math.isinf(value_obj)) or math.isnan(value_obj)):
+                        count_att_dropped += 1
+                        log.warning(f"from KP {kp_curie}, "
+                                    f"from attribute source {att_source}, "
+                                    f"in edge {ekey}, "
+                                    f"found invalid value {value_obj}; "
+                                    "dropping attribute")
+                        continue
+                new_attributes.append(attribute_obj)
+            edge_obj['attributes'] = new_attributes
+    if count_att_dropped > 0:
+        log.warning(f"For response from KP {kp_curie}, "
+                    f"total number of attributes dropped: {count_att_dropped}")
+    return [r, count_att_dropped]
 
 
 class TRAPIQuerier:
@@ -273,9 +304,23 @@ class TRAPIQuerier:
                 return QGOrganizedKnowledgeGraph()
 
         wait_time = round(time.time() - start)
+        json_response, cd = \
+            _remove_attributes_with_invalid_values(json_response,
+                                                   self.kp_infores_curie,
+                                                   self.log)
         answer_kg = self._load_kp_json_response(json_response, query_graph)
-        done_message = f"Returned {len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))} edges in {wait_time} seconds"
-        self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Done", done_message)
+        num_edges = len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))
+        done_message = f"Returned {num_edges} edges in {wait_time} seconds"
+        if cd == 0:
+            self.log.update_query_plan(qedge_key,
+                                       self.kp_infores_curie,
+                                       "Done",
+                                       done_message)
+        else:
+            warn_msg = f"{cd} edge attributes dropped due to invalid values"
+            self.log.update_query_plan(qedge_key, self.kp_infores_curie,
+                                       "Warning",
+                                       done_message + "; " + warn_msg)
         return answer_kg
 
     def _answer_query_using_kp(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
@@ -306,6 +351,9 @@ class TRAPIQuerier:
         else:
             json_response = kp_response.json()
 
+        json_response, _ = _remove_attributes_with_invalid_values(json_response,
+                                                                  self.kp_infores_curie,
+                                                                  self.log)
         answer_kg = self._load_kp_json_response(json_response, query_graph)
         return answer_kg
 

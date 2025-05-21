@@ -794,7 +794,20 @@ class ARAXExpander:
         # Do some post-processing (deduplicate nodes, remove self-edges..)
         if kp_to_use != 'infores:rtx-kg2':  # KG2c is already deduplicated and uses canonical predicates
             answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
-            answer_kg = self._deduplicate_nodes(answer_kg, kp_to_use, log)
+            answer_kg,\
+                dropped_edge_counts = self._deduplicate_nodes(answer_kg,
+                                                              kp_to_use,
+                                                              log)
+            for qedge_key, count in dropped_edge_counts.items():
+                if count > 0:
+                    # update query plan here
+                    done_str = log.query_plan['qedge_keys'][qedge_key][kp_to_use]['description']
+                    log.update_query_plan(qedge_key,
+                                          kp_to_use,
+                                          "Warning",
+                                          done_str + "; "
+                                          f"{count} edges dropped due "
+                                          "to node reference failure")
         if any(edges for edges in answer_kg.edges_by_qg_id.values()):  # Make sure the KP actually returned something
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, log)
 
@@ -881,7 +894,8 @@ class ARAXExpander:
         return edge_qg
 
     @staticmethod
-    def _deduplicate_nodes(answer_kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+    def _deduplicate_nodes(answer_kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> \
+            tuple[QGOrganizedKnowledgeGraph, dict[str, int]]:
         log.debug(f"{kp_name}: Deduplicating nodes")
         deduplicated_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in answer_kg.nodes_by_qg_id},
                                                     edges={qedge_key: dict() for qedge_key in answer_kg.edges_by_qg_id})
@@ -920,29 +934,27 @@ class ARAXExpander:
                     deduplicated_kg.add_node(node_key, node, qnode_key)
 
         # Then update the edges to reflect changes made to the nodes
+        dropped_edge_count = dict()
         for qedge_key, edges in answer_kg.edges_by_qg_id.items():
-            dropped_edge_count = 0
+            dropped_edge_count[qedge_key] = 0
             for edge_key, edge in edges.items():
                 drop_edge = False
                 if edge.subject not in curie_mappings:
                     log.warning(f"{kp_name}: edge subject not in curie mappings; qedge key: {qedge_key}; subject ID: {edge.subject}")
                     drop_edge = True
-                    dropped_edge_count += 1
+                    dropped_edge_count[qedge_key] += 1
                 else:
                     edge.subject = curie_mappings.get(edge.subject)
                 if edge.object not in curie_mappings:
                     log.warning(f"{kp_name}: edge object not in curie mappings; qedge key: {qedge_key}; object ID: {edge.object}")
                     drop_edge = True
-                    dropped_edge_count += 1
+                    dropped_edge_count[qedge_key] += 1
                 else:
                     edge.object = curie_mappings.get(edge.object)
                 if not drop_edge:
                     deduplicated_kg.add_edge(edge_key, edge, qedge_key)
-            if dropped_edge_count > 0:
-                log.update_query_plan(qedge_key, kp_name, "Warning",
-                                      f"{dropped_edge_count} edges dropped due to node reference failure")
         log.debug(f"{kp_name}: After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
-        return deduplicated_kg
+        return deduplicated_kg, dropped_edge_count
 
     @staticmethod
     def _extract_query_subgraph(qedge_keys_to_expand: List[str], query_graph: QueryGraph, log: ARAXResponse) -> QueryGraph:
