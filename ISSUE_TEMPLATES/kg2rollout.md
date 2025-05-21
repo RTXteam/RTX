@@ -94,6 +94,7 @@ The following databases should be rebuilt and copies of them should be put in `/
 
 - [ ] NGD database (how-to is [here](https://github.com/RTXteam/RTX/blob/master/code/ARAX/ARAXQuery/Overlay/ngd/README.md))
     - [ ] Upload the file `curie_to_pmids_v1.0_KG2.X.Y.sqlite` to the public S3 bucket `s3://rtx-kg2-public`.
+- [ ] Update the test data indexes for PathFinder @mohsenht
 - [ ] Build CURIE NGD database @mohsenht
 - [ ] refreshed XDTD database @chunyuma 
 - [ ] XDTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
