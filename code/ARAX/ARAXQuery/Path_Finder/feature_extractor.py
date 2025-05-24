@@ -1,7 +1,8 @@
 import numpy as np
 
 
-def get_neighbors_info(curie, ngd_repo, plover_repo):
+def get_neighbors_info(curie, ngd_repo, plover_repo, degree_repo):
+    node_degree = degree_repo.get_node_degree(curie)
     curie_ngd_list = ngd_repo.get_curie_ngd(curie)
     curie_category, neighbors, edges = plover_repo.get_neighbors_with_edges(curie)
     if neighbors:
@@ -22,8 +23,8 @@ def get_neighbors_info(curie, ngd_repo, plover_repo):
                     else:
                         content_by_curie[node]['edges'][category] = content_by_curie[node]['edges'][category] + 1
 
-        return content_by_curie, curie_category
-    return None, None
+        return content_by_curie, curie_category, node_degree
+    return None, None, 0
 
 
 def get_np_array_features(
@@ -31,7 +32,8 @@ def get_np_array_features(
         category_to_idx,
         edge_category_to_idx,
         curie_category_onehot,
-        ancestors_by_indices
+        ancestors_by_indices,
+        node_degree
 ):
     ngd_val = float(value["ngd"]) if value["ngd"] is not None else np.nan
     pmid_val = float(value["pmids"])
@@ -45,7 +47,7 @@ def get_np_array_features(
                 for ancestor in ancestors_by_indices[edge_cat_idx]:
                     edge_categories[ancestor] = 1
 
-    return np.concatenate([[ngd_val, pmid_val], cat_onehot, edge_categories, curie_category_onehot])
+    return np.concatenate([[ngd_val, pmid_val], cat_onehot, edge_categories, curie_category_onehot, [node_degree]])
 
 
 def get_category(cat_str, category_to_idx):

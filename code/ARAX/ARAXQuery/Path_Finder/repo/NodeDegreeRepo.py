@@ -14,11 +14,11 @@ class NodeDegreeRepo:
     def __init__(self, db_path=get_kg2c_db_path()):
         self.db_path = db_path
 
-    def get_node_degree(self, node):
+    def get_node_degree(self, node_id):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         query = "SELECT neighbor_counts FROM neighbors WHERE id = ?"
-        cursor.execute(query, (node.id,))
+        cursor.execute(query, (node_id,))
         result = cursor.fetchone()
         conn.close()
         if result:

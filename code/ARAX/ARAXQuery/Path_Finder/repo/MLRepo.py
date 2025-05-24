@@ -58,11 +58,15 @@ class MLRepo(Repository):
 
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_get_neighbors = executor.submit(
-                get_neighbors_info, node.id, self.ngd_repo, self.repo
+                get_neighbors_info,
+                node.id,
+                self.ngd_repo,
+                self.repo,
+                self.degree_repo
             )
             future_load_data = executor.submit(self.load_data)
 
-            content_by_curie, curie_category = future_get_neighbors.result()
+            content_by_curie, curie_category, node_degree = future_get_neighbors.result()
 
         if content_by_curie is None:
             return []
@@ -74,9 +78,9 @@ class MLRepo(Repository):
             curie_list.append(key)
             feature_list.append(
                 get_np_array_features(value, self.category_to_idx, self.edge_category_to_idx, curie_category_onehot,
-                                      self.ancestors_by_id))
+                                      self.ancestors_by_id, node_degree))
 
-        feature_np = np.empty((len(feature_list), 183), dtype=float)
+        feature_np = np.empty((len(feature_list), len(feature_list[0])), dtype=float)
 
         for i in range(len(feature_list)):
             feature_np[i] = feature_list[i]
@@ -96,5 +100,5 @@ class MLRepo(Repository):
         return [Node(id=item[0], weight=float(item[1])) for item in
                 ranked_items[0:limit]]
 
-    def get_node_degree(self, node):
-        return self.degree_repo.get_node_degree(node)
+    def get_node_degree(self, node_id):
+        return self.degree_repo.get_node_degree(node_id)
