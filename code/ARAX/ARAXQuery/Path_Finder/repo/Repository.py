@@ -8,5 +8,5 @@ class Repository(ABC):
         pass
 
     @abstractmethod
-    def get_node_degree(self, node):
+    def get_node_degree(self, node_id):
         pass

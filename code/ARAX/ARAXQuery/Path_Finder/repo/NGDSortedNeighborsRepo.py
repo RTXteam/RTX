@@ -59,5 +59,5 @@ class NGDSortedNeighborsRepo(Repository):
         return [Node(item[0], item[1]) for item in
                 sorted_neighbors_tuple[0:min(limit, len(sorted_neighbors_tuple))]]
 
-    def get_node_degree(self, node):
-        return self.degree_repo.get_node_degree(node)
+    def get_node_degree(self, node_id):
+        return self.degree_repo.get_node_degree(node_id)
