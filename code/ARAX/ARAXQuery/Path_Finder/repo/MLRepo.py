@@ -36,9 +36,13 @@ class MLRepo(Repository):
         self.category_to_idx = None
         self.edge_category_to_idx = None
         self.sorted_category_list = None
+        self.node_degree_category_to_idx = None
 
     def load_data(self):
         abs_path = os.path.dirname(os.path.abspath(__file__))
+        with open(abs_path + '/node_degree_category_by_indices.pkl', "rb") as f:
+            self.node_degree_category_to_idx = pickle.load(f)
+
         with open(abs_path + '/sorted_category_list.pkl', "rb") as f:
             self.sorted_category_list = pickle.load(f)
 
@@ -66,7 +70,7 @@ class MLRepo(Repository):
             )
             future_load_data = executor.submit(self.load_data)
 
-            content_by_curie, curie_category, node_degree = future_get_neighbors.result()
+            content_by_curie, curie_category = future_get_neighbors.result()
 
         if content_by_curie is None:
             return []
@@ -77,8 +81,15 @@ class MLRepo(Repository):
         for key, value in content_by_curie.items():
             curie_list.append(key)
             feature_list.append(
-                get_np_array_features(value, self.category_to_idx, self.edge_category_to_idx, curie_category_onehot,
-                                      self.ancestors_by_id, node_degree))
+                get_np_array_features(
+                    value,
+                    self.category_to_idx,
+                    self.edge_category_to_idx,
+                    curie_category_onehot,
+                    self.ancestors_by_id,
+                    self.node_degree_category_to_idx
+                )
+            )
 
         feature_np = np.empty((len(feature_list), len(feature_list[0])), dtype=float)
 

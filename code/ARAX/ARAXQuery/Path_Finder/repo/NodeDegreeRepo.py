@@ -26,3 +26,27 @@ class NodeDegreeRepo:
             return degree_by_biolink_type["biolink:NamedThing"]
         else:
             return 0
+
+
+    def get_degrees_by_node(self, curie_ids, batch_size=10000):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        degree_dict = {}
+
+        for i in range(0, len(curie_ids), batch_size):
+            batch_ids = curie_ids[i:i + batch_size]
+            placeholders = ",".join("?" for _ in batch_ids)
+            query = f"SELECT id, neighbor_counts FROM neighbors WHERE id IN ({placeholders})"
+            cursor.execute(query, batch_ids)
+
+            for node_id, neighbor_counts in cursor.fetchall():
+                degree_by_biolink_type = json.loads(neighbor_counts)
+                degree_dict[node_id] = degree_by_biolink_type
+
+        conn.close()
+
+        for curie in curie_ids:
+            degree_dict.setdefault(curie, {})
+
+        return degree_dict
