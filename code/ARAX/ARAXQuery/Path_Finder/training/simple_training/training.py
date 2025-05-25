@@ -50,43 +50,9 @@ def create_training_data():
     return training
 
 
-def get_kg2c_db_path():
-    pathlist = os.path.realpath(__file__).split(os.path.sep)
-    RTXindex = pathlist.index("RTX")
-    filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
-    sqlite_name = RTXConfiguration().kg2c_sqlite_path.split("/")[-1]
-    return f"{filepath}{os.path.sep}{sqlite_name}"
-
-
-def get_degree_categories(batch_size=10000):
-    conn = sqlite3.connect(get_kg2c_db_path())
-    cursor = conn.cursor()
-
-    degree_category_set = set()
-    offset = 0
-
-    while True:
-        query = f"SELECT id, neighbor_counts FROM neighbors LIMIT {batch_size} OFFSET {offset}"
-        cursor.execute(query)
-        rows = cursor.fetchall()
-
-        if not rows:
-            break
-
-        for node_id, neighbor_counts in rows:
-            degree_by_biolink_type = json.loads(neighbor_counts)
-            degree_category_set.update(degree_by_biolink_type.keys())
-
-        offset += batch_size
-        print(offset)
-
-    conn.close()
-
-    return degree_category_set
-
-
 def gather_data():
-    degree_categories = get_degree_categories()
+    node_degree_repo = NodeDegreeRepo()
+    degree_categories = node_degree_repo.get_degree_categories()
     sorted_degree_category = sorted(list(degree_categories))
     degree_category_to_idx = {cat_name: idx for idx, cat_name in enumerate(sorted_degree_category)}
 
@@ -106,7 +72,6 @@ def gather_data():
     i = 0
     logging.info(len(training_data))
     node_synonymizer = NodeSynonymizer()
-    node_degree_repo = NodeDegreeRepo()
     category_list = node_synonymizer.get_distinct_category_list()
     sorted_category_list = sorted(category_list)
     category_to_idx = {cat_name: idx for idx, cat_name in enumerate(sorted_category_list)}

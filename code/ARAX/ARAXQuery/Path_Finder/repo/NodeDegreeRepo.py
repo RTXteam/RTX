@@ -50,3 +50,29 @@ class NodeDegreeRepo:
             degree_dict.setdefault(curie, {})
 
         return degree_dict
+
+    def get_degree_categories(self, batch_size=10000):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        degree_category_set = set()
+        offset = 0
+
+        while True:
+            query = f"SELECT id, neighbor_counts FROM neighbors LIMIT {batch_size} OFFSET {offset}"
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+            if not rows:
+                break
+
+            for node_id, neighbor_counts in rows:
+                degree_by_biolink_type = json.loads(neighbor_counts)
+                degree_category_set.update(degree_by_biolink_type.keys())
+
+            offset += batch_size
+            print(offset)
+
+        conn.close()
+
+        return degree_category_set
