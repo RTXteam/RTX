@@ -282,7 +282,7 @@ class ARAXConnect:
             normalize_src_node_id,
             normalize_dst_node_id,
             hops_numbers=self.parameters['max_path_length']
-        )
+        )[:100]
 
         self.response.debug(f"PathFinder found {len(paths)} paths")
 
