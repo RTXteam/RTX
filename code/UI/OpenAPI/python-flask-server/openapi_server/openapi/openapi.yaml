@@ -1449,7 +1449,8 @@ components:
       description: >-
         A instance of PathBinding is a single binding of an input QueryGraph path
         (the key to this object) with the AuxiliaryGraph id containing a list of
-        edges in the path.
+        edges in the path. The Auxiliary Graph does not convey any order of edges
+        in the path.
       properties:
         id:
           type: string
@@ -1458,32 +1459,41 @@ components:
       required:
         - id
     AuxiliaryGraph:
-      additionalProperties: true
-      description: A single AuxiliaryGraph instance that is used by Knowledge Graph
-        Edges and Result Analyses. Edges comprising an Auxiliary Graph are a subset
-        of the Knowledge Graph in the message. Data creators can create an AuxiliaryGraph
-        to assemble a specific collections of edges from the Knowledge Graph into
-        a named graph that can be referenced from an Edge as evidence/explanation
-        supporting that Edge, or from a Result Analysis as information used to generate
-        a score.
+      type: object
+      description: >-
+        A single AuxiliaryGraph instance that is used by Knowledge Graph
+        Edges, Result Analysis support graphs, and Path Bindings. 
+        Edges comprising an Auxiliary Graph are a subset of the 
+        Knowledge Graph in the message. Data creators can 
+        create an AuxiliaryGraph to assemble a specific collection
+        of edges from the Knowledge Graph into a named graph that can be
+        referenced from an Edge as evidence/explanation supporting that Edge,
+        from a Result Analysis as information used to generate a score, or 
+        from a Path Binding as the path for that Analysis.
       properties:
         edges:
-          description: List of edges that form the Auxiliary Graph. Each item is a
-            reference to a single Knowledge Graph edge
+          type: array
+          description: >-
+            List of edges that form the Auxiliary Graph. Each item is a
+            reference to a single Knowledge Graph Edge. This list is not
+            ordered, nor is the order intended to convey any relationship 
+            between the edges that form this Auxiliary Graph.
           items:
             type: string
-          minItems: 1
           nullable: false
-          type: array
+          minItems: 1
         attributes:
-          description: Attributes of the Auxiliary Graph
+          type: array
+          description: >-
+            Attributes of the Auxiliary Graph
           items:
             $ref: '#/components/schemas/Attribute'
-          nullable: true
-          type: array
+          minItems: 0
+          nullable: false
+      additionalProperties: true
       required:
-      - edges
-      type: object
+        - edges
+        - attributes
     KnowledgeGraph:
       additionalProperties: true
       description: The knowledge graph associated with a set of results. The instances
@@ -1510,21 +1520,23 @@ components:
       type: object
       x-nullable: true
     BaseQueryGraph:
-      additionalProperties: true
-      description: A graph representing a biomedical question. It serves as a template
-        for each result (answer), where each bound knowledge graph node/edge is expected
-        to obey the constraints of the associated query graph element.
+      type: object
+      description: >-
+        A graph representing a biomedical question. It serves as a template for
+        each result (answer), where each bound knowledge graph node/edge is
+        expected to obey the constraints of the associated query graph element.
       properties:
         nodes:
+          type: object
+          description: >-
+            The node specifications. The keys of this map are unique node
+            identifiers and the corresponding values include the constraints
+            on bound nodes.
           additionalProperties:
             $ref: '#/components/schemas/QNode'
-          description: The node specifications. The keys of this map are unique node
-            identifiers and the corresponding values include the constraints on bound
-            nodes.
-          type: object
+      additionalProperties: true
       required:
-      - nodes
-      type: object
+        - nodes
     QueryGraph:
       allOf: 
         - $ref: '#/components/schemas/BaseQueryGraph'
@@ -1706,8 +1718,10 @@ components:
     QPath:
       type: object
       description: >-
-        A path in the QueryGraph used for pathfinder queries only, flowing from
-        subject to intermediate nodes, if any, to object.
+        A path in the QueryGraph used for pathfinder queries. Both subject and object
+        MUST reference QNodes that have a CURIE in their ids field.
+        Paths returned that bind to this QPath can represent some
+        relationship between subject and object.
       properties:
         subject:
           type: string
@@ -1724,9 +1738,10 @@ components:
         predicates:
           type: array
           description: >-
-            QPath predicates are intended convey what type of paths are desired,
-            NOT a constraint on the types of predicates that may bein result paths.
-            ...Abrar...
+            QPath predicates are intended to convey what type of paths are desired,
+            NOT a constraint on the types of predicates that may be in result paths.
+            If no predicate is listed, the ARA SHOULD find paths such that the
+            relationship represented by the path is a "related_to" relationship.
             These should be Biolink Model predicates and are allowed to be of type
             'abstract' or 'mixin' (only in QGraphs!). Use of 'deprecated'
             predicates should be avoided.
@@ -1737,7 +1752,9 @@ components:
         constraints:
           type: array
           description: >-
-            A list of constraints for the QPath.
+            A list of constraints for the QPath. If multiple constraints are listed,
+            it should be interpreted as an OR relationship. Each path returned is
+            required to comply with at least one constraint.
           items:
             $ref: '#/components/schemas/PathConstraint'
           minItems: 1
@@ -1750,10 +1767,15 @@ components:
     PathConstraint:
       type: object
       description: >-
-        ... to be filled in by Abrar
+        A constraint for paths. ARAs must comply with constraints when finding paths.
       properties:
         intermediate_categories:
           type: array
+          description: >-
+            A list of Biolink model categories by which to constrain paths returned.
+            If multiple categories are listed, it should be interpreted as an AND
+            relationship. Each path returned by ARAs MUST contain at least one node
+            of each category listed.
           items:
             $ref: '#/components/schemas/BiolinkEntity'
           minItems: 1
