@@ -27,7 +27,7 @@ class OneOfAnalysisPathfinderAnalysis():
             pathfinder_analysis.__init__(*args, **kwargs)
             return pathfinder_analysis
 
-        #### Or otherwise a PathfinderAnalysis object
+        #### Or otherwise a plain Analysis object
         else:
             if debug:
                 eprint(f"DEBUG: OneOfAnalysisPathfinderAnalysis is generating an Analysis ({Analysis})")
