@@ -1,3 +1,4 @@
+import logging
 import sys
 
 from RTXConfiguration import RTXConfiguration
@@ -23,6 +24,9 @@ from openapi_server.models.knowledge_graph import KnowledgeGraph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
+from biolink_helper import BiolinkHelper
 
 
 class ARAXConnect:
@@ -219,22 +223,20 @@ class ARAXConnect:
                 return path.object
         self.response.error(f"Pathfinder cannot find {path.object} in pinned nodes.")
 
-    def get_constraint_node(self, path):
-        if len(path.intermediate_nodes) > 1:
-            self.response.error(f"Currently, PathFinder can only handle one constraint node. "
-                                f"Number of constraint nodes: {len(path.intermediate_nodes)}")
-        if len(path.intermediate_nodes) == 0:
+    def get_constraint_category(self, path):
+        if path.constraints is None:
             return None
+        if len(path.constraints) == 0:
+            return None
+        if path.constraints[0].intermediate_categories is None:
+            return None
+        if len(path.constraints[0].intermediate_categories) == 0:
+            return None
+        if len(path.constraints[0].intermediate_categories) > 1:
+            self.response.error(f"Currently, PathFinder can only handle one constraint node. "
+                                f"Number of constraint nodes: {len(path.intermediate_categories)}")
 
-        constraint_qnode = path.intermediate_nodes[0]
-
-        for key, node in self.message.query_graph.nodes.items():
-            if node.categories and len(node.categories) > 0:
-                if constraint_qnode == key:
-                    return constraint_qnode
-
-        self.response.error(
-            f"Intermediate node: {constraint_qnode} is not defined in the nodes list.")
+        return path.constraints[0].intermediate_categories[0]
 
     def __connect_nodes(self, describe=False):
         """
@@ -267,7 +269,7 @@ class ARAXConnect:
         path = self.get_path()
         src_pinned_node = self.get_src_node(pinned_nodes, path)
         dst_pinned_node = self.get_dst_node(pinned_nodes, path)
-        constraint_node = self.get_constraint_node(path)
+        category_constraint = self.get_constraint_category(path)
         if self.response.status != 'OK' or resp == -1:
             return self.response
 
@@ -282,7 +284,12 @@ class ARAXConnect:
             normalize_src_node_id,
             normalize_dst_node_id,
             hops_numbers=self.parameters['max_path_length']
-        )[:100]
+        )
+
+        if category_constraint:
+            paths = self.filter_with_constraint(paths, category_constraint)
+
+        paths = paths[:100]
 
         self.response.debug(f"PathFinder found {len(paths)} paths")
 
@@ -298,25 +305,33 @@ class ARAXConnect:
         edge_extractor = EdgeExtractorFromPloverDB(
             RTXConfiguration().plover_url
         )
-        category_constraint = None
-        if constraint_node:
-            category_constraint = self.message.query_graph.nodes[constraint_node].categories[0]
         ResultPerPathConverter(
             paths,
             normalize_src_node_id,
             normalize_dst_node_id,
             src_pinned_node,
             dst_pinned_node,
-            constraint_node,
             names,
-            edge_extractor,
-            category_constraint
+            edge_extractor
         ).convert(self.response)
 
         mode = 'ARAX'
         if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
             self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
         return self.response
+
+    def filter_with_constraint(self, paths, category_constraint):
+        biolink_helper = BiolinkHelper()
+        descendants = set(biolink_helper.get_descendants(category_constraint))
+        result = []
+        for path in paths:
+            path_length = len(path.links)
+            if path_length > 2:
+                for i in range(1, path_length - 1):
+                    node = path.links[i]
+                    if node.category in descendants:
+                        result.append(path)
+        return result
 
 
 ##########################################################################################

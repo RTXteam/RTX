@@ -165,9 +165,7 @@ def test_TRAPI_unconstrained_query():
                 "paths": {
                     "p0": {
                         "subject": "n0",
-                        "object": "n1",
-                        "intermediate_nodes": [],
-                        "predicates": ["biolink:related_to"]
+                        "object": "n1"
                     }
                 }
             }
@@ -180,49 +178,53 @@ def test_TRAPI_unconstrained_query():
     assert response.status == 'OK'
     assert len(response.envelope.message.results) == 1
     assert len(response.envelope.message.results[0].node_bindings) == 2
+    response.debug(f"analyses length: {len(response.envelope.message.results[0].analyses)}")
     assert len(response.envelope.message.results[0].analyses) > 0
+    response.debug(f"auxiliary_graphs length: {len(response.envelope.message.auxiliary_graphs)}")
     assert len(response.envelope.message.auxiliary_graphs) > 0
     assert len(response.envelope.message.query_graph.nodes) == 2
     assert len(response.envelope.message.query_graph.paths) == 1
 
 
-# TODO
-# def test_TRAPI_constrained_query():
-#     query = {
-#         "message": {
-#             "query_graph": {
-#                 "nodes": {
-#                     "n0": {
-#                         "ids": ["CHEBI:37626"]
-#                     },
-#                     "n1": {
-#                         "ids": ["MONDO:0005015"]
-#                     },
-#                     "n2": {
-#                         "categories": ["biolink:Disease"]
-#                     }
-#                 },
-#                 "paths": {
-#                     "p0": {
-#                         "subject": "n0",
-#                         "object": "n1",
-#                         "intermediate_nodes": ["n2"],
-#                         "predicates": ["biolink:related_to"]
-#                     }
-#                 }
-#             }
-#         }
-#     }
-#
-#     araxq = ARAXQuery()
-#     araxq.query(query)
-#     response = araxq.response
-#     assert response.status == 'OK'
-#     assert len(response.envelope.message.results) > 0
-#     assert len(response.envelope.message.results[0].node_bindings) == 3
-#     assert len(response.envelope.message.auxiliary_graphs) > 0
-#     assert len(response.envelope.message.query_graph.nodes) == 3
-#     assert len(response.envelope.message.query_graph.paths) == 1
+def test_TRAPI_constrained_query():
+    query = {
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "ids": ["CHEBI:37626"]
+                    },
+                    "n1": {
+                        "ids": ["MONDO:0005015"]
+                    },
+                },
+                "paths": {
+                    "p0": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "constraints": [
+                            {
+                                "intermediate_categories": ["biolink:Gene"]
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    }
+
+    araxq = ARAXQuery()
+    araxq.query(query)
+    response = araxq.response
+    assert response.status == 'OK'
+    assert len(response.envelope.message.results) == 1
+    assert len(response.envelope.message.results[0].node_bindings) == 2
+    response.debug(f"analyses length: {len(response.envelope.message.results[0].analyses)}")
+    assert len(response.envelope.message.results[0].analyses) > 0
+    response.debug(f"auxiliary_graphs length: {len(response.envelope.message.auxiliary_graphs)}")
+    assert len(response.envelope.message.auxiliary_graphs) > 0
+    assert len(response.envelope.message.query_graph.nodes) == 2
+    assert len(response.envelope.message.query_graph.paths) == 1
 
 
 if __name__ == "__main__":
