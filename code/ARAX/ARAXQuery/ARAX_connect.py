@@ -1,4 +1,4 @@
-import logging
+import json
 import sys
 
 from RTXConfiguration import RTXConfiguration
@@ -18,8 +18,6 @@ from Path_Finder.converter.Names import Names
 from Path_Finder.BidirectionalPathFinder import BidirectionalPathFinder
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.q_edge import QEdge
-from openapi_server.models.q_node import QNode
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
@@ -185,8 +183,6 @@ class ARAXConnect:
                                 f"Number of pinned nodes: {len(pinned_nodes)}")
         return pinned_nodes
 
-
-
     def get_normalize_nodes(self, nodes, pinned_qnode_id):
         synonymizer = NodeSynonymizer()
         try:
@@ -286,6 +282,8 @@ class ARAXConnect:
             hops_numbers=self.parameters['max_path_length']
         )
 
+        self.remove_block_list(paths)
+
         if category_constraint:
             paths = self.filter_with_constraint(paths, category_constraint)
 
@@ -332,6 +330,32 @@ class ARAXConnect:
                     if node.category in descendants:
                         result.append(path)
         return result
+
+    def remove_block_list(self, paths):
+        blocked_curies, blocked_synonyms = self.get_block_list()
+        result = []
+        for path in paths:
+            append = True
+            path_length = len(path.links)
+            if path_length > 2:
+                for i in range(1, path_length - 1):
+                    node = path.links[i]
+                    if node.id in blocked_curies:
+                        append = False
+                        break
+                    if node.name.lower() in blocked_synonyms:
+                        append = False
+                        break
+            if append:
+                result.append(path)
+        return result
+
+    def get_block_list(self):
+        with open(os.path.dirname(os.path.abspath(__file__)) + '/../KnowledgeSources/general_concepts.json',
+                  'r') as file:
+            json_block_list = json.load(file)
+        synonyms = set(s.lower() for s in json_block_list['synonyms'])
+        return set(json_block_list['curies']), synonyms
 
 
 ##########################################################################################
