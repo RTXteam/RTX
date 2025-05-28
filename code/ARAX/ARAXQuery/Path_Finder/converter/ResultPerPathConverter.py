@@ -11,14 +11,6 @@ from openapi_server.models.node_binding import NodeBinding
 from openapi_server.models.result import Result
 
 
-def get_block_list():
-    with open(os.path.dirname(os.path.abspath(__file__)) + '/../../../KnowledgeSources/general_concepts.json',
-              'r') as file:
-        json_block_list = json.load(file)
-    synonyms = set(s.lower() for s in json_block_list['synonyms'])
-    return set(json_block_list['curies']), synonyms
-
-
 class ResultPerPathConverter:
 
     def __init__(
@@ -40,8 +32,6 @@ class ResultPerPathConverter:
         self.edge_extractor = edge_extractor
 
     def convert(self, response):
-        blocked_curies, blocked_synonyms = get_block_list()
-
         self.extract_edges(response)
 
         if response.envelope.message.results is None:
@@ -56,7 +46,7 @@ class ResultPerPathConverter:
             Result(
                 id=self.names.result_name,
                 analyses=[],
-                node_bindings= node_bindings,
+                node_bindings=node_bindings,
                 essence=self.names.result_name
             )
         )
@@ -66,8 +56,6 @@ class ResultPerPathConverter:
             i = i + 1
             PathConverter(
                 path,
-                self.node_1_id,
-                self.node_2_id,
                 self.qnode_1_id,
                 self.qnode_2_id,
                 Names(
@@ -76,8 +64,6 @@ class ResultPerPathConverter:
                 ),
                 self.edge_extractor,
                 path.compute_weight(),
-                blocked_curies,
-                blocked_synonyms
             ).convert(response)
 
     def extract_edges(self, response):
