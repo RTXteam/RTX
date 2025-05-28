@@ -23,7 +23,7 @@ class NodeDegreeRepo:
         conn.close()
         if result:
             degree_by_biolink_type = json.loads(result[0])
-            return degree_by_biolink_type["biolink:NamedThing"]
+            return degree_by_biolink_type.get('biolink:NamedThing', 0)
         else:
             return 0
 
