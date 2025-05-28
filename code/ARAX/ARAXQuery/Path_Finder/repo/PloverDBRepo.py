@@ -94,5 +94,5 @@ class PloverDBRepo(Repository):
             logging.error("An unexpected error occurred: %s", e, exc_info=True)
             raise e
 
-    def get_node_degree(self, node):
-        return self.degree_repo.get_node_degree(node)
+    def get_node_degree(self, node_id):
+        return self.degree_repo.get_node_degree(node_id)

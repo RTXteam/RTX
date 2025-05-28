@@ -18,7 +18,7 @@ def process_path(path_string):
         if path_finder_model.path.path_limit > 0:
             last_link = path_finder_model.path.last()
             repo = get_repo(path_finder_model.repo_name)
-            node_degree = repo.get_node_degree(last_link)
+            node_degree = repo.get_node_degree(last_link.id)
             if node_degree > NODE_DEGREE_LIMIT:
                 return path_string, result, None
             neighbors = repo.get_neighbors(last_link, NEIGHBOR_LIMIT)
@@ -48,7 +48,7 @@ class BreadthFirstSearch:
         if hops_numbers == 0:
             return
 
-        num_cores = min(multiprocessing.cpu_count(), 5)
+        num_cores = min(multiprocessing.cpu_count(), 4)
 
         with multiprocessing.Pool(num_cores) as pool:
             while not path_queue.empty():

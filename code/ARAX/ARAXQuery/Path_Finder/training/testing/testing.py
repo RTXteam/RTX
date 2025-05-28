@@ -92,11 +92,11 @@ def test(pathfinder_type, file_name):
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     db = DrugDiseaseMatchedDB(f"drug_disease_{pathfinder_type}.db")
     db.create_table()
-    number_of_test_data()
-    run_tests(db, pathfinder_type)
+    # number_of_test_data()
+    # run_tests(db, pathfinder_type)
     depict_pdf(db, file_name, False)
     depict_pdf(db, file_name, True)
 
 
 if __name__ == "__main__":
-    test("new", "tuned_hyperparameters")
+    test("new", "node_degree")

@@ -106,8 +106,8 @@ function main() {
 	response_id.trim();
 	var statusdiv = document.getElementById("statusdiv");
 	statusdiv.innerHTML = '';
-	statusdiv.appendChild(document.createTextNode("You have requested response id = " + response_id));
-	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append("You have requested response id = " + response_id);
+	statusdiv.append(document.createElement("br"));
 
 	document.getElementById("devdiv").innerHTML =  "Requested response id = " + response_id + "<br>";
 	retrieve_response(providers['ARAX'].url+'/response/'+response_id,response_id,"all");
@@ -294,12 +294,13 @@ function viewResponse() {
 	jsonInput = JSON.parse(resp);
     }
     catch(e) {
-	statusdiv.appendChild(document.createElement("br"));
+        var statusdiv = document.getElementById("statusdiv");
+	statusdiv.append(document.createElement("br"));
 	if (e.name == "SyntaxError")
 	    statusdiv.innerHTML += "<b>Error</b> parsing JSON response input. Please correct errors and resubmit: ";
 	else
 	    statusdiv.innerHTML += "<b>Error</b> processing response input. Please correct errors and resubmit: ";
-	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append(document.createElement("br"));
 	statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
 	return;
     }
@@ -378,7 +379,7 @@ function postQuery(qtype,agent) {
     // assemble QueryObject
     if (qtype == "DSL") {
 	statusdiv.innerHTML = "Posting DSL.  Looking for answer...";
-	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append(document.createElement("br"));
 
 	var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
 	queryObj["message"] = {};
@@ -386,25 +387,25 @@ function postQuery(qtype,agent) {
     }
     else if (qtype == "WorkFlow") {
         statusdiv.innerHTML = "Posting Workflow JSON.  Awaiting response...";
-	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append(document.createElement("br"));
 	update_wfjson();
 	queryObj = workflow;
     }
     else if (qtype == "JSON") {
 	statusdiv.innerHTML = "Posting JSON.  Looking for answer...";
-	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append(document.createElement("br"));
 
         var jsonInput;
 	try {
 	    jsonInput = JSON.parse(document.getElementById("jsonText").value);
 	}
 	catch(e) {
-            statusdiv.appendChild(document.createElement("br"));
+            statusdiv.append(document.createElement("br"));
 	    if (e.name == "SyntaxError")
 		statusdiv.innerHTML += "<b>Error</b> parsing JSON input. Please correct errors and resubmit: ";
 	    else
 		statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and resubmit: ";
-            statusdiv.appendChild(document.createElement("br"));
+            statusdiv.append(document.createElement("br"));
 	    statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
 	    return;
 	}
@@ -420,7 +421,7 @@ function postQuery(qtype,agent) {
     }
     else {  // qGraph
 	statusdiv.innerHTML = "Posting graph.  Looking for answer...";
-        statusdiv.appendChild(document.createElement("br"));
+        statusdiv.append(document.createElement("br"));
 
 	qg_clean_up(true);
 	queryObj.message = { "query_graph": input_qg };
@@ -442,8 +443,9 @@ function postQuery(qtype,agent) {
 }
 
 function postQuery_ARS(queryObj) {
-    document.getElementById("statusdiv").innerHTML += " - contacting ARS...";
-    document.getElementById("statusdiv").appendChild(document.createElement("br"));
+    var statusdiv = document.getElementById("statusdiv");
+    statusdiv.append(" - contacting ARS...");
+    statusdiv.append(document.createElement("br"));
 
     fetch(providers["ARS"].url, {
 	method: 'post',
@@ -455,14 +457,14 @@ function postQuery_ARS(queryObj) {
     })
         .then(data => {
 	    var message_id = data['pk'];
-	    document.getElementById("statusdiv").innerHTML += " - got message_id = "+message_id;
-	    document.getElementById("statusdiv").appendChild(document.createElement("br"));
+	    statusdiv.append(" - got message_id = "+message_id);
+	    statusdiv.append(document.createElement("br"));
 	    pasteId(message_id);
 	    selectInput("qid");
 	    retrieve_response(providers['ARAX'].url+"/response/"+message_id,message_id,"all");
 	})
         .catch(error => {
-            document.getElementById("statusdiv").innerHTML += " - ERROR:: "+error;
+            statusdiv.append(" - ERROR:: "+error);
         });
 
     return;
@@ -470,8 +472,9 @@ function postQuery_ARS(queryObj) {
 
 
 function postQuery_EXT(queryObj) {
-    document.getElementById("statusdiv").innerHTML += " - contacting 3rd party API...";
-    document.getElementById("statusdiv").appendChild(document.createElement("br"));
+    var statusdiv = document.getElementById("statusdiv");
+    statusdiv.append(" - contacting 3rd party API...");
+    statusdiv.append(document.createElement("br"));
 
     fetch(providers["EXT"].url + "/query", {
 	method: 'post',
@@ -484,18 +487,18 @@ function postQuery_EXT(queryObj) {
 
     }).then(data => {
 	var dev = document.getElementById("devdiv");
-        dev.appendChild(document.createElement("br"));
-	dev.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE MESSAGE::"));
+        dev.append(document.createElement("br"));
+	dev.append('='.repeat(80)+" RESPONSE MESSAGE::");
 	var pre = document.createElement("pre");
 	pre.id = "responseJSON";
-	pre.appendChild(document.createTextNode(JSON.stringify(data,null,2)));
-	dev.appendChild(pre);
+	pre.append(JSON.stringify(data,null,2));
+	dev.append(pre);
 
 	if (data["description"])
-	    statusdiv.appendChild(document.createTextNode(data["description"]));  // italics?
+	    statusdiv.append(data["description"]);
 	else
-	    statusdiv.appendChild(document.createTextNode(" - JSON response received"));  // italics?
-	statusdiv.appendChild(document.createElement("br"));
+	    statusdiv.append(" - JSON response received");
+	statusdiv.append(document.createElement("br"));
 	sesame('openmax',statusdiv);
 
 	if (!data["status"] || data["status"] == "OK" || data["status"] == "Success") {
@@ -515,7 +518,7 @@ function postQuery_EXT(queryObj) {
 	}
 
     }).catch(error => {
-	document.getElementById("statusdiv").innerHTML += " - ERROR:: "+error;
+	statusdiv.append(" - ERROR:: "+error);
     });
 
     return;
@@ -524,6 +527,8 @@ function postQuery_EXT(queryObj) {
 
 // use fetch and stream
 function postQuery_ARAX(qtype,queryObj) {
+    var statusdiv = document.getElementById("statusdiv");
+
     queryObj.stream_progress = true;
     if (UIstate["timeout"]) {
 	if (!queryObj.query_options)
@@ -537,22 +542,22 @@ function postQuery_ARAX(qtype,queryObj) {
     }
     var cmddiv = document.createElement("div");
     cmddiv.id = "cmdoutput";
-    statusdiv.appendChild(cmddiv);
+    statusdiv.append(cmddiv);
 //    statusdiv.appendChild(document.createElement("br"));
 
-    statusdiv.appendChild(document.createTextNode("Processing step "));
+    statusdiv.append("Processing step ");
     var span = document.createElement("span");
     span.id = "finishedSteps";
     span.style.fontWeight = "bold";
 //    span.className = "menunum numnew";
-    span.appendChild(document.createTextNode("0"));
-    statusdiv.appendChild(span);
-    statusdiv.appendChild(document.createTextNode(" of "));
+    span.append("0");
+    statusdiv.append(span);
+    statusdiv.append(" of ");
     span = document.createElement("span");
     span.id = "totalSteps";
 //    span.className = "menunum";
-    span.appendChild(document.createTextNode("??"));
-    statusdiv.appendChild(span);
+    span.append("??");
+    statusdiv.append(span);
 
     span = document.createElement("span");
     span.className = "progress";
@@ -560,12 +565,12 @@ function postQuery_ARAX(qtype,queryObj) {
     var span2 = document.createElement("span");
     span2.id = "progressBar";
     span2.className = "bar";
-    span2.appendChild(document.createTextNode("0%"));
-    span.appendChild(span2);
+    span2.append("0%");
+    span.append(span2);
 
-    statusdiv.appendChild(span);
-    statusdiv.appendChild(document.createElement("br"));
-    statusdiv.appendChild(document.createElement("br"));
+    statusdiv.append(span);
+    statusdiv.append(document.createElement("br"));
+    statusdiv.append(document.createElement("br"));
     sesame('openmax',statusdiv);
 
     add_to_dev_info("Posted to QUERY",queryObj);
@@ -638,8 +643,8 @@ function postQuery_ARAX(qtype,queryObj) {
 				}
 			    }
 
-			    cmddiv.appendChild(document.createTextNode(jsonMsg.timestamp+'\u00A0'+jsonMsg.level+':\u00A0'+jsonMsg.message));
-			    cmddiv.appendChild(document.createElement("br"));
+			    cmddiv.append(jsonMsg.timestamp+'\u00A0'+jsonMsg.level+':\u00A0'+jsonMsg.message);
+			    cmddiv.append(document.createElement("br"));
 			    cmddiv.scrollTop = cmddiv.scrollHeight;
 			}
                         else if (jsonMsg.qedge_keys) {
@@ -650,7 +655,7 @@ function postQuery_ARAX(qtype,queryObj) {
 				div = document.createElement("div");
 				div.id = "queryplan_streamhead";
 				div.className = 'statushead';
-				div.appendChild(document.createTextNode("Expansion Progress"));
+				div.append("Expansion Progress");
 				document.getElementById("status_container").before(div);
 
 				div = document.createElement("div");
@@ -660,17 +665,17 @@ function postQuery_ARAX(qtype,queryObj) {
 			    }
 
 			    div.innerHTML = '';
-			    div.appendChild(document.createElement("br"));
+			    div.append(document.createElement("br"));
 			    div.append(render_queryplan_table(jsonMsg));
-			    div.appendChild(document.createElement("br"));
+			    div.append(document.createElement("br"));
 			}
                         else if (jsonMsg.pid) {
 			    UIstate["pid"] = jsonMsg;
 			    display_kill_button();
 			}
 			else if (jsonMsg.detail) {
-			    cmddiv.appendChild(document.createElement("br"));
-                            cmddiv.appendChild(document.createTextNode("ERROR:\u00A0"+jsonMsg.detail));
+			    cmddiv.append(document.createElement("br"));
+                            cmddiv.append("ERROR:\u00A0"+jsonMsg.detail);
 			    throw new Error(jsonMsg.detail);
 			}
 			else {
@@ -693,12 +698,12 @@ function postQuery_ARAX(qtype,queryObj) {
 	    var data = JSON.parse(response);
 
 	    var dev = document.getElementById("devdiv");
-            dev.appendChild(document.createElement("br"));
-	    dev.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE MESSAGE::"));
+            dev.append(document.createElement("br"));
+	    dev.append('='.repeat(80)+" RESPONSE MESSAGE::");
 	    var pre = document.createElement("pre");
 	    pre.id = "responseJSON";
-	    pre.appendChild(document.createTextNode(JSON.stringify(data,null,2)));
-	    dev.appendChild(pre);
+	    pre.append(JSON.stringify(data,null,2));
+	    dev.append(pre);
 
 	    if (document.getElementById("killquerybutton"))
 		document.getElementById("killquerybutton").remove();
@@ -712,8 +717,8 @@ function postQuery_ARAX(qtype,queryObj) {
 		document.getElementById("finishedSteps").classList.add("menunum","numnew","msgERROR");
 		there_was_an_error();
 	    }
-	    statusdiv.appendChild(document.createTextNode(data["description"]));  // italics?
-	    statusdiv.appendChild(document.createElement("br"));
+	    statusdiv.append(data["description"]);
+	    statusdiv.append(document.createElement("br"));
 	    sesame('openmax',statusdiv);
 
 	    if (data["status"] == "QueryGraphZeroNodes") {
@@ -778,12 +783,12 @@ function kill_query() {
 		document.getElementById("killquerybutton").id = 'killquerybuttondead';
 		addCheckBox(document.getElementById("killquerybuttondead"),true);
 		var timeout = setTimeout(function() { document.getElementById("killquerybuttondead").remove(); } , 1500 );
-		statusdiv.innerHTML += "<br><span class='error'>Query terminated by user</span>";
+		document.getElementById("statusdiv").innerHTML += "<br><span class='error'>Query terminated by user</span>";
 		if (document.getElementById("cmdoutput")) {
                     var cmddiv = document.getElementById("cmdoutput");
-		    cmddiv.appendChild(document.createElement("br"));
-		    cmddiv.appendChild(document.createTextNode(data.description));
-                    cmddiv.appendChild(document.createElement("br"));
+		    cmddiv.append(document.createElement("br"));
+		    cmddiv.append(data.description);
+                    cmddiv.append(document.createElement("br"));
 		    cmddiv.scrollTop = cmddiv.scrollHeight;
 		    for (var e of document.getElementsByClassName("working")) {
 			e.classList.remove('working');
@@ -835,31 +840,31 @@ async function sendSyn() {
 
     div = document.createElement("div");
     div.className = "statushead";
-    div.appendChild(document.createTextNode("Synonym Results"));
+    div.append("Synonym Results");
     text = document.createElement("a");
     text.target = '_blank';
     text.title = 'link to this synonym entry';
     text.href = "http://"+ window.location.hostname + window.location.pathname + "?term=" + word;
     text.innerHTML = "[ Direct link to this entry ]";
     text.style.float = "right";
-    div.appendChild(text);
-    syndiv.appendChild(div);
+    div.append(text);
+    syndiv.append(div);
 
     div = document.createElement("div");
     div.className = "status";
     text = document.createElement("h2");
     text.className = "qprob p9";
-    text.appendChild(document.createTextNode(word));
-    div.appendChild(text);
+    text.append(word);
+    div.append(text);
     //div.appendChild(document.createElement("br"));
 
     if (!allweknow[word]) {
 	text.className = "qprob p1";
-	div.appendChild(document.createElement("br"));
-	div.appendChild(document.createTextNode("Entity not found."));
-	div.appendChild(document.createElement("br"));
-	div.appendChild(document.createElement("br"));
-	syndiv.appendChild(div);
+	div.append(document.createElement("br"));
+	div.append("Entity not found.");
+	div.append(document.createElement("br"));
+	div.append(document.createElement("br"));
+	syndiv.append(div);
 	return;
     }
 
@@ -871,14 +876,14 @@ async function sendSyn() {
 	    tr.className = 'hoverable';
 	    td = document.createElement("td")
 	    td.style.fontWeight = 'bold';
-	    td.appendChild(document.createTextNode(syn));
-	    tr.appendChild(td);
+	    td.append(syn);
+	    tr.append(td);
 	    td = document.createElement("td")
 	    if (syn == "identifier")
-		td.appendChild(link_to_identifiers_dot_org(allweknow[word].id[syn]));
-	    td.appendChild(document.createTextNode(allweknow[word].id[syn]));
-	    tr.appendChild(td);
-	    table.appendChild(tr);
+		td.append(link_to_identifiers_dot_org(allweknow[word].id[syn]));
+	    td.append(allweknow[word].id[syn]);
+	    tr.append(td);
+	    table.append(tr);
 	}
 
 	if (allweknow[word].synonyms) {
@@ -886,16 +891,16 @@ async function sendSyn() {
 	    tr.className = 'hoverable';
 	    td = document.createElement("td")
 	    td.style.fontWeight = 'bold';
-	    td.appendChild(document.createTextNode('synonyms (all)'));
-	    tr.appendChild(td);
+	    td.append('synonyms (all)');
+	    tr.append(td);
 	    td = document.createElement("td")
 	    var comma = '';
 	    for (var syn in allweknow[word].synonyms) {
-		td.appendChild(document.createTextNode(comma + syn + " (" +allweknow[word].synonyms[syn] + ")"));
+		td.append(comma + syn + " (" +allweknow[word].synonyms[syn] + ")");
 		comma = ", ";
 	    }
-	    tr.appendChild(td);
-	    table.appendChild(tr);
+	    tr.append(td);
+	    table.append(tr);
 	}
 
 	if (allweknow[word].categories) {
@@ -903,19 +908,19 @@ async function sendSyn() {
 	    tr.className = 'hoverable';
 	    td = document.createElement("td")
 	    td.style.fontWeight = 'bold';
-	    td.appendChild(document.createTextNode('categories (all)'));
-	    tr.appendChild(td);
+	    td.append('categories (all)');
+	    tr.append(td);
 	    td = document.createElement("td")
 	    var comma = '';
 	    for (var cat in allweknow[word].categories) {
-		td.appendChild(document.createTextNode(comma + cat + " (" +allweknow[word].categories[cat] + ")"));
+		td.append(comma + cat + " (" +allweknow[word].categories[cat] + ")");
 		comma = ", ";
 	    }
-	    tr.appendChild(td);
-	    table.appendChild(tr);
+	    tr.append(td);
+	    table.append(tr);
 	}
 
-	div.appendChild(table);
+	div.append(table);
     }
 
     if (allweknow[word].nodes) {
@@ -940,35 +945,35 @@ async function sendSyn() {
 	    link.append('Settings');
 	    span.append(link);
 	    span.append(' to change this value ]');
-            text.appendChild(span);
+            text.append(span);
 	}
 	else
 	    text.append(' ('+allweknow[word].total_synonyms+")");
 
-	div.appendChild(text);
+	div.append(text);
 
 	table = document.createElement("table");
 	table.className = 'sumtab';
 	tr = document.createElement("tr");
 	for (var head of ["Identifier","Label","Category","KG2pre","KG2pre Name","KG2pre Category","SRI_NN","SRI Name","SRI Category"] ) {
 	    td = document.createElement("th")
-	    td.appendChild(document.createTextNode(head));
-	    tr.appendChild(td);
+	    td.append(head);
+	    tr.append(td);
 	}
-	table.appendChild(tr);
+	table.append(tr);
 	for (var syn of allweknow[word].nodes) {
 	    tr = document.createElement("tr");
 	    tr.className = 'hoverable';
 	    td = document.createElement("td")
-	    td.appendChild(link_to_identifiers_dot_org(syn.identifier));
-	    td.appendChild(document.createTextNode(syn.identifier));
-	    tr.appendChild(td);
+	    td.append(link_to_identifiers_dot_org(syn.identifier));
+	    td.append(syn.identifier);
+	    tr.append(td);
 	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.label));
-	    tr.appendChild(td);
+	    td.append(syn.label);
+	    tr.append(td);
 	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.category));
-	    tr.appendChild(td);
+	    td.append(syn.category);
+	    tr.append(td);
 
 	    td = document.createElement("td")
 	    text = document.createElement("span");
@@ -982,15 +987,15 @@ async function sendSyn() {
 		text.className = 'explevel p0';
 		text.title = 'NOT found in KG2pre';
 	    }
-	    td.appendChild(text);
-	    tr.appendChild(td);
+	    td.append(text);
+	    tr.append(td);
 
             td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.name_kg2pre));
-	    tr.appendChild(td);
+	    td.append(syn.name_kg2pre);
+	    tr.append(td);
 	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.category_kg2pre));
-	    tr.appendChild(td);
+	    td.append(syn.category_kg2pre);
+	    tr.append(td);
 
 	    td = document.createElement("td")
             text = document.createElement("span");
@@ -1004,98 +1009,98 @@ async function sendSyn() {
 		text.className = 'explevel p0';
 		text.title = 'NOT found in SRI NodeNormalizer';
 	    }
-            td.appendChild(text);
-            tr.appendChild(td);
+            td.append(text);
+            tr.append(td);
 
             td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.name_sri));
-	    tr.appendChild(td);
+	    td.append(syn.name_sri);
+	    tr.append(td);
 	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.category_sri));
-	    tr.appendChild(td);
+	    td.append(syn.category_sri);
+	    tr.append(td);
 
-	    table.appendChild(tr);
+	    table.append(tr);
 	}
-	div.appendChild(table);
+	div.append(table);
     }
 
     if (allweknow[word].equivalent_identifiers) {
 	text = document.createElement("h3");
         text.className = "qprob p5";
-	text.appendChild(document.createTextNode('Equivalent Identifiers'));
-	div.appendChild(text);
+	text.append('Equivalent Identifiers');
+	div.append(text);
 
 	table = document.createElement("table");
 	table.className = 'sumtab';
 	tr = document.createElement("tr");
 	for (var head of ["Identifier","Category","Source"] ) {
 	    td = document.createElement("th")
-	    td.appendChild(document.createTextNode(head));
-	    tr.appendChild(td);
+	    td.append(head);
+	    tr.append(td);
 	}
-	table.appendChild(tr);
+	table.append(tr);
 	for (var syn of allweknow[word].equivalent_identifiers) {
 	    tr = document.createElement("tr");
 	    tr.className = 'hoverable';
-	    td = document.createElement("td")
-	    td.appendChild(link_to_identifiers_dot_org(syn.identifier));
-	    td.appendChild(document.createTextNode(syn.identifier));
-	    tr.appendChild(td);
-	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.category));
-	    tr.appendChild(td);
-	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(syn.source));
-	    tr.appendChild(td);
-	    table.appendChild(tr);
+	    td = document.createElement("td");
+	    td.append(link_to_identifiers_dot_org(syn.identifier));
+	    td.append(syn.identifier);
+	    tr.append(td);
+	    td = document.createElement("td");
+	    td.append(syn.category);
+	    tr.append(td);
+	    td = document.createElement("td");
+	    td.append(syn.source);
+	    tr.append(td);
+	    table.append(tr);
 	}
-	div.appendChild(table);
+	div.append(table);
     }
 
     if (allweknow[word].synonym_provenance) {
 	text = document.createElement("h3");
 	text.className = "qprob p5";
 	//text.appendChild(document.createTextNode('\u25BA Synonym Provenance'));
-	text.appendChild(document.createTextNode('Synonym Provenance'));
-	div.appendChild(text);
+	text.append('Synonym Provenance');
+	div.append(text);
 
 	table = document.createElement("table");
 	table.className = 'sumtab';
         tr = document.createElement("tr");
 	for (var head of ["Name","Curie","Source"] ) {
-	    td = document.createElement("th")
-	    td.appendChild(document.createTextNode(head));
-	    tr.appendChild(td);
+	    td = document.createElement("th");
+	    td.append(head);
+	    tr.append(td);
 	}
-        table.appendChild(tr);
+        table.append(tr);
 	for (var syn in allweknow[word].synonym_provenance) {
             tr = document.createElement("tr");
 	    tr.className = 'hoverable';
-	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(allweknow[word].synonym_provenance[syn].name));
-	    tr.appendChild(td);
-	    td = document.createElement("td")
-            td.appendChild(link_to_identifiers_dot_org(allweknow[word].synonym_provenance[syn].uc_curie));
-	    td.appendChild(document.createTextNode(allweknow[word].synonym_provenance[syn].uc_curie));
-	    tr.appendChild(td);
-	    td = document.createElement("td")
-	    td.appendChild(document.createTextNode(allweknow[word].synonym_provenance[syn].source));
-	    tr.appendChild(td);
-	    table.appendChild(tr);
+	    td = document.createElement("td");
+	    td.append(allweknow[word].synonym_provenance[syn].name);
+	    tr.append(td);
+	    td = document.createElement("td");
+            td.append(link_to_identifiers_dot_org(allweknow[word].synonym_provenance[syn].uc_curie));
+	    td.append(allweknow[word].synonym_provenance[syn].uc_curie);
+	    tr.append(td);
+	    td = document.createElement("td");
+	    td.append(allweknow[word].synonym_provenance[syn].source);
+	    tr.append(td);
+	    table.append(tr);
 	}
-	div.appendChild(table);
+	div.append(table);
     }
 
-    div.appendChild(document.createElement("br"));
-    syndiv.appendChild(div);
+    div.append(document.createElement("br"));
+    syndiv.append(div);
 
     if (allweknow[word]["knowledge_graph"]) {
 	process_graph(allweknow[word]["knowledge_graph"],'SYN',"1.4");
 
 	div = document.createElement("div");
 	div.className = "statushead";
-	div.appendChild(document.createTextNode("Concept Graph"));
-	syndiv.appendChild(div);
+	div.append("Concept Graph");
+	syndiv.append(div);
 
 	div = document.createElement("div");
         div.className = "status";
@@ -1103,8 +1108,8 @@ async function sendSyn() {
 	table = document.createElement("table");
 	table.className = 't100';
         add_graph_to_table(table,88888);
-        div.appendChild(table);
-        syndiv.appendChild(div);
+        div.append(table);
+        syndiv.append(div);
 
         add_cyto(88888,"SYN");
     }
@@ -1123,7 +1128,7 @@ function link_to_identifiers_dot_org(thing) {
     img.src = 'id_org.png';
     img.width  = "15";
     img.height = "15";
-    link.appendChild(img);
+    link.append(img);
 
     return link;
 }
@@ -1138,7 +1143,7 @@ function getIdStats(id) {
 	document.getElementById("numaux_"+id).innerHTML = '';
 	document.getElementById("cachelink_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
-	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
+	document.getElementById("numresults_"+id).append(getAnimatedWaitBar(null));
     }
     retrieve_response(providers["ARAX"].url+"/response/"+id,id,"stats");
 }
@@ -1200,7 +1205,7 @@ function sendId(is_ars_refresh) {
         document.getElementById("numaux_"+id).innerHTML = '';
         document.getElementById("cachelink_"+id).innerHTML = '';
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
-	document.getElementById("numresults_"+id).appendChild(getAnimatedWaitBar(null));
+	document.getElementById("numresults_"+id).append(getAnimatedWaitBar(null));
     }
 
     if (id.startsWith("http")) {
@@ -1232,8 +1237,8 @@ function process_ars_message(ars_msg, level) {
 
         var div2 = document.createElement("div");
 	div2.className = "statushead";
-        div2.appendChild(document.createTextNode("Collection Results"));
-        div.appendChild(div2);
+        div2.append("Collection Results");
+        div.append(div2);
 
 	var span = document.createElement("span");
 	span.id = 'ars_refresh';
@@ -1243,19 +1248,19 @@ function process_ars_message(ars_msg, level) {
 	span.dataset.count = '';
 	span.dataset.msgid = ars_msg.message;
         if (UIstate['autorefresh'])
-	    span.appendChild(document.createTextNode("Auto-reload: " + (ars_msg.status == 'Done' ? "OFF" : "ON")));
+	    span.append("Auto-reload: " + (ars_msg.status == 'Done' ? "OFF" : "ON"));
 	if (ars_msg.status != 'Done') {
 	    span.title = "Click to Stop Auto-Refresh";
 	    span.className = "clq";
 	    span.setAttribute('onclick', 'UIstate["autorefresh"] = false; document.getElementById("ars_refresh").innerHTML = "";');
 	}
-	div2.appendChild(span);
+	div2.append(span);
 
 	span = document.createElement("span");
 	span.id = 'ars_refresh_anim';
 	span.style.float = 'right';
 	span.style.marginRight = '20px';
-	div2.appendChild(span);
+	div2.append(span);
 
 	var div2 = document.createElement("div");
 	div2.id = "arsresultsdiv";
@@ -1269,16 +1274,16 @@ function process_ars_message(ars_msg, level) {
 	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.5?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
-	    td.appendChild(document.createTextNode(head));
-	    tr.appendChild(td);
+	    td.append(head);
+	    tr.append(td);
 	}
-	table.appendChild(tr);
+	table.append(tr);
 
-	div2.appendChild(document.createElement("br"));
-	div2.appendChild(table);
-        div2.appendChild(document.createElement("br"));
-        div.appendChild(div2);
-	document.getElementById('qid_input').appendChild(div);
+	div2.append(document.createElement("br"));
+	div2.append(table);
+        div2.append(document.createElement("br"));
+        div.append(div2);
+	document.getElementById('qid_input').append(div);
     }
     else
 	table = document.getElementById('ars_message_list_table');
@@ -1291,20 +1296,20 @@ function process_ars_message(ars_msg, level) {
 	if (UIstate["viewing"] == ars_msg.message)
 	    td.className = 'p7';
     }
-    td.appendChild(document.createTextNode('\u25BA'.repeat(level)));
-    tr.appendChild(td);
+    td.append('\u25BA'.repeat(level));
+    tr.append(td);
     td = document.createElement("td");
-    td.appendChild(document.createTextNode(ars_msg.actor.agent));
-    tr.appendChild(td);
+    td.append(ars_msg.actor.agent);
+    tr.append(td);
     td = document.createElement("td");
     if (ars_msg.status == 'Error')
 	td.className = 'error';
     else if (ars_msg.status == 'Running')
 	td.className = 'essence';
-    td.appendChild(document.createTextNode(ars_msg.status));
+    td.append(ars_msg.status);
     if (ars_msg.code)
-        td.appendChild(document.createTextNode(" / "+ars_msg.code));
-    tr.appendChild(td);
+        td.append(" / "+ars_msg.code);
+    tr.append(td);
     td = document.createElement("td");
 
     var link;
@@ -1317,12 +1322,12 @@ function process_ars_message(ars_msg, level) {
 	link.style.cursor = "pointer";
 	link.style.fontFamily = "monospace";
 	link.setAttribute('onclick', 'pasteId("'+ars_msg.message+'");sendId(false);');
-	link.appendChild(document.createTextNode(ars_msg.message));
+	link.append(ars_msg.message);
 	if (!ars_msg["children"] || ars_msg["children"].length == 0)
 	    go = true;
     }
-    td.appendChild(link);
-    tr.appendChild(td);
+    td.append(link);
+    tr.append(td);
 
 
     if (ars_msg.actor.agent == 'ars-default-agent') {
@@ -1337,47 +1342,47 @@ function process_ars_message(ars_msg, level) {
 	var ui_host = ars_msg.ui_host ? ars_msg.ui_host : "ui.ci.transltr.io";
 	link.href = "https://"+ui_host+"/results?l=&t=&q="+ars_msg.message;
 	link.target = '_TxUI';
-	link.innerText = "Open in Translator UI";
-	td.appendChild(link);
-	tr.appendChild(td);
+	link.append("Open in Translator UI");
+	td.append(link);
+	tr.append(td);
     }
     else {
 	td = document.createElement("td");
 	td.id = "respsize_"+ars_msg.message;
 	td.style.textAlign = "right";
-	tr.appendChild(td);
+	tr.append(td);
 
 	td = document.createElement("td");
 	td.id = "istrapi_"+ars_msg.message;
 	td.style.textAlign = "center";
-	tr.appendChild(td);
+	tr.append(td);
 
 	td = document.createElement("td");
 	td.id = "numresults_"+ars_msg.message;
 	td.style.textAlign = "center";
-	tr.appendChild(td);
+	tr.append(td);
 
 	td = document.createElement("td");
 	td.id = "nodedges_"+ars_msg.message;
 	td.style.textAlign = "center";
-	tr.appendChild(td);
+	tr.append(td);
 
 	td = document.createElement("td");
 	td.id = "nsources_"+ars_msg.message;
 	td.style.textAlign = "center";
-	tr.appendChild(td);
+	tr.append(td);
 
 	td = document.createElement("td");
 	td.id = "numaux_"+ars_msg.message;
 	td.style.textAlign = "center";
-	tr.appendChild(td);
+	tr.append(td);
 
 	td = document.createElement("td");
 	td.id = "cachelink_"+ars_msg.message;
 	td.style.textAlign = "right";
-	tr.appendChild(td);
+	tr.append(td);
     }
-    table.appendChild(tr);
+    table.append(tr);
 
     if (go)
 	getIdStats(ars_msg.message);
@@ -1395,16 +1400,16 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
     var statusdiv = document.getElementById("statusdiv");
     if (type == "all") {
 	var devdiv = document.getElementById("devdiv");
-	devdiv.appendChild(document.createElement("br"));
-	devdiv.appendChild(document.createTextNode('='.repeat(80)+" RESPONSE REQUEST::"));
+	devdiv.append(document.createElement("br"));
+	devdiv.append('='.repeat(80)+" RESPONSE REQUEST::");
 	var link = document.createElement("a");
 	link.target = '_blank';
 	link.href = resp_url;
 	link.style.position = "relative";
 	link.style.left = "30px";
-	link.appendChild(document.createTextNode("[ view raw json response \u2197 ]"));
-	devdiv.appendChild(link);
-	devdiv.appendChild(document.createElement("br"));
+	link.append("[ view raw json response \u2197 ]");
+	devdiv.append(link);
+	devdiv.append(document.createElement("br"));
     }
 
     if (jsonObj2["children"]) {
@@ -1420,50 +1425,50 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
     if (jsonObj2.validation_result) {
 	var nr = document.createElement("span");
         if (type == "all") {
-	    statusdiv.appendChild(document.createElement("br"));
-	    statusdiv.appendChild(document.createTextNode("TRAPI v"+jsonObj2.validation_result.version+" validation: "));
+	    statusdiv.append(document.createElement("br"));
+	    statusdiv.append("TRAPI v"+jsonObj2.validation_result.version+" validation: ");
 	    var vares  = document.createElement("b");
-            vares.appendChild(document.createTextNode(jsonObj2.validation_result.status));
-	    statusdiv.appendChild(vares);
+            vares.append(jsonObj2.validation_result.status);
+	    statusdiv.append(vares);
 
 	    if (jsonObj2.validation_result.validation_messages) {
-		statusdiv.appendChild(document.createTextNode(". View full report: [ "));
+		statusdiv.append(". View full report: [ ");
 		vares = document.createElement("a");
 		vares.style.fontWeight = "bold";
                 vares.style.cursor = "pointer";
 		vares.title = "JSON report";
-		vares.appendChild(document.createTextNode("JSON "));
+		vares.append("JSON ");
 		var valink = document.createElement("a");
                 valink.target = '_validator';
                 valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
-                valink.innerHTML = 'Validation Codes Dictionary';
+                valink.append('Validation Codes Dictionary');
 		vares.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages, valink); };
-		statusdiv.appendChild(vares);
-		statusdiv.appendChild(document.createTextNode(" ] -- [ "));
+		statusdiv.append(vares);
+		statusdiv.append(" ] -- [ ");
 
 		vares = document.createElement("a");
 		vares.style.fontWeight = "bold";
                 vares.style.cursor = "pointer";
 		vares.title = "text report";
-                vares.appendChild(document.createTextNode("text "));
+                vares.append("text ");
 		var valink = document.createElement("a");
                 valink.target = '_validator';
                 valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
-                valink.innerHTML = 'Validation Codes Dictionary';
+                valink.append('Validation Codes Dictionary');
 		vares.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, jsonObj2.validation_result.validation_messages_text, valink); };
-		statusdiv.appendChild(vares);
-		statusdiv.appendChild(document.createTextNode(" ]"));
+		statusdiv.append(vares);
+		statusdiv.append(" ]");
 	    }
 
-	    statusdiv.appendChild(document.createElement("br"));
+	    statusdiv.append(document.createElement("br"));
 	}
 	if (jsonObj2.validation_result.status == "FAIL") {
 	    if (type == "all") {
 		var span = document.createElement("span");
 		span.className = 'error';
-		span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
-		statusdiv.appendChild(span);
-		statusdiv.appendChild(document.createElement("br"));
+		span.append(jsonObj2.validation_result.message);
+		statusdiv.append(span);
+		statusdiv.append(document.createElement("br"));
 	    }
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
@@ -1473,9 +1478,9 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
             if (type == "all") {
                 var span = document.createElement("span");
                 span.className = 'error';
-                span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
-                statusdiv.appendChild(span);
-                statusdiv.appendChild(document.createElement("br"));
+                span.append(jsonObj2.validation_result.message);
+                statusdiv.append(span);
+                statusdiv.append(document.createElement("br"));
 	    }
 	    nr.innerHTML = '&#x2755;';
 	    nr.className = 'explevel p3';
@@ -1485,9 +1490,9 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
             if (type == "all") {
                 var span = document.createElement("span");
                 span.className = 'error';
-                span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
-                statusdiv.appendChild(span);
-                statusdiv.appendChild(document.createElement("br"));
+                span.append(jsonObj2.validation_result.message);
+                statusdiv.append(span);
+                statusdiv.append(document.createElement("br"));
 	    }
 	    nr.innerHTML = '&nsub;';
 	    nr.className = 'explevel p0';
@@ -1497,9 +1502,9 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
             if (type == "all") {
 		var span = document.createElement("span");
 		span.className = 'error';
-		span.appendChild(document.createTextNode(jsonObj2.validation_result.message));
-		statusdiv.appendChild(span);
-		statusdiv.appendChild(document.createElement("br"));
+		span.append(jsonObj2.validation_result.message);
+		statusdiv.append(span);
+		statusdiv.append(document.createElement("br"));
 	    }
 	    nr.innerHTML = '&#10067;';
 	    nr.className = 'explevel';
@@ -1513,7 +1518,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
 	    document.getElementById("istrapi_"+jsonObj2.araxui_response).innerHTML = '';
-	    document.getElementById("istrapi_"+jsonObj2.araxui_response).appendChild(nr);
+	    document.getElementById("istrapi_"+jsonObj2.araxui_response).append(nr);
 
 	    var num = parseFloat(jsonObj2.validation_result.size.match(/[\d\.]+/));
 	    if (num && num > 2 && jsonObj2.validation_result.size.includes("MB")) {
@@ -1539,22 +1544,22 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 			td = document.createElement("th");
 			td.style.background = "#3d6d98";
 			td.style.padding = "5px 0px";
-			td.appendChild(document.createTextNode("Validation "+vtype));
-			tr.appendChild(td);
-			table.appendChild(tr);
+			td.append("Validation "+vtype);
+			tr.append(td);
+			table.append(tr);
 			for (var vmsg in jsonObj2.validation_result.validation_messages[vtype]) {
                             tr = document.createElement("tr");
                             tr.style.background = "initial";
                             td = document.createElement("td");
-                            td.appendChild(document.createTextNode(vmsg));
-                            tr.appendChild(td);
-                            table.appendChild(tr);
+                            td.append(vmsg);
+                            tr.append(td);
+                            table.append(tr);
 			}
 		    }
 		}
 
-		tnode.appendChild(table);
-                html_node.appendChild(tnode);
+		tnode.append(table);
+                html_node.append(tnode);
 		var valink = document.createElement("a");
 		valink.target = '_validator';
 		valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
@@ -1566,10 +1571,10 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
                 var tnode = document.createElement("span");
                 tnode.className = 'tooltiptext';
 		tnode.style.padding = "10px";
-		tnode.appendChild(document.createTextNode(jsonObj2.validation_result.message));
+		tnode.append(jsonObj2.validation_result.message);
                 var html_node = document.getElementById("istrapi_"+jsonObj2.araxui_response);
                 html_node.className += " tooltip";
-                html_node.appendChild(tnode);
+                html_node.append(tnode);
 	    }
 
 	    if (jsonObj2.message && jsonObj2.message["auxiliary_graphs"] && Object.keys(jsonObj2.message["auxiliary_graphs"]).length > 0)
@@ -1595,22 +1600,22 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 		    td.colSpan = "4";
 		    td.style.background = "#3d6d98";
 		    td.style.padding = "5px 0px";
-		    td.appendChild(document.createTextNode("Provenance Counts"));
-		    tr.appendChild(td);
-		    table.appendChild(tr);
+		    td.append("Provenance Counts");
+		    tr.append(td);
+		    table.append(tr);
 		    for (var prov in jsonObj2.validation_result.provenance_summary.provenance_counts) {
 			tr = document.createElement("tr");
 			tr.style.background = "initial";
 			for (var pc of jsonObj2.validation_result.provenance_summary.provenance_counts[prov]) {
 			    td = document.createElement("td");
-			    td.appendChild(document.createTextNode(pc));
-			    tr.appendChild(td);
+			    td.append(pc);
+			    tr.append(td);
 			}
 			td.style.textAlign = "right";  // last td is always[?] the count number
-			table.appendChild(tr);
+			table.append(tr);
 		    }
-		    tnode.appendChild(table);
-		    html_node.appendChild(tnode);
+		    tnode.append(table);
+		    html_node.append(tnode);
 		    // trickery to fix FF annoying h-scrollbar issue
 		    tnode.style.visibility = "visible";
 		    if (tnode.scrollWidth > 440)
@@ -1631,23 +1636,23 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 		    td.colSpan = "2";
                     td.style.background = "#3d6d98";
 		    td.style.padding = "5px 0px";
-		    td.appendChild(document.createTextNode("Predicate Counts"));
-		    tr.appendChild(td);
-		    table.appendChild(tr);
+		    td.append("Predicate Counts");
+		    tr.append(td);
+		    table.append(tr);
 		    for (var pred in jsonObj2.validation_result.provenance_summary.predicate_counts) {
 			tr = document.createElement("tr");
                         tr.style.background = "initial";
 			td = document.createElement("td")
-			td.appendChild(document.createTextNode(pred));
-			tr.appendChild(td);
+			td.append(pred);
+			tr.append(td);
 			td = document.createElement("td");
 			td.style.textAlign = "right";
-			td.appendChild(document.createTextNode(jsonObj2.validation_result.provenance_summary.predicate_counts[pred]));
-			tr.appendChild(td);
-			table.appendChild(tr);
+			td.append(jsonObj2.validation_result.provenance_summary.predicate_counts[pred]);
+			tr.append(td);
+			table.append(tr);
 		    }
-		    tnode.appendChild(table);
-		    html_node.appendChild(tnode);
+		    tnode.append(table);
+		    html_node.append(tnode);
 		}
 	    }
 	    checkRefreshARS();
@@ -1663,13 +1668,13 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	var h3 = document.createElement("h3");
 	h3.style.fontStyle = "italic";
 	if (jsonObj2.description)
-            h3.appendChild(document.createTextNode(jsonObj2.description));
-	h3.appendChild(document.createElement("br"));
-	h3.appendChild(document.createElement("br"));
+            h3.append(jsonObj2.description);
+	h3.append(document.createElement("br"));
+	h3.append(document.createElement("br"));
 	if (jsonObj2.status)
-            h3.appendChild(document.createTextNode(jsonObj2.status));
-        statusdiv.appendChild(h3);
-        statusdiv.appendChild(document.createElement("br"));
+            h3.append(jsonObj2.status);
+        statusdiv.append(h3);
+        statusdiv.append(document.createElement("br"));
     }
     sesame('openmax',statusdiv);
 
@@ -1687,7 +1692,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 function retrieve_response(resp_url, resp_id, type) {
     if (type == null) type = "all";
     var statusdiv = document.getElementById("statusdiv");
-    statusdiv.appendChild(document.createTextNode("Retrieving response id = " + resp_id));
+    statusdiv.append("Retrieving response id = " + resp_id);
 
     if (resp_id.startsWith("http"))
 	resp_id = "URL:"+hashCode(resp_id);
@@ -1695,15 +1700,15 @@ function retrieve_response(resp_url, resp_id, type) {
     if (response_cache[resp_id]) {
         if (document.getElementById("istrapi_"+resp_id))
 	    document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
-	statusdiv.appendChild(document.createTextNode(" ...from cache ("+resp_id+")"));
-	statusdiv.appendChild(document.createElement("hr"));
+	statusdiv.append(" ...from cache ("+resp_id+")");
+	statusdiv.append(document.createElement("hr"));
 	sesame('openmax',statusdiv);
 	// 50ms timeout allows css animation to start before processing locks the thread
 	var timeout = setTimeout(function() { process_response(resp_url, resp_id, type,response_cache[resp_id]); }, 50 );
 	return;
     }
 
-    statusdiv.appendChild(document.createElement("hr"));
+    statusdiv.append(document.createElement("hr"));
     sesame('openmax',statusdiv);
 
     var xhr = new XMLHttpRequest();
@@ -1772,7 +1777,7 @@ function render_response_stats(respObj) {
 	nr.innerHTML = '&nbsp;n/a&nbsp;';
     }
 
-    document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
+    document.getElementById("numresults_"+respObj.araxui_response).append(nr);
 }
 
 function update_response_stats_on_error(rid,msg,clearall) {
@@ -1782,7 +1787,7 @@ function update_response_stats_on_error(rid,msg,clearall) {
     var nr = document.createElement("span");
     nr.className = 'explevel p0';
     nr.innerHTML = '&nbsp;'+msg+'&nbsp;';
-    document.getElementById("numresults_"+rid).appendChild(nr);
+    document.getElementById("numresults_"+rid).append(nr);
 
     if (clearall) {
 	document.getElementById("respsize_"+rid).innerHTML = '---';
@@ -1798,7 +1803,7 @@ function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     if (!respObj["schema_version"])
 	respObj["schema_version"] = "1.5 (presumed)";
-    statusdiv.appendChild(document.createTextNode("Rendering TRAPI "+respObj["schema_version"]+" message..."));
+    statusdiv.append("Rendering TRAPI "+respObj["schema_version"]+" message...");
 
     sesame('openmax',statusdiv);
 
@@ -1828,12 +1833,12 @@ function render_response(respObj,dispjson) {
 
 
     if (!respObj.message) {
-	statusdiv.appendChild(document.createTextNode("no message!"));
-	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append("no message!");
+	statusdiv.append(document.createElement("br"));
 	var nr = document.createElement("span");
 	nr.className = 'essence';
-	nr.appendChild(document.createTextNode("Response contains no message, and hence no results."));
-	statusdiv.appendChild(nr);
+	nr.append("Response contains no message, and hence no results.");
+	statusdiv.append(nr);
 	sesame('openmax',statusdiv);
         update_response_stats_on_error(respObj.araxui_response,'&nsub;',false);
 	return;
@@ -1943,7 +1948,7 @@ function render_response(respObj,dispjson) {
 	    }
 
             if (respObj.message.results.length > UIstate["maxresults"])
-		document.getElementById("result_container").appendChild(h2.cloneNode(true));
+		document.getElementById("result_container").append(h2.cloneNode(true));
 
 	    if (document.getElementById("numresults_"+respObj.araxui_response)) {
 		document.getElementById("numresults_"+respObj.araxui_response).innerHTML = '';
@@ -1957,7 +1962,7 @@ function render_response(respObj,dispjson) {
 		else
 		    nr.className = 'explevel p5';
 		nr.innerHTML = '&nbsp;'+respObj.message.results.length+'&nbsp;';
-		document.getElementById("numresults_"+respObj.araxui_response).appendChild(nr);
+		document.getElementById("numresults_"+respObj.araxui_response).append(nr);
 	    }
 	}
     }
@@ -1972,13 +1977,13 @@ function render_response(respObj,dispjson) {
     if (summary_tsv.length > 1) {
 	var div = document.createElement("div");
 	div.className = 'statushead';
-	div.appendChild(document.createTextNode("Summary"));
-        document.getElementById("summary_container").appendChild(div);
+	div.append("Summary");
+        document.getElementById("summary_container").append(div);
 
 	div = document.createElement("div");
 	div.className = 'status';
 	div.id = 'summarydiv';
-	div.appendChild(document.createElement("br"));
+	div.append(document.createElement("br"));
 
 	var button = document.createElement("input");
 	button.className = 'questionBox button';
@@ -1987,7 +1992,7 @@ function render_response(respObj,dispjson) {
 	button.title = 'Get tab-separated values of this table to paste into Excel etc';
 	button.value = 'Copy Summary Table to clipboard (TSV)';
 	button.setAttribute('onclick', 'copyTSVToClipboard(this,summary_tsv);');
-        div.appendChild(button);
+        div.append(button);
 
 
 	if (Object.keys(summary_score_histogram).length > 0) {
@@ -1999,9 +2004,9 @@ function render_response(respObj,dispjson) {
             var td = document.createElement("th");
 	    td.style.borderBottom = "1px solid black";
 	    td.colSpan = Object.keys(summary_score_histogram).length;
-            td.appendChild(document.createTextNode("SCORE DISTRIBUTION"));
-            tr.appendChild(td);
-            table.appendChild(tr);
+            td.append("SCORE DISTRIBUTION");
+            tr.append(td);
+            table.append(tr);
 
 	    var tr = document.createElement("tr");
 	    for (var s in summary_score_histogram) {
@@ -2010,33 +2015,33 @@ function render_response(respObj,dispjson) {
 		td.style.verticalAlign = "bottom";
 		td.style.textAlign = "center";
 		td.style.padding = "0px";
-                td.appendChild(document.createTextNode(summary_score_histogram[s]));
-		td.appendChild(document.createElement("br"));
+                td.append(summary_score_histogram[s]);
+		td.append(document.createElement("br"));
 
 		var span = document.createElement("span");
 		span.className = "bar";
 		var barh = Number(summary_score_histogram[s]);
 		span.style.height = barh + "px";
 		span.style.width = "25px";
-		td.appendChild(span);
-		td.appendChild(document.createElement("br"));
+		td.append(span);
+		td.append(document.createElement("br"));
 
-		td.appendChild(document.createTextNode(s));
-		tr.appendChild(td);
+		td.append(s);
+		tr.append(td);
 	    }
-	    table.appendChild(tr);
-            div.appendChild(table);
-	    div.appendChild(document.createElement("br"));
-            div.appendChild(document.createElement("br"));
+	    table.append(tr);
+            div.append(table);
+	    div.append(document.createElement("br"));
+            div.append(document.createElement("br"));
 	}
 
 	var table = document.createElement("table");
 	table.className = 'sumtab';
 	table.innerHTML = summary_table_html;
-        div.appendChild(table);
-	div.appendChild(document.createElement("br"));
+        div.append(table);
+	div.append(document.createElement("br"));
 
-	document.getElementById("summary_container").appendChild(div);
+	document.getElementById("summary_container").append(div);
     }
     else
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
@@ -2045,28 +2050,28 @@ function render_response(respObj,dispjson) {
     if (respObj.query_options && respObj.query_options.query_plan) {
         var div = document.createElement("div");
 	div.className = 'statushead';
-	div.appendChild(document.createTextNode("Expansion Results"));
-	document.getElementById("queryplan_container").appendChild(div);
+	div.append("Expansion Results");
+	document.getElementById("queryplan_container").append(div);
 
 	div = document.createElement("div");
 	div.className = 'status';
-	div.appendChild(document.createElement("br"));
-        document.getElementById("queryplan_container").appendChild(div);
+	div.append(document.createElement("br"));
+        document.getElementById("queryplan_container").append(div);
 
 	div.append(render_queryplan_table(respObj.query_options.query_plan));
-	div.appendChild(document.createElement("br"));
+	div.append(document.createElement("br"));
     }
 
     if (respObj.validation_result && respObj.validation_result.provenance_summary) {
 	var div = document.createElement("div");
 	div.className = 'statushead';
-	div.appendChild(document.createTextNode("Provenance Summary"));
-	document.getElementById("provenance_container").appendChild(div);
+	div.append("Provenance Summary");
+	document.getElementById("provenance_container").append(div);
 
 	div = document.createElement("div");
 	div.className = 'status';
 	div.id = 'provenancediv';
-	div.appendChild(document.createElement("br"));
+	div.append(document.createElement("br"));
 
         var table = document.createElement("table");
 	table.className = 'sumtab';
@@ -2074,15 +2079,15 @@ function render_response(respObj,dispjson) {
         var td = document.createElement("th");
 	td.colSpan = "2";
         td.style.fontSize = 'x-large';
-	td.appendChild(document.createTextNode("Provenance Counts"));
-	tr.appendChild(td);
+	td.append("Provenance Counts");
+	tr.append(td);
         td = document.createElement("th");
-	td.appendChild(document.createTextNode("[ "+respObj.validation_result.provenance_summary["n_sources"]+" sources ]"));
-	tr.appendChild(td);
+	td.append("[ "+respObj.validation_result.provenance_summary["n_sources"]+" sources ]");
+	tr.append(td);
 	td = document.createElement("th");
 	td.colSpan = "2";
-	tr.appendChild(td);
-	table.appendChild(tr);
+	tr.append(td);
+	table.append(tr);
 
         var semmeddb_counts = {};
 
@@ -2118,8 +2123,8 @@ function render_response(respObj,dispjson) {
 		td = document.createElement("td");
 		if (changed0)
 		    td.style.borderTop = "2px solid #444";
-		td.appendChild(document.createTextNode(pc));
-		tr.appendChild(td);
+		td.append(pc);
+		tr.append(td);
 	    }
 	    td.style.textAlign = "right";  // last td is always[?] the count number
 
@@ -2138,10 +2143,10 @@ function render_response(respObj,dispjson) {
 		span.style.background = "#b00";
 	    span.style.width = barw + "px";
 	    span.style.height = "8px";
-	    td.appendChild(span);
-            tr.appendChild(td);
+	    td.append(span);
+            tr.append(td);
 
-	    table.appendChild(tr);
+	    table.append(tr);
 	}
 
 	// use same table so it is all nicely aligned
@@ -2150,45 +2155,45 @@ function render_response(respObj,dispjson) {
 	td.colSpan = "5";
 	td.style.background = '#fff';
 	td.style.border = '0';
-	td.appendChild(document.createElement("br"));
-	td.appendChild(document.createElement("br"));
-        tr.appendChild(td);
-	table.appendChild(tr);
+	td.append(document.createElement("br"));
+	td.append(document.createElement("br"));
+        tr.append(td);
+	table.append(tr);
 
 	tr = document.createElement("tr");
 	td = document.createElement("th");
 	td.colSpan = "2";
 	td.style.background = '#fff';
         td.style.fontSize = 'x-large';
-	td.appendChild(document.createTextNode("Predicate Counts"));
-	tr.appendChild(td);
+	td.append("Predicate Counts");
+	tr.append(td);
         td = document.createElement("th");
 	td.style.background = '#fff';
 	td.colSpan = "3";
-	tr.appendChild(td);
+	tr.append(td);
 
 	td = document.createElement("th");
 	td.style.background = '#fff';
 	td.style.color = '#666';
-	td.appendChild(document.createTextNode("SEMMEDDB Sub-Counts"));
+	td.append("SEMMEDDB Sub-Counts");
 	td.colSpan = "3";
 	//td.style.textAlign = "left";
 	td.style.borderLeft = "2px solid black";
-	tr.appendChild(td);
+	tr.append(td);
 
 
-	table.appendChild(tr);
+	table.append(tr);
         for (var pred in respObj.validation_result.provenance_summary.predicate_counts) {
 	    tr = document.createElement("tr");
 	    tr.className = 'hoverable';
 	    td = document.createElement("td");
 	    td.colSpan = "3";
-	    td.appendChild(document.createTextNode(pred));
-	    tr.appendChild(td);
+	    td.append(pred);
+	    tr.append(td);
 	    td = document.createElement("td");
 	    td.style.textAlign = "right";
-	    td.appendChild(document.createTextNode(respObj.validation_result.provenance_summary.predicate_counts[pred]));
-	    tr.appendChild(td);
+	    td.append(respObj.validation_result.provenance_summary.predicate_counts[pred]);
+	    tr.append(td);
             // fancy bar bar
 	    td = document.createElement("td");
 	    var span = document.createElement("span");
@@ -2200,15 +2205,15 @@ function render_response(respObj,dispjson) {
 	    }
 	    span.style.width = barw + "px";
 	    span.style.height = "8px";
-	    td.appendChild(span);
-	    tr.appendChild(td);
+	    td.append(span);
+	    tr.append(td);
 
 
 	    td = document.createElement("td");
 	    td.style.textAlign = "right";
 	    td.style.borderLeft = "2px solid black";
-	    td.appendChild(document.createTextNode(semmeddb_counts[pred]));
-	    tr.appendChild(td);
+	    td.append(semmeddb_counts[pred]);
+	    tr.append(td);
             // fancy bar bar
 	    td = document.createElement("td");
 	    var span = document.createElement("span");
@@ -2222,68 +2227,68 @@ function render_response(respObj,dispjson) {
 		span.style.background = "#f80";
 	    span.style.width = barw + "px";
 	    span.style.height = "8px";
-	    td.appendChild(span);
-	    tr.appendChild(td);
+	    td.append(span);
+	    tr.append(td);
 
 	    td = document.createElement("td");
 	    td.style.textAlign = "right";
-	    td.appendChild(document.createTextNode(" "+barw+"%"));
+	    td.append(" "+barw+"%");
 
-	    tr.appendChild(td);
-	    table.appendChild(tr);
+	    tr.append(td);
+	    table.append(tr);
 	}
-	div.appendChild(table);
-	div.appendChild(document.createElement("br"));
+	div.append(table);
+	div.append(document.createElement("br"));
 
-	document.getElementById("provenance_container").appendChild(div);
+	document.getElementById("provenance_container").append(div);
     }
     else
 	document.getElementById("provenance_container").innerHTML += "<h2>Provenance information not available for this response</h2>";
 
 
     add_cyto(99999,"QG");
-    statusdiv.appendChild(document.createTextNode("done."));
-    statusdiv.appendChild(document.createElement("br"));
+    statusdiv.append("done.");
+    statusdiv.append(document.createElement("br"));
     if (respObj["submitter"]) {
-	statusdiv.appendChild(document.createTextNode("Submitted by: "+respObj.submitter));
-	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append("Submitted by: "+respObj.submitter);
+	statusdiv.append(document.createElement("br"));
     }
 
     // add stats
-    statusdiv.appendChild(document.createTextNode("Number of results: "));
+    statusdiv.append("Number of results: ");
     if (respObj.message["results"] && respObj.message["results"].length > 0)
-	statusdiv.appendChild(document.createTextNode(respObj.message["results"].length));
+	statusdiv.append(respObj.message["results"].length);
     else
-	statusdiv.appendChild(document.createTextNode("none"));
-    statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append("none");
+    statusdiv.append(document.createElement("br"));
 
-    statusdiv.appendChild(document.createTextNode("Number of nodes: "));
+    statusdiv.append("Number of nodes: ");
     if (respObj.message["knowledge_graph"] && respObj.message["knowledge_graph"]["nodes"] && Object.keys(respObj.message["knowledge_graph"]["nodes"]).length > 0)
-	statusdiv.appendChild(document.createTextNode(Object.keys(respObj.message["knowledge_graph"]["nodes"]).length));
+	statusdiv.append(Object.keys(respObj.message["knowledge_graph"]["nodes"]).length);
     else
-	statusdiv.appendChild(document.createTextNode("none"));
-    statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append("none");
+    statusdiv.append(document.createElement("br"));
 
-    statusdiv.appendChild(document.createTextNode("Number of edges: "));
+    statusdiv.append("Number of edges: ");
     if (respObj.message["knowledge_graph"] && respObj.message["knowledge_graph"]["edges"] && Object.keys(respObj.message["knowledge_graph"]["edges"]).length > 0)
-	statusdiv.appendChild(document.createTextNode(Object.keys(respObj.message["knowledge_graph"]["edges"]).length));
+	statusdiv.append(Object.keys(respObj.message["knowledge_graph"]["edges"]).length);
     else
-	statusdiv.appendChild(document.createTextNode("none"));
-    statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append("none");
+    statusdiv.append(document.createElement("br"));
 
-    statusdiv.appendChild(document.createTextNode("Number of aux graphs: "));
+    statusdiv.append("Number of aux graphs: ");
     if (respObj.message["auxiliary_graphs"] && Object.keys(respObj.message["auxiliary_graphs"]).length > 0)
-        statusdiv.appendChild(document.createTextNode(Object.keys(respObj.message["auxiliary_graphs"]).length));
+        statusdiv.append(Object.keys(respObj.message["auxiliary_graphs"]).length);
     else
-        statusdiv.appendChild(document.createTextNode("none"));
-    statusdiv.appendChild(document.createElement("br"));
+        statusdiv.append("none");
+    statusdiv.append(document.createElement("br"));
 
 
     var nr = document.createElement("span");
     nr.className = 'essence';
-    nr.appendChild(document.createTextNode("Click on Results, Summary, Provenance, or Knowledge Graph links on the left to explore results."));
-    statusdiv.appendChild(nr);
-    statusdiv.appendChild(document.createElement("br"));
+    nr.append("Click on Results, Summary, Provenance, or Knowledge Graph links on the left to explore results.");
+    statusdiv.append(nr);
+    statusdiv.append(document.createElement("br"));
     sesame('openmax',statusdiv);
 }
 
@@ -2448,14 +2453,14 @@ function showJSONpopup(wtitle,query,footer) {
     span.className = 'clq clwin2';
     span.title = 'Close this window';
     span.setAttribute('onclick', 'document.body.removeChild(document.getElementById("kpq"))');
-    span.appendChild(document.createTextNode("\u2573"));
-    popup.appendChild(span);
+    span.append("\u2573");
+    popup.append(span);
 
     var div = document.createElement("div");
     div.className = 'statushead';
     div.style.marginTop = "-40px";
-    div.appendChild(document.createTextNode(wtitle));
-    popup.appendChild(div);
+    div.append(wtitle);
+    popup.append(div);
 
     div = document.createElement("div");
     div.className = 'status';
@@ -2466,22 +2471,22 @@ function showJSONpopup(wtitle,query,footer) {
     var pre = document.createElement("pre");
     pre.style.color = "#000";
     if (query && typeof query === 'object' && query.constructor === Object)
-	pre.appendChild(document.createTextNode(JSON.stringify(query,null,2)));
+	pre.append(JSON.stringify(query,null,2));
     else
 	pre.innerText = query;
-    div.appendChild(pre);
-    popup.appendChild(div);
+    div.append(pre);
+    popup.append(div);
 
     if (footer) {
 	div = document.createElement("div");
 	div.className = 'statusfoot';
-	div.appendChild(footer);
-	popup.appendChild(div);
+	div.append(footer);
+	popup.append(div);
     }
 
     dragElement(popup);
     var timeout = setTimeout(function() { popup.classList.add('shake'); }, 50 );
-    document.body.appendChild(popup);
+    document.body.append(popup);
 }
 
 
@@ -2556,21 +2561,18 @@ function process_log(logarr) {
 
 	var span2 = document.createElement("span");
 	span2.className = "explevel msg" + msg.level;
-	span2.appendChild(document.createTextNode('\u00A0'));
-	span2.appendChild(document.createTextNode('\u00A0'));
-        span.appendChild(span2);
+	span2.append('\u00A0\u00A0');
+	span.append(span2);
 
         span2 = document.createElement("span");
-	span2.appendChild(document.createTextNode('\u00A0'));
-	span2.appendChild(document.createTextNode(msg.timestamp+" "+msg.level+": "));
+	span2.append('\u00A0');
+	span2.append(msg.timestamp+" "+msg.level+": ");
 	if (msg.code)
-	    span2.appendChild(document.createTextNode("["+msg.code+"] "));
+	    span2.append("["+msg.code+"] ");
 
-	span2.appendChild(document.createTextNode('\u00A0'));
-	span2.appendChild(document.createTextNode('\u00A0'));
-	span2.appendChild(document.createTextNode('\u00A0'));
-	span2.appendChild(document.createTextNode(msg.message));
-        span.appendChild(span2);
+	span2.append('\u00A0\u00A0\u00A0');
+	span2.append(msg.message);
+	span.append(span2);
 
         let units = " s";
 	let diff = Math.abs(span.dataset.timestamp - starttime)/1000;
@@ -2580,10 +2582,10 @@ function process_log(logarr) {
 	}
 	span2 = document.createElement("span");
 	span2.style.float = 'right';
-        span2.appendChild(document.createTextNode(diff+units));
-        span.appendChild(span2);
+        span2.append(diff+units);
+        span.append(span2);
 
-	document.getElementById("logdiv").appendChild(span);
+	document.getElementById("logdiv").append(span);
     }
     document.getElementById("menunummessages").innerHTML = logarr.length;
     if (status.ERROR > 0)
@@ -2621,7 +2623,7 @@ function add_status_divs() {
     span.style.fontWeight = 'normal';
     span.style.float = "right";
     span.append("( json responses )");
-    div.appendChild(span);
+    div.append(span);
     document.getElementById("dev_result_json_container").append(div);
 
     div = document.createElement("div");
@@ -2739,12 +2741,12 @@ function display_QG_from_JSON() {
         jsonInput = JSON.parse(document.getElementById("jsonText").value);
     }
     catch(e) {
-        statusdiv.appendChild(document.createElement("br"));
+        statusdiv.append(document.createElement("br"));
         if (e.name == "SyntaxError")
             statusdiv.innerHTML += "<b>Error</b> parsing JSON input. Please correct errors and try again: ";
         else
             statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and try again: ";
-        statusdiv.appendChild(document.createElement("br"));
+        statusdiv.append(document.createElement("br"));
         statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
         sesame('openmax',statusdiv);
         return;
@@ -2875,7 +2877,10 @@ function process_graph(gne,graphid,trapi) {
 
 function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
     if (!result.analyses || result.analyses.length < 1)
-	return;
+	throw new Error('No analyses found in result[0]');
+
+    if (!result.node_bindings || Object.keys(result.node_bindings).length < 2)
+        throw new Error('Not enough node_bindings found in result[0]');
 
     var div = document.createElement("h3");
     div.id = 'pathfilterstatus';
@@ -2886,6 +2891,20 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 
     var results_fragment = document.createDocumentFragment();
 
+    // deal with multiple curie/ids per binding?  ToDo?
+    var path_src = result.node_bindings[Object.keys(result.node_bindings)[0]][0].id;
+    var path_end = result.node_bindings[Object.keys(result.node_bindings)[1]][0].id;
+
+    if ('n0' in result.node_bindings)
+	path_src = result.node_bindings['n0'][0].id;
+    else if ('sn' in result.node_bindings)
+	path_src = result.node_bindings['sn'][0].id;
+
+    if ('n1' in result.node_bindings)
+	path_end = result.node_bindings['n1'][0].id;
+    else if ('on' in result.node_bindings)
+	path_end = result.node_bindings['on'][0].id;
+
     var num = 0;
     for (var ranal of result.analyses) {
 	num++;
@@ -2895,16 +2914,12 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 	div.title = 'Click to expand / collapse analysis '+num;
         div.className = 'accordion';
 
-	var auxgraph = ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'];  // TODO: deal with more than one...
+	var auxgraph = ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'];  // TODO: deal with more than one path_binding...?
         add_aux_graph(kg,auxgraph,aux[auxgraph]["edges"],num,trapi);
 	div.setAttribute('onclick', 'add_cyto('+num+',"AUX'+auxgraph+'","grid");sesame(this,a'+num+'_div);');
 
 	div.dataset.pnodes = "|filter|";
         div.append(" Analysis "+num+" :: ");
-
-	// deal with other node_binding ids (and multiple curie/ids per binding...?)  ToDo /////
-	var path_src = result.node_bindings['n0'][0].id;
-	var path_end = result.node_bindings['n1'][0].id;
 
         var span = document.createElement("span");
         span.className = 'filtertag p0';
@@ -2961,7 +2976,6 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         var span100 = document.createElement("span");
         span100.style.float = 'right';
         span100.style.marginRight = '70px';
-        span100.style.marginTop = '5px';
 
         var span = document.createElement("span");
         span.className = pcl+' qprob';
@@ -3103,7 +3117,7 @@ function display_filternodes(howmany=null) {
 	    if (all_nodes[fnode]['filtered'] > 0) {
 		htmlnode.className = 'filtertag';
 		minus.className = 'filterbutton p1';
-		minus.title = "EXCLUDE results with this node";
+		minus.title = "EXCLUDE paths with this node";
 		check.className = 'filterbutton p9';
 		check.title = "Add this filter";
 		minus.setAttribute('onclick', 'filter_paths("X::'+fnode+'", false, false);');
@@ -3254,8 +3268,8 @@ function filter_paths(curie="CURRENT",only=false, display=true) {
 
 function get_node_list_in_paths(path_bindings,kg,aux) {
     var pathnodes = {};
-    for (pb in path_bindings) {
-	for (path in path_bindings[pb]) {
+    for (var pb in path_bindings) {
+	for (var path in path_bindings[pb]) {
 	    for (var edgeid of aux[path_bindings[pb][path]["id"]]["edges"]) {
 		pathnodes[kg.edges[edgeid]["subject"]] = 1;
 		pathnodes[kg.edges[edgeid]["object"]] = 1;
@@ -3389,7 +3403,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	var ranal = -1;
 
 	if (result.analyses && result.analyses.length > 0) {
-            for (ranal in result.analyses) {
+            for (var ranal in result.analyses) {
 		cytodata['R'+num+'A'+ranal] = [];
 
 		tr = document.createElement("tr");
@@ -3443,6 +3457,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		var span100 = document.createElement("span");
 		span100.style.float = 'right';
 		span100.style.marginRight = '70px';
+		span100.style.marginTop = '5px';
 
                 var span = document.createElement("span");
 		span.className = pcl+' qprob';
@@ -3700,7 +3715,6 @@ function add_graph_to_table(table,num) {
     td.append(link);
     td.append(document.createElement("br"));
 
-    // ///////
     if (!window.chrome) {
 	link = document.createElement("a");
 	link.style.marginTop = "40px";
@@ -4142,9 +4156,9 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
     var cell = document.createElement("td");
     cell.className = 'attvalue';
     cell.colSpan = '2';
-    cell.appendChild(document.createTextNode("Qualified Statement"));
-    row.appendChild(cell);
-    qtable.appendChild(row);
+    cell.append("Qualified Statement");
+    row.append(cell);
+    qtable.append(row);
 
     var qsentence = document.createElement("span");
     qsentence.className = 'explevel attvalue p9';
@@ -4213,17 +4227,17 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	    if (hasdup)
 		celltext += " ** has duplicate values!";
 	}
-	qsentence.appendChild(frag);
+	qsentence.append(frag);
 
 	var row = document.createElement("tr");
 	var cell = document.createElement("td");
         cell.style.fontWeight = "bold";
-	cell.appendChild(document.createTextNode(oq+":"));
-	row.appendChild(cell);
+	cell.append(oq+":");
+	row.append(cell);
 	cell = document.createElement("td");
-        cell.appendChild(document.createTextNode(celltext));
-	row.appendChild(cell);
-	qtable.appendChild(row);
+        cell.append(celltext);
+	row.append(cell);
+	qtable.append(row);
     }
 
     var addbar = true;
@@ -4237,24 +4251,24 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	cell.style.fontWeight = "bold";
 	if (addbar) {
 	    cell.colSpan = '2';
-	    cell.appendChild(document.createElement("hr"));
-	    row.appendChild(cell);
-	    qtable.appendChild(row);
+	    cell.append(document.createElement("hr"));
+	    row.append(cell);
+	    qtable.append(row);
 	    addbar = false;
 	    row = document.createElement("tr");
 	    cell = document.createElement("td");
 	    cell.style.fontWeight = "bold";
 	}
-        cell.appendChild(document.createTextNode(oqual['qualifier_type_id']+":"));
-	row.appendChild(cell);
+        cell.append(oqual['qualifier_type_id']+":");
+	row.append(cell);
 	cell = document.createElement("td");
-	cell.appendChild(document.createTextNode(oqual['qualifier_value']));
-	row.appendChild(cell);
-	qtable.appendChild(row);
+	cell.append(oqual['qualifier_value']);
+	row.append(cell);
+	qtable.append(row);
     }
 
-    html_div.appendChild(qsentence);
-    html_div.appendChild(qtable);
+    html_div.append(qsentence);
+    html_div.append(qtable);
 }
 
 
@@ -4265,7 +4279,7 @@ async function retrieve_attributes(num,html_div, cytobject, title, mainvalue) {
     var wait = getAnimatedWaitBar("100px");
     wait.style.marginTop = "20px";
     wait.style.marginBottom = "20px";
-    html_div.appendChild(wait);
+    html_div.append(wait);
 
     response = await fetch(providers["ARAX"].url + "/response/" + cytobject.data('detail_lookup'));
     var respjson = await response.json();
@@ -4278,7 +4292,7 @@ async function retrieve_attributes(num,html_div, cytobject, title, mainvalue) {
 	}
 	if (respjson.sources) {
 	    cytobject.data('sources', respjson.sources);
-            html_div.appendChild(document.createElement("br"));
+            html_div.append(document.createElement("br"));
             show_attributes(num,html_div, cytobject.data('sources'),"Edge Sources:","resource_id");
 	}
 	sesame('openmax',document.getElementById('a'+cytobject.data('parentdivnum')+'_div'));
@@ -4304,16 +4318,16 @@ function show_attributes(num,html_div, atts, title, mainvalue) {
 	var cell = document.createElement("td");
         cell.className = 'attvalue';
 	cell.colSpan = '2';
-	cell.appendChild(document.createTextNode(title));
-	row.appendChild(cell);
-	atts_table.appendChild(row);
+	cell.append(title);
+	row.append(cell);
+	atts_table.append(row);
     }
 
     for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
 	display_attribute(num,atts_table, att, semmeddb_sentences, mainvalue);
     }
 
-    html_div.appendChild(atts_table);
+    html_div.append(atts_table);
 }
 
 function display_attribute(num,tab, att, semmeddb, mainvalue) {
@@ -4321,9 +4335,9 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
     var cell = document.createElement("td");
 
     cell.colSpan = '2';
-    cell.appendChild(document.createElement("hr"));
-    row.appendChild(cell);
-    tab.appendChild(row);
+    cell.append(document.createElement("hr"));
+    row.append(cell);
+    tab.append(row);
 
     var sub_atts = null;
 
@@ -4342,8 +4356,8 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	    row = document.createElement("tr");
 	    cell = document.createElement("td");
 	    cell.style.fontWeight = "bold";
-            cell.appendChild(document.createTextNode(nom+":"));
-	    row.appendChild(cell);
+            cell.append(nom+":");
+	    row.append(cell);
             cell = document.createElement("td");
 
 	    // handle all as arrays  (hope no objects creep in...)
@@ -4353,26 +4367,26 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	    var br = false;
 	    for (var val of att[nom]) {
 		if (br)
-		    cell.appendChild(document.createElement("br"));
+		    cell.append(document.createElement("br"));
 
 		if (val == null)
-		    cell.appendChild(document.createTextNode("--NULL--"));
+		    cell.append("--NULL--");
 
 		if (val.toString().startsWith("http")) {
 		    var a = document.createElement("a");
 		    a.target = '_blank';
 		    a.href = val;
 		    a.innerHTML = val;
-		    cell.appendChild(a);
+		    cell.append(a);
 		}
 		else
-		    cell.appendChild(document.createTextNode(val));
+		    cell.append(val);
 
 		br = true;
 	    }
 
-	    row.appendChild(cell);
-	    tab.appendChild(row);
+	    row.append(cell);
+	    tab.append(row);
 
 	    if (att[nom] == "primary_knowledge_source")
 		flagifmainvaluenull = false;
@@ -4382,8 +4396,8 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
     row = document.createElement("tr");
     cell = document.createElement("td");
     cell.style.fontWeight = "bold";
-    cell.appendChild(document.createTextNode(mainvalue+":"));
-    row.appendChild(cell);
+    cell.append(mainvalue+":");
+    row.append(cell);
     cell = document.createElement("td");
     cell.style.overflowWrap = "anywhere"; //??
 
@@ -4395,15 +4409,15 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	    var br = false;
 	    for (var val of att[mainvalue]) {
 		if (br)
-		    cell.appendChild(document.createElement("br"));
+		    cell.append(document.createElement("br"));
 
 		if (val == null) {
-                    cell.appendChild(document.createTextNode("--NULL--"));
+                    cell.append("--NULL--");
 		}
 		else if (typeof val === 'object') {
 		    var pre = document.createElement("pre");
-		    pre.appendChild(document.createTextNode(JSON.stringify(val,null,2)));
-		    cell.appendChild(pre);
+		    pre.append(JSON.stringify(val,null,2));
+		    cell.append(pre);
 		}
 		else if (val.toString().startsWith("PMID:")) {
                     var a = document.createElement("a");
@@ -4412,14 +4426,14 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
                     a.href = "https://pubmed.ncbi.nlm.nih.gov/" + val.split(":")[1] + '/';
 		    a.title = 'View in PubMed';
                     a.innerHTML = val;
-                    cell.appendChild(a);
+                    cell.append(a);
 
 		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val]) {
-			cell.appendChild(document.createTextNode(" : "));
+			cell.append(" : ");
 			var quote = document.createElement("i");
-			quote.appendChild(document.createTextNode(semmeddb[0]["value"][val]["sentence"]));
-			cell.appendChild(quote);
-			cell.appendChild(document.createTextNode(' ('+semmeddb[0]["value"][val]["publication date"]+')'));
+			quote.append(semmeddb[0]["value"][val]["sentence"]);
+			cell.append(quote);
+			cell.append(' ('+semmeddb[0]["value"][val]["publication date"]+')');
 		    }
 		}
 		else if (val.toString().startsWith("DOI:")) {
@@ -4429,7 +4443,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		    a.href = "https://doi.org/" + val.split(":")[1];
 		    a.title = 'View in doi.org';
 		    a.innerHTML = val;
-		    cell.appendChild(a);
+		    cell.append(a);
 		}
 		else if (val.toString().startsWith("http")) {
                     var a = document.createElement("a");
@@ -4437,7 +4451,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		    a.target = '_blank';
 		    a.href = val;
 		    a.innerHTML = val;
-		    cell.appendChild(a);
+		    cell.append(a);
 		}
 
 		else if (att.attribute_type_id == "biolink:support_graphs") {
@@ -4447,8 +4461,8 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
                     a.style.cursor = "pointer";
 		    a.title = 'View Aux Graph: '+ val;
 		    a.setAttribute('onclick', 'add_cyto('+num+',"AUX'+val+'");');
-                    a.innerText = val;
-		    cell.appendChild(a);
+                    a.append(val);
+		    cell.append(a);
 
 		    a = document.createElement("a");
                     a.className = 'graphlink';
@@ -4457,13 +4471,13 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		    a.style.marginLeft = "20px";
 		    a.title = 'View Edge Aux Graph: '+ val;
 		    a.setAttribute('onclick', 'add_cyto('+num+',"AUX'+val+'");');
-		    a.innerText = UIstate["edgesg"];
-		    document.getElementById('d'+num+'_div_edge').appendChild(a);
+		    a.append(UIstate["edgesg"]);
+		    document.getElementById('d'+num+'_div_edge').append(a);
 		    document.getElementById('d'+num+'_div_edge').style.display = ''; // display it
 		}
 
 		else {
-                    cell.appendChild(document.createTextNode(val));
+                    cell.append(val);
 		}
 
 		br = true;
@@ -4471,15 +4485,15 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	}
 	else if (typeof att[mainvalue] === 'object') {
             var pre = document.createElement("pre");
-	    pre.appendChild(document.createTextNode(JSON.stringify(att[mainvalue],null,2)));
-	    cell.appendChild(pre);
+	    pre.append(JSON.stringify(att[mainvalue],null,2));
+	    cell.append(pre);
 	}
         else if (attributes_to_truncate.includes(att.original_attribute_name)) {
             cell.className = 'attvalue';
             if (isNaN(att[mainvalue]))
-		cell.appendChild(document.createTextNode(att[mainvalue]));
+		cell.append(att[mainvalue]);
 	    else
-		cell.appendChild(document.createTextNode(Number(att[mainvalue]).toPrecision(3)));
+		cell.append(Number(att[mainvalue]).toPrecision(3));
 	}
 	else if (value.toString().startsWith("http")) {
 	    cell.className = 'attvalue';
@@ -4487,7 +4501,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	    a.target = '_blank';
 	    a.href = value;
 	    a.innerHTML = value;
-	    cell.appendChild(a);
+	    cell.append(a);
 	}
 	else {
             cell.className = 'attvalue';
@@ -4495,32 +4509,32 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	    var multi = att[mainvalue].toString().split(/(-!-|---|\;\;)/);
 	    if (multi.length > 1) {
 		for (var line of multi) {
-		    cell.appendChild(document.createTextNode('\u25BA'));
-                    cell.appendChild(document.createTextNode(line));
-		    cell.appendChild(document.createElement("br"));
+		    cell.append('\u25BA');
+                    cell.append(line);
+		    cell.append(document.createElement("br"));
 		}
 	    }
 	    else
-		cell.appendChild(document.createTextNode(att[mainvalue]));
+		cell.append(att[mainvalue]);
 	}
     }
     else {
         var text = document.createElement("i");
-	text.appendChild(document.createTextNode("-- empty / no value! --"));
-	cell.appendChild(text);
+	text.append("-- empty / no value! --");
+	cell.append(text);
 	if (flagifmainvaluenull)
 	    row.className = 'p1 qprob';
     }
 
-    row.appendChild(cell);
-    tab.appendChild(row);
+    row.append(cell);
+    tab.append(row);
 
     if (sub_atts && Array.isArray(sub_atts) && sub_atts.length >0) {
 	row = document.createElement("tr");
 	cell = document.createElement("td");
         cell.style.fontWeight = "bold";
-	cell.appendChild(document.createTextNode("(sub)attributes:"));
-	row.appendChild(cell);
+	cell.append("(sub)attributes:");
+	row.append(cell);
 
 	cell = document.createElement("td");
 	cell.className = 'subatts';
@@ -4530,9 +4544,9 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	for (var sub_att of sub_atts)
 	    display_attribute(num,subatts_table, sub_att, semmeddb, mainvalue);
 
-	cell.appendChild(subatts_table);
-        row.appendChild(cell);
-        tab.appendChild(row);
+	cell.append(subatts_table);
+        row.append(cell);
+        tab.append(row);
     }
 }
 
@@ -4784,17 +4798,17 @@ function qg_node(id,render) {
     htmlnode.innerHTML = '';
     if (input_qg.nodes[id].ids) {
 	var theids = input_qg.nodes[id].ids.slice();  // creates a copy (instead of a reference)
-	for (curie of theids.sort()) {
-	    htmlnode.appendChild(document.createTextNode(curie));
+	for (var curie of theids.sort()) {
+	    htmlnode.append(curie);
 
 	    var link = document.createElement("a");
 	    link.style.float = "right";
 	    link.href = 'javascript:qg_remove_curie_from_qnode("'+curie+'");';
 	    link.title = "remove "+curie+" from Qnode ids list";
-	    link.appendChild(document.createTextNode(" [ remove ] "));
-	    htmlnode.appendChild(link);
+	    link.append(" [ remove ] ");
+	    htmlnode.append(link);
 
-	    htmlnode.appendChild(document.createElement("br"));
+	    htmlnode.append(document.createElement("br"));
 	}
     }
     else
@@ -4803,17 +4817,17 @@ function qg_node(id,render) {
     htmlnode = document.getElementById('nodeeditor_cat');
     htmlnode.innerHTML = '';
     if (input_qg.nodes[id].categories) {
-	for (category of input_qg.nodes[id].categories.sort()) {
-	    htmlnode.appendChild(document.createTextNode(category));
+	for (var category of input_qg.nodes[id].categories.sort()) {
+	    htmlnode.append(category);
 
 	    var link = document.createElement("a");
 	    link.style.float = "right";
 	    link.href = 'javascript:qg_remove_category_from_qnode("'+category+'");';
 	    link.title = "remove "+category+" from Qnode categories list";
-	    link.appendChild(document.createTextNode(" [ remove ] "));
-	    htmlnode.appendChild(link);
+	    link.append(" [ remove ] ");
+	    htmlnode.append(link);
 
-	    htmlnode.appendChild(document.createElement("br"));
+	    htmlnode.append(document.createElement("br"));
 	}
     }
     else
@@ -4823,22 +4837,22 @@ function qg_node(id,render) {
     htmlnode.innerHTML = '';
     if (input_qg.nodes[id].constraints) {
 	var cindex = 0;
-	for (constraint of input_qg.nodes[id].constraints) {
-	    htmlnode.appendChild(document.createTextNode(constraint.name+" "));
+	for (var constraint of input_qg.nodes[id].constraints) {
+	    htmlnode.append(constraint.name+" ");
 	    if (constraint.not)
-		htmlnode.appendChild(document.createTextNode("NOT "));
-	    htmlnode.appendChild(document.createTextNode(constraint.operator + " " +constraint.value));
+		htmlnode.append("NOT ");
+	    htmlnode.append(constraint.operator + " " +constraint.value);
 	    if (constraint.unit_name)
-		htmlnode.appendChild(document.createTextNode(" ("+constraint.unit_name+")"));
+		htmlnode.append(" ("+constraint.unit_name+")");
 
             var link = document.createElement("a");
 	    link.style.float = "right";
 	    link.href = 'javascript:qg_remove_constraint_from_qnode('+cindex+');';
 	    link.title = "remove "+constraint.id+" from Qnode constraints list";
-	    link.appendChild(document.createTextNode(" [ remove ] "));
-	    htmlnode.appendChild(link);
+	    link.append(" [ remove ] ");
+	    htmlnode.append(link);
 
-	    htmlnode.appendChild(document.createElement("br"));
+	    htmlnode.append(document.createElement("br"));
 	    cindex++;
 	}
     }
@@ -4848,14 +4862,14 @@ function qg_node(id,render) {
     htmlnode = document.getElementById('nodeeditor_optgpid');
     htmlnode.innerHTML = '';
     if (input_qg.nodes[id].option_group_id) {
-	htmlnode.appendChild(document.createTextNode(input_qg.nodes[id].option_group_id));
+	htmlnode.append(input_qg.nodes[id].option_group_id);
 
 	var link = document.createElement("a");
 	link.style.float = "right";
 	link.href = 'javascript:qg_remove_optgpid_from_qnode();';
 	link.title = "remove Option Group ID from this Qnode";
-	link.appendChild(document.createTextNode(" [ remove ] "));
-	htmlnode.appendChild(link);
+	link.append(" [ remove ] ");
+	htmlnode.append(link);
     }
     else
 	input_qg.nodes[id].option_group_id = null;
@@ -4882,7 +4896,7 @@ function qg_remove_qnode() {
 
     var delstat = "<p>Deleted node <i>"+id+"</i>";
 
-    for (eid in input_qg.edges) {
+    for (var eid in input_qg.edges) {
 	var killit = false
 	if (input_qg.edges[eid].subject == id)
 	    killit = true;
@@ -4911,7 +4925,10 @@ function qg_remove_qnode() {
     UIstate.editnodeid = null;
 }
 
+
 async function qg_add_curie_to_qnode() {
+    var statusdiv = document.getElementById("statusdiv");
+
     var id = UIstate.editnodeid;
     if (!id) return;
 
@@ -4919,7 +4936,7 @@ async function qg_add_curie_to_qnode() {
     document.getElementById("newquerynode").value = '';
 
     if (thing == '') {
-        document.getElementById("statusdiv").innerHTML = "<p class='error'>Please enter a node value</p>";
+        statusdiv.innerHTML = "<p class='error'>Please enter a node value</p>";
 	return;
     }
 
@@ -4927,7 +4944,7 @@ async function qg_add_curie_to_qnode() {
     document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
 
     if (bestthing.found) {
-        document.getElementById("statusdiv").innerHTML = "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+thing+"</i> in our knowledge graph.</p>";
+        statusdiv.innerHTML = "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+thing+"</i> in our knowledge graph.</p>";
 	sesame('openmax',statusdiv);
 
 	if (!input_qg.nodes[id]['ids'].includes(bestthing.curie)) {
@@ -4945,7 +4962,7 @@ async function qg_add_curie_to_qnode() {
 	cylayout(99999,"breadthfirst");
     }
     else {
-        document.getElementById("statusdiv").innerHTML = "<p><span class='error'>" + thing + "</span> is not in our knowledge graph.</p>";
+        statusdiv.innerHTML = "<p><span class='error'>" + thing + "</span> is not in our knowledge graph.</p>";
 	sesame('openmax',statusdiv);
     }
 
@@ -5187,17 +5204,17 @@ function qg_edge(id,node1=null,node2=null) {
     var htmlnode = document.getElementById('edgeeditor_pred');
     htmlnode.innerHTML = '';
     if (input_qg.edges[id].predicates) {
-	for (predicate of input_qg.edges[id].predicates.sort()) {
-	    htmlnode.appendChild(document.createTextNode(predicate));
+	for (var predicate of input_qg.edges[id].predicates.sort()) {
+	    htmlnode.append(predicate);
 
 	    var link = document.createElement("a");
 	    link.style.float = "right";
 	    link.href = 'javascript:qg_remove_predicate_from_qedge("'+predicate+'");';
 	    link.title = "remove "+predicate+" from Qedge predicate list";
-	    link.appendChild(document.createTextNode(" [ remove ] "));
-	    htmlnode.appendChild(link);
+	    link.append(" [ remove ] ");
+	    htmlnode.append(link);
 
-	    htmlnode.appendChild(document.createElement("br"));
+	    htmlnode.append(document.createElement("br"));
 	}
     }
     else
@@ -5207,22 +5224,22 @@ function qg_edge(id,node1=null,node2=null) {
     htmlnode.innerHTML = '';
     if (input_qg.edges[id].attribute_constraints) {
 	var cindex = 0;
-	for (constraint of input_qg.edges[id].attribute_constraints) {
-	    htmlnode.appendChild(document.createTextNode(constraint.name+" "));
+	for (var constraint of input_qg.edges[id].attribute_constraints) {
+	    htmlnode.append(constraint.name+" ");
 	    if (constraint.not)
-		htmlnode.appendChild(document.createTextNode("NOT "));
-	    htmlnode.appendChild(document.createTextNode(constraint.operator + " " +constraint.value));
+		htmlnode.append("NOT ");
+	    htmlnode.append(constraint.operator + " " +constraint.value);
 	    if (constraint.unit_name)
-		htmlnode.appendChild(document.createTextNode(" ("+constraint.unit_name+")"));
+		htmlnode.append(" ("+constraint.unit_name+")");
 
             var link = document.createElement("a");
 	    link.style.float = "right";
 	    link.href = 'javascript:qg_remove_constraint_from_qedge('+cindex+');';
 	    link.title = "remove "+constraint.id+" from Qedge constraints list";
-	    link.appendChild(document.createTextNode(" [ remove ] "));
-	    htmlnode.appendChild(link);
+	    link.append(" [ remove ] ");
+	    htmlnode.append(link);
 
-	    htmlnode.appendChild(document.createElement("br"));
+	    htmlnode.append(document.createElement("br"));
 	    cindex++;
 	}
     }
@@ -5232,15 +5249,15 @@ function qg_edge(id,node1=null,node2=null) {
     var showhr = false;
     var prevqb = '';
     if (input_qg.edges[id].qualifier_constraints) {
-	for (qset of input_qg.edges[id].qualifier_constraints) {
+	for (var qset of input_qg.edges[id].qualifier_constraints) {
 	    if (showhr) {
-		htmlnode.appendChild(document.createElement("hr"));
-		htmlnode.appendChild(document.createElement("hr"));
-		htmlnode.appendChild(document.createElement("hr"));
+		htmlnode.append(document.createElement("hr"));
+		htmlnode.append(document.createElement("hr"));
+		htmlnode.append(document.createElement("hr"));
 		prevqb = '';
 	    }
 	    showhr = true;
-            for (qualifier of qset.qualifier_set) {
+            for (var qualifier of qset.qualifier_set) {
 		currqb = qualifier['qualifier_type_id'].split("_")[0];
 		var span0 = document.createElement("span");
 		var span1 = document.createElement("span");
@@ -5252,15 +5269,15 @@ function qg_edge(id,node1=null,node2=null) {
 		}
 		prevqb = currqb;
 		span0.style.color = "#aaa";
-		span0.appendChild(document.createTextNode(qualifier['qualifier_type_id'].split(":")[0]+":"));
-		htmlnode.appendChild(span0);
-		span1.appendChild(document.createTextNode(qualifier['qualifier_type_id'].split(":")[1]));
-		htmlnode.appendChild(span1);
+		span0.append(qualifier['qualifier_type_id'].split(":")[0]+":");
+		htmlnode.append(span0);
+		span1.append(qualifier['qualifier_type_id'].split(":")[1]);
+		htmlnode.append(span1);
 
 		span2.style.fontWeight = "bold";
 		span2.style.paddingLeft = "10px";
-		span2.appendChild(document.createTextNode(qualifier.qualifier_value));
-		htmlnode.appendChild(span2);
+		span2.append(qualifier.qualifier_value);
+		htmlnode.append(span2);
 	    }
 	}
     }
@@ -5271,14 +5288,14 @@ function qg_edge(id,node1=null,node2=null) {
     htmlnode = document.getElementById('edgeeditor_optgpid');
     htmlnode.innerHTML = '';
     if (input_qg.edges[id].option_group_id) {
-	htmlnode.appendChild(document.createTextNode(input_qg.edges[id].option_group_id));
+	htmlnode.append(input_qg.edges[id].option_group_id);
 
 	var link = document.createElement("a");
 	link.style.float = "right";
 	link.href = 'javascript:qg_remove_optgpid_from_qedge();';
 	link.title = "remove Option Group ID from this Qedge";
-	link.appendChild(document.createTextNode(" [ remove ] "));
-	htmlnode.appendChild(link);
+	link.append(" [ remove ] ");
+	htmlnode.append(link);
     }
     else
 	input_qg.edges[id].option_group_id = null;
@@ -5290,12 +5307,12 @@ function qg_edge(id,node1=null,node2=null) {
 function qg_update_qnode_list() {
     document.getElementById('edgeeditor_subj').innerHTML = '';
     document.getElementById('edgeeditor_obj').innerHTML = '';
-    for (node of Object.keys(input_qg.nodes).sort()) {
+    for (var node of Object.keys(input_qg.nodes).sort()) {
 	var opt = document.createElement('option');
 	opt.value = node;
 	opt.innerHTML = node+":"+cyobj[99999].getElementById(node).data('name');
-	document.getElementById('edgeeditor_subj').appendChild(opt);
-	document.getElementById('edgeeditor_obj').appendChild(opt.cloneNode(true));
+	document.getElementById('edgeeditor_subj').append(opt);
+	document.getElementById('edgeeditor_obj').append(opt.cloneNode(true));
     }
 
     var id = UIstate.editedgeid;
@@ -5436,7 +5453,8 @@ function qg_edit(msg) {
 
 function show_qgjson() {
     if (document.getElementById("showQGjson").checked) {
-	document.getElementById("statusdiv").innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
+	var statusdiv = document.getElementById("statusdiv");
+	statusdiv.innerHTML = "<pre>"+JSON.stringify(input_qg,null,2)+ "</pre>";
 	sesame('openmax',statusdiv);
     }
 }
@@ -5453,14 +5471,14 @@ function qg_display_items() {
     var tr = document.createElement("tr");
     for (var head of ["Id","Name","Item","Category","Action"] ) {
 	var th = document.createElement("th")
-	th.appendChild(document.createTextNode(head));
-	tr.appendChild(th);
+	th.append(head);
+	tr.append(th);
     }
-    table.appendChild(tr);
+    table.append(tr);
 
     var nitems = 0;
 
-    for (nid in input_qg.nodes) {
+    for (var nid in input_qg.nodes) {
 	var result = input_qg.nodes[nid];
 	nitems++;
 
@@ -5468,65 +5486,65 @@ function qg_display_items() {
 	tr.className = 'hoverable';
 
 	var td = document.createElement("td");
-        td.appendChild(document.createTextNode(nid));
-        tr.appendChild(td);
+        td.append(nid);
+        tr.append(td);
 
         td = document.createElement("td");
-        td.appendChild(document.createTextNode(result["_name"] == null ? "-" : result["_name"]));
-        tr.appendChild(td);
+        td.append(result["_name"] == null ? "-" : result["_name"]);
+        tr.append(td);
 
 	td = document.createElement("td");
-        td.appendChild(document.createTextNode(result.is_set ? "(multiple items)" : result.ids == null ? "(any node)" : result.ids[0]));
-        tr.appendChild(td);
+        td.append(result.is_set ? "(multiple items)" : result.ids == null ? "(any node)" : result.ids[0]);
+        tr.append(td);
 
 	td = document.createElement("td");
-        td.appendChild(document.createTextNode(result.is_set ? "(set of nodes)" : result.categories == null ? "(any)" : result.categories[0]));
-        tr.appendChild(td);
+        td.append(result.is_set ? "(set of nodes)" : result.categories == null ? "(any)" : result.categories[0]);
+        tr.append(td);
 
         td = document.createElement("td");
 	var link = document.createElement("a");
 	link.href = 'javascript:remove_node_from_query_graph(\"'+nid+'\")';
-	link.appendChild(document.createTextNode("Remove"));
-	td.appendChild(link);
-        tr.appendChild(td);
+	link.append("Remove");
+	td.append(link);
+        tr.append(td);
 
-	table.appendChild(tr);
+	table.append(tr);
     }
 
-    for (eid in input_qg.edges) {
+    for (var eid in input_qg.edges) {
 	var result = input_qg.edges[eid];
         tr = document.createElement("tr");
 	tr.className = 'hoverable';
 
 	var td = document.createElement("td");
-        td.appendChild(document.createTextNode(eid));
-	tr.appendChild(td);
+        td.append(eid);
+	tr.append(td);
 
 	td = document.createElement("td");
-        td.appendChild(document.createTextNode("-"));
-        tr.appendChild(td);
+        td.append("-");
+        tr.append(td);
 
         td = document.createElement("td");
-	td.appendChild(document.createTextNode(result.subject+"--"+result.object));
-	tr.appendChild(td);
+	td.append(result.subject+"--"+result.object);
+	tr.append(td);
 
         td = document.createElement("td");
-	td.appendChild(document.createTextNode(result.predicates == null ? "(any)" : result.predicates[0]));
-	tr.appendChild(td);
+	td.append(result.predicates == null ? "(any)" : result.predicates[0]);
+	tr.append(td);
 
         td = document.createElement("td");
 	var link = document.createElement("a");
 	link.href = 'javascript:remove_edge_from_query_graph(\"'+eid+'\")';
-	link.appendChild(document.createTextNode("Remove"));
-	td.appendChild(link);
-	tr.appendChild(td);
+	link.append("Remove");
+	td.append(link);
+	tr.append(td);
 
-        table.appendChild(tr);
+        table.append(tr);
     };
 
     document.getElementById("qg_items").innerHTML = '';
     if (nitems > 0)
-	document.getElementById("qg_items").appendChild(table);
+	document.getElementById("qg_items").append(table);
 
 }
 
@@ -5559,17 +5577,17 @@ function qg_display_edge_predicates(all) {
 
     if (preds.length < 1) {
 	opt.innerHTML = "-- No Predicates found --";
-	preds_node.appendChild(opt);
+	preds_node.append(opt);
     }
     else {
 	opt.innerHTML = "Add Predicate to Edge&nbsp;("+preds.length+")&nbsp;&nbsp;&nbsp;&#8675;";
-	preds_node.appendChild(opt);
+	preds_node.append(opt);
 
 	for (const p of preds) {
 	    opt = document.createElement('option');
 	    opt.value = p;
 	    opt.innerHTML = p;
-	    preds_node.appendChild(opt);
+	    preds_node.append(opt);
 	}
     }
 }
@@ -5718,16 +5736,16 @@ function show_dsl_command_options(command) {
 
     var com_node = document.getElementById("dsl_command_form");
     com_node.innerHTML = '';
-    com_node.appendChild(document.createElement('hr'));
+    com_node.append(document.createElement('hr'));
 
     var h2 = document.createElement('h2');
     h2.style.marginBottom = 0;
     h2.innerHTML = command;
-    com_node.appendChild(h2);
+    com_node.append(h2);
 
     if (araxi_commands[command].description) {
-	com_node.appendChild(document.createTextNode(araxi_commands[command].description));
-	com_node.appendChild(document.createElement('br'));
+	com_node.append(araxi_commands[command].description);
+	com_node.append(document.createElement('br'));
     }
 
     var skipped = '';
@@ -5738,22 +5756,22 @@ function show_dsl_command_options(command) {
 	    skipped += par;
 	    continue;
 	}
-	com_node.appendChild(document.createElement('br'));
+	com_node.append(document.createElement('br'));
 
 	var span = document.createElement('span');
 	if (araxi_commands[command].parameters[par]['is_required'])
 	    span.className = 'essence';
-	span.appendChild(document.createTextNode(par+":"));
-	com_node.appendChild(span);
+	span.append(par+":");
+	com_node.append(span);
 
 	span = document.createElement('span');
 	span.className = 'tiny';
 	span.style.position = "relative";
 	span.style.left = "50px";
-	span.appendChild(document.createTextNode(araxi_commands[command].parameters[par].description));
-	com_node.appendChild(span);
+	span.append(araxi_commands[command].parameters[par].description);
+	com_node.append(span);
 
-	com_node.appendChild(document.createElement('br'));
+	com_node.append(document.createElement('br'));
 
         if (araxi_commands[command].parameters[par]['type'] == 'boolean') {
 	    araxi_commands[command].parameters[par]['enum'] = ['true','false'];
@@ -5781,17 +5799,17 @@ function show_dsl_command_options(command) {
 	    var opt = document.createElement('option');
 	    opt.value = '';
 	    opt.innerHTML = "Select&nbsp;&nbsp;&nbsp;&#8675;";
-	    sel.appendChild(opt);
+	    sel.append(opt);
 
 	    for (var val of araxi_commands[command].parameters[par]['enum']) {
 		opt = document.createElement('option');
 		opt.value = val;
 		opt.innerHTML = val;
-		sel.appendChild(opt);
+		sel.append(opt);
 	    }
 
-	    span.appendChild(sel);
-	    com_node.appendChild(span);
+	    span.append(sel);
+	    com_node.append(span);
 
 	    if (araxi_commands[command].parameters[par]['default'])
 		sel.value = araxi_commands[command].parameters[par]['default'];
@@ -5802,20 +5820,20 @@ function show_dsl_command_options(command) {
 	    i.id = "__param__"+par;
 	    i.className = 'questionBox';
 	    i.size = 60;
-	    com_node.appendChild(i);
+	    com_node.append(i);
 
 	    if (araxi_commands[command].parameters[par]['default'])
 		i.value = araxi_commands[command].parameters[par]['default'];
 	}
     }
 
-    com_node.appendChild(document.createElement('br'));
+    com_node.append(document.createElement('br'));
 
     if (skipped) {
-	com_node.appendChild(document.createElement('br'));
-	com_node.appendChild(document.createTextNode('The following advanced parameters are also available: '+skipped+'. Please consult the full documentation for more information.'));
-	com_node.appendChild(document.createElement('br'));
-	com_node.appendChild(document.createElement('br'));
+	com_node.append(document.createElement('br'));
+	com_node.append('The following advanced parameters are also available: '+skipped+'. Please consult the full documentation for more information.');
+	com_node.append(document.createElement('br'));
+	com_node.append(document.createElement('br'));
     }
 
     var button = document.createElement("input");
@@ -5825,15 +5843,15 @@ function show_dsl_command_options(command) {
     button.title = 'Append new DSL command to list above';
     button.value = 'Add';
     button.setAttribute('onclick', 'add_dsl_command("'+command+'");');
-    com_node.appendChild(button);
+    com_node.append(button);
 
     var link = document.createElement("a");
     link.style.marginLeft = "20px";
     link.href = 'javascript:abort_dsl();';
-    link.appendChild(document.createTextNode(" Cancel "));
-    com_node.appendChild(link);
+    link.append(" Cancel ");
+    com_node.append(link);
 
-    com_node.appendChild(document.createElement('hr'));
+    com_node.append(document.createElement('hr'));
 }
 
 function add_dsl_command(command) {
@@ -5903,12 +5921,13 @@ function update_wfjson() {
 	wfj = JSON.parse(document.getElementById("wfJSON").value);
     }
     catch(e) {
-	statusdiv.appendChild(document.createElement("br"));
+	var statusdiv = document.getElementById("statusdiv");
+	statusdiv.append(document.createElement("br"));
 	if (e.name == "SyntaxError")
 	    statusdiv.innerHTML += "<b>Error</b> parsing JSON input. Please correct errors and resubmit: ";
 	else
 	    statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and resubmit: ";
-	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append(document.createElement("br"));
 	statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
 	return;
     }
@@ -5934,7 +5953,7 @@ function populate_wflist() {
 	item.title = "CLICK to view/edit operation details; DRAG to reorder list";
 	item.dataset.sequence = count;
 	item.innerHTML = com.id;
-	list_node.appendChild(item);
+	list_node.append(item);
 
 	var items = list_node.getElementsByTagName("li"), current = null;
 
@@ -5997,8 +6016,8 @@ function populate_wflist() {
     }
 
     if (count == 0) {
-        list_node.appendChild(document.createElement('br'));
-        list_node.appendChild(document.createTextNode("Add workflow operations using the menu on the right, and/or via the JSON import box below."));
+        list_node.append(document.createElement('br'));
+        list_node.append("Add workflow operations using the menu on the right, and/or via the JSON import box below.");
     }
 }
 
@@ -6011,7 +6030,7 @@ function populate_wf_operations() {
     var opt = document.createElement('option');
     opt.value = '';
     opt.innerHTML = "Workflow Operation&nbsp;&nbsp;&nbsp;&#8675;";
-    wf_node.appendChild(opt);
+    wf_node.append(opt);
 
     for (var com in wf_operations) {
 	opt = document.createElement('option');
@@ -6019,7 +6038,7 @@ function populate_wf_operations() {
 	opt.innerHTML = com;
 	if (arax && !wf_operations[com]['in_arax'])
 	    opt.disabled = true;
-	wf_node.appendChild(opt);
+	wf_node.append(opt);
     }
 }
 
@@ -6031,57 +6050,57 @@ function show_wf_operation_options(operation, index) {
 
     var com_node = document.getElementById("wf_operation_form");
     com_node.innerHTML = '';
-    com_node.appendChild(document.createElement('hr'));
+    com_node.append(document.createElement('hr'));
 
     var h2 = document.createElement('h2');
     h2.style.marginBottom = 0;
     h2.innerHTML = operation;
-    com_node.appendChild(h2);
+    com_node.append(h2);
 
     if (!wf_operations[operation]) {
         var span = document.createElement('span');
 	span.className = 'error';
-	span.appendChild(document.createElement('br'));
-        span.appendChild(document.createTextNode("Operation '"+operation+"' not found in workflow operations list!"));
-	com_node.appendChild(span);
-	span.appendChild(document.createElement('br'));
-        com_node.appendChild(get_remove_wf_operation_button(index));
+	span.append(document.createElement('br'));
+        span.append("Operation '"+operation+"' not found in workflow operations list!");
+	com_node.append(span);
+	span.append(document.createElement('br'));
+        com_node.append(get_remove_wf_operation_button(index));
 
 	var link = document.createElement("a");
 	link.style.marginLeft = "20px";
 	link.href = 'javascript:abort_wf();';
-	link.appendChild(document.createTextNode("Cancel"));
-	com_node.appendChild(link);
+	link.append("Cancel");
+	com_node.append(link);
 	return;
     }
 
     if (!wf_operations[operation]['in_arax']) {
         h2.innerHTML += " *";
-	com_node.appendChild(document.createTextNode('* Please note that this workflow operation is not supported in ARAX, though it may be in other actors'));
-        com_node.appendChild(document.createElement('br'));
+	com_node.append('* Please note that this workflow operation is not supported in ARAX, though it may be in other actors');
+        com_node.append(document.createElement('br'));
     }
     if (wf_operations[operation].description) {
-	com_node.appendChild(document.createTextNode(wf_operations[operation].description));
-	com_node.appendChild(document.createElement('br'));
+	com_node.append(wf_operations[operation].description);
+	com_node.append(document.createElement('br'));
     }
 
     for (var par in wf_operations[operation].parameters) {
-	com_node.appendChild(document.createElement('br'));
+	com_node.append(document.createElement('br'));
 
 	var span = document.createElement('span');
 	if (wf_operations[operation].parameters[par]['is_required'])
 	    span.className = 'essence';
-	span.appendChild(document.createTextNode(par+":"));
-	com_node.appendChild(span);
+	span.append(par+":");
+	com_node.append(span);
 
 	span = document.createElement('span');
 	span.className = 'tiny';
 	span.style.position = "relative";
 	span.style.left = "50px";
-	span.appendChild(document.createTextNode(wf_operations[operation].parameters[par].description));
-	com_node.appendChild(span);
+	span.append(wf_operations[operation].parameters[par].description);
+	com_node.append(span);
 
-	com_node.appendChild(document.createElement('br'));
+	com_node.append(document.createElement('br'));
 
 	if (wf_operations[operation].parameters[par]['type'] == 'boolean') {
 	    wf_operations[operation].parameters[par]['enum'] = ['true','false'];
@@ -6115,17 +6134,17 @@ function show_wf_operation_options(operation, index) {
 	    var opt = document.createElement('option');
 	    opt.value = '';
 	    opt.innerHTML = "Select&nbsp;&nbsp;&nbsp;&#8675;";
-	    sel.appendChild(opt);
+	    sel.append(opt);
 
 	    for (var vv of wf_operations[operation].parameters[par]['enum']) {
 		opt = document.createElement('option');
 		opt.value = vv;
 		opt.innerHTML = vv;
-		sel.appendChild(opt);
+		sel.append(opt);
 	    }
 
-	    span.appendChild(sel);
-	    com_node.appendChild(span);
+	    span.append(sel);
+	    com_node.append(span);
 
             if (val)
 		sel.value = val;
@@ -6137,7 +6156,7 @@ function show_wf_operation_options(operation, index) {
 	    i.id = "__param__"+par;
 	    i.className = 'questionBox';
 	    i.size = 60;
-	    com_node.appendChild(i);
+	    com_node.append(i);
 
 	    if (val)
 		i.value = val;
@@ -6147,13 +6166,13 @@ function show_wf_operation_options(operation, index) {
     }
 
     if (wf_operations[operation].warning) {
-	com_node.appendChild(document.createElement('br'));
+	com_node.append(document.createElement('br'));
         var span = document.createElement('span');
 	span.className = 'essence';
-	span.appendChild(document.createTextNode(wf_operations[operation].warning));
-	com_node.appendChild(span);
+	span.append(wf_operations[operation].warning);
+	com_node.append(span);
     }
-    com_node.appendChild(document.createElement('br'));
+    com_node.append(document.createElement('br'));
 
     var button = document.createElement("input");
     button.className = 'questionBox button';
@@ -6168,16 +6187,16 @@ function show_wf_operation_options(operation, index) {
 	button.value = 'Update';
     }
     button.setAttribute('onclick', 'add_wf_operation("'+operation+'",'+index+');');
-    com_node.appendChild(button);
+    com_node.append(button);
 
     if (index != null)
-        com_node.appendChild(get_remove_wf_operation_button(index));
+        com_node.append(get_remove_wf_operation_button(index));
 
     var link = document.createElement("a");
     link.style.marginLeft = "20px";
     link.href = 'javascript:abort_wf();';
-    link.appendChild(document.createTextNode("Cancel"));
-    com_node.appendChild(link);
+    link.append("Cancel");
+    com_node.append(link);
 }
 
 function get_remove_wf_operation_button(idx) {
@@ -6247,7 +6266,7 @@ async function import_intowf(what,fromqg) {
 
     var statusdiv = document.getElementById("statusdiv");
     statusdiv.innerHTML = '';
-    statusdiv.appendChild(document.createElement("br"));
+    statusdiv.append(document.createElement("br"));
 
     if (fromqg) {
 	if (what == 'message')
@@ -6256,7 +6275,7 @@ async function import_intowf(what,fromqg) {
 	var tmpqg = JSON.stringify(input_qg); // preserve helper attributes
 	qg_clean_up(false);
 	workflow['message']['query_graph'] = input_qg;
-        statusdiv.appendChild(document.createTextNode("Imported query_graph into Workflow."));
+        statusdiv.append("Imported query_graph into Workflow.");
 	input_qg = JSON.parse(tmpqg);
 	selectInput('qwf');
     }
@@ -6265,8 +6284,8 @@ async function import_intowf(what,fromqg) {
 	document.getElementById("respId").value = resp_id;
 	if (!resp_id) return;
 
-	statusdiv.appendChild(document.createTextNode("Importing "+what+" from response_id = " + resp_id + " ..."));
-	statusdiv.appendChild(document.createElement("br"));
+	statusdiv.append("Importing "+what+" from response_id = " + resp_id + " ...");
+	statusdiv.append(document.createElement("br"));
 
 	var button = document.getElementById((what=='message'?"ImportMSGbutton":"ImportQGbutton"));
 	var wait = getAnimatedWaitBar(button.offsetWidth+"px");
@@ -6285,16 +6304,16 @@ async function import_intowf(what,fromqg) {
 	    else if (respjson.message["query_graph"])
 		workflow['message']['query_graph'] = respjson.message["query_graph"];
 	    else
-		statusdiv.appendChild(document.createTextNode("No query_graph found in response_id = " + resp_id + "!!"));
+		statusdiv.append("No query_graph found in response_id = " + resp_id + "!!");
 	}
 	else
-	    statusdiv.appendChild(document.createTextNode("No message found in response_id = " + resp_id + "!!"));
+	    statusdiv.append("No message found in response_id = " + resp_id + "!!");
 
         wait.parentNode.replaceChild(button, wait);
     }
 
-    statusdiv.appendChild(document.createElement("br"));
-    statusdiv.appendChild(document.createElement("br"));
+    statusdiv.append(document.createElement("br"));
+    statusdiv.append(document.createElement("br"));
     populate_wfjson();
 }
 
@@ -6370,8 +6389,8 @@ function retrieveRecentResps() {
 
     var wait = getAnimatedWaitBar("100px");
     wait.style.marginRight = "10px";
-    recentresps_node.appendChild(wait);
-    recentresps_node.appendChild(document.createTextNode('Loading...'));
+    recentresps_node.append(wait);
+    recentresps_node.append('Loading...');
 
     var numpks = parseInt(document.getElementById("howmanylatest").value.match(/[\d]+/));
     if (isNaN(numpks) || numpks < 1 || numpks > 40)
@@ -6393,7 +6412,7 @@ function retrieveRecentResps() {
 
             var div = document.createElement("div");
 	    div.className = "statushead";
-	    div.appendChild(document.createTextNode("Viewing "+numpks+" Most Recent ARS Queries from "+srcpks));
+	    div.append("Viewing "+numpks+" Most Recent ARS Queries from "+srcpks);
 
             var link = document.createElement("a");
 	    link.style.float = 'right';
@@ -6401,39 +6420,36 @@ function retrieveRecentResps() {
 	    link.title = 'link to this view';
 	    link.href = "http://"+ window.location.hostname + window.location.pathname + "?latest=" + numpks + "&from=" + srcpks;
 	    link.innerHTML = "[ Direct link to this view ]";
-	    div.appendChild(link);
+	    div.append(link);
 
-	    recentresps_node.appendChild(div);
+	    recentresps_node.append(div);
 
 	    div = document.createElement("div");
 	    div.className = "status";
-	    recentresps_node.appendChild(div);
+	    recentresps_node.append(div);
 
 	    var table = document.createElement("table");
 	    table.className = 'sumtab';
 
             var tr = document.createElement("tr");
             var td = document.createElement("th");
-            tr.appendChild(td);
-	    td = document.createElement("th");
-            td.innerText = 'PK';
-	    tr.appendChild(td);
-            td = document.createElement("th");
-            td.innerText = 'Query';
-            tr.appendChild(td);
-            td = document.createElement("th");
-            td.innerText = 'Status';
-            tr.appendChild(td);
+            tr.append(td);
+
+            for (var head of ["PK","Query","Status"] ) {
+		td = document.createElement("th");
+		td.append(head);
+		tr.append(td);
+	    }
 
             for (var agent of data["agents_list"]) {
 		td = document.createElement("th");
 		td.colSpan = '2';
 		td.style.minWidth = '80px';
-	        td.innerText = agent;
-	        tr.appendChild(td);
+	        td.append(agent);
+	        tr.append(td);
 	    }
 
-	    table.appendChild(tr);
+	    table.append(tr);
 
 	    var num = 0;
             for (var pk of data["sorted_pk_list"].reverse()) {
@@ -6442,8 +6458,8 @@ function retrieveRecentResps() {
 		tr.className = 'hoverable';
 
 		td = document.createElement("td");
-		td.innerText = num+'.';
-		tr.appendChild(td);
+		td.append(num+'.');
+		tr.append(td);
 
 		td = document.createElement("td");
 		var link = document.createElement("a");
@@ -6453,21 +6469,24 @@ function retrieveRecentResps() {
 		link.setAttribute('onclick', 'pasteId("'+pk+'");sendId(false);selectInput("qid");');
 
                 if (data["pks"][pk]["timestamp"])
-		    link.appendChild(document.createTextNode(convertUTCToLocal(data["pks"][pk]["timestamp"])));
+		    link.append(convertUTCToLocal(data["pks"][pk]["timestamp"]));
 		else
-		    link.appendChild(document.createTextNode(pk));
+		    link.append(pk);
 
-		td.appendChild(link);
-		tr.appendChild(td);
+		td.append(link);
+		tr.append(td);
 
                 td = document.createElement("td");
-		td.innerText = data["pks"][pk]["query"];
-		tr.appendChild(td);
+		if ("query" in data["pks"][pk])
+		    td.append(data["pks"][pk]["query"]);
+		else
+		    td.append("--- n/a ---");
+		tr.append(td);
 
                 td = document.createElement("td");
                 td.style.fontWeight = 'bold';
-		td.innerText = data["pks"][pk]["status"];
-		tr.appendChild(td);
+		td.append(data["pks"][pk]["status"]);
+		tr.append(td);
 
 		for (var agent of data["agents_list"]) {
 		    td = document.createElement("td");
@@ -6492,30 +6511,30 @@ function retrieveRecentResps() {
 			    span.className = 'explevel p0';
 			}
 			else {
-			    span.innerText = data["pks"][pk]["agents"][agent]["status"];
+			    span.append(data["pks"][pk]["agents"][agent]["status"]);
 			}
-			td.appendChild(span);
+			td.append(span);
 			td.title = data["pks"][pk]["agents"][agent]["status"];
 		    }
 		    else
-			td.innerText = 'n/a';
-		    tr.appendChild(td);
+			td.append('n/a');
+		    tr.append(td);
 
                     td = document.createElement("td");
 		    td.style.textAlign = 'right';
                     if (data["pks"][pk]["agents"][agent])
-			td.innerText = data["pks"][pk]["agents"][agent]["n_results"];
+			td.append(data["pks"][pk]["agents"][agent]["n_results"]);
 		    else
-			td.innerText = 'n/a';
+			td.append('n/a');
                     td.title = td.innerText + " results";
-		    tr.appendChild(td);
+		    tr.append(td);
 		}
 
-		table.appendChild(tr);
+		table.append(tr);
 	    }
 
-	    div.appendChild(table);
-            div.appendChild(document.createElement("br"));
+	    div.append(table);
+            div.append(document.createElement("br"));
 	})
         .catch(error => {
 	    recentresps_node.className = "error";
@@ -6535,8 +6554,8 @@ function retrieveRecentQs(active) {
     qfspan.innerHTML = '';
     var wait = getAnimatedWaitBar("100px");
     wait.style.marginRight = "10px";
-    qfspan.appendChild(wait);
-    qfspan.appendChild(document.createTextNode('Loading...'));
+    qfspan.append(wait);
+    qfspan.append('Loading...');
 
     document.getElementById("recent_queries_timeline_container").innerHTML = '';
 
@@ -6575,7 +6594,7 @@ function retrieveRecentQs(active) {
 		link.title = 'link to this view';
 		link.href = "http://"+ window.location.hostname + window.location.pathname + "?recent=" + hours;
 		link.innerHTML = "[ Direct link to this view ]";
-		document.getElementById("recentqsLink").appendChild(link);
+		document.getElementById("recentqsLink").append(link);
 	    }
 
 	    var timeline = {};
@@ -6584,8 +6603,8 @@ function retrieveRecentQs(active) {
             var table = document.createElement("table");
 	    table.className = 'sumtab';
 	    table.id = "recentqs_summary";
-            recents_node.appendChild(table);
-            recents_node.appendChild(document.createElement("br"));
+            recents_node.append(table);
+            recents_node.append(document.createElement("br"));
 
 	    table = document.createElement("table");
 	    table.id = "recentqs_table";
@@ -6605,10 +6624,10 @@ function retrieveRecentQs(active) {
                 else if (head == "Remote IP")
 		    td.id = 'filter_remote_address';
 		td.dataset.filterstring = '';
-		td.appendChild(document.createTextNode(head));
-		tr.appendChild(td);
+		td.append(head);
+		tr.append(td);
 	    }
-	    table.appendChild(tr);
+	    table.append(tr);
 
 	    for (var query of data.recent_queries) {
 		tr = document.createElement("tr");
@@ -6667,7 +6686,7 @@ function retrieveRecentQs(active) {
 			    span.innerHTML = '&#10140;';
 			    span.className = 'explevel p7';
 			}
-			td.appendChild(span);
+			td.append(span);
 			td.innerHTML += '&nbsp;';
 			if (stats.state[query[field]])
 			    stats.state[query[field]]++;
@@ -6683,15 +6702,15 @@ function retrieveRecentQs(active) {
 		    }
 
                     if (query[field] == null)
-			td.appendChild(document.createTextNode(' -- '));
+			td.append(' -- ');
 		    else if (field == "query_id") {
                         var link = document.createElement("a");
 			link.target = '_blank';
 			link.title = 'view the posted query (JSON)';
 			link.style.cursor = "pointer";
 			link.href = providers["ARAX"].url + '/status?id=' + query[field];
-			link.appendChild(document.createTextNode(query[field]));
-			td.appendChild(link);
+			link.append(query[field]);
+			td.append(link);
                         qid = query[field];
 		    }
 		    else if (field == "response_id") {
@@ -6700,8 +6719,8 @@ function retrieveRecentQs(active) {
 			link.title = 'view this response';
 			link.style.cursor = "pointer";
                         link.href = '//' + window.location.hostname + window.location.pathname + '?r=' + query[field];
-			link.appendChild(document.createTextNode(query[field]));
-			td.appendChild(link);
+			link.append(query[field]);
+			td.append(link);
 		    }
 		    else if (field == "status") {
 			td.style.textAlign = "center";
@@ -6717,8 +6736,8 @@ function retrieveRecentQs(active) {
 			    span.className = "explevel p3";
 			else
 			    span.className = "explevel p1";
-                        span.appendChild(document.createTextNode(query[field]));
-			td.appendChild(span);
+                        span.append(query[field]);
+			td.append(span);
 
 		        if (stats.status[query[field]])
 			    stats.status[query[field]]++;
@@ -6726,8 +6745,8 @@ function retrieveRecentQs(active) {
 			    stats.status[query[field]] = 1;
 		    }
 		    else
-			td.appendChild(document.createTextNode(query[field]));
-		    tr.appendChild(td);
+			td.append(query[field]);
+		    tr.append(td);
 		}
 		if (qstart && qend) {
 		    qstart.replace(" ","T");
@@ -6744,7 +6763,7 @@ function retrieveRecentQs(active) {
 
 		    // below assumes data is reverse-sorted by start datetime
 		    var index = 0;
-		    for (index in [...Array(200).keys()]) {
+		    for (var index in [...Array(200).keys()]) {
 			if (!timeline[query["submitter"]]["data"][index])
 			    timeline[query["submitter"]]["data"][index] = { "label": index , "data": [] , "_qstart": new Date()};
 
@@ -6763,7 +6782,7 @@ function retrieveRecentQs(active) {
 		    timeline[query["submitter"]]["data"][index]["_qstart"] = qstart;
 
 		}
-		table.appendChild(tr);
+		table.append(tr);
 	    }
 	    // add dummy data points to scale timeline to match requested timespan
 	    timeline["ISB_watchdog"]["data"][0]["data"].push(
@@ -6786,9 +6805,9 @@ function retrieveRecentQs(active) {
 	    );
 
 	    displayQTimeline(timeline);
-	    recents_node.appendChild(table);
-            recents_node.appendChild(document.createElement("br"));
-	    recents_node.appendChild(document.createElement("br"));
+	    recents_node.append(table);
+            recents_node.append(document.createElement("br"));
+	    recents_node.append(document.createElement("br"));
 
 	    for (var filterfield of ["submitter","remote_address","domain","hostname","instance_name","state","status"] ) {
 		if (Object.keys(stats[filterfield]).length > 1) {
@@ -6797,7 +6816,7 @@ function retrieveRecentQs(active) {
 	    }
 
 	    qfspan.innerHTML = '';
-	    qfspan.appendChild(document.createTextNode("Show:"));
+	    qfspan.append("Show:");
 
 	    for (var status of ["Completed","OK","Summary","Timeline"]) {
 		span = document.createElement("span");
@@ -6813,8 +6832,8 @@ function retrieveRecentQs(active) {
 		    span.setAttribute('onclick', 'show_hide(\"recent_queries_timeline_container\", this);');
 		else
 		    span.setAttribute('onclick', 'filter_queries(\"'+tab+'\", this,\"'+status+'\");');
-		span.appendChild(document.createTextNode(status));
-		qfspan.appendChild(span);
+		span.append(status);
+		qfspan.append(span);
 	    }
 
             table = document.getElementById("recentqs_summary");
@@ -6823,53 +6842,53 @@ function retrieveRecentQs(active) {
             tr.dataset.qstatus = "Summary";
 	    td = document.createElement("th");
 	    td.colSpan = "3";
-            td.appendChild(document.createTextNode("Query Stats"));
-	    tr.appendChild(td);
-            table.appendChild(tr);
+            td.append("Query Stats");
+	    tr.append(td);
+            table.append(tr);
 
             tr = document.createElement("tr");
             tr.style.display = "none";
             tr.dataset.qstatus = "Summary";
 	    td = document.createElement("td");
-	    td.appendChild(document.createTextNode("Last updated"));
-            tr.appendChild(td);
+	    td.append("Last updated");
+            tr.append(td);
 	    td = document.createElement("td");
-	    tr.appendChild(td);
+	    tr.append(td);
             td = document.createElement("td");
-	    td.appendChild(document.createTextNode(data.current_datetime));
-            tr.appendChild(td);
-            table.appendChild(tr);
+	    td.append(data.current_datetime);
+            tr.append(td);
+            table.append(tr);
 
 	    for (var stat in stats) {
 		tr = document.createElement("tr");
 		tr.style.display = "none";
 		tr.dataset.qstatus = "Summary";
 		td = document.createElement("td");
-                td.appendChild(document.createTextNode(stat));
-		tr.appendChild(td);
+                td.append(stat);
+		tr.append(td);
                 if (stat == "elapsed") {
 		    td = document.createElement("td");
-                    td.appendChild(document.createTextNode(stats[stat] + " sec"));
-		    tr.appendChild(td);
+                    td.append(stats[stat] + " sec");
+		    tr.append(td);
 		    td = document.createElement("td");
-                    td.appendChild(document.createTextNode((Number(stats[stat])/3600).toPrecision(3) + " hours"));
-		    tr.appendChild(td);
+                    td.append((Number(stats[stat])/3600).toPrecision(3) + " hours");
+		    tr.append(td);
 		}
 		else {
 		    td = document.createElement("td");
 		    for (var val in stats[stat]) {
-			td.appendChild(document.createTextNode(val));
-			td.appendChild(document.createElement("br"));
+			td.append(val);
+			td.append(document.createElement("br"));
 		    }
-		    tr.appendChild(td);
+		    tr.append(td);
 		    td = document.createElement("td");
 		    for (var val in stats[stat]) {
-			td.appendChild(document.createTextNode(stats[stat][val]));
-			td.appendChild(document.createElement("br"));
+			td.append(stats[stat][val]);
+			td.append(document.createElement("br"));
 		    }
-		    tr.appendChild(td);
+		    tr.append(td);
 		}
-                table.appendChild(tr);
+                table.append(tr);
 	    }
 	})
         .catch(error => {
@@ -6897,13 +6916,13 @@ function displayQTimeline(tdata) {
 	.segmentTooltipContent(function(d) { return "Query ID: <strong>"+d.data["_qid"].toString()+"</strong><br>"+d.data["_qdur"]; } )
     (timeline_node);
 
-    timeline_node.appendChild(document.createTextNode("Your computer's local time"));
+    timeline_node.append("Your computer's local time");
 }
 
 function add_filtermenu(tid, field, values) {
     var node = document.getElementById('filter_'+field);
     //node.title = "Click to filter based on this column's values";
-    node.appendChild(document.createTextNode("\u25BC"));
+    node.append("\u25BC");
     node.className = 'filterhead';
 
     var fmenu = document.createElement('span');
@@ -6913,18 +6932,18 @@ function add_filtermenu(tid, field, values) {
     vals.unshift('[ Show all ]');
     for (var val of vals) {
 	var item = document.createElement('a');
-	item.appendChild(document.createTextNode(val));
+	item.append(val);
 	if (val != '[ Show all ]')
-	    item.appendChild(document.createTextNode(" ["+values[val]+"]"));
+	    item.append(" ["+values[val]+"]");
 	item.setAttribute('onclick', 'filter_table("'+tid+'","'+field+'","'+val+'");');
 
 	var item2 = document.createElement('span');
 	item2.id = 'filter_'+field+"_"+val;
 	item2.style.marginLeft = "10px";
-	item.appendChild(item2);
-	fmenu.appendChild(item);
+	item.append(item2);
+	fmenu.append(item);
     }
-    node.appendChild(fmenu);
+    node.append(fmenu);
 }
 
 function filter_table(tableid, field, value) {
@@ -6995,8 +7014,8 @@ function retrieveKPInfo() {
     wspan.innerHTML = '';
     var wait = getAnimatedWaitBar("100px");
     wait.style.marginRight = "10px";
-    wspan.appendChild(wait);
-    wspan.appendChild(document.createTextNode('Loading...'));
+    wspan.append(wait);
+    wspan.append('Loading...');
 
     fetch(providers["ARAX"].url + "/status?authorization=smartapi")
         .then(response => {
@@ -7030,24 +7049,24 @@ function retrieveKPInfo() {
 		td.colSpan = "5";
 		td.style.background = '#fff';
 		td.style.border = '0';
-		td.appendChild(document.createElement("br"));
-		td.appendChild(document.createElement("br"));
-		tr.appendChild(td);
-		table.appendChild(tr);
+		td.append(document.createElement("br"));
+		td.append(document.createElement("br"));
+		tr.append(td);
+		table.append(tr);
 
 		tr = document.createElement("tr");
                 td = document.createElement("th")
 		td.style.background = '#fff';
 		td.style.fontSize = 'x-large';
-		td.appendChild(document.createTextNode(component+" Info"));
-		tr.appendChild(td);
+		td.append(component+" Info");
+		tr.append(td);
 		for (var head of ["Status","Maturity","Description","URL"] ) {
 		    td = document.createElement("th")
                     td.style.background = '#fff';
-		    td.appendChild(document.createTextNode(head));
-		    tr.appendChild(td);
+		    td.append(head);
+		    tr.append(td);
 		}
-		table.appendChild(tr);
+		table.append(tr);
 
 		var was_seen = [];
 		for (let item of data.sort(function(a, b) { return a.title.toUpperCase() > b.title.toUpperCase() ? 1 : -1; })) {
@@ -7073,9 +7092,9 @@ function retrieveKPInfo() {
 			//text.className = "qprob schp";
 			else
 			    text.className = "qprob p1";
-                        text.appendChild(document.createTextNode(item["version"]));
+                        text.append(item["version"]);
 			text.title = "TRAPI version";
-			td.appendChild(text);
+			td.append(text);
 
 	                text = document.createElement("a");
 			text.style.display = "inline-block";
@@ -7087,19 +7106,19 @@ function retrieveKPInfo() {
 			text.target = 'smartapi_reg';
 			text.title = 'View SmartAPI registration for this '+component;
 			text.innerHTML = item["title"];
-			td.appendChild(text);
-			td.appendChild(document.createElement("br"));
+			td.append(text);
+			td.append(document.createElement("br"));
 
                         if (was_seen.includes(item["infores_name"]+item["version"])) {
                             td.className = "error";
-                            td.appendChild(document.createTextNode('\u274C\u00A0'));
+                            td.append('\u274C\u00A0');
 			    td.title = "This is a DUPLICATE infores entry";
 			}
 			else
 			    was_seen.push(item["infores_name"]+item["version"]);
-			td.appendChild(document.createTextNode(item["infores_name"]));
+			td.append(item["infores_name"]);
 
-			tr.appendChild(td);
+			tr.append(td);
 
 			var main_td = td;
 			var is_first = true;
@@ -7124,8 +7143,7 @@ function retrieveKPInfo() {
 				    }
                                     else if (was_seen.includes(server["url"])) {
 					span.className = "explevel p0";
-                                        span.appendChild(document.createTextNode('\u00A0'));
-					span.appendChild(document.createTextNode('\u00A0'));
+                                        span.append('\u00A0\u00A0');
 					span.title = "This is a duplicate URL entry";
 				    }
 				    else if (server["url"].includes("transltr.io")) {
@@ -7138,25 +7156,24 @@ function retrieveKPInfo() {
 				    }
 				    else {
 					status_nodes.push(span);
-					span.appendChild(document.createTextNode('\u00A0'));
-					span.appendChild(document.createTextNode('\u00A0'));
+					span.append('\u00A0\u00A0');
 					was_seen.push(stritem);
 					was_seen.push(server["url"]);
 				    }
-				    td.appendChild(span);
-				    tr.appendChild(td);
+				    td.append(span);
+				    tr.append(td);
 				    for (var what of ["maturity","description","url"] ) {
 					td = document.createElement("td");
 					if (server[what])
-					    td.appendChild(document.createTextNode(server[what]));
+					    td.append(server[what]);
 					else {
 					    td.className = "error";
 					    td.title = "No data!";
-					    td.appendChild(document.createTextNode("-- null --"));
+					    td.append("-- null --");
 					}
-					tr.appendChild(td);
+					tr.append(td);
 				    }
-				    table.appendChild(tr);
+				    table.append(tr);
 				    is_first = false;
 				    server["__done"] = true;
 				}
@@ -7176,25 +7193,24 @@ function retrieveKPInfo() {
 				var span = document.createElement("span");
 				span.className = "explevel p3";
 				span.title = "No servers found at this maturity level";
-				span.appendChild(document.createTextNode('\u00A0'));
-				span.appendChild(document.createTextNode('\u00A0'));
-				td.appendChild(span);
-				tr.appendChild(td);
+				span.append('\u00A0\u00A0');
+				td.append(span);
+				tr.append(td);
 
 				td = document.createElement("td");
 				td.className = "error";
-				td.appendChild(document.createTextNode(mature));
-				tr.appendChild(td);
+				td.append(mature);
+				tr.append(td);
 
                                 td = document.createElement("td");
 				td.className = "error";
-				td.appendChild(document.createTextNode("-- missing maturity --"));
-                                tr.appendChild(td);
+				td.append("-- missing maturity --");
+                                tr.append(td);
 
                                 td = document.createElement("td");
-				tr.appendChild(td);
+				tr.append(td);
 
-				table.appendChild(tr);
+				table.append(tr);
 				is_first = false;
 
 			    }
@@ -7207,22 +7223,21 @@ function retrieveKPInfo() {
 				var span = document.createElement("span");
 				span.className = "explevel p1";
 				span.title = "Maturity does not match expected list [production, testing, staging, development]";
-				span.appendChild(document.createTextNode('\u00A0'));
-				span.appendChild(document.createTextNode('\u00A0'));
-				td.appendChild(span);
-				tr.appendChild(td);
+				span.append('\u00A0\u00A0');
+				td.append(span);
+				tr.append(td);
 				for (var what of ["maturity","description","url"] ) {
 				    td = document.createElement("td");
 				    td.className = "error";
 				    if (server[what])
-					td.appendChild(document.createTextNode(server[what]));
+					td.append(server[what]);
 				    else {
 					td.title = "No data!";
-					td.appendChild(document.createTextNode("-- null --"));
+					td.append("-- null --");
 				    }
-				    tr.appendChild(td);
+				    tr.append(td);
 				}
-				table.appendChild(tr);
+				table.append(tr);
 				is_first = false;
 			    }
 			}
@@ -7230,9 +7245,9 @@ function retrieveKPInfo() {
 		}
 	    }
 
-	    kpinfo_node.appendChild(table);
-            kpinfo_node.appendChild(document.createElement("br"));
-            kpinfo_node.appendChild(document.createElement("br"));
+	    kpinfo_node.append(table);
+            kpinfo_node.append(document.createElement("br"));
+            kpinfo_node.append(document.createElement("br"));
 
 	})
         .catch(error => {
@@ -7303,7 +7318,7 @@ function retrieveSysTestResultsList(num) {
 		var opt = document.createElement('option');
 		opt.value = test['pk'];
                 opt.innerHTML = test['time'] +" -- "+test['test_type'] +" ("+test['env']+")";
-		menu.appendChild(opt);
+		menu.append(opt);
 	    }
 	})
         .catch(error => {
@@ -7324,8 +7339,8 @@ function retrieveSysTestResults(testid=null) {
     wspan.innerHTML = '';
     var wait = getAnimatedWaitBar("100px");
     wait.style.marginRight = "10px";
-    wspan.appendChild(wait);
-    wspan.appendChild(document.createTextNode('Loading...'));
+    wspan.append(wait);
+    wspan.append('Loading...');
 
     var apiurl = 'https://utility.ci.transltr.io/arstest/api/';
     if (test_pk.startsWith("ARSARS_"))
@@ -7347,7 +7362,7 @@ function retrieveSysTestResults(testid=null) {
 
 	    if (test_pk.startsWith("ARSARS_")) {
 		displayARSResults(systest_node,data);
-		systest_node.appendChild(document.createElement("br"));
+		systest_node.append(document.createElement("br"));
 		retrieveTestRunnerResultsList(test_pk);
 		return;
 	    }
@@ -7362,24 +7377,24 @@ function retrieveSysTestResults(testid=null) {
 	    for (var test in tests) {
 		var div = document.createElement("div");
 		div.className = "statushead";
-		div.appendChild(document.createTextNode("Viewing: "+ test));
+		div.append("Viewing: "+ test);
 
-		systest_node.appendChild(div);
+		systest_node.append(div);
 
 		div = document.createElement("div");
 		div.className = "status";
-		systest_node.appendChild(div);
+		systest_node.append(div);
 
 		if (test.startsWith("Load"))
-		    div.appendChild(generateLoadTimeTestResults(tests[test]['fields']));
+		    div.append(generateLoadTimeTestResults(tests[test]['fields']));
 		else
-		    div.appendChild(generateSmokeTestResults(tests[test]['fields']));
+		    div.append(generateSmokeTestResults(tests[test]['fields']));
 
-		div.appendChild(document.createElement("br"));
+		div.append(document.createElement("br"));
 	    }
 
-	    systest_node.appendChild(document.createElement("br"));
-	    systest_node.appendChild(document.createElement("br"));
+	    systest_node.append(document.createElement("br"));
+	    systest_node.append(document.createElement("br"));
 
         })
         .catch(error => {
@@ -7397,7 +7412,7 @@ function retrieveSysTestResults(testid=null) {
 function generateSmokeTestResults(smoketestfields) {
     if (smoketestfields['data'] == null) {
 	var h2 = document.createElement("h2");
-        h2.appendChild(document.createTextNode("-- No Data --"));
+        h2.append("-- No Data --");
 	return h2;
     }
 
@@ -7406,76 +7421,76 @@ function generateSmokeTestResults(smoketestfields) {
     var checknames = false;
     if (smoketestfields['parameters']) {
 	smoketestfields['parameters']['Environment'] = smoketestfields['environment'];
-	tdiv.appendChild(document.createTextNode("Parameters::"));
+	tdiv.append("Parameters::");
 	for (var param in smoketestfields['parameters']) {
 	    var span = document.createElement("span");
 	    span.style.fontWeight = "bold";
 	    span.style.marginLeft = '10px';
-	    span.appendChild(document.createTextNode(param+": "));
-	    tdiv.appendChild(span);
+	    span.append(param+": ");
+	    tdiv.append(span);
 	    if (param.includes("curie")) {
 		if (!Array.isArray(smoketestfields['parameters'][param]))
 		    smoketestfields['parameters'][param] = [ smoketestfields['parameters'][param] ];
 
 		var comma = '';
 		for (var mol of smoketestfields['parameters'][param]) {
-		    tdiv.appendChild(document.createTextNode(comma+mol+" ("));
+		    tdiv.append(comma+mol+" (");
 		    span = document.createElement("span");
 		    span.id = smoketestfields['pk']+"_entityname_"+mol;
 		    span.title = mol;
 		    if (entities[mol])
-			span.innerText = entities[mol].name;
+			span.append(entities[mol].name);
 		    else {
 			checknames = true;
 			entities[mol] = {};
 			entities[mol].checkHTML = '--';
-			span.innerText = ' --- ';
+			span.append(' --- ');
 		    }
-		    tdiv.appendChild(span);
-		    tdiv.appendChild(document.createTextNode(") "));
+		    tdiv.append(span);
+		    tdiv.append(") ");
 		    comma = ', ';
 		}
 	    }
 	    else
-		tdiv.appendChild(document.createTextNode(smoketestfields['parameters'][param]));
+		tdiv.append(smoketestfields['parameters'][param]);
 
 	}
-	tdiv.appendChild(document.createElement("br"));
-	tdiv.appendChild(document.createElement("br"));
+	tdiv.append(document.createElement("br"));
+	tdiv.append(document.createElement("br"));
     }
 
 
     if (smoketestfields['data']['analysis']) {
 	for (var querytest in smoketestfields['data']['analysis']) {
             var table = renderSmokeTestTable(smoketestfields['data']['analysis'][querytest],'Test: '+querytest);
-	    tdiv.appendChild(table);
-	    tdiv.appendChild(document.createElement("br"));
-	    tdiv.appendChild(document.createElement("br"));
+	    tdiv.append(table);
+	    tdiv.append(document.createElement("br"));
+	    tdiv.append(document.createElement("br"));
 	}
     }
     else {
 	var table = renderSmokeTestTable(smoketestfields['data'],'QUERY');
-	tdiv.appendChild(table);
-	tdiv.appendChild(document.createElement("br"));
-	tdiv.appendChild(document.createElement("br"));
+	tdiv.append(table);
+	tdiv.append(document.createElement("br"));
+	tdiv.append(document.createElement("br"));
     }
 
     if (checknames)
 	check_entities_batch(99);
 
-    tdiv.appendChild(document.createTextNode("Legend:"));
+    tdiv.append("Legend:");
     var span = document.createElement("span");
     span.className = 'p9 qprob cytograph_controls';
     span.style.marginLeft = '10px';
-    span.appendChild(document.createTextNode("Pass"));
-    tdiv.appendChild(span);
+    span.append("Pass");
+    tdiv.append(span);
     span = document.createElement("span");
     span.className = 'p1 qprob cytograph_controls';
     span.style.marginLeft = '10px';
     span.style.marginRight = '10px';
-    span.appendChild(document.createTextNode("Fail"));
-    tdiv.appendChild(span);
-    tdiv.appendChild(document.createTextNode("Number within bubble is ARS-normalized Score"));
+    span.append("Fail");
+    tdiv.append(span);
+    tdiv.append("Number within bubble is ARS-normalized Score");
 
     return tdiv;
 }
@@ -7494,15 +7509,15 @@ function renderSmokeTestTable(smoketestdata,qtest) {
     var tr = document.createElement("tr");
     var td = document.createElement("th");
     td.style.textTransform = 'initial';
-    td.appendChild(document.createTextNode(qtest));
-    tr.appendChild(td);
+    td.append(qtest);
+    tr.append(td);
     for (var agent of Object.keys(all_agents).sort()) {
 	td = document.createElement("th");
 	td.style.minWidth = '80px';
-        td.appendChild(document.createTextNode(agent.replace(/ars-|ara-|kp-/,"")));
-	tr.appendChild(td);
+        td.append(agent.replace(/ars-|ara-|kp-/,""));
+	tr.append(td);
     }
-    table.appendChild(tr);
+    table.append(tr);
 
     for (var queryname in smoketestdata) {
 	tr = document.createElement("tr");
@@ -7515,12 +7530,12 @@ function renderSmokeTestTable(smoketestdata,qtest) {
 	    link.style.textTransform = 'initial';
 	    link.style.cursor = "pointer";
 	    link.setAttribute('onclick', 'pasteId("'+smoketestdata[queryname]['parent_pk']+'");sendId(false);selectInput("qid");');
-	    link.appendChild(document.createTextNode(queryname));
-	    td.appendChild(link);
+	    link.append(queryname);
+	    td.append(link);
 	}
 	else
-	    td.appendChild(document.createTextNode(queryname));
-	tr.appendChild(td);
+	    td.append(queryname);
+	tr.append(td);
 
 	for (var agent of Object.keys(all_agents).sort()) {
 	    td = document.createElement("td");
@@ -7534,14 +7549,14 @@ function renderSmokeTestTable(smoketestdata,qtest) {
 
 		    var span = document.createElement("span");
 		    span.className = pcl+' qprob cytograph_controls';
-		    span.appendChild(document.createTextNode(Number(obj['score']).toFixed(2)));
-		    td.appendChild(span);
+		    span.append(Number(obj['score']).toFixed(2));
+		    td.append(span);
 		    td.title = obj['drug_report'];
 		}
 	    }
-	    tr.appendChild(td);
+	    tr.append(td);
 	}
-	table.appendChild(tr);
+	table.append(tr);
     }
 
     return table;
@@ -7551,7 +7566,7 @@ function renderSmokeTestTable(smoketestdata,qtest) {
 function generateLoadTimeTestResults(loadtestdata) {
     if (loadtestdata['data'] == null) {
 	var h2 = document.createElement("h2");
-	h2.appendChild(document.createTextNode("-- No Data --"));
+	h2.append("-- No Data --");
 	return h2;
     }
 
@@ -7570,17 +7585,17 @@ function generateLoadTimeTestResults(loadtestdata) {
 
     if (loadtestdata['parameters']) {
 	loadtestdata['parameters']['Environment'] = loadtestdata['environment'];
-	tdiv.appendChild(document.createTextNode("Parameters::"));
+	tdiv.append("Parameters::");
 	for (var param in loadtestdata['parameters']) {
 	    var span = document.createElement("span");
 	    span.style.fontWeight = "bold";
 	    span.style.marginLeft = '10px';
-	    span.appendChild(document.createTextNode(param+": "));
-            tdiv.appendChild(span);
-            tdiv.appendChild(document.createTextNode(loadtestdata['parameters'][param]));
+	    span.append(param+": ");
+            tdiv.append(span);
+            tdiv.append(loadtestdata['parameters'][param]);
 	}
-	tdiv.appendChild(document.createElement("br"));
-	tdiv.appendChild(document.createElement("br"));
+	tdiv.append(document.createElement("br"));
+	tdiv.append(document.createElement("br"));
     }
 
     var table = document.createElement("table");
@@ -7588,25 +7603,25 @@ function generateLoadTimeTestResults(loadtestdata) {
 
     var tr = document.createElement("tr");
     var td = document.createElement("th");
-    tr.appendChild(td);
+    tr.append(td);
     //td = document.createElement("th");
     //td.innerText = 'PK';
     //tr.appendChild(td);
     td = document.createElement("th");
-    td.innerText = 'Query';
-    tr.appendChild(td);
+    td.append('Query');
+    tr.append(td);
     td = document.createElement("th");
-    td.innerText = 'Time';
-    tr.appendChild(td);
+    td.append('Time');
+    tr.append(td);
 
     for (var agent of Object.keys(all_agents).sort()) {
 	td = document.createElement("th");
 	td.colSpan = '2';
 	td.style.minWidth = '80px';
-	td.innerText = agent.replace(/ars-|ara-|kp-/,"");
-	tr.appendChild(td);
+	td.append(agent.replace(/ars-|ara-|kp-/,""));
+	tr.append(td);
     }
-    table.appendChild(tr);
+    table.append(tr);
 
     var num = 0;
     for (var q in loadtestdata['data']) {
@@ -7617,8 +7632,8 @@ function generateLoadTimeTestResults(loadtestdata) {
 
 	td = document.createElement("td");
 	td.rowSpan = '2';
-        td.innerText = num+'.';
-	tr.appendChild(td);
+        td.append(num+'.');
+	tr.append(td);
 
         td = document.createElement("td");
 	td.rowSpan = '2';
@@ -7627,16 +7642,16 @@ function generateLoadTimeTestResults(loadtestdata) {
 	link.style.cursor = "pointer";
 	link.style.fontFamily = "monospace";
 	link.setAttribute('onclick', 'pasteId("'+obj['parent_pk']+'");sendId(false);selectInput("qid");');
-	link.appendChild(document.createTextNode(q));
-	td.appendChild(link);
-	tr.appendChild(td);
+	link.append(q);
+	td.append(link);
+	tr.append(td);
 
         td = document.createElement("td");
 	td.style.fontWeight = 'bold';
         td.style.textAlign = 'right';
-	td.innerText = Number(obj["completion_time"]).toFixed(1);
+	td.append(Number(obj["completion_time"]).toFixed(1));
 	td.title = obj["completion_time"] + " seconds";
-	tr.appendChild(td);
+	tr.append(td);
 
 	for (var agent of Object.keys(all_agents).sort()) {
 	    td = document.createElement("td");
@@ -7646,7 +7661,7 @@ function generateLoadTimeTestResults(loadtestdata) {
 
             if (obj['actors'][agent]) {
 		if (obj['stragglers'] && obj['stragglers'].includes(agent))
-		    td.appendChild(document.createTextNode("\u{1F422}"));
+		    td.append("\u{1F422}");
 		if (obj['actors'][agent]['status'] == "Done") {
 		    span.innerHTML = '&check;';
 		    if (obj['actors'][agent]['n_results'] > 0)
@@ -7659,39 +7674,39 @@ function generateLoadTimeTestResults(loadtestdata) {
 		    span.className = 'explevel p1';
 		}
                 else {
-		    span.innerText = obj['actors'][agent]['status'];
+		    span.append(obj['actors'][agent]['status']);
 		}
-                td.appendChild(span);
+                td.append(span);
 		td.title = obj['actors'][agent]['status'];
                 if (obj['stragglers'] && obj['stragglers'].includes(agent))
 		    td.title += " (straggler)";
 
 	    }
             else
-		td.innerText = 'n/a';
-	    tr.appendChild(td);
+		td.append('n/a');
+	    tr.append(td);
 
             td = document.createElement("td");
 	    td.style.textAlign = 'right';
             if (obj['actors'][agent] && obj['actors'][agent]['completion_time']) {
-		td.innerText = Number(obj['actors'][agent]['completion_time']).toFixed(3);
+		td.append(Number(obj['actors'][agent]['completion_time']).toFixed(3));
 		if (obj['actors'][agent]['completion_time'] == obj["completion_time"])
 		    td.className = 'essence';
 	    }
             else if (obj['actors'][agent] && obj['actors'][agent]['status'] == "Error")
-		td.innerText = 'E';
+		td.append('E');
 	    else
-		td.innerText = 'n/a';
+		td.append('n/a');
 
 	    if (obj['actors'][agent])
 		td.title = (obj['actors'][agent]['n_results'] ? obj['actors'][agent]['n_results'] : "No") + " results";
 	    else
 		td.title = "no actor: "+agent;
 
-	    tr.appendChild(td);
+	    tr.append(td);
 	}
 
-	table.appendChild(tr);
+	table.append(tr);
 
 	if (obj['merge_report']) {
             tr = document.createElement("tr");
@@ -7700,7 +7715,7 @@ function generateLoadTimeTestResults(loadtestdata) {
 
 	    td = document.createElement("td");
 	    td.append("Merge:");
-	    tr.appendChild(td);
+	    tr.append(td);
 
             for (var agent of Object.keys(all_agents).sort()) {
 		td = document.createElement("td");
@@ -7710,7 +7725,7 @@ function generateLoadTimeTestResults(loadtestdata) {
 		    td.append(obj['merge_report'][agent]['status']);
 		else
 		    td.append('NA');
-		tr.appendChild(td);
+		tr.append(td);
 
 		td = document.createElement("td");
 		td.style.textAlign = 'right';
@@ -7718,37 +7733,37 @@ function generateLoadTimeTestResults(loadtestdata) {
 		    td.append(obj['merge_report'][agent]['completion_time'].toFixed(2));
 		else
 		    td.append('');
-		tr.appendChild(td);
+		tr.append(td);
 	    }
 
-	    table.appendChild(tr);
+	    table.append(tr);
 	}
     }
 
-    tdiv.appendChild(table);
-    tdiv.appendChild(document.createElement("br"));
-    tdiv.appendChild(document.createElement("br"));
-    tdiv.appendChild(document.createTextNode("Legend:"));
+    tdiv.append(table);
+    tdiv.append(document.createElement("br"));
+    tdiv.append(document.createElement("br"));
+    tdiv.append("Legend:");
     var span = document.createElement("span");
     span.className = 'explevel p9';
     span.style.marginLeft = '10px';
     span.innerHTML = '&check;';
-    tdiv.appendChild(span);
-    tdiv.appendChild(document.createTextNode(" Done (mouse-over to see number of results)"));
+    tdiv.append(span);
+    tdiv.append(" Done (mouse-over to see number of results)");
     span = document.createElement("span");
     span.className = 'explevel p0';
     span.style.marginLeft = '10px';
     span.innerHTML = '&check;';
-    tdiv.appendChild(span);
-    tdiv.appendChild(document.createTextNode(" Done, with ZERO results"));
+    tdiv.append(span);
+    tdiv.append(" Done, with ZERO results");
     span = document.createElement("span");
     span.className = 'explevel p1';
     span.style.marginLeft = '10px';
     span.innerHTML = '&cross;';
-    tdiv.appendChild(span);
-    tdiv.appendChild(document.createTextNode(" Error"));
-    tdiv.appendChild(document.createTextNode("\u00A0\u00A0\u00A0\u{1F422} Straggler"))
-    tdiv.appendChild(document.createTextNode("\u00A0\u00A0\u00A0Number is completion time (sec)"));
+    tdiv.append(span);
+    tdiv.append(" Error");
+    tdiv.append("\u00A0\u00A0\u00A0\u{1F422} Straggler");
+    tdiv.append("\u00A0\u00A0\u00A0Number is completion time (sec)");
 
     return tdiv;
 }
@@ -7787,8 +7802,8 @@ function displayARSResults(parentnode,arsdata) {
     var sumtable = document.createElement("table");
     sumtable.id = 'arssummary_table'
     sumtable.className = 'sumtab';
-    tdiv.appendChild(sumtable);
-    tdiv.appendChild(document.createElement("br"));
+    tdiv.append(sumtable);
+    tdiv.append(document.createElement("br"));
 
     var table = document.createElement("table");
     table.id = 'arsresults_table'
@@ -7800,7 +7815,7 @@ function displayARSResults(parentnode,arsdata) {
 
     for (var head of ["","Name","Test Type","Test Case","Test Asset"]) {
 	td = document.createElement("th");
-	td.innerText = head;
+	td.append(head);
 
         if (head == "Test Type") {
 	    td.id = 'filter_test_type';
@@ -7810,7 +7825,7 @@ function displayARSResults(parentnode,arsdata) {
 	    td.id = 'filter_test_case';
 	    td.dataset.filterstring = '';
 	}
-	tr.appendChild(td);
+	tr.append(td);
     }
 
     for (var agent of arsdata['ara_list']) {
@@ -7818,10 +7833,10 @@ function displayARSResults(parentnode,arsdata) {
         td.id = 'filter_'+agent.toLowerCase();
 	td.style.minWidth = '80px';
         td.dataset.filterstring = '';
-	td.innerText = agent;
-	tr.appendChild(td);
+	td.append(agent);
+	tr.append(td);
     }
-    table.appendChild(tr);
+    table.append(tr);
 
     var num = 0;
     for (var row of arsdata['row_data']) {
@@ -7830,8 +7845,8 @@ function displayARSResults(parentnode,arsdata) {
 	tr.className = 'hoverable';
 
 	td = document.createElement("td");
-	td.innerText = num+'.';
-	tr.appendChild(td);
+	td.append(num+'.');
+	tr.append(td);
 
 	td = document.createElement("td");
 	td.style.textAlign = "right";
@@ -7846,9 +7861,9 @@ function displayARSResults(parentnode,arsdata) {
             link.title = 'view in information radiator';
 	    link.href = row.url;
 	}
-	link.appendChild(document.createTextNode(row.name.split(":")[1]));
-	td.appendChild(link);
-	tr.appendChild(td);
+	link.append(row.name.split(":")[1]);
+	td.append(link);
+	tr.append(td);
 
 	var ttype = row.name.split(":")[0];
         td = document.createElement("td");
@@ -7861,9 +7876,9 @@ function displayARSResults(parentnode,arsdata) {
 
 	var span = document.createElement("span");
 	span.className = test2css[ttype] + " explevel";
-	span.appendChild(document.createTextNode(ttype));
-        td.appendChild(span);
-        tr.appendChild(td);
+	span.append(ttype);
+        td.append(span);
+        tr.append(td);
 
         td = document.createElement("td");
         td.dataset.value = row.TestCase;
@@ -7877,14 +7892,14 @@ function displayARSResults(parentnode,arsdata) {
             link.target = "_radiator";
             link.title = 'view test JSON';
 	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/test_cases/'+row.TestCase+'.json';
-	    link.appendChild(document.createTextNode(row.TestCase));
-	    td.appendChild(link);
+	    link.append(row.TestCase);
+	    td.append(link);
 	}
 	else {
 	    td.className = 'msgWARNING';
-	    td.innerText = "--- empty ---";
+	    td.append("--- empty ---");
 	}
-	tr.appendChild(td);
+	tr.append(td);
 
         td = document.createElement("td");
         if (row.TestAsset) {
@@ -7892,14 +7907,14 @@ function displayARSResults(parentnode,arsdata) {
 	    link.target = "_radiator";
 	    link.title = 'view asset JSON';
 	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/test_assets/'+row.TestAsset+'.json';
-            link.appendChild(document.createTextNode(row.TestAsset));
-	    td.appendChild(link);
+            link.append(row.TestAsset);
+	    td.append(link);
 	}
 	else {
             td.className = 'msgWARNING';
-	    td.innerText = "--- empty ---";
+	    td.append("--- empty ---");
 	}
-	tr.appendChild(td);
+	tr.append(td);
 
 
 	for (var agent of arsdata['ara_list']) {
@@ -7941,21 +7956,21 @@ function displayARSResults(parentnode,arsdata) {
 		    span.innerHTML = row[agent];
 		}
 
-                td.appendChild(span);
+                td.append(span);
 		td.title = agent+" :: "+row[agent];
 	    }
 	    else {
-		td.innerText = '[[ n/a ]]';
+		td.append('[[ n/a ]]');
 	    }
 
-	    tr.appendChild(td);
+	    tr.append(td);
 	}
 
-	table.appendChild(tr);
+	table.append(tr);
     }
 
-    tdiv.appendChild(table);
-    tdiv.appendChild(document.createElement("br"));
+    tdiv.append(table);
+    tdiv.append(document.createElement("br"));
 
 
     tr = document.createElement("tr");
@@ -7963,10 +7978,10 @@ function displayARSResults(parentnode,arsdata) {
 	td = document.createElement("th");
 	td.colSpan = '2';
 	td.style.minWidth = '80px';
-	td.innerText = agent;
-	tr.appendChild(td);
+	td.append(agent);
+	tr.append(td);
     }
-    sumtable.appendChild(tr);
+    sumtable.append(tr);
 
     stats.status_list['TOTAL'] = 1;
     for (var status in stats.status_list) {
@@ -7998,20 +8013,20 @@ function displayARSResults(parentnode,arsdata) {
 	else if (status == 'TOTAL') {
 	    tr.style.borderTop = "2px solid black";
 	}
-        td.appendChild(span);
-	tr.appendChild(td);
+        td.append(span);
+	tr.append(td);
 
 	td = document.createElement("td");
 	td.className = 'fieldname';
-	td.innerText = status;
-	tr.appendChild(td);
+	td.append(status);
+	tr.append(td);
 
 	for (var agent of arsdata['ara_list']) {
 	    td = document.createElement("td");
             td.style.borderLeft = "1px solid black";
             td.style.textAlign = "right";
-            td.innerText = (stats[agent][status]!=null) ? stats[agent][status] : '.';
-	    tr.appendChild(td);
+            td.append((stats[agent][status]!=null) ? stats[agent][status] : '.');
+	    tr.append(td);
 
 	    td = document.createElement("td");
 	    if (status == 'PASSED') {
@@ -8023,18 +8038,18 @@ function displayARSResults(parentnode,arsdata) {
 		td.title += (pcl == 'p9') ? 'YES':'NO';
 		span = document.createElement("span");
 		span.className = 'explevel '+pcl;
-		span.innerText = cnf+"%";
-		td.appendChild(span);
+		span.append(cnf+"%");
+		td.append(span);
 	    }
-	    tr.appendChild(td);
+	    tr.append(td);
 
 	    if (status != 'TOTAL' && stats[agent][status]!=null)
 		stats[agent]['TOTAL'] += stats[agent][status];
 	}
-	sumtable.appendChild(tr);
+	sumtable.append(tr);
     }
 
-    parentnode.appendChild(tdiv);
+    parentnode.append(tdiv);
 
     for (var filterfield of arsdata['ara_list'].concat(['test_type','test_case']) ) {
 	if (Object.keys(stats[filterfield]).length > 1) {
@@ -8060,12 +8075,12 @@ function show_hide(ele, span) {
 
 function add_to_dev_info(title,jobj) {
     var dev = document.getElementById("devdiv");
-    dev.appendChild(document.createElement("br"));
-    dev.appendChild(document.createTextNode('='.repeat(80)+" "+title+"::"));
+    dev.append(document.createElement("br"));
+    dev.append('='.repeat(80)+" "+title+"::");
     var pre = document.createElement("pre");
     //pre.id = "responseJSON";
-    pre.appendChild(document.createTextNode(JSON.stringify(jobj,null,2)));
-    dev.appendChild(pre);
+    pre.append(JSON.stringify(jobj,null,2));
+    dev.append(pre);
 }
 
 
@@ -8142,7 +8157,7 @@ function display_list(listId) {
 	document.getElementById("nodeset"+listId).innerHTML = "List [" + listId + "] -- (" + numitems + " items)";
 
     if (numitems > 0) {
-	listhtml = "<table class='sumtab'><tr><th></th><th></th><th>Name</th><th></th><th>Item</th><th>Type</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
+	listhtml = "<table class='sumtab'><tr><th></th><th></th><th>Name</th><th></th><th>Item</th><th>Category</th><th>Action</th></tr>" + listhtml + "</table><br><br>";
 	document.getElementById("menunumlistitems"+listId).classList.add("numnew");
 	document.getElementById("menunumlistitems"+listId).classList.remove("numold");
     }
@@ -8182,13 +8197,13 @@ function compare_lists(uniqueonly) {
     comparediv.innerHTML = "";
 
     if (keysA.length == 0 || keysB.length == 0) {
-	comparediv.appendChild(document.createElement("br"));
-	comparediv.appendChild(document.createTextNode("Items in lists A and B will be automatically displayed side-by-side for ease of comparison."));
-        comparediv.appendChild(document.createElement("br"));
-	comparediv.appendChild(document.createElement("br"));
-	comparediv.appendChild(document.createTextNode("At least one item is required in each list."));
-        comparediv.appendChild(document.createElement("br"));
-	comparediv.appendChild(document.createElement("br"));
+	comparediv.append(document.createElement("br"));
+	comparediv.append("Items in lists A and B will be automatically displayed side-by-side for ease of comparison.");
+        comparediv.append(document.createElement("br"));
+	comparediv.append(document.createElement("br"));
+	comparediv.append("At least one item is required in each list.");
+        comparediv.append(document.createElement("br"));
+	comparediv.append(document.createElement("br"));
 	return;
     }
 
@@ -8200,7 +8215,7 @@ function compare_lists(uniqueonly) {
     button.title = 'Get tab-separated values of this table to paste into Excel etc';
     button.value = 'Copy Comparison Table to clipboard (TSV)';
     button.setAttribute('onclick', 'copyTSVToClipboard(this,compare_tsv);');
-    comparediv.appendChild(button);
+    comparediv.append(button);
 
     var span = document.createElement("span");
     span.className = 'qgselect';
@@ -8213,33 +8228,33 @@ function compare_lists(uniqueonly) {
     opt.value = "false";
     if (!uniqueonly) opt.selected = true;
     opt.innerHTML = "Show all items in lists";
-    sel.appendChild(opt);
+    sel.append(opt);
     opt = document.createElement('option');
     opt.style.borderBottom = "1px solid black";
     opt.value = "true";
     if (uniqueonly) opt.selected = true;
     opt.innerHTML = "Show only unique items";
-    sel.appendChild(opt);
-    span.appendChild(sel);
-    comparediv.appendChild(span);
+    sel.append(opt);
+    span.append(sel);
+    comparediv.append(span);
 
-    comparediv.appendChild(document.createElement("br"));
-    comparediv.appendChild(document.createElement("br"));
+    comparediv.append(document.createElement("br"));
+    comparediv.append(document.createElement("br"));
 
     var comptable = document.createElement("table");
     comptable.className = 'sumtab';
     var tr = document.createElement("tr");
     var td = document.createElement("th");
-    tr.appendChild(td);
+    tr.append(td);
     td = document.createElement("th");
-    td.appendChild(document.createTextNode("List A"));
-    tr.appendChild(td);
+    td.append("List A");
+    tr.append(td);
     td = document.createElement("th");
-    tr.appendChild(td);
+    tr.append(td);
     td = document.createElement("th");
-    td.appendChild(document.createTextNode("List B"));
-    tr.appendChild(td);
-    comptable.appendChild(tr);
+    td.append("List B");
+    tr.append(td);
+    comptable.append(tr);
 
     if (uniqueonly) {
 	var onlyA = keysA.filter(x => !keysB.includes(x));
@@ -8266,11 +8281,11 @@ function compare_lists(uniqueonly) {
             span.className = "explevel p1";
 	    span.innerHTML = "&cross;";
 	}
-        td.appendChild(span);
-        tr.appendChild(td);
+        td.append(span);
+        tr.append(td);
         td = document.createElement("td");
 	td.innerHTML = keysA[idx]?keysA[idx]:'--n/a--';
-	tr.appendChild(td);
+	tr.append(td);
 
         td = document.createElement("td");
 	span = document.createElement("span");
@@ -8286,19 +8301,19 @@ function compare_lists(uniqueonly) {
 	    span.className = "explevel p1";
 	    span.innerHTML = "&cross;";
 	}
-	td.appendChild(span);
-	tr.appendChild(td);
+	td.append(span);
+	tr.append(td);
 	td = document.createElement("td");
 	td.innerHTML = keysB[idx]?keysB[idx]:'--n/a--';
-	tr.appendChild(td);
+	tr.append(td);
 
-	comptable.appendChild(tr);
+	comptable.append(tr);
 	compare_tsv.push(keysA[idx]+"\t"+keysB[idx]);
     }
 
-    comparediv.appendChild(comptable);
-    comparediv.appendChild(document.createElement("br"));
-    comparediv.appendChild(document.createElement("br"));
+    comparediv.append(comptable);
+    comparediv.append(document.createElement("br"));
+    comparediv.append(document.createElement("br"));
 }
 
 
@@ -8712,7 +8727,7 @@ function copyJSON(ele) {
 
 function copyTSVToClipboard(ele,tsv) {
     var dummy = document.createElement("textarea");
-    document.body.appendChild(dummy);
+    document.body.append(dummy);
     dummy.setAttribute("id", "dummy_id");
     for (var line of tsv)
 	document.getElementById("dummy_id").value+=line+"\n";
@@ -8740,7 +8755,7 @@ function getAnimatedWaitBar(width) {
 	wait.style.width = width;
     var waitbar = document.createElement("span");
     waitbar.className = 'loading_bar';
-    wait.appendChild(waitbar);
+    wait.append(waitbar);
     return wait;
 }
 
@@ -8836,7 +8851,7 @@ function stopDrop(event) {
     event.preventDefault();
     event.target.classList.remove("drophere");
 }
-function dropFile(event) {
+function dropFile(where,event) {
     stopDrop(event);
 
     if (!event.dataTransfer.files)
@@ -8844,13 +8859,43 @@ function dropFile(event) {
 
     var file = event.dataTransfer.files[0];
     reader = new FileReader();
-    reader.onload = function(ev) {
-        event.target.value = ev.target.result;
-        const lineCount = ev.target.result.split('\n').length;
-        document.getElementById("statusdiv").append(document.createElement("br"));
-        document.getElementById("statusdiv").append("Read in "+lineCount+" lines from dropped file.");
-        document.getElementById("statusdiv").append(document.createElement("br"));
-    };
+
+    if (where == 'response') {
+	reader.onload = function(ev) {
+            event.target.value = ev.target.result;
+            const lineCount = ev.target.result.split('\n').length;
+            document.getElementById("statusdiv").append(document.createElement("br"));
+            document.getElementById("statusdiv").append("Read in "+lineCount+" lines from dropped file.");
+            document.getElementById("statusdiv").append(document.createElement("br"));
+	};
+    }
+    else if (where == 'araxtest') {
+        reader.onload = function(ev) {
+	    var systest_node = document.getElementById("systest_container");
+	    systest_node.innerHTML = '';
+	    systest_node.className = '';
+	    document.getElementById("systest_wait").innerHTML = '<strong>Dropped file:</strong> <i>'+event.dataTransfer.files[0].name+'</i>';
+	    try {
+		displayARSResults(systest_node,JSON.parse(ev.target.result));
+	    }
+	    catch(e) {
+		systest_node.append(document.createElement("br"));
+		systest_node.append(document.createElement("br"));
+		var span = document.createElement("span");
+		span.className = 'error';
+		span.append("Error parsing results JSON : ");
+                systest_node.append(document.createElement("br"));
+		systest_node.append(document.createElement("br"));
+		systest_node.append(span);
+		span = document.createElement("span");
+                span.className = 'error';
+		span.append(e);
+		systest_node.append(span);
+	    }
+	    systest_node.append(document.createElement("br"));
+	};
+    }
+
     reader.readAsText(file);
 }
 

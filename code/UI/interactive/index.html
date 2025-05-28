@@ -409,7 +409,7 @@
     <h3 style="display:inline;">Response Input:</h3>
     <span class="tiny" style="position:relative; left:150px;">DRAG a file (or copy-paste) with a <b>JSON TRAPI Response</b> into the box below</span>
     <form id="responseForm" name="responseForm" method="post" action="viewResponse();">
-      <textarea placeholder="PASTE a TRAPI response document, or DRAG a file into this box" class="questionBox" wrap="off" ondrop="dropFile(event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
+      <textarea placeholder="PASTE a TRAPI response document, or DRAG a file into this box" class="questionBox" wrap="off" ondrop="dropFile('response',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
       <br/>
       <input type="button" class="questionBox button" name="action" value="VIEW" onClick="viewResponse();">
     </form>
@@ -593,16 +593,16 @@
   <div class="statushead">Translator Testing
     <span style="float:right;"><a href="?systest=1" id="systest_link">[ Direct link to this page ]</a></span>
   </div>
-  <div class="status">
+  <div class="status" style='min-height:300px;' ondrop="dropFile('araxtest',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)">
     Select Test Report to view: 
     <span class="qgselect"><select id="whichsystest">
       <option value="ARSARS_LISTnotLOADED">TestRunner runs should show up here...</option>
       <option value="LATEST" selected>Latest ARS Report</option>
     </select></span>
-    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveSysTestResults();"/>
+    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveSysTestResults();"/> (or drag a JSON test results file)
     <span style="margin-left:50px;" id="systest_wait"></span>
     <br>
-    <div id="systest_container"><br>Click on the button above to view Translator system test results<br><br></div>
+    <div id="systest_container"><br><br><br><h3>Click on the button above to view Translator system test results, or drag a JSON file with test results into this box</h3><br></div>
   </div>
 </div>
 
