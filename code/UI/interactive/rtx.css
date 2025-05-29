@@ -235,6 +235,10 @@ hr {
     height: 30em;
     overflow:scroll;
 }
+#jsonText::placeholder, #responseText::placeholder {
+    font-size: xx-large;
+    text-align: center;
+}
 
 .qgselect:hover {
     background-color: #fff;

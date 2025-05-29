@@ -246,7 +246,7 @@ function pasteExample(type) {
 	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:affects"\n      ],\n      "qualifier_constraints": [\n        {\n          "qualifier_set": [\n            {\n              "qualifier_type_id": "biolink:object_aspect_qualifier",\n              "qualifier_value": "activity_or_abundance"\n            },\n            {\n              "qualifier_type_id": "biolink:object_direction_qualifier",\n              "qualifier_value": "increased"\n            }\n          ]\n        }\n      ],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Gene"\n      ],\n      "ids": [\n        "NCBIGene:51341"\n      ]\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ]\n    }\n  }\n}\n';
     }
     else if (type == "PATH1") {
-	document.getElementById("jsonText").value = '{\n   "nodes": {\n      "n0": {\n         "ids": [ "MONDO:0005011" ]\n      },\n      "n1": {\n         "ids": [ "MONDO:0005180" ]\n      }\n   },\n   "paths": {\n      "p0": {\n         "subject":   "n0",\n         "object":    "n1",\n         "intermediate_nodes": [],\n         "predicates": [ "biolink:related_to" ]\n      }\n   }\n}\n';
+	document.getElementById("jsonText").value = '{\n   "nodes": {\n      "n0": {\n         "ids": [ "MONDO:0005011" ]\n      },\n      "n1": {\n         "ids": [ "MONDO:0005180" ]\n      }\n   },\n   "paths": {\n      "p0": {\n         "subject":   "n0",\n         "object":    "n1",\n         "constraints": [],\n         "predicates": [ "biolink:related_to" ]\n      }\n   }\n}\n';
     }
 
 }
@@ -310,23 +310,16 @@ function viewResponse() {
 
 
 async function postPathfinder(agent) {
-    var pf_query_graph = { "edges": {}, "nodes": {}, "paths": {} };
+    var pf_query_graph = { "nodes": {}, "paths": {} };
     pf_query_graph.nodes['n0'] = {};
     pf_query_graph.nodes['n0'].ids = [];
-    pf_query_graph.nodes['n0'].is_set = false;
-    pf_query_graph.nodes['n0'].set_interpretation = "BATCH";
-    pf_query_graph.nodes['n0'].constraints = [];
     pf_query_graph.nodes['n1'] = {};
     pf_query_graph.nodes['n1'].ids = [];
-    pf_query_graph.nodes['n1'].is_set = false;
-    pf_query_graph.nodes['n1'].set_interpretation = "BATCH";
-    pf_query_graph.nodes['n1'].constraints = [];
     pf_query_graph.paths['p0'] = {};
     pf_query_graph.paths['p0'].subject = 'n0';
     pf_query_graph.paths['p0'].object = 'n1';
     pf_query_graph.paths['p0'].predicates = ['biolink:related_to'];
-    pf_query_graph.paths['p0'].intermediate_nodes = [];
-    pf_query_graph.paths['p0'].attribute_constraints = [];
+    pf_query_graph.paths['p0'].constraints = [];
 
     var statusdiv = document.getElementById("statusdiv");
 
@@ -339,6 +332,10 @@ async function postPathfinder(agent) {
 	    throw new Error("Pathfinder Subject missing; please add.");
 	else if (!pf_object)
 	    throw new Error("Pathfinder Object missing; please add.");
+	else if (pf_subject == pf_object)
+	    throw new Error("Subject and Object cannot be the same; please edit and resubmit.");
+
+	statusdiv.innerHTML = 'Pre-validating nodes...';
 
 	var bestthing = await check_entity(pf_subject,false);
 	document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
@@ -356,8 +353,11 @@ async function postPathfinder(agent) {
             pf_query_graph.nodes['n1'].ids.push(bestthing.curie);
         }
 
-        if (pf_inter)
-	    pf_query_graph.paths['p0'].intermediate_nodes.push(pf_inter);
+        if (pf_inter) {
+	    var constraint = {};
+	    constraint.intermediate_categories = [pf_inter];
+	    pf_query_graph.paths['p0'].constraints.push(constraint);
+	}
 
 	document.getElementById("jsonText").value = JSON.stringify(pf_query_graph,null,2);
 	postQuery('JSON','ARAX');
@@ -6339,7 +6339,7 @@ function load_meta_knowledge_graph() {
 	    allnodes_node.append(opt);
 	    opt = document.createElement('option');
             opt.value = '';
-            opt.append("[Optional] Intermediate Node Category\u00A0\u00A0\u00A0\u00A0\u21E3 ---- disabled until implemented");
+            opt.append("[Optional] Intermediate Node Category\u00A0\u00A0\u00A0\u00A0\u21E3");
 	    pf_inter_node.append(opt);
 
             for (const n in data.predicates_by_categories) {
@@ -6347,7 +6347,7 @@ function load_meta_knowledge_graph() {
 		opt.value = n;
 		opt.append(n);
 		allnodes_node.append(opt);
-		//pf_inter_node.append(opt.cloneNode(true)); // uncomment once feature is ready
+		pf_inter_node.append(opt.cloneNode(true));
 	    }
             opt = document.createElement('option');
 	    opt.value = 'NONSPECIFIC';
@@ -8860,7 +8860,7 @@ function dropFile(where,event) {
     var file = event.dataTransfer.files[0];
     reader = new FileReader();
 
-    if (where == 'response') {
+    if (where == 'response' || where == 'jsoninput') {
 	reader.onload = function(ev) {
             event.target.value = ev.target.result;
             const lineCount = ev.target.result.split('\n').length;
