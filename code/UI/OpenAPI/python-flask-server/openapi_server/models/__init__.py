@@ -4,12 +4,15 @@
 from __future__ import absolute_import
 # import models into model package
 from openapi_server.models.analysis import Analysis
+from openapi_server.models.analysis_all_of import AnalysisAllOf
 from openapi_server.models.async_query import AsyncQuery
 from openapi_server.models.async_query_response import AsyncQueryResponse
 from openapi_server.models.async_query_status_response import AsyncQueryStatusResponse
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.attribute_constraint import AttributeConstraint
 from openapi_server.models.auxiliary_graph import AuxiliaryGraph
+from openapi_server.models.base_analysis import BaseAnalysis
+from openapi_server.models.base_query_graph import BaseQueryGraph
 from openapi_server.models.edge import Edge
 from openapi_server.models.edge_binding import EdgeBinding
 from openapi_server.models.entity_query import EntityQuery
@@ -73,6 +76,11 @@ from openapi_server.models.operation_sort_results_score import OperationSortResu
 from openapi_server.models.operation_sort_results_score_parameters import OperationSortResultsScoreParameters
 from openapi_server.models.operations import Operations
 from openapi_server.models.path_binding import PathBinding
+from openapi_server.models.path_constraint import PathConstraint
+from openapi_server.models.pathfinder_analysis import PathfinderAnalysis
+from openapi_server.models.pathfinder_analysis_all_of import PathfinderAnalysisAllOf
+from openapi_server.models.pathfinder_query_graph import PathfinderQueryGraph
+from openapi_server.models.pathfinder_query_graph_all_of import PathfinderQueryGraphAllOf
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_path import QPath
@@ -80,6 +88,7 @@ from openapi_server.models.qualifier import Qualifier
 from openapi_server.models.qualifier_constraint import QualifierConstraint
 from openapi_server.models.query import Query
 from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.query_graph_all_of import QueryGraphAllOf
 from openapi_server.models.question import Question
 from openapi_server.models.resource_role_enum import ResourceRoleEnum
 from openapi_server.models.response import Response

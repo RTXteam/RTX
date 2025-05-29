@@ -108,6 +108,7 @@ class QEdge(Model):
     def predicates(self):
         """Gets the predicates of this QEdge.
 
+        These should be Biolink Model predicates and are allowed to be of type 'abstract' or 'mixin' (only in QGraphs!). Use of 'deprecated' predicates should be avoided.  # noqa: E501
 
         :return: The predicates of this QEdge.
         :rtype: List[str]
@@ -118,6 +119,7 @@ class QEdge(Model):
     def predicates(self, predicates):
         """Sets the predicates of this QEdge.
 
+        These should be Biolink Model predicates and are allowed to be of type 'abstract' or 'mixin' (only in QGraphs!). Use of 'deprecated' predicates should be avoided.  # noqa: E501
 
         :param predicates: The predicates of this QEdge.
         :type predicates: List[str]

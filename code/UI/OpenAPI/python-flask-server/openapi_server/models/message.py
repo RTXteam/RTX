@@ -6,13 +6,15 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from openapi_server.models.base_model_ import Model
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 from openapi_server.models.knowledge_graph import KnowledgeGraph
-from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.one_of_query_graph_pathfinder_query_graph import OneOfQueryGraphPathfinderQueryGraph
 from openapi_server.models.result import Result
 from openapi_server import util
 
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph  # noqa: E501
 from openapi_server.models.knowledge_graph import KnowledgeGraph  # noqa: E501
-from openapi_server.models.query_graph import QueryGraph  # noqa: E501
+from openapi_server.models.one_of_query_graph_pathfinder_query_graph import OneOfQueryGraphPathfinderQueryGraph  # noqa: E501
 from openapi_server.models.result import Result  # noqa: E501
 
 class Message(Model):
@@ -27,17 +29,17 @@ class Message(Model):
         :param results: The results of this Message.  # noqa: E501
         :type results: List[Result]
         :param query_graph: The query_graph of this Message.  # noqa: E501
-        :type query_graph: QueryGraph
+        :type query_graph: OneOfQueryGraphPathfinderQueryGraph
         :param knowledge_graph: The knowledge_graph of this Message.  # noqa: E501
         :type knowledge_graph: KnowledgeGraph
         :param auxiliary_graphs: The auxiliary_graphs of this Message.  # noqa: E501
-        :type auxiliary_graphs: Dict[str, object]
+        :type auxiliary_graphs: Dict[str, AuxiliaryGraph]
         """
         self.openapi_types = {
             'results': List[Result],
-            'query_graph': QueryGraph,
+            'query_graph': OneOfQueryGraphPathfinderQueryGraph,
             'knowledge_graph': KnowledgeGraph,
-            'auxiliary_graphs': Dict[str, object]
+            'auxiliary_graphs': Dict[str, AuxiliaryGraph]
         }
 
         self.attribute_map = {
@@ -67,7 +69,7 @@ class Message(Model):
     def results(self):
         """Gets the results of this Message.
 
-        List of all returned Result objects for the query posed  # noqa: E501
+        List of all returned Result objects for the query posed. The list SHOULD NOT be assumed to be ordered. The 'score' property, if present, MAY be used to infer result rankings. If Results are not expected (such as for a query Message), this property SHOULD be null or absent. If Results are expected (such as for a response Message) and no Results are available, this property SHOULD be an array with 0 Results in it.  # noqa: E501
 
         :return: The results of this Message.
         :rtype: List[Result]
@@ -78,7 +80,7 @@ class Message(Model):
     def results(self, results):
         """Sets the results of this Message.
 
-        List of all returned Result objects for the query posed  # noqa: E501
+        List of all returned Result objects for the query posed. The list SHOULD NOT be assumed to be ordered. The 'score' property, if present, MAY be used to infer result rankings. If Results are not expected (such as for a query Message), this property SHOULD be null or absent. If Results are expected (such as for a response Message) and no Results are available, this property SHOULD be an array with 0 Results in it.  # noqa: E501
 
         :param results: The results of this Message.
         :type results: List[Result]
@@ -93,7 +95,7 @@ class Message(Model):
         QueryGraph object that contains a serialization of a query in the form of a graph  # noqa: E501
 
         :return: The query_graph of this Message.
-        :rtype: QueryGraph
+        :rtype: OneOfQueryGraphPathfinderQueryGraph
         """
         return self._query_graph
 
@@ -104,7 +106,7 @@ class Message(Model):
         QueryGraph object that contains a serialization of a query in the form of a graph  # noqa: E501
 
         :param query_graph: The query_graph of this Message.
-        :type query_graph: QueryGraph
+        :type query_graph: OneOfQueryGraphPathfinderQueryGraph
         """
 
         self._query_graph = query_graph
@@ -139,7 +141,7 @@ class Message(Model):
         Dictionary of AuxiliaryGraph instances that are used by Knowledge Graph Edges and Result Analyses. These are referenced elsewhere by the dictionary key.  # noqa: E501
 
         :return: The auxiliary_graphs of this Message.
-        :rtype: Dict[str, object]
+        :rtype: Dict[str, AuxiliaryGraph]
         """
         return self._auxiliary_graphs
 
@@ -150,8 +152,7 @@ class Message(Model):
         Dictionary of AuxiliaryGraph instances that are used by Knowledge Graph Edges and Result Analyses. These are referenced elsewhere by the dictionary key.  # noqa: E501
 
         :param auxiliary_graphs: The auxiliary_graphs of this Message.
-        :type auxiliary_graphs: Dict[str, object]
+        :type auxiliary_graphs: Dict[str, AuxiliaryGraph]
         """
 
         self._auxiliary_graphs = auxiliary_graphs
-

@@ -19,6 +19,7 @@ class ResultTransformer:
         if message.results:
             if ( #Bypassing pathfinder queries
                     message.query_graph
+                    and hasattr(message.query_graph, "paths")
                     and message.query_graph.paths
                     and len(message.query_graph.paths) > 0
             ):

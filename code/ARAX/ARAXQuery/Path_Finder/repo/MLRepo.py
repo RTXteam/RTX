@@ -79,9 +79,13 @@ class MLRepo(Repository):
         feature_list = []
         curie_list = []
         curie_degree = []
+        curie_name = []
+        curie_category = []
         for key, value in content_by_curie.items():
             curie_list.append(key)
             curie_degree.append(value.get('degree_by_category', {}).get('biolink:NamedThing', 0))
+            curie_name.append(value.get('name', ''))
+            curie_category.append(value.get('category', ''))
             feature_list.append(
                 get_np_array_features(
                     value,
@@ -105,13 +109,18 @@ class MLRepo(Repository):
         probabilities = sigmoid(scores)
 
         ranked_items = sorted(
-            zip(curie_list, probabilities, curie_degree),
+            zip(curie_list, probabilities, curie_degree, curie_category, curie_name),
             key=lambda x: x[1],
             reverse=True
         )
 
-        return [Node(id=item[0], weight=float(item[1]), degree=item[2]) for item in
-                ranked_items[0:limit]]
+        return [Node(
+            id=item[0],
+            weight=float(item[1]),
+            degree=item[2],
+            category=item[3],
+            name=item[4]
+        ) for item in ranked_items[0:limit]]
 
     def get_node_degree(self, node_id):
         return self.degree_repo.get_node_degree(node_id)
