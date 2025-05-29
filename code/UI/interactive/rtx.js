@@ -319,7 +319,6 @@ async function postPathfinder(agent) {
     pf_query_graph.paths['p0'].subject = 'n0';
     pf_query_graph.paths['p0'].object = 'n1';
     pf_query_graph.paths['p0'].predicates = ['biolink:related_to'];
-    pf_query_graph.paths['p0'].constraints = [];
 
     var statusdiv = document.getElementById("statusdiv");
 
@@ -356,7 +355,7 @@ async function postPathfinder(agent) {
         if (pf_inter) {
 	    var constraint = {};
 	    constraint.intermediate_categories = [pf_inter];
-	    pf_query_graph.paths['p0'].constraints.push(constraint);
+	    pf_query_graph.paths['p0'].constraints = [constraint];
 	}
 
 	document.getElementById("jsonText").value = JSON.stringify(pf_query_graph,null,2);
