@@ -282,14 +282,14 @@ class ARAXConnect:
             hops_numbers=self.parameters['max_path_length']
         )
 
-        self.remove_block_list(paths)
+        paths = self.remove_block_list(paths)
 
         if category_constraint:
             paths = self.filter_with_constraint(paths, category_constraint)
 
         paths = paths[:100]
 
-        self.response.debug(f"PathFinder found {len(paths)} paths")
+        self.response.info(f"PathFinder found {len(paths)} paths")
 
         if len(paths) == 0:
             self.response.warning(f"Could not connect the nodes {src_pinned_node} and {dst_pinned_node} "

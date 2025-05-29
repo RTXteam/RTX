@@ -40,6 +40,7 @@ class BreadthFirstSearch:
         self.logger = logger
 
     def traverse(self, source_id, hops_numbers=1):
+        self.logger.info(f"Expanding {source_id}")
         path_queue = queue.Queue()
         new_path = Path(hops_numbers, [Node(source_id, weight=1)])
         path_queue.put(new_path)
