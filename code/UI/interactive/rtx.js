@@ -246,7 +246,7 @@ function pasteExample(type) {
 	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:affects"\n      ],\n      "qualifier_constraints": [\n        {\n          "qualifier_set": [\n            {\n              "qualifier_type_id": "biolink:object_aspect_qualifier",\n              "qualifier_value": "activity_or_abundance"\n            },\n            {\n              "qualifier_type_id": "biolink:object_direction_qualifier",\n              "qualifier_value": "increased"\n            }\n          ]\n        }\n      ],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Gene"\n      ],\n      "ids": [\n        "NCBIGene:51341"\n      ]\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ]\n    }\n  }\n}\n';
     }
     else if (type == "PATH1") {
-	document.getElementById("jsonText").value = '{\n   "nodes": {\n      "n0": {\n         "ids": [ "MONDO:0005011" ]\n      },\n      "n1": {\n         "ids": [ "MONDO:0005180" ]\n      }\n   },\n   "paths": {\n      "p0": {\n         "subject":   "n0",\n         "object":    "n1",\n         "constraints": [],\n         "predicates": [ "biolink:related_to" ]\n      }\n   }\n}\n';
+	document.getElementById("jsonText").value = '{\n   "nodes": {\n      "n0": {\n         "ids": [ "MONDO:0005011" ]\n      },\n      "n1": {\n         "ids": [ "MONDO:0005180" ]\n      }\n   },\n   "paths": {\n      "p0": {\n         "subject":   "n0",\n         "object":    "n1",\n         "predicates": [ "biolink:related_to" ]\n      }\n   }\n}\n';
     }
 
 }
@@ -623,6 +623,9 @@ function postQuery_ARAX(qtype,queryObj) {
 			}
 			else if (jsonMsg.message) {
 			    if (jsonMsg.message.match(/^Parsing action: [^\#]\S+/)) {
+				totalSteps++;
+			    }
+			    else if (jsonMsg.message.match(/triggering pathfinder subsystem.$/)) {
 				totalSteps++;
 			    }
 			    else if (totalSteps>0) {
@@ -3061,6 +3064,7 @@ function filter_results(which, what="CURRENT", only=false) {
 }
 
 function display_filternodes(howmany=null) {
+    document.getElementById('nodefilter_div').style.gridTemplateRows = 'repeat('+Math.ceil(Object.keys(all_nodes).length/5)+', auto)';
     for (let fnode of Object.keys(all_nodes).sort((a, b) => all_nodes[a]['name'].localeCompare(all_nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
 	let htmlnode;
 	if (document.getElementById("nodefilter_"+fnode))
