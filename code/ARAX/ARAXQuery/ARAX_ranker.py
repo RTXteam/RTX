@@ -284,7 +284,7 @@ class ARAXRanker:
                                           }
         # how much we trust each data source
         self.data_source_base_weights = {'infores:semmeddb': 0.5, # downweight semmeddb
-                                         'infores::text-mining-provider-targeted': 0.85,
+                                         'infores:text-mining-provider-targeted': 0.85,
                                          'infores:drugcentral': 0.93,
                                          'infores:drugbank': 0.99
                                          # we can define the more customized weights for other data sources here later if needed.
