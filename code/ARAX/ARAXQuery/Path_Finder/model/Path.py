@@ -23,6 +23,12 @@ class Path:
     def __hash__(self):
         return hash(str(self))
 
+    def __str__(self):
+        result = ""
+        for link in self.links:
+            result += str(link)
+        return result
+
     def compute_weight(self):
         weight = 0
         for link in self.links:
