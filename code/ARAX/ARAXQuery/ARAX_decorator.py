@@ -66,10 +66,10 @@ class ARAXDecorator:
 
         # Extract the KG2c nodes from sqlite
         response.debug(f"Looking up corresponding KG2c nodes in sqlite")
-        node_attributes_ordered = list(self.node_attributes)
+        node_attributes_ordered = list(self.node_attributes)      
         node_keys = set(node_key.replace("'", "''") for node_key, node in message.knowledge_graph.nodes.items()  # Escape quotes
-                        if not only_decorate_bare or not any(attribute for attribute in node.attributes
-                                                             if attribute.attribute_type_id == "biolink:description"))
+                        if not only_decorate_bare or not (node.attributes and any(attribute for attribute in node.attributes
+                                                             if attribute.attribute_type_id == "biolink:description")))
         response.debug(f"Identified {len(node_keys)} nodes to decorate (only_decorate_bare={only_decorate_bare})")
         node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
         node_cols_str = ", ".join([f"N.{property_name}" for property_name in node_attributes_ordered])

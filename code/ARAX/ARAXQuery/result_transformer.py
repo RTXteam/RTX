@@ -41,6 +41,7 @@ class ResultTransformer:
             response.debug(f"Non-orphan qnodes in original QG are: {non_orphan_qnode_keys}")
             all_virtual_qedge_keys = set()
 
+            new_results = []
             for result in message.results:
                 # First figure out which edges in this result are 'virtual' and what option groups they belong to
                 edge_bindings = result.analyses[0].edge_bindings
@@ -137,6 +138,100 @@ class ResultTransformer:
                     non_orphan_node_bindings = [binding for binding in result.node_bindings[non_orphan_qnode_key]
                                                 if binding.id not in orphan_node_keys]
                     result.node_bindings[non_orphan_qnode_key] = non_orphan_node_bindings
+
+                # if the support graph of a xDTD edge has "normalized_google_distance" attribute and its value is "inf", remove this edge
+                kg_edge_id_to_edge = {edge_key: edge for edge_key, edge in message.knowledge_graph.edges.items()}
+                if result.analyses[0].support_graphs is not None:
+                    invalid_support_graphs_dict = {}
+                    for support_graph_id in result.analyses[0].support_graphs[0].split(';'):
+                        edge_info = kg_edge_id_to_edge[support_graph_id.replace('aux_graph_', '')]
+                        skip_flag = False
+                        for attribute in edge_info.attributes:
+                            if attribute.original_attribute_name == 'normalized_google_distance':
+                                if attribute.value == 'inf':
+                                    skip_flag = True
+                                    break
+                        if skip_flag:
+                            invalid_support_graphs_dict[(edge_info.subject, edge_info.object)] = support_graph_id.replace('aux_graph_', '')
+
+                    edge_groups = {}
+                    node_count = {}
+                    del_node_list = []
+                    for qedge, edge_list in edge_bindings.items():
+                        for edge in edge_list:
+                            edge_info = kg_edge_id_to_edge[edge.id]
+                            if edge_info.subject not in node_count:
+                                node_count[edge_info.subject] = 0
+                            if edge_info.object not in node_count:
+                                node_count[edge_info.object] = 0
+                            node_count[edge_info.subject] += 1
+                            node_count[edge_info.object] += 1
+                            
+                            if (edge_info.subject, edge_info.object) in edge_groups:
+                                edge_groups[(edge_info.subject, edge_info.object)].append(edge.id)
+                            else:
+                                edge_groups[(edge_info.subject, edge_info.object)] = []
+                                edge_groups[(edge_info.subject, edge_info.object)].append(edge.id)
+                                
+                    for invalid_edge, support_graph_id in invalid_support_graphs_dict.items():
+                        if (invalid_edge[0], invalid_edge[1]) in edge_groups:
+                            edge_id_to_remove_list = edge_groups[(invalid_edge[0], invalid_edge[1])]
+                        elif (invalid_edge[1], invalid_edge[0]) in edge_groups:
+                            edge_id_to_remove_list = edge_groups[(invalid_edge[1], invalid_edge[0])]
+                        else:
+                            continue
+
+                        new_edge_bindings = {}
+                        if len(edge_id_to_remove_list) == 1:
+                            if 'creative_' in edge_id_to_remove_list[0]:
+                                for qedge, edge_list in edge_bindings.items():
+                                    new_edge_bindings[qedge] = [edge for edge in edge_list if edge.id != edge_id_to_remove_list[0]]
+                                    if len(new_edge_bindings[qedge]) == 0:
+                                        del new_edge_bindings[qedge]
+                                    
+                                edge_bindings = new_edge_bindings
+                                
+                                result.analyses[0].support_graphs[0] = 'aux_graph_' + ";".join([x for x in result.analyses[0].support_graphs[0].replace('aux_graph_', '').split(';') if x != support_graph_id])
+                                
+                                node_count[kg_edge_id_to_edge[edge_id_to_remove_list[0]].subject] -= 1
+                                node_count[kg_edge_id_to_edge[edge_id_to_remove_list[0]].object] -= 1
+                                if node_count[kg_edge_id_to_edge[edge_id_to_remove_list[0]].subject] == 0:
+                                    del_node_list.append(kg_edge_id_to_edge[edge_id_to_remove_list[0]].subject)
+                                if node_count[kg_edge_id_to_edge[edge_id_to_remove_list[0]].object] == 0:
+                                    del_node_list.append(kg_edge_id_to_edge[edge_id_to_remove_list[0]].object)
+                                    
+                        else:
+                            for qedge, edge_list in edge_bindings.items():
+                                temp_del_edge_list = []
+                                new_edge_bindings[qedge] = []
+                                for edge in edge_list:
+                                    if edge.id in edge_id_to_remove_list and 'creative_' in edge.id:
+                                        temp_del_edge_list.append(edge.id)
+                                    else:
+                                        new_edge_bindings[qedge].append(edge)
+                                    if len(new_edge_bindings[qedge]) == 0:
+                                        del new_edge_bindings[qedge]
+                                edge_bindings = new_edge_bindings
+                                
+                                if len(temp_del_edge_list) == len(edge_id_to_remove_list):
+                                    for edge_id in temp_del_edge_list:
+                                        node_count[kg_edge_id_to_edge[edge_id].subject] -= 1
+                                        node_count[kg_edge_id_to_edge[edge_id].object] -= 1
+                                        if node_count[kg_edge_id_to_edge[edge_id].subject] == 0:
+                                            del_node_list.append(kg_edge_id_to_edge[edge_id].subject)
+                                        if node_count[kg_edge_id_to_edge[edge_id].object] == 0:
+                                            del_node_list.append(kg_edge_id_to_edge[edge_id].object)
+                                    
+                                    result.analyses[0].support_graphs[0] = 'aux_graph_' + ";".join([x for x in result.analyses[0].support_graphs[0].replace('aux_graph_', '').split(';') if x != support_graph_id])
+                                
+                    if len(edge_bindings) != 0 and len([key for key in original_qedge_keys if key in edge_bindings]) != 0:                        
+                        for key in original_qnode_keys:
+                            result.node_bindings[key] = [binding for binding in result.node_bindings[key] if binding.id not in del_node_list]
+                        new_results.append(result)
+                    else:
+                        continue
+                    
+            message.results = new_results
 
             # Return the original query graph in the response, rather than our edited version
             response.debug(f"Replacing ARAX's internal edited QG with the original input QG..")
