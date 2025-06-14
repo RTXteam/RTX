@@ -731,33 +731,12 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         results = message.results
 
-        # for edge_key in edge_ids_manual_agent:
-        #     print(f"setting max confidence for edge_key: {edge_key}")
-
         ###################################
         # TODO: Replace this with a more "intelligent" separate function
         # now we can loop over all the results, and combine their edge confidences (now populated)
         qg_nx = _get_query_graph_networkx_from_query_graph(message.query_graph)
         kg_edge_id_to_edge = self.kg_edge_id_to_edge
-
-
-        # # if the support graph of a result has "normalized_google_distance" attribute and its value is "inf", remove this result
-        # new_results = []
-        # for result in results:
-        #     skip_flag = False
-        #     # if the support graph has "normalized_google_distance" attribute and its value is "inf", remove this result
-        #     if result.analyses[0].support_graphs is not None:
-        #         support_graph_id = result.analyses[0].support_graphs[0].replace('aux_graph_', '')
-        #         for attribute in kg_edge_id_to_edge[support_graph_id].attributes:
-        #             if attribute.original_attribute_name == 'normalized_google_distance':
-        #                 if attribute.value == 'inf':
-        #                     skip_flag = True
-        #                     break
-        #     if skip_flag:
-        #         continue
-        #     new_results.append(result)
-        # results = new_results
-        # message.results = results
+        kg_edge_id_to_edge = self.kg_edge_id_to_edge
 
         ranks_list = list(map(_quantile_rank_list,
                               map(lambda scorer_func: _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge,
@@ -767,7 +746,6 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                                   [_score_networkx_graphs_by_max_flow,
                                    _score_networkx_graphs_by_longest_path,
                                    _score_networkx_graphs_by_frobenius_norm])))
-
 
         result_scores = sum(ranks_list)/float(len(ranks_list))
 
