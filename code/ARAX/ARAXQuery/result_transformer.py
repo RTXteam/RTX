@@ -139,6 +139,7 @@ class ResultTransformer:
                                                 if binding.id not in orphan_node_keys]
                     result.node_bindings[non_orphan_qnode_key] = non_orphan_node_bindings
 
+
                 # if the support graph of a xDTD edge has "normalized_google_distance" attribute and its value is "inf", remove this edge
                 kg_edge_id_to_edge = {edge_key: edge for edge_key, edge in message.knowledge_graph.edges.items()}
                 if result.analyses[0].support_graphs is not None:
@@ -209,8 +210,8 @@ class ResultTransformer:
                                         temp_del_edge_list.append(edge.id)
                                     else:
                                         new_edge_bindings[qedge].append(edge)
-                                    if len(new_edge_bindings[qedge]) == 0:
-                                        del new_edge_bindings[qedge]
+                                if len(new_edge_bindings[qedge]) == 0:
+                                    del new_edge_bindings[qedge]
                                 edge_bindings = new_edge_bindings
                                 
                                 if len(temp_del_edge_list) == len(edge_id_to_remove_list):
