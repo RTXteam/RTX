@@ -4292,7 +4292,7 @@ function show_attributes(num,html_div, atts, title, mainvalue) {
     if (atts == null)
 	return;
 
-    var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "bts:sentence");
+    var semmeddb_sentences = atts.filter(a => a.attribute_type_id == "biolink:supporting_text");
 
     // always display iri first
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
