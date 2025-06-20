@@ -80,7 +80,7 @@ Host arax.ncats.io
   - [ ] `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] `cd PloverDB && git pull origin kg2.X.Yc`
   - [ ] if you have **not** yet built the 2.X.Y docker image/container on this instance, run:
-    - [ ] `bash -x run.sh` (takes about an hour)
+    - [ ] `bash -x run.sh -b kg2.X.Yc` (takes about an hour)
   - [ ] otherwise, simply run:
     - [ ] `sudo docker start plovercontainer` (takes about ten minutes)
 - [ ] verify that Plover's regression tests pass, and fix any broken tests; from any instance/computer, run:
