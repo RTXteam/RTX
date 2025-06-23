@@ -31,13 +31,15 @@ class Path:
 
     def compute_weight(self):
         weight = 0
+        degree_sum = 0
         for link in self.links:
             if link.weight == float('inf') or link.weight is None:
                 return float('inf')
-            elif link.degree <= 1:
-                weight += link.weight
-            else:
-                weight += link.weight / math.log(link.degree, 10)
+            degree_sum += link.degree
+            weight += link.weight
+
+        if degree_sum > 1:
+            weight /= math.log(degree_sum, 10)
 
         return weight / len(self.links)
 
