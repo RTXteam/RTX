@@ -36,9 +36,13 @@ class MLRepo(Repository):
         self.category_to_idx = None
         self.edge_category_to_idx = None
         self.sorted_category_list = None
+        self.node_degree_category_to_idx = None
 
     def load_data(self):
         abs_path = os.path.dirname(os.path.abspath(__file__))
+        with open(abs_path + '/node_degree_category_by_indices.pkl', "rb") as f:
+            self.node_degree_category_to_idx = pickle.load(f)
+
         with open(abs_path + '/sorted_category_list.pkl', "rb") as f:
             self.sorted_category_list = pickle.load(f)
 
@@ -58,7 +62,11 @@ class MLRepo(Repository):
 
         with ThreadPoolExecutor(max_workers=2) as executor:
             future_get_neighbors = executor.submit(
-                get_neighbors_info, node.id, self.ngd_repo, self.repo
+                get_neighbors_info,
+                node.id,
+                self.ngd_repo,
+                self.repo,
+                self.degree_repo
             )
             future_load_data = executor.submit(self.load_data)
 
@@ -70,13 +78,26 @@ class MLRepo(Repository):
 
         feature_list = []
         curie_list = []
+        curie_degree = []
+        curie_name = []
+        curie_category = []
         for key, value in content_by_curie.items():
             curie_list.append(key)
+            curie_degree.append(value.get('degree_by_category', {}).get('biolink:NamedThing', 0))
+            curie_name.append(value.get('name', ''))
+            curie_category.append(value.get('category', ''))
             feature_list.append(
-                get_np_array_features(value, self.category_to_idx, self.edge_category_to_idx, curie_category_onehot,
-                                      self.ancestors_by_id))
+                get_np_array_features(
+                    value,
+                    self.category_to_idx,
+                    self.edge_category_to_idx,
+                    curie_category_onehot,
+                    self.ancestors_by_id,
+                    self.node_degree_category_to_idx
+                )
+            )
 
-        feature_np = np.empty((len(feature_list), 183), dtype=float)
+        feature_np = np.empty((len(feature_list), len(feature_list[0])), dtype=float)
 
         for i in range(len(feature_list)):
             feature_np[i] = feature_list[i]
@@ -88,13 +109,18 @@ class MLRepo(Repository):
         probabilities = sigmoid(scores)
 
         ranked_items = sorted(
-            zip(curie_list, probabilities),
+            zip(curie_list, probabilities, curie_degree, curie_category, curie_name),
             key=lambda x: x[1],
             reverse=True
         )
 
-        return [Node(id=item[0], weight=float(item[1])) for item in
-                ranked_items[0:limit]]
+        return [Node(
+            id=item[0],
+            weight=float(item[1]),
+            degree=item[2],
+            category=item[3],
+            name=item[4]
+        ) for item in ranked_items[0:limit]]
 
-    def get_node_degree(self, node):
-        return self.degree_repo.get_node_degree(node)
+    def get_node_degree(self, node_id):
+        return self.degree_repo.get_node_degree(node_id)

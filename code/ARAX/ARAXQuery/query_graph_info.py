@@ -52,7 +52,7 @@ class QueryGraphInfo:
         if query_graph.nodes is not None:
             nodes = query_graph.nodes
         edges = {}
-        if query_graph.edges is not None:
+        if hasattr(query_graph, 'edges') and query_graph.edges is not None:
             edges = query_graph.edges
 
         #### Store number of nodes and edges

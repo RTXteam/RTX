@@ -1,3 +1,4 @@
+import math
 import os
 import pickle
 import sys
@@ -22,13 +23,25 @@ class Path:
     def __hash__(self):
         return hash(str(self))
 
+    def __str__(self):
+        result = ""
+        for link in self.links:
+            result += str(link)
+        return result
+
     def compute_weight(self):
         weight = 0
+        degree_sum = 0
         for link in self.links:
             if link.weight == float('inf') or link.weight is None:
                 return float('inf')
-            weight = weight + link.weight
-        return weight/len(self.links)
+            degree_sum += link.degree
+            weight += link.weight
+
+        if degree_sum > 1:
+            weight /= math.log(degree_sum, 10)
+
+        return weight / len(self.links)
 
     def make_new_path(self, last_link):
         new_links = [Node(link.id, link.weight, link.name, link.degree) for link in self.links]

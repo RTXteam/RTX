@@ -211,7 +211,9 @@ hr {
 .filterlist {
     display: grid;
     grid-gap: 5px;
-    grid-template-columns: auto auto auto auto auto;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(10, auto);
+    grid-auto-flow: column;
     align-items:last baseline;
 }
 
@@ -234,6 +236,10 @@ hr {
     width: 80%;
     height: 30em;
     overflow:scroll;
+}
+#jsonText::placeholder, #responseText::placeholder {
+    font-size: xx-large;
+    text-align: center;
 }
 
 .qgselect:hover {

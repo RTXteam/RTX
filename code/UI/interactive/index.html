@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=18">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=20">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="cytoscape-expand-collapse.js"></script>
@@ -298,7 +298,7 @@
       <a href="javascript:pasteExample('PATH1');" style="position:relative; left:140px;">Pathfinder</a>
     </span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
-      <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
+      <textarea placeholder="&#10;&#10;&#10;&#10;Enter, Copy-PASTE, or DRAG a file HERE with either&#10;a full TRAPI query object, or&#10;the value of the query_graph element" class="questionBox" wrap="off" ondrop="dropFile('jsoninput',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
       <br>
       <a style="margin-left: 50px;" href="javascript:display_QG_from_JSON();">Edit in Visual QueryGraph pane</a>
       <br><br>
@@ -311,12 +311,12 @@
 
   <div class="inputsection" id="qpf_input">
     <h3>PathFinder Input:</h3>
-    <p>Pathfinder queries allow you to explore pathways connecting two concepts, optionally with a required intermediate category in the returned paths</p>
+    <p>Pathfinder queries allow you to explore pathways connecting two concepts, optionally with an intermediate node of a required category in the returned paths.</p>
     <form id="pfForm" name="pfForm" style="display:inline-grid; grid-template-columns: max-content max-content;"  method="post" action="postQuery('JSON','ARAX');">
       <span style="margin-top:14px;text-align:right;">Subject:</span>
       <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="pf_subject" name="pf_subject" size="100" maxlength="1000"/>
       <span style="margin-top:14px;text-align:right;">Intermediate:</span>
-      <select disabled="disabled" class="questionBox" id="pf_inter">
+      <select class="questionBox" id="pf_inter">
         <option style="border-bottom:1px solid black;" value="">[Optional] Intermediate Node Category&nbsp;&nbsp;&nbsp;&#8675;</option>
         <option>...loading</option>
       </select>
@@ -409,7 +409,7 @@
     <h3 style="display:inline;">Response Input:</h3>
     <span class="tiny" style="position:relative; left:150px;">DRAG a file (or copy-paste) with a <b>JSON TRAPI Response</b> into the box below</span>
     <form id="responseForm" name="responseForm" method="post" action="viewResponse();">
-      <textarea placeholder="PASTE a TRAPI response document, or DRAG a file into this box" class="questionBox" wrap="off" ondrop="dropFile(event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
+      <textarea placeholder="&#10;&#10;&#10;&#10;&#10;PASTE a TRAPI response document, or DRAG a file into this box" class="questionBox" wrap="off" ondrop="dropFile('response',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
       <br/>
       <input type="button" class="questionBox button" name="action" value="VIEW" onClick="viewResponse();">
     </form>
@@ -593,16 +593,16 @@
   <div class="statushead">Translator Testing
     <span style="float:right;"><a href="?systest=1" id="systest_link">[ Direct link to this page ]</a></span>
   </div>
-  <div class="status">
+  <div class="status" style='min-height:300px;' ondrop="dropFile('araxtest',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)">
     Select Test Report to view: 
     <span class="qgselect"><select id="whichsystest">
       <option value="ARSARS_LISTnotLOADED">TestRunner runs should show up here...</option>
       <option value="LATEST" selected>Latest ARS Report</option>
     </select></span>
-    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveSysTestResults();"/>
+    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveSysTestResults();"/> (or drag a JSON test results file)
     <span style="margin-left:50px;" id="systest_wait"></span>
     <br>
-    <div id="systest_container"><br>Click on the button above to view Translator system test results<br><br></div>
+    <div id="systest_container"><br><br><br><h3>Click on the button above to view Translator system test results, or drag a JSON file with test results into this box</h3><br></div>
   </div>
 </div>
 
@@ -672,6 +672,7 @@
       <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.4');"/>
       <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
       <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
+      <br><br>
     </span>
     <span>
     </span>
