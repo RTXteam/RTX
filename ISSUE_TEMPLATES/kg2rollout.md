@@ -133,7 +133,9 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
   - [ ] `scp rtxconfig@arax-databases.rtx.ai:/home/rtxconfig/KG2.X.Y/*2.X.Y* KG2.X.Y/`
 - [ ] upload the new databases and their md5 checksums to ITRB's SFTP server using the steps detailed [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#steps-for-all-databases-at-once)
 
+
 #### 5. Rollout new KG2c version to `arax.ncats.io` development endpoints
+- [ ] Verify that ploverDB is up and running by checking the `kg2cploverN.rtx.ai/code_version` endpoint. If not, start up the Plover instance.
 - [ ] Notify the `#deployment` channel in the `ARAXTeam` Slack workspace that you are rolling out a new version of KG2c to the various `arax.ncats.io` development endpoints. Provide the KG2c version number in this notification.
 - [ ] for the `RTXteam/RTX` project, merge the `master` branch into the branch for this KG2 version.  Record the RTX issue number (for the KG2c rollout checklist issue) in the merge message.
 - [ ] for the `RTXteam/RTX` project, merge this KG2 version's branch back into the `master` branch.  Record this issue number in the merge message.
