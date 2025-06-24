@@ -126,6 +126,8 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 - [ ] make sure `arax.ncats.io` has at least 100G of disk space free; delete old KG2 databases to free up space as needed (before doing this, warn the team on the `#deployment` Slack channel on the `ARAXTeam` workspace)
 - [ ] copy the new databases from `arax-databases.rtx.ai` to `arax.ncats.io:/translator/data/orangeboard/databases/KG2.X.Y`; example for KG2.8.0:
   - [ ] `ssh myuser@arax.ncats.io`
+  - [ ]  Enter the `rtx1` container: `sudo docker exec -it rtx1 bash`
+  - [ ] Become user `rt`: `su - rt`
   - [ ] `cd /translator/data/orangeboard/databases/`
   - [ ] `mkdir -m 777 KG2.X.Y`
   - [ ] `scp rtxconfig@arax-databases.rtx.ai:/home/rtxconfig/KG2.X.Y/*2.X.Y* KG2.X.Y/`
