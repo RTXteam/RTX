@@ -42,7 +42,7 @@ Host arax.ncats.io
 #### 1. Build and load KG2c:
 
 - [ ] merge `master` into the branch being used for this KG2 version (which would typically be named like `KG2.X.Yc`).  Record this issue number in the merge message.
-- [ ] update the four hardcoded biolink version numbers in the branch (as needed):
+- [ ] update the four hardcoded biolink and KG2c version numbers in the branch (as needed):
   - [ ] in `code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml))
   - [ ] in `code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml))
   - [ ] in `code/UI/OpenAPI/specifications/export/ARAX/1.5.0/openapi.yaml`([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/specifications/export/ARAX/1.5.0/openapi.yaml#L18))
@@ -80,7 +80,7 @@ Host arax.ncats.io
   - [ ] `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] `cd PloverDB && git pull origin kg2.X.Yc`
   - [ ] if you have **not** yet built the 2.X.Y docker image/container on this instance, run:
-    - [ ] `bash -x run.sh` (takes about an hour)
+    - [ ] `bash -x run.sh -b kg2.X.Yc` (takes about an hour)
   - [ ] otherwise, simply run:
     - [ ] `sudo docker start plovercontainer` (takes about ten minutes)
 - [ ] verify that Plover's regression tests pass, and fix any broken tests; from any instance/computer, run:
@@ -126,12 +126,16 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 - [ ] make sure `arax.ncats.io` has at least 100G of disk space free; delete old KG2 databases to free up space as needed (before doing this, warn the team on the `#deployment` Slack channel on the `ARAXTeam` workspace)
 - [ ] copy the new databases from `arax-databases.rtx.ai` to `arax.ncats.io:/translator/data/orangeboard/databases/KG2.X.Y`; example for KG2.8.0:
   - [ ] `ssh myuser@arax.ncats.io`
+  - [ ]  Enter the `rtx1` container: `sudo docker exec -it rtx1 bash`
+  - [ ] Become user `rt`: `su - rt`
   - [ ] `cd /translator/data/orangeboard/databases/`
   - [ ] `mkdir -m 777 KG2.X.Y`
   - [ ] `scp rtxconfig@arax-databases.rtx.ai:/home/rtxconfig/KG2.X.Y/*2.X.Y* KG2.X.Y/`
 - [ ] upload the new databases and their md5 checksums to ITRB's SFTP server using the steps detailed [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#steps-for-all-databases-at-once)
 
+
 #### 5. Rollout new KG2c version to `arax.ncats.io` development endpoints
+- [ ] Verify that ploverDB is up and running by checking the `kg2cploverN.rtx.ai/code_version` endpoint. If not, start up the Plover instance.
 - [ ] Notify the `#deployment` channel in the `ARAXTeam` Slack workspace that you are rolling out a new version of KG2c to the various `arax.ncats.io` development endpoints. Provide the KG2c version number in this notification.
 - [ ] for the `RTXteam/RTX` project, merge the `master` branch into the branch for this KG2 version.  Record the RTX issue number (for the KG2c rollout checklist issue) in the merge message.
 - [ ] for the `RTXteam/RTX` project, merge this KG2 version's branch back into the `master` branch.  Record this issue number in the merge message.

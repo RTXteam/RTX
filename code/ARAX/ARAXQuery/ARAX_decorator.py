@@ -47,7 +47,7 @@ class ARAXDecorator:
                                            description="Identifiers of all nodes in this synonym set in RTX-KG2."),
             "publications": Attribute(attribute_type_id="biolink:publications",
                                       value_type_id="biolink:Uriorcurie"),
-            "publications_info": Attribute(attribute_type_id="bts:sentence",
+            "publications_info": Attribute(attribute_type_id="biolink:supporting_text",
                                            value_type_id=None),
             "kg2_ids": Attribute(attribute_type_id="biolink:original_predicate",
                                  value_type_id="metatype:String",
