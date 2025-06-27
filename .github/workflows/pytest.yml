@@ -22,6 +22,8 @@ jobs:
   analyze:
     name: Analyze
     runs-on: [self-hosted, ARAX, docker]
+    env:
+      PYTHONPATH: ${{ github.workspace }}/code
     permissions:
       actions: read
       contents: read
