@@ -33,24 +33,21 @@ jobs:
         language: [ 'python' ]
 
     steps:
-    - name: Checkout repository
+    - name: Checkout code to RTX directory
       uses: actions/checkout@v2
-        
+      with:
+        #path: /home/ubuntu/RTX
+        ref: ${{ github.head_ref || github.ref_name }}
     
     - name: Set up config files
       run: |
         scp araxconfig@araxconfig.rtx.ai:config_secrets.json /mnt/config/config_secrets.json
-
-    - name: Checkout code to RTX directory
-      uses: actions/checkout@v2
-      with:
-        path: /home/ubuntu/RTX
-        ref: ${{ github.head_ref || github.ref_name }}
     
     - name: Download databases into CICD instance
+      working-directory: ${{ github.workspace }}
       # continue-on-error: true
       run: |
-        cd /home/ubuntu/RTX
+        #cd /home/ubuntu/RTX
         #git checkout ${GITHUB_REF#refs/heads/}
         #git pull
         /home/ubuntu/venv3.9/bin/pip3 install -r requirements.txt
