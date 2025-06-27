@@ -41,16 +41,21 @@ jobs:
       run: |
         scp araxconfig@araxconfig.rtx.ai:config_secrets.json /mnt/config/config_secrets.json
 
-
+    - name: Checkout code to RTX directory
+      uses: actions/checkout@v4
+      with:
+        path: /home/ubuntu/RTX
+        ref: ${{ github.head_ref || github.ref_name }}
+    
     - name: Download databases into CICD instance
       # continue-on-error: true
       run: |
         cd /home/ubuntu/RTX
-        git checkout ${GITHUB_REF#refs/heads/}
-        git pull
+        #git checkout ${GITHUB_REF#refs/heads/}
+        #git pull
         /home/ubuntu/venv3.9/bin/pip3 install -r requirements.txt
         /home/ubuntu/venv3.9/bin/python3 code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
-        git checkout master
+        #git checkout master
 
 
 
