@@ -209,5 +209,4 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
       - [ ] `sudo docker stop plovercontainer`
     - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
     - [ ] delete the `kg2.X.Yc` branch in the PloverDB repo (since it has been merged into `main` at this point)
-- [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen or Sundar Pullela, who have permission to do this)
 - [ ] Download, update, and re-upload to `s3://rtx-kg2-public` the index file `index.html` to add a new section with four hyperlinks for the four information artifacts from the new build (KG2c nodes, KG2c edges, node synonymizer, and curie-to-pmids).
