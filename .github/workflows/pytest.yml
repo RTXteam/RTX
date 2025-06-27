@@ -42,7 +42,7 @@ jobs:
         scp araxconfig@araxconfig.rtx.ai:config_secrets.json /mnt/config/config_secrets.json
 
     - name: Checkout code to RTX directory
-      uses: actions/checkout@v4
+      uses: actions/checkout@v2
       with:
         path: /home/ubuntu/RTX
         ref: ${{ github.head_ref || github.ref_name }}
