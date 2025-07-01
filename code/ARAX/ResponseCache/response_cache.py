@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# Database definition and RTXFeedback class
+# Database definition and ResponseCache class
 
 import sys
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -403,7 +403,7 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
-                enable_validation = True
+                enable_validation = False
                 schema_version = trapi_version
                 if enable_validation:
                     #if True:
@@ -443,7 +443,7 @@ class ResponseCache:
                         envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'TRAPI validator crashed with error: ' + str(error) + ' --- ' + envelope['description'] }
 
                 else:
-                    envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': 'Validation disabled.', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
+                    envelope['validation_result'] = { 'status': 'DISABLED', 'version': schema_version, 'message': 'Validation disabled.', 'validation_messages': { "critical": {}, "error": {}, "warning": {}, "info": { "message": 'Validation has been temporarily disabled due to various problems running it. It may return if the problems can be resolved.' } } }
 
 
                 #### Count provenance information
@@ -497,7 +497,7 @@ class ResponseCache:
 
 
             #### Perform a validation on it
-            enable_validation = True
+            enable_validation = False
             schema_version = trapi_version
             #if 'schema_version' in envelope:
             #    schema_version = envelope['schema_version']
@@ -759,7 +759,7 @@ class ResponseCache:
                             envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
 
                     else:
-                        envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': 'Validation disabled. too many dependency failures', 'validation_messages': { "errors": [], "warnings": [], "information": [ 'Validation has been temporarily disabled due to problems with dependencies. Will return again soon.' ] } }
+                        envelope['validation_result'] = { 'status': 'DISABLED', 'version': schema_version, 'message': 'Validation disabled.', 'validation_messages': { "critical": {}, "error": {}, "warning": {}, "info": { "message": 'Validation has been temporarily disabled due to various problems running it. It may return if the problems can be resolved.' } } }
 
                 except Exception as error:
                     timestamp = str(datetime.now().isoformat())
@@ -821,12 +821,12 @@ class ResponseCache:
                     eprint(f"attribute_caching={attribute_caching}")
                     if attribute_caching is True and 'edges' in envelope['message']['knowledge_graph'] and envelope['message']['knowledge_graph']['edges'] is not None:
                         for edge_key, edge in envelope['message']['knowledge_graph']['edges'].items():
-                            eprint(f"edge {edge_key}")
+                            #eprint(f"edge {edge_key}")
                             if 'attributes' in edge and edge['attributes'] is not None:
                                 for attribute in edge['attributes']:
                                     if 'attribute_type_id' in attribute and attribute['attribute_type_id'] is not None and attribute['attribute_type_id'] == 'biolink:support_graphs':
                                         edge['has_these_support_graphs'] = attribute['value']
-                                        eprint(f"has_these_support_graphs={attribute['value']}")
+                                        #eprint(f"has_these_support_graphs={attribute['value']}")
                             component_uuid = 'Z' + str(uuid.uuid4())
                             filename = f"{component_cache_dir}/{component_uuid}.json"
                             with open(filename, 'w') as outfile:

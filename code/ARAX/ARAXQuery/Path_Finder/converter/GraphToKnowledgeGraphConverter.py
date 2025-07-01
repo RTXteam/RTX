@@ -1,8 +1,5 @@
 import sys
 import os
-from RTXConfiguration import RTXConfiguration
-from kg2_querier import KG2Querier
-import expand_utilities as eu
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 from converter.PathListToGraphConverter import PathListToGraphConverter

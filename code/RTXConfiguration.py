@@ -87,10 +87,14 @@ class RTXConfiguration:
 
         # Determine our maturity
         maturity_override_value = self._read_override_file(f"{file_dir}/maturity_override.txt")
+        if DEBUG:
+            print(f"maturity_override_value={maturity_override_value} from {file_dir}/maturity_override.txt")
         if maturity_override_value:
             self.maturity = maturity_override_value
         else:
             # Otherwise we'll dynamically determine our maturity based on instance/domain name and/or branch
+            if DEBUG:
+                print(f"Auto-detecting maturity: self.domain={self.domain}, self.instance_name={self.instance_name}")
             if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io"]:
                 self.maturity = "staging"
             elif self.domain in ["arax.test.transltr.io", "kg2.test.transltr.io"] or self.current_branch_name == "itrb-test":
@@ -99,14 +103,14 @@ class RTXConfiguration:
                 self.maturity = "production"
             elif self.domain == "arax.ncats.io":
                 if self.instance_name in ["ARAX", "kg2"] or self.current_branch_name == "production":
-                    self.maturity = "production"
+                    self.maturity = "staging"
                 else:
                     self.maturity = "development"
             else:
                 self.maturity = "development"
         if DEBUG:
             t1 = timeit.default_timer()
-            print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Determined maturity")
+            print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Determined maturity={self.maturity}")
 
         # Determine if this is an ITRB instance or our CICD instance
         self.is_itrb_instance = "transltr.io" in self.domain  # Hacky, but works

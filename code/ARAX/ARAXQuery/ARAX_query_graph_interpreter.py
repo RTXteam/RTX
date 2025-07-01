@@ -64,6 +64,15 @@ class ARAXQueryGraphInterpreter:
             #eprint(response.show(level=ARAXResponse.DEBUG))
             return response
 
+        # Detect a "pathfinder" QueryGraph pattern in the query and branch off to different behavior
+        if hasattr(message.query_graph, 'paths') and message.query_graph.paths is not None and len(message.query_graph.paths) > 0:
+            response.info("QueryGraphInterpreter recognized query_graph as a 'pathfinder' query: triggering pathfinder subsystem.")
+            response.data['araxi_commands'] = [
+                'connect(action=connect_nodes, max_path_length=4)',
+            ]
+            return response
+
+        #### This will now be obsolete in TRAPI 1.6. Delete this eventually
         # Add some bespoke code to detect "pathfinder" queries and branch off to different behavior
         # Perhaps this could be done through the templating, but seems difficult and may change soon,
         # so put in this patch for now and see if we need to change it later.

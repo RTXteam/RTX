@@ -4,7 +4,6 @@ Usage:
     Run all expand tests: pytest -v test_ARAX_expand.py
     Run a single test: pytest -v test_ARAX_expand.py -k test_branched_query
 """
-
 import sys
 import os
 from typing import List, Dict, Optional
@@ -129,6 +128,15 @@ def _check_attribute(attribute: Attribute):
     assert isinstance(attribute.attribute_source, str) or attribute.attribute_source is None
     assert isinstance(attribute.original_attribute_name, str) or attribute.original_attribute_name is None
     assert isinstance(attribute.description, str) or attribute.description is None
+
+
+def get_primary_knowledge_source(edge: Edge) -> str:
+    return next(source.resource_id for source in edge.sources if source.resource_role == "primary_knowledge_source")
+
+def get_support_graphs_attribute(edge: Edge) -> any:
+    sg_attrs = [attribute for attribute in edge.attributes if attribute.attribute_type_id == "biolink:support_graphs"]
+    assert len(sg_attrs) <= 1
+    return sg_attrs[0] if sg_attrs else None
 
 
 @pytest.mark.slow
@@ -1479,7 +1487,7 @@ def test_kg2_version():
 
     # Then grab KG2 version from the OpenAPI spec
     code_dir = os.path.dirname(os.path.abspath(__file__)) + "/../../"
-    kg2_openapi_yaml_path = f"{code_dir}/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml"
+    kg2_openapi_yaml_path = f"{code_dir}/UI/OpenAPI/specifications/export/KG2/1.5.0/openapi.yaml"
     with open(kg2_openapi_yaml_path) as kg2_api_file:
         kg2_openapi_configuration = yaml.safe_load(kg2_api_file)
         kg2_openapi_version = kg2_openapi_configuration["info"]["version"]
@@ -1504,7 +1512,7 @@ def test_klat_attributes():
                    if attribute.attribute_type_id in {"biolink:knowledge_level", "biolink:agent_type"})
 
 
-def test_treats_patch_issue_2328():
+def test_treats_patch_issue_2328_a():
     query = {
         "nodes": {
             "disease": {
@@ -1531,19 +1539,25 @@ def test_treats_patch_issue_2328():
             }
         }
     }
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
+    nodes_by_qg_id, edges_by_qg_id, message = _run_query_and_do_standard_testing(json_query=query, return_message=True)
     assert edges_by_qg_id["t_edge"]
-    kg2_edges_treats = [edge for edge in edges_by_qg_id["t_edge"].values()
-                        if any(source.resource_id == "infores:rtx-kg2" for source in edge.sources)]
-    print(f"Answer includes {len(kg2_edges_treats)} edges from KG2")
-    assert kg2_edges_treats
-    print(kg2_edges_treats)
-    for edge in kg2_edges_treats:
-        assert edge.predicate == "biolink:treats"
-        assert edge.attributes
-        assert not any(source.resource_id == "infores:semmeddb" for source in edge.sources)
+    # Make sure the KG2 edges, which are higher-level treats edges, are in the KG (used as support edges)
+    creative_expand_treats_edges = [edge for edge_key, edge in message.knowledge_graph.edges.items()
+                                    if edge_key.startswith("creative_expand")]
+    support_edge_keys = set()
+    for edge in creative_expand_treats_edges:
+        aux_graph_keys = get_support_graphs_attribute(edge).value
+        assert aux_graph_keys
+        for aux_graph_key in aux_graph_keys:
+            aux_graph = message.auxiliary_graphs[aux_graph_key]
+            support_edge_keys.update(set(aux_graph.edges))
+    support_edges = [message.knowledge_graph.edges[edge_key] for edge_key in support_edge_keys]
 
-    # Verify that the predicate editing doesn't happen outside of inferred mode
+    assert any(source.resource_id == "infores:rtx-kg2" for edge in support_edges for source in edge.sources)
+    assert not any(source.resource_id == "infores:semmeddb" for edge in support_edges for source in edge.sources)
+
+def test_treats_patch_issue_2328_b():
+    # Verify that the edge editing doesn't happen outside of inferred mode
     query = {
         "nodes": {
             "disease": {
@@ -1577,6 +1591,53 @@ def test_treats_patch_issue_2328():
     assert kg2_edges_treats_or
     assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:treats_or_applied_or_studied_to_treat")
     assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:applied_to_treat")
+
+
+@pytest.mark.external
+def test_creative_treats_predicate_alteration_2412():
+    query = {
+        "nodes": {
+            "n00": {
+                "ids": ["MONDO:0018958"]
+            },
+            "n01": {
+                "categories": ["biolink:SmallMolecule"]
+            }
+        },
+        "edges": {
+            "e00": {
+                "subject": "n01",
+                "object": "n00",
+                "predicates": ["biolink:treats"],
+                "knowledge_type": "inferred"
+            }
+        }
+    }
+    nodes_by_qg_id, edges_by_qg_id, message = _run_query_and_do_standard_testing(json_query=query, return_message=True)
+
+    # Make sure we appear to have creative expand treats edges
+    assert edges_by_qg_id and edges_by_qg_id.get("e00")
+    assert any(edge_key for edge_key in edges_by_qg_id["e00"] if edge_key.startswith("creative_expand"))
+    primary_sources_e00 = {get_primary_knowledge_source(edge) for edge in edges_by_qg_id["e00"].values()}
+    print(f"primary_knowledge_sources are: {primary_sources_e00}")
+    assert "infores:arax" in primary_sources_e00
+
+    # Make sure 'support' edges, like from ROBOKOP, are present in the KG
+    primary_sources_all = {get_primary_knowledge_source(edge) for edges_dict in edges_by_qg_id.values()
+                           for edge in edges_dict.values()}
+    assert "infores:automat-robokop" in primary_sources_all
+
+    # Make sure that creative expand treats edges have support graphs that actually exist
+    for edge_key, edge in edges_by_qg_id["e00"].items():
+        if get_primary_knowledge_source(edge) == "infores:arax":
+            support_graph_attr = get_support_graphs_attribute(edge)
+            assert support_graph_attr
+            aux_graph_keys = eu.convert_to_set(support_graph_attr.value)
+            assert aux_graph_keys.issubset(message.auxiliary_graphs)
+            for aux_graph_key in aux_graph_keys:
+                aux_graph = message.auxiliary_graphs[aux_graph_key]
+                assert set(aux_graph.edges).issubset(message.knowledge_graph.edges)
+
 
 
 if __name__ == "__main__":

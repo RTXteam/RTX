@@ -7,6 +7,7 @@ import sqlite3
 import string
 import sys
 import time
+import math
 from collections import defaultdict, Counter
 from typing import Optional, Union, List, Set, Dict, Tuple
 
@@ -285,6 +286,51 @@ class NodeSynonymizer:
             print(f"Took {round(time.time() - start, 5)} seconds")
         return results_dict
 
+    def get_curie_category(self, curies: Union[str, Set[str], List[str]], debug: bool = False) -> dict:
+        """
+        Returns NON-preferred names for input curies; i.e., the curie's direct name, not the name of its canonical
+        identifier.
+        """
+        start = time.time()
+
+        # Convert any input values to Set format
+        curies_set = self._convert_to_set_format(curies)
+        results_dict = dict()
+
+        if curies_set:
+            # First transform curies so that their prefixes are entirely uppercase
+            curies_to_capitalized_curies, capitalized_curies = self._map_to_capitalized_curies(curies_set)
+
+            # Query the synonymizer sqlite database for these identifiers (in batches, if necessary)
+            sql_query_template = f"""
+                        SELECT N.id_simplified, N.category
+                        FROM nodes as N
+                        WHERE N.id_simplified in ('{self.placeholder_lookup_values_str}')"""
+            matching_rows = self._run_sql_query_in_batches(sql_query_template, capitalized_curies)
+
+            # Transform the results into the proper response format
+            results_dict_capitalized = {row[0]: row[1] for row in matching_rows}
+            results_dict = {input_curie: results_dict_capitalized[capitalized_curie]
+                            for input_curie, capitalized_curie in curies_to_capitalized_curies.items()
+                            if capitalized_curie in results_dict_capitalized}
+
+        if debug:
+            print(f"Took {round(time.time() - start, 5)} seconds")
+        return results_dict
+
+    def get_distinct_category_list(self, debug: bool = False) -> list:
+        start = time.time()
+
+        sql_query = f"""SELECT DISTINCT category FROM nodes"""
+        matching_rows = self._execute_sql_query(sql_query)
+        result = []
+        for row in matching_rows:
+            result.append(row[0])
+
+        if debug:
+            print(f"Took {round(time.time() - start, 5)} seconds")
+        return result
+
     def get_normalizer_results(self, entities: Optional[Union[str, Set[str], List[str]]],
                                max_synonyms: int = 1000000,
                                debug: bool = False) -> dict:
@@ -296,6 +342,15 @@ class NodeSynonymizer:
             entities_dict = entities
             entities = entities_dict.get("terms")
             output_format = entities_dict.get("format")
+
+            # Allow the caller to encode the max_synonyms in the input dict (used by web UI)
+            max_synonyms_raw = entities_dict.get("max_synonyms")
+            try:
+                max_synonyms_int = int(max_synonyms_raw)
+                if max_synonyms_int > 0:
+                    max_synonyms = max_synonyms_int
+            except:
+                pass
 
         # Convert any input curies to Set format
         entities_set = self._convert_to_set_format(entities)
@@ -366,6 +421,7 @@ class NodeSynonymizer:
                                           "nodes": [nodes_dict[equivalent_curie] for equivalent_curie in equivalent_curies]}
 
         # Do some post-processing (remove no-longer-needed 'cluster_id' property)
+        normalizer_info = None
         for normalizer_info in results_dict.values():
             for equivalent_node in normalizer_info["nodes"]:
                 if "cluster_id" in equivalent_node:
@@ -389,10 +445,25 @@ class NodeSynonymizer:
                 for dict_key in keys_to_delete:
                     del normalizer_info[dict_key]
         # Otherwise add in cluster graphs
+        elif output_format == "slim":
+            pass
         else:
             for normalizer_info in results_dict.values():
                 if normalizer_info:
                     normalizer_info["knowledge_graph"] = self._get_cluster_graph(normalizer_info)
+
+        # Attempt to squash NaNs, which are not legal in JSON. Turn them into nulls
+        if ( normalizer_info is not None and 'knowledge_graph' in normalizer_info and
+                normalizer_info["knowledge_graph"] is not None and 'edges' in normalizer_info["knowledge_graph"] and
+                isinstance(normalizer_info["knowledge_graph"]['edges'],dict) ):
+            for edge_name, edge_data in normalizer_info["knowledge_graph"]['edges'].items():
+                if 'attributes' in edge_data and isinstance(edge_data['attributes'], list):
+                    for attribute in edge_data['attributes']:
+                        try:
+                            if 'value' in attribute and math.isnan(attribute['value']):
+                                attribute['value'] = None
+                        except:
+                            pass
 
         if debug:
             print(f"Took {round(time.time() - start, 5)} seconds")

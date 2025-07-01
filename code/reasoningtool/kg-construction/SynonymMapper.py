@@ -1,10 +1,7 @@
 import sys
 import os
-#new_path = os.path.join(os.getcwd(), '..', 'SemMedDB')
-#sys.path.insert(0, new_path)
 
 from NormGoogleDistance import NormGoogleDistance
-#from SemMedInterface import SemMedInterface
 from QueryMyGene import QueryMyGene
 import mygene
 import requests
@@ -17,11 +14,6 @@ import pandas
 class SynonymMapper():
 
     def __init__(self):
-        #try:
-        #    self.smi = SemMedInterface()
-        #except _mysql_exceptions.OperationalError:
-        #    print('Warning: No connection was made to the SemMEdDB MySQL server.')
-        #    self.smi = None
         self.biothings_url = "http://c.biothings.io/v1/query?q="
         self.mygene_obj = mygene.MyGeneInfo()
         self.qmg = QueryMyGene()
@@ -143,13 +135,6 @@ class SynonymMapper():
                 synonym_ids = list(synonym_ids)
         return synonym_ids
 
-    #def id_to_cui(self, curie_id):
-    #    """
-    #    this takes a currie id and finds a UMLS cui for it
-    #    """
-    #    assert self.smi is not None, "No connection was made to the MySQL SemMedDB server on rtxdev.saramsey.org if you want to try to connect again reinitialize the class."
-    #    cuis = self.smi.get_cui_for_id(curie_id)
-    #    return cuis
 
     def chembl_to_chebi(self, chemical_substance_id):
         """

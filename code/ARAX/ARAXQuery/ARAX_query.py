@@ -508,15 +508,21 @@ class ARAXQuery:
                     response.error(f"QueryGraph node '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQNodeProperty")
                     return response
 
+        #### Check to ensure that either edges EOR paths is present
+        if 'edges' not in message['query_graph'] and 'paths' not in message['query_graph']:
+            response.error(f"QueryGraph is missing both 'edges' and 'paths'. At least one must be present.", error_code="MissingQEdgeAndQPath")
+            return response
+
         #### Loop through edges checking the attributes
-        for id,qedge in message['query_graph']['edges'].items():
-            for attr in qedge:
-                if attr not in allowed_qedge_attributes:
-                    if attr == 'predicate':
-                        response.error(f"QueryGraph edge '{id}' has an obsolete property '{attr}'. This property should be plural 'predicates' in TRAPI 1.4 and higher. Your query may be TRAPI 1.3 or lower and should be checked carefully and migrated to TRAPI 1.4", error_code="UnknownQEdgeProperty")
-                    else:
-                        response.error(f"QueryGraph edge '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQEdgeProperty")
-                    return response
+        if 'edges' in message['query_graph']:
+            for id,qedge in message['query_graph']['edges'].items():
+                for attr in qedge:
+                    if attr not in allowed_qedge_attributes:
+                        if attr == 'predicate':
+                            response.error(f"QueryGraph edge '{id}' has an obsolete property '{attr}'. This property should be plural 'predicates' in TRAPI 1.4 and higher. Your query may be TRAPI 1.3 or lower and should be checked carefully and migrated to TRAPI 1.4", error_code="UnknownQEdgeProperty")
+                        else:
+                            response.error(f"QueryGraph edge '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQEdgeProperty")
+                        return response
 
         return response
 
@@ -666,8 +672,12 @@ class ARAXQuery:
         # Save the original input query for later reference
         if mode != "RTXKG2" and response.envelope.message.query_graph and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
             response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
-            response.debug(f"Saving original query graph (has qnodes {set(response.original_query_graph.nodes)} "
-                           f"and qedges {set(response.original_query_graph.edges)})..")
+            edge_or_path_text = ''
+            if hasattr(response.original_query_graph,'edges'):
+                edge_or_path_text += f" and qedges {str(response.original_query_graph.edges)})"
+            if hasattr(response.original_query_graph,'paths'):
+                edge_or_path_text += f" and paths {str(response.original_query_graph.paths)})"
+            response.debug(f"Saving original query graph (has qnodes {set(response.original_query_graph.nodes)}{edge_or_path_text}")
 
         #### If there are actions, then fulfill those
         if operations.actions:

@@ -6,13 +6,13 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from openapi_server.models.base_model_ import Model
-from openapi_server.models.analysis import Analysis
 from openapi_server.models.node_binding import NodeBinding
+from openapi_server.models.one_of_analysis_pathfinder_analysis import OneOfAnalysisPathfinderAnalysis
 from openapi_server.models.any_type import AnyType
 from openapi_server import util
 
-from openapi_server.models.analysis import Analysis  # noqa: E501
 from openapi_server.models.node_binding import NodeBinding  # noqa: E501
+from openapi_server.models.one_of_analysis_pathfinder_analysis import OneOfAnalysisPathfinderAnalysis  # noqa: E501
 from openapi_server.models.any_type import AnyType  # noqa: E501
 
 class Result(Model):
@@ -27,7 +27,7 @@ class Result(Model):
         :param node_bindings: The node_bindings of this Result.  # noqa: E501
         :type node_bindings: Dict[str, List[NodeBinding]]
         :param analyses: The analyses of this Result.  # noqa: E501
-        :type analyses: List[Analysis]
+        :type analyses: List[OneOfAnalysisPathfinderAnalysis]
         :param id: The id of this Result.  # noqa: E501
         :type id: str
         :param description: The description of this Result.  # noqa: E501
@@ -55,7 +55,7 @@ class Result(Model):
         """
         self.openapi_types = {
             'node_bindings': Dict[str, List[NodeBinding]],
-            'analyses': List[Analysis],
+            'analyses': List[OneOfAnalysisPathfinderAnalysis],
             'id': str,
             'description': str,
             'essence': str,
@@ -145,7 +145,7 @@ class Result(Model):
         The list of all Analysis components that contribute to the result. See below for Analysis components.  # noqa: E501
 
         :return: The analyses of this Result.
-        :rtype: List[Analysis]
+        :rtype: List[OneOfAnalysisPathfinderAnalysis]
         """
         return self._analyses
 
@@ -156,7 +156,7 @@ class Result(Model):
         The list of all Analysis components that contribute to the result. See below for Analysis components.  # noqa: E501
 
         :param analyses: The analyses of this Result.
-        :type analyses: List[Analysis]
+        :type analyses: List[OneOfAnalysisPathfinderAnalysis]
         """
         if analyses is None:
             raise ValueError("Invalid value for `analyses`, must not be `None`")  # noqa: E501
@@ -190,7 +190,7 @@ class Result(Model):
     def description(self):
         """Gets the description of this Result.
 
-        A free text description of this result answer from the resource  # noqa: E501
+        A free text description of this result answer from the reasoner  # noqa: E501
 
         :return: The description of this Result.
         :rtype: str
@@ -201,7 +201,7 @@ class Result(Model):
     def description(self, description):
         """Sets the description of this Result.
 
-        A free text description of this result answer from the resource  # noqa: E501
+        A free text description of this result answer from the reasoner  # noqa: E501
 
         :param description: The description of this Result.
         :type description: str
@@ -420,7 +420,7 @@ class Result(Model):
     def resource_id(self):
         """Gets the resource_id of this Result.
 
-        Identifier string of the resource that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
+        Identifier string of the resource that provided this result (one of ARAX, Aragorn, etc.)  # noqa: E501
 
         :return: The resource_id of this Result.
         :rtype: str
@@ -431,7 +431,7 @@ class Result(Model):
     def resource_id(self, resource_id):
         """Sets the resource_id of this Result.
 
-        Identifier string of the resource that provided this result (e.g., ARAX, Robokop, etc.)  # noqa: E501
+        Identifier string of the resource that provided this result (one of ARAX, Aragorn, etc.)  # noqa: E501
 
         :param resource_id: The resource_id of this Result.
         :type resource_id: str

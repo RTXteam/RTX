@@ -4,9 +4,10 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=15">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=20">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
+<script src="cytoscape-expand-collapse.js"></script>
 <script src="config.js"></script>
 <script src="rtx.js"></script>
 <script src="araxi.js"></script>
@@ -25,35 +26,34 @@
 <body onload="main();">
 
 <div class="menuleft">
-<br><br><br>
-&nbsp;Input<br>
-<div id="queryMenu" onclick="openSection('query');" class="menucurrent">Queries</div>
-<div id="settingsMenu" onclick="openSection('settings');" class="menuleftitem">Settings</div>
-<div id="listaMenu" onclick="openSection('lista');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
-<div id="listbMenu" onclick="openSection('listb');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
-<div id="compareMenu" onclick="openSection('compare');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
-<br>
-<div id="historyMenu" onclick="openSection('history');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
-<!-- div onclick="openSection('status');" class="menuleftitem">Status</div -->
-<hr>
-&nbsp;Output<br>
-<div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
-<div id="provenanceMenu" onclick="openSection('provenance');" class="menuleftitem" title="List of Knowledge Providers that were invoked when answering this query">Provenance</div>
-<div id="kgMenu" onclick="openSection('kg');add_cyto(0,'KG');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
-<div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
-<div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
-<hr>
-&nbsp;Tools<br>
-<div id="synonymMenu" onclick="openSection('synonym');" class="menuleftitem">Synonyms</div>
-<div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
-<br><br>
-<div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">System Activity</div>
-<div id="kpinfoMenu" onclick="openSection('kpinfo');" class="menuleftitem">SmartAPI Info</div>
-<div id="systestMenu" onclick="openSection('systest');" class="menuleftitem">Translator Testing</div>
-<div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
-<hr>
-<div title="ARAX UI version" class="tiny" id="uiversionstring">version...</div>
-<br>
+  <br><br><br>
+  &nbsp;Input<br>
+  <div id="queryMenu" onclick="openSection('query');" class="menucurrent">Queries</div>
+  <div id="settingsMenu" onclick="openSection('settings');" class="menuleftitem">Settings</div>
+  <div id="listaMenu" onclick="openSection('lista');" class="menuleftitem" title="view list A">List A <span class="menunum" id="menunumlistitemsA">-</span></div>
+  <div id="listbMenu" onclick="openSection('listb');" class="menuleftitem" title="view list B">List B <span class="menunum" id="menunumlistitemsB">-</span></div>
+  <div id="compareMenu" onclick="openSection('compare');" class="menuleftitem" title="compare lists A/B">Compare Lists </div>
+  <br>
+  <div id="historyMenu" onclick="openSection('history');" class="menuleftitem" title="view session history">History <span class="menunum" id="menunumlistitemsSESSION">-</span></div>
+  <hr>
+  &nbsp;Output<br>
+  <div id="summaryMenu" onclick="openSection('summary');" class="menuleftitem" title="Tabular summary of all results to query">Summary</div>
+  <div id="provenanceMenu" onclick="openSection('provenance');" class="menuleftitem" title="List of Knowledge Providers that were invoked when answering this query">Provenance</div>
+  <div id="kgMenu" onclick="openSection('kg');add_cyto(0,'KG');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
+  <div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
+  <div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
+  <hr>
+  &nbsp;Tools<br>
+  <div id="synonymMenu" onclick="openSection('synonym');" class="menuleftitem">Synonyms</div>
+  <div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
+  <br><br>
+  <div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">System Activity</div>
+  <div id="kpinfoMenu" onclick="openSection('kpinfo');" class="menuleftitem">SmartAPI Info</div>
+  <div id="systestMenu" onclick="openSection('systest');" class="menuleftitem">Translator Testing</div>
+  <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
+  <hr>
+  <div title="ARAX UI version" class="tiny" id="uiversionstring">version...</div>
+  <br>
 </div>
 
 <div class="banner" banner-bg-text="ARAX User Interface">
@@ -86,6 +86,7 @@
   <img src="qwf.png"   class="slink" id="qwf_link"    onclick="selectInput('qwf');"    title="Enter Query via Workflow"/>
   <img src="qjson.png" class="slink" id="qjson_link"  onclick="selectInput('qjson');"  title="Enter JSON representation of Query Graph"/>
   <img src="qdsl.png"  class="slink" id="qdsl_link"   onclick="selectInput('qdsl');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
+  <img src="qpf.png"   class="slink" id="qpf_link"    onclick="selectInput('qpf'); "   title="Enter PathFinder Query"/>
   <img src="qid.png"   class="slink" id="qid_link"    onclick="selectInput('qid');"    title="Retrieve stored response by id"/>
   <img src="resp.png"  class="slink" id="resp_link"   onclick="selectInput('resp');"   title="View/Render Response JSON object"/>
   <img src="qnew.png"  class="slink" id="qnew_link"   onclick="selectInput('qnew');"   title="View list of most recent queries"/>
@@ -97,7 +98,8 @@
       <span class="qgbutton" title="add new node" class="clq" onclick="qg_node('new',true);">&#10010; Node</span>
       <span class="qgbutton" title="add new edge" class="clq" onclick="qg_edge('new');">&#10010; Edge</span>
       <span class="qgbutton" title="new query graph" class="clq" onclick="qg_new(true,true);">&#8886; New Graph</span>
-    </span><br><br>
+      <!-- span class="qgbutton" title="new Pathfinder query graph" class="clq" onclick="qg_new(true,true,'Pathfinder');">&#10699; New Pathfinder&nbsp;&nbsp;&nbsp;<span class="explevel msgINFO">new!</span -->
+    </span></span><br><br>
     <div class="cytograph_q">
       <div style="height: 100%; width: 100%" id="cy99999"></div>
     </div>
@@ -216,7 +218,7 @@
 	    <td style="text-align:right;"><input type="text" class="questionBox" id="qedgepredicatebox" onkeydown="submit_on_enter(this);" size="30"></td>
 	  </tr>
 
-	  <tr style="background:#fff;"><td>qualifier constraints</td><td style="display:grid; grid-template-columns: max-content max-content auto;" id="edgeeditor_quals"></td></tr>
+	  <tr style="background:#fff;"><td>qualifier constraints</td><td><span style="display:grid; grid-template-columns: max-content max-content auto;" id="edgeeditor_quals">&nbsp;</span></td></tr>
 	  <!-- tr style="background:#fff;"><td style="border:0;">qualifier constraints</td><td style="border:0;" id="edgeeditor_quals"></td></tr>
 	  <tr style="background:#fff;">
 	    <td class="tiny" style="border:0;text-align:right;vertical-align:revert;">New qualifier type Id:</td>
@@ -228,7 +230,7 @@
             <input type="button" style="margin:0;" class="questionBox button" name="action" value="Add QUALIFIER" onClick="qg_add_qualifier_constraint_to_qgitem('qedge');"></td -->
 	  </tr>
 
-	  <tr style="background:#eee;"><td style="border:0;">constraints</td><td style="border:0;" id="edgeeditor_cons"></td></tr>
+	  <tr style="background:#eee;"><td style="border:0;">attribute constraints</td><td style="border:0;" id="edgeeditor_cons"></td></tr>
           <tr style="background:#eee;">
             <td class="tiny" style="border:0;text-align:right;vertical-align:revert;">New constraint Id:</td>
             <td style="border:0;"><input type="text" style="margin:0;" class="questionBox" id="qedgeconstraintIDbox" size="30"></td>
@@ -289,14 +291,39 @@
   
   <div class="inputsection" id="qjson_input">
     <h3 style="display:inline;">JSON Input:</h3>
-    <span class="tiny" style="position:relative; left:150px;">Enter a <b>full Query object</b> <u>&nbsp;&nbsp;or&nbsp;&nbsp;</u> the value of the <b>query_graph</b> element<a href="javascript:pasteExample('JSON1');" style="position:relative; left:100px;">Example 1</a><a href="javascript:pasteExample('JSON2');" style="position:relative; left:110px;">Example 2</a><a href="javascript:pasteExample('JSON3');" style="position:relative; left:120px;">Example 3</a></span>
+    <span class="tiny" style="position:relative; left:150px;">Enter a <b>full Query object</b> <u>&nbsp;&nbsp;or&nbsp;&nbsp;</u> the value of the <b>query_graph</b> element
+      <a href="javascript:pasteExample('JSON1');" style="position:relative; left:100px;">Example 1</a>
+      <a href="javascript:pasteExample('JSON2');" style="position:relative; left:110px;">Example 2</a>
+      <a href="javascript:pasteExample('JSON3');" style="position:relative; left:120px;">Example 3</a>
+      <a href="javascript:pasteExample('PATH1');" style="position:relative; left:140px;">Pathfinder</a>
+    </span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
-            <textarea class="questionBox" wrap="off" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
-	    <br>
-	    <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('JSON','ARAX');">
-	    <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('JSON','ARS');">
-	    <input type="button" class="questionBox button" name="action" value="Post to OTHER" onClick="postQuery('JSON','EXT');" title="Post to a non-ARAX TRAPI-supporting API endpoint">
-	    Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
+      <textarea placeholder="&#10;&#10;&#10;&#10;Enter, Copy-PASTE, or DRAG a file HERE with either&#10;a full TRAPI query object, or&#10;the value of the query_graph element" class="questionBox" wrap="off" ondrop="dropFile('jsoninput',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
+      <br>
+      <a style="margin-left: 50px;" href="javascript:display_QG_from_JSON();">Edit in Visual QueryGraph pane</a>
+      <br><br>
+      <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postQuery('JSON','ARAX');">
+      <input type="button" class="questionBox button" name="action" value="Post to ARS" onClick="postQuery('JSON','ARS');">
+      <input type="button" class="questionBox button" name="action" value="Post to OTHER" onClick="postQuery('JSON','EXT');" title="Post to a non-ARAX TRAPI-supporting API endpoint">
+      Go to <a href="javascript:openSection('settings');">Settings</a> to configure URLs
+    </form>
+  </div>
+
+  <div class="inputsection" id="qpf_input">
+    <h3>PathFinder Input:</h3>
+    <p>Pathfinder queries allow you to explore pathways connecting two concepts, optionally with an intermediate node of a required category in the returned paths.</p>
+    <form id="pfForm" name="pfForm" style="display:inline-grid; grid-template-columns: max-content max-content;"  method="post" action="postQuery('JSON','ARAX');">
+      <span style="margin-top:14px;text-align:right;">Subject:</span>
+      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="pf_subject" name="pf_subject" size="100" maxlength="1000"/>
+      <span style="margin-top:14px;text-align:right;">Intermediate:</span>
+      <select class="questionBox" id="pf_inter">
+        <option style="border-bottom:1px solid black;" value="">[Optional] Intermediate Node Category&nbsp;&nbsp;&nbsp;&#8675;</option>
+        <option>...loading</option>
+      </select>
+      <span style="margin-top:14px;text-align:right;">Object:</span>
+      <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="pf_object" name="pf_object" size="100" maxlength="1000"/>
+      <input type="button" class="questionBox button" name="action" value="Post to ARAX" onClick="postPathfinder('ARAX');">
+      <br/>
     </form>
   </div>
 
@@ -380,14 +407,13 @@
 
   <div class="inputsection" id="resp_input">
     <h3 style="display:inline;">Response Input:</h3>
-        <span class="tiny" style="position:relative; left:150px;">Copy-paste a <b>JSON TRAPI Response</b> into the box below</span>
-	<form id="responseForm" name="responseForm" method="post" action="viewResponse();">
-	  <textarea class="questionBox" wrap="off" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
-	  <br/>
-	  <input type="button" class="questionBox button" name="action" value="VIEW" onClick="viewResponse();">
-	</form>
+    <span class="tiny" style="position:relative; left:150px;">DRAG a file (or copy-paste) with a <b>JSON TRAPI Response</b> into the box below</span>
+    <form id="responseForm" name="responseForm" method="post" action="viewResponse();">
+      <textarea placeholder="&#10;&#10;&#10;&#10;&#10;PASTE a TRAPI response document, or DRAG a file into this box" class="questionBox" wrap="off" ondrop="dropFile('response',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
+      <br/>
+      <input type="button" class="questionBox button" name="action" value="VIEW" onClick="viewResponse();">
+    </form>
   </div>
-
 
   <div class="inputsection" id="qnew_input">
     <h3 style="display:inline;">Latest Responses:</h3>
@@ -412,18 +438,18 @@
 
 
 <div class="pagesection" id="listaDiv">
-<div class="statushead">List A (<span id="numlistitemsA">-</span>)</div>
-<div class="status" id="listdivA">Items in this list can be compared to those in List B, or added to a node in the query_graph via the bulk import functionality.</div>
+  <div class="statushead">List A (<span id="numlistitemsA">-</span>)</div>
+  <div class="status" id="listdivA">Items in this list can be compared to those in List B, or added to a node in the query_graph via the bulk import functionality.</div>
 </div>
 
 <div class="pagesection" id="listbDiv">
-<div class="statushead">List B (<span id="numlistitemsB">-</span>)</div>
-<div class="status" id="listdivB">Items in this list can be compared to those in List A, or added to a node in the query_graph via the bulk import functionality.</div>
+  <div class="statushead">List B (<span id="numlistitemsB">-</span>)</div>
+  <div class="status" id="listdivB">Items in this list can be compared to those in List A, or added to a node in the query_graph via the bulk import functionality.</div>
 </div>
 
 <div class="pagesection" id="compareDiv">
-<div class="statushead">Compare Lists A and B </div>
-<div class="status" id="comparelists">Items in lists A and B will be automatically displayed side-by-side for ease of comparison.</div>
+  <div class="statushead">Compare Lists A and B </div>
+  <div class="status" id="comparelists">Items in lists A and B will be automatically displayed side-by-side for ease of comparison.</div>
 </div>
 
 <div class="pagesection" id="statusDiv">
@@ -444,7 +470,47 @@
 <div class="pagesection" id="kgDiv">
   <div id="kg_container">
     <div class="statushead">KNOWLEDGE GRAPH</div>
-    <div id="a0_div" class="status"><table class="t100"><tr><td class="cytograph_controls"><a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br><a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br><a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br><a title="circle layout" onclick="cylayout(0,'circle');">C</a><br><a title="random layout" onclick="cylayout(0,'random');">R</a>  </td><td class="cytograph_kg" style="width:100%;"><div style="height: 100%; width: 100%" id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div></td></tr></table></div>
+    <div id="a0_div" class="status">
+      <table class="t100">
+	<tr>
+	  <td class="cytograph_controls">
+	    <a title="reset zoom and center" onclick="cyobj[0].reset();">&#8635;</a><br>
+	    <a title="breadthfirst layout" onclick="cylayout(0,'breadthfirst');">B</a><br>
+	    <a title="force-directed layout" onclick="cylayout(0,'cose');">F</a><br>
+	    <a title="circle layout" onclick="cylayout(0,'circle');">C</a><br>
+	    <a title="Grid layout" onclick="cylayout(0,'grid');">G</a>
+	    <br><br><br><br>
+	    <span class="explevel msgINFO">new!</span>
+	    <a title="collapse all edges" onclick="cyedges(0,'collapse');">c</a><br>
+	    <a title="expand all edges" onclick="cyedges(0,'expand');">E</a><br>
+	  </td>
+	  <td class="cytograph_kg" style="width:100%;"><div style="height: 100%; width: 100%" id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div>
+	  </td>
+	</tr>
+      </table>
+    </div>
+    <br><br>
+    <a href="https://www.flaticon.com/free-icons/action" title="action icons">Action</a>,
+    <a href="https://www.flaticon.com/free-icons/chemical" title="chemical icons">Chemical</a>,
+    <a href="https://www.flaticon.com/free-icons/choose" title="choose icons">Choose</a>,
+    <a href="https://www.flaticon.com/free-icons/drug" title="drug icons">Drug</a>,
+    <a href="https://www.flaticon.com/free-icons/mixture" title="mixture icons">Mixture</a>,
+    <a href="https://www.flaticon.com/free-icons/molecule" title="molecule icons">Molecule</a>,
+    <a href="https://www.flaticon.com/free-icons/nano" title="nano icons">Nano</a>,
+    <a href="https://www.flaticon.com/free-icons/physiology" title="physiology icons">Physiology</a>, and
+    <a href="https://www.flaticon.com/free-icons/protein" title="protein icons">Protein</a> icons created by Freepik - Flaticon
+    <br>
+    <a href="https://www.flaticon.com/free-icons/diseases" title="diseases icons">Diseases</a> icons created by Vector Stall - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/medicine" title="medicine icons">Medicine</a> icons created by max.icons - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/personality" title="personality icons">Personality</a> icons created by Parzival 1997 - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/body" title="body icons">Body</a> icons created by SBTS2018 - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/biotech" title="biotech icons">Biotech</a> icons created by kliwir art - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/gene" title="gene icons">Gene</a> icons created by Iconiic - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/cell" title="cell icons">Cell</a> icons created by dDara - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/nutrition" title="nutrition icons">Nutrition</a> icons created by FBJan - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/ontology" title="ontology icons">Ontology</a> icons created by Alla Afanasenko - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/taxonomy" title="taxonomy icons">Taxonomy</a> icons created by Talha Dogar - Flaticon<br>
+    <a href="https://www.flaticon.com/free-icons/generic" title="generic icons">Generic</a> icons created by Archival - Flaticon<br>
   </div>
 </div>
 
@@ -452,7 +518,21 @@
 
 <div class="pagesection" id="resultsDiv">
   <div id="queryplan_container"></div>
+  <div id="filter_container">
+    <div class="statushead">Quick Filter</div>
+    <div id="filter_nodelist" class="status tiny" style="padding:5px;"></div>
+  </div>
   <div id="result_container"></div>
+  <!-- div id="nodefilter_container" style="max-height:85%;overflow:auto;top:100px;left:50px;visibility:hidden;" tabindex="9999" class="alertbox" -->
+  <div id="nodefilter_container" tabindex="9999" class="alertbox">
+    <div style="margin-top:0;" class="statushead">Filter Paths by Nodes<span title="Close window" class="clq clwin" onclick="cancel_filter_paths();display_qg_popup('filters','hide');">&#9587;</span></div>
+    <div style="padding-top:10px;" class="status">
+      <div id="nodefilter_div" class="filterlist"></div>
+      <input id="nodefilterbutton" type="button" style="float:right;" class="questionBox button" name="action" title="Filter by Selected Nodes" value="Apply Filter" onClick="filter_results('paths');display_qg_popup('filters','hide');">
+      <a style="cursor:pointer; margin-right:30px;margin-top:10px; float:right;" title="dismiss changes and close window" onclick="cancel_filter_paths();display_qg_popup('filters','hide');">Dismiss</a>
+      <br clear="all"><br>
+    </div>
+  </div>
 </div>
 
 <div class="pagesection" id="messagesDiv">
@@ -465,6 +545,14 @@
   <input type="text" autocomplete="off" autocapitalize="off" spellcheck="false" autocorrect="off" data-provide="typeahead" class="nodeInput questionBox" id="newsynonym" name="newsynonym" onkeydown="submit_on_enter(this);" size="100" maxlength="1000"/>
   <input type="button" class="questionBox button" name="action" value="Look Up" onClick="sendSyn();"/>
   <span title="clear" class="clq" onclick="pasteSyn('');">&#9587;</span>
+  <br>
+  <label id="showConceptGraphText" class="tiny">
+    <span class="switch">
+      <input id="showConceptGraph" type="checkbox" onchange="togglecolor(this,'showConceptGraphText');">
+      <span class="slider"></span>
+    </span>
+    Show Concept Graph (can be very slow for large graphs)</label>
+
   <div id="synonym_result_container"></div>
 </div>
 
@@ -503,78 +591,120 @@
 
 <div class="pagesection" style="overflow:visible;" id="systestDiv">
   <div class="statushead">Translator Testing
-    <span style="float:right;"><a href="?systest=1">[ Direct link to this page ]</a></span>
+    <span style="float:right;"><a href="?systest=1" id="systest_link">[ Direct link to this page ]</a></span>
   </div>
-  <div class="status">
+  <div class="status" style='min-height:300px;' ondrop="dropFile('araxtest',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)">
     Select Test Report to view: 
     <span class="qgselect"><select id="whichsystest">
       <option value="ARSARS_LISTnotLOADED">TestRunner runs should show up here...</option>
       <option value="LATEST" selected>Latest ARS Report</option>
     </select></span>
-    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveSysTestResults();"/>
+    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveSysTestResults();"/> (or drag a JSON test results file)
     <span style="margin-left:50px;" id="systest_wait"></span>
     <br>
-    <div id="systest_container"><br>Click on the button above to view Translator system test results<br><br></div>
+    <div id="systest_container"><br><br><br><h3>Click on the button above to view Translator system test results, or drag a JSON file with test results into this box</h3><br></div>
   </div>
 </div>
 
 <div class="pagesection" id="settingsDiv">
   <div class="statushead">API Settings</div>
-  <div class="status">
-    <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">REMOTE API TIMEOUT DURING ARAX EXPANSION (leave blank for default):</h3>
-    <input type="text" class="questionBox" id="timeout_url" onkeyup="enter_url(this,'timeout');" size="3" maxlength="3" value="30"/>
-    seconds
-    <input type="button" style="margin-left:14px;" class="questionBox button" id="timeout_url_button" value="Update" onClick="update_url('timeout',null);"/>
-    <br><br>
-    <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">DEFAULT PRUNING THRESHOLD DURING ARAX EXPANSION:</h3>
-    <input type="text" class="questionBox" id="pruning_url" onkeyup="enter_url(this,'pruning');" size="5" maxlength="5" value="50"/>
-    nodes
-    <input type="button" style="margin-left:107px;" class="questionBox button" id="pruning_url_button" value="Update" onClick="update_url('pruning',null);"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
-    <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX',null);"/>
-    <br>
-    <h3 style="margin-bottom:0px;">ARAX QUERY URL:</h3>
-    <input type="text" class="questionBox" id="ARAXQ_url" onkeyup="enter_url(this,'ARAXQ');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ARAXQ_url_button" value="Update" onClick="update_url('ARAXQ',null);"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">ARS API (post query):</h3>
-    <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="ARS_url_button" value="Update" onClick="update_url('ARS',null);"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">EXTERNAL API (post query):</h3>
-    <input type="text" class="questionBox" id="EXT_url" onkeyup="enter_url(this,'EXT');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="EXT_url_button" value="Update" onClick="update_url('EXT',null);"/>
-    <br>
-    <input type="button" class="qprob sbte" value="BTE" onClick="update_url('EXT','https://api.bte.ncats.io/v1');"/>
-    <input type="button" class="qprob schp" value="CHP" onClick="update_url('EXT','http://chp.thayer.dartmouth.edu');"/>
-    <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
-    <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
-    <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
-    <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.5');"/>
-    <input type="button" class="qprob p1" value="ICEES-Asthma" onClick="update_url('EXT','https://icees.renci.org:16339');"/>
-    <input type="button" class="qprob p1" value="ICEES-DILI" onClick="update_url('EXT','https://icees.renci.org:16341');"/>
-    <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.5');"/>
-    <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.4');"/>
-    <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
-    <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
-    <input type="button" class="qprob p3" value="ClinicalTrialsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/ctkp');"/>
-    <input type="button" class="qprob p5" value="DrugApprovalsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/dakp');"/>
-    <br><br>
+  <div class="status settings">
+    <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">REMOTE API TIMEOUT DURING ARAX EXPANSION (leave blank for default):</h3>
+      <input type="text" class="questionBox" id="timeout_url" onkeyup="enter_url(this,'timeout');" size="3" maxlength="3" value="30"/>
+      seconds
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="timeout_url_button" value="Update" onClick="update_url('timeout',null);"/>
+    </span>
+
+    <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">DEFAULT PRUNING THRESHOLD DURING ARAX EXPANSION:</h3>
+      <input type="text" class="questionBox" id="pruning_url" onkeyup="enter_url(this,'pruning');" size="5" maxlength="5" value="50"/>
+      nodes
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="pruning_url_button" value="Update" onClick="update_url('pruning',null);"/>
+    </span>
+
+    <span>
+      <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
+      <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="ARAX_url_button" value="Update" onClick="update_url('ARAX',null);"/>
+    </span>
+
+    <span>
+      <h3 style="margin-bottom:0px;">ARAX QUERY URL:</h3>
+      <input type="text" class="questionBox" id="ARAXQ_url" onkeyup="enter_url(this,'ARAXQ');" size="100" maxlength="1000"/>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="ARAXQ_url_button" value="Update" onClick="update_url('ARAXQ',null);"/>
+    </span>
+
+    <span>
+      <h3 style="margin-bottom:0px;">ARS API (post query):</h3>
+      <input type="text" class="questionBox" id="ARS_url" onkeyup="enter_url(this,'ARS');" size="100" maxlength="1000"/>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="ARS_url_button" value="Update" onClick="update_url('ARS',null);"/>
+    </span>
+
+    <span>
+      <h3 style="margin-bottom:0px;">EXTERNAL API (post query):</h3>
+      <input type="text" class="questionBox" id="EXT_url" onkeyup="enter_url(this,'EXT');" size="100" maxlength="1000"/>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="EXT_url_button" value="Update" onClick="update_url('EXT',null);"/>
+    </span>
+
+    <span>
+      <input type="button" class="qprob sbte" value="BTE" onClick="update_url('EXT','https://api.bte.ncats.io/v1');"/>
+      <input type="button" class="qprob schp" value="CHP" onClick="update_url('EXT','http://chp.thayer.dartmouth.edu');"/>
+      <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
+      <input type="button" class="qprob p3" value="ClinicalTrialsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/ctkp');"/>
+      <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
+      <input type="button" class="qprob p5" value="DrugApprovalsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/dakp');"/>
+      <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
+      <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.5');"/>
+      <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.5');"/>
+      <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.4');"/>
+      <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
+      <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
+      <br><br>
+    </span>
+    <span>
+    </span>
   </div>
 
   <div class="statushead">Session Settings</div>
-  <div class="status">
-    <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF RESULTS TO DISPLAY (very large values may crash UI):</h3>
-    <input type="text" class="questionBox" id="maxresults_url" onkeyup="enter_url(this,'maxresults');" size="6" maxlength="6"/>
-    <input type="button" style="margin-left:15px;" class="questionBox button" id="maxresults_url_button" value="Update" onClick="update_url('maxresults',null);"/>
-    <br><br>
-    <h3 style="margin-bottom:0px;">SUBMITTER (enter a generic name to help track queries):</h3>
-    <input type="text" class="questionBox" id="submitter_url" onkeyup="enter_url(this,'submitter');" size="100" maxlength="1000"/>
-    <input type="button" class="questionBox button" id="submitter_url_button" value="Update" onClick="update_url('submitter',null);"/>
-    <br><br>
+  <div class="status settings">
+    <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF RESULTS TO DISPLAY (very large values may crash UI):</h3>
+      <input type="text" class="questionBox" id="maxresults_url" onkeyup="enter_url(this,'maxresults');" size="6" maxlength="6"/>
+      results
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="maxresults_url_button" value="Update" onClick="update_url('maxresults',null);"/>
+    </span>
 
+    <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF SYNONYMS TO DISPLAY (values above 1000 may slow down UI):</h3>
+      <input type="text" class="questionBox" id="maxsyns_url" onkeyup="enter_url(this,'maxsyns');" size="4" maxlength="4"/>
+      nodes
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="maxsyns_url_button" value="Update" onClick="update_url('maxsyns',null);"/>
+    </span>
+
+    <span>
+      <h3 style="margin-bottom:0px;">SUBMITTER (enter a generic name to help track queries):</h3>
+      <input type="text" class="questionBox" id="submitter_url" onkeyup="enter_url(this,'submitter');" size="100" maxlength="1000"/>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="submitter_url_button" value="Update" onClick="update_url('submitter',null);"/>
+    </span>
 
     <!-- label id="useCacheText" class="tiny blue">
       <span class="switch">

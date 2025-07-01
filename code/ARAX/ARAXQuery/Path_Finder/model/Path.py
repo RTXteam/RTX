@@ -1,5 +1,7 @@
-import sys
+import math
 import os
+import pickle
+import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Node import Node
@@ -13,9 +15,6 @@ class Path:
         self.path_limit = path_limit
         self.links = links
 
-    def __str__(self):
-        return f"{'_'.join([link.id for link in self.links])}_{self.path_limit}"
-
     def __eq__(self, other):
         if isinstance(other, Path):
             return str(self) == str(other)
@@ -24,13 +23,25 @@ class Path:
     def __hash__(self):
         return hash(str(self))
 
+    def __str__(self):
+        result = ""
+        for link in self.links:
+            result += str(link)
+        return result
+
     def compute_weight(self):
         weight = 0
+        degree_sum = 0
         for link in self.links:
             if link.weight == float('inf') or link.weight is None:
                 return float('inf')
-            weight = weight + link.weight
-        return weight
+            degree_sum += link.degree
+            weight += link.weight
+
+        if degree_sum > 1:
+            weight /= math.log(degree_sum, 10)
+
+        return weight / len(self.links)
 
     def make_new_path(self, last_link):
         new_links = [Node(link.id, link.weight, link.name, link.degree) for link in self.links]
@@ -58,3 +69,10 @@ class Path:
                 break
         new_links.reverse()
         return Path(len(new_links) - 1, new_links)
+
+    def serialize(self):
+        return pickle.dumps(self)
+
+    @staticmethod
+    def deserialize(data):
+        return pickle.loads(data)

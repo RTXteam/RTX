@@ -45,14 +45,16 @@ class BidirectionalPathFinder:
         for node in intersection_list:
             for path_1 in path_container_1.path_dict[node]:
                 for path_2 in path_container_2.path_dict[node]:
-                    temp_path_1 = [Node(link.id, link.weight) for link in path_1.links]
+                    temp_path_1 = [Node(link.id, link.weight, link.name, link.degree, link.category) for link in path_1.links]
                     temp_path_2 = []
+                    temp_path_1[-1].weight = (temp_path_1[-1].weight + path_2.links[-1].weight)/2
                     for i in range(len(path_2.links) - 2, -1, -1):
-                        temp_path_2.append(Node(path_2.links[i].id, path_2.links[i + 1].weight))
+                        n2 = Node(path_2.links[i].id, path_2.links[i].weight, path_2.links[i].name, path_2.links[i].degree, path_2.links[i].category)
+                        temp_path_2.append(n2)
                     temp_path_1.extend(temp_path_2)
                     if len(temp_path_1) == len(set(temp_path_1)):
                         result.add(Path(0, temp_path_1))
 
-        result = sorted(list(result), key=lambda path: path.compute_weight())
+        result = sorted(list(result), key=lambda path: path.compute_weight(), reverse=True)
 
         return result

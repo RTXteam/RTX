@@ -47,7 +47,7 @@ class ARAXDecorator:
                                            description="Identifiers of all nodes in this synonym set in RTX-KG2."),
             "publications": Attribute(attribute_type_id="biolink:publications",
                                       value_type_id="biolink:Uriorcurie"),
-            "publications_info": Attribute(attribute_type_id="bts:sentence",
+            "publications_info": Attribute(attribute_type_id="biolink:supporting_text",
                                            value_type_id=None),
             "kg2_ids": Attribute(attribute_type_id="biolink:original_predicate",
                                  value_type_id="metatype:String",
@@ -57,7 +57,7 @@ class ARAXDecorator:
         self.array_delimiter_char = "ǂ"
         self.kg2_infores_curie = "infores:rtx-kg2"  # Can't use expand_utilities.py here due to circular imports
 
-    def decorate_nodes(self, response: ARAXResponse) -> ARAXResponse:
+    def decorate_nodes(self, response: ARAXResponse, only_decorate_bare: bool = False) -> ARAXResponse:
         message = response.envelope.message
         response.debug(f"Decorating nodes with metadata from KG2c")
 
@@ -66,8 +66,11 @@ class ARAXDecorator:
 
         # Extract the KG2c nodes from sqlite
         response.debug(f"Looking up corresponding KG2c nodes in sqlite")
-        node_attributes_ordered = list(self.node_attributes)
-        node_keys = set(node_key.replace("'", "''") for node_key in message.knowledge_graph.nodes)  # Escape quotes
+        node_attributes_ordered = list(self.node_attributes)      
+        node_keys = set(node_key.replace("'", "''") for node_key, node in message.knowledge_graph.nodes.items()  # Escape quotes
+                        if not only_decorate_bare or not (node.attributes and any(attribute for attribute in node.attributes
+                                                             if attribute.attribute_type_id == "biolink:description")))
+        response.debug(f"Identified {len(node_keys)} nodes to decorate (only_decorate_bare={only_decorate_bare})")
         node_keys_str = "','".join(node_keys)  # SQL wants ('node1', 'node2') format for string lists
         node_cols_str = ", ".join([f"N.{property_name}" for property_name in node_attributes_ordered])
         sql_query = f"SELECT N.id, {node_cols_str} " \

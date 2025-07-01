@@ -38,52 +38,6 @@ def get_sri_edge_id(subject_id: str, object_id: str) -> str:
     return f"SRI:{subject_id}--{object_id}"
 
 
-def determine_cluster_category(sri_types: List[str], category_map: Dict[str, str], bh: BiolinkHelper) -> str:
-    # Temporary patch to pick best single category for cluster until this info is added to API response
-    sri_types_hash = "-".join(sorted(sri_types))
-    if sri_types_hash not in category_map:  # Only need to process this set if we haven't seen it before
-        sri_types_set = set(bh.filter_out_mixins(sri_types))  # We want to assign a true category, not mixin
-        leaves = set()
-        for biolink_category in sri_types_set:
-            descendants = set(bh.get_descendants(biolink_category,
-                                                 include_mixins=False,
-                                                 include_conflations=False)).difference({biolink_category})
-            if not descendants.intersection(sri_types_set):
-                # We've found a (in this context) 'leaf' category!
-                leaves.add(biolink_category)
-        if leaves:
-            # Store this mapping for fast lookup later
-            if len(leaves) == 1:
-                chosen_category = list(leaves)[0]
-            else:
-                if "biolink:Gene" in leaves:
-                    chosen_category = "biolink:Gene"
-                elif "biolink:SmallMolecule" in leaves:
-                    chosen_category = "biolink:SmallMolecule"
-                elif "biolink:Protein" in leaves:
-                    chosen_category = "biolink:Protein"
-                elif "biolink:Drug" in leaves:
-                    chosen_category = "biolink:Drug"
-                else:
-                    chosen_category = sorted(list(leaves))[0]
-                logging.info(f"SRI clique has more than one leaf category. Original category list from SRI was: "
-                             f"{sri_types}. Identified 'leaves' within that category subtree are: {leaves}."
-                             f" Category chosen to represent all nodes in clique was: {chosen_category}.")
-        else:
-            # Weirdly, some cliques have only one SRI type provided (e.g., biolink:GenomicEntity)
-            if len(sri_types) == 1:
-                chosen_category = sri_types[0]
-            else:
-                error_message = f"Failed to find the most specific category for a node from SRI! Must be a bug. "\
-                                f"SRI types list was: {sri_types}. Leaves were: {leaves}"
-                logging.error(error_message)
-                raise ValueError(error_message)
-
-        category_map[sri_types_hash] = chosen_category
-
-    return category_map[sri_types_hash]
-
-
 def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
     logging.info(f"Starting to build SRI match graph based on {len(kg2pre_node_ids_set):,} KG2pre node IDs..")
 
@@ -117,7 +71,7 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
                         "curies": node_id_batch,
                         "conflate": True,
                         "drug_chemical_conflate": True,
-                        "individual_types":True
+                        "individual_types": True
                      }
         response = requests.post(SRI_NN_URL, json=query_body)
 
@@ -129,12 +83,10 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
                     if cluster_id not in sri_nodes_dict:  # Process this cluster if we haven't seen it before
                         # Create nodes for all members of this cluster
                         cluster_nodes_dict = dict()
-                        # TODO: Update once Gaurav adds per-identifier type info to the API https://github.com/TranslatorSRI/NodeNormalization/issues/281
-                        #cluster_category = determine_cluster_category(normalized_info["type"], category_map, bh)
                         for equivalent_node in normalized_info["equivalent_identifiers"]:
                             node_id = equivalent_node["identifier"]
-                            cluster_category = equivalent_node.get("type")
-                            node = (node_id, equivalent_node.get("label"), cluster_category, cluster_id)
+                            node_category = equivalent_node.get("type")
+                            node = (node_id, equivalent_node.get("label"), node_category, cluster_id)
                             cluster_nodes_dict[node_id] = node
                         sri_nodes_dict.update(cluster_nodes_dict)
                         

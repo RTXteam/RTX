@@ -1,3 +1,11 @@
+# NOTE: dependencies have been removed
+
+As of May 15, 2025, one of the modules on which the code in this directory
+depends, `RTX/code/reasoningtool/SemMedDB`, was deleted from the `RTXteam/RTX`
+project area (see #2454). But if you need this code, you can obtain it from any
+RTXteam/RTX [release](https://github.com/RTXteam/RTX/releases) (the code in the
+SemMedDB project directory hasn't changed since 2019).
+
 # Make sure python is set up correctly
 
 Make sure you have python3 installed and that the contents of [Requirements.txt](https://github.com/RTXteam/RTX/blob/master/requirements.txt) are installed

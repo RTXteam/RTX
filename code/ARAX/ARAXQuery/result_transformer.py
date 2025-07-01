@@ -17,6 +17,13 @@ class ResultTransformer:
     def transform(response: ARAXResponse):
         message = response.envelope.message
         if message.results:
+            if ( #Bypassing pathfinder queries
+                    message.query_graph
+                    and hasattr(message.query_graph, "paths")
+                    and message.query_graph.paths
+                    and len(message.query_graph.paths) > 0
+            ):
+                return #This would need to be changed if you wanted to mix connect with other DSL commands (like overlaying NGD and the like)
             if not hasattr(response, "original_query_graph") or not response.original_query_graph.nodes:
                 response.error(f"The original QG was never saved before ARAX edited it! So we can't transform results "
                                f"to TRAPI 1.4 format (i.e., support_graphs).", error_code="NoOriginalQG")
@@ -34,6 +41,9 @@ class ResultTransformer:
             response.debug(f"Non-orphan qnodes in original QG are: {non_orphan_qnode_keys}")
             all_virtual_qedge_keys = set()
 
+            new_results = []
+            kg_edge_id_to_edge = {edge_key: edge for edge_key, edge in message.knowledge_graph.edges.items()}
+            
             for result in message.results:
                 # First figure out which edges in this result are 'virtual' and what option groups they belong to
                 edge_bindings = result.analyses[0].edge_bindings
@@ -64,7 +74,10 @@ class ResultTransformer:
                         message.auxiliary_graphs[aux_graph_key] = AuxiliaryGraph(edges=list(group_edge_keys),attributes=[])
 
                     # Refer to this aux graph from the current Result or Edge (if this is an Infer support graph)
-                    if group_id and (group_id.startswith("creative_DTD_") or group_id.startswith("creative_CRG_")):
+                    if group_id and group_id.startswith("creative_"):
+                        # Figure out which creative tool/method we're dealing with (e.g. creative_DTD, creative_expand)
+                        group_id_prefix = "_".join(group_id.split("_")[:2])
+
                         # Create an attribute for the support graph that we'll tack onto the treats edge for this result
                         support_graph_attribute = Attribute(attribute_type_id="biolink:support_graphs",
                                                             value=[aux_graph_key],
@@ -83,18 +96,19 @@ class ResultTransformer:
                         else:
                             inferred_qedge_key = inferred_qedge_keys[0]
                             inferred_edge_keys = {edge_binding.id for edge_binding in
-                                                  result.analyses[0].edge_bindings[inferred_qedge_key] if "creative_" in edge_binding.id}
+                                                  result.analyses[0].edge_bindings[inferred_qedge_key]
+                                                  if group_id_prefix in edge_binding.id}
                             # Refer to the support graph from the proper edge(s)
                             for inferred_edge_key in inferred_edge_keys:
                                 inferred_edge = message.knowledge_graph.edges[inferred_edge_key]
                                 if inferred_edge.attributes:
-                                    support_graph_attributes = [attribute for attribute in inferred_edge.attributes
+                                    existing_sg_attributes = [attribute for attribute in inferred_edge.attributes
                                                                 if attribute.attribute_type_id == "biolink:support_graphs"]
-                                    if support_graph_attributes:
+                                    if existing_sg_attributes:
                                         # Refer to this support graph from the first existing support graph attribute
-                                        existing_support_graph_attribute = support_graph_attributes[0]
-                                        if aux_graph_key not in existing_support_graph_attribute.value:
-                                            existing_support_graph_attribute.value.append(aux_graph_key)
+                                        existing_sg_attribute = existing_sg_attributes[0]
+                                        if aux_graph_key not in existing_sg_attribute.value:
+                                            existing_sg_attribute.value.append(aux_graph_key)
                                     else:
                                         inferred_edge.attributes.append(support_graph_attribute)
                                 else:
@@ -126,6 +140,74 @@ class ResultTransformer:
                     non_orphan_node_bindings = [binding for binding in result.node_bindings[non_orphan_qnode_key]
                                                 if binding.id not in orphan_node_keys]
                     result.node_bindings[non_orphan_qnode_key] = non_orphan_node_bindings
+
+
+                # if the support graph of a xDTD edge has "normalized_google_distance" attribute and its value is "inf", remove this edge
+                auxiliary_graphs = message.auxiliary_graphs
+                support_graphs = result.analyses[0].support_graphs
+                
+                if support_graphs is not None and len(support_graphs) == 1:
+                    support_graphs_id = support_graphs[0]
+                    edge_with_inf_ngd = {}
+                    
+                    for edge_id in auxiliary_graphs[support_graphs_id].edges:
+                        edge_info = kg_edge_id_to_edge[edge_id]
+                        if len([x for x in edge_info.attributes if 'normalized_google_distance' == x.original_attribute_name and x.value == 'inf']) == 0:
+                            continue
+                        edge_with_inf_ngd[(edge_info.subject, edge_info.object)] = 1
+                
+                    new_edge_bindings = {}
+                    node_count = {}
+                    del_node_list = []
+                    removed_edge_id_list = []
+                    for qedge, edge_list in edge_bindings.items():
+                        if qedge not in original_qedge_keys:
+                            new_edge_bindings[qedge] = edge_bindings[qedge]
+                        else:
+                            for edge in edge_list:
+                                edge_info = kg_edge_id_to_edge[edge.id]
+                                if edge_info.subject not in node_count:
+                                    node_count[edge_info.subject] = 0
+                                if edge_info.object not in node_count:
+                                    node_count[edge_info.object] = 0
+                                node_count[edge_info.subject] += 1
+                                node_count[edge_info.object] += 1
+                                
+                                if 'creative' not in edge.id:
+                                    if qedge not in new_edge_bindings:
+                                        new_edge_bindings[qedge] = []
+                                    new_edge_bindings[qedge].append(edge)
+                                else:
+                                    if (edge_info.subject, edge_info.object) in edge_with_inf_ngd or (edge_info.object, edge_info.subject) in edge_with_inf_ngd:
+                                        # remove this edge
+                                        removed_edge_id_list.append(edge.id)
+                                        continue
+                                    else:
+                                        if qedge not in new_edge_bindings:
+                                            new_edge_bindings[qedge] = []
+                                        new_edge_bindings[qedge].append(edge)
+                    result.analyses[0].edge_bindings = new_edge_bindings
+                    
+                    del_node_list = []
+                    for edge_id in removed_edge_id_list:
+                        edge_info = kg_edge_id_to_edge[edge_id]
+                        node_count[edge_info.subject] -= 1
+                        node_count[edge_info.object] -= 1
+                        if node_count[edge_info.subject] == 0:
+                            del_node_list.append(edge_info.subject)
+                        if node_count[edge_info.object] == 0:
+                            del_node_list.append(edge_info.object)
+                    
+                    if len(new_edge_bindings) != 0 and len([key for key in original_qedge_keys if key in new_edge_bindings]) != 0:                        
+                        for key in original_qnode_keys:
+                            result.node_bindings[key] = [binding for binding in result.node_bindings[key] if binding.id not in del_node_list]
+                        new_results.append(result)
+                    else:
+                        continue
+                else:
+                    new_results.append(result)
+                    
+            message.results = new_results
 
             # Return the original query graph in the response, rather than our edited version
             response.debug(f"Replacing ARAX's internal edited QG with the original input QG..")

@@ -51,7 +51,7 @@ class Qualifier(Model):
     def qualifier_type_id(self):
         """Gets the qualifier_type_id of this Qualifier.
 
-        The category of the qualifier, drawn from a hierarchy of qualifier slots in the Biolink model (e.g. subject_aspect, subject_direction, object_aspect, object_direction, etc).  # noqa: E501
+        A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
         :return: The qualifier_type_id of this Qualifier.
         :rtype: str
@@ -62,7 +62,7 @@ class Qualifier(Model):
     def qualifier_type_id(self, qualifier_type_id):
         """Sets the qualifier_type_id of this Qualifier.
 
-        The category of the qualifier, drawn from a hierarchy of qualifier slots in the Biolink model (e.g. subject_aspect, subject_direction, object_aspect, object_direction, etc).  # noqa: E501
+        A Compact URI, consisting of a prefix and a reference separated by a colon, such as UniProtKB:P00738. Via an external context definition, the CURIE prefix and colon may be replaced by a URI prefix, such as http://identifiers.org/uniprot/, to form a full URI.  # noqa: E501
 
         :param qualifier_type_id: The qualifier_type_id of this Qualifier.
         :type qualifier_type_id: str
@@ -76,7 +76,7 @@ class Qualifier(Model):
     def qualifier_value(self):
         """Gets the qualifier_value of this Qualifier.
 
-        The value associated with the type of the qualifier, drawn from a set of controlled values by the type as specified in the Biolink model (e.g. 'expression' or 'abundance' for the qualifier type 'subject_aspect', etc).  # noqa: E501
+        The value associated with the type of the qualifier, drawn from a set of controlled values by the type as specified in the Biolink model (e.g. 'expression' or 'abundance' for the qualifier type 'biolink:subject_aspect_qualifier', etc). The enumeration of qualifier values for a given qualifier type is generally going to be constrained by the category of edge (i.e. biolink:Association subtype) of the (Q)Edge.  # noqa: E501
 
         :return: The qualifier_value of this Qualifier.
         :rtype: str
@@ -87,7 +87,7 @@ class Qualifier(Model):
     def qualifier_value(self, qualifier_value):
         """Sets the qualifier_value of this Qualifier.
 
-        The value associated with the type of the qualifier, drawn from a set of controlled values by the type as specified in the Biolink model (e.g. 'expression' or 'abundance' for the qualifier type 'subject_aspect', etc).  # noqa: E501
+        The value associated with the type of the qualifier, drawn from a set of controlled values by the type as specified in the Biolink model (e.g. 'expression' or 'abundance' for the qualifier type 'biolink:subject_aspect_qualifier', etc). The enumeration of qualifier values for a given qualifier type is generally going to be constrained by the category of edge (i.e. biolink:Association subtype) of the (Q)Edge.  # noqa: E501
 
         :param qualifier_value: The qualifier_value of this Qualifier.
         :type qualifier_value: str

@@ -6,11 +6,15 @@ from datetime import date, datetime  # noqa: F401
 from typing import List, Dict  # noqa: F401
 
 from openapi_server.models.base_model_ import Model
+from openapi_server.models.analysis_all_of import AnalysisAllOf
 from openapi_server.models.attribute import Attribute
+from openapi_server.models.base_analysis import BaseAnalysis
 from openapi_server.models.edge_binding import EdgeBinding
 from openapi_server import util
 
+from openapi_server.models.analysis_all_of import AnalysisAllOf  # noqa: E501
 from openapi_server.models.attribute import Attribute  # noqa: E501
+from openapi_server.models.base_analysis import BaseAnalysis  # noqa: E501
 from openapi_server.models.edge_binding import EdgeBinding  # noqa: E501
 
 class Analysis(Model):
@@ -19,46 +23,46 @@ class Analysis(Model):
     Do not edit the class manually.
     """
 
-    def __init__(self, resource_id=None, score=None, edge_bindings=None, support_graphs=None, scoring_method=None, attributes=None):  # noqa: E501
+    def __init__(self, resource_id=None, score=None, support_graphs=None, scoring_method=None, attributes=None, edge_bindings=None):  # noqa: E501
         """Analysis - a model defined in OpenAPI
 
         :param resource_id: The resource_id of this Analysis.  # noqa: E501
         :type resource_id: str
         :param score: The score of this Analysis.  # noqa: E501
         :type score: float
-        :param edge_bindings: The edge_bindings of this Analysis.  # noqa: E501
-        :type edge_bindings: Dict[str, List[EdgeBinding]]
         :param support_graphs: The support_graphs of this Analysis.  # noqa: E501
         :type support_graphs: List[str]
         :param scoring_method: The scoring_method of this Analysis.  # noqa: E501
         :type scoring_method: str
         :param attributes: The attributes of this Analysis.  # noqa: E501
         :type attributes: List[Attribute]
+        :param edge_bindings: The edge_bindings of this Analysis.  # noqa: E501
+        :type edge_bindings: Dict[str, List[EdgeBinding]]
         """
         self.openapi_types = {
             'resource_id': str,
             'score': float,
-            'edge_bindings': Dict[str, List[EdgeBinding]],
             'support_graphs': List[str],
             'scoring_method': str,
-            'attributes': List[Attribute]
+            'attributes': List[Attribute],
+            'edge_bindings': Dict[str, List[EdgeBinding]]
         }
 
         self.attribute_map = {
             'resource_id': 'resource_id',
             'score': 'score',
-            'edge_bindings': 'edge_bindings',
             'support_graphs': 'support_graphs',
             'scoring_method': 'scoring_method',
-            'attributes': 'attributes'
+            'attributes': 'attributes',
+            'edge_bindings': 'edge_bindings'
         }
 
         self._resource_id = resource_id
         self._score = score
-        self._edge_bindings = edge_bindings
         self._support_graphs = support_graphs
         self._scoring_method = scoring_method
         self._attributes = attributes
+        self._edge_bindings = edge_bindings
 
     @classmethod
     def from_dict(cls, dikt) -> 'Analysis':
@@ -118,31 +122,6 @@ class Analysis(Model):
         """
 
         self._score = score
-
-    @property
-    def edge_bindings(self):
-        """Gets the edge_bindings of this Analysis.
-
-        The dictionary of input Query Graph to Knowledge Graph edge bindings where the dictionary keys are the key identifiers of the Query Graph edges and the associated values of those keys are instances of EdgeBinding schema type (see below). This value is an array of EdgeBindings since a given query edge may resolve to multiple Knowledge Graph Edges.  # noqa: E501
-
-        :return: The edge_bindings of this Analysis.
-        :rtype: Dict[str, List[EdgeBinding]]
-        """
-        return self._edge_bindings
-
-    @edge_bindings.setter
-    def edge_bindings(self, edge_bindings):
-        """Sets the edge_bindings of this Analysis.
-
-        The dictionary of input Query Graph to Knowledge Graph edge bindings where the dictionary keys are the key identifiers of the Query Graph edges and the associated values of those keys are instances of EdgeBinding schema type (see below). This value is an array of EdgeBindings since a given query edge may resolve to multiple Knowledge Graph Edges.  # noqa: E501
-
-        :param edge_bindings: The edge_bindings of this Analysis.
-        :type edge_bindings: Dict[str, List[EdgeBinding]]
-        """
-        if edge_bindings is None:
-            raise ValueError("Invalid value for `edge_bindings`, must not be `None`")  # noqa: E501
-
-        self._edge_bindings = edge_bindings
 
     @property
     def support_graphs(self):
@@ -212,3 +191,28 @@ class Analysis(Model):
         """
 
         self._attributes = attributes
+
+    @property
+    def edge_bindings(self):
+        """Gets the edge_bindings of this Analysis.
+
+        The dictionary of input Query Graph to Knowledge Graph edge bindings where the dictionary keys are the key identifiers of the Query Graph edges and the associated values of those keys are instances of EdgeBinding schema type (see below). This value is an array of EdgeBindings since a given query edge may resolve to multiple Knowledge Graph Edges.  # noqa: E501
+
+        :return: The edge_bindings of this Analysis.
+        :rtype: Dict[str, List[EdgeBinding]]
+        """
+        return self._edge_bindings
+
+    @edge_bindings.setter
+    def edge_bindings(self, edge_bindings):
+        """Sets the edge_bindings of this Analysis.
+
+        The dictionary of input Query Graph to Knowledge Graph edge bindings where the dictionary keys are the key identifiers of the Query Graph edges and the associated values of those keys are instances of EdgeBinding schema type (see below). This value is an array of EdgeBindings since a given query edge may resolve to multiple Knowledge Graph Edges.  # noqa: E501
+
+        :param edge_bindings: The edge_bindings of this Analysis.
+        :type edge_bindings: Dict[str, List[EdgeBinding]]
+        """
+        if edge_bindings is None:
+            raise ValueError("Invalid value for `edge_bindings`, must not be `None`")  # noqa: E501
+
+        self._edge_bindings = edge_bindings

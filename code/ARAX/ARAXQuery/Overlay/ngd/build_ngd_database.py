@@ -74,6 +74,7 @@ class NGDDatabaseBuilder:
     def build_conceptname_to_pmids_db(self):
         # This function extracts curie -> PMIDs mappings from the latest Pubmed XML files (saves data in a pickle DB)
         logging.info(f"Starting to build {self.conceptname_to_pmids_db_name} from pubmed files..")
+        conceptname_to_pmids_map = dict()
         start = time.time()
         logging.info(f" Deleting any pre-existing Pubmed files..")
         subprocess.call(["rm", "-rf", self.pubmed_directory_path])
@@ -97,7 +98,7 @@ class NGDDatabaseBuilder:
                                     f"but it's a little weird.")
 
             logging.info(f" Starting to process {sub_dir_name} PubMed files..")
-            conceptname_to_pmids_map = dict()
+            
             # Go through each downloaded pubmed file and build our dictionary of mappings
             pubmed_file_names_to_process = pubmed_file_names if not self.is_test else pubmed_file_names[:1]
             num_skipped_files = 0

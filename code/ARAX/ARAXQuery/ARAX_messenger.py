@@ -25,6 +25,7 @@ from openapi_server.models.response import Response
 from openapi_server.models.message import Message
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
+from openapi_server.models.pathfinder_query_graph import PathfinderQueryGraph
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 
@@ -784,11 +785,18 @@ class ARAXMessenger:
                             node['categories'] = [ node['categories'] ]
 
 
-        #eprint("Done")
+        #eprint("****** Current Message ******")
         #eprint(json.dumps(message,indent=2,sort_keys=True))
 
         #### Deserialize
-        message = Message().from_dict(message)
+        message_obj = Message().from_dict(message)
+
+        #### Special handling for the QueryGraph because of its PathfinderQueryGraph duality
+        if 'query_graph' in message and message['query_graph'] is not None:
+            if 'paths' in message['query_graph']:
+                pathfinder_query_graph_obj = PathfinderQueryGraph().from_dict(message['query_graph'])
+                message_obj.query_graph = pathfinder_query_graph_obj
+
 
         #### Revert some things back temporarily
 
@@ -853,7 +861,7 @@ class ARAXMessenger:
         #            if str(result.result_graph.__class__) != "<class 'openapi_server.models.knowledge_graph.KnowledgeGraph'>":
         #                result.result_graph = KnowledgeGraph().from_dict(result.result_graph)
 
-        return message
+        return message_obj
 
 
 

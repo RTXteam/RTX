@@ -42,7 +42,7 @@ Host arax.ncats.io
 #### 1. Build and load KG2c:
 
 - [ ] merge `master` into the branch being used for this KG2 version (which would typically be named like `KG2.X.Yc`).  Record this issue number in the merge message.
-- [ ] update the four hardcoded biolink version numbers in the branch (as needed):
+- [ ] update the four hardcoded biolink and KG2c version numbers in the branch (as needed):
   - [ ] in `code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.yaml))
   - [ ] in `code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml` ([github](https://github.com/RTXteam/RTX/tree/master/code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml#L18); [local](../code/UI/OpenAPI/python-flask-server/KG2/openapi_server/openapi/openapi.yaml))
   - [ ] in `code/UI/OpenAPI/specifications/export/ARAX/1.5.0/openapi.yaml`([github](https://github.com/RTXteam/RTX/blob/master/code/UI/OpenAPI/specifications/export/ARAX/1.5.0/openapi.yaml#L18))
@@ -52,18 +52,20 @@ Host arax.ncats.io
     - [ ] make sure there is enough disk space available on `arax-databases.rtx.ai` (need at least 100G, ideally >120G). delete old KG2 database directories as needed (warn the team on Slack in advance).
 
   **NOTE:** For detailed deployment instructions, follow the instructions [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#building-kg2c)
-    - [ ] to do a standard build of a new synonymizer (expected runtime: 2-4 hours), run:
+    - [ ] to do a standard build of a new synonymizer (expected runtime: 7-10 hours), run:
       - [ ] `cd RTX/code/kg2c/synonymizer_build`
       - [ ] `python build_synonymizer.py 2.X.Y v1.0 --downloadkg2pre --uploadartifacts`
       - [ ] after the build, run the Synonymizer pytest regression test suite:
         - [ ] `pytest -vs test_synonymizer.py --synonymizername node_synonymizer_v1.0_KG2.X.Y.sqlite`
-      - [ ] make sure that `node_synonymizer_v1.0_KG2.X.Y.sqlite` is about 8-15 GB and its last modified date is today
+      - [ ] make sure that `node_synonymizer_v1.0_KG2.X.Y.sqlite` is about 15-20 GB and its last modified date is today
+      - [ ] copy `node_synonymizer_v1.0_KG2.X.Y.sqlite` to the public S3 bucket for RTX-KG2: `aws s3 cp node_synonymizer_v1.0_KG2.X.Y.sqlite s3://rtx-kg2-public/`
     - [ ] to do a standard full build of a new KG2c (expected runtime: 8-10 hours), run:
       - [ ] `cd RTX/code/kg2c`
       - [ ] `python build_kg2c.py 2.X.Y v1.0 4.2.1 --uploadartifacts`
         - **NOTE:** 4.2.1 is the Biolink version, please use the latest biolink version based on the KG2pre build's biolink version. Add a `--test` flag to the KG2c build execution to do a test build.
       - [ ] after the build is done, make sure `kg2c_lite.json.gz`'s last modified date is today (or whatever day the build was run)
     - [ ] the synonymizer and KG2c artifacts should have been auto-uploaded into the proper directory on `arax-databases.rtx.ai` (`/home/rtxconfig/KG2.X.Y`) and to `kg2webhost.rtx.ai` (if `--uploadartifacts` flag during the KG2c build is set). If not, manually upload the files using `scp`.
+    - [ ] Upload the JSON-lines files (`kg2c-2.X.Y-v1.0-nodes.jsonl.gz` and `kg2c-2.X.y-v1.0-edges.jsonl.gz`) to the public S3 bucket, `s3://rtx-kg2-public`
 - [ ] load the new KG2c into neo4j at http://kg2-X-Yc.rtx.ai:7474/browser/ (how to is [here](https://github.com/RTXteam/RTX/tree/master/code/kg2c#host-kg2canonicalized-in-neo4j))
   - [ ] verify the correct KG2 version was uploaded by running this query: `match (n {id:"RTX:KG2c"}) return n`
 - [ ] update `RTX/code/config_dbs.json` in the branch:
@@ -73,12 +75,12 @@ Host arax.ncats.io
   - [ ] update the meta_kg version number/path
   - [ ] update the kg2c sqlite version number/path
   - [ ] update the KG2pre and KG2c Neo4j endpoints
-- [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-how-tos#to-build-plover-from-a-new-kg2-version)) 
+- [ ] load the new KG2c into Plover (how-to is [here](https://github.com/RTXteam/PloverDB/wiki/Deployment-notes#to-build-plover-from-a-new-kg2-version))
   - [ ] update `config_kg2c.json` in the `kg2.X.Yc` branch of the Plover repo to point to the new KG2.X.Yc json lines nodes and edges files on `kg2webhost.rtx.ai` (push this change)
   - [ ] `ssh ubuntu@kg2cploverN.rtx.ai`
   - [ ] `cd PloverDB && git pull origin kg2.X.Yc`
   - [ ] if you have **not** yet built the 2.X.Y docker image/container on this instance, run:
-    - [ ] `bash -x run.sh` (takes about an hour)
+    - [ ] `bash -x run.sh -b kg2.X.Yc` (takes about an hour)
   - [ ] otherwise, simply run:
     - [ ] `sudo docker start plovercontainer` (takes about ten minutes)
 - [ ] verify that Plover's regression tests pass, and fix any broken tests; from any instance/computer, run:
@@ -91,6 +93,8 @@ Host arax.ncats.io
 The following databases should be rebuilt and copies of them should be put in `/home/rtxconfig/KG2.X.Y` on `arax-databases.rtx.ai`. Please use this kind of naming format: `mydatabase_v1.0_KG2.X.Y.sqlite`.
 
 - [ ] NGD database (how-to is [here](https://github.com/RTXteam/RTX/blob/master/code/ARAX/ARAXQuery/Overlay/ngd/README.md))
+    - [ ] Upload the file `curie_to_pmids_v1.0_KG2.X.Y.sqlite` to the public S3 bucket `s3://rtx-kg2-public`.
+- [ ] Update the test data indexes for PathFinder @mohsenht
 - [ ] Build CURIE NGD database @mohsenht
 - [ ] refreshed XDTD database @chunyuma 
 - [ ] XDTD database @chunyuma _(may be skipped - depends on the changes in this KG2 version)_
@@ -122,12 +126,16 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
 - [ ] make sure `arax.ncats.io` has at least 100G of disk space free; delete old KG2 databases to free up space as needed (before doing this, warn the team on the `#deployment` Slack channel on the `ARAXTeam` workspace)
 - [ ] copy the new databases from `arax-databases.rtx.ai` to `arax.ncats.io:/translator/data/orangeboard/databases/KG2.X.Y`; example for KG2.8.0:
   - [ ] `ssh myuser@arax.ncats.io`
+  - [ ]  Enter the `rtx1` container: `sudo docker exec -it rtx1 bash`
+  - [ ] Become user `rt`: `su - rt`
   - [ ] `cd /translator/data/orangeboard/databases/`
   - [ ] `mkdir -m 777 KG2.X.Y`
   - [ ] `scp rtxconfig@arax-databases.rtx.ai:/home/rtxconfig/KG2.X.Y/*2.X.Y* KG2.X.Y/`
 - [ ] upload the new databases and their md5 checksums to ITRB's SFTP server using the steps detailed [here](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#steps-for-all-databases-at-once)
 
+
 #### 5. Rollout new KG2c version to `arax.ncats.io` development endpoints
+- [ ] Verify that ploverDB is up and running by checking the `kg2cploverN.rtx.ai/code_version` endpoint. If not, start up the Plover instance.
 - [ ] Notify the `#deployment` channel in the `ARAXTeam` Slack workspace that you are rolling out a new version of KG2c to the various `arax.ncats.io` development endpoints. Provide the KG2c version number in this notification.
 - [ ] for the `RTXteam/RTX` project, merge the `master` branch into the branch for this KG2 version.  Record the RTX issue number (for the KG2c rollout checklist issue) in the merge message.
 - [ ] for the `RTXteam/RTX` project, merge this KG2 version's branch back into the `master` branch.  Record this issue number in the merge message.
@@ -201,4 +209,4 @@ Before rolling out, we need to pre-upload the new databases (referenced in `conf
       - [ ] `sudo docker stop plovercontainer`
     - [ ] verify once more that ARAX is still working properly, even with the self-hosted new-KG2c-version PloverDB service turned off
     - [ ] delete the `kg2.X.Yc` branch in the PloverDB repo (since it has been merged into `main` at this point)
-- [ ] upload the new `kg2c_lite_2.X.Y.json.gz` file to the [translator-lfs-artifacts](https://github.com/ncats/translator-lfs-artifacts/tree/main/files) repo (ask Amy Glen or Sundar Pullela, who have permission to do this)
+- [ ] Download, update, and re-upload to `s3://rtx-kg2-public` the index file `index.html` to add a new section with four hyperlinks for the four information artifacts from the new build (KG2c nodes, KG2c edges, node synonymizer, and curie-to-pmids).
