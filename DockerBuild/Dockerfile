@@ -53,17 +53,17 @@ RUN apt-get install -y software-properties-common
 RUN add-apt-repository -y ppa:deadsnakes/ppa
 RUN apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv
 
-RUN apt-get update && apt-get install -y \
-    libjpeg-dev \
-    zlib1g-dev \
-    libfreetype6-dev \
-    liblcms2-dev \
-    libopenjp2-7-dev \
-    libtiff5-dev \
-    tk-dev \
-    tcl-dev \
-    libwebp-dev \
-    && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update && apt-get install -y \
+#     libjpeg-dev \
+#     zlib1g-dev \
+#     libfreetype6-dev \
+#     liblcms2-dev \
+#     libopenjp2-7-dev \
+#     libtiff5-dev \
+#     tk-dev \
+#     tcl-dev \
+#     libwebp-dev \
+#     && rm -rf /var/lib/apt/lists/*
     
 RUN rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
 RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3.9 -m pip install click==8.1.3 && python3.9 -m pip install -r requirements.txt && python3.9 -m pip install connexion[swagger-ui]
