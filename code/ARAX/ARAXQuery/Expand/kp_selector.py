@@ -26,6 +26,8 @@ class KPSelector:
         self.kg2_mode = kg2_mode
         self.kp_cacher = KPInfoCacher()
         self.meta_map, self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self._load_cached_kp_info()
+        if (not self.kg2_mode) and (self.kp_urls is None):
+            raise ValueError("KP info cache has not been filled and we are not in KG2 mode; cannot initialize KP selector")
         self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else set(self.kp_urls.keys())
         self.bh = BiolinkHelper()
 

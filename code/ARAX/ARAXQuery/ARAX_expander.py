@@ -147,7 +147,11 @@ class ARAXExpander:
             message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
         log = response
         # Fetch the list of all registered kps with compatible versions
-        kp_selector = KPSelector(log=log)
+        try:
+            kp_selector = KPSelector(log=log)
+        except ValueError as e:
+            response.error(str(e))
+            return response
 
         # Save the original QG, if it hasn't already been saved in ARAXQuery (happens for DSL queries..)
         if not hasattr(response, "original_query_graph"):
