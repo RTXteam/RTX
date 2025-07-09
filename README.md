@@ -459,7 +459,7 @@ ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
 - 16 vCPUs
 - 64 GiB of RAM
 - 1,023 GiB of elastic block storage
-- host OS Ubuntu v18.04. 
+- host OS Ubuntu v22.04. 
 
 The host OS has nginx v1.14.0 installed and configured
 (see `notes/ARAX/rtx-host-os-nginx-config` for configuration details) for
@@ -478,9 +478,9 @@ follows (host-port:container-port):
 `notes/ARAX/arax-run-container-nodes.md`). Within the Docker container,
 ARAX uses
 
-- Ubuntu v16.04
+- Ubuntu v20.04
 - Apache v2.4.18 
-- python v3.7.3
+- python v3.9
 - Neo4j v3.2.6 (see [`code/reasoningtool/kg-construction`](code/reasoningtool/kg-construction) on how to set up Neo4j for running ARAX/RTX)
 - OpenJDK v1.8.0_131
 - mysql v5.7.19-0ubuntu0.16.04.1
