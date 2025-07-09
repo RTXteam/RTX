@@ -52,3 +52,4 @@ code/ARAX/ARAXQuery/Infer/data/xCRG_data/*.npz
 
 code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.json
 code/UI/OpenAPI/specifications/export/KG2/*/openapi.json
+**/cache_refresh.pid
