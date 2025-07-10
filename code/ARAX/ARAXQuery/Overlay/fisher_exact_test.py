@@ -515,7 +515,8 @@ class ComputeFTEST:
                                    }}
             query_graph = QueryGraph.from_dict(query_graph_builtin)
             from kp_selector import KPSelector
-            kp_selector = KPSelector(self.response)
+            kp_selector = KPSelector(kg2_mode=True,
+                                     log=self.response)
 
             try:
 
