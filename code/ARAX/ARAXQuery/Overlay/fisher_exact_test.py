@@ -15,9 +15,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")
-from ARAX_expander import ARAXExpander
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../Expander/")
-from kp_selector import KPSelector
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
@@ -501,6 +499,7 @@ class ComputeFTEST:
                 return (res_dict, [])
 
         else:
+            from ARAX_expander import ARAXExpander
             expander = ARAXExpander()
             query_graph_builtin = {'nodes':
                                    {'FET_n00':
@@ -514,6 +513,7 @@ class ComputeFTEST:
                                      'predicates': rel_type}
                                    }}
             query_graph = QueryGraph.from_dict(query_graph_builtin)
+            from kp_selector import KPSelector
             kp_selector = KPSelector(self.response)
 
             try:
