@@ -5,7 +5,7 @@ import sys
 import os
 import traceback
 import yaml
-from typing import List, Dict, Union, Set, Tuple, Optional
+from typing import Union, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
@@ -37,9 +37,9 @@ RTXConfig = RTXConfiguration()
 
 class QGOrganizedKnowledgeGraph:
     def __init__(self,
-                 nodes: Dict[str, Dict[str, Node]] = None,
-                 edges: Dict[str, Dict[str, Edge]] = None,
-                 unbound_nodes: Dict[str, Node] = None):
+                 nodes: Optional[dict[str, dict[str, Node]]] = None,
+                 edges: Optional[dict[str, dict[str, Edge]]] = None,
+                 unbound_nodes: Optional[dict[str, Node]] = None):
         self.nodes_by_qg_id = nodes if nodes else dict()
         self.edges_by_qg_id = edges if edges else dict()
         self.unbound_nodes = unbound_nodes if unbound_nodes else dict()
@@ -76,7 +76,7 @@ class QGOrganizedKnowledgeGraph:
             self.edges_by_qg_id[qedge_key] = dict()
         self.edges_by_qg_id[qedge_key][edge_key] = edge
 
-    def remove_nodes(self, node_keys_to_delete: Set[str], target_qnode_key: str, qg: QueryGraph):
+    def remove_nodes(self, node_keys_to_delete: set[str], target_qnode_key: str, qg: QueryGraph):
         # First delete the specified nodes
         for node_key in node_keys_to_delete:
             del self.nodes_by_qg_id[target_qnode_key][node_key]
@@ -100,16 +100,16 @@ class QGOrganizedKnowledgeGraph:
             for orphan_node_key in orphan_node_keys:
                 del self.nodes_by_qg_id[non_orphan_qnode_key][orphan_node_key]
 
-    def get_all_node_keys_used_by_edges(self) -> Set[str]:
+    def get_all_node_keys_used_by_edges(self) -> set[str]:
         return {node_key for edges in self.edges_by_qg_id.values() for edge in edges.values()
                 for node_key in [edge.subject, edge.object]}
 
-    def get_node_keys_used_by_edges_fulfilling_qedge(self, qedge_key: str) -> Set[str]:
+    def get_node_keys_used_by_edges_fulfilling_qedge(self, qedge_key: str) -> set[str]:
         relevant_edges = self.edges_by_qg_id.get(qedge_key, dict())
         return {node_key for edge in relevant_edges.values()
                 for node_key in [edge.subject, edge.object]}
 
-    def get_all_node_keys(self) -> Set[str]:
+    def get_all_node_keys(self) -> set[str]:
         return {node_key for nodes in self.nodes_by_qg_id.values() for node_key in nodes}
 
     def is_empty(self) -> bool:
@@ -173,7 +173,7 @@ def convert_string_to_snake_case(input_string: str) -> str:
         return input_string.lower()
 
 
-def convert_to_list(item: Union[str, set, list, None]) -> List[str]:
+def convert_to_list(item: Union[str, set, list, None]) -> list[str]:
     if isinstance(item, str):
         return [item]
     elif isinstance(item, set):
@@ -184,16 +184,16 @@ def convert_to_list(item: Union[str, set, list, None]) -> List[str]:
         return []
 
 
-def convert_to_set(item: Union[str, set, list, None]) -> Set[str]:
+def convert_to_set(item: Union[str, set, list, None]) -> set[str]:
     item_list = convert_to_list(item)
     return set(item_list)
 
 
-def get_node_keys_used_by_edges(edges_dict: Dict[str, Edge]) -> Set[str]:
+def get_node_keys_used_by_edges(edges_dict: dict[str, Edge]) -> set[str]:
     return {node_key for edge in edges_dict.values() for node_key in [edge.subject, edge.object]}
 
 
-def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> Dict[str, int]:
+def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> dict[str, int]:
     counts_by_qg_id = dict()
     for qnode_key, nodes_dict in dict_kg.nodes_by_qg_id.items():
         counts_by_qg_id[qnode_key] = len(nodes_dict)
@@ -282,8 +282,10 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
     return standard_kg
 
 
-def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse] = ARAXResponse()) -> List[str]:
+def get_curie_synonyms(curie: Union[str, list[str]], log: Optional[ARAXResponse]) -> list[str]:
     curies = convert_to_list(curie)
+    if log is None:
+        log = ARAXResponse()
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
@@ -292,7 +294,8 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse]
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
+                  error_code=error_type.__name__) # type: ignore[union-attr]
         return []
     else:
         if equivalent_curies_dict is not None:
@@ -308,8 +311,11 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse]
             return []
 
 
-def get_curie_synonyms_dict(curie: Union[str, List[str]], log: Optional[ARAXResponse] = ARAXResponse()) -> Dict[str, List[str]]:
+def get_curie_synonyms_dict(curie: Union[str, list[str]],
+                            log: Optional[ARAXResponse] = None) -> dict[str, list[str]]:
     curies = convert_to_list(curie)
+    if log is None:
+        log = ARAXResponse()
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
@@ -318,7 +324,8 @@ def get_curie_synonyms_dict(curie: Union[str, List[str]], log: Optional[ARAXResp
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
+                  error_code=error_type.__name__) # type: ignore[union-attr]
         return dict()
     else:
         if equivalent_curies_dict is not None:
@@ -335,7 +342,7 @@ def get_curie_synonyms_dict(curie: Union[str, List[str]], log: Optional[ARAXResp
             return dict()
 
 
-def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, Dict[str, str]]:
+def get_canonical_curies_dict(curie: Union[str, list[str]], log: ARAXResponse) -> dict[str, dict[str, str]]:
     curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
@@ -345,7 +352,8 @@ def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
+                  error_code=error_type.__name__) # type: ignore[union-attr]
         return {}
     else:
         if canonical_curies_dict is not None:
@@ -358,7 +366,7 @@ def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -
             return {}
 
 
-def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
+def get_canonical_curies_list(curie: Union[str, list[str]], log: ARAXResponse) -> list[str]:
     curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
@@ -368,7 +376,8 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
+                  error_code=error_type.__name__) # type: ignore[union-attr]
         return []
     else:
         if canonical_curies_dict is not None:
@@ -387,7 +396,7 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
             return []
 
 
-def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) -> Optional[List[str]]:
+def get_preferred_categories(curie: Union[str, list[str]], log: ARAXResponse) -> Optional[list[str]]:
     curies = convert_to_list(curie)
     synonymizer = NodeSynonymizer()
     log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
@@ -410,7 +419,7 @@ def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) ->
         return []
 
 
-def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, str]:
+def get_curie_names(curie: Union[str, list[str]], log: ARAXResponse) -> dict[str, str]:
     curies = convert_to_list(curie)
     synonymizer = NodeSynonymizer()
     log.debug(f"Looking up names for {len(curies)} input curies using NodeSynonymizer.get_curie_names()")
@@ -418,8 +427,11 @@ def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str
     return curie_to_name_map
 
 
-def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False,
-                    enforce_expanded_only=False, return_unfulfilled_qedges: bool = False) -> any:
+def qg_is_fulfilled(query_graph: QueryGraph,
+                    dict_kg: QGOrganizedKnowledgeGraph,
+                    enforce_required_only=False,
+                    enforce_expanded_only=False,
+                    return_unfulfilled_qedges: bool = False) -> tuple[bool, Union[bool, set[str]]]:
     if enforce_required_only:
         qg_without_kryptonite_portion = get_qg_without_kryptonite_portion(query_graph)
         query_graph = get_required_portion_of_qg(qg_without_kryptonite_portion)
@@ -436,7 +448,7 @@ def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph,
     for qnode_key in query_graph.nodes:
         if not dict_kg.nodes_by_qg_id.get(qnode_key):
             is_fulfilled = False
-    unfulfilled_qedge_keys = set()
+    unfulfilled_qedge_keys: set[str] = set()
     for qedge_key, qedge in query_graph.edges.items():
         if not dict_kg.edges_by_qg_id.get(qedge_key):
             unfulfilled_qedge_keys.add(qedge_key)
@@ -457,7 +469,7 @@ def qg_is_disconnected(qg: QueryGraph) -> bool:
     return True if not connected_qnode_key and qnode_keys_remaining else False
 
 
-def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_keys_to_choose_from: Set[str], qg: QueryGraph) -> Tuple[str, Set[str]]:
+def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: set[str], qnode_keys_to_choose_from: set[str], qg: QueryGraph) -> tuple[str, set[str]]:
     """
     This function selects a qnode ID from the qnode_keys_to_choose_from that connects to one or more of the qnode IDs
     in the qnode_keys_to_connect_to (which itself could be considered a sub-graph of the QG). It also returns the IDs
@@ -473,7 +485,7 @@ def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_key
     return "", set()
 
 
-def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
+def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> set[str]:
     return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
 
 
@@ -489,7 +501,7 @@ def flip_edge(edge: Edge, new_predicate: str) -> Edge:
     return edge
 
 
-def flip_qedge(qedge: QEdge, new_predicates: List[str]):
+def flip_qedge(qedge: QEdge, new_predicates: list[str]):
     qedge.predicates = new_predicates
     original_subject = qedge.subject
     qedge.subject = qedge.object
@@ -521,7 +533,7 @@ def get_computed_value_attribute() -> Attribute:
                                  "directly attachable to other edges.")
 
 
-def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXResponse) -> List[str]:
+def sort_kps_for_asyncio(kp_names: Union[list[str], set[str]],  log: ARAXResponse) -> list[str]:
     # Our in-house KPs block the multi-threading, because there's no request to wait for; so we process them first
     kp_names = set(kp_names)
     to_call_first = ["infores:arax-drug-treats-disease", "infores:arax-normalized-google-distance"]
@@ -593,7 +605,7 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph,
     except:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(tb, error_code=error_type.__name__)
+        log.error(tb, error_code=error_type.__name__) # type: ignore[union-attr]
         log.error(f"Something went wrong removing semmeddb edges from the knowledge graph")
     else:
         log.info(f"{edges_removed_counter} Semmeddb Edges with low publication count successfully removed")
