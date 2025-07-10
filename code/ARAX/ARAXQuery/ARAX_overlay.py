@@ -16,6 +16,7 @@ import traceback
 import itertools
 
 from ARAX_decorator import ARAXDecorator
+from Overlay.fisher_exact_test import ComputeFTEST
 
 
 class ARAXOverlay:
@@ -952,7 +953,6 @@ This information is included in edge attributes with the name 'icees_p-value'.
             return self.response
 
         # now do the call out to FTEST
-        from Overlay.fisher_exact_test import ComputeFTEST
         FTEST = ComputeFTEST(self.response, self.message, self.parameters)
         response = FTEST.fisher_exact_test()
         return response

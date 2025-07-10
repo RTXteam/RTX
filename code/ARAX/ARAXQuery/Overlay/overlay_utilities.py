@@ -4,7 +4,7 @@ import itertools
 import os
 import sys
 import traceback
-from typing import Dict, Optional, Set, Tuple, List
+from typing import Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response
@@ -18,7 +18,7 @@ from ARAX_response import ARAXResponse
 
 
 def get_node_pairs_to_overlay(subject_qnode_key: str, object_qnode_key: str, query_graph: QueryGraph,
-                              knowledge_graph: KnowledgeGraph, log: ARAXResponse) -> Set[Tuple[str, str]]:
+                              knowledge_graph: KnowledgeGraph, log: ARAXResponse) -> set[tuple[str, str]]:
     """
     This function determines which combinations of subject/object nodes in the KG need to be overlayed (e.g., have a
     virtual edge added between). It makes use of Resultify to determine what combinations of subject and object nodes
@@ -46,13 +46,13 @@ def get_node_pairs_to_overlay(subject_qnode_key: str, object_qnode_key: str, que
 
     # Figure out which node pairs appear together in one or more results
     if resultify_response.status == 'OK':
-        node_pairs = set()
+        node_pairs: set[tuple[str, str]] = set()
         for result in sub_message.results:
             subject_curies_in_this_result = {node_binding.id for key, node_binding_list in result.node_bindings.items() for node_binding in node_binding_list if
                                             key == subject_qnode_key}
             object_curies_in_this_result = {node_binding.id for key, node_binding_list in result.node_bindings.items() for node_binding in node_binding_list if
                                             key == object_qnode_key}
-            pairs_in_this_result = set(itertools.product(subject_curies_in_this_result, object_curies_in_this_result))
+            pairs_in_this_result: set[tuple[str, str]] = set(itertools.product(subject_curies_in_this_result, object_curies_in_this_result))
             node_pairs = node_pairs.union(pairs_in_this_result)
         log.debug(f"Identified {len(node_pairs)} node pairs to overlay (with help of resultify)")
         if node_pairs:
@@ -62,9 +62,9 @@ def get_node_pairs_to_overlay(subject_qnode_key: str, object_qnode_key: str, que
     return set(itertools.product(kg_nodes_by_qg_id[subject_qnode_key], kg_nodes_by_qg_id[object_qnode_key]))
 
 
-def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
+def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]]:
     # Returns all node IDs in the KG organized like so: {"n00": {"DOID:12"}, "n01": {"UniProtKB:1", "UniProtKB:2", ...}}
-    node_keys_by_qg_key = dict()
+    node_keys_by_qg_key: dict[str, set[str]] = dict()
     if knowledge_graph.nodes:
         for key, node in knowledge_graph.nodes.items():
             for qnode_key in node.qnode_keys:
@@ -74,9 +74,9 @@ def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]
     return node_keys_by_qg_key
 
 
-def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
+def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]]:
     # Returns all edge IDs in the KG organized like so: {"e00": {"KG2:123", ...}, "e01": {"KG2:224", "KG2:225", ...}}
-    edge_keys_by_qg_key = dict()
+    edge_keys_by_qg_key: dict[str, set[str]] = dict()
     if knowledge_graph.edges:
         for key, edge in knowledge_graph.edges.items():
             for qedge_key in edge.qedge_keys:

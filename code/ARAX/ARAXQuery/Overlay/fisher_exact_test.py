@@ -15,7 +15,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")
-from ARAX_query import ARAXQuery
+from ARAX_expander import ARAXExpander
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../Expander/")
+from kp_selector import KPSelector
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
@@ -27,6 +29,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
 import collections
 import sqlite3
+
+
 class ComputeFTEST:
 
     #### Constructor
@@ -497,71 +501,51 @@ class ComputeFTEST:
                 return (res_dict, [])
 
         else:
-            # if kp == 'ARAX/KG1':
-            #     self.response.warning(f"Since the edge type '{rel_type}' is from KG1, we still use the DSL expand(kg=ARAX/KG1) to query neighbor count. However, the total node count is based on KG2c from 'nodesynonymizer.get_total_entity_count'. So the FET result might not be accurate.")
-
-            # construct the instance of ARAXQuery class
-            araxq = ARAXQuery()
-
-            # check if node_curie is a str or a list
-            if type(node_curie) is str:
-                query_node_curie = node_curie
-            elif type(node_curie) is list:
-                node_id_list_str = "["
-                for index in range(len(node_curie)):
-                    node = node_curie[index]
-                    if index + 1 == len(node_curie):
-                        node_id_list_str = node_id_list_str + str(node) + "]"
-                    else:
-                        node_id_list_str = node_id_list_str + str(node) + ","
-
-                query_node_curie = node_id_list_str
-            else:
-                self.response.error("The 'node_curie' argument of 'query_size_of_adjacent_nodes' method within FET only accepts str or list")
-                return res
-
-            # call the method of ARAXQuery class to query adjacent node
-            query = {"operations": {"actions": [
-                "create_message",
-                f"add_qnode(ids={query_node_curie}, categories={source_type}, key=FET_n00)",
-                f"add_qnode(categories={adjacent_type}, key=FET_n01)",
-                f"add_qedge(subject=FET_n00, object=FET_n01, key=FET_e00, predicates={rel_type})",
-                f"expand(edge_key=FET_e00,kp={kp})",
-                #"resultify()",
-                "return(message=true, store=false)"
-            ]}}
+            expander = ARAXExpander()
+            query_graph_builtin = {'nodes':
+                                   {'FET_n00':
+                                    {'ids': node_curie},
+                                    'FET_n01':
+                                    {'categories': [adjacent_type]}},
+                                   'edges':
+                                   {'FET_e00':
+                                    {'subject': 'FET_n00',
+                                     'object': 'FET_n01',
+                                     'predicates': rel_type}
+                                   }}
+            query_graph = QueryGraph.from_dict(query_graph_builtin)
+            kp_selector = KPSelector(self.response)
 
             try:
+                answer_kg, log = expander._expand_edge_async(query_graph,
+                                                             kp,
+                                                             True,
+                                                             None,
+                                                             kp_selector,
+                                                             self.response,
+                                                             False,
+                                                             False)
                 result = araxq.query(query)
-                if result.status != 'OK':
+                if log.status != 'OK':
                     self.response.error(f"Fail to query adjacent nodes from infores:rtx-kg2 for {node_curie}")
                     return res
-                else:
-                    res_dict = dict()
-                    message = araxq.response.envelope.message
-                    if type(node_curie) is str:
-                        tmplist = set([edge_key for edge_key in message.knowledge_graph.edges if message.knowledge_graph.edges[edge_key].subject == node_curie or message.knowledge_graph.edges[edge_key].object == node_curie])  ## edge has no direction
-                        if len(tmplist) == 0:
-                            self.response.warning(f"Fail to query adjacent nodes from {kp} for {node_curie} in FET probably because expander ignores node type. For more details, please see issue897.")
-                            return (res_dict,[node_curie])
-                        res_dict[node_curie] = len(tmplist)
-                        return (res_dict,[])
-                    else:
-                        check_empty = False
-                        failure_nodes = list()
-                        for node in node_curie:
-                            tmplist = set([edge_key for edge_key in message.knowledge_graph.edges if message.knowledge_graph.edges[edge_key].subject == node or message.knowledge_graph.edges[edge_key].object == node])  ## edge has no direction
-                            if len(tmplist) == 0:
-                                self.response.warning(f"Fail to query adjacent nodes from {kp} for {node} in FET probably because expander ignores node type. For more details, please see issue897.")
-                                failure_nodes.append(node)
-                                check_empty = True
-                                continue
-                            res_dict[node] = len(tmplist)
 
-                        if check_empty is True:
-                            return (res_dict,failure_nodes)
-                        else:
-                            return (res_dict,[])
+                res_dict = dict()
+                message = araxq.response.envelope.message
+                failure_nodes = list()
+                for node in node_curie if type(node_curie)==list else (node_curie,):
+                    tmplist = set([edge_key for edge_key in answer_kg.edges if answer_kg.edges[edge_key].subject == node or answer_kg.edges[edge_key].object == node])
+                    if len(tmplist) == 0:
+                        self.response.warning(f"Fail to query adjacent nodes from {kp} for {node} in FET probably because expander ignores node type. For more details, please see issue897.")
+                        failure_nodes.append(node)
+                        check_empty = True
+                        continue
+                    res_dict[node] = len(tmplist)
+
+                if check_empty is True:
+                    return (res_dict,failure_nodes)
+                else:
+                    return (res_dict,[])
             except:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
