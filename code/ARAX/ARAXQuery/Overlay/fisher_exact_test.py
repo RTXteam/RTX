@@ -11,18 +11,18 @@ import re
 import multiprocessing
 from datetime import datetime
 from neo4j import GraphDatabase, basic_auth
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../Expander/")
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../Expander/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.retrieval_source import RetrievalSource
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
@@ -518,14 +518,14 @@ class ComputeFTEST:
             kp_selector = KPSelector(self.response)
 
             try:
-                answer_kg, log = expander._expand_edge_async(query_graph,
-                                                             kp,
-                                                             True,
-                                                             None,
-                                                             kp_selector,
-                                                             self.response,
-                                                             False,
-                                                             False)
+                answer_kg, log = await expander._expand_edge_async(query_graph,
+                                                                   kp,
+                                                                   True,
+                                                                   None,
+                                                                   kp_selector,
+                                                                   self.response,
+                                                                   False,
+                                                                   False)
                 result = araxq.query(query)
                 if log.status != 'OK':
                     self.response.error(f"Fail to query adjacent nodes from infores:rtx-kg2 for {node_curie}")
