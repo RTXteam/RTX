@@ -518,7 +518,7 @@ class ComputeFTEST:
             from kp_selector import KPSelector
             kp_selector = KPSelector(kg2_mode=True,
                                      log=self.response)
-            kp_selector.kp_urls = {infores_key: rtxconfig.plover_url}
+            kp_selector.kp_urls = {infores_key: RTXConfig.plover_url}
 
             try:
 
