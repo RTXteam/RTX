@@ -2,7 +2,7 @@
 import os
 import pprint
 import sys
-from typing import Set, List, Optional
+from typing import Optional
 from collections import defaultdict
 from itertools import product
 
@@ -26,6 +26,8 @@ class KPSelector:
         self.kg2_mode = kg2_mode
         self.kp_cacher = KPInfoCacher()
         self.meta_map, self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self._load_cached_kp_info()
+        if (not self.kg2_mode) and (self.kp_urls is None):
+            raise ValueError("KP info cache has not been filled and we are not in KG2 mode; cannot initialize KP selector")
         self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else set(self.kp_urls.keys())
         self.bh = BiolinkHelper()
 
@@ -45,7 +47,7 @@ class KPSelector:
             return (meta_map, smart_api_info["allowed_kp_urls"], smart_api_info["kps_excluded_by_version"],
                     smart_api_info["kps_excluded_by_maturity"])
 
-    def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[Set[str]]:
+    def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[set[str]]:
         """
         This function returns the names of the KPs that say they can answer the given one-hop query graph (based on
         the categories/predicates the QG uses).
@@ -123,7 +125,7 @@ class KPSelector:
 
         return kp_accepts
 
-    def get_desirable_equivalent_curies(self, curies: List[str], categories: Optional[List[str]], kp: str) -> List[str]:
+    def get_desirable_equivalent_curies(self, curies: list[str], categories: Optional[list[str]], kp: str) -> list[str]:
         """
         For each input curie, this function returns an equivalent curie(s) that uses a prefix the KP supports.
         """
@@ -139,8 +141,8 @@ class KPSelector:
             supported_prefixes = self._get_supported_prefixes(eu.convert_to_list(categories), kp)
             self.log.debug(f"{kp}: Prefixes {kp} supports for categories {categories} (and descendants) are: "
                            f"{supported_prefixes}")
-            converted_curies = set()
-            unsupported_curies = set()
+            converted_curies: set[str] = set()
+            unsupported_curies: set[str] = set()
             synonyms_dict = eu.get_curie_synonyms_dict(curies)
             # Convert each input curie to a preferred, supported prefix
             for input_curie, equivalent_curies in synonyms_dict.items():
@@ -199,16 +201,16 @@ class KPSelector:
     def _get_uppercase_prefix(curie: str) -> str:
         return curie.split(":")[0].upper()
 
-    def _get_supported_prefixes(self, categories: List[str], kp: str) -> Set[str]:
+    def _get_supported_prefixes(self, categories: list[str], kp: str) -> set[str]:
         categories_with_descendants = self.bh.get_descendants(eu.convert_to_list(categories), include_mixins=False)
         supported_prefixes = {prefix.upper() for category in categories_with_descendants
                               for prefix in self.meta_map[kp]["prefixes"].get(category, set())}
         return supported_prefixes
 
     def _triple_is_in_meta_map(self, kp: str,
-                               subject_categories: Set[str],
-                               predicates: Set[str],
-                               object_categories: Set[str]) -> bool:
+                               subject_categories: set[str],
+                               predicates: set[str],
+                               object_categories: set[str]) -> bool:
         """
         Returns True if at least one possible triple exists in the KP's meta map. NOT meant to handle empty predicates;
         you should sub in "biolink:related_to" for QEdges without predicates before calling this method.
@@ -227,9 +229,7 @@ class KPSelector:
             if not subject_categories:  # any subject
                 subject_categories = set(predicates_map.keys())
             if not object_categories:  # any object
-                object_set = set()
-                _ = [object_set.add(obj) for obj_dict in predicates_map.values() for obj in obj_dict.keys()]
-                object_categories = object_set
+                object_categories = {obj for obj_dict in predicates_map.values() for obj in obj_dict.keys()}
 
             # handle combinations of subject and objects using cross product
             qg_sub_obj_dict = defaultdict(lambda: set())

@@ -19,7 +19,6 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
-from ARAX_database_manager import ARAXDatabaseManager
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
 from openapi_server.models.knowledge_graph import KnowledgeGraph

@@ -8,7 +8,7 @@ import pathlib
 import pickle
 import sys
 from datetime import datetime, timedelta
-from typing import Set, Dict, Optional
+from typing import Optional
 
 import requests
 import requests_cache
@@ -151,7 +151,7 @@ class KPInfoCacher:
     # --------------------------------- METHODS FOR BUILDING META MAP ----------------------------------------------- #
     # --- Note: These methods can't go in KPSelector because it would create a circular dependency with this class -- #
 
-    def _build_meta_map(self, allowed_kps_dict: Dict[str, str]):
+    def _build_meta_map(self, allowed_kps_dict: dict[str, str]):
         # Start with whatever pre-existing meta map we might already have (can use this info in case an API fails)
         cache_file = pathlib.Path(self.smart_api_and_meta_map_cache )
         if cache_file.exists():
@@ -201,7 +201,7 @@ class KPInfoCacher:
 
     @staticmethod
     def _convert_meta_kg_to_meta_map(kp_meta_kg: dict) -> dict:
-        kp_meta_map = dict()
+        kp_meta_map: dict[str, dict[str, set[str]]] = dict()
         for meta_edge in kp_meta_kg["edges"]:
             subject_category = meta_edge["subject"]
             object_category = meta_edge["object"]

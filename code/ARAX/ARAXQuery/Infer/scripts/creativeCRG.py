@@ -12,7 +12,6 @@ pathlist = os.getcwd().split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
 from ARAX_response import ARAXResponse
-from ARAX_query import ARAXQuery
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
 import openapi_server
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
