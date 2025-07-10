@@ -541,8 +541,9 @@ class ComputeFTEST:
 
                 res_dict = dict()
                 failure_nodes = list()
-                for node in node_curie if type(node_curie)==list else (node_curie,):
-                    tmplist = set([edge_key for edge_key in answer_kg.edges if answer_kg.edges[edge_key].subject == node or answer_kg.edges[edge_key].object == node])
+                node_iter = node_curie if isinstance(node_curie, list) else (node_curie,)
+                for node in node_iter:
+                    tmplist = set(answer_kg.nodes_by_qg_id['FET_n01'].keys())
                     if len(tmplist) == 0:
                         self.response.warning(f"Fail to query adjacent nodes from {kp} for {node} in FET probably because expander ignores node type. For more details, please see issue897.")
                         failure_nodes.append(node)
@@ -551,7 +552,7 @@ class ComputeFTEST:
                     res_dict[node] = len(tmplist)
 
                 if check_empty is True:
-                    return (res_dict,failure_nodes)
+                    return (res_dict, failure_nodes)
                 else:
                     return (res_dict,[])
             except:
