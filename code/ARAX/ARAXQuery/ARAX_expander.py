@@ -31,6 +31,7 @@ from openapi_server.models.attribute import Attribute
 from openapi_server.models.retrieval_source import RetrievalSource
 from Expand.trapi_querier import TRAPIQuerier
 
+UNBOUND_NODES_KEY = "__UNBOUND__"
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -905,8 +906,8 @@ class ARAXExpander:
                                                     edges={qedge_key: dict() for qedge_key in answer_kg.edges_by_qg_id})
         curie_mappings = dict()
 
-        # First deduplicate the nodes
-        for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
+        # First deduplicate the bound nodes
+        for qnode_key, nodes in {**answer_kg.nodes_by_qg_id, UNBOUND_NODES_KEY: answer_kg.unbound_nodes}.items():
             # Load preferred curie info from NodeSynonymizer
             log.debug(f"{kp_name}: Getting preferred curies for {qnode_key} nodes returned in this step")
             canonicalized_nodes = eu.get_canonical_curies_dict(list(nodes), log) if nodes else dict()
@@ -931,11 +932,17 @@ class ARAXExpander:
                     curie_mappings[node_key] = preferred_curie
 
                 # Add this node into our deduplicated KG as necessary
-                if preferred_curie not in deduplicated_kg.nodes_by_qg_id[qnode_key]:
-                    node_key = preferred_curie
-                    node.name = preferred_name
-                    node.categories = preferred_categories
-                    deduplicated_kg.add_node(node_key, node, qnode_key)
+                if qnode_key != UNBOUND_NODES_KEY:
+                    if preferred_curie not in deduplicated_kg.nodes_by_qg_id[qnode_key]:
+                        node_key = preferred_curie
+                        node.name = preferred_name
+                        node.categories = preferred_categories
+                        deduplicated_kg.add_node(node_key, node, qnode_key)
+                else:  # this is an unbound node
+                    if preferred_curie not in deduplicated_kg.unbound_nodes:
+                        node.name = preferred_name
+                        node.categories = preferred_categories
+                        deduplicated_kg.unbound_nodes[preferred_curie] = node
 
         # Then update the edges to reflect changes made to the nodes
         dropped_edge_count = dict()

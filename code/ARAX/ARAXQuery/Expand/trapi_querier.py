@@ -437,18 +437,16 @@ class TRAPIQuerier:
                     answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
             else:
                 returned_edge_keys_missing_qg_bindings.add(returned_edge_key)
-        if returned_edge_keys_missing_qg_bindings:
-            self.log.warning(f"{self.kp_infores_curie}: {len(returned_edge_keys_missing_qg_bindings)} edges in the KP's answer "
-                             f"KG have no bindings to the QG: {returned_edge_keys_missing_qg_bindings}")
 
         # Populate our final KG with the returned nodes
-        returned_node_keys_missing_qg_bindings = set()
+        returned_node_keys_missing_qg_bindings = dict()
+        nodes_referenced_in_result_analysis_edges = set()
         for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
             if not returned_node_key:
                 self.log.warning(f"{self.kp_infores_curie}: Node has empty ID, skipping. Node key is: "
                                  f"'{returned_node_key}'")
             elif returned_node_key not in kg_to_qg_mappings['nodes']:
-                returned_node_keys_missing_qg_bindings.add(returned_node_key)
+                returned_node_keys_missing_qg_bindings[returned_node_key] = returned_node
             else:
                 for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
                     answer_kg.add_node(returned_node_key, returned_node, qnode_key)
@@ -457,8 +455,37 @@ class TRAPIQuerier:
                     if not attribute.attribute_type_id:
                         attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_infores_curie})"
         if returned_node_keys_missing_qg_bindings:
-            self.log.warning(f"{self.kp_infores_curie}: {len(returned_node_keys_missing_qg_bindings)} nodes in the KP's answer "
-                             f"KG have no bindings to the QG: {returned_node_keys_missing_qg_bindings}")
+            for result in kp_message.results:
+                for analysis in result.analyses:
+                    for qedge_key, edge_bindings in analysis.edge_bindings.items():
+                        if qedge_key in qg.edges:
+                            for edge_binding in edge_bindings:
+                                edge_id = edge_binding.id
+                                if edge_id in kp_message.knowledge_graph.edges:
+                                    edge = kp_message.knowledge_graph.edges[edge_id]
+                                    nodes_referenced_in_result_analysis_edges.add(edge.subject)
+                                    nodes_referenced_in_result_analysis_edges.add(edge.object)
+
+        allowed_unbound_nodes = dict()
+        unreferenced_unbound_nodes = dict()
+        for node_key, node in returned_node_keys_missing_qg_bindings.items():
+            if node_key in nodes_referenced_in_result_analysis_edges:
+                allowed_unbound_nodes[node_key] = node
+            else:
+                unreferenced_unbound_nodes[node_key] = node
+        answer_kg.unbound_nodes = allowed_unbound_nodes
+        allowed_unbound_edges = set()
+        if returned_edge_keys_missing_qg_bindings:
+            for aux_graph_id, aux_graph in kp_message.auxiliary_graphs.items():
+                for edge_id in aux_graph.edges:
+                    allowed_unbound_edges.add(edge_id)
+        returned_edge_keys_missing_qg_bindings -= allowed_unbound_edges
+        if returned_edge_keys_missing_qg_bindings:
+            self.log.warning(f"{self.kp_infores_curie}: {len(returned_edge_keys_missing_qg_bindings)} edges in the KP's answer "
+                             f"KG have no bindings to the QG: {returned_edge_keys_missing_qg_bindings}")
+        if unreferenced_unbound_nodes:
+            self.log.warning(f"{self.kp_infores_curie}: {len(unreferenced_unbound_nodes)} nodes in the KP's answer "
+                             f"KG have no bindings to the QG and are not referenced in any analysis: {set(unreferenced_unbound_nodes.keys())}")
 
         # Fill out our unofficial node.query_ids property
         for nodes in answer_kg.nodes_by_qg_id.values():

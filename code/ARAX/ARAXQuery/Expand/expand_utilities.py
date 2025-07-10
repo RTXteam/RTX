@@ -36,12 +36,16 @@ RTXConfig = RTXConfiguration()
 
 
 class QGOrganizedKnowledgeGraph:
-    def __init__(self, nodes: Dict[str, Dict[str, Node]] = None, edges: Dict[str, Dict[str, Edge]] = None):
+    def __init__(self,
+                 nodes: Dict[str, Dict[str, Node]] = None,
+                 edges: Dict[str, Dict[str, Edge]] = None,
+                 unbound_nodes: Dict[str, Node] = None):
         self.nodes_by_qg_id = nodes if nodes else dict()
         self.edges_by_qg_id = edges if edges else dict()
+        self.unbound_nodes = unbound_nodes if unbound_nodes else dict()
 
     def __str__(self):
-        return f"nodes_by_qg_id:\n{self.nodes_by_qg_id}\nedges_by_qg_id:\n{self.edges_by_qg_id}"
+        return f"nodes_by_qg_id:\n{self.nodes_by_qg_id}\nedges_by_qg_id:\n{self.edges_by_qg_id}\nunbound_nodes:\n{self.unbound_nodes}"
 
     def add_node(self, node_key: str, node: Node, qnode_key: str):
         if qnode_key not in self.nodes_by_qg_id:
@@ -201,7 +205,7 @@ def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> Dict[str, int]:
 def get_printable_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> str:
     counts_by_qg_id = get_counts_by_qg_id(dict_kg)
     counts_string = ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
-    return counts_string if counts_string else "no answers"
+    return (counts_string + f", Unbound: {len(dict_kg.unbound_nodes)}")  if counts_string else "no answers"
 
 
 def get_qg_without_kryptonite_portion(qg: QueryGraph) -> QueryGraph:
