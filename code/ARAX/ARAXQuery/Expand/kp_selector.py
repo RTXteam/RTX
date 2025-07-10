@@ -9,11 +9,11 @@ from itertools import product
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
 from kp_info_cacher import KPInfoCacher
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelper")
 from biolink_helper import BiolinkHelper
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
@@ -44,7 +44,9 @@ class KPSelector:
                 self.log.error(f"Failed to load KP info caches due to {e}", error_code="LoadKPCachesFailed")
                 return None, None, None, None
 
-            return (meta_map, smart_api_info["allowed_kp_urls"], smart_api_info["kps_excluded_by_version"],
+            return (meta_map,
+                    smart_api_info["allowed_kp_urls"],
+                    smart_api_info["kps_excluded_by_version"],
                     smart_api_info["kps_excluded_by_maturity"])
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[set[str]]:
