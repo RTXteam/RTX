@@ -527,7 +527,7 @@ class ComputeFTEST:
                         user_specified_kp=False,
                         kp_timeout=30,
                         kp_selector=kp_selector,
-                        log=log,
+                        log=self.response,
                         multiple_kps=False,
                         be_creative_treats=False
                     )
