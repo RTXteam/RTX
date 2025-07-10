@@ -3,14 +3,16 @@
 # a list of source nodes with certain qnode_id in KG and each of the target nodes with specified type.
 
 # relative imports
-import scipy.stats as stats
-import traceback
-import sys
+import asyncio
+import collections
+import multiprocessing
 import os
 import re
-import multiprocessing
+import scipy.stats as stats
+import sqlite3
+import sys
+import traceback
 from datetime import datetime
-from neo4j import GraphDatabase, basic_auth
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
@@ -26,8 +28,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../NodeSynonym
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
-import collections
-import sqlite3
 
 
 class ComputeFTEST:
@@ -518,21 +518,28 @@ class ComputeFTEST:
             kp_selector = KPSelector(self.response)
 
             try:
-                answer_kg, log = await expander._expand_edge_async(query_graph,
-                                                                   kp,
-                                                                   True,
-                                                                   None,
-                                                                   kp_selector,
-                                                                   self.response,
-                                                                   False,
-                                                                   False)
-                result = araxq.query(query)
+
+                # your async call wrapped inside an async def
+                async def run_expand():
+                    return await expander._expand_edge_async(
+                        query_graph,
+                        kp_to_use="infores:rtx-kg2",
+                        user_specified_kp=False,
+                        kp_timeout=30,
+                        kp_selector=kp_selector,
+                        log=log,
+                        multiple_kps=False,
+                        be_creative_treats=False
+                    )
+
+                # then run it from your sync code
+                answer_kg, log = asyncio.run(run_expand())
+                
                 if log.status != 'OK':
                     self.response.error(f"Fail to query adjacent nodes from infores:rtx-kg2 for {node_curie}")
                     return res
 
                 res_dict = dict()
-                message = araxq.response.envelope.message
                 failure_nodes = list()
                 for node in node_curie if type(node_curie)==list else (node_curie,):
                     tmplist = set([edge_key for edge_key in answer_kg.edges if answer_kg.edges[edge_key].subject == node or answer_kg.edges[edge_key].object == node])
