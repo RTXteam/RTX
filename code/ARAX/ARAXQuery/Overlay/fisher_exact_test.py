@@ -500,6 +500,7 @@ class ComputeFTEST:
                 return (res_dict, [])
 
         else:
+            infores_key = "infores:rtx-kg2"
             from ARAX_expander import ARAXExpander
             expander = ARAXExpander()
             query_graph_builtin = {'nodes':
@@ -517,6 +518,7 @@ class ComputeFTEST:
             from kp_selector import KPSelector
             kp_selector = KPSelector(kg2_mode=True,
                                      log=self.response)
+            kp_selector.kp_urls = {infores_key: rtxconfig.plover_url}
 
             try:
 
@@ -524,7 +526,7 @@ class ComputeFTEST:
                 async def run_expand():
                     return await expander._expand_edge_async(
                         query_graph,
-                        kp_to_use="infores:rtx-kg2",
+                        kp_to_use=infores_key,
                         user_specified_kp=False,
                         kp_timeout=30,
                         kp_selector=kp_selector,
