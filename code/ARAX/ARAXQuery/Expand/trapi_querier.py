@@ -18,7 +18,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import Expand.expand_utilities as eu
 from Expand.expand_utilities import QGOrganizedKnowledgeGraph
 from Expand.kp_selector import KPSelector
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -118,7 +118,7 @@ class TRAPIQuerier:
         # Convert the QG so that it uses curies with prefixes the KP likes
         qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_infores_curie, log)
         if not qg_copy:  # Means no equivalent curies with supported prefixes were found
-            skipped_message = f"No equivalent curies with supported prefixes found"
+            skipped_message = "No equivalent curies with supported prefixes found"
             log.update_query_plan(qedge_key, self.kp_infores_curie, "Skipped", skipped_message)
             return final_kg
 
@@ -163,7 +163,7 @@ class TRAPIQuerier:
         # Convert the QG so that it uses curies with prefixes the KP likes
         qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_infores_curie, log)
         if not qg_copy:  # Means no equivalent curies with supported prefixes were found
-            skipped_message = f"No equivalent curies with supported prefixes found"
+            skipped_message = "No equivalent curies with supported prefixes found"
             log.update_query_plan(qedge_key, self.kp_infores_curie, "Skipped", skipped_message)
             return final_kg
 

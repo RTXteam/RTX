@@ -4,13 +4,11 @@ import copy
 import sys
 import os
 import traceback
-import yaml
 from typing import Union, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
-from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
@@ -31,8 +29,6 @@ from biolink_helper import BiolinkHelper
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration
-RTXConfig = RTXConfiguration()
 
 
 class QGOrganizedKnowledgeGraph:
@@ -290,7 +286,7 @@ def get_curie_synonyms(curie: Union[str, list[str]], log: Optional[ARAXResponse]
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
         equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
-        log.debug(f"Got response back from NodeSynonymizer")
+        log.debug("Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
@@ -307,7 +303,7 @@ def get_curie_synonyms(curie: Union[str, list[str]], log: Optional[ARAXResponse]
             all_curies = equivalent_curies.union(set(curies))  # Make sure even curies without synonyms are included
             return sorted(list(all_curies))
         else:
-            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return []
 
 
@@ -320,7 +316,7 @@ def get_curie_synonyms_dict(curie: Union[str, list[str]],
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
         equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
-        log.debug(f"Got response back from NodeSynonymizer")
+        log.debug("Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
@@ -338,7 +334,7 @@ def get_curie_synonyms_dict(curie: Union[str, list[str]],
                 final_curie_dict[input_curie] = list(curie_dict) if curie_dict else [input_curie]
             return final_curie_dict
         else:
-            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return dict()
 
 
@@ -348,7 +344,7 @@ def get_canonical_curies_dict(curie: Union[str, list[str]], log: ARAXResponse) -
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
         canonical_curies_dict = synonymizer.get_canonical_curies(curies)
-        log.debug(f"Got response back from NodeSynonymizer")
+        log.debug("Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
@@ -362,7 +358,7 @@ def get_canonical_curies_dict(curie: Union[str, list[str]], log: ARAXResponse) -
                 log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
             return canonical_curies_dict
         else:
-            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return {}
 
 
@@ -372,7 +368,7 @@ def get_canonical_curies_list(curie: Union[str, list[str]], log: ARAXResponse) -
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
         canonical_curies_dict = synonymizer.get_canonical_curies(curies)
-        log.debug(f"Got response back from NodeSynonymizer")
+        log.debug("Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
@@ -389,10 +385,10 @@ def get_canonical_curies_list(curie: Union[str, list[str]], log: ARAXResponse) -
             # Include any original curies we weren't able to find a canonical version for
             canonical_curies.update(unrecognized_curies)
             if not canonical_curies:
-                log.error(f"Final list of canonical curies is empty. This shouldn't happen!", error_code="CanonicalCurieIssue")
+                log.error("Final list of canonical curies is empty. This shouldn't happen!", error_code="CanonicalCurieIssue")
             return list(canonical_curies)
         else:
-            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return []
 
 
@@ -401,7 +397,7 @@ def get_preferred_categories(curie: Union[str, list[str]], log: ARAXResponse) ->
     synonymizer = NodeSynonymizer()
     log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
     canonical_curies_dict = synonymizer.get_canonical_curies(curies)
-    log.debug(f"Got response back from NodeSynonymizer")
+    log.debug("Got response back from NodeSynonymizer")
     if canonical_curies_dict is not None:
         recognized_input_curies = {input_curie for input_curie in canonical_curies_dict if canonical_curies_dict.get(input_curie)}
         unrecognized_curies = set(curies).difference(recognized_input_curies)
@@ -412,10 +408,10 @@ def get_preferred_categories(curie: Union[str, list[str]], log: ARAXResponse) ->
         if preferred_categories:
             return list(preferred_categories)
         else:
-            log.warning(f"Unable to find any preferred categories; will default to biolink:NamedThing")
+            log.warning("Unable to find any preferred categories; will default to biolink:NamedThing")
             return ["biolink:NamedThing"]
     else:
-        log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+        log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
         return []
 
 
@@ -602,11 +598,11 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph,
         orphaned_nodes = removed_nodes - connected_nodes
         for node_key in orphaned_nodes:
             del kg.nodes[node_key]
-    except:
+    except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
         log.error(tb, error_code=error_type.__name__) # type: ignore[union-attr]
-        log.error(f"Something went wrong removing semmeddb edges from the knowledge graph")
+        log.error("Something went wrong removing semmeddb edges from the knowledge graph")
     else:
         log.info(f"{edges_removed_counter} Semmeddb Edges with low publication count successfully removed")
 
@@ -624,7 +620,7 @@ def filter_response_domain_range_exclusion(plover_answer, qg, log: ARAXResponse)
                 filtered_count += 1
 
         log.info(f"Filtered out {filtered_count} edges from response due to domain range exclusion")
-    except:
+    except Exception:
         log.warning("Plover response does not have domain_range_exclusion key.")
 
 
@@ -658,7 +654,7 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
     prune_message.query_graph = qg
     prune_message.knowledge_graph = regular_format_kg
     if overlay_fet:
-        log.debug(f"Determining whether we can use FET to assess quality of intermediate answers in Expand")
+        log.debug("Determining whether we can use FET to assess quality of intermediate answers in Expand")
         # Figure out which qnodes to overlay FET edges between
         connected_qedges = [qedge for qedge in qg.edges.values()
                             if qedge.subject == qnode_key_to_prune or qedge.object == qnode_key_to_prune]
@@ -678,7 +674,7 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
         if qnode_pairs_to_overlay:
             log.debug(f"Qnode pairs to overlay FET between are: {qnode_pairs_to_overlay}")
         else:
-            log.debug(f"No suitable qnode pairs to overlay FET between were detected. Continuing pruning without FET.")
+            log.debug("No suitable qnode pairs to overlay FET between were detected. Continuing pruning without FET.")
 
         # Overlay FET between each of the selected qnode pairs
         for qnode_pair in qnode_pairs_to_overlay:
@@ -699,7 +695,7 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
             if prune_response.status != "OK":
                 log.warning(f"FET produced an error when Expand tried to use it to prune the KG. "
                             f"Log was: {prune_response.show()}")
-                log.debug(f"Will continue pruning without overlaying FET")
+                log.debug("Will continue pruning without overlaying FET")
                 # Get rid of any FET edges that might be in the KG/QG, since this step failed
                 remove_edges_with_qedge_key(prune_response.envelope.message.knowledge_graph, fet_qedge_key)
                 qg.edges.pop(fet_qedge_key, None)
@@ -708,14 +704,14 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
                 if fet_qedge_key in qg.edges:
                     qg.edges[fet_qedge_key].option_group_id = f"FET_VIRTUAL_GROUP_{pair_string_id}"
                 else:
-                    log.warning(f"Attempted to overlay FET from Expand, but it didn't work. Pruning without it.")
+                    log.warning("Attempted to overlay FET from Expand, but it didn't work. Pruning without it.")
 
     # Create results and rank them as appropriate
-    log.debug(f"Calling Resultify from Expand..")
+    log.debug("Calling Resultify from Expand..")
     resultifier.apply(prune_response, {})
     if rank_results:
         try:
-            log.debug(f"Ranking Expand's intermediate pruning results")
+            log.debug("Ranking Expand's intermediate pruning results")
             ranker = ARAXRanker()
             ranker.aggregate_scores_dmk(prune_response)
         except Exception as error:
@@ -750,7 +746,7 @@ def get_knowledge_source_constraints(edge):
             if negated:
                 denylist |= knowledge_sources
             else:
-                if allowlist == None:
+                if allowlist is None:
                     allowlist = set()
                 allowlist |= knowledge_sources
     return allowlist, denylist

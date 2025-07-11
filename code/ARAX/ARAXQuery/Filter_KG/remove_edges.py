@@ -1,16 +1,8 @@
 # This class will overlay the normalized google distance on a message (all edges)
 #!/bin/env python3
-import sys
-import os
-import traceback
 import numpy as np
-
-# relative imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.attribute import Attribute as EdgeAttribute
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
-from NormGoogleDistance import NormGoogleDistance as NGD
+import sys
+import traceback
 
 
 class RemoveEdges:
@@ -31,7 +23,7 @@ class RemoveEdges:
                     qids[qid] += 1
         for k, v in qids.items():
             if v == 0:
-                self.response.error(f"Fiter removed all of the nodes in the knowledge graph with the qnode id {k}", error_code="RemovedQueryNode")
+                self.response.error(f"Filter removed all of the nodes in the knowledge graph with the qnode id {k}", error_code="RemovedQueryNode")
 
 
     def remove_edges_by_predicate(self):
@@ -39,8 +31,8 @@ class RemoveEdges:
         Iterate over all the edges in the knowledge graph, remove any edges matching the discription provided.
         :return: response
         """
-        self.response.debug(f"Removing Edges")
-        self.response.info(f"Removing edges from the knowledge graph matching the specified predicate")
+        self.response.debug("Removing Edges")
+        self.response.info("Removing edges from the knowledge graph matching the specified predicate")
         edge_params = self.edge_parameters
         try:
             edges_to_remove = set()
@@ -63,9 +55,8 @@ class RemoveEdges:
                             else:
                                 node_keys_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
             if edge_params['remove_connected_nodes']:
-                self.response.debug(f"Removing Nodes")
-                self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
-                i = 0
+                self.response.debug("Removing Nodes")
+                self.response.info("Removing connected nodes and their edges from the knowledge graph")
                 nodes_to_remove = set()
                 skipped_qnode_keys = set()
                 # iterate over nodes find adjacent connected nodes
@@ -96,7 +87,6 @@ class RemoveEdges:
                 for key in skipped_qnode_keys:
                     del node_keys_to_remove[key]
                 # remove connected nodes
-                #self.message.knowledge_graph.nodes = [val for idx,val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
                 for key in nodes_to_remove:
                     del self.message.knowledge_graph.nodes[key]
                 # iterate over edges find edges connected to the nodes
@@ -120,13 +110,13 @@ class RemoveEdges:
                 else:
                     del self.message.knowledge_graph.edges[key]
                     
-        except:
+        except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code = error_type.__name__)
-            self.response.error(f"Something went wrong removing edges from the knowledge graph")
+            self.response.error("Something went wrong removing edges from the knowledge graph")
         else:
-            self.response.info(f"Edges successfully removed")
+            self.response.info("Edges successfully removed")
 
         return self.response
 
@@ -135,8 +125,8 @@ class RemoveEdges:
         Iterate over all the edges in the knowledge graph, remove any edges matching the discription provided.
         :return: response
         """
-        self.response.debug(f"Removing Edges")
-        self.response.info(f"Removing edges from the knowledge graph matching the specified property")
+        self.response.debug("Removing Edges")
+        self.response.info("Removing edges from the knowledge graph matching the specified property")
         edge_params = self.edge_parameters
         # FW: Hack to allow all provided by synonyms
         provided_by_attributes = {'knowledge_source',
@@ -179,7 +169,8 @@ class RemoveEdges:
                             edge_dict[edge_params['edge_attribute']] = edge_params['value']
 
                 if edge_params['edge_attribute'] in edge_dict:
-                    if type(edge_dict[edge_params['edge_attribute']]) == list or type(edge_dict[edge_params['edge_attribute']]) == set:
+                    if isinstance(edge_dict[edge_params['edge_attribute']], list) or \
+                       isinstance(edge_dict[edge_params['edge_attribute']], set):
                         if edge_params['value'] in edge_dict[edge_params['edge_attribute']]:
                             edges_to_remove.add(key)
                             if edge_params['remove_connected_nodes']:
@@ -206,8 +197,8 @@ class RemoveEdges:
                                     else:
                                         node_keys_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
             if edge_params['remove_connected_nodes']:
-                self.response.debug(f"Removing Nodes")
-                self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
+                self.response.debug("Removing Nodes")
+                self.response.info("Removing connected nodes and their edges from the knowledge graph")
                 nodes_to_remove = set()
                 skipped_qnode_keys = set()
                 # iterate over nodes find adjacent connected nodes
@@ -261,13 +252,13 @@ class RemoveEdges:
                             f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
                 else:
                     del self.message.knowledge_graph.edges[key]
-        except:
+        except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code = error_type.__name__)
-            self.response.error(f"Something went wrong removing edges from the knowledge graph")
+            self.response.error("Something went wrong removing edges from the knowledge graph")
         else:
-            self.response.info(f"Edges successfully removed")
+            self.response.info("Edges successfully removed")
 
         return self.response
 
@@ -276,8 +267,8 @@ class RemoveEdges:
         Iterate over all the edges in the knowledge graph, remove any edges matching with the attribute provided.
         :return: response
         """
-        self.response.debug(f"Removing Edges")
-        self.response.info(f"Removing edges from the knowledge graph with the specified attribute values")
+        self.response.debug("Removing Edges")
+        self.response.info("Removing edges from the knowledge graph with the specified attribute values")
         edge_params = self.edge_parameters
         try:
             if edge_params['direction'] == 'above':
@@ -311,8 +302,8 @@ class RemoveEdges:
                                             else:
                                                 node_keys_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
             if edge_params['remove_connected_nodes']:
-                self.response.debug(f"Removing Nodes")
-                self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
+                self.response.debug("Removing Nodes")
+                self.response.info("Removing connected nodes and their edges from the knowledge graph")
                 nodes_to_remove = set()
                 skipped_qnode_keys = set()
                 # iterate over nodes find adjacent connected nodes
@@ -371,13 +362,13 @@ class RemoveEdges:
                             f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
                 else:
                     del self.message.knowledge_graph.edges[key]
-        except:
+        except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code=error_type.__name__)
-            self.response.error(f"Something went wrong removing edges from the knowledge graph")
+            self.response.error("Something went wrong removing edges from the knowledge graph")
         else:
-            self.response.info(f"Edges successfully removed")
+            self.response.info("Edges successfully removed")
 
         return self.response
 
@@ -386,8 +377,8 @@ class RemoveEdges:
         Iterate over all the edges in the knowledge graph, remove any edges matching with the attribute provided.
         :return: response
         """
-        self.response.debug(f"Removing Edges")
-        self.response.info(f"Removing edges from the knowledge graph with the specified attribute values")
+        self.response.debug("Removing Edges")
+        self.response.info("Removing edges from the knowledge graph with the specified attribute values")
         edge_params = self.edge_parameters
         try:
             edges_to_remove = set()
@@ -456,8 +447,8 @@ class RemoveEdges:
                             node_keys_to_remove[edge[3]].add(edge_qid_dict[qedge_key]['object'])
 
             if edge_params['remove_connected_nodes']:
-                self.response.debug(f"Removing Nodes")
-                self.response.info(f"Removing connected nodes and their edges from the knowledge graph")
+                self.response.debug("Removing Nodes")
+                self.response.info("Removing connected nodes and their edges from the knowledge graph")
                 nodes_to_remove = set()
                 skipped_qnode_keys = set()
                 # iterate over nodes find adjacent connected nodes
@@ -514,12 +505,12 @@ class RemoveEdges:
                             f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
                 else:
                     del self.message.knowledge_graph.edges[key]
-        except:
+        except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code=error_type.__name__)
-            self.response.error(f"Something went wrong removing edges from the knowledge graph")
+            self.response.error("Something went wrong removing edges from the knowledge graph")
         else:
-            self.response.info(f"Edges successfully removed")
+            self.response.info("Edges successfully removed")
 
         return self.response
