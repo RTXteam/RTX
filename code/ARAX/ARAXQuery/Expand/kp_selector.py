@@ -16,7 +16,9 @@ from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
 from RTXConfiguration import RTXConfiguration
-RTXConfig = RTXConfiguration()
+
+
+RTX_CONFIG = RTXConfiguration()
 
 
 class KPSelector:
@@ -89,11 +91,11 @@ class KPSelector:
         for missing_kp in kps_missing_meta_info:
             self.log.update_query_plan(qedge_key, missing_kp, "Skipped", "No MetaKG info available")
 
-        version = RTXConfig.trapi_major_version
+        version = RTX_CONFIG.trapi_major_version
         for kp in set(filter(None, self.kps_excluded_by_version)):  # TODO: Look into why sometimes infores is None?
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a TRAPI {version} endpoint")
             self.log.debug(f"Skipped {kp}: KP does not have a TRAPI {version} endpoint")
-        maturity = RTXConfig.maturity
+        maturity = RTX_CONFIG.maturity
         for kp in set(filter(None, self.kps_excluded_by_maturity)):
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a {maturity} TRAPI {version} endpoint")
             self.log.debug(f"Skipped {kp}: KP does not have a {maturity} TRAPI {version} endpoint")
@@ -256,7 +258,7 @@ class KPSelector:
 
 def main():
     kp_selector = KPSelector()
-    print(f"Meta map is:")
+    print("Meta map is:")
     pp = pprint.PrettyPrinter(indent=2)
     pp.pprint(kp_selector.meta_map)
 
