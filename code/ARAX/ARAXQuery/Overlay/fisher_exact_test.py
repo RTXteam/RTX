@@ -81,7 +81,7 @@ class ComputeFTEST:
         self.sqlite_file_path = sqlite_file_path
 
         if rel_edge_key is not None:
-            self.response.warning("The 'rel_edge_key' option in FET is specified, it will cause slow for the calculation of FEST test.")
+            self.response.warning(f"The 'rel_edge_key' option in FET is specified ({rel_edge_key}); it will cause slow for the calculation of the test.")
 
         # initialize some variables
         nodes_info = {}
@@ -492,15 +492,17 @@ class ComputeFTEST:
             expander = ARAXExpander()
             query_graph_builtin = {'nodes':
                                    {'FET_n00':
-                                    {'ids': node_curie},
+                                    {'ids': node_curie,
+                                     'is_set': False},
                                     'FET_n01':
-                                    {'categories': [adjacent_type]}},
+                                    {'categories': [adjacent_type],
+                                     'is_set': False}},
                                    'edges':
                                    {'FET_e00':
                                     {'subject': 'FET_n00',
                                      'object': 'FET_n01',
                                      'predicates': [rel_type]}
-                                   }}
+                                    }}
             query_graph = QueryGraph.from_dict(query_graph_builtin)
             from kp_selector import KPSelector
             kp_selector = KPSelector(kg2_mode=True,
@@ -534,9 +536,9 @@ class ComputeFTEST:
                 node_iter = node_curie if isinstance(node_curie, list) else (node_curie,)
                 check_empty = False
                 for node in node_iter:
-                    tmplist = set(answer_kg.nodes_by_qg_id['FET_n01'].keys())
+                    tmplist = set(edge_id for edge_id, edge in answer_kg.edges_by_qg_id['FET_e00'].items() if edge.subject == node or edge.object == node)
                     if len(tmplist) == 0:
-                        self.response.warning(f"Fail to query adjacent nodes from {kp} for {node} in FET probably because expander ignores node type. For more details, please see issue897.")
+                        self.response.warning(f"Failed to query adjacent nodes from {kp} for {node} in FET, probably because expander ignores node type. For more details, please see RTXteam/RTX issue 897.")
                         failure_nodes.append(node)
                         check_empty = True
                         continue
@@ -551,6 +553,7 @@ class ComputeFTEST:
                 self.response.error(tb, error_code=error_type.__name__)
                 self.response.error(f"Something went wrong with querying adjacent nodes from {kp} for {node_curie}")
                 return res
+
 
     def size_of_given_type_in_KP(self, node_type):
         """
