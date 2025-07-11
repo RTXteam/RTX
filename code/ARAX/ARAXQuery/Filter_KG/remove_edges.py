@@ -23,7 +23,7 @@ class RemoveEdges:
                     qids[qid] += 1
         for k, v in qids.items():
             if v == 0:
-                self.response.error(f"Fiter removed all of the nodes in the knowledge graph with the qnode id {k}", error_code="RemovedQueryNode")
+                self.response.error(f"Filter removed all of the nodes in the knowledge graph with the qnode id {k}", error_code="RemovedQueryNode")
 
 
     def remove_edges_by_predicate(self):
@@ -87,7 +87,6 @@ class RemoveEdges:
                 for key in skipped_qnode_keys:
                     del node_keys_to_remove[key]
                 # remove connected nodes
-                #self.message.knowledge_graph.nodes = [val for idx,val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
                 for key in nodes_to_remove:
                     del self.message.knowledge_graph.nodes[key]
                 # iterate over edges find edges connected to the nodes
