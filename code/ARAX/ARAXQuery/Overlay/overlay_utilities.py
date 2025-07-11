@@ -58,7 +58,7 @@ def get_node_pairs_to_overlay(subject_qnode_key: str, object_qnode_key: str, que
         if node_pairs:
             return node_pairs
     # Back up to using the old (O(n^2)) method of all combinations of subject/object nodes in the KG
-    log.warning(f"Failed to narrow down node pairs to overlay; defaulting to all possible combinations")
+    log.warning("Failed to narrow down node pairs to overlay; defaulting to all possible combinations")
     return set(itertools.product(kg_nodes_by_qg_id[subject_qnode_key], kg_nodes_by_qg_id[object_qnode_key]))
 
 
@@ -109,14 +109,14 @@ def update_results_with_overlay_edge(subject_knode_key: str, object_knode_key: s
                 for qedge_key in analysis.edge_bindings.keys():
                     if kedge_key not in set([x.id for x in analysis.edge_bindings[qedge_key]]):
                         if qedge_key not in message.query_graph.edges:
-                            log.warning(f"Encountered a result edge binding which does not exist in the query graph")
+                            log.warning("Encountered a result edge binding which does not exist in the query graph")
                             continue
                         subject_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].subject]]
                         object_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].object]]
                         result_nodes = set(subject_nodes).union(set(object_nodes))
                         if subject_knode_key in result_nodes and object_knode_key in result_nodes:
                             analysis.edge_bindings[qedge_key].append(new_edge_binding)
-    except:
+    except Exception:
         tb = traceback.format_exc()
         log.error(f"Error encountered when modifying results with overlay edge (subject_knode_key)-kedge_key-(object_knode_key):\n{tb}",
                     error_code="UncaughtError")
