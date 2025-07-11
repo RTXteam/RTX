@@ -532,6 +532,7 @@ class ComputeFTEST:
                 res_dict = dict()
                 failure_nodes = list()
                 node_iter = node_curie if isinstance(node_curie, list) else (node_curie,)
+                check_empty = False
                 for node in node_iter:
                     tmplist = set(answer_kg.nodes_by_qg_id['FET_n01'].keys())
                     if len(tmplist) == 0:
@@ -540,11 +541,10 @@ class ComputeFTEST:
                         check_empty = True
                         continue
                     res_dict[node] = len(tmplist)
-
-                if check_empty is True:
+                if check_empty:
                     return (res_dict, failure_nodes)
                 else:
-                    return (res_dict,[])
+                    return (res_dict, [])
             except Exception:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
