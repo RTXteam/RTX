@@ -10,15 +10,15 @@ import ast
 import re
 
 
-from typing import Set, Union, Dict, List, Callable
+from typing import Union, Dict, Callable
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
 from openapi_server.models.edge import Edge
-from openapi_server.models.attribute import Attribute
+
 
 edge_confidence_manual_agent = 0.90
 
@@ -31,7 +31,7 @@ def _get_query_graph_networkx_from_query_graph(query_graph: QueryGraph) -> nx.Mu
     return query_graph_nx
 
 
-def _calculate_final_individual_edge_confidence(base_score: int, attribute_scores: List[float]) -> float:
+def _calculate_final_individual_edge_confidence(base_score: int, attribute_scores: list[float]) -> float:
     
     # use Eric's loop algorithm
     W_r = base_score
@@ -43,7 +43,7 @@ def _calculate_final_individual_edge_confidence(base_score: int, attribute_score
     return W_r
 
 
-def _calculate_final_result_score(all_edge_scores: List[float]) -> float:
+def _calculate_final_result_score(all_edge_scores: list[float]) -> float:
     """
     Calculate the final result score for a given edge binding list considering the individual base edge confidence scores. The looping aglorithm is used:
         W_r = W_r + (1 - W_r) * W_i
@@ -64,8 +64,8 @@ def _calculate_final_result_score(all_edge_scores: List[float]) -> float:
     Final result score = 0.99997984
     
     Parameters:
-        kg_edge_id_to_edge (Dict[str, Edge]): A dictionary mapping edge IDs to Edge objects.
-        edge_binding_list (List[Dict]): A list of dictionaries containing edge bindings.
+        kg_edge_id_to_edge (dict[str, Edge]): A dictionary mapping edge IDs to Edge objects.
+        edge_binding_list (list[Dict]): A list of dictionaries containing edge bindings.
     Returns:
         float: The final combined score between 0 and 1.
     """
@@ -74,7 +74,7 @@ def _calculate_final_result_score(all_edge_scores: List[float]) -> float:
 
     return final_score
 
-def _process_valid_edge_ids(valid_edge_id_info: Dict[str, Dict], kg_edge_id_to_edge: Dict[str, Edge]):
+def _process_valid_edge_ids(valid_edge_id_info: dict[str, Dict], kg_edge_id_to_edge: dict[str, Edge]):
     
     results = {}
     
@@ -97,7 +97,7 @@ def _process_valid_edge_ids(valid_edge_id_info: Dict[str, Dict], kg_edge_id_to_e
     return results
 
 
-def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str, Edge],
+def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: dict[str, Edge],
                                                    qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
                                                    result: Result) -> Union[nx.MultiDiGraph,
                                                                             nx.MultiGraph]:
@@ -127,9 +127,9 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str,
     return res_graph
 
 
-def _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge: Dict[str, Edge],
+def _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge: dict[str, Edge],
                                                      qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
-                                                     results: List[Result]) -> List[Union[nx.MultiDiGraph,
+                                                     results: list[Result]) -> list[Union[nx.MultiDiGraph,
                                                                                           nx.MultiGraph]]:
     res_list = []
     for result in results:
@@ -143,9 +143,9 @@ def _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge: Dict[st
 def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
                                                               nx.MultiGraph]) -> Union[nx.DiGraph,
                                                                                        nx.Graph]:
-    if type(graph_nx) == nx.MultiGraph:
+    if isinstance(graph_nx, nx.MultiGraph):
         ret_graph = nx.Graph()
-    elif type(graph_nx) == nx.MultiDiGraph:
+    elif isinstance(graph_nx, nx.MultiDiGraph):
         ret_graph = nx.DiGraph()
     for u, v, data in graph_nx.edges(data=True):
         w = data['weight'] if 'weight' in data else 1.0
@@ -159,13 +159,13 @@ def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
 # computes quantile ranks in *ascending* order (so a higher x entry has a higher
 # "rank"), where ties have the same (average) rank (the reason for using scipy.stats
 # here is specifically in order to handle ties correctly)
-def _quantile_rank_list(x: List[float]) -> np.array:
+def _quantile_rank_list(x: list[float]) -> np.array:
     y = scipy.stats.rankdata(x, method='max')
     return y/len(y)
 
 
-def _score_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGraph,
-                                                                    nx.MultiGraph]]) -> List[float]:
+def _score_networkx_graphs_by_max_flow(result_graphs_nx: list[Union[nx.MultiDiGraph,
+                                                                    nx.MultiGraph]]) -> list[float]:
     max_flow_values = []
     for result_graph_nx in result_graphs_nx:
         if len(result_graph_nx) > 1:
@@ -191,8 +191,8 @@ def _score_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGr
     return max_flow_values
 
 
-def _score_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.MultiDiGraph,
-                                                                        nx.MultiGraph]]) -> List[float]:
+def _score_networkx_graphs_by_longest_path(result_graphs_nx: list[Union[nx.MultiDiGraph,
+                                                                        nx.MultiGraph]]) -> list[float]:
     result_scores = []
     for result_graph_nx in result_graphs_nx:
         apsp_dict = dict(nx.algorithms.shortest_paths.unweighted.all_pairs_shortest_path_length(result_graph_nx))
@@ -211,8 +211,8 @@ def _score_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.Multi
     return result_scores
 
 
-def _score_networkx_graphs_by_frobenius_norm(result_graphs_nx: List[Union[nx.MultiDiGraph,
-                                                                          nx.MultiGraph]]) -> List[float]:
+def _score_networkx_graphs_by_frobenius_norm(result_graphs_nx: list[Union[nx.MultiDiGraph,
+                                                                          nx.MultiGraph]]) -> list[float]:
     result_scores = []
     for result_graph_nx in result_graphs_nx:
         adj_matrix = nx.to_numpy_matrix(result_graph_nx)
@@ -221,11 +221,11 @@ def _score_networkx_graphs_by_frobenius_norm(result_graphs_nx: List[Union[nx.Mul
     return result_scores
 
 
-def _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge: Dict[str, Edge],
+def _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge: dict[str, Edge],
                                                   qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
-                                                  results: List[Result],
-                                                  nx_graph_scorer: Callable[[List[Union[nx.MultiDiGraph,
-                                                                                        nx.MultiGraph]]], np.array]) -> List[float]:
+                                                  results: list[Result],
+                                                  nx_graph_scorer: Callable[[list[Union[nx.MultiDiGraph,
+                                                                                        nx.MultiGraph]]], np.array]) -> list[float]:
     result_graphs_nx = _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge,
                                                                         qg_nx,
                                                                         results)
@@ -645,7 +645,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         Does everything in place (no result returned)
         """
         self.response = response
-        response.debug(f"Starting to rank results")
+        response.debug("Starting to rank results")
         message = response.envelope.message
         self.message = message
 
@@ -702,7 +702,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         if no_non_inf_float_flag:
             response.warning(
-                        f"No non-infinite value was encountered in any edge attribute in the knowledge graph.")
+                        "No non-infinite value was encountered in any edge attribute in the knowledge graph.")
         response.info(f"Summary of available edge metrics: {score_stats}")
 
         edge_ids_manual_agent = set()
