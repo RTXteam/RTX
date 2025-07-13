@@ -4,7 +4,7 @@ import os
 import sqlite3
 import sys
 from collections import defaultdict
-from typing import List, Dict, Optional, Tuple, Union
+from typing import Optional, Union, Any, DefaultDict
 
 import ujson
 
@@ -145,7 +145,7 @@ class ARAXDecorator:
             # NOTE: 'kg2c_edge_id' refers to edge IDs in the KG2c graph; 'kg_edge_key' refers to the key of
             #        an edge in the TRAPI kg.edges; these are not necessarily the same
             # Map KG2c edge IDs to the edges they correspond to in the given KG
-            kg2c_edge_ids_to_kg_keys_map = defaultdict(set)
+            kg2c_edge_ids_to_kg_keys_map: DefaultDict = defaultdict(set)
             for edge_key in edge_keys_to_decorate:
                 edge = kg.edges[edge_key]
                 kg2c_edge_id = self._get_kg2c_edge_key(edge)
@@ -276,8 +276,12 @@ class ARAXDecorator:
                     else:
                         kg_edge.attributes.append(attribute)
 
-    def create_attribute(self, attribute_short_name: str, value: any, attribute_source: Optional[str] = None,
-                         log: Optional[ARAXResponse] = ARAXResponse()) -> Attribute:
+    def create_attribute(self, attribute_short_name: str,
+                         value: Any,
+                         attribute_source: Optional[str] = None,
+                         log: Optional[ARAXResponse] = None) -> Attribute:
+        if log is None:
+            log = ARAXResponse()
         if attribute_short_name not in self.attribute_shells:
             log.error(f"{attribute_short_name} is not a recognized short name for an attribute. Options are: "
                       f"{set(self.attribute_shells)}", error_code="UnrecognizedInput")
@@ -307,7 +311,7 @@ class ARAXDecorator:
                               if source.resource_role == "primary_knowledge_source"] if edge.sources else []
         return primary_ks_sources[0] if primary_ks_sources else ""
 
-    def _connect_to_sqlite(self) -> Tuple[sqlite3.Connection, sqlite3.Cursor]:
+    def _connect_to_sqlite(self) -> tuple[sqlite3.Connection, sqlite3.Cursor]:
         path_list = os.path.realpath(__file__).split(os.path.sep)
         rtx_index = path_list.index("RTX")
         rtxc = RTXConfiguration()
@@ -318,7 +322,7 @@ class ARAXDecorator:
         cursor = connection.cursor()
         return connection, cursor
 
-    def _load_property(self, property_name: str, raw_value: str) -> Union[str, List[str], Dict[str, any], None]:
+    def _load_property(self, property_name: str, raw_value: str) -> Union[str, list[str], dict[str, Any], None]:
         attributes_info_lookup = self.node_attributes if property_name in self.node_attributes else self.edge_attributes
         ultimate_value_type = attributes_info_lookup[property_name]
         if ultimate_value_type is list:
