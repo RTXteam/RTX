@@ -59,13 +59,13 @@ class ARAXDecorator:
 
     def decorate_nodes(self, response: ARAXResponse, only_decorate_bare: bool = False) -> ARAXResponse:
         message = response.envelope.message
-        response.debug(f"Decorating nodes with metadata from KG2c")
+        response.debug("Decorating nodes with metadata from KG2c")
 
         # Get connected to the local KG2c sqlite database
         connection, cursor = self._connect_to_sqlite()
 
         # Extract the KG2c nodes from sqlite
-        response.debug(f"Looking up corresponding KG2c nodes in sqlite")
+        response.debug("Looking up corresponding KG2c nodes in sqlite")
         node_attributes_ordered = list(self.node_attributes)      
         node_keys = set(node_key.replace("'", "''") for node_key, node in message.knowledge_graph.nodes.items()  # Escape quotes
                         if not only_decorate_bare or not (node.attributes and any(attribute for attribute in node.attributes
@@ -82,7 +82,7 @@ class ARAXDecorator:
         connection.close()
 
         # Decorate nodes in the KG with info in these KG2c nodes
-        response.debug(f"Adding attributes to nodes in the KG")
+        response.debug("Adding attributes to nodes in the KG")
         for row in rows:
             # First create the attributes for this KG2c node
             node_id = row[0]
@@ -112,7 +112,7 @@ class ARAXDecorator:
         publications_info attributes are added. For RTX-KG2 and SEMMEDDB, all available attributes are added.
         """
         kg = response.envelope.message.knowledge_graph
-        response.debug(f"Decorating edges with EPC info from KG2c")
+        response.debug("Decorating edges with EPC info from KG2c")
         supported_kinds = {"RTX-KG2", "NGD", "SEMMEDDB"}
         if kind not in supported_kinds:
             response.error(f"Supported values for ARAXDecorator.decorate_edges()'s 'kind' parameter are: "
@@ -158,8 +158,8 @@ class ARAXDecorator:
             # Extract the proper entries from sqlite
             edge_id_col = "triple"  # NOTE: This column name is outdated; the column contains KG2c edge ids
             connection, cursor = self._connect_to_sqlite()
-            response.debug(f"Looking up EPC edge info in KG2c sqlite")
-            response.debug(f"Looking up corresponding KG2c nodes in sqlite")
+            response.debug("Looking up EPC edge info in KG2c sqlite")
+            response.debug("Looking up corresponding KG2c nodes in sqlite")
             edge_attributes_ordered = list(self.edge_attributes)
             kg2c_edge_ids_set = set(search_key.replace("'", "''") for search_key in set(kg2c_edge_ids_to_kg_keys_map))  # Escape quotes
             kg2c_edge_ids_str = "','".join(kg2c_edge_ids_set)  # SQL wants ('edge1', 'edge2') format for string lists
@@ -174,7 +174,7 @@ class ARAXDecorator:
 
             response.debug(f"Got {len(rows)} rows back from KG2c sqlite")
 
-            response.debug(f"Adding attributes to edges in the KG")
+            response.debug("Adding attributes to edges in the KG")
             # Create helper maps for easy access to returned rows and attribute shells
             kg2c_edge_id_to_kg2c_edge_tuple_map = {row[0]: row for row in rows}
             attribute_type_id_map = {self.create_attribute(property_name, "irrelevant").attribute_type_id: property_name
@@ -225,7 +225,7 @@ class ARAXDecorator:
 
         # Extract the proper entries from sqlite
         connection, cursor = self._connect_to_sqlite()
-        response.debug(f"Looking up EPC edge info in KG2c sqlite to decorate NGD edges")
+        response.debug("Looking up EPC edge info in KG2c sqlite to decorate NGD edges")
         edge_attributes_ordered = list(self.edge_attributes)
         search_keys_set = set(search_key.replace("'", "''") for search_key in set(search_key_to_edge_keys_map))  # Escape quotes
         search_keys_str = "','".join(search_keys_set)  # SQL wants ('edge1', 'edge2') format for string lists
@@ -239,7 +239,7 @@ class ARAXDecorator:
 
         response.debug(f"Got {len(rows)} rows back from KG2c sqlite")
 
-        response.debug(f"Adding attributes to NGD edges in the KG")
+        response.debug("Adding attributes to NGD edges in the KG")
         # Create a helper lookup map for easy access to returned rows
         search_key_to_kg2c_edge_tuples_map = defaultdict(list)
         for row in rows:
@@ -332,7 +332,7 @@ class ARAXDecorator:
                 raw_value = raw_value.replace("'", '"')
             try:
                 return ujson.loads(raw_value)
-            except:
+            except Exception:
                 return {}
         else:
             return raw_value
