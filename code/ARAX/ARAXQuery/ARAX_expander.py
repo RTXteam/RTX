@@ -400,14 +400,14 @@ class ARAXExpander:
                     log.debug("Will use asyncio to run KP queries concurrently")
                     loop = asyncio.new_event_loop()  # Need to create NEW event loop for threaded environments
                     asyncio.set_event_loop(loop)
-                    tasks = [self._expand_edge_async(one_hop_qg,
-                                                     kp_to_use,
-                                                     user_specified_kp,
-                                                     kp_timeout,
-                                                     kp_selector,
-                                                     log,
-                                                     multiple_kps=True,
-                                                     be_creative_treats=be_creative_treats)
+                    tasks = [self.expand_edge_async(one_hop_qg,
+                                                    kp_to_use,
+                                                    user_specified_kp,
+                                                    kp_timeout,
+                                                    kp_selector,
+                                                    log,
+                                                    multiple_kps=True,
+                                                    be_creative_treats=be_creative_treats)
                              for kp_to_use in kps_to_query]
                     task_group = asyncio.gather(*tasks)
                     kp_answers = loop.run_until_complete(task_group)
@@ -743,14 +743,16 @@ class ARAXExpander:
         response.debug("Done calling ARAX Infer from Expand; returning to regular Expand execution")
         return response, overarching_kg
 
-    async def _expand_edge_async(self, edge_qg: QueryGraph,
-                                 kp_to_use: str,
-                                 user_specified_kp: bool,
-                                 kp_timeout: Optional[int],
-                                 kp_selector: KPSelector,
-                                 log: ARAXResponse,
-                                 multiple_kps: bool = False,
-                                 be_creative_treats: bool = False) -> tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+    # Note: this function is also used by the module `Overlay/fisher_exact_test.py`.
+    async def expand_edge_async(self,
+                                edge_qg: QueryGraph,
+                                kp_to_use: str,
+                                user_specified_kp: bool,
+                                kp_timeout: Optional[int],
+                                kp_selector: KPSelector,
+                                log: ARAXResponse,
+                                multiple_kps: bool = False,
+                                be_creative_treats: bool = False) -> tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")

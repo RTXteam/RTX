@@ -513,7 +513,7 @@ class ComputeFTEST:
 
                 # your async call wrapped inside an async def
                 async def run_expand():
-                    return await expander._expand_edge_async(
+                    return await expander.expand_edge_async(
                         query_graph,
                         kp_to_use=infores_key,
                         user_specified_kp=False,
