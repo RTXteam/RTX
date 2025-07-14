@@ -10,7 +10,6 @@ import inspect
 import csv
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
-import Expand.expand_utilities as eu
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
