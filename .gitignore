@@ -22,6 +22,8 @@
 **/*override.txt
 
 code/UI/OpenAPI/python-flask-server/openapi_server/flask_config.json
+code/UI/OpenAPI/python-flask-server/RTX_OpenAPI_*
+code/UI/OpenAPI/python-flask-server/RTX_OpenAPI_*.start
 
 code/config.domain
 
