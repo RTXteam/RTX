@@ -40,6 +40,7 @@ class ARAXResponse:
         self.wait_time = None  # this attribute is set by trapi_querier.py
         self.http_error = None  # this attribute is set by trapi_querier.py
         self.timed_out = None  # this attribute is set by trapi_querier.py
+        self.total_results_count = None  # this attribute is set by ARAX_resultify.py
 
 
     #### Add a debugging message
