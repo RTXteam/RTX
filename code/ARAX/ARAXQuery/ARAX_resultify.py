@@ -742,8 +742,6 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
         # Fill out the essence for the result
         essence_qnode_key = _get_essence_node_for_qg(qg)
-        assert essence_qnode_key is not None, \
-            "unexpected None value for essence_qnode_key"
         essence_qnode = qg.nodes.get(essence_qnode_key)
         essence_kg_node_key_set = result_graph['nodes'].get(essence_qnode_key, set())
         if len(essence_kg_node_key_set) == 0:
