@@ -20,7 +20,7 @@ import copy
 import math
 import os
 import sys
-from typing import Union, Iterable, cast, Optional, DefaultDict
+from typing import Union, Iterable, cast, Optional, DefaultDict, Any
 from ARAX_response import ARAXResponse
 
 __author__ = 'Stephen Ramsey and Amy Glen'
@@ -595,7 +595,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         return results
 
     # Recompute kg_node_keys_by_qg_keys so that it only contains parents (we 'collapse' children into parents)
-    kg_node_keys_by_qg_key_collapsed = dict()
+    kg_node_keys_by_qg_key_collapsed = collections.defaultdict(set)
     for qnode_key, node_keys in kg_node_keys_by_qg_key.items():
         if qnode_key in subclass_qnode_keys:
             collapsed_node_keys = {child_to_parent_map[qnode_key][node_key] for node_key in node_keys}
@@ -684,7 +684,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         # Organize our results for the 'required' portion of the QG by the IDs of their is_set=False nodes
         required_non_set_qnode_keys = [qnode_key for qnode_key, qnode in required_qg.nodes.items() if not qnode.is_set]
         log.debug(f"Required non-set qnodes are: {required_non_set_qnode_keys}")
-        result_graphs_by_key = dict()
+        result_graphs_by_key: DefaultDict[str, dict] = collections.defaultdict(dict)
         for result_graph in result_graphs_required:
             result_key = _get_result_graph_key(result_graph, required_non_set_qnode_keys, log)
             result_graphs_by_key[result_key] = result_graph
@@ -822,7 +822,7 @@ def _qg_is_disconnected(qg: QueryGraph) -> bool:
 
 
 def _merge_optional_into_required_result_graph(optional_result_graph: dict[str, dict[str, set[str]]],
-                                               required_result_graph: dict[str, dict[str, set[str]]]) -> dict[str, dict[str, set[str]]]:
+                                               required_result_graph: dict[str, DefaultDict[str, set[str]]]) -> dict[str, DefaultDict[str, set[str]]]:
     # Start with the required result graph and then add in any nodes/edges from the optional graph as appropriate
     merged_result_graph = _copy_result_graph(required_result_graph)
     for qnode_key, optional_kg_node_keys in optional_result_graph["nodes"].items():
@@ -845,7 +845,7 @@ def _get_qnodes_subj_and_obj_fulfill(edge: Edge, qedge: QEdge, kg_node_keys_by_q
         return qedge.object, qedge.subject
 
 
-def _get_result_graph_key(result_graph: dict[str, dict[str, set[str]]], qnodes_to_merge_on: list[str],
+def _get_result_graph_key(result_graph: dict[str, DefaultDict[str, set[str]]], qnodes_to_merge_on: list[str],
                           log: ARAXResponse) -> str:
     """
     Result graph keys are defined such that result graphs with the same key should be merged. The overall result graph
@@ -903,15 +903,15 @@ def _get_connected_qnode_keys(qnode_key: str, query_graph: QueryGraph) -> set[st
     return qnode_keys_used_on_same_qedges.difference({qnode_key})
 
 
-def _create_new_empty_result_graph() -> dict[str, dict[str, set]]:
-    empty_result_graph: dict[str, dict[str, set]] = {'nodes': dict(),
-                                                     'edges': dict()}
+def _create_new_empty_result_graph() -> dict[str, DefaultDict[Any, set[Any]]]:
+    empty_result_graph: dict[str, DefaultDict[Any, set[Any]]] = {'nodes': collections.defaultdict(set),
+                                                                 'edges': collections.defaultdict(set)}
 #    {'nodes': collections.defaultdict(set), 
 #                          'edges': collections.defaultdict(set)}
     return empty_result_graph
 
 
-def _copy_result_graph(result_graph: dict[str, dict[str, set[str]]]) -> dict[str, dict[str, set[str]]]:
+def _copy_result_graph(result_graph: dict[str, DefaultDict[str, set[str]]]) -> dict[str, DefaultDict[str, set[str]]]:
     result_graph_copy = copy.deepcopy(result_graph)
     return result_graph_copy
 
@@ -1095,10 +1095,10 @@ def _get_best_parent_id(parent_ids: Iterable[str]) -> str:
     return list(sorted(list(parent_ids)))[0]
 
 
-def _clean_up_dead_ends(result_graph: dict[str, dict[str, set[str]]],
+def _clean_up_dead_ends(result_graph: dict[str, DefaultDict[str, set[str]]],
                         sub_qg_adj_map: dict[str, set[str]],
                         kg_node_adj_map_by_qg_key: dict[str, dict[str, dict[str, set[str]]]],
-                        log: ARAXResponse) -> dict[str, dict[str, set[str]]]:
+                        log: ARAXResponse) -> dict[str, DefaultDict[str, set[str]]]:
     """
     This function iteratively removes "dead ends" from a result graph until no more dead ends can be found. Dead ends
     can be thought of as intermediate nodes (typically for is_set=True qnodes) that connect to only a subset of the
