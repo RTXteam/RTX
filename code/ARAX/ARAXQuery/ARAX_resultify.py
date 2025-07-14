@@ -595,7 +595,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         return results
 
     # Recompute kg_node_keys_by_qg_keys so that it only contains parents (we 'collapse' children into parents)
-    kg_node_keys_by_qg_key_collapsed = collections.defaultdict(set)
+    kg_node_keys_by_qg_key_collapsed = dict()
     for qnode_key, node_keys in kg_node_keys_by_qg_key.items():
         if qnode_key in subclass_qnode_keys:
             collapsed_node_keys = {child_to_parent_map[qnode_key][node_key] for node_key in node_keys}
@@ -608,7 +608,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if not qg.edges and len(qg.nodes) > 1:
         log.debug("QG contains only qnodes (no qedges); will create only one result with all qnodes.")
         result_graph = _create_new_empty_result_graph()
-        result_graph["nodes"] = kg_node_keys_by_qg_key_collapsed
+        result_graph["nodes"] = collections.defaultdict(set, kg_node_keys_by_qg_key_collapsed)
         final_result_graphs = [result_graph]
     else:
         # Build up some indexes for edges in the KG (by their subject/object nodes and qedge keys)
