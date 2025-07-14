@@ -3,6 +3,7 @@ import math
 import os
 import networkx as nx
 import numpy as np
+import numpy.typing as npt
 import scipy.stats
 import sys
 import json
@@ -31,7 +32,7 @@ def _get_query_graph_networkx_from_query_graph(query_graph: QueryGraph) -> nx.Mu
     return query_graph_nx
 
 
-def _calculate_final_individual_edge_confidence(base_score: int, attribute_scores: list[float]) -> float:
+def _calculate_final_individual_edge_confidence(base_score: float, attribute_scores: list[float]) -> float:
     
     # use Eric's loop algorithm
     W_r = base_score
@@ -74,16 +75,16 @@ def _calculate_final_result_score(all_edge_scores: list[float]) -> float:
 
     return final_score
 
-def _process_valid_edge_ids(valid_edge_id_info: dict[str, Dict], kg_edge_id_to_edge: dict[str, Edge]):
+def _process_valid_edge_ids(valid_edge_id_info: dict[str, Dict], kg_edge_id_to_edge: dict[str, Edge]) -> dict[str, dict[str, list[float]]]:
     
-    results = {}
+    results: dict[str, dict[str, list[float]]] = {}
     
     for qedge_key, edge_info in valid_edge_id_info.items():
         results[qedge_key] = {}
         results[qedge_key]['edge_tuple'] = edge_info['edge_tuple']
         results[qedge_key]['scores'] = []
 
-        same_edge_ids = {}
+        same_edge_ids: dict[str, list[float]] = {}
         for edge_binding in edge_info['edge_binding_list']:
             edge_id = edge_binding.id.split(':', 2)[-1]
             if edge_id not in same_edge_ids:
@@ -159,7 +160,7 @@ def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
 # computes quantile ranks in *ascending* order (so a higher x entry has a higher
 # "rank"), where ties have the same (average) rank (the reason for using scipy.stats
 # here is specifically in order to handle ties correctly)
-def _quantile_rank_list(x: list[float]) -> np.array:
+def _quantile_rank_list(x: list[float]) -> npt.NDArray[np.float64]:
     y = scipy.stats.rankdata(x, method='max')
     return y/len(y)
 
@@ -217,7 +218,7 @@ def _score_networkx_graphs_by_frobenius_norm(result_graphs_nx: list[Union[nx.Mul
     for result_graph_nx in result_graphs_nx:
         adj_matrix = nx.to_numpy_matrix(result_graph_nx)
         result_score = np.linalg.norm(adj_matrix, ord='fro')
-        result_scores.append(result_score)
+        result_scores.append(float(result_score))
     return result_scores
 
 
@@ -225,7 +226,8 @@ def _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge: dict[str, 
                                                   qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
                                                   results: list[Result],
                                                   nx_graph_scorer: Callable[[list[Union[nx.MultiDiGraph,
-                                                                                        nx.MultiGraph]]], np.array]) -> list[float]:
+                                                                                        nx.MultiGraph]]],
+                                                                            list[float]]) -> list[float]:
     result_graphs_nx = _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge,
                                                                         qg_nx,
                                                                         results)
