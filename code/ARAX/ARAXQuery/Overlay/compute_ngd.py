@@ -229,7 +229,9 @@ class ComputeNGD:
                     edge_type = "biolink:occurs_together_in_literature_with"
                     qedge_keys = [parameters['virtual_relation_label']]
                     relation = parameters['virtual_relation_label']
-
+                    defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
+                    subject_key = subject_curie
+                    object_key = object_curie
                     # now actually add the virtual edges in
                     id = f"{relation}_{self.global_iter}"
                     # ensure the id is unique
