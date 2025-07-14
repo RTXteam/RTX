@@ -684,7 +684,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         # Organize our results for the 'required' portion of the QG by the IDs of their is_set=False nodes
         required_non_set_qnode_keys = [qnode_key for qnode_key, qnode in required_qg.nodes.items() if not qnode.is_set]
         log.debug(f"Required non-set qnodes are: {required_non_set_qnode_keys}")
-        result_graphs_by_key: DefaultDict[str, dict] = collections.defaultdict(dict)
+        result_graphs_by_key = dict()
         for result_graph in result_graphs_required:
             result_key = _get_result_graph_key(result_graph, required_non_set_qnode_keys, log)
             result_graphs_by_key[result_key] = result_graph
