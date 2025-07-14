@@ -12,15 +12,15 @@ from typing import Union, Optional, Any
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_decorator import ARAXDecorator
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
 from biolink_helper import BiolinkHelper
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
 from kp_selector import KPSelector
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
