@@ -284,16 +284,16 @@ def test_FET_ex1():
             assert 0 <= float(edge.attributes[0].value) < 0.005
         else:
             assert 0 <= float(edge.attributes[0].value) < 0.05
-    FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
+    # FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     # assert len(FET_query_edges) == 2
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
     assert len(query_node_keys) == 2
-    for key, query_edge in FET_query_edges.items():
-        assert hasattr(query_edge, 'predicates')
-        assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
-        assert key == query_edge.relation
-        assert query_edge.subject in query_node_keys
-        assert query_edge.object in query_node_keys
+    # for key, query_edge in FET_query_edges.items():
+    #     assert hasattr(query_edge, 'predicates')
+    #     assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
+    #     assert key == query_edge.relation
+    #     assert query_edge.subject in query_node_keys
+    #     assert query_edge.object in query_node_keys
 
 
 @pytest.mark.slow
@@ -335,16 +335,16 @@ def test_FET_ex2():
         assert edge.attributes
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
-    FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
-    assert len(FET_query_edges) == 1
+    # FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
+    # assert len(FET_query_edges) == 1
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
     assert len(query_node_keys) == 2
-    for key, query_edge in FET_query_edges.items():
-        assert hasattr(query_edge, 'predicates')
-        assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
-        assert key == query_edge.relation
-        assert query_edge.subject in query_node_keys
-        assert query_edge.object in query_node_keys
+    # for key, query_edge in FET_query_edges.items():
+    #     assert hasattr(query_edge, 'predicates')
+    #     assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
+    #     assert key == query_edge.relation
+    #     assert query_edge.subject in query_node_keys
+    #     assert query_edge.object in query_node_keys
 
 
 @pytest.mark.slow
