@@ -203,7 +203,7 @@ def _score_networkx_graphs_by_longest_path(result_graphs_nx: list[Union[nx.Multi
         pairs_with_max_path_len = [path_len_with_pair_list_item[0:2] for path_len_with_pair_list_item in path_len_with_pairs_list if
                                    path_len_with_pair_list_item[2] == max_path_len]
         map_node_name_to_index = {node_id: node_index for node_index, node_id in enumerate(result_graph_nx.nodes)}
-        adj_matrix = nx.to_numpy_matrix(result_graph_nx)
+        adj_matrix = nx.to_numpy_array(result_graph_nx)
         adj_matrix_power = np.linalg.matrix_power(adj_matrix, max_path_len)/math.factorial(max_path_len)
         score_list = [adj_matrix_power[map_node_name_to_index[node_i],
                                        map_node_name_to_index[node_j]] for node_i, node_j in pairs_with_max_path_len]
@@ -216,7 +216,7 @@ def _score_networkx_graphs_by_frobenius_norm(result_graphs_nx: list[Union[nx.Mul
                                                                           nx.MultiGraph]]) -> list[float]:
     result_scores = []
     for result_graph_nx in result_graphs_nx:
-        adj_matrix = nx.to_numpy_matrix(result_graph_nx)
+        adj_matrix = nx.to_numpy_array(result_graph_nx)
         result_score = np.linalg.norm(adj_matrix, ord='fro')
         result_scores.append(float(result_score))
     return result_scores
