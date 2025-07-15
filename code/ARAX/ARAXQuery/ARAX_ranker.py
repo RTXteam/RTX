@@ -144,9 +144,9 @@ def _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge: dict[st
 def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
                                                               nx.MultiGraph]) -> Union[nx.DiGraph,
                                                                                        nx.Graph]:
-    if type(graph_nx) == nx.MultiGraph:
+    if type(graph_nx) is nx.MultiGraph:
         ret_graph = nx.Graph()
-    elif type(graph_nx) == nx.MultiDiGraph:
+    elif type(graph_nx) is nx.MultiDiGraph:
         ret_graph = nx.DiGraph()
     for u, v, data in graph_nx.edges(data=True):
         w = data['weight'] if 'weight' in data else 1.0
