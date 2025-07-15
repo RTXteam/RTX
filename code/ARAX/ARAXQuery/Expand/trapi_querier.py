@@ -279,7 +279,7 @@ class TRAPIQuerier:
         start = time.time()
         # Send the query graph to the KP's TRAPI API
         self.log.debug(f"{self.kp_infores_curie}: Sending query to {self.kp_infores_curie} API ({self.kp_endpoint})")
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             try:
                 async with session.post(f"{self.kp_endpoint}/query",
                                         json=request_body,
