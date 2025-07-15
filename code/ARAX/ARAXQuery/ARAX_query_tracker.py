@@ -13,7 +13,7 @@ import psutil
 from datetime import datetime, timezone
 import sqlalchemy
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, Float, String, DateTime, PickleType
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
