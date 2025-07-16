@@ -48,7 +48,7 @@ class KPInfoCacher:
             smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
                                                                                          req_maturity=self.rtx_config.maturity)
             if not smart_api_kp_registrations:
-                print("Didn't get any KP registrations back from SmartAPI!")
+                eprint("Didn't get any KP registrations back from SmartAPI!")
             previous_cache_exists = pathlib.Path(self.smart_api_and_meta_map_cache).exists()
             if smart_api_kp_registrations or not previous_cache_exists:
                 # Transform the info into the format we want
