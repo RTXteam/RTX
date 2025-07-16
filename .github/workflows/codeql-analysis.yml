@@ -66,6 +66,7 @@ jobs:
     #- run: |
     #   make bootstrap
     #   make release
-
+    # Finalize the CodeQL database, run all configured queries, 
+    # and upload the results to GitHub Code Scanning
     - name: Perform CodeQL Analysis
       uses: RTXteam/codeql-action/analyze@v3
