@@ -89,6 +89,7 @@ class ARAXBackgroundTasker:
                     eprint(f"    {fileinfo}   {file}")
                     rtxc = RTXConfiguration()
                     eprint(f"rtxc.domain: {rtxc.domain}")
+                    # if we are running in ITRB ARAX, delete the file to try to heal ARAX:
                     if not rtxc.domain.endswith(".transltr.io"):
                         eprint(f"    Deleting file {filepath}")
                         try:
