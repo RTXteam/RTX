@@ -15,7 +15,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.sdk.resources import SERVICE_NAME as Resource
+from opentelemetry.sdk.resources import Resource, SERVICE_NAME
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../../../ARAX/ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
