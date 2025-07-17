@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import sys
 import os
 import traceback
@@ -12,12 +11,11 @@ from opentelemetry.instrumentation.aiohttp_client import (
     AioHttpClientInstrumentor
 )
 from opentelemetry import trace
-from opentelemetry.trace.span import Span
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.sdk.resources import SERVICE_NAME as telemetery_service_name_key, Resource
+from opentelemetry.sdk.resources import Resource, SERVICE_NAME  # noqa: F401
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
                 "/../../../../ARAX/ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
@@ -55,9 +53,6 @@ def instrument(app, host, port):
         )
         )
     )
-    # tracer_provider = trace.get_tracer_provider()
-    # tracer_provider.get_tracer(__name__)
-    tracer_provider = trace.get_tracer(__name__)
     
     FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=trace)
     RequestsInstrumentor().instrument(tracer_provider=trace)
@@ -147,10 +142,10 @@ def main():
                 eprint("pipe error")
         import connexion
         import flask_cors
-        import openapi_server.encoder
+        from openapi_server.provider import CustomJSONProvider
         app = connexion.App(__name__, specification_dir='./openapi/')
-        
-        app.app.json_encoder = openapi_server.encoder.JSONEncoder
+        app.json_provider_class = CustomJSONProvider
+        eprint(f"Using JSON provider: {type(app.app.json)}")
         app.add_api('openapi.yaml',
                     arguments={'title': 'ARAX Translator Reasoner'},
                     pythonic_params=True)
