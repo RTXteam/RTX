@@ -145,7 +145,7 @@ def main():
         from openapi_server.provider import CustomJSONProvider
         app = connexion.App(__name__, specification_dir='./openapi/')
         app.json_provider_class = CustomJSONProvider
-        eprint(f"Using JSON provider: {type(app.json)}")
+        eprint(f"Using JSON provider: {type(app.app.json)}")
         app.add_api('openapi.yaml',
                     arguments={'title': 'ARAX Translator Reasoner'},
                     pythonic_params=True)
