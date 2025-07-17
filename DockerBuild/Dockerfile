@@ -28,6 +28,20 @@ RUN echo "UserKnownHostsFile /dev/null" >> /home/rt/.ssh/config
 RUN chown -R rt.rt /home/rt/.ssh
 RUN chmod -R 700 /home/rt/.ssh
 
+# install network troubleshooting utilities and emacs, in case we need them
+RUN apt-get update && apt-get install -y \
+    netcat \
+    dnsutils \
+    iputils-ping \
+    traceroute \
+    telnet \
+    net-tools \
+    iproute2 \
+    curl \
+    wget \
+    tcpdump \
+ && rm -rf /var/lib/apt/lists/*
+
 # clone RTX repo
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt.rt /mnt/data/orangeboard/production
