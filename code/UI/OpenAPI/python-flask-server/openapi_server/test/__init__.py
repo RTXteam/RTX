@@ -1,9 +1,11 @@
 import logging
-
+import sys
 import connexion
 from flask_testing import TestCase
 
 from openapi_server.provider import CustomJSONProvider
+
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 class BaseTestCase(TestCase):
 
