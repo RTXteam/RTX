@@ -6,25 +6,21 @@ The cached information includes metadata about KPs and their APIs, as well as in
 import os
 import pathlib
 import pickle
+import requests
+import requests_cache
 import sys
 from datetime import datetime, timedelta
 from typing import Optional
 
-import requests
-import requests_cache
-import time
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
+
+from RTXConfiguration import RTXConfiguration
+from ARAX_response import ARAXResponse
+from smartapi import SmartAPI
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
-
-pathlist = os.path.realpath(__file__).split(os.path.sep)
-rtx_index = pathlist.index("RTX")
-
-sys.path.append(os.path.sep.join([*pathlist[:(rtx_index + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration
-sys.path.append(os.path.sep.join([*pathlist[:(rtx_index + 1)], 'code', 'ARAX', 'ARAXQuery']))
-from ARAX_response import ARAXResponse
-sys.path.append(os.path.sep.join([*pathlist[:(rtx_index + 1)], 'code', 'ARAX', 'ARAXQuery', 'Expand']))
-from smartapi import SmartAPI
 
 
 class KPInfoCacher:
@@ -52,7 +48,7 @@ class KPInfoCacher:
             smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
                                                                                          req_maturity=self.rtx_config.maturity)
             if not smart_api_kp_registrations:
-                print(f"Didn't get any KP registrations back from SmartAPI!")
+                eprint("Didn't get any KP registrations back from SmartAPI!")
             previous_cache_exists = pathlib.Path(self.smart_api_and_meta_map_cache).exists()
             if smart_api_kp_registrations or not previous_cache_exists:
                 # Transform the info into the format we want
@@ -64,7 +60,7 @@ class KPInfoCacher:
                                             "kps_excluded_by_maturity": smart_api_helper.kps_excluded_by_maturity}
                 
             else:
-                eprint(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
+                eprint("Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
                 with open(self.smart_api_and_meta_map_cache, "rb") as cache_file:
                     smart_api_cache_contents = pickle.load(cache_file)['smart_api_cache']
 
@@ -139,7 +135,7 @@ class KPInfoCacher:
             log.error(f"Unable to load KP info caches: {e}")
 
         # The caches MUST be up to date at this point, so we just load them
-        log.debug(f"Loading cached Smart API amd meta map info")
+        log.debug("Loading cached Smart API amd meta map info")
         with open(self.smart_api_and_meta_map_cache, "rb") as cache:
             cache = pickle.load(cache)
             smart_api_info = cache['smart_api_cache']
@@ -176,11 +172,11 @@ class KPInfoCacher:
                     if kp_response.status_code == 200:
                         try:
                             kp_meta_kg = kp_response.json()
-                        except:
+                        except Exception:
                             eprint(f"Skipping {kp_infores_curie} because they returned invalid JSON")
                             kp_meta_kg = "Failed"
 
-                        if type(kp_meta_kg) != dict:
+                        if not isinstance(kp_meta_kg, dict):
                             eprint(f"Skipping {kp_infores_curie} because they returned an invalid meta knowledge graph")
                         else:
                             meta_map[kp_infores_curie] = {"predicates": self._convert_meta_kg_to_meta_map(kp_meta_kg),

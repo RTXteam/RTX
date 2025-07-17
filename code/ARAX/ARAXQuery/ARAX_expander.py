@@ -12,15 +12,15 @@ from typing import Union, Optional, Any
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_decorator import ARAXDecorator
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
 from biolink_helper import BiolinkHelper
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
 from kp_selector import KPSelector
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
@@ -167,13 +167,13 @@ class ARAXExpander:
         for qedge_key in set(query_graph.edges):
             qedge = query_graph.edges[qedge_key]
             if qedge.subject == qedge.object and not qedge.predicates == ["biolink:subclass_of"]:
-                log.error(f"ARAX does not support queries with self-qedges (qedges whose subject == object)",
+                log.error("ARAX does not support queries with self-qedges (qedges whose subject == object)",
                           error_code="InvalidQG")
 
         # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
         required_portion_of_qg = eu.get_required_portion_of_qg(message.query_graph)
         if required_portion_of_qg.edges and eu.qg_is_disconnected(required_portion_of_qg):
-            log.error(f"Required portion of QG is disconnected. This is not allowed.", error_code="InvalidQG")
+            log.error("Required portion of QG is disconnected. This is not allowed.", error_code="InvalidQG")
             return response
 
         # Create global slots to store some info that needs to persist between expand() calls
@@ -237,7 +237,7 @@ class ARAXExpander:
         qedge_keys_to_expand = eu.convert_to_list(parameters['edge_key'])
         if any(qedge_key for qedge_key in qedge_keys_to_expand
                if eu.is_expand_created_subclass_qedge_key(qedge_key, message.query_graph)):
-            log.error(f"Cannot expand subclass self-qedges. KPs take care of this reasoning automatically.",
+            log.error("Cannot expand subclass self-qedges. KPs take care of this reasoning automatically.",
                       error_code="InvalidQG")
             return response
         qnode_keys_to_expand = eu.convert_to_list(parameters['node_key'])
@@ -266,7 +266,7 @@ class ARAXExpander:
                 qnode.categories = [self.bh.get_root_category()]
             qnode.categories = self.bh.add_conflations(qnode.categories)
         # Make sure QG only uses canonical predicates
-        log.debug(f"Making sure QG only uses canonical predicates")
+        log.debug("Making sure QG only uses canonical predicates")
         qedge_keys = set(query_graph.edges)
         for qedge_key in qedge_keys:
             qedge = query_graph.edges[qedge_key]
@@ -321,7 +321,7 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicate_details)
                 for kp in kp_selector.valid_kps:
-                    response.update_query_plan(qedge_key, kp, 'Waiting', f'Waiting for processing to begin')
+                    response.update_query_plan(qedge_key, kp, 'Waiting', 'Waiting for processing to begin')
 
             # Get any inferred results from ARAX Infer
             if inferred_qedge_keys:
@@ -397,17 +397,17 @@ class ARAXExpander:
                 # Concurrently send this query to the KPs selected to answer it
                 if kps_to_query:
                     kps_to_query = eu.sort_kps_for_asyncio(kps_to_query, log)
-                    log.debug(f"Will use asyncio to run KP queries concurrently")
+                    log.debug("Will use asyncio to run KP queries concurrently")
                     loop = asyncio.new_event_loop()  # Need to create NEW event loop for threaded environments
                     asyncio.set_event_loop(loop)
-                    tasks = [self._expand_edge_async(one_hop_qg,
-                                                     kp_to_use,
-                                                     user_specified_kp,
-                                                     kp_timeout,
-                                                     kp_selector,
-                                                     log,
-                                                     multiple_kps=True,
-                                                     be_creative_treats=be_creative_treats)
+                    tasks = [self.expand_edge_async(one_hop_qg,
+                                                    kp_to_use,
+                                                    user_specified_kp,
+                                                    kp_timeout,
+                                                    kp_selector,
+                                                    log,
+                                                    multiple_kps=True,
+                                                    be_creative_treats=be_creative_treats)
                              for kp_to_use in kps_to_query]
                     task_group = asyncio.gather(*tasks)
                     kp_answers = loop.run_until_complete(task_group)
@@ -418,7 +418,7 @@ class ARAXExpander:
                     return response
 
                 # Merge KPs' answers into our overarching KG
-                log.debug(f"Got answers from all KPs; merging them into one KG")
+                log.debug("Got answers from all KPs; merging them into one KG")
                 for index, response_tuple in enumerate(kp_answers):
                     answer_kg = response_tuple[0]
                     # Store any kryptonite edge answers as needed
@@ -454,7 +454,7 @@ class ARAXExpander:
 
                 # Handle knowledge source constraints for this qedge
                 # Removing kedges that have any sources that are constrained
-                log.debug(f"Handling any knowledge source constraints")
+                log.debug("Handling any knowledge source constraints")
                 allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
                 log.debug(f"KP allowlist is {allowlist}, denylist is {denylist}")
                 if qedge_key in overarching_kg.edges_by_qg_id:
@@ -641,13 +641,13 @@ class ARAXExpander:
                     if subject_curie and object_curie:    
                         response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
                     elif subject_curie:
-                        response.warning(f"Currently ARAXInfer/XDTD disables 'given a drug CURIE, it predicts predicts what potential disease this drug can treat'.")
+                        response.warning("Currently ARAXInfer/XDTD disables 'given a drug CURIE, it predicts predicts what potential disease this drug can treat'.")
                         # response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie}")
                     else:
                         response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the object is {object_curie}")
                     
                     response.update_query_plan(inferred_qedge_key, "arax-xdtd",
-                                               "Waiting", f"Waiting for response")
+                                               "Waiting", "Waiting for response")
                     start = time.time()
 
                     from ARAX_infer import ARAXInfer
@@ -699,12 +699,12 @@ class ARAXExpander:
                                        error_code="NoCURIEs")
                         return response, overarching_kg
                     if subject_curie and object_curie:
-                        response.error(f"The action 'chemical_gene_regulation_graph_expansion' hasn't support the prediction for a single chemical-gene pair yet.",
+                        response.error("The action 'chemical_gene_regulation_graph_expansion' hasn't support the prediction for a single chemical-gene pair yet.",
                                        error_code="InvalidCURIEs")
                         return response, overarching_kg
                     response.info(f"Calling XCRG from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
                     response.update_query_plan(inferred_qedge_key, "arax-xcrg",
-                                               "Waiting", f"Waiting for response")
+                                               "Waiting", "Waiting for response")
                     start = time.time()
 
                     from ARAX_infer import ARAXInfer
@@ -736,21 +736,23 @@ class ARAXExpander:
                                   f"DTD-related (e.g., 'biolink:ameliorates', 'biolink:treats') or CRG-related ('biolink:regulates') according to the specified predicate. Will answer using the normal 'fill' strategy (not creative mode).")
             else:
                 response.warning(
-                    f"Expand does not yet know how to answer multi-qedge query graphs when one or more of "
-                    f"the qedges has knowledge_type == inferred. Will answer using the normal 'fill' strategy "
-                    f"(not creative mode).")
+                    "Expand does not yet know how to answer multi-qedge query graphs when one or more of "
+                    "the qedges has knowledge_type == inferred. Will answer using the normal 'fill' strategy "
+                    "(not creative mode).")
 
-        response.debug(f"Done calling ARAX Infer from Expand; returning to regular Expand execution")
+        response.debug("Done calling ARAX Infer from Expand; returning to regular Expand execution")
         return response, overarching_kg
 
-    async def _expand_edge_async(self, edge_qg: QueryGraph,
-                                 kp_to_use: str,
-                                 user_specified_kp: bool,
-                                 kp_timeout: Optional[int],
-                                 kp_selector: KPSelector,
-                                 log: ARAXResponse,
-                                 multiple_kps: bool = False,
-                                 be_creative_treats: bool = False) -> tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+    # Note: this function is also used by the module `Overlay/fisher_exact_test.py`.
+    async def expand_edge_async(self,
+                                edge_qg: QueryGraph,
+                                kp_to_use: str,
+                                user_specified_kp: bool,
+                                kp_timeout: Optional[int],
+                                kp_selector: KPSelector,
+                                log: ARAXResponse,
+                                multiple_kps: bool = False,
+                                be_creative_treats: bool = False) -> tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
@@ -758,8 +760,8 @@ class ARAXExpander:
 
         # Make sure at least one of the qnodes has a curie specified
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
-            log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
-                      f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
+            log.error("Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
+                      "a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
             return answer_kg, log
         # Make sure the specified KP is a valid option
         allowable_kps = kp_selector.valid_kps
@@ -782,7 +784,7 @@ class ARAXExpander:
             error_type, error, _ = sys.exc_info()
             if user_specified_kp:
                 log.error(f"An uncaught error was thrown while trying to Expand using {kp_to_use}. Error was: {tb}",
-                          error_code=f"UncaughtError")
+                          error_code="UncaughtError")
             else:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
                             f"get answers from that KP. Error was: {tb}")
@@ -834,7 +836,7 @@ class ARAXExpander:
         if log.status != 'OK':
             return answer_kg
         if not qnode.ids:
-            log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
+            log.error("Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
             return answer_kg
 
         # Answer the query using the proper KP (only our own KP answers single-node queries for now)
@@ -847,7 +849,7 @@ class ARAXExpander:
             log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
             return answer_kg
         else:
-            log.error(f"Only infores:rtx-kg2 can answer single-node queries currently", error_code="InvalidKP")
+            log.error("Only infores:rtx-kg2 can answer single-node queries currently", error_code="InvalidKP")
             return answer_kg
 
     def _get_query_graph_for_edge(self, qedge_key: str, full_qg: QueryGraph, overarching_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
@@ -1045,7 +1047,7 @@ class ARAXExpander:
                     overarching_qg.edges[qedge_key] = subclass_qedge
                     expands_qg.edges[qedge_key] = subclass_qedge
                 else:
-                    log.error(f"An unknown QEdge has been added to the QG since Expand began processing!",
+                    log.error("An unknown QEdge has been added to the QG since Expand began processing!",
                               error_code="InvalidQG")
             num_orphan_edges_removed = 0
             qedge = overarching_qg.edges[qedge_key]
@@ -1077,7 +1079,7 @@ class ARAXExpander:
         which kryptonite edges/nodes it found previously, without adding them to the KG.
         Example of encountered_kryptonite_edges_info: {"e01": {"n00": {"MONDO:1"}, "n01": {"PR:1", "PR:2"}}}
         """
-        log.debug(f"Storing info for kryptonite edges found")
+        log.debug("Storing info for kryptonite edges found")
         kryptonite_qedge = qg.edges[kryptonite_qedge_key]
         # First just initiate empty nested dictionaries/sets as needed
         if kryptonite_qedge_key not in encountered_kryptonite_edges_info:
@@ -1201,7 +1203,7 @@ class ARAXExpander:
         This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         found in the last expansion will connect to edges in the next one)
         """
-        log.debug(f"Pruning any paths that are now dead ends (with help of Resultify)")
+        log.debug("Pruning any paths that are now dead ends (with help of Resultify)")
         is_set_true_qg = copy.deepcopy(expands_qg)
         for qnode in is_set_true_qg.nodes.values():
             qnode.is_set = True  # This makes resultify run faster and doesn't hurt in this case
@@ -1267,7 +1269,7 @@ class ARAXExpander:
                     ordered_qedge_keys.append(connected_qedge_key)
                     qedge_keys_remaining.remove(connected_qedge_key)
                 else:
-                    log.error(f"Query graph is disconnected (has more than one component)", error_code="UnsupportedQG")
+                    log.error("Query graph is disconnected (has more than one component)", error_code="UnsupportedQG")
                     return []
         return ordered_qedge_keys
 
@@ -1446,7 +1448,7 @@ class ARAXExpander:
                     # Answers from in-house KPs may not have query_ids filled out (they don't do subclass reasoning)
                     node.query_ids = []
         else:
-            log.debug(f"No KG nodes found that use a different curie than was asked for in the QG")
+            log.debug("No KG nodes found that use a different curie than was asked for in the QG")
 
     @staticmethod
     def _get_prune_threshold(one_hop_qg: QueryGraph) -> int:

@@ -3,40 +3,33 @@
 import functools
 import json
 import math
-import subprocess
 import sys
 import os
 import sqlite3
 import traceback
 import numpy as np
 from datetime import datetime
-from typing import List
 import itertools
 import copy
 
 import random
 import time
-random.seed(time.time())
 
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.retrieval_source import RetrievalSource
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
-pathlist = os.path.realpath(__file__).split(os.path.sep)
-RTXindex = pathlist.index("RTX")
-sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 from RTXConfiguration import RTXConfiguration
+random.seed(time.time())
 RTXConfig = RTXConfiguration()
-
-sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
-from ARAX_database_manager import ARAXDatabaseManager
 
 
 class ComputeNGD:
@@ -64,9 +57,9 @@ class ComputeNGD:
             self._close_database()
             return self.response
         parameters = self.parameters
-        self.response.debug(f"Computing NGD")
-        self.response.info(f"Computing the normalized Google distance: weighting edges based on subject/object node "
-                           f"co-occurrence frequency in PubMed abstracts")
+        self.response.debug("Computing NGD")
+        self.response.info("Computing the normalized Google distance: weighting edges based on subject/object node "
+                           "co-occurrence frequency in PubMed abstracts")
         name = "normalized_google_distance"
         type = "EDAM-DATA:2526"
         default_value = self.parameters['default_value']
@@ -125,11 +118,7 @@ class ComputeNGD:
                             edge_type = "biolink:occurs_together_in_literature_with"
                             qedge_keys = [parameters['virtual_relation_label']]
                             relation = parameters['virtual_relation_label']
-                            is_defined_by = "ARAX"
                             defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-                            provided_by = "infores:arax"
-                            confidence = None
-                            weight = None  # TODO: could make the actual value of the attribute
                             subject_key = subject_curie
                             object_key = object_curie
 
@@ -240,14 +229,9 @@ class ComputeNGD:
                     edge_type = "biolink:occurs_together_in_literature_with"
                     qedge_keys = [parameters['virtual_relation_label']]
                     relation = parameters['virtual_relation_label']
-                    is_defined_by = "ARAX"
                     defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-                    provided_by = "infores:arax"
-                    confidence = None
-                    weight = None  # TODO: could make the actual value of the attribute
                     subject_key = subject_curie
                     object_key = object_curie
-
                     # now actually add the virtual edges in
                     id = f"{relation}_{self.global_iter}"
                     # ensure the id is unique
@@ -321,14 +305,14 @@ class ComputeNGD:
                 self.message.query_graph.edges[relation]=q_edge
 
 
-            self.response.info(f"NGD values successfully added to edges")
+            self.response.info("NGD values successfully added to edges")
         else:  # you want to add it for each edge in the KG
             # iterate over KG edges, add the information
             try:
                 # Map all nodes to their canonicalized curies in one batch (need canonical IDs for the local NGD system)
                 canonicalized_curie_map = self._get_canonical_curies_map([key for key in self.message.knowledge_graph.nodes.keys()])
                 self.load_curie_to_pmids_data(canonicalized_curie_map.values())
-                self.response.debug(f"Looping through edges and calculating NGD values")
+                self.response.debug("Looping through edges and calculating NGD values")
                 for edge in self.message.knowledge_graph.edges.values():
                     # Make sure the attributes are not None
                     if not edge.attributes:
@@ -350,18 +334,18 @@ class ComputeNGD:
                     if len(temp_list) != 0:
                         pmid_edge_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM-DATA:1187", value=temp_list)
                         edge.attributes.append(pmid_edge_attribute)
-            except:
+            except Exception:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"Something went wrong adding the NGD edge attributes")
+                self.response.error("Something went wrong adding the NGD edge attributes")
             else:
-                self.response.info(f"NGD values successfully added to edges")
+                self.response.info("NGD values successfully added to edges")
             self._close_database()
         return self.response
 
     def load_curie_to_pmids_data(self, canonicalized_curies):
-        self.response.debug(f"Extracting PMID lists from sqlite database for relevant nodes")
+        self.response.debug("Extracting PMID lists from sqlite database for relevant nodes")
         curies = list(set(canonicalized_curies))
         chunk_size = 20000
         num_chunks = len(curies) // chunk_size if len(curies) % chunk_size == 0 else (len(curies) // chunk_size) + 1
@@ -386,7 +370,7 @@ class ComputeNGD:
             if n_pmids > 30:
                 if self.first_ngd_log:
                     #self.response.debug(f"{n_pmids} publications found for edge ({subject_curie})-[]-({object_curie}) limiting to 30...")
-                    self.response.debug(f"More than 30 publications found for some edges limiting to 30...")
+                    self.response.debug("More than 30 publications found for some edges limiting to 30...")
                     self.first_ngd_log = False
                 # limited_pmids = set()
                 # for i, val in enumerate(itertools.islice(pubmed_id_set, 30)):
@@ -399,13 +383,17 @@ class ComputeNGD:
             return math.nan, {}
 
     @staticmethod
-    def _compute_marginal_and_joint_counts(concept_pubmed_ids: List[List[int]]) -> list:
-        return [list(map(lambda pmid_list: len(set(pmid_list)), concept_pubmed_ids)),
-                len(functools.reduce(lambda pmids_intersec_cumul, pmids_next:
-                                     set(pmids_next).intersection(pmids_intersec_cumul),
-                                     concept_pubmed_ids))]
+    def _compute_marginal_and_joint_counts(concept_pubmed_ids: list[list[int]]) -> list:
+        def reducer(pmids_intersec_cumul: set[int], pmids_next: set[int]) -> set[int]:
+            return pmids_intersec_cumul.intersection(pmids_next)
+        # Convert concept_pubmed_ids to a list of sets first
+        pubmed_id_sets: list[set[int]] = [set(pmid_list) for pmid_list in concept_pubmed_ids]
+        # Reduce over set[int], which is now type-consistent
+        joint_pubmed_ids: set[int] = functools.reduce(reducer, pubmed_id_sets)
+        marginal_counts = [len(s) for s in pubmed_id_sets]
+        return [marginal_counts, len(joint_pubmed_ids)]
 
-    def _compute_multiway_ngd_from_counts(self, marginal_counts: List[int],
+    def _compute_multiway_ngd_from_counts(self, marginal_counts: list[int],
                                           joint_count: int) -> float:
         # Make sure that things are within the right domain for the logs
         # Should also make sure things are not negative, but I'll just do this with a ValueError
@@ -423,7 +411,7 @@ class ComputeNGD:
                 return math.nan
 
     def _get_canonical_curies_map(self, curies):
-        self.response.debug(f"Canonicalizing curies of relevant nodes using NodeSynonymizer")
+        self.response.debug("Canonicalizing curies of relevant nodes using NodeSynonymizer")
         synonymizer = NodeSynonymizer()
         try:
             canonicalized_node_info = synonymizer.get_canonical_curies(curies)
@@ -442,12 +430,8 @@ class ComputeNGD:
             return canonical_curies_map
 
     def _setup_ngd_database(self):
-        ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)],
-                                         'code',
-                                         'ARAX',
-                                         'KnowledgeSources',
-                                         'NormalizedGoogleDistance'])
-        db_path_local = f"{ngd_filepath}{os.path.sep}{self.ngd_database_name}"
+        ngd_filepath = os.path.dirname(os.path.abspath(__file__)) + "/../../KnowledgeSources/NormalizedGoogleDistance/"
+        db_path_local = f"{ngd_filepath}{self.ngd_database_name}"
         # Set up a connection to the database so it's ready for use
         try:
             connection = sqlite3.connect(db_path_local)

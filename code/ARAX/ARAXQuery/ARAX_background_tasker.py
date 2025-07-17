@@ -2,7 +2,6 @@
 
 import sys
 import os
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 import time
 import psutil
 import subprocess
@@ -13,8 +12,13 @@ from importlib.metadata import version
 
 from ARAX_query_tracker import ARAXQueryTracker
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
+from RTXConfiguration import RTXConfiguration
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/Expand")
 from kp_info_cacher import KPInfoCacher
+
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 FREQ_KP_INFO_CACHER_SEC = 3600
 FREQ_CHECK_ONGOING_SEC = 60
@@ -83,13 +87,17 @@ class ARAXBackgroundTasker:
                         eprint("Strange files in NodeSynonymizer directory:")
                         already_printed_header = True
                     eprint(f"    {fileinfo}   {file}")
-                    eprint(f"    Deleting file {filepath}")
-                    try:
-                        os.unlink(filepath)
-                    except Exception as error:
-                        eprint("ERROR: Unable to delete file with error "
-                               f"{error}")
-
+                    rtxc = RTXConfiguration()
+                    eprint(f"rtxc.domain: {rtxc.domain}")
+                    # if we are running in ITRB ARAX, delete the file to try to heal ARAX:
+                    if rtxc.domain.endswith(".transltr.io"):
+                        eprint(f"    Deleting file {filepath}")
+                        try:
+                            os.unlink(filepath)
+                        except Exception as error:
+                            eprint("ERROR: Unable to delete file with error "
+                                   f"{error}")
+                            
         if file_counter != 1 or link_counter != 1:
             eprint("ERROR: NodeSynonymizer state is weird. "
                    f"file_counter: {file_counter} "
@@ -102,7 +110,6 @@ class ARAXBackgroundTasker:
             "/../NodeSynonymizer"
         files = os.listdir(node_synonymizer_path)
         eprint("INFO: Current contents of the databases area:")
-
         for file in files:
             if file.startswith('node_syn') and file.endswith('.sqlite'):
                 filepath = node_synonymizer_path + "/" + file

@@ -12,6 +12,9 @@ import pandas as pd
 import numpy as np
 import tqdm
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # ARAXQuery directory
+from ARAX_response import ARAXResponse
+
 # import internal modules
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -41,7 +44,13 @@ def get_logger(logname):
 class ExplainableDTD(object):
 
     # Constructor
-    def __init__(self, path_to_score_results=None, path_to_path_results=None, database_name=None, outdir=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction']), build=False):
+    def __init__(self,
+                 path_to_score_results=None,
+                 path_to_path_results=None,
+                 database_name=None,
+                 outdir=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction']),
+                 build=False,
+                 response=None):
         """
         Args:
             path_to_score_results (str): path to a folder containing the prediction score results of all diseases
@@ -50,7 +59,10 @@ class ExplainableDTD(object):
             outdir (str, optional): path to a folder where the database is generated (Defaults: ./).
         """
         self.logger = get_logger('log')
-
+        if response is None:
+            self.response = ARAXResponse()
+        else:
+            self.response = response
         # Property to keep track if the database is already connected or not
         self.is_connected = False
         self.test_iter = 1

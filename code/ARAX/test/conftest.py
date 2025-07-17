@@ -24,7 +24,9 @@ def pytest_addoption(parser):
     parser.addoption(
         "--runonlyexternal", action="store_true", default=False, help="run only external tests"
     )
-
+    parser.addoption(
+        "--nodatabases", action="store_true", default=False, help="do not download databases"
+    )
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "slow: mark test as slow to run")
@@ -35,10 +37,15 @@ def pytest_sessionstart(session):
     """
     Pytest runs these steps at the beginning of the testing session (prior to running any tests)
     """
+
+    config = session.config
+    if not config.getoption("--nodatabases"):
     # Ensure local databases are up to date
-    print(f"Running database manager to check for missing databases..")
-    db_manager = ARAXDatabaseManager(allow_downloads=True)
-    db_manager.update_databases()
+        print(f"Running database manager to check for missing databases..")
+        db_manager = ARAXDatabaseManager(allow_downloads=True)
+        db_manager.update_databases()
+    else:
+        print("not checking ARAX databases")
 
     # Refresh KP info cache if it hasn't been updated in more than an hour
     kp_info_cacher = KPInfoCacher()
