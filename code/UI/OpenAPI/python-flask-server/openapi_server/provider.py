@@ -1,7 +1,7 @@
 import json
 import six
 from flask.json.provider import DefaultJSONProvider
-from flask.json import JSONEncoder as FlaskJSONEncoder
+from flask.json.provider import JSONProvider as FlaskJSONEncoder
 from openapi_server.models.base_model_ import Model
 
 class CustomJSONEncoder(FlaskJSONEncoder):

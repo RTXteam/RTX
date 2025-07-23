@@ -1,58 +1,97 @@
-pandas==1.5.3
-numpy==1.24.2
-requests==2.32.0
-requests-cache
-matplotlib
-seaborn
-psutil
-neo4j-driver>=1.7.0,<=1.7.6
-ipython-cypher==0.2.6
-networkx==2.8.8
-graphviz==0.20.1
-lxml==4.9.1
-nltk==3.7
-scipy==1.10.1
-scikit-learn==1.1.2
-connexion==2.14.1
-connexion[swagger-ui]
-Flask==2.2.5
-Flask-Cors==3.0.10
-SQLAlchemy==1.4.47
-pymysql==1.1.1
-CacheControl==0.12.11
-lockfile==0.12.2
-simple-crypt==4.1.7
-tomark==0.1.4
-md-toc==8.1.4
-pickledb==0.9.2
-pytest==7.2.2
-joblib==1.2.0
-PyYAML==6.0
-ujson==5.4.0
-asyncio==3.4.3
-aiohttp==3.9.4
-boto3==1.24.59
-tornado==6.4.1
-MarkupSafe==2.1.2
-reasoner-validator==4.2.3
-pronto==2.5.3
-pygit2==1.10.0
-tabulate==0.9.0
-urllib3==1.26.19
-setproctitle==1.3.3
-opentelemetry-api==1.17.0
-opentelemetry-exporter-jaeger==1.17.0
-opentelemetry-exporter-jaeger-proto-grpc==1.17.0
-opentelemetry-exporter-jaeger-thrift==1.17.0
-opentelemetry-exporter-otlp-proto-http==1.17.0
-opentelemetry-instrumentation==0.38b0
-opentelemetry-instrumentation-aiohttp-client==0.38b0
-opentelemetry-instrumentation-flask==0.38b0
-opentelemetry-instrumentation-requests==0.38b0
-opentelemetry-instrumentation-wsgi==0.38b0
-opentelemetry-proto==1.17.0
-opentelemetry-sdk==1.17.0
-opentelemetry-semantic-conventions==0.38b0
-opentelemetry-util-http==0.38b0
-xgboost
+# Python 3.12 compatible requirements for ARAX
+# Updated from Python 3.9 requirements
 
+# Core scientific computing - updated for Python 3.12 compatibility
+pandas>=2.0.0,<3.0.0
+numpy>=1.26.0,<2.0.0
+scipy>=1.11.0,<2.0.0
+scikit-learn>=1.3.0,<2.0.0
+
+# HTTP and networking
+requests>=2.31.0,<3.0.0
+requests-cache>=1.0.0,<2.0.0
+aiohttp>=3.8.0,<4.0.0
+urllib3>=1.26.15,<2.0.0
+
+# Visualization
+matplotlib>=3.7.0,<4.0.0
+seaborn>=0.12.0,<1.0.0
+
+# System utilities
+psutil>=5.9.0,<6.0.0
+setproctitle>=1.3.0,<2.0.0
+
+# Database and graph
+neo4j-driver>=5.0.0,<6.0.0
+ipython-cypher>=0.2.6,<1.0.0
+networkx>=3.0.0,<4.0.0
+graphviz>=0.20.0,<1.0.0
+
+# XML and text processing
+lxml>=4.9.0,<5.0.0
+nltk>=3.8.0,<4.0.0
+
+# Web framework and API
+connexion>=3.0.0,<4.0.0
+connexion[swagger-ui]
+Flask>=2.3.0,<3.0.0
+Flask-Cors>=4.0.0,<5.0.0
+tornado>=6.3.0,<7.0.0
+
+# Database ORM
+SQLAlchemy>=2.0.0,<3.0.0
+pymysql>=1.1.0,<2.0.0
+
+# Caching and storage
+CacheControl>=0.13.0,<1.0.0
+lockfile>=0.12.0,<1.0.0
+pickledb>=0.9.0,<1.0.0
+
+# Cryptography and security
+simple-crypt>=4.1.0,<5.0.0
+
+# Documentation and formatting
+tomark>=0.1.0,<1.0.0
+md-toc>=8.1.0,<9.0.0
+tabulate>=0.9.0,<1.0.0
+
+# Testing
+pytest>=7.4.0,<8.0.0
+
+# Utilities
+joblib>=1.3.0,<2.0.0
+PyYAML>=6.0.0,<7.0.0
+ujson>=5.7.0,<6.0.0
+MarkupSafe>=2.1.0,<3.0.0
+
+# Async support - note: asyncio is built-in to Python 3.12
+# asyncio==3.4.3  # REMOVED - built into Python 3.12
+
+# AWS
+boto3>=1.28.0,<2.0.0
+
+# Validation and reasoning
+reasoner-validator>=4.0.0,<5.0.0
+pronto>=2.5.0,<3.0.0
+
+# Git integration
+pygit2>=1.15.0,<2.0.0
+
+# OpenTelemetry for observability
+opentelemetry-api>=1.20.0,<2.0.0
+opentelemetry-exporter-jaeger>=1.20.0,<2.0.0
+opentelemetry-exporter-jaeger-proto-grpc>=1.20.0,<2.0.0
+opentelemetry-exporter-jaeger-thrift>=1.20.0,<2.0.0
+opentelemetry-exporter-otlp-proto-http>=1.20.0,<2.0.0
+opentelemetry-instrumentation>=0.56b0,<1.0.0
+opentelemetry-instrumentation-aiohttp-client>=0.56b0,<1.0.0
+opentelemetry-instrumentation-flask>=0.56b0,<1.0.0
+opentelemetry-instrumentation-requests>=0.56b0,<1.0.0
+opentelemetry-instrumentation-wsgi>=0.56b0,<1.0.0
+opentelemetry-proto>=1.20.0,<2.0.0
+opentelemetry-sdk>=1.20.0,<2.0.0
+opentelemetry-semantic-conventions>=0.56b0,<1.0.0
+opentelemetry-util-http>=0.56b0,<1.0.0
+
+# Machine learning
+xgboost>=1.7.0,<2.0.0 
