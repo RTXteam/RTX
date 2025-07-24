@@ -78,7 +78,7 @@ def _run_query_and_return_json_generator_nonstream(query_dict: dict) -> Iterable
         envelope_dict['http_status'] = envelope.http_status
     else:
         envelope_dict['http_status'] = 200
-    return (json.dumps(envelope_dict, allow_nan=False), )
+    yield json.dumps(envelope_dict, sort_keys=True, allow_nan=False) + "\n"
 
 
 def _run_query_and_return_json_generator_stream(query_dict: dict) -> Iterable[str]:
@@ -127,11 +127,10 @@ def query(request_body):  # noqa: E501
     else:
         json_generator = run_query_dict_in_child_process(query,
                                                          _run_query_and_return_json_generator_nonstream)
-        the_dict = json.loads(next(json_generator))
-        http_status = the_dict.get('http_status', 200)
-        resp_obj = response.Response.from_dict(the_dict)
-        resp_obj.http_status = http_status
-
+        response_serialized_str = next(json_generator)
+        response_dict = json.loads(response_serialized_str)
+        http_status = response_dict['http_status']
+        resp_obj = flask.Response(response_serialized_str)
     return (resp_obj, http_status)
 
 
