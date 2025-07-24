@@ -48,6 +48,10 @@ class ARAXDatabaseManager:
         if not os.path.exists(kg2c_filepath):
             os.system(f"mkdir -p {kg2c_filepath}")
 
+        kg2c_meta_kg_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
+        if not os.path.exists(kg2c_meta_kg_filepath):
+            os.system(f"mkdir -p {kg2c_meta_kg_filepath}")
+
         fda_approved_drugs_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
         if not os.path.exists(fda_approved_drugs_filepath):
             os.system(f"mkdir -p {fda_approved_drugs_filepath}")
@@ -78,6 +82,7 @@ class ARAXDatabaseManager:
             'curie_ngd': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_ngd_path.split('/')[-1]}",
             'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
+            'kg2c_meta_kg': f"{kg2c_meta_kg_filepath}{os.path.sep}{self.RTXConfig.kg2c_meta_kg_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
             'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}",
             'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}",
@@ -94,6 +99,7 @@ class ARAXDatabaseManager:
             'curie_ngd': self.get_database_subpath(self.RTXConfig.curie_ngd_path),
             'node_synonymizer': self.get_database_subpath(self.RTXConfig.node_synonymizer_path),
             'kg2c_sqlite': self.get_database_subpath(self.RTXConfig.kg2c_sqlite_path),
+            'kg2c_meta_kg': self.get_database_subpath(self.RTXConfig.kg2c_meta_kg_path),
             'fda_approved_drugs': self.get_database_subpath(self.RTXConfig.fda_approved_drugs_path),
             'autocomplete': self.get_database_subpath(self.RTXConfig.autocomplete_path),
             'explainable_dtd_db': self.get_database_subpath(self.RTXConfig.explainable_dtd_db_path),
@@ -109,6 +115,7 @@ class ARAXDatabaseManager:
             'curie_ngd': self.get_remote_location('curie_ngd'),
             'node_synonymizer': self.get_remote_location('node_synonymizer'),
             'kg2c_sqlite': self.get_remote_location('kg2c_sqlite'),
+            'kg2c_meta_kg': self.get_remote_location('kg2c_meta_kg'),
             'fda_approved_drugs': self.get_remote_location('fda_approved_drugs'),
             'autocomplete': self.get_remote_location('autocomplete'),
             'explainable_dtd_db': self.get_remote_location('explainable_dtd_db'),
@@ -124,6 +131,7 @@ class ARAXDatabaseManager:
             'curie_ngd': self.get_docker_path('curie_ngd'),
             'node_synonymizer': self.get_docker_path('node_synonymizer'),
             'kg2c_sqlite': self.get_docker_path('kg2c_sqlite'),
+            'kg2c_meta_kg': self.get_docker_path('kg2c_meta_kg'),
             'fda_approved_drugs': self.get_docker_path('fda_approved_drugs'),
             'autocomplete': self.get_docker_path('autocomplete'),
             'explainable_dtd_db': self.get_docker_path('explainable_dtd_db'),
@@ -153,6 +161,10 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': {
                 'path': self.local_paths['kg2c_sqlite'],
                 'version': self.RTXConfig.kg2c_sqlite_version
+            },
+            'kg2c_meta_kg': {
+                'path': self.local_paths['kg2c_meta_kg'],
+                'version': self.RTXConfig.kg2c_meta_kg_version
             },
             'fda_approved_drugs': {
                 'path': self.local_paths['fda_approved_drugs'],

@@ -171,6 +171,8 @@ class RTXConfiguration:
         self.node_synonymizer_version = self.node_synonymizer_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.kg2c_sqlite_path = database_downloads["kg2c_sqlite"]
         self.kg2c_sqlite_version = self.kg2c_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
+        self.kg2c_meta_kg_path = database_downloads["kg2c_meta_kg"]
+        self.kg2c_meta_kg_version = self.kg2c_meta_kg_path.split('/')[-1].split('_v')[-1].replace('.json', '')
         self.fda_approved_drugs_path = database_downloads["fda_approved_drugs"]
         self.fda_approved_drugs_version = self.fda_approved_drugs_path.split('/')[-1].split('_v')[-1].replace('.pickle', '')
         self.autocomplete_path = database_downloads["autocomplete"]
