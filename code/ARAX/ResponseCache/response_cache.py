@@ -558,20 +558,20 @@ class ResponseCache:
             if response_id.startswith('Z'):
                 return( { "status": 404, "title": f"Cached component not found", "detail": f"The component cache has been cleared since the initial request. Refresh the entire response", "type": "about:blank" }, 404)
 
-            #### If it started with X, then turn off the default attribute stripping mode
-            attribute_caching = True
+            #### If the UUID starts with X, then enable attribute stripping mode and attribute caching, which makes the GUI faster
+            attribute_caching = False
             original_response_id = response_id
             if response_id.startswith('X'):
-                attribute_caching = False
+                attribute_caching = True
                 response_id = response_id[1:]
 
-            ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
+            ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
                     if debug:
                         eprint(f"Trying {ars_host}...")
                     try:
-                        response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
+                        response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'}, timeout=15)
                     except Exception as e:
                         return( { "status": 404, "title": f"Remote host {ars_host} unavailable", "detail": f"Connection attempts to {ars_host} triggered an exception: {e}", "type": "about:blank" }, 404)
                 status_code = response_content.status_code
