@@ -103,15 +103,12 @@ def query(request_body):  # noqa: E501
         fork_mode = True # :DEBUG: can turn this to False to disable fork-mode
         http_status = None
         mime_type = 'text/event-stream'
-
         if not fork_mode:
             json_generator = _run_query_and_return_json_generator_stream(query)
         else:
             json_generator = run_query_dict_in_child_process(query,
                                                              _run_query_and_return_json_generator_stream)
-
         resp_obj = flask.Response(json_generator, mimetype=mime_type)
-        http_status = None
     else:
         json_generator = run_query_dict_in_child_process(query,
                                                          _run_query_and_return_json_generator_nonstream)
