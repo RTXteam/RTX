@@ -4,7 +4,7 @@
 # Core scientific computing - exact versions for Python 3.12 compatibility
 pandas==2.3.1
 numpy==1.26.4
-scipy==1.15.3  # FIXED: was 1.16.0 (doesn't exist)
+scipy==1.15.3
 scikit-learn==1.2.2
 
 # HTTP and networking
@@ -31,10 +31,11 @@ graphviz==0.21
 lxml==4.9.4
 nltk==3.9.1
 
-# Web framework and API - downgraded for compatibility
-connexion==2.14.1
+# Web framework and API - upgraded to fix jsonschema deprecation warning
+connexion==3.2.0
 connexion[flask]
 connexion[swagger-ui]
+jsonschema==4.17.3
 Flask==2.2.5
 Flask-Cors==3.0.10
 tornado==6.5.1
