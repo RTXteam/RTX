@@ -9,18 +9,13 @@ import traceback
 from typing import Iterable, Callable
 import setproctitle
 
-
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../../ARAX/ARAXQuery")
+import ARAX_query
 
 
 rlimit_child_process_bytes = 34359738368  # 32 GiB
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../../ARAX/ARAXQuery")
-import ARAX_query
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/../models")
-import response
-
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 def child_receive_sigpipe(signal_number, frame):
     if signal_number == signal.SIGPIPE:
@@ -58,7 +53,8 @@ def run_query_dict_in_child_process(query_dict: dict,
                     write_fo.write(json_string)
                     write_fo.flush()
         except BaseException as e:
-            print(f"Exception in query_controller.run_query_dict_in_child_process: {type(e)}\n{traceback.print_exc()}", file=sys.stderr)
+            print("Exception in query_controller.run_query_dict_in_child_process: "
+                  f"{type(e)}\n{traceback.format_exc()}", file=sys.stderr)
             os._exit(1)
         os._exit(0)
     elif pid > 0:  # I am the parent process
@@ -74,10 +70,9 @@ def run_query_dict_in_child_process(query_dict: dict,
 def _run_query_and_return_json_generator_nonstream(query_dict: dict) -> Iterable[str]:
     envelope = ARAX_query.ARAXQuery().query_return_message(query_dict)
     envelope_dict = envelope.to_dict()
-    if hasattr(envelope, 'http_status'):
-        envelope_dict['http_status'] = envelope.http_status
-    else:
-        envelope_dict['http_status'] = 200
+    http_status = getattr(envelope, 'http_status', 200)
+    envelope_dict['http_status'] = http_status
+    yield json.dumps({"__http_status__": http_status}) + "\n"
     yield json.dumps(envelope_dict, sort_keys=True, allow_nan=False) + "\n"
 
 
@@ -88,8 +83,6 @@ def _run_query_and_return_json_generator_stream(query_dict: dict) -> Iterable[st
 def query(request_body):  # noqa: E501
     """Initiate a query and wait to receive a Response
 
-     # noqa: E501
-
     :param request_body: Query information to be submitted
     :type request_body: Dict[str, ]
 
@@ -98,13 +91,10 @@ def query(request_body):  # noqa: E501
 
     # Note that we never even get here if the request_body is not schema-valid JSON
 
-    query = connexion.request.get_json()  # :QUESTION: why don't we use `request_body`?
+    query = connexion.request.get_json()
 
     #### Record the remote IP address in the query for now so it is available downstream
-    try:
-        query['remote_address'] = connexion.request.headers['x-forwarded-for']
-    except:
-        query['remote_address'] = '???'
+    query['remote_address'] = connexion.request.headers.get('x-forwarded-for', '???')
 
     mime_type = 'application/json'
 
@@ -121,34 +111,13 @@ def query(request_body):  # noqa: E501
                                                              _run_query_and_return_json_generator_stream)
 
         resp_obj = flask.Response(json_generator, mimetype=mime_type)
-    # Else perform the query and return the result
         http_status = None
-
     else:
         json_generator = run_query_dict_in_child_process(query,
                                                          _run_query_and_return_json_generator_nonstream)
+        status_line = next(json_generator)
+        status_dict = json.loads(status_line)
+        http_status = status_dict['__http_status__']        
         response_serialized_str = next(json_generator)
-        response_dict = json.loads(response_serialized_str)
-        http_status = response_dict['http_status']
         resp_obj = flask.Response(response_serialized_str)
     return (resp_obj, http_status)
-
-
-# :TESTING: vvvvvvvvvvvvvvvvvv
-# if __name__ == "__main__":
-#     signal.signal(signal.SIGPIPE, signal.SIG_IGN)
-#     query_dict = {
-#         "operations": {
-#             "actions": [
-#                 "add_qnode(ids=[CHEMBL.COMPOUND:CHEMBL112], key=n00)",
-#                 "add_qnode(ids=[UniProtKB:P55000], key=n01)",
-#                 "add_qedge(subject=n00, object=n01, key=e00)",
-#                 "expand(edge_key=e00,kp=RTX-KG2)",
-#                 "resultify()",
-#                 "return(message=true, store=false)",
-#             ]
-#         }
-#     }
-#     for json_str in run_query_dict_in_child_process(query_dict, _run_query_and_return_json_generator_stream):
-#         print(json_str)
-# :TESTING: ^^^^^^^^^^^^^^^^^^

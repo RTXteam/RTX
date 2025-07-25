@@ -24,10 +24,7 @@ def asyncquery(request_body: dict[str, Any]):  # noqa: E501
     query = connexion.request.get_json()
 
     #### Record the remote IP address in the query for now so it is available downstream
-    try:
-        query['remote_address'] = connexion.request.headers['x-forwarded-for']
-    except KeyError:
-        query['remote_address'] = '???'
+    query['remote_address'] = connexion.request.headers.get('x-forwarded-for', '???')
 
     araxq = ARAXQuery()
 
@@ -37,5 +34,3 @@ def asyncquery(request_body: dict[str, Any]):  # noqa: E501
     response_serialized_str = json.dumps(envelope_dict, sort_keys=True, allow_nan=False) + "\n"
     resp_obj = flask.Response(response_serialized_str)
     return (resp_obj, http_status)
-
-
