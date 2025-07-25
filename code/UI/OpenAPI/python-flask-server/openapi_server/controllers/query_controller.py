@@ -29,9 +29,10 @@ def run_query_dict_in_child_process(query_dict: dict,
     eprint("[query_controller]: Creating pipe and "
            "forking a child to handle the query")
     read_fd, write_fd = os.pipe()
-
-    # always flush stdout and stderr before calling fork(); someone could have
-    # turned off auto-flushing and we don't want double-output
+# If there is any output in the buffer for either of those streams, when os.fork
+# is called, there will be two copies of the buffer, both pointing to the same
+# output stream, with the attendant potential for a double-write to the output
+# stream. So, ensure that both stderr and stdout are flushed before the fork.
     sys.stderr.flush()
     sys.stdout.flush()
 
@@ -52,6 +53,13 @@ def run_query_dict_in_child_process(query_dict: dict,
                 for json_string in json_string_generator:
                     write_fo.write(json_string)
                     write_fo.flush()
+# The reason why I am catching BaseException in the child process is because I
+# want to ensure that under no circumstances does the child process's cpython
+# exit with sys.exit; I only want it to exit with sys._exit, so no resource
+# (that I might have missed) that is jointly owned by child process and parent
+# process will be closed by the child process. The assumption that if such
+# resources exist, they are owned by the parent process and not to be touched by
+# the child process:                    
         except BaseException as e:
             print("Exception in query_controller.run_query_dict_in_child_process: "
                   f"{type(e)}\n{traceback.format_exc()}", file=sys.stderr)
