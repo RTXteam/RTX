@@ -54,9 +54,13 @@ def instrument(app, host, port):
         )
     )
     
-    FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=trace)
-    RequestsInstrumentor().instrument(tracer_provider=trace)
-    AioHttpClientInstrumentor().instrument(tracer_provider=trace)
+    # Python 3.12 and later require the use of the `instrument` method
+    # to instrument the Flask app.
+    # For earlier versions, the `instrument_app` method is used.
+    # get_tracer_provider() is used to ensure that the tracer provider is set up correctly.
+    FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=trace.get_tracer_provider())
+    RequestsInstrumentor().instrument(tracer_provider=trace.get_tracer_provider())
+    AioHttpClientInstrumentor().instrument(tracer_provider=trace.get_tracer_provider())
 
 
 
