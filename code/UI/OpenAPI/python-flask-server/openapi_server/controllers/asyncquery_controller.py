@@ -1,20 +1,20 @@
 import connexion
-import six
+import flask
+import json
 
 import os
 import sys
+from typing import Any
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/ARAXQuery")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../../ARAX/ARAXQuery")
 from ARAX_query import ARAXQuery
 
 
-def asyncquery(request_body):  # noqa: E501
+def asyncquery(request_body: dict[str, Any]):  # noqa: E501
     """Initiate a query with a callback to receive the response
 
-     # noqa: E501
-
     :param request_body: Query information to be submitted
-    :type request_body: Dict[str, ]
+    :type request_body: dict[str, Any]
 
     :rtype: AsyncQueryResponse
     """
@@ -26,15 +26,16 @@ def asyncquery(request_body):  # noqa: E501
     #### Record the remote IP address in the query for now so it is available downstream
     try:
         query['remote_address'] = connexion.request.headers['x-forwarded-for']
-    except:
+    except KeyError:
         query['remote_address'] = '???'
 
     araxq = ARAXQuery()
 
     envelope = araxq.query_return_message(query, mode='asynchronous')
-    http_status = 200
-    if hasattr(envelope, 'http_status'):
-        http_status = envelope.http_status
-    return(envelope,http_status)
+    envelope_dict = envelope.to_dict()
+    http_status = getattr(envelope, 'http_status', 200)
+    response_serialized_str = json.dumps(envelope_dict, sort_keys=True, allow_nan=False) + "\n"
+    resp_obj = flask.Response(response_serialized_str)
+    return (resp_obj, http_status)
 
 
