@@ -13,7 +13,10 @@ from opentelemetry.instrumentation.aiohttp_client import (
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+# Migration to Python 3.12: Replaced deprecated JaegerExporter with OTLPSpanExporter
+# The JaegerExporter from opentelemetry.exporter.jaeger.thrift was deprecated in v1.16.0
+# and support ended in July 2023. Modern Jaeger installations support OTLP natively.
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME  # noqa: F401
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
@@ -45,12 +48,14 @@ def instrument(app, host, port):
             ResourceAttributes.SERVICE_NAME: service_name
         })
     ))
+    # Migration to Python 3.12: Updated exporter configuration for OTLP
+    # Changed from JaegerExporter(agent_host_name=host, agent_port=port) 
+    # to OTLPSpanExporter(endpoint=f"http://{host}:{port}")
     trace.get_tracer_provider().add_span_processor(
         SimpleSpanProcessor(
-            JaegerExporter(
-                        agent_host_name=host,
-                        agent_port=port
-        )
+            OTLPSpanExporter(
+                endpoint=f"http://{host}:{port}"
+            )
         )
     )
     

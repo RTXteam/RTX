@@ -64,6 +64,7 @@ pygit2==1.18.0
 
 # OpenTelemetry for observability
 opentelemetry-api==1.35.0
+opentelemetry-sdk==1.35.0
 opentelemetry-exporter-jaeger==1.21.0
 opentelemetry-exporter-jaeger-proto-grpc==1.21.0
 opentelemetry-exporter-jaeger-thrift==1.21.0
@@ -74,7 +75,6 @@ opentelemetry-instrumentation-flask==0.56b0
 opentelemetry-instrumentation-requests==0.56b0
 opentelemetry-instrumentation-wsgi==0.56b0
 opentelemetry-proto==1.35.0
-opentelemetry-sdk==1.35.0
 opentelemetry-semantic-conventions==0.56b0
 opentelemetry-util-http==0.56b0
 
