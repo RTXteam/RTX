@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=20">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=21">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="cytoscape-expand-collapse.js"></script>
@@ -24,6 +24,7 @@
 
 </head>
 <body onload="main();">
+<div id="useralerts"></div>
 
 <div class="menuleft">
   <br><br><br>
@@ -480,9 +481,14 @@
 	    <a title="circle layout" onclick="cylayout(0,'circle');">C</a><br>
 	    <a title="Grid layout" onclick="cylayout(0,'grid');">G</a>
 	    <br><br><br><br>
+	    <span id="kg_collapse_edges">
 	    <span class="explevel msgINFO">new!</span>
 	    <a title="collapse all edges" onclick="cyedges(0,'collapse');">c</a><br>
 	    <a title="expand all edges" onclick="cyedges(0,'expand');">E</a><br>
+	    </span>
+	    <br><br><br><br>
+            <a title="export PNG image" onclick="downloadCyto(0,'png');">P</a><br>
+            <a title="export JSON for import into Cytoscape" onclick="downloadCyto(0,'json');">J</a><br>
 	  </td>
 	  <td class="cytograph_kg" style="width:100%;"><div style="height: 100%; width: 100%" id="cy0"></div></td></tr><tr><td></td><td><div id="d0_div"><i>Click on a node or edge to get details</i></div>
 	  </td>

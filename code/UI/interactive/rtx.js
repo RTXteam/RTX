@@ -83,6 +83,8 @@ function main() {
     add_status_divs();
     cytodata['QG'] = 'dummy';
 
+    if (window.chrome)
+	document.getElementById("kg_collapse_edges").remove();
 
     for (var prov in providers) {
 	document.getElementById(prov+"_url").value = providers[prov].url;
@@ -110,7 +112,8 @@ function main() {
 	statusdiv.append(document.createElement("br"));
 
 	document.getElementById("devdiv").innerHTML =  "Requested response id = " + response_id + "<br>";
-	retrieve_response(providers['ARAX'].url+'/response/'+response_id,response_id,"all");
+	var meh_id = isNaN(response_id) ? "X"+response_id : response_id;
+	retrieve_response(providers['ARAX'].url+'/response/'+meh_id,response_id,"all");
         pasteId(response_id);
 	selectInput("qid");
     }
@@ -302,6 +305,7 @@ function viewResponse() {
 	    statusdiv.innerHTML += "<b>Error</b> processing response input. Please correct errors and resubmit: ";
 	statusdiv.append(document.createElement("br"));
 	statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+        add_user_msg("Error processing input","ERROR",false);
 	return;
     }
 
@@ -365,6 +369,7 @@ async function postPathfinder(agent) {
 	console.error(e);
         statusdiv.append(document.createElement("br"));
         statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+        add_user_msg("Error processing Pathfinder input","ERROR",false);
     }
 }
 
@@ -406,6 +411,7 @@ function postQuery(qtype,agent) {
 		statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and resubmit: ";
             statusdiv.append(document.createElement("br"));
 	    statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+            add_user_msg("Error parsing input","ERROR",false);
 	    return;
 	}
 
@@ -460,10 +466,12 @@ function postQuery_ARS(queryObj) {
 	    statusdiv.append(document.createElement("br"));
 	    pasteId(message_id);
 	    selectInput("qid");
-	    retrieve_response(providers['ARAX'].url+"/response/"+message_id,message_id,"all");
+	    var meh_id = isNaN(message_id) ? "X"+message_id : message_id;
+	    retrieve_response(providers['ARAX'].url+"/response/"+meh_id,message_id,"all");
 	})
         .catch(error => {
             statusdiv.append(" - ERROR:: "+error);
+            add_user_msg("Error:"+error,"ERROR",false);
         });
 
     return;
@@ -514,10 +522,12 @@ function postQuery_EXT(queryObj) {
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while parsing the response from the remote server (no log; code:"+data.status+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with capturing QUERY:<br>"+data;
 	    sesame('openmax',statusdiv);
+            add_user_msg("Error parsing response from the remote server","ERROR",false);
 	}
 
     }).catch(error => {
 	statusdiv.append(" - ERROR:: "+error);
+        add_user_msg("Error:"+error,"ERROR",false);
     });
 
     return;
@@ -717,7 +727,7 @@ function postQuery_ARAX(qtype,queryObj) {
 		document.getElementById("progressBar").classList.add("barerror");
 		document.getElementById("progressBar").innerHTML = "Error\u00A0\u00A0";
 		document.getElementById("finishedSteps").classList.add("menunum","numnew","msgERROR");
-		there_was_an_error();
+		there_was_an_error(data.description);
 	    }
 	    statusdiv.append(data["description"]);
 	    statusdiv.append(document.createElement("br"));
@@ -751,7 +761,7 @@ function postQuery_ARAX(qtype,queryObj) {
 		process_log(err.log);
 	    console.log(err.message);
 
-            there_was_an_error();
+            there_was_an_error("An error was encountered while contacting the server ("+err+")");
 	});
 }
 
@@ -786,6 +796,7 @@ function kill_query() {
 		addCheckBox(document.getElementById("killquerybuttondead"),true);
 		var timeout = setTimeout(function() { document.getElementById("killquerybuttondead").remove(); } , 1500 );
 		document.getElementById("statusdiv").innerHTML += "<br><span class='error'>Query terminated by user</span>";
+		add_user_msg("Query terminated by user");
 		if (document.getElementById("cmdoutput")) {
                     var cmddiv = document.getElementById("cmdoutput");
 		    cmddiv.append(document.createElement("br"));
@@ -1147,7 +1158,8 @@ function getIdStats(id) {
 	document.getElementById("istrapi_"+id).innerHTML = 'loading...';
 	document.getElementById("numresults_"+id).append(getAnimatedWaitBar(null));
     }
-    retrieve_response(providers["ARAX"].url+"/response/"+id,id,"stats");
+    var meh_id = isNaN(id) ? "X"+id : id;
+    retrieve_response(providers["ARAX"].url+"/response/"+meh_id,id,"stats");
 }
 
 function checkRefreshARS() {
@@ -1216,8 +1228,10 @@ function sendId(is_ars_refresh) {
     }
     else if (id.startsWith("hhttp"))
 	retrieve_response(id.substring(1),id.substring(1),"all");
-    else
-	retrieve_response(providers["ARAX"].url+"/response/"+id,id,"all");
+    else {
+        var meh_id = isNaN(id) ? "X"+id : id;
+	retrieve_response(providers["ARAX"].url+"/response/"+meh_id,id,"all");
+    }
     if (!is_ars_refresh)
 	openSection('query');
 }
@@ -1725,11 +1739,12 @@ function retrieve_response(resp_url, resp_id, type) {
 	}
 	else if ( xhr.status == 404 ) {
 	    update_response_stats_on_error(resp_id,'N/A',true);
-
+	    var msg = "Response with id="+resp_id+" was not found";
 	    try {
 		var jsonResp = JSON.parse(xhr.responseText);
 		if (!jsonResp.detail) throw new Error('no detail');
                 statusdiv.innerHTML += "<br><span class='error'>"+jsonResp.detail+"</span>";
+		msg = jsonResp.detail;
 	    }
 	    catch(e) {
 		if (resp_id.startsWith("URL:"))
@@ -1739,14 +1754,14 @@ function retrieve_response(resp_url, resp_id, type) {
 
 	    }
 	    sesame('openmax',statusdiv);
-	    there_was_an_error();
+	    there_was_an_error(msg);
 	}
 	else {
             update_response_stats_on_error(resp_id,'Error',true);
 	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr.status+")</span>";
 	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<br>"+xhr.responseText;
 	    sesame('openmax',statusdiv);
-            there_was_an_error();
+            there_was_an_error("An error was encountered while contacting the server");
 	}
     };
 
@@ -1843,6 +1858,7 @@ function render_response(respObj,dispjson) {
 	statusdiv.append(nr);
 	sesame('openmax',statusdiv);
         update_response_stats_on_error(respObj.araxui_response,'&nsub;',false);
+	add_user_msg("Response contains no message, and hence no results","ERROR",false);
 	return;
     }
 
@@ -1884,19 +1900,20 @@ function render_response(respObj,dispjson) {
     let isPathFinder = false;
     if ( respObj["table_column_names"] )
 	add_to_summary(respObj["table_column_names"],0);
-    else if (respObj.message.results.length == 1) {
+    else if (respObj.message.results && respObj.message.results.length == 1) {
 	isPathFinder = true; // might need refining...
 	add_to_summary(["Node","Curie","Count"],0);
     }
     else
 	add_to_summary(["score","'guessence'"],0);
 
-    if ( respObj.message["results"] ) {
+    if (respObj.message["results"]) {
 	if (!respObj.message["knowledge_graph"] ) {
             document.getElementById("result_container").innerHTML  += "<h2 class='error'>Knowledge Graph missing in response; cannot process results.</h2>";
 	    document.getElementById("summary_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
 	    document.getElementById("provenance_container").innerHTML += "<h2 class='error'>Knowledge Graph missing in response; cannot process results</h2>";
             update_response_stats_on_error(respObj.araxui_response,'n/a',false);
+            add_user_msg("Knowledge Graph missing in response; cannot process results","ERROR",false);
 	}
 	else {
 	    var h2 = document.createElement("h2");
@@ -1946,6 +1963,7 @@ function render_response(respObj,dispjson) {
 		statusdiv.append(span);
 		console.error("Bad Response:"+e);
 		update_response_stats_on_error(respObj.araxui_response,'n/a',false);
+		add_user_msg("Bad response:"+e,"ERROR",false);
 		return;
 	    }
 
@@ -1973,6 +1991,7 @@ function render_response(respObj,dispjson) {
         document.getElementById("summary_container").innerHTML += "<h2>No results...</h2>";
 	document.getElementById("provenance_container").innerHTML += "<h2>No results...</h2>";
         update_response_stats_on_error(respObj.araxui_response,'n/a',false);
+        add_user_msg("Response contains no results","WARNING",false);
     }
 
     // table was (potentially) populated in process_results
@@ -2292,6 +2311,7 @@ function render_response(respObj,dispjson) {
     statusdiv.append(nr);
     statusdiv.append(document.createElement("br"));
     sesame('openmax',statusdiv);
+    add_user_msg("TRAPI response rendered successfully","INFO",true);
 }
 
 function render_queryplan_table(qp) {
@@ -2503,12 +2523,13 @@ function process_q_options(q_opts) {
 }
 
 
-function there_was_an_error() {
+function there_was_an_error(msg="An error was encountered") {
     document.getElementById("summary_container").innerHTML += "<h2 class='error'>Error : No results</h2>";
     document.getElementById("result_container").innerHTML  += "<h2 class='error'>Error : No results</h2>";
     document.getElementById("menunumresults").innerHTML = "E";
     document.getElementById("menunumresults").classList.add("numnew","msgERROR");
     document.getElementById("menunumresults").classList.remove("numold");
+    add_user_msg(msg,"ERROR",false);
 }
 
 
@@ -2550,6 +2571,7 @@ function process_log(logarr) {
 
 	status[msg.level]++;
 
+	// TOFIX when TIMESTAMP not present
 	var span = document.createElement("span");
 	span.title = "Click to display elapsed time between two events";
 	span.className = "hoverable msg " + msg.level;
@@ -2771,6 +2793,7 @@ function display_QG_from_JSON() {
     }
     else {
         statusdiv.innerHTML += "<span class='error'>Error: no nodes and edges detected: cannot use input as a query_graph</span>";
+        add_user_msg("Error: no nodes and edges detected: cannot use input as a query_graph","ERROR",false);
     }
 }
 
@@ -2784,17 +2807,6 @@ function process_graph(gne,graphid,trapi) {
 
 	gnode.parentdivnum = gid;   // helps link node to div when displaying node info on click
 	gnode.trapiversion = trapi; // deprecate??
-
-        if (!gnode.fulltextname) {
-	    if (gnode.name)
-		gnode.fulltextname = gnode.name;
-	    else
-		gnode.fulltextname = id;
-	    gne['nodes'][id].fulltextname = gnode.fulltextname;
-	}
-
-	//if (!gnode.id)
-	//gnode.id = id;
 
         if (gnode.ids) {
 	    gnode.id = gnode.ids[0];
@@ -3321,7 +3333,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	else {
 	    ess = eau_du_essence(result);
 	    if (ess != 'n/a')
-		ess = kg.nodes[ess].fulltextname;
+		ess = kg.nodes[ess].name ? kg.nodes[ess].name : kg.nodes[ess].id;
 	}
 
 	var cnf = 'n/a';
@@ -3545,10 +3557,12 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 		    // confirm...
 		    if (kmne.has_these_support_graphs && kmne.has_these_support_graphs.length > 0) {
 			kmne.__has_sgs = true;
-			for (var sgid of kmne.has_these_support_graphs)
+			for (var sgid of kmne.has_these_support_graphs) {
 			    if (!(sgid in aux))
 				throw Error("Aux graph not found: "+sgid);
-			add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+
+			    add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+			}
 		    }
 		    else if (kmne.attributes) {
 			for (var att of kmne.attributes) {
@@ -3734,6 +3748,29 @@ function add_graph_to_table(table,num) {
 	td.append(link);
 	td.append(document.createElement("br"));
     }
+
+    link = document.createElement("span");
+    link.className = "explevel msgINFO";
+    link.style.display = "inline-block";
+    link.style.marginTop = "30px";
+    link.append('New!');
+    td.append(link);
+    td.append(document.createElement("br"));
+
+    link = document.createElement("a");
+    link.title = 'export PNG image of this view';
+    link.setAttribute('onclick', 'downloadCyto('+num+',"png");');
+    link.append("P");
+    td.append(link);
+    td.append(document.createElement("br"));
+
+    link = document.createElement("a");
+    link.title = 'export JSON file of this network for import into Cytoscape';
+    link.setAttribute('onclick', 'downloadCyto('+num+',"json");');
+    link.append("J");
+    td.append(link);
+    td.append(document.createElement("br"));
+
 
     tr.append(td);
 
@@ -4565,9 +4602,9 @@ function cyedges(index,what) {
 }
 
 function cyresize(index,size) {
-    var height = 300;
+    var height = 400;
     if (size == 'm')
-	height = 500;
+	height = 600;
     else if (size == 'L')
 	height = 1000;
 
@@ -4708,8 +4745,10 @@ function qg_new(msg,nodes,type='basic') {
     UIstate.editedgeid = null;
     UIstate.editnodeid = null;
 
-    if (msg)
+    if (msg) {
 	document.getElementById("statusdiv").innerHTML = "<p>A new "+type+" Query Graph has been created.</p>";
+        add_user_msg("A new "+type+" Query Graph has been created");
+    }
     else
 	document.getElementById("showQGjson").checked = false;
 
@@ -4924,6 +4963,7 @@ function qg_remove_qnode() {
     qg_display_edge_predicates(false);
 
     document.getElementById("statusdiv").innerHTML = delstat;
+    add_user_msg("Deleted node="+id);
     display_qg_popup('node','hide');
     UIstate.editnodeid = null;
 }
@@ -5337,6 +5377,7 @@ function qg_remove_qedge() {
 	qgids.splice(idx, 1);
 
     document.getElementById("statusdiv").innerHTML = "<p>Deleted edge <i>"+id+"</i>";
+    add_user_msg("Deleted edge="+id);
 
     display_qg_popup('edge','hide');
     UIstate.editedgeid = null;
@@ -5446,8 +5487,10 @@ function qg_edit(msg) {
 
     cylayout(99999,"breadthfirst");
 
-    if (msg)
+    if (msg) {
 	document.getElementById("statusdiv").innerHTML = "<p>Copied Query Graph to visual edit window.</p>";
+	add_user_msg("Copied Query Graph to visual edit window", "INFO");
+    }
     else
 	document.getElementById("showQGjson").checked = false;
 
@@ -5916,6 +5959,7 @@ function clearWF() {
     populate_wflist();
     abort_wf();
     document.getElementById("statusdiv").innerHTML = '<br>A blank workflow has been created<br><br>';
+    add_user_msg("A blank workflow has been created", "INFO");
 }
 
 function update_wfjson() {
@@ -5932,6 +5976,7 @@ function update_wfjson() {
 	    statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and resubmit: ";
 	statusdiv.append(document.createElement("br"));
 	statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+	add_user_msg("Error processing JSON input","ERROR",false);
 	return;
     }
 
@@ -6279,6 +6324,7 @@ async function import_intowf(what,fromqg) {
 	qg_clean_up(false);
 	workflow['message']['query_graph'] = input_qg;
         statusdiv.append("Imported query_graph into Workflow.");
+        add_user_msg("Imported query_graph into Workflow","INFO");
 	input_qg = JSON.parse(tmpqg);
 	selectInput('qwf');
     }
@@ -6297,8 +6343,10 @@ async function import_intowf(what,fromqg) {
 	var response;
 	if (resp_id.startsWith("http"))
 	    response = await fetch(resp_id);
-	else
-	    response = await fetch(providers["ARAX"].url + "/response/" + resp_id);
+	else {
+	    var meh_id = isNaN(resp_id) ? "X"+resp_id : resp_id;
+	    response = await fetch(providers["ARAX"].url + "/response/" + meh_id);
+	}
 	var respjson = await response.json();
 
 	if (respjson && respjson.message) {
@@ -6306,11 +6354,15 @@ async function import_intowf(what,fromqg) {
 		workflow['message'] = respjson.message;
 	    else if (respjson.message["query_graph"])
 		workflow['message']['query_graph'] = respjson.message["query_graph"];
-	    else
+	    else {
 		statusdiv.append("No query_graph found in response_id = " + resp_id + "!!");
+		add_user_msg("No query_graph found in response_id = " + resp_id);
+	    }
 	}
-	else
+	else {
 	    statusdiv.append("No message found in response_id = " + resp_id + "!!");
+            add_user_msg("No message found in response_id = " + resp_id);
+	}
 
         wait.parentNode.replaceChild(button, wait);
     }
@@ -8076,6 +8128,29 @@ function show_hide(ele, span) {
 }
 
 
+function add_user_msg(what,code="WARNING",remove=true) {
+    var div = document.createElement("div");
+    div.className = 'msg'+code;
+    div.style.color = "#eee";
+    div.innerHTML = what;
+
+    var span = document.createElement("span");
+    span.className = 'bigx';
+    span.title = "dismiss this message";
+    span.innerHTML = "&times;"
+    span.onclick= function(){div.remove();};
+    div.append(span);
+
+    document.getElementById("useralerts").append(div);
+
+    if (remove) {
+        setTimeout(function() { div.style.opacity = "0"; }, 3000 );
+        setTimeout(function() { div.remove(); }, 3500 );
+    }
+    return null;
+}
+
+
 function add_to_dev_info(title,jobj) {
     var dev = document.getElementById("devdiv");
     dev.append(document.createElement("br"));
@@ -8741,6 +8816,39 @@ function copyTSVToClipboard(ele,tsv) {
     addCheckBox(ele,true);
 }
 
+
+function downloadCyto(gid,format='json') {
+    if (!cyobj[gid])
+        return add_user_msg("Unable to download.  Data not found.","ERROR",true);
+
+    try {
+	var filename = "ARAX_"+gid+'_network';
+
+	var downloadLink = document.createElement('a');
+	downloadLink.target = '_blank';
+	downloadLink.download = filename + '.' + format;
+
+        var URL = window.URL || window.webkitURL;
+
+	if (format == 'png') {
+	    var blob = cyobj[gid].png({output:"blob"});
+            var downloadUrl = URL.createObjectURL(blob);
+            downloadLink.href = downloadUrl;
+	}
+	else {
+	    downloadLink.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cyobj[gid].json()));
+	}
+
+        downloadLink.click();
+        downloadLink.remove();
+    }
+    catch(e) {
+        add_user_msg("Unable to download: "+e,"ERROR",false);
+    }
+
+}
+
+
 function addCheckBox(ele,remove) {
     var check = document.createElement("span");
     check.className = 'explevel p9';
@@ -8870,6 +8978,7 @@ function dropFile(where,event) {
             document.getElementById("statusdiv").append(document.createElement("br"));
             document.getElementById("statusdiv").append("Read in "+lineCount+" lines from dropped file.");
             document.getElementById("statusdiv").append(document.createElement("br"));
+            add_user_msg("Read in "+lineCount+" lines from dropped file", "INFO");
 	};
     }
     else if (where == 'araxtest') {

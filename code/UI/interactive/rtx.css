@@ -33,6 +33,32 @@ hr {
     pointer-events: none;
 }
 
+#useralerts {
+    z-index:99;
+    position:fixed;
+    top:0;left:0;
+    display:block;
+    width:100%;
+    min-height:0px;
+}
+#useralerts > div {
+    font-size: large;
+    padding: 20px;
+    margin-bottom: 5px;
+    opacity: 0.9;
+    transition: opacity 0.6s;
+}
+
+.bigx {
+    font-size: xxx-large;
+    float: right;
+    cursor: pointer;
+    line-height: 20px;
+}
+.bigx:hover {
+    filter: invert(1) grayscale(1) contrast(9);
+}
+
 .menulinks {
     position: relative;
     top:30px;
@@ -476,6 +502,15 @@ hr {
 .p1, .msgERROR   { background-color: #821; }
 .p0, .msgDEBUG   { background-color: #444; }
 
+
+.code200 { background-color: #5f5; }
+.code400 { background-color: #666; color: #eee; }
+.code404 { background-color: #ec1; }
+.code500 { background-color: #d22; color: #eee; }
+.code501 { background-color: #bbb; }
+.code598 { background-color: #f55; }
+
+
 .srtx { background-color: #5596d0; }
 .sind { background-color: #4b0082; }
 .srob { background-color: #333333; }
@@ -592,7 +627,7 @@ td {
 }
 .cytograph {
     border: 1px solid #444;
-    height: 300px;
+    height: 400px;
     width: 99%;
     background-color: #fff;
     box-shadow: inset 0 4px 8px 0 rgba(0,0,0,0.2), inset 0 6px 20px 0 rgba(0,0,0,0.19);
