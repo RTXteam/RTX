@@ -18,7 +18,7 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 # Migration to Python 3.12: Replaced deprecated JaegerExporter with OTLPSpanExporter
 # The JaegerExporter from opentelemetry.exporter.jaeger.thrift was deprecated in v1.16.0
 # and support ended in July 2023. Modern Jaeger installations support OTLP natively.
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME  # noqa: F401
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
