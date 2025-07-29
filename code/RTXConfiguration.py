@@ -119,15 +119,27 @@ class RTXConfiguration:
         config_dbs_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_dbs.json'
         config_secrets_local_file_path = os.path.dirname(os.path.abspath(__file__)) + '/config_secrets_local.json'
         
+        # Checks TWO conditions (either one makes it production)
+        self.is_production_server = False
+        if ( ( 'HOSTNAME' in os.environ and os.environ['HOSTNAME'] == '6d6766e08a31' ) or
+            ( 'PWD' in os.environ and 'mnt/data/orangeboard' in os.environ['PWD'] ) ):
+            self.is_production_server = True
+        
         # Setting Jaeger Configs
+        # Modern Jaeger Setup
+        # Python 3.12 + OpenTelemetry 1.35.0 sends OTLP data to port 4318, and modern Jaeger backends (v1.35+) can receive it
         if self.is_itrb_instance:
-            self.jaeger_port = 6831
+            self.jaeger_port = 4318  # OTLP HTTP port (was 6831 - Thrift port)
             self.jaeger_endpoint = "jaeger-otel-agent.sri"
             self.telemetry_enabled = True
+            # Use HTTP for internal ITRB environment
+            self.jaeger_protocol = "http"
         else:
-            self.jaeger_port = 6831
+            self.jaeger_port = 4318  # OTLP HTTP port (was 6831 - Thrift port)
             self.jaeger_endpoint = "jaeger.rtx.ai"
             self.telemetry_enabled = True
+            # Use HTTPS for production environment
+            self.jaeger_protocol = "https" if self.is_production_server else "http"
         # Download the latest copy of config_secrets.json as appropriate (or override by local file, if present)
         if os.path.exists(config_secrets_local_file_path):
             config_secrets_file_path = config_secrets_local_file_path
@@ -150,12 +162,6 @@ class RTXConfiguration:
         if DEBUG:
             t1 = timeit.default_timer()
             print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Got secrets")
-
-        # AG: Not sure exactly what this is doing?
-        self.is_production_server = False
-        if ( ( 'HOSTNAME' in os.environ and os.environ['HOSTNAME'] == '6d6766e08a31' ) or
-            ( 'PWD' in os.environ and 'mnt/data/orangeboard' in os.environ['PWD'] ) ):
-            self.is_production_server = True
 
         # Set database file paths
         self.db_host = "arax-databases.rtx.ai"

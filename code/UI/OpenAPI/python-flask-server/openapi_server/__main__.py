@@ -4,6 +4,8 @@ import os
 import traceback
 import json
 import setproctitle
+import requests
+from urllib.parse import urljoin
 
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -39,7 +41,7 @@ parent_pid = None
 
 CONFIG_FILE = 'openapi_server/flask_config.json'
 
-def instrument(app, host, port):
+def instrument(app, host, port, protocol):
     
     service_name = "ARAX"
 
@@ -48,16 +50,23 @@ def instrument(app, host, port):
             ResourceAttributes.SERVICE_NAME: service_name
         })
     ))
+    
     # Migration to Python 3.12: Updated exporter configuration for OTLP
     # Changed from JaegerExporter(agent_host_name=host, agent_port=port) 
     # to OTLPSpanExporter(endpoint=f"http://{host}:{port}")
+    otlp_endpoint = f"{protocol}://{host}:{port}"
+    print(f"Configuring OTLP exporter with endpoint: {otlp_endpoint}")
+    
     trace.get_tracer_provider().add_span_processor(
         SimpleSpanProcessor(
             OTLPSpanExporter(
-                endpoint=f"http://{host}:{port}"
+                endpoint=otlp_endpoint,
+                timeout=30,  # 30 second timeout for export operations
+                headers={},   # Add any required headers here
             )
         )
     )
+        
     
     # Python 3.12 and later require the use of the `instrument` method
     # to instrument the Flask app.
@@ -171,7 +180,7 @@ def main():
         setproctitle.setproctitle(setproctitle.getproctitle() +
                                   f" [port={tcp_port}]")
         if rtx_config.telemetry_enabled:
-            instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
+            instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port, rtx_config.jaeger_protocol)
         app.run(port=local_config['port'], threaded=True)
     else:
         eprint("[__main__]: fork() unsuccessful")
