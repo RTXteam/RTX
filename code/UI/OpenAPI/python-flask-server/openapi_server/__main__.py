@@ -181,7 +181,15 @@ def main():
                                   f" [port={tcp_port}]")
         if rtx_config.telemetry_enabled:
             instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port, rtx_config.jaeger_protocol)
-        app.run(port=local_config['port'], threaded=True)
+        #app.run(port=local_config['port'], threaded=True)
+        #The threaded=True parameter is not compatible with the newer version of Connexion/uvicorn.
+        #so we changed it to not use it
+        #New Uvicorn Approach (ASGI):
+        #Uses async/await with event loop
+        #Much better performance - can handle thousands of concurrent connections
+        #No GIL limitations for I/O operations
+        #Built-in concurrency without needing threaded=True
+        app.run(port=local_config['port'])
     else:
         eprint("[__main__]: fork() unsuccessful")
         assert False, "****** fork() unsuccessful in __main__"
