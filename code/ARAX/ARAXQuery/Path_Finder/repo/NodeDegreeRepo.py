@@ -71,7 +71,6 @@ class NodeDegreeRepo:
                 degree_category_set.update(degree_by_biolink_type.keys())
 
             offset += batch_size
-            print(offset)
 
         conn.close()
 

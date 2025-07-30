@@ -3,8 +3,7 @@ import logging
 import os
 import pickle
 import sys
-import sqlite3
-import json
+
 import numpy as np
 import xgboost as xgb
 
@@ -83,7 +82,7 @@ def gather_data():
     y = []
     x_list = []
     for key_nodes_pair in training_data:
-        content_by_curie, curie_category, node_degree = get_neighbors_info(
+        content_by_curie, curie_category = get_neighbors_info(
             key_nodes_pair[0],
             ngd_repo,
             plover_repo,
@@ -154,6 +153,7 @@ def train():
     }
     bst = xgb.train(params, dtrain, num_boost_round=200)
     bst.save_model("pathfinder_xgboost_model")
+    logging.info("Training finished")
 
 
 def feature_importance():
