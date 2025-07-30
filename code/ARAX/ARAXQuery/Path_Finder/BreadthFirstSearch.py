@@ -62,7 +62,8 @@ class BreadthFirstSearch:
 
                 for path_string, new_paths, exception in new_paths_list:
                     if exception:
-                        self.logger.warning(f"Path {path_string} raised an exception: {exception}")
+                        path_finder_model = PathFinderModel.deserialize(path_string)
+                        self.logger.error(f"Path {path_finder_model.path} raised an exception: {exception}")
                     else:
                         for new_path in new_paths:
                             p = Path.deserialize(new_path)
