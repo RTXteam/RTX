@@ -343,7 +343,7 @@ async function postPathfinder(agent) {
 	var bestthing = await check_entity(pf_subject,false);
 	document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
 	if (bestthing.found) {
-            statusdiv.innerHTML += "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+pf_subject+"</i> in our knowledge graph.</p>";
+            statusdiv.innerHTML += "<p>Found entity with name <b>"+bestthing.name+"</b> ("+bestthing.curie+") that best matches <i>"+pf_subject+"</i> in our knowledge graph.</p>";
             sesame('openmax',statusdiv);
 	    pf_query_graph.nodes['n0'].ids.push(bestthing.curie);
 	}
@@ -351,12 +351,14 @@ async function postPathfinder(agent) {
 	bestthing = await check_entity(pf_object,false);
         document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
         if (bestthing.found) {
-            statusdiv.innerHTML += "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+pf_object+"</i> in our knowledge graph.</p>";
+            statusdiv.innerHTML += "<p>Found entity with name <b>"+bestthing.name+"</b> ("+bestthing.curie+") that best matches <i>"+pf_object+"</i> in our knowledge graph.</p>";
             sesame('openmax',statusdiv);
             pf_query_graph.nodes['n1'].ids.push(bestthing.curie);
         }
 
         if (pf_inter) {
+            if (!pf_inter.startsWith("biolink:"))
+		pf_inter = 'biolink:' + pf_inter;
 	    var constraint = {};
 	    constraint.intermediate_categories = [pf_inter];
 	    pf_query_graph.paths['p0'].constraints = [constraint];
@@ -6426,13 +6428,20 @@ function load_meta_knowledge_graph() {
 	})
         .catch(error => {
 	    allnodes_node.innerHTML = '';
-            pf_inter_node.innerHTML = '';
 	    var opt = document.createElement('option');
 	    opt.value = '';
 	    opt.append("-- Error Loading Node Categories --");
 	    allnodes_node.append(opt);
-            pf_inter_node.append(opt.cloneNode(true));
+
+            var new_pf_inter_node = document.createElement('input');
+	    new_pf_inter_node.id = "pf_inter";
+	    new_pf_inter_node.className = "nodeInput questionBox";
+	    new_pf_inter_node.size = "100";
+	    new_pf_inter_node.placeholder ="[Optional] Enter Intermediate Node Category";
+	    pf_inter_node.replaceWith(new_pf_inter_node);
+
 	    console.error(error);
+            add_user_msg("Call to /meta_knowledge_graph failed; could not load predicates and node categories.","WARNING",false);
 	});
 
 }
