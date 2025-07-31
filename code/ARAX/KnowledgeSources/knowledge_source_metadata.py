@@ -241,12 +241,13 @@ class KnowledgeSourceMetadata:
         # Step 1: Fetch from PloverDB
         plover_meta_kg = self._fetch_ploverdb_meta_kg()
         if not plover_meta_kg:
-            eprint("ERROR: Failed to fetch meta knowledge graph from PloverDB")
+            eprint("WARNING: Failed to fetch meta knowledge graph from PloverDB, using backup")
             # Try to load from backup
             backup_meta_kg = self._load_latest_backup_meta_kg()
             if backup_meta_kg:
                 eprint("Using backup meta knowledge graph")
                 return backup_meta_kg
+            eprint("ERROR: No backup available, cannot provide meta knowledge graph")
             return None
         
         # Step 2: Merge KP information
@@ -326,7 +327,7 @@ class KnowledgeSourceMetadata:
         self.meta_knowledge_graph = self._build_dynamic_meta_kg()
         
         if self.meta_knowledge_graph is None:
-            eprint(f"ERROR [{method_name}]: Failed to build meta knowledge graph")
+            eprint(f"ERROR [{method_name}]: Failed to build meta knowledge graph and no backup available")
             return None
         
         # Create simplified version
