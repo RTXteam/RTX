@@ -21,14 +21,17 @@ from kp_info_cacher import KPInfoCacher
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 FREQ_KP_INFO_CACHER_SEC = 3600
+FREQ_META_KG_REFRESH_SEC = 3600  # 1 hour
 FREQ_CHECK_ONGOING_SEC = 60
 
 
 class ARAXBackgroundTasker:
 
     def __init__(self, parent_pid: int,
-                 run_kp_info_cacher: bool = True):
+                 run_kp_info_cacher: bool = True,
+                 run_meta_kg_refresh: bool = True):
         self.run_kp_info_cacher = run_kp_info_cacher
+        self.run_meta_kg_refresh = run_meta_kg_refresh
         self.parent_pid = parent_pid
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker created")
@@ -44,6 +47,9 @@ class ARAXBackgroundTasker:
         if self.run_kp_info_cacher:
             kp_info_cacher = KPInfoCacher()
             kp_info_cacher_counter = 0
+
+        if self.run_meta_kg_refresh:
+            meta_kg_refresh_counter = 0
 
         # Clear the table of existing queries
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Clearing any "
@@ -154,6 +160,37 @@ class ARAXBackgroundTasker:
                    FREQ_KP_INFO_CACHER_SEC:
                     kp_info_cacher_counter = 0
 
+            # Run the Meta KG Refresh less frequently
+            if self.run_meta_kg_refresh:
+                if meta_kg_refresh_counter == 0:
+                    timestamp = str(datetime.datetime.now().isoformat())
+                    eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Running "
+                           "meta knowledge graph refresh")
+                    try:
+                        # Import and run meta KG refresh using existing function
+                        sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../KnowledgeSources")
+                        from meta_kg_background_refresh import refresh_meta_kg
+                        success = refresh_meta_kg()
+                        if success:
+                            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
+                                   "Completed meta KG refresh successfully")
+                        else:
+                            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
+                                   "meta KG refresh failed")
+                    except Exception as error:
+                        e_type, e_value, e_traceback =\
+                            sys.exc_info()
+                        err_str = repr(traceback.format_exception(e_type,
+                                                                  e_value,
+                                                                  e_traceback))
+                        eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
+                               "meta KG refresh failed: "
+                               f"{error}: {err_str}")
+                meta_kg_refresh_counter += 1
+                if meta_kg_refresh_counter * FREQ_CHECK_ONGOING_SEC > \
+                   FREQ_META_KG_REFRESH_SEC:
+                    meta_kg_refresh_counter = 0
+
             ongoing_queries_by_addr = query_tracker.check_ongoing_queries()
             n_ongoing_queries = 0
             n_clients = 0
@@ -172,7 +209,7 @@ class ARAXBackgroundTasker:
 
 
 def main():
-    background_tasker = ARAXBackgroundTasker(os.getpid())
+    background_tasker = ARAXBackgroundTasker(os.getpid(), run_kp_info_cacher=True, run_meta_kg_refresh=True)
     background_tasker.run_tasks()
 
 
