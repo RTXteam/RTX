@@ -77,6 +77,16 @@ class KnowledgeSourceMetadata:
                 if meta_map:
                     eprint(f"Merging data from {len(meta_map)} knowledge providers")
                     
+                    # Ensure TRAPI 1.4 compliance for existing edges
+                    for edge in base_meta_kg.get('edges', []):
+                        if 'knowledge_types' not in edge:
+                            edge['knowledge_types'] = ['lookup']
+                    
+                    # Ensure TRAPI 1.4 compliance for existing nodes
+                    for node_data in base_meta_kg.get('nodes', {}).values():
+                        if 'attributes' not in node_data:
+                            node_data['attributes'] = []
+                    
                     # Merge additional predicates from KP meta map
                     for kp_name, kp_data in meta_map.items():
                         if 'predicates' in kp_data:
@@ -97,6 +107,7 @@ class KnowledgeSourceMetadata:
                                                 "subject": subject,
                                                 "object": obj,
                                                 "predicate": predicate,
+                                                "knowledge_types": ["lookup"], #TRAPI 1.4 compliance direct lookup of existing knowledge from the knowledge graph
                                                 "attributes": [
                                                     {
                                                         "attribute_type_id": "biolink:knowledge_source",
@@ -119,7 +130,8 @@ class KnowledgeSourceMetadata:
                                 else:
                                     # Add new node type if it doesn't exist
                                     base_meta_kg.setdefault('nodes', {})[node_type] = {
-                                        "id_prefixes": list(prefixes)
+                                        "id_prefixes": list(prefixes),
+                                        "attributes": []  # TRAPI 1.4 compliance
                                     }
                 else:
                     eprint("No KP meta map data available for merging")
@@ -131,7 +143,20 @@ class KnowledgeSourceMetadata:
 
     def _add_reasoner_api_info(self, meta_kg: Dict[str, Any]) -> Dict[str, Any]:
         """Add information from ReasonerAPI documentation"""
-        # Add standard TRAPI attributes and qualifiers
+        # Only add missing TRAPI 1.4 fields, don't overwrite existing data
+        
+        # Ensure all edges have knowledge_types (TRAPI 1.4 requirement)
+        for edge in meta_kg.get('edges', []):
+            if 'knowledge_types' not in edge:
+                edge['knowledge_types'] = ['lookup']
+        
+        # Ensure all nodes have attributes field (TRAPI 1.4 optional but useful)
+        for node_data in meta_kg.get('nodes', {}).values():
+            if 'attributes' not in node_data:
+                node_data['attributes'] = []
+        
+        # Only add standard attributes to edges that don't have them
+        # This preserves KP-specific attributes
         standard_attributes = [
             {
                 "attribute_type_id": "biolink:original_predicate",
@@ -150,12 +175,12 @@ class KnowledgeSourceMetadata:
             }
         ]
         
-        # Add standard attributes to all edges if not present
+        # Add standard attributes only to edges that don't have them
         for edge in meta_kg.get('edges', []):
             if 'attributes' not in edge:
                 edge['attributes'] = []
             
-            # Add standard attributes if not already present
+            # Only add standard attributes if they're not already present
             existing_attr_types = {attr.get('attribute_type_id') for attr in edge['attributes']}
             for attr in standard_attributes:
                 if attr['attribute_type_id'] not in existing_attr_types:
@@ -166,8 +191,8 @@ class KnowledgeSourceMetadata:
     def _get_backup_meta_kg_path(self) -> str:
         """Get the path for the backup meta knowledge graph file"""
         backup_dir = os.path.dirname(os.path.abspath(__file__))
-        timestamp = datetime.now().strftime("%Y%m%d_%H")
-        return os.path.join(backup_dir, f"meta_kg_backup_{timestamp}.json")
+        timestamp = datetime.now().strftime("%m%d%Y_%H%M")
+        return os.path.join(backup_dir, f"meta_kg_{timestamp}.json")
 
     def _save_backup_meta_kg(self, meta_kg: Dict[str, Any]) -> bool:
         """Save the meta knowledge graph as a backup file"""
@@ -177,28 +202,29 @@ class KnowledgeSourceMetadata:
                 json.dump(meta_kg, f, indent=2)
             eprint(f"Backup saved to: {backup_path}")
             
-            # Clean up old backups (keep last 24 hours)
-            self._cleanup_old_backups(keep_hours=24)
+            # Clean up old backups (keep only 3 latest backups)
+            self._cleanup_old_backups(keep_count=3)
             
             return True
         except Exception as e:
             eprint(f"ERROR: Failed to save backup: {e}")
             return False
 
-    def _cleanup_old_backups(self, keep_hours: int = 24):
-        """Clean up old backup files, keeping only the last N hours"""
+    def _cleanup_old_backups(self, keep_count: int = 3):
+        """Clean up old backup files, keeping only the last N backups"""
         try:
             backup_dir = os.path.dirname(os.path.abspath(__file__))
-            backup_files = [f for f in os.listdir(backup_dir) if f.startswith("meta_kg_backup_") and f.endswith(".json")]
+            # Only consider files with the exact date-time pattern: meta_kg_MMDDYYYY_HHMM.json
+            backup_files = [f for f in os.listdir(backup_dir) if f.startswith("meta_kg_") and f.endswith(".json") and re.match(r"meta_kg_\d{8}_\d{4}\.json$", f)]
             
-            if len(backup_files) <= keep_hours:
+            if len(backup_files) <= keep_count:
                 return  # Keep all if we have fewer than the limit
             
-            # Sort by timestamp (oldest first)
-            backup_files.sort()
+            # Sort by timestamp (newest first, then reverse to get oldest first)
+            backup_files.sort(reverse=True)
             
             # Remove old files (keep the most recent ones)
-            files_to_remove = backup_files[:-keep_hours]
+            files_to_remove = backup_files[keep_count:]
             for old_file in files_to_remove:
                 old_file_path = os.path.join(backup_dir, old_file)
                 try:
@@ -214,7 +240,8 @@ class KnowledgeSourceMetadata:
         """Load the most recent backup meta knowledge graph"""
         try:
             backup_dir = os.path.dirname(os.path.abspath(__file__))
-            backup_files = [f for f in os.listdir(backup_dir) if f.startswith("meta_kg_backup_") and f.endswith(".json")]
+            # Only consider files with the exact date-time pattern: meta_kg_MMDDYYYY_HHMM.json
+            backup_files = [f for f in os.listdir(backup_dir) if f.startswith("meta_kg_") and f.endswith(".json") and re.match(r"meta_kg_\d{8}_\d{4}\.json$", f)]
             
             if not backup_files:
                 eprint("No backup files found")
@@ -250,10 +277,10 @@ class KnowledgeSourceMetadata:
             eprint("ERROR: No backup available, cannot provide meta knowledge graph")
             return None
         
-        # Step 2: Merge KP information
+        # Step 2: Merge KP information using existing KP info cacher
         merged_meta_kg = self._merge_kp_info(plover_meta_kg)
         
-        # Step 3: Add ReasonerAPI information
+        # Step 3: Add ReasonerAPI information (only adds missing TRAPI 1.4 fields)
         final_meta_kg = self._add_reasoner_api_info(merged_meta_kg)
         
         # Step 4: Save backup
@@ -265,6 +292,8 @@ class KnowledgeSourceMetadata:
         
         eprint("Successfully built dynamic meta knowledge graph")
         return final_meta_kg
+
+
 
     #### Get a list of all supported subjects, predicates, and objects and reformat to /predicates format
     def get_kg_predicates(self):
@@ -362,10 +391,8 @@ class KnowledgeSourceMetadata:
 
         self.simplified_meta_knowledge_graph['supported_predicates'] = sorted(list(self.simplified_meta_knowledge_graph['supported_predicates']))
 
-
-##########################################################################################
 def main():
-
+    #test the meta knowledge graph (simple format)
     ksm = KnowledgeSourceMetadata()
     #predicates = ksm.get_kg_predicates()
     #print(json.dumps(predicates,sort_keys=True,indent=2))
