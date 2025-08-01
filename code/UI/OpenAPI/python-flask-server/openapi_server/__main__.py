@@ -4,6 +4,8 @@ import os
 import traceback
 import json
 import setproctitle
+import requests
+from urllib.parse import urljoin
 
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -13,7 +15,10 @@ from opentelemetry.instrumentation.aiohttp_client import (
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+# Migration to Python 3.12: Replaced deprecated JaegerExporter with OTLPSpanExporter
+# The JaegerExporter from opentelemetry.exporter.jaeger.thrift was deprecated in v1.16.0
+# and support ended in July 2023. Modern Jaeger installations support OTLP natively.
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME  # noqa: F401
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) +
@@ -36,7 +41,7 @@ parent_pid = None
 
 CONFIG_FILE = 'openapi_server/flask_config.json'
 
-def instrument(app, host, port):
+def instrument(app, host, port, protocol):
     
     service_name = "ARAX"
 
@@ -45,14 +50,23 @@ def instrument(app, host, port):
             ResourceAttributes.SERVICE_NAME: service_name
         })
     ))
+    
+    # Migration to Python 3.12: Updated exporter configuration for OTLP
+    # Changed from JaegerExporter(agent_host_name=host, agent_port=port) 
+    # to OTLPSpanExporter(endpoint=f"http://{host}:{port}")
+    otlp_endpoint = f"{protocol}://{host}:{port}"
+    print(f"Configuring OTLP exporter with endpoint: {otlp_endpoint}")
+    
     trace.get_tracer_provider().add_span_processor(
         SimpleSpanProcessor(
-            JaegerExporter(
-                        agent_host_name=host,
-                        agent_port=port
-        )
+            OTLPSpanExporter(
+                endpoint=otlp_endpoint,
+                timeout=30,  # 30 second timeout for export operations
+                headers={},   # Add any required headers here
+            )
         )
     )
+        
     
     # Python 3.12 and later require the use of the `instrument` method
     # to instrument the Flask app.
@@ -166,8 +180,16 @@ def main():
         setproctitle.setproctitle(setproctitle.getproctitle() +
                                   f" [port={tcp_port}]")
         if rtx_config.telemetry_enabled:
-            instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
-        app.run(port=local_config['port'], threaded=True)
+            instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port, rtx_config.jaeger_protocol)
+        #app.run(port=local_config['port'], threaded=True)
+        #The threaded=True parameter is not compatible with the newer version of Connexion/uvicorn.
+        #so we changed it to not use it
+        #New Uvicorn Approach (ASGI):
+        #Uses async/await with event loop
+        #Much better performance - can handle thousands of concurrent connections
+        #No GIL limitations for I/O operations
+        #Built-in concurrency without needing threaded=True
+        app.run(port=local_config['port'])
     else:
         eprint("[__main__]: fork() unsuccessful")
         assert False, "****** fork() unsuccessful in __main__"
