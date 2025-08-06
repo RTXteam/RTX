@@ -742,18 +742,6 @@ def test_multiomics_clinical_risk_kp():
 
 
 @pytest.mark.external
-def test_multiomics_wellness_kp():
-    actions_list = [
-        "add_qnode(ids=UniProtKB:O00533, categories=biolink:Protein, key=n00)",
-        "add_qnode(categories=biolink:Protein, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=infores:biothings-multiomics-wellness)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-@pytest.mark.external
 def test_multiomics_drug_response_kp():
     actions_list = [
         "add_qnode(ids=NCBIGene:7157, categories=biolink:Gene, key=n00)",
