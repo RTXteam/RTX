@@ -507,7 +507,7 @@ See also the contact information for the Team Expander Agent PIs above.
 ## ...in your web browser
 
 Here is the link to access the web browser interface to RTX:
-[arax.rtx.ai](https://arax.rtx.ai)
+[arax.transltr.io](https://arax.transltr.io)
 
 ## ...using our web API
 
