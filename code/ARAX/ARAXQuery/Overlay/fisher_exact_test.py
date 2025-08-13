@@ -537,7 +537,14 @@ class ComputeFTEST:
                 check_empty = False
                 for node in node_iter:
                     try:
-                        tmplist = set(edge_id for edge_id, edge in answer_kg.edges_by_qg_id['FET_e00'].items() if edge.subject == node or edge.object == node)
+                        tmplist = set()
+                        if node in answer_kg.nodes:
+                            for edge_id, edge in answer_kg.edges_by_qg_id.get('FET_e00', {}).items():
+                                if edge.subject == node or edge.object == node:
+                                    tmplist.add(edge_id)
+                        else:
+                            # Node not present in KG, so no edges
+                            tmplist = set()
                     except Exception:
                         self.response.error(f"Failed to query adjacent nodes from {kp} for {node} in FET, probably because expander ignores node type. For more details, please see RTXteam/RTX issue 897.")
                     if len(tmplist) == 0:
