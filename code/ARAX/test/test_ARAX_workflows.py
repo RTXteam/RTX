@@ -231,22 +231,22 @@ def test_FET_example_2():
 
 
 def test_FET_example_3():
-    # This a FET 3-top example: try to find the proteins connected to diseases that share the same phenotypes of Parkinson disease（DOID:14330)
+    # This a FET 3-top example: try to find the proteins connected to diseases that share the same phenotypes of diabetes mellitus（MONDO:0005015)
     query = {"operations": {"actions": [
-        "add_qnode(ids=DOID:14330, key=n00, categories=biolink:Disease)",
+        "add_qnode(ids=MONDO:0005015, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:has_phenotype)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_keys=[n01])",
         "add_qnode(categories=biolink:Disease, key=n02)",
-        "add_qedge(subject=n01,object=n02,key=e01,predicates=biolink:has_phenotype)",
-        "expand(edge_key=e01, kp=infores:rtx-kg2)",
+        "add_qedge(subject=n01,object=n02,key=e01)",
+        "expand(edge_key=e01)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_keys=[n02])",
         "add_qnode(categories=biolink:Protein, key=n03)",
         "add_qedge(subject=n02, object=n03, key=e02)",
-        "expand(edge_key=e02, kp=infores:rtx-kg2)",
+        "expand(edge_key=e02)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
