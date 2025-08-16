@@ -72,13 +72,13 @@ class ARAXInfer:
             "is_required": True,
             "examples": ["CHEMBL.COMPOUND:CHEMBL55643","CHEBI:8378","RXNORM:1011"],
             "type": "string",
-            "description": "The CURIE for a drug node used to predict what potential diseases it may treat."
+            "description": "The CURIE for a drug node (should be a subject node) used to predict what potential diseases it may treat."
         }
         self.xdtd_disease_curie_info = {
             "is_required": True,
             "examples": ["DOID:9352","MONDO:0005306","HP:0001945"],
             "type": "string",
-            "description": "The CURIE for a disease node used to predict what potential drugs can potentially treat it."
+            "description": "The CURIE for a disease node (should be a object node) used to predict what potential drugs can potentially treat it."
         }
         self.xdtd_qedge_id_info = {
             "is_required": False,
