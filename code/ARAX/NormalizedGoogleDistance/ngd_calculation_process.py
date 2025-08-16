@@ -36,7 +36,7 @@ def run_ngd_calculation_process(curie_to_pmids_path, ngd_db_name, log_of_NGD_nor
     cursor_write.close()
     sqlite_connection_write.close()
 
-    sqlite_connection_read = sqlite3.connect(curie_to_pmids_path)
+    sqlite_connection_read = sqlite3.connect(f"file:{curie_to_pmids_path}?mode=ro&immutable=1", uri=True, check_same_thread=False)
     cursor_read = sqlite_connection_read.cursor()
     num_cores = multiprocessing.cpu_count()
     batch_size = min(128, num_cores * 10)

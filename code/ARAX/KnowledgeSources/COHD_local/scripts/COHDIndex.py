@@ -51,7 +51,7 @@ class COHDIndex:
         database = f"{self.databaseLocation}/{self.databaseName}"
 
         if os.path.exists(database):
-            self.connection = sqlite3.connect(database)
+            self.connection = sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True, check_same_thread=False)
             print("INFO: Connecting to database", flush=True)
             return True
         else:
@@ -73,7 +73,7 @@ class COHDIndex:
             # os.system(f"scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/{self.databaseName} {database}")
             os.system(f"scp {RTXConfig.db_username}@{RTXConfig.db_host}:{RTXConfig.cohd_database_path} {database}")
 
-            self.connection = sqlite3.connect(database)
+            self.connection = sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True, check_same_thread=False)
             print("INFO: Connecting to database", flush=True)
             return True
 

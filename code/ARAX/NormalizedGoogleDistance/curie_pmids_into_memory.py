@@ -12,7 +12,7 @@ def curie_pmids_into_memory(curie_to_pmids_path, curie_to_pmids_version, redis_c
 
 
     redis_client.flushall()
-    sqlite_connection = sqlite3.connect(curie_to_pmids_path)
+    sqlite_connection = sqlite3.connect(f"file:{curie_to_pmids_path}?mode=ro&immutable=1", uri=True, check_same_thread=False)
     cursor = sqlite_connection.cursor()
 
     batch_size = 1000

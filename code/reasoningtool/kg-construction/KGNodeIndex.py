@@ -65,7 +65,7 @@ class KGNodeIndex:
         if DEBUG is True:
             print("INFO: Connecting to database")
         if self.engine_type == "sqlite":
-            self.connection = sqlite3.connect(f"{self.databaseLocation}/{self.databaseName}")
+            self.connection = sqlite3.connect(f"file:{self.databaseLocation}/{self.databaseName}?mode=ro&immutable=1", uri=True, check_same_thread=False)
         else:
             pass
             #rtxConfig = RTXConfiguration()
