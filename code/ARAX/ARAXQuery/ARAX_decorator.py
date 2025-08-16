@@ -318,7 +318,7 @@ class ARAXDecorator:
         sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
         sqlite_name = rtxc.kg2c_sqlite_path.split('/')[-1]
         sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
-        connection = sqlite3.connect(sqlite_file_path)
+        connection = sqlite3.connect(f"file:{sqlite_file_path}?mode=ro&immutable=1", uri=True, check_same_thread=False)
         cursor = connection.cursor()
         return connection, cursor
 

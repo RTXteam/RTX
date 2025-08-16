@@ -26,7 +26,7 @@ def load():
     global cache_conn
     global cache_cursor
     database_name = f"{autocomplete_filepath}{os.path.sep}{RTXConfig.autocomplete_path.split('/')[-1]}"
-    conn = sqlite3.connect(database_name)
+    conn = sqlite3.connect(f"file:{database_name}?mode=ro&immutable=1", uri=True, check_same_thread=False)
     cursor = conn.cursor()
     try:
         conn.execute(f"SELECT term FROM terms LIMIT 1")

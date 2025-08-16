@@ -47,7 +47,7 @@ class NodeSynonymizer:
             raise ValueError(f"Specified synonymizer does not exist locally."
                              f" It should be at: {self.database_path}")
         else:
-            self.db_connection = sqlite3.connect(self.database_path)
+            self.db_connection = sqlite3.connect(f"file:{self.database_path}?mode=ro&immutable=1", uri=True, check_same_thread=False)
 
     def __del__(self):
         if hasattr(self, "db_connection"):

@@ -434,7 +434,7 @@ class ComputeNGD:
         db_path_local = f"{ngd_filepath}{self.ngd_database_name}"
         # Set up a connection to the database so it's ready for use
         try:
-            connection = sqlite3.connect(db_path_local)
+            connection = sqlite3.connect(f"file:{db_path_local}?mode=ro&immutable=1", uri=True, check_same_thread=False)
             cursor = connection.cursor()
         except Exception:
             self.response.error("Encountered an error connecting "

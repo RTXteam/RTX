@@ -15,7 +15,7 @@ class NodeDegreeRepo:
         self.db_path = db_path
 
     def get_node_degree(self, node_id):
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(f"file:{self.db_path}?mode=ro&immutable=1", uri=True, check_same_thread=False)
         cursor = conn.cursor()
         query = "SELECT neighbor_counts FROM neighbors WHERE id = ?"
         cursor.execute(query, (node_id,))
@@ -29,7 +29,7 @@ class NodeDegreeRepo:
 
 
     def get_degrees_by_node(self, curie_ids, batch_size=10000):
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(f"file:{self.db_path}?mode=ro&immutable=1", uri=True, check_same_thread=False)
         cursor = conn.cursor()
 
         degree_dict = {}
@@ -52,7 +52,7 @@ class NodeDegreeRepo:
         return degree_dict
 
     def get_degree_categories(self, batch_size=10000):
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(f"file:{self.db_path}?mode=ro&immutable=1", uri=True, check_same_thread=False)
         cursor = conn.cursor()
 
         degree_category_set = set()

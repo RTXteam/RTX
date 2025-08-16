@@ -462,7 +462,7 @@ class ComputeFTEST:
             # special_curie_ids = [curie_id for curie_id in query_nodes if "'" in curie_id]
 
             # Get connected to kg2c sqlite
-            connection = sqlite3.connect(self.sqlite_file_path)
+            connection = sqlite3.connect(f"file:{self.sqlite_file_path}?mode=ro&immutable=1", uri=True, check_same_thread=False)
             cursor = connection.cursor()
 
             # Extract the neighbor count data
@@ -569,7 +569,7 @@ class ComputeFTEST:
         node_type = ComputeFTEST.convert_string_biolinkformat(node_type)
 
         # Get connected to kg2c sqlite
-        connection = sqlite3.connect(self.sqlite_file_path)
+        connection = sqlite3.connect(f"file:{self.sqlite_file_path}?mode=ro&immutable=1", uri=True, check_same_thread=False)
         cursor = connection.cursor()
 
         # Extract total count of nodes with certain type in kg2c

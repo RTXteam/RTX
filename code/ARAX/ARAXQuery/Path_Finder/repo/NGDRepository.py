@@ -14,7 +14,7 @@ class NGDRepository:
 
     def get_curie_ngd(self, curie):
         try:
-            sqlite_connection_read = sqlite3.connect(self.db_path)
+            sqlite_connection_read = sqlite3.connect("file:" + self.db_path + "?mode=ro&immutable=1", uri=True, check_same_thread=False)
             cursor = sqlite_connection_read.cursor()
             query = "SELECT ngd FROM curie_ngd WHERE curie = ?"
             cursor.execute(query, (curie,))
@@ -31,7 +31,7 @@ class NGDRepository:
 
     def get_curies_pmid_length(self, curies, limit=-1):
         try:
-            sqlite_connection_read = sqlite3.connect(self.db_path)
+            sqlite_connection_read = sqlite3.connect("file:" + self.db_path + "?mode=ro&immutable=1", uri=True, check_same_thread=False)
             cursor = sqlite_connection_read.cursor()
             if limit != -1:
                 query = f"""

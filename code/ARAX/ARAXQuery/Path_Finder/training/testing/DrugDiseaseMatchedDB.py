@@ -30,7 +30,7 @@ class DrugDiseaseMatchedDB:
         conn.close()
 
     def read_all(self):
-        conn = sqlite3.connect(self.db_address)
+        conn = sqlite3.connect(f"file:{self.db_address}?mode=ro&immutable=1", uri=True, check_same_thread=False)
 
         query = "SELECT containment_index FROM DrugDiseaseMatch"
         data = pd.read_sql_query(query, conn)
@@ -53,7 +53,7 @@ class DrugDiseaseMatchedDB:
         conn.close()
 
     def has_pair(self, source, destination):
-        conn = sqlite3.connect(self.db_address)
+        conn = sqlite3.connect(f"file:{self.db_address}?mode=ro&immutable=1", uri=True, check_same_thread=False)
         cursor = conn.cursor()
 
         cursor.execute("""

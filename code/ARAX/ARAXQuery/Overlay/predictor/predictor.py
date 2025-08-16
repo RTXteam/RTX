@@ -26,7 +26,8 @@ class predictor():
             DTD_prob_file = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.dtd_prob_path.split('/')[-1]])
         self.use_prob_db = use_prob_db
         if self.use_prob_db is True:
-            self.connection = sqlite3.connect(DTD_prob_file)
+            # Open read-only when using the precomputed probability DB
+            self.connection = sqlite3.connect(f"file:{DTD_prob_file}?mode=ro&immutable=1", uri=True, check_same_thread=False)
         else:
             self.model = joblib.load(model_file)
             self.graph_cur = None
@@ -81,7 +82,7 @@ class predictor():
             graph_database = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction', RTXConfig.graph_database_path.split('/')[-1]])
         
         if self.use_prob_db is not True:
-            conn = sqlite3.connect(graph_database)
+            conn = sqlite3.connect(f"file:{graph_database}?mode=ro&immutable=1", uri=True, check_same_thread=False)
             self.graph_cur = conn.cursor()
 
             if file is not None:
