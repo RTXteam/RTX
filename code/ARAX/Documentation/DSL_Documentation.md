@@ -9,12 +9,12 @@
   - [ARAX_expander](#arax_expander)
     - [expand()](#expand)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
     - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
     - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
-    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
@@ -292,16 +292,134 @@ infores:answer-coalesce, infores:automat-binding-db, infores:automat-cam-kp, inf
     - `true` and `false` are examples of valid inputs.
 
 ## ARAX_overlay
-### overlay(action=overlay_exposures_data)
+### overlay(action=fisher_exact_test)
 
-`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query id (e.g. object_qnode_key 'n02') in the message knowledge graph. 
+This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
+It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
 
-This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+
+Use cases include:
+
+* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
+* Find biological pathways that are enriched for an input list of proteins (specified with a query id)
+* Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
+
+This p-value is calculated from fisher's exact test based on the contingency table with following format:
+
+|||||
+|-----|-----|-----|-----|
+|                                  | in query node list | not in query node list | row total |
+| connect to certain adjacent node |         a          |           b            |   a+b     |
+| not connect to adjacent node     |         c          |           d            |   c+d     |
+|         column total             |        a+c         |          b+d           |  a+b+c+d  |
+
+The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
+The code is as follows:
+
+```
+_, pvalue = stats.fisher_exact([[a, b], [c, d]])
+```
                     
 
 #### parameters: 
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (required)
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `N1`, `J2`, and `FET` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (required)
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### rel_edge_key
+
+    - A specific QEdge id of edges connected to both subject nodes and object nodes in message KG (optional, otherwise all edges connected to both subject nodes and object nodes in message KG are considered), eg. 'e01'
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `e00` and `e01` are examples of valid inputs.
+
+* ##### filter_type
+
+    - If `top_n` is set this indicate the top number (the smallest) of p-values will be returned acording to what is specified in the `value` parameter. If `cutoff` is set then this indicates the p-value cutoff should be used to return results acording to what is specified in the `value` parameter. (optional, otherwise all results returned)
+
+    - Acceptable input types: string or None.
+
+    - *NOTE*:  If this parameter is included then the parameter `value` must also be included for it to function.
+
+    - This is not a required parameter and may be omitted.
+
+    - `top_n`, `cutoff`, and `None` are examples of valid inputs.
+
+    - `top_n`, `cutoff`, and `None` are all possible valid inputs.
+
+    - If not specified the default input will be None. 
+
+* ##### value
+
+    - If `top_n` is set for `filter_type` this is an int indicating the top number (the smallest) of p-values to return. If instead `cutoff` is set then this is a float indicating the p-value cutoff to return the results. (optional, otherwise all results returned)
+
+    - Acceptable input types: int or float or None.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `0.05`, `0.95`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be None. 
+
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
 
 * ##### virtual_relation_label
 
@@ -478,134 +596,16 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - If not specified the default input will be 100. 
 
-### overlay(action=fisher_exact_test)
+### overlay(action=overlay_exposures_data)
 
-`fisher_exact_test` computes the Fisher's Exact Test p-values of the connection between a list of given nodes with specified query id (subject_qnode_key eg. 'n01') to their adjacent nodes with specified query id (e.g. object_qnode_key 'n02') in the message knowledge graph. 
-This information is then added as an edge attribute to a virtual edge which is then added to the query graph and knowledge graph.
-It can also allow you to filter out the user-defined insignificance of connections based on a specified p-value cutoff or return the top n smallest p-value of connections and only add their corresponding virtual edges to the knowledge graph.
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
 
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-
-Use cases include:
-
-* Given an input list (or a single) bioentities with specified query id in message KG, find connected bioentities  that are most "representative" of the input list of bioentities
-* Find biological pathways that are enriched for an input list of proteins (specified with a query id)
-* Make long query graph expansions in a targeted fashion to reduce the combinatorial explosion experienced with long query graphs 
-
-This p-value is calculated from fisher's exact test based on the contingency table with following format:
-
-|||||
-|-----|-----|-----|-----|
-|                                  | in query node list | not in query node list | row total |
-| connect to certain adjacent node |         a          |           b            |   a+b     |
-| not connect to adjacent node     |         c          |           d            |   c+d     |
-|         column total             |        a+c         |          b+d           |  a+b+c+d  |
-
-The p-value is calculated by applying fisher_exact method of scipy.stats module in scipy package to the contingency table.
-The code is as follows:
-
-```
-_, pvalue = stats.fisher_exact([[a, b], [c, d]])
-```
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
                     
 
 #### parameters: 
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (required)
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `N1`, `J2`, and `FET` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (required)
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### rel_edge_key
-
-    - A specific QEdge id of edges connected to both subject nodes and object nodes in message KG (optional, otherwise all edges connected to both subject nodes and object nodes in message KG are considered), eg. 'e01'
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `e00` and `e01` are examples of valid inputs.
-
-* ##### filter_type
-
-    - If `top_n` is set this indicate the top number (the smallest) of p-values will be returned acording to what is specified in the `value` parameter. If `cutoff` is set then this indicates the p-value cutoff should be used to return results acording to what is specified in the `value` parameter. (optional, otherwise all results returned)
-
-    - Acceptable input types: string or None.
-
-    - *NOTE*:  If this parameter is included then the parameter `value` must also be included for it to function.
-
-    - This is not a required parameter and may be omitted.
-
-    - `top_n`, `cutoff`, and `None` are examples of valid inputs.
-
-    - `top_n`, `cutoff`, and `None` are all possible valid inputs.
-
-    - If not specified the default input will be None. 
-
-* ##### value
-
-    - If `top_n` is set for `filter_type` this is an int indicating the top number (the smallest) of p-values to return. If instead `cutoff` is set then this is a float indicating the p-value cutoff to return the results. (optional, otherwise all results returned)
-
-    - Acceptable input types: int or float or None.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `0.05`, `0.95`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be None. 
-
-### overlay(action=compute_ngd)
-
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### default_value
-
-    - The default value of the normalized Google distance (if its value cannot be determined)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `0` and `inf` are examples of valid inputs.
-
-    - If not specified the default input will be inf. 
 
 * ##### virtual_relation_label
 
@@ -1673,19 +1673,17 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
 `drug_treatment_graph_expansion` predicts drug-disease treatment relationship including:
 
-    * Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
-    * Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
-    * Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
+    - Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
+    - Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
+    - Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
     
 It returns the top n results along with predicted graph explanations. You can limit the the maximum number of disease (via `n_diseases=<n>`)/drug (via `n_drugs=<n>`) nodes to return.
             
 This function is invalid for non drug nodes (nodes that do not belong to either of 'biolink:biolink:Drug', 'biolink:ChemicalEntity', or 'biolink:SmallMolecule'), and non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
 
-**Notes:
+**Notes:**
 
-    * The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).
-
-**.
+    **- The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).**.
 
                     
 
@@ -1765,12 +1763,10 @@ You can limit the maximum number of result nodes to return (via `n_result_curies
             
 This function can be applied to  any arbitrary node CURIE, but it will not yield meaningful results if the query subject doesn't belong to the category 'chemicalentity/chemicalmixture/smallmodule' or the query object doesn't belong to the category 'gene/protein".' 
 
-**Notes:
+**Notes:**
 
-* the 'subject_curie' and 'object_curie' are not allowed to be sepcified in the same time, that is, if you give a curie to either one, the other should be omitted. However, when a query graph (i.e., the object `query_graph`) exists, the parameters 'subject_curie' and 'object_curie' become invalid. Instead, use 'subject_qnode_id' or 'object_qnode_id' to specify the query gene or chemical of interest.
-* The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).
-
-**.
+    **- the 'subject_curie' and 'object_curie' are not allowed to be sepcified in the same time, that is, if you give a curie to either one, the other should be omitted. However, when a query graph (i.e., the object `query_graph`) exists, the parameters 'subject_curie' and 'object_curie' become invalid. Instead, use 'subject_qnode_id' or 'object_qnode_id' to specify the query gene or chemical of interest.
+    - The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).**
                     
 
 #### parameters: 
