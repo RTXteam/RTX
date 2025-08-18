@@ -9,12 +9,12 @@
   - [ARAX_expander](#arax_expander)
     - [expand()](#expand)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
-    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
     - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
     - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
@@ -292,81 +292,6 @@ infores:answer-coalesce, infores:automat-binding-db, infores:automat-cam-kp, inf
     - `true` and `false` are examples of valid inputs.
 
 ## ARAX_overlay
-### overlay(action=add_node_pmids)
-
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### max_num
-
-    - The maximum number of values to return. Enter 'all' to return everything
-
-    - Acceptable input types: int or string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `all`, `5`, and `50` are examples of valid inputs.
-
-    - If not specified the default input will be 100. 
-
-### overlay(action=compute_jaccard)
-
-`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
-The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
-This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
-This can be used for downstream filtering to concentrate on relevant bioentities.
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-#### parameters: 
-
-* ##### start_node_key
-
-    - A curie id specifying the starting node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### intermediate_node_key
-
-    - A curie id specifying the intermediate node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### end_node_key
-
-    - A curie id specifying the ending node
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is a required parameter and must be included.
-
-    - `N1`, `J2`, and `FET` are examples of valid inputs.
-
 ### overlay(action=overlay_exposures_data)
 
 `overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
@@ -478,33 +403,47 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `n00` and `n01` are examples of valid inputs.
 
-### overlay(action=compute_ngd)
+### overlay(action=compute_jaccard)
 
-`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
-This information is then included as an edge attribute with the name `normalized_google_distance`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
-
-Use cases include:
-
-* focusing in on edges that are well represented in the literature
-* focusing in on edges that are under-represented in the literature
+`compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
+The jaccard similarity measures how many `intermediate_node_key`'s are shared in common between each `start_node_key` and `object_node_key`.
+This is used for purposes such as "find me all drugs (`start_node_key`) that have many proteins (`intermediate_node_key`) in common with this disease (`end_node_key`)."
+This can be used for downstream filtering to concentrate on relevant bioentities.
 
 This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
 #### parameters: 
 
-* ##### default_value
+* ##### start_node_key
 
-    - The default value of the normalized Google distance (if its value cannot be determined)
+    - A curie id specifying the starting node
 
     - Acceptable input types: string.
 
-    - This is not a required parameter and may be omitted.
+    - This is a required parameter and must be included.
 
-    - `0` and `inf` are examples of valid inputs.
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
 
-    - If not specified the default input will be inf. 
+* ##### intermediate_node_key
+
+    - A curie id specifying the intermediate node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
+
+* ##### end_node_key
+
+    - A curie id specifying the ending node
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `DOID:1872`, `CHEBI:7476`, and `UMLS:C1764836` are examples of valid inputs.
 
 * ##### virtual_relation_label
 
@@ -512,29 +451,32 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - Acceptable input types: string.
 
+    - This is a required parameter and must be included.
+
+    - `N1`, `J2`, and `FET` are examples of valid inputs.
+
+### overlay(action=add_node_pmids)
+
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - The maximum number of values to return. Enter 'all' to return everything
+
+    - Acceptable input types: int or string.
+
     - This is not a required parameter and may be omitted.
 
-    - `N1` and `J2` are examples of valid inputs.
+    - `all`, `5`, and `50` are examples of valid inputs.
 
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
+    - If not specified the default input will be 100. 
 
 ### overlay(action=fisher_exact_test)
 
@@ -636,6 +578,64 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
     - `all`, `0.05`, `0.95`, `5`, and `50` are examples of valid inputs.
 
     - If not specified the default input will be None. 
+
+### overlay(action=compute_ngd)
+
+`compute_ngd` computes a metric (called the normalized Google distance) based on edge soure/object node co-occurrence in abstracts of all PubMed articles.
+This information is then included as an edge attribute with the name `normalized_google_distance`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the type specified by `virtual_relation_label`.
+
+Use cases include:
+
+* focusing in on edges that are well represented in the literature
+* focusing in on edges that are under-represented in the literature
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### default_value
+
+    - The default value of the normalized Google distance (if its value cannot be determined)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `0` and `inf` are examples of valid inputs.
+
+    - If not specified the default input will be inf. 
+
+* ##### virtual_relation_label
+
+    - An optional label to help identify the virtual edge in the relation field.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `N1` and `J2` are examples of valid inputs.
+
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
 
 ## ARAX_filter_kg
 ### filter_kg(action=remove_edges_by_predicate)
@@ -1672,14 +1672,21 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 ### infer(action=drug_treatment_graph_expansion)
 
 `drug_treatment_graph_expansion` predicts drug-disease treatment relationship including:
-    1. Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
-    2. Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
-    3. Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
+
+    * Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
+    * Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
+    * Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
     
-It returns the top n results along with predicted graph explanations. You have the option to limit the maximum number of disease (via `n_diseases=<n>`)/drug (via `n_drugs=<n>`) nodes to return.
+It returns the top n results along with predicted graph explanations. You can limit the the maximum number of disease (via `n_diseases=<n>`)/drug (via `n_drugs=<n>`) nodes to return.
             
-This cannot be applied to non drug nodes (nodes that do not belong to either of 'biolink:biolink:Drug', 'biolink:ChemicalEntity', or 'biolink:SmallMolecule'), and non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature'). Also, if `infer` and `expand` are used in the same DSL workflow, they cannot both reference
-the same query edge; it is not allowed to run _both_ `infer` and `expand` on, say, query edge `e00`.
+This function is invalid for non drug nodes (nodes that do not belong to either of 'biolink:biolink:Drug', 'biolink:ChemicalEntity', or 'biolink:SmallMolecule'), and non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
+
+**Notes:
+
+    * The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).
+
+**.
+
                     
 
 #### parameters: 
@@ -1752,20 +1759,26 @@ the same query edge; it is not allowed to run _both_ `infer` and `expand` on, sa
 
 ### infer(action=chemical_gene_regulation_graph_expansion)
 
-`chemical_gene_regulation_graph_expansion` predicts the regulation relationship (increase/decrease activity) between given chemicals or given genes. It return the top n results along with predicted graph explinations.  
+`chemical_gene_regulation_graph_expansion` predicts the regulation relationship (increase/decrease activity) between chemicals and  genes. It returns the top n results along with predicted graph explinations.  
             
-You have the option to limit the maximum number of result nodes to return (via `n_result_curies=<n>`)
+You can limit the maximum number of result nodes to return (via `n_result_curies=<n>`)
             
-This can be applied to an arbitrary nide curie though will not return sensible results for the subject nodes without category 'chemicalentity/chemicalmixture/smallmodule' or the object nodes without category 'gene/protein".' 
+This function can be applied to  any arbitrary node CURIE, but it will not yield meaningful results if the query subject doesn't belong to the category 'chemicalentity/chemicalmixture/smallmodule' or the query object doesn't belong to the category 'gene/protein".' 
 
-**Note that the 'subject_curie' and 'object_curie' cannot be given in the same time, that is, if you give a curie to either one, another one should be omitted. However, when a query graph is used via DSL command or JSON format, the parameters 'subject_curie' and 'object_curie' can be omitted but one of 'subject_qnode_id' or 'object_qnode_id' need to be specified.**.
+**Notes:
+
+* the 'subject_curie' and 'object_curie' are not allowed to be sepcified in the same time, that is, if you give a curie to either one, the other should be omitted. However, when a query graph (i.e., the object `query_graph`) exists, the parameters 'subject_curie' and 'object_curie' become invalid. Instead, use 'subject_qnode_id' or 'object_qnode_id' to specify the query gene or chemical of interest.
+* The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).
+
+**.
                     
 
 #### parameters: 
 
 * ##### subject_curie
 
-    - The chemical curie, a curie with category of either 'biolink:ChemicalEntity', 'biolink:ChemicalMixture', or 'biolink:SmallMolecule'. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**
+    - The chemical curie, a curie with category of either 'biolink:ChemicalEntity', 'biolink:ChemicalMixture', or 'biolink:SmallMolecule'. 
+                **Note that it is required only when the `query_graph` is None, only either this parameter or `object_curie` is required, not both**
 
     - Acceptable input types: string.
 
@@ -1775,7 +1788,8 @@ This can be applied to an arbitrary nide curie though will not return sensible r
 
 * ##### object_curie
 
-    - The gene curie, a curie with category of either 'biolink:Gene' or 'biolink:Protein'. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**
+    - The gene curie, a curie with category of either 'biolink:Gene' or 'biolink:Protein'. 
+                **Note that it is required only when the `query_graph` is None, only either this parameter or `subject_curie` is required, not both**
 
     - Acceptable input types: string.
 
@@ -1785,7 +1799,8 @@ This can be applied to an arbitrary nide curie though will not return sensible r
 
 * ##### subject_qnode_id
 
-    - The query graph node ID of a chemical. **Note that although this parameter is said to be required, this parameter is valid only when a query graph is used. Additionally, exactly one of 'subject_qnode_id' or 'object_qnode_id' is required when a query graph is used.**
+    - The query node ID of a chemical of interest.
+                **Note that it is required only when the `query_graph` is NOT None, and only either this parameter or `object_qnode_id` is required, not both**
 
     - Acceptable input types: string.
 
@@ -1795,7 +1810,8 @@ This can be applied to an arbitrary nide curie though will not return sensible r
 
 * ##### object_qnode_id
 
-    - The query graph node ID of a gene. **Note that although this parameter is said to be required, this parameter is valid only when a query graph is used. Additionally, exactly one of 'subject_qnode_id' or 'object_qnode_id' is required when a query graph is used.**
+    - The query node ID of a gene of interest.
+                **Note that it is required only when the `query_graph` is NOT None, and only either this parameter or `subject_qnode_id` is required, not both**
 
     - Acceptable input types: string.
 
