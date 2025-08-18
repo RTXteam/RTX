@@ -191,9 +191,9 @@ class ARAXInfer:
                 "description": """
 `drug_treatment_graph_expansion` predicts drug-disease treatment relationship including:
 
-    - Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
-    - Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
-    - Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
+- Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
+- Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
+- Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
     
 It returns the top n results along with predicted graph explanations. You can limit the the maximum number of disease (via `n_diseases=<n>`)/drug (via `n_drugs=<n>`) nodes to return.
             
@@ -201,7 +201,7 @@ This function is invalid for non drug nodes (nodes that do not belong to either 
 
 **Notes:**
 
-    **- The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).**.
+**- The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).**
 
                     """,
                 'brief_description': """
@@ -227,8 +227,9 @@ This function can be applied to  any arbitrary node CURIE, but it will not yield
 
 **Notes:**
 
-    **- the 'subject_curie' and 'object_curie' are not allowed to be sepcified in the same time, that is, if you give a curie to either one, the other should be omitted. However, when a query graph (i.e., the object `query_graph`) exists, the parameters 'subject_curie' and 'object_curie' become invalid. Instead, use 'subject_qnode_id' or 'object_qnode_id' to specify the query gene or chemical of interest.
-    - The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).**
+**- the 'subject_curie' and 'object_curie' are not allowed to be sepcified in the same time, that is, if you give a curie to either one, the other should be omitted. However, when a query graph (i.e., the object `query_graph`) exists, the parameters 'subject_curie' and 'object_curie' become invalid. Instead, use 'subject_qnode_id' or 'object_qnode_id' to specify the query gene or chemical of interest.**
+
+**- The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).**
                     """,
                 'brief_description': """
 chemical_gene_regulation_graph_expansion predicts the regulation relationship between chemicals and genes and provides along with an explination graph for each prediction. 
