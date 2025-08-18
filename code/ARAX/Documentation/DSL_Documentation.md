@@ -1678,7 +1678,8 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
     
 It returns the top n results along with predicted graph explanations. You have the option to limit the maximum number of disease (via `n_diseases=<n>`)/drug (via `n_drugs=<n>`) nodes to return.
             
-This cannot be applied to non drug nodes (nodes that do not belong to either of 'biolink:biolink:Drug', 'biolink:ChemicalEntity', or 'biolink:SmallMolecule'), and non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
+This cannot be applied to non drug nodes (nodes that do not belong to either of 'biolink:biolink:Drug', 'biolink:ChemicalEntity', or 'biolink:SmallMolecule'), and non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature'). Also, `infer` cannot be used within a DSL query that also has an
+`expand` statement, if any of the query nodes are shared between the `expand` and `infer` statements.
                     
 
 #### parameters: 
