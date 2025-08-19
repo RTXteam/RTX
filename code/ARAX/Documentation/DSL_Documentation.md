@@ -9,12 +9,12 @@
   - [ARAX_expander](#arax_expander)
     - [expand()](#expand)
   - [ARAX_overlay](#arax_overlay)
-    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
-    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
-    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
-    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
-    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
     - [overlay(action=overlay_exposures_data)](#overlayactionoverlay_exposures_data)
+    - [overlay(action=compute_ngd)](#overlayactioncompute_ngd)
+    - [overlay(action=add_node_pmids)](#overlayactionadd_node_pmids)
+    - [overlay(action=fisher_exact_test)](#overlayactionfisher_exact_test)
+    - [overlay(action=compute_jaccard)](#overlayactioncompute_jaccard)
+    - [overlay(action=overlay_clinical_info)](#overlayactionoverlay_clinical_info)
   - [ARAX_filter_kg](#arax_filter_kg)
     - [filter_kg(action=remove_edges_by_predicate)](#filter_kgactionremove_edges_by_predicate)
     - [filter_kg(action=remove_edges_by_continuous_attribute)](#filter_kgactionremove_edges_by_continuous_attribute)
@@ -219,7 +219,7 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 This command will expand (aka, answer/fill) your query graph in an edge-by-edge fashion, intelligently selecting which KPs to use for each edge. It selects KPs from the SmartAPI Registry based on the meta information provided by their TRAPI APIs, whether they have an endpoint running a matching TRAPI version, and whether they have an endpoint with matching maturity. For each QEdge, it queries the selected KPs concurrently; it will timeout for a particular KP if it decides it's taking too long to respond (this KP timeout can be controlled by the user). You may also optionally specify a particular KP to use via the 'kp' parameter (described below).
 
 Current candidate KPs include (for TRAPI 1.5, maturity 'development'): 
-infores:answer-coalesce, infores:automat-binding-db, infores:automat-cam-kp, infores:automat-ctd, infores:automat-drug-central, infores:automat-genome-alliance, infores:automat-gtex, infores:automat-gtopdb, infores:automat-gwas-catalog, infores:automat-hetionet, infores:automat-hgnc, infores:automat-hmdb, infores:automat-human-goa, infores:automat-icees-kg, infores:automat-intact, infores:automat-monarchinitiative, infores:automat-panther, infores:automat-pharos, infores:automat-reactome, infores:automat-robokop, infores:automat-string-db, infores:automat-ubergraph, infores:automat-viral-proteome, infores:cohd, infores:connections-hypothesis, infores:gelinea, infores:genetics-data-provider, infores:knowledge-collaboratory, infores:molepro, infores:multiomics-clinicaltrials, infores:multiomics-drugapprovals, infores:openpredict, infores:rtx-kg2, infores:service-provider-trapi, infores:spoke. 
+infores:answer-coalesce, infores:automat-binding-db, infores:automat-cam-kp, infores:automat-ctd, infores:automat-drug-central, infores:automat-ehr-clinical-connections-kp, infores:automat-ehr-may-treat-kp, infores:automat-genome-alliance, infores:automat-gtex, infores:automat-gtopdb, infores:automat-gwas-catalog, infores:automat-hetionet, infores:automat-hgnc, infores:automat-hmdb, infores:automat-human-goa, infores:automat-icees-kg, infores:automat-intact, infores:automat-monarchinitiative, infores:automat-panther, infores:automat-pharos, infores:automat-reactome, infores:automat-robokop, infores:automat-string-db, infores:automat-ubergraph, infores:automat-viral-proteome, infores:biothings-multiomics-biggim-drugresponse, infores:catrax-pharmacogenomics, infores:cohd, infores:connections-hypothesis, infores:gelinea, infores:genetics-data-provider, infores:knowledge-collaboratory, infores:molepro, infores:multiomics-clinicaltrials, infores:multiomics-drugapprovals, infores:multiomics-microbiome, infores:multiomics-multiomics, infores:openpredict, infores:rtx-kg2, infores:service-provider-trapi, infores:spoke, infores:text-mining-provider-cooccurrence. 
 
 (Note that this list of KPs may change unexpectedly based on the SmartAPI registry.)
 
@@ -292,28 +292,46 @@ infores:answer-coalesce, infores:automat-binding-db, infores:automat-cam-kp, inf
     - `true` and `false` are examples of valid inputs.
 
 ## ARAX_overlay
-### overlay(action=add_node_pmids)
+### overlay(action=overlay_exposures_data)
 
-`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
-This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
-either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
+This information is included in edge attributes with the name `icees_p-value`.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
 
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
                     
 
 #### parameters: 
 
-* ##### max_num
+* ##### virtual_relation_label
 
-    - The maximum number of values to return. Enter 'all' to return everything
+    - An optional label to help identify the virtual edge in the relation field.
 
-    - Acceptable input types: int or string.
+    - Acceptable input types: string.
 
     - This is not a required parameter and may be omitted.
 
-    - `all`, `5`, and `50` are examples of valid inputs.
+    - `N1` and `J2` are examples of valid inputs.
 
-    - If not specified the default input will be 100. 
+* ##### subject_qnode_key
+
+    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
+
+* ##### object_qnode_key
+
+    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `n00` and `n01` are examples of valid inputs.
 
 ### overlay(action=compute_ngd)
 
@@ -372,6 +390,29 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
     - This is not a required parameter and may be omitted.
 
     - `n00` and `n01` are examples of valid inputs.
+
+### overlay(action=add_node_pmids)
+
+`add_node_pmids` adds PubMed PMID's as node attributes to each node in the knowledge graph.
+This information is obtained from mapping node identifiers to MeSH terms and obtaining which PubMed articles have this MeSH term
+either labeling in the metadata or has the MeSH term occurring in the abstract of the article.
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
+                    
+
+#### parameters: 
+
+* ##### max_num
+
+    - The maximum number of values to return. Enter 'all' to return everything
+
+    - Acceptable input types: int or string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `all`, `5`, and `50` are examples of valid inputs.
+
+    - If not specified the default input will be 100. 
 
 ### overlay(action=fisher_exact_test)
 
@@ -474,76 +515,6 @@ _, pvalue = stats.fisher_exact([[a, b], [c, d]])
 
     - If not specified the default input will be None. 
 
-### overlay(action=overlay_clinical_info)
-
-`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
-This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
-All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
-This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
-This information is then included as an edge attribute.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
-These virtual edges have the following types:
-
-* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
-* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
-* `chi_square` has the virtual edge type `has_chi_square_with`
-
-Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
-
-* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge subject and object nodes and adds these values as edge attributes.
-* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge subject and object nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
-* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge subject/object nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
-* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
-
-This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-                    
-
-**NOTE:** The parameters `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are mutually exclusive and thus will cause an error when more than one is included.
-
-#### parameters: 
-
-* ##### COHD_method
-
-    - Which measure from COHD should be considered.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
-
-    - If not specified the default input will be paired_concept_frequency. 
-
-* ##### virtual_relation_label
-
-    - An optional label to help identify the virtual edge in the relation field.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `N1` and `J2` are examples of valid inputs.
-
-* ##### subject_qnode_key
-
-    - A specific subject query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
-* ##### object_qnode_key
-
-    - A specific object query node id (optional, otherwise applied to all edges, must have a virtual_relation_label to use this parameter)
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `n00` and `n01` are examples of valid inputs.
-
 ### overlay(action=compute_jaccard)
 
 `compute_jaccard` creates virtual edges and adds an edge attribute (with the property name `jaccard_index`) containing the following information:
@@ -596,16 +567,45 @@ This can be applied to an arbitrary knowledge graph as possible edge types are c
 
     - `N1`, `J2`, and `FET` are examples of valid inputs.
 
-### overlay(action=overlay_exposures_data)
+### overlay(action=overlay_clinical_info)
 
-`overlay_exposures_data` overlays edges with p-values obtained from the ICEES+ (Integrated Clinical and Environmental Exposures Service) knowledge provider.
-This information is included in edge attributes with the name `icees_p-value`.
-You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode IDs. If the latter, the data is added in 'virtual' edges with the type `has_icees_p-value_with`.
+`overlay_clinical_info` overlay edges with information obtained from the knowledge provider (KP) Columbia Open Health Data (COHD).
+This KP has a number of different functionalities, such as `paired_concept_frequency`, `observed_expected_ratio`, etc. which are mutually exclusive DSL parameters.
+All information is derived from a 5 year hierarchical dataset: Counts for each concept include patients from descendant concepts. 
+This includes clinical data from 2013-2017 and includes 1,731,858 different patients.
+This information is then included as an edge attribute.
+You have the choice of applying this to all edges in the knowledge graph, or only between specified subject/object qnode id's. If the later, virtual edges are added with the relation specified by `virtual_relation_label`.
+These virtual edges have the following types:
 
-This can be applied to an arbitrary knowledge graph (i.e. not just those created/recognized by Expander Agent).
+* `paired_concept_frequency` has the virtual edge type `has_paired_concept_frequency_with`
+* `observed_expected_ratio` has the virtual edge type `has_observed_expected_ratio_with`
+* `chi_square` has the virtual edge type `has_chi_square_with`
+
+Note that this DSL command has quite a bit of functionality, so a brief description of the DSL parameters is given here:
+
+* `paired_concept_frequency`: If set to `true`, retrieves observed clinical frequencies of a pair of concepts indicated by edge subject and object nodes and adds these values as edge attributes.
+* `observed_expected_ratio`: If set to `true`, returns the natural logarithm of the ratio between the observed count and expected count of edge subject and object nodes. Expected count is calculated from the single concept frequencies and assuming independence between the concepts. This information is added as an edge attribute.
+* `chi_square`: If set to `true`, returns the chi-square statistic and p-value between pairs of concepts indicated by edge subject/object nodes and adds these values as edge attributes. The expected frequencies for the chi-square analysis are calculated based on the single concept frequencies and assuming independence between concepts. P-value is calculated with 1 DOF.
+* `virtual_edge_type`: Overlays the requested information on virtual edges (ones that don't exist in the query graph).
+
+This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
                     
 
+**NOTE:** The parameters `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are mutually exclusive and thus will cause an error when more than one is included.
+
 #### parameters: 
+
+* ##### COHD_method
+
+    - Which measure from COHD should be considered.
+
+    - Acceptable input types: string.
+
+    - This is not a required parameter and may be omitted.
+
+    - `paired_concept_frequency`, `observed_expected_ratio`, and `chi_square` are all possible valid inputs.
+
+    - If not specified the default input will be paired_concept_frequency. 
 
 * ##### virtual_relation_label
 
@@ -1650,20 +1650,15 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 ## ARAX_connect
 ### connect(action=connect_nodes)
 
-`connect_nodes` Try to find reasonable paths between two bio entities. 
-
-Use cases include:
-
-* finding out how 2 concepts are connected. 
-            
-You have the option to limit the maximum number of edges in a path (via `max_path_length=<n>`)
+                    `connect_nodes` Try to find reasonable paths between two bio entities. 
+                        You have the option to limit the maximum number of edges in a path (via `max_path_length=<n>`)
                     
 
 #### parameters: 
 
 * ##### max_path_length
 
-    - The maximum edges to connect two nodes with. If not provided defaults to 2.
+    - The maximum edges to connect two nodes with. If not provided defaults to 4.
 
     - Acceptable input types: integer.
 
@@ -1673,41 +1668,40 @@ You have the option to limit the maximum number of edges in a path (via `max_pat
 
     - The values for this parameter can range from a minimum value of 1 to a maximum value of 5.
 
-* ##### qnode_keys
-
-    - List with just two qnode keys to connect. example: [n1, n2]
-
-    - Acceptable input types: list.
-
-    - This is a required parameter and must be included.
-
-    - `['n01', 'n02']` and `[]` are examples of valid inputs.
-
-* ##### node_category_constraint
-
-    - This constraint will display paths that only pass through the user-specified category.
-
-    - Acceptable input types: string.
-
-    - This is not a required parameter and may be omitted.
-
-    - `biolink:Disease`, `biolink:Gene`, and `biolink:ChemicalEntity` are examples of valid inputs.
-
 ## ARAX_infer
 ### infer(action=drug_treatment_graph_expansion)
 
-`drug_treatment_graph_expansion` predicts drug treatments for a given disease curie. It returns the top n results along with predicted graph explanations.  
+`drug_treatment_graph_expansion` predicts drug-disease treatment relationship including:
+
+- Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
+- Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
+- Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
+    
+It returns the top n results along with predicted graph explanations. You can limit the the maximum number of disease (via `n_diseases=<n>`)/drug (via `n_drugs=<n>`) nodes to return.
             
-You have the option to limit the maximum number of drug nodes to return (via `n_drugs=<n>`)
-            
-This cannot be applied to non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
+This function is invalid for non drug nodes (nodes that do not belong to either of 'biolink:biolink:Drug', 'biolink:ChemicalEntity', or 'biolink:SmallMolecule'), and non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
+
+**Notes:**
+
+**- The `infer` and `expand` modules are not recommended to be used together in a query because it may cause some errors due to the different qnodes generated from both the `infer` and `expand` modules for the same query node.**
+
                     
 
 #### parameters: 
 
-* ##### node_curie
+* ##### drug_curie
 
-    - The curie for the node you wish to predict drugs which will treat.
+    - The CURIE for a drug node (should be a subject node) used to predict what potential diseases it may treat.
+
+    - Acceptable input types: string.
+
+    - This is a required parameter and must be included.
+
+    - `CHEMBL.COMPOUND:CHEMBL55643`, `CHEBI:8378`, and `RXNORM:1011` are examples of valid inputs.
+
+* ##### disease_curie
+
+    - The CURIE for a disease node (should be a object node) used to predict what potential drugs can potentially treat it.
 
     - Acceptable input types: string.
 
@@ -1717,7 +1711,7 @@ This cannot be applied to non disease/phenotypic feature nodes (nodes that do no
 
 * ##### qedge_id
 
-    - The id of the qedge you wish to perform the drug treatment/chemical regulation inference expansion.
+    - The id of the qedge you wish to perform the drug-disease treatment inference expansion.
 
     - Acceptable input types: string.
 
@@ -1727,7 +1721,19 @@ This cannot be applied to non disease/phenotypic feature nodes (nodes that do no
 
 * ##### n_drugs
 
-    - The number of drug nodes to return. If not provided defaults to 50. Considering the response speed, the maximum number of drugs returned is only allowed to be 50.
+    - Given an interested disease CURIE, the number of drug nodes to return. If not provided defaults to 50. Considering the response speed, the maximum number of drugs returned is only allowed to be 50.
+
+    - Acceptable input types: integer.
+
+    - This is not a required parameter and may be omitted.
+
+    - `5`, `15`, and `25` are examples of valid inputs.
+
+    - If not specified the default input will be 50. 
+
+* ##### n_diseases
+
+    - Given an interested drug CURIE, The number of disease nodes to return. If not provided defaults to 50. Considering the response speed, the maximum number of diseases returned is only allowed to be 50.
 
     - Acceptable input types: integer.
 
@@ -1751,20 +1757,25 @@ This cannot be applied to non disease/phenotypic feature nodes (nodes that do no
 
 ### infer(action=chemical_gene_regulation_graph_expansion)
 
-`chemical_gene_regulation_graph_expansion` predicts the regulation relationship (increase/decrease activity) between given chemicals or given genes. It return the top n results along with predicted graph explinations.  
+`chemical_gene_regulation_graph_expansion` predicts the regulation relationship (increase/decrease activity) between chemicals and  genes. It returns the top n results along with predicted graph explinations.  
             
-You have the option to limit the maximum number of result nodes to return (via `n_result_curies=<n>`)
+You can limit the maximum number of result nodes to return (via `n_result_curies=<n>`)
             
-This can be applied to an arbitrary nide curie though will not return sensible results for the subject nodes without category 'chemicalentity/chemicalmixture/smallmodule' or the object nodes without category 'gene/protein".' 
+This function can be applied to  any arbitrary node CURIE, but it will not yield meaningful results if the query subject doesn't belong to the category 'chemicalentity/chemicalmixture/smallmodule' or the query object doesn't belong to the category 'gene/protein".' 
 
-**Note that the 'subject_curie' and 'object_curie' cannot be given in the same time, that is, if you give a curie to either one, another one should be omitted. However, when a query graph is used via DSL command or JSON format, the parameters 'subject_curie' and 'object_curie' can be omitted but one of 'subject_qnode_id' or 'object_qnode_id' need to be specified.**.
+**Notes:**
+
+**- the 'subject_curie' and 'object_curie' are not allowed to be sepcified in the same time, that is, if you give a curie to either one, the other should be omitted. However, when a query graph (i.e., the object `query_graph`) exists, the parameters 'subject_curie' and 'object_curie' become invalid. Instead, use 'subject_qnode_id' or 'object_qnode_id' to specify the query gene or chemical of interest.**
+
+**- The `infer` and `expand` modules are not recommended to be used together in a query because it may cause some errors due to the different qnodes generated from both the `infer` and `expand` modules for the same query node.**
                     
 
 #### parameters: 
 
 * ##### subject_curie
 
-    - The chemical curie, a curie with category of either 'biolink:ChemicalEntity', 'biolink:ChemicalMixture', or 'biolink:SmallMolecule'. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**
+    - The chemical curie, a curie with category of either 'biolink:ChemicalEntity', 'biolink:ChemicalMixture', or 'biolink:SmallMolecule'. 
+                **Note that it is required only when the `query_graph` is None, only either this parameter or `object_curie` is required, not both**
 
     - Acceptable input types: string.
 
@@ -1774,7 +1785,8 @@ This can be applied to an arbitrary nide curie though will not return sensible r
 
 * ##### object_curie
 
-    - The gene curie, a curie with category of either 'biolink:Gene' or 'biolink:Protein'. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**
+    - The gene curie, a curie with category of either 'biolink:Gene' or 'biolink:Protein'. 
+                **Note that it is required only when the `query_graph` is None, only either this parameter or `subject_curie` is required, not both**
 
     - Acceptable input types: string.
 
@@ -1784,7 +1796,8 @@ This can be applied to an arbitrary nide curie though will not return sensible r
 
 * ##### subject_qnode_id
 
-    - The query graph node ID of a chemical. **Note that although this parameter is said to be required, this parameter is valid only when a query graph is used. Additionally, exactly one of 'subject_qnode_id' or 'object_qnode_id' is required when a query graph is used.**
+    - The query node ID of a chemical of interest.
+                **Note that it is required only when the `query_graph` is NOT None, and only either this parameter or `object_qnode_id` is required, not both**
 
     - Acceptable input types: string.
 
@@ -1794,7 +1807,8 @@ This can be applied to an arbitrary nide curie though will not return sensible r
 
 * ##### object_qnode_id
 
-    - The query graph node ID of a gene. **Note that although this parameter is said to be required, this parameter is valid only when a query graph is used. Additionally, exactly one of 'subject_qnode_id' or 'object_qnode_id' is required when a query graph is used.**
+    - The query node ID of a gene of interest.
+                **Note that it is required only when the `query_graph` is NOT None, and only either this parameter or `subject_qnode_id` is required, not both**
 
     - Acceptable input types: string.
 
@@ -1804,7 +1818,7 @@ This can be applied to an arbitrary nide curie though will not return sensible r
 
 * ##### qedge_id
 
-    - The id of the qedge you wish to perform the drug treatment/chemical regulation inference expansion.
+    - The id of the qedge you wish to perform the chemical-gene regulation inference expansion.
 
     - Acceptable input types: string.
 

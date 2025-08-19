@@ -91,7 +91,7 @@ class InferUtilities:
                     f"Error retrieving score for result essence {result.essence}. Setting result score to None.")
         message.results.sort(key=lambda x: self.__none_to_zero(x.score), reverse=True)
 
-    def genrete_treat_subgraphs(self, response: ARAXResponse, top_scores: pd.DataFrame, top_paths: dict, qedge_id=None, kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
+    def genrete_treat_subgraphs(self, response: ARAXResponse, top_scores: pd.DataFrame, top_paths: dict, drug_curie: Optional[str], disease_curie: Optional[str], qedge_id=None):
         """
         top_scores and top_paths returned by Chunyu's creativeDTD.py code (get_score_table and get_top_path respectively).
         Ammends the response effectively TRAPI-ifying the paths returned by Chunyu's code.
@@ -116,9 +116,7 @@ class InferUtilities:
                 self.response.error("qedge_id is None but QG is not empty")
                 raise Exception("qedge_id is None but QG is not empty")
 
-        expander = ARAXExpander()
         messenger = ARAXMessenger()
-        synonymizer = NodeSynonymizer()
         decorator = ARAXDecorator()
         xdtdmapping = xDTDMappingDB(None, None, RTXConfig.explainable_dtd_db_path.split('/')[-1], mode='run', db_loc=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction']))
 
@@ -133,13 +131,38 @@ class InferUtilities:
         if len(message.query_graph.edges) !=0 and not hasattr(self.response, 'original_query_graph'):
             self.response.original_query_graph = copy.deepcopy(message.query_graph)
 
-        disease_curie = top_scores['disease_id'].tolist()[0]
-        disease_name = top_scores['disease_name'].tolist()[0]
-        disease_info = xdtdmapping.get_node_info(node_id=disease_curie)
-        if disease_info is None:
-            self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table due to using refreshed xDTD database")
-            return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
-        
+        if drug_curie and disease_curie:
+            query_drug_curie = top_scores['drug_id'].tolist()[0]
+            query_drug_name = top_scores['drug_name'].tolist()[0]
+            query_drug_info = xdtdmapping.get_node_info(node_id=query_drug_curie)
+            if query_drug_info is None:
+                self.response.warning(f"Could not find {drug_curie} in NODE_MAPPING table due to using refreshed xDTD database")
+                return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+            
+            query_disease_curie = top_scores['disease_id'].tolist()[0]
+            query_disease_name = top_scores['disease_name'].tolist()[0]
+            query_disease_info = xdtdmapping.get_node_info(node_id=query_disease_curie)
+            if query_disease_info is None:
+                self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table due to using refreshed xDTD database")
+                return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+            
+            
+        elif drug_curie:
+            query_drug_curie = top_scores['drug_id'].tolist()[0]
+            query_drug_name = top_scores['drug_name'].tolist()[0]
+            query_drug_info = xdtdmapping.get_node_info(node_id=query_drug_curie)
+            if query_drug_info is None:
+                self.response.warning(f"Could not find {drug_curie} in NODE_MAPPING table due to using refreshed xDTD database")
+                return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+            
+        elif disease_curie:
+            query_disease_curie = top_scores['disease_id'].tolist()[0]
+            query_disease_name = top_scores['disease_name'].tolist()[0]
+            query_disease_info = xdtdmapping.get_node_info(node_id=query_disease_curie)
+            if query_disease_info is None:
+                self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table due to using refreshed xDTD database")
+                return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+
         if not message.knowledge_graph or not hasattr(message, 'knowledge_graph'):  # if the knowledge graph is empty, create it
             message.knowledge_graph = KnowledgeGraph()
             message.knowledge_graph.nodes = {}
@@ -152,94 +175,130 @@ class InferUtilities:
         # Only add these in if the query graph is empty
         if len(message.query_graph.edges) == 0:
             qedge_id = "treats"
-            add_qnode_params = {
-                'key': "disease",
-                'name': disease_curie,
-            }
-            self.response = messenger.add_qnode(self.response, add_qnode_params)
-            message.knowledge_graph.nodes[disease_curie] = Node(name=disease_name, categories=[disease_info.category], attributes=[])
-            message.knowledge_graph.nodes[disease_curie].qnode_keys = [add_qnode_params['key']]
-            add_qnode_params = {
-                'key': "drug",
-                'categories': ['biolink:Drug', 'biolink:SmallMolecule']
-            }
-            self.response = messenger.add_qnode(self.response, add_qnode_params)
+            
+            # Simplified and deduplicated code for adding qnodes and qedges
+
+            def _add_qnode_and_kg_node(qnode_key, name=None, categories=None, curie=None, info=None):
+                params = {'key': qnode_key}
+                if name is not None:
+                    params['name'] = name
+                if categories is not None:
+                    params['categories'] = categories
+                self.response = messenger.add_qnode(self.response, params)
+                if curie and info:
+                    message.knowledge_graph.nodes[curie] = Node(
+                        name=name if name else info.name,
+                        categories=categories if categories else [info.category],
+                        attributes=[]
+                    )
+                    message.knowledge_graph.nodes[curie].qnode_keys = [qnode_key]
+
+            drug_qnode_key = "drug"
+            disease_qnode_key = "disease"
+
+            if drug_curie and disease_curie:
+                _add_qnode_and_kg_node(
+                    drug_qnode_key, query_drug_name, [query_drug_info.category], query_drug_curie, query_drug_info
+                )
+                _add_qnode_and_kg_node(
+                    disease_qnode_key, query_disease_name, [query_disease_info.category], query_disease_curie, query_disease_info
+                )
+            elif drug_curie:
+                _add_qnode_and_kg_node(
+                    drug_qnode_key, query_drug_name, [query_drug_info.category], query_drug_curie, query_drug_info
+                )
+                _add_qnode_and_kg_node(
+                    disease_qnode_key, categories=['biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
+                )
+            elif disease_curie:
+                _add_qnode_and_kg_node(
+                    disease_qnode_key, query_disease_name, [query_disease_info.category], query_disease_curie, query_disease_info
+                )
+                _add_qnode_and_kg_node(
+                    drug_qnode_key, categories=['biolink:Drug', 'biolink:SmallMolecule']
+                )
+
             add_qedge_params = {
                 'key': qedge_id,
-                'subject': "drug",
-                'object': "disease",
+                'subject': drug_qnode_key,
+                'object': disease_qnode_key,
                 'predicates': ["biolink:treats"]
             }
             self.response = messenger.add_qedge(self.response, add_qedge_params)
             message.query_graph.edges[add_qedge_params['key']].knowledge_type = "inferred"
             message.query_graph.edges[add_qedge_params['key']].filled = True
-            drug_qnode_key = 'drug'
-            disease_qnode_key = 'disease'
             self.response.original_query_graph = copy.deepcopy(message.query_graph)
-
         else:
-            message.knowledge_graph.nodes[disease_curie] = Node(name=disease_name, categories=[disease_info.category], attributes=[])
+            message.query_graph.edges[qedge_id].filled = True
             drug_qnode_key = response.envelope.message.query_graph.edges[qedge_id].subject
             disease_qnode_key = response.envelope.message.query_graph.edges[qedge_id].object
-            message.knowledge_graph.nodes[disease_curie].qnode_keys = [disease_qnode_key]
-            # Don't add a new edge in for the treats as there is already an edge there with the knowledge type inferred
-            # But do say that this edge has been filled
-            message.query_graph.edges[qedge_id].filled = True
-            message.query_graph.nodes[drug_qnode_key].categories = ['biolink:Drug', 'biolink:SmallMolecule']
-            # Just use the drug and disease that are currently in the QG
-        # # now that KG and QG are populated with stuff, shorthand them (find a weird problem for this operation, so skip using short name)
-        # knodes = message.knowledge_graph.nodes
-        # kedges = message.knowledge_graph.edges
-        # qnodes = message.query_graph.nodes
-        # qedges = message.query_graph.edges
+            if drug_curie and disease_curie:
+                message.knowledge_graph.nodes[query_drug_curie] = Node(name=query_drug_name, categories=[query_drug_info.category], attributes=[])
+                message.knowledge_graph.nodes[query_drug_curie].qnode_keys = [drug_qnode_key]
+                message.knowledge_graph.nodes[query_disease_curie] = Node(name=query_disease_name, categories=[query_disease_info.category], attributes=[])
+                message.knowledge_graph.nodes[query_disease_curie].qnode_keys = [disease_qnode_key]
+            elif drug_curie:
+                message.knowledge_graph.nodes[query_drug_curie] = Node(name=query_drug_name, categories=[query_drug_info.category], attributes=[])
+                message.knowledge_graph.nodes[query_drug_curie].qnode_keys = [drug_qnode_key]
+                message.query_graph.nodes[disease_qnode_key].categories = ['biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
+            elif disease_curie:
+                message.knowledge_graph.nodes[query_disease_curie] = Node(name=query_disease_name, categories=[query_disease_info.category], attributes=[])
+                message.knowledge_graph.nodes[query_disease_curie].qnode_keys = [disease_qnode_key]
+                message.query_graph.nodes[drug_qnode_key].categories = ['biolink:Drug', 'biolink:SmallMolecule']
+
+
         # If the max path len is 0, that means there are no paths found, so just insert the drugs with the probability_treats on them
         if max_path_len == 0:
             essence_scores = {}
-            node_ids = top_scores['drug_id']
-            node_id_to_score = dict(zip(node_ids, top_scores['tp_score']))
-            # Add the drugs to the knowledge graph
-            for drug_canonical_id in node_ids:
-                try:
-                    node_info = xdtdmapping.get_node_info(node_id=drug_canonical_id)
-                except:
-                    continue
-                if not node_info:
-                    continue
-                drug_categories = [node_info.category]
-                # add the node to the knowledge graph
-                drug_name = node_info.name
-                essence_scores[drug_name] = node_id_to_score[drug_canonical_id]
-                if drug_canonical_id not in message.knowledge_graph.nodes:
-                    message.knowledge_graph.nodes[drug_canonical_id] = Node(name=drug_name, categories=drug_categories, attributes=[])
-                    message.knowledge_graph.nodes[drug_canonical_id].qnode_keys = [drug_qnode_key]
-                else:  # it's already in the KG, just pass
-                    pass
-                # add the edge to the knowledge graph
-                treat_score = node_id_to_score[drug_canonical_id]
-                edge_attribute_list = [
-                    Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                    Attribute(original_attribute_name=None, value=True,
-                                    attribute_type_id="EDAM-DATA:1772",
-                                    attribute_source="infores:arax", value_type_id="metatype:Boolean",
-                                    value_url=None,
-                                    description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                    Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score)),
-                    Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
-                    Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
-                ]
-                retrieval_source = [
-                                    RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
-                ]
-                new_edge = Edge(subject=drug_canonical_id, object=disease_curie, predicate='biolink:treats', attributes=edge_attribute_list, sources=retrieval_source)
-                new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source="infores:arax", kp=kp)
-                if new_edge_key not in message.knowledge_graph.edges:
-                    message.knowledge_graph.edges[new_edge_key] = new_edge
-                    message.knowledge_graph.edges[new_edge_key].filled = True
-                    message.knowledge_graph.edges[new_edge_key].qedge_keys = [qedge_id]
+            
+            def _add_node_and_edge(node_ids, node_id_to_score, node_role_key, edge_subject_func, edge_object_func):
+                for canonical_id in node_ids:
+                    try:
+                        node_info = xdtdmapping.get_node_info(node_id=canonical_id)
+                    except Exception:
+                        continue
+                    if not node_info:
+                        continue
+                    categories = [node_info.category]
+                    name = node_info.name
+                    essence_scores[name] = node_id_to_score[canonical_id]
+                    if canonical_id not in message.knowledge_graph.nodes:
+                        message.knowledge_graph.nodes[canonical_id] = Node(name=name, categories=categories, attributes=[])
+                        message.knowledge_graph.nodes[canonical_id].qnode_keys = [node_role_key]
+                    # Add the edge to the knowledge graph
+                    treat_score = node_id_to_score[canonical_id]
+                    edge_attribute_list = [
+                        Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
+                        Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                        Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score)),
+                        Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
+                        Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
+                    ]
+                    retrieval_source = [
+                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
+                    ]
+                    # Use the functions to determine subject and object based on current canonical_id
+                    edge_subject = edge_subject_func(canonical_id)
+                    edge_object = edge_object_func(canonical_id)
+                    new_edge = Edge(subject=edge_subject, object=edge_object, predicate='biolink:treats', attributes=edge_attribute_list, sources=retrieval_source)
+                    new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source="infores:arax", kp=kp)
+                    if new_edge_key not in message.knowledge_graph.edges:
+                        message.knowledge_graph.edges[new_edge_key] = new_edge
+                        message.knowledge_graph.edges[new_edge_key].filled = True
+                        message.knowledge_graph.edges[new_edge_key].qedge_keys = [qedge_id]
                 self.resultify_and_sort(essence_scores)
-            return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+                return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
 
-
+            if drug_curie:
+                node_ids = top_scores['disease_id']
+                node_id_to_score = dict(zip(node_ids, top_scores['tp_score']))
+                return _add_node_and_edge(node_ids, node_id_to_score, disease_qnode_key, lambda cid: drug_curie, lambda cid: cid)
+            else:
+                node_ids = top_scores['drug_id']
+                node_id_to_score = dict(zip(node_ids, top_scores['tp_score']))
+                return _add_node_and_edge(node_ids, node_id_to_score, drug_qnode_key, lambda cid: cid, lambda cid: disease_curie)
+                
+    
         # Otherwise we do have paths and we need to handle them
         path_keys = [{} for i in range(max_path_len)]
         for i in range(max_path_len+1):
@@ -281,7 +340,8 @@ class InferUtilities:
             # The x[0] is here since each element consists of the string path and a score we are currently ignoring the score
             split_paths = [x[0].split("->") for x in paths]
             for path in split_paths:
-                drug_curie = path[0]
+                path_drug_curie = path[0]
+                path_disease_curie = path[-1]  # Last element in the path is the disease
                 n_elements = len(path)
 
                 edges_info = []
@@ -370,9 +430,20 @@ class InferUtilities:
                 path_added = True
             if path_added:
                 treat_score = top_scores.loc[top_scores['drug_id'] == drug]["tp_score"].iloc[0]
-                drug_node_info = xdtdmapping.get_node_info(node_id=drug_curie)
-                disease_node_info = xdtdmapping.get_node_info(node_id=disease_curie)
-                essence_scores[drug_node_info.name] = treat_score
+                path_drug_node_info = xdtdmapping.get_node_info(node_id=path_drug_curie)
+                path_disease_node_info = xdtdmapping.get_node_info(node_id=path_disease_curie)
+                
+                # Determine which node gets the score based on the scenario
+                if drug_curie and disease_curie:
+                    # Both are fixed, use drug name for scoring
+                    essence_scores[path_drug_node_info.name] = treat_score
+                elif drug_curie:
+                    # Fixed drug, varying diseases - score the disease
+                    essence_scores[path_disease_node_info.name] = treat_score
+                else:
+                    # Fixed disease, varying drugs - score the drug
+                    essence_scores[path_drug_node_info.name] = treat_score
+                
                 edge_attribute_list = [
                     Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                     Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
@@ -389,7 +460,7 @@ class InferUtilities:
                 # if hasattr(message.query_graph.edges[qedge_id], 'predicates') and message.query_graph.edges[qedge_id].predicates:
                 #     edge_predicate = message.query_graph.edges[qedge_id].predicates[0]  # FIXME: better way to handle multiple predicates?
                 
-                fixed_edge = Edge(predicate=edge_predicate, subject=drug_node_info.id, object=disease_node_info.id,
+                fixed_edge = Edge(predicate=edge_predicate, subject=path_drug_node_info.id, object=path_disease_node_info.id,
                                 attributes=edge_attribute_list, sources=retrieval_source)
                 #fixed_edge.qedge_keys = ["treats"]
                 fixed_edge.qedge_keys = [qedge_id]
@@ -412,7 +483,7 @@ class InferUtilities:
 
         return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
 
-    def genrete_regulate_subgraphs(self, response: ARAXResponse, query_chemical: Optional[str], query_gene: Optional[str], top_predictions: pd.DataFrame, top_paths: dict, qedge_id=None, model_type: str = 'increase', kedge_global_iter: int=0, qedge_global_iter: int=0, qnode_global_iter: int=0, option_global_iter: int=0):
+    def genrete_regulate_subgraphs(self, response: ARAXResponse, query_chemical: Optional[str], top_predictions: pd.DataFrame, top_paths: dict, qedge_id=None, model_type: str = 'increase'):
         """
         top_predictions and top_paths returned by the createCRG.py code (predict_top_N_chemicals/predict_top_N_genes and predict_top_M_paths respectively).
         Ammends the response effectively TRAPI-ifying the paths returned by the code.
@@ -437,7 +508,6 @@ class InferUtilities:
                 self.response.error("qedge_id is None but QG is not empty")
                 raise Exception("qedge_id is None but QG is not empty")
 
-        expander = ARAXExpander()
         messenger = ARAXMessenger()
         synonymizer = NodeSynonymizer()
         decorator = ARAXDecorator()
@@ -463,6 +533,7 @@ class InferUtilities:
             message.knowledge_graph.nodes = {}
         if not hasattr(message.knowledge_graph, 'edges'):
             message.knowledge_graph.edges = {}
+
 
         # Only add these in if the query graph is empty
         if len(message.query_graph.edges) == 0:
@@ -570,14 +641,6 @@ class InferUtilities:
                 categories_set = set(message.query_graph.nodes[chemical_qnode_key].categories)
                 categories_set.update(set(['biolink:ChemicalEntity', 'biolink:ChemicalMixture','biolink:SmallMolecule']))
                 message.query_graph.nodes[chemical_qnode_key].categories = list(categories_set)
-
-
-        # # Just use the chemical and gene that are currently in the QG
-        # # now that KG and QG are populated with stuff, shorthand them
-        # knodes = message.knowledge_graph.nodes
-        # kedges = message.knowledge_graph.edges
-        # qnodes = message.query_graph.nodes
-        # qedges = message.query_graph.edges
 
         # If the max path len is 0, that means there are no paths found, so just insert the chemicals/genes with the probability_increase/decrease_activity on them
         if max_path_len == 0:

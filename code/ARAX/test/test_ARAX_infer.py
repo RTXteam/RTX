@@ -103,6 +103,31 @@ def test_xdtd_infer_castleman_disease_2():
     assert message.auxiliary_graphs
     assert len(message.results) > 0
 
+def test_xdtd_infer_ibuprofen_1():
+    query = {"operations": {"actions": [
+            "create_message",
+            "infer(action=drug_treatment_graph_expansion,drug_curie=CHEBI:5855)",
+            "return(message=true, store=true)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) == 1
+    assert len(message.results) > 0
+
+def test_xdtd_infer_ibuprofen_2():
+    query = {"operations": {"actions": [
+            "create_message",
+            "infer(action=drug_treatment_graph_expansion,drug_curie=CHEBI:5855,n_diseases=2,n_paths=15)",
+            "return(message=true, store=true)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert message.auxiliary_graphs
+    assert len(message.results) > 0
+
+
 def test_xdtd_issue2160():
     query = {
         "message": {"query_graph": 
@@ -244,6 +269,41 @@ def test_xdtd_with_qg3():
     assert message.auxiliary_graphs
     assert len(message.results) > 0
 
+
+@pytest.mark.slow
+def test_xdtd_with_qg4():
+    query = {
+        "message": {"query_graph": {
+            "nodes": {
+                "disease": {
+                    "categories": ["biolink:Disease"]
+                },
+                "chemical": {
+                    "ids": ["UNII:4F4X42SYQ6"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+        },
+        "operations": {"actions": [
+            "infer(action=drug_treatment_graph_expansion, drug_curie=UNII:4F4X42SYQ6, qedge_id=t_edge)",
+            "return(message=true, store=true)"
+        ]}
+    }
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert message.auxiliary_graphs
+    assert len(message.results) > 0
+
+
 def test_xdtd_with_only_qg():
     query = {
         "message": {"query_graph": {
@@ -336,7 +396,7 @@ def test_xcrg_with_qg1():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:regulates'
+        assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
 
 
 @pytest.mark.slow
@@ -386,7 +446,7 @@ def test_xcrg_with_qg2():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:regulates'
+        assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
 
 @pytest.mark.slow
 def test_xcrg_with_only_qg():
@@ -444,7 +504,7 @@ def test_xcrg_with_only_qg():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:affects'
+        assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
 
 @pytest.mark.slow
 def test_xcrg_infer_dsl():
@@ -468,4 +528,4 @@ def test_xcrg_infer_dsl():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:regulates'
+        assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']

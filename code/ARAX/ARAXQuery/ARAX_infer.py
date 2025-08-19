@@ -72,13 +72,13 @@ class ARAXInfer:
             "is_required": True,
             "examples": ["CHEMBL.COMPOUND:CHEMBL55643","CHEBI:8378","RXNORM:1011"],
             "type": "string",
-            "description": "The CURIE for a drug node used to predict what potential diseases it may treat."
+            "description": "The CURIE for a drug node (should be a subject node) used to predict what potential diseases it may treat."
         }
         self.xdtd_disease_curie_info = {
             "is_required": True,
             "examples": ["DOID:9352","MONDO:0005306","HP:0001945"],
             "type": "string",
-            "description": "The CURIE for a disease node used to predict what potential drugs can potentially treat it."
+            "description": "The CURIE for a disease node (should be a object node) used to predict what potential drugs can potentially treat it."
         }
         self.xdtd_qedge_id_info = {
             "is_required": False,
@@ -111,25 +111,29 @@ class ARAXInfer:
             "is_required": True,
             "examples": ["UMLS:C1440117", "MESH:D007053", "CHEMBL.COMPOUND:CHEMBL33884"],
             'type': 'string',
-            'description': "The chemical curie, a curie with category of either 'biolink:ChemicalEntity', 'biolink:ChemicalMixture', or 'biolink:SmallMolecule'. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**",
+            'description': """The chemical curie, a curie with category of either 'biolink:ChemicalEntity', 'biolink:ChemicalMixture', or 'biolink:SmallMolecule'. 
+                **Note that it is required only when the `query_graph` is None, only either this parameter or `object_curie` is required, not both**""",
         }
         self.xcrg_object_curie_info = {
             "is_required": True,
             "examples": ["UniProtKB:Q96P20", "UniProtKB:O75807", "NCBIGene:406983"],
             'type': 'string',
-            'description': "The gene curie, a curie with category of either 'biolink:Gene' or 'biolink:Protein'. **Note that although this parameter is said to be required, exactly one of `subject_curie` or `object_curie` is required as a parameter rather than both.**",
+            'description': """The gene curie, a curie with category of either 'biolink:Gene' or 'biolink:Protein'. 
+                **Note that it is required only when the `query_graph` is None, only either this parameter or `subject_curie` is required, not both**""",
         }
         self.xcrg_subject_qnode_id = {
             "is_required": True,
             "examples": ["n01","n02"],
             "type": "string",
-            "description": "The query graph node ID of a chemical. **Note that although this parameter is said to be required, this parameter is valid only when a query graph is used. Additionally, exactly one of 'subject_qnode_id' or 'object_qnode_id' is required when a query graph is used.**"
+            "description": """The query node ID of a chemical of interest.
+                **Note that it is required only when the `query_graph` is NOT None, and only either this parameter or `object_qnode_id` is required, not both**"""
         }
         self.xcrg_object_qnode_id = {
             "is_required": True,
             "examples": ["n01","n02"],
             "type": "string",
-            "description": "The query graph node ID of a gene. **Note that although this parameter is said to be required, this parameter is valid only when a query graph is used. Additionally, exactly one of 'subject_qnode_id' or 'object_qnode_id' is required when a query graph is used.**"
+            "description": """The query node ID of a gene of interest.
+                **Note that it is required only when the `query_graph` is NOT None, and only either this parameter or `subject_qnode_id` is required, not both**"""
         }
         self.xcrg_qedge_id_info = {
             "is_required": False,
@@ -186,13 +190,19 @@ class ARAXInfer:
                 "dsl_command": "infer(action=drug_treatment_graph_expansion)",
                 "description": """
 `drug_treatment_graph_expansion` predicts drug-disease treatment relationship including:
-    1. Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
-    2. Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
-    3. Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
+
+- Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
+- Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
+- Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
     
-It returns the top n results along with predicted graph explanations. You have the option to limit the maximum number of disease (via `n_diseases=<n>`)/drug (via `n_drugs=<n>`) nodes to return.
+It returns the top n results along with predicted graph explanations. You can limit the the maximum number of disease (via `n_diseases=<n>`)/drug (via `n_drugs=<n>`) nodes to return.
             
-This cannot be applied to non drug nodes (nodes that do not belong to either of 'biolink:biolink:Drug', 'biolink:ChemicalEntity', or 'biolink:SmallMolecule'), and non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
+This function is invalid for non drug nodes (nodes that do not belong to either of 'biolink:biolink:Drug', 'biolink:ChemicalEntity', or 'biolink:SmallMolecule'), and non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
+
+**Notes:**
+
+**- The `infer` and `expand` modules are not recommended to be used together in a query because it may cause some errors due to the different qnodes generated from both the `infer` and `expand` modules for the same query node.**
+
                     """,
                 'brief_description': """
 drug_treatment_graph_expansion predicts drug treatments for a given node curie and provides along with an explination graph for each prediction.
@@ -209,16 +219,20 @@ drug_treatment_graph_expansion predicts drug treatments for a given node curie a
             "chemical_gene_regulation_graph_expansion": {
                 "dsl_command": "infer(action=chemical_gene_regulation_graph_expansion)",
                 "description": """
-`chemical_gene_regulation_graph_expansion` predicts the regulation relationship (increase/decrease activity) between given chemicals or given genes. It return the top n results along with predicted graph explinations.  
+`chemical_gene_regulation_graph_expansion` predicts the regulation relationship (increase/decrease activity) between chemicals and  genes. It returns the top n results along with predicted graph explinations.  
             
-You have the option to limit the maximum number of result nodes to return (via `n_result_curies=<n>`)
+You can limit the maximum number of result nodes to return (via `n_result_curies=<n>`)
             
-This can be applied to an arbitrary nide curie though will not return sensible results for the subject nodes without category 'chemicalentity/chemicalmixture/smallmodule' or the object nodes without category 'gene/protein".' 
+This function can be applied to  any arbitrary node CURIE, but it will not yield meaningful results if the query subject doesn't belong to the category 'chemicalentity/chemicalmixture/smallmodule' or the query object doesn't belong to the category 'gene/protein".' 
 
-**Note that the 'subject_curie' and 'object_curie' cannot be given in the same time, that is, if you give a curie to either one, another one should be omitted. However, when a query graph is used via DSL command or JSON format, the parameters 'subject_curie' and 'object_curie' can be omitted but one of 'subject_qnode_id' or 'object_qnode_id' need to be specified.**.
+**Notes:**
+
+**- the 'subject_curie' and 'object_curie' are not allowed to be sepcified in the same time, that is, if you give a curie to either one, the other should be omitted. However, when a query graph (i.e., the object `query_graph`) exists, the parameters 'subject_curie' and 'object_curie' become invalid. Instead, use 'subject_qnode_id' or 'object_qnode_id' to specify the query gene or chemical of interest.**
+
+**- The `infer` and `expand` modules are not recommended to be used together in a query because it may cause some errors due to the different qnodes generated from both the `infer` and `expand` modules for the same query node.**
                     """,
                 'brief_description': """
-chemical_gene_regulation_graph_expansion predicts the regulation relationship between given chemicals and/or given genes and provides along with an explination graph for each prediction. Note that one of subject_curie (curie with category 'chemicalentity/chemicalmixture/smallmodule') or object_curie (curie with category 'gene/protein') is required as a parameter, However, when a query graph is used via DSL command or JSON format, the parameters 'subject_curie' and 'object_curie' can be omitted but one of 'subject_qnode_id' or 'object_qnode_id' need to be specified.
+chemical_gene_regulation_graph_expansion predicts the regulation relationship between chemicals and genes and provides along with an explination graph for each prediction. 
                     """,
                 "parameters": {
                     "subject_curie": self.xcrg_subject_curie_info,
@@ -553,10 +567,11 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         if self.response.status != 'OK' or resp == -1:
             return self.response
 
-        # disable 'given a drug, predict what potential diseases it may treat'
-        if preferred_drug_curie and not preferred_disease_curie:
-            self.response.warning(f"Given a drug, predict what potential diseases it may treat is currently disabled.")
-            return self.response
+        # # disable 'given a drug, predict what potential diseases it may treat'
+        # if preferred_drug_curie and not preferred_disease_curie:
+        #     self.response.warning(f"Given a drug, predict what potential diseases it may treat is currently disabled.")
+        #     return self.response
+
 
         try:
             top_scores = XDTD.get_score_table(drug_curie_ids=preferred_drug_curie, disease_curie_ids=preferred_disease_curie)
@@ -578,8 +593,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             if len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for drug {preferred_drug_curie}. Likely the model considers there is no reasonable path for this drug.")
             
-            # Limit the number of drugs to the top n
-            top_scores = top_scores.iloc[:parameters['n_drugs'],:].reset_index(drop=True)
+            # Limit the number of diseases to the top n
+            top_scores = top_scores.iloc[:parameters['n_diseases'],:].reset_index(drop=True)
         elif preferred_disease_curie:
             if len(top_scores) == 0:
                 self.response.warning(f"Could not get top drugs for disease {preferred_disease_curie}. Likely the model was not trained with this disease. Or No predicted drugs for this disease with score >= 0.3.")
@@ -587,15 +602,15 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             if len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for disease {preferred_disease_curie}. Likely the model considers there is no reasonable path for this disease.")
         
-            # Limit the number of diseases to the top n
-            top_scores = top_scores.iloc[:parameters['n_diseases'],:].reset_index(drop=True)
+            # Limit the number of drugs to the top n
+            top_scores = top_scores.iloc[:parameters['n_drugs'],:].reset_index(drop=True)
         
         # Limit the number of paths to the top n
         top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:parameters['n_paths']] for row in top_scores.to_numpy() if (row[0], row[2]) in top_paths}
     
         iu = InferUtilities()
         qedge_id = parameters.get('qedge_id')
-        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_scores, top_paths, qedge_id, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
+        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_scores, top_paths, preferred_drug_curie, preferred_disease_curie, qedge_id)
 
         return self.response
 
@@ -605,6 +620,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         Run "chemical_gene_regulation_graph_expansion" action.
         Allowable parameters: {'subject_curie': str, 
                                 'object_curie': str,
+                                'subject_qnode_id': str,
+                                'object_qnode_id': str,
                                 'qedge_id' str,
                                 'regulation_type': {'increase', 'decrease'},
                                 'threshold': float,
@@ -636,8 +653,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             allowable_parameters = {'action': {'chemical_gene_regulation_graph_expansion'},
                                     'subject_curie': {'The chemical curie used for gene regulation.'},
                                     'object_curie': {'The gene curie used to predict what chemicals can regulate it.'},
-                                    'subbject_qnode_id': {'The query graph node ID of a chemical.'},
-                                    'object_qnode_id': {'The query graph node ID of a gene.'},
+                                    'subject_qnode_id': {'The query graph node ID of a chemical. (If `query_graph` exists, either this parameter or `object_qnode_id` is required.)'},
+                                    'object_qnode_id': {'The query graph node ID of a gene. (If `query_graph` exists, either this parameter or `subject_qnode_id` is required.)'},
                                     'qedge_id': {'The edge to place the predicted mechanism of action on. If none is provided, the query graph must be empty and a new one will be inserted.'},
                                     'regulation_type': {"What model (increased prediction or decreased prediction) to consult. Two options: 'increase', 'decrease'."},
                                     'threshold': {"Threshold to filter the prediction probability. If not provided defaults to 0.5."},
@@ -777,7 +794,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 
 
             else:
-                self.response.error(f"The 'query_graph' is detected. One of 'subject_qnode_id' or 'object_qnode_id' should be specified.")
+                self.response.error(f"The 'query_graph' is detected. Either one of 'subject_qnode_id' or 'object_qnode_id' should be specified.")
             
             if self.parameters['regulation_type'] == 'increase':
                 edge_qualifier_direction = 'increased'
@@ -858,10 +875,12 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 return self.response
             if top_paths is None or len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for chemical {preferred_subject_curie}. Either Plover is not reachable or no paths found")
-                return self.response
+
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
-            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, normalized_subject_curie, None, top_predictions, top_paths, qedge_id, self.parameters['regulation_type'], self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
+            
+            
+            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, preferred_subject_curie, top_predictions, top_paths, qedge_id, self.parameters['regulation_type'])
         elif not preferred_subject_curie and preferred_object_curie:
             try:
                 top_predictions = XCRG.predict_top_N_chemicals(query_gene=preferred_object_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
@@ -880,7 +899,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
             
-            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, None, normalized_object_curie, top_predictions, top_paths, qedge_id,  self.parameters['regulation_type'], self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
+            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, None, top_predictions, top_paths, qedge_id, self.parameters['regulation_type'])
 
         return self.response
 
