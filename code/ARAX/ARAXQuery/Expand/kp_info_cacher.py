@@ -16,8 +16,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
-from RTXConfiguration import RTXConfiguration
-from ARAX_response import ARAXResponse
+from RTXConfiguration import RTXConfiguration  # type: ignore
+from ARAX_response import ARAXResponse  # type: ignore
 from smartapi import SmartAPI
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -65,12 +65,14 @@ class KPInfoCacher:
                     smart_api_cache_contents = pickle.load(cache_file)['smart_api_cache']
 
             # Grab KPs' meta map info based off of their /meta_knowledge_graph endpoints
-            meta_map = self._build_meta_map(allowed_kps_dict=smart_api_cache_contents["allowed_kp_urls"])
+            meta_map, valid_kps, kp_status_codes = self._build_meta_map(allowed_kps_dict=smart_api_cache_contents["allowed_kp_urls"])
 
 
             common_cache = {
                                 "smart_api_cache": smart_api_cache_contents,
-                                "meta_map_cache": meta_map
+                                "meta_map_cache": meta_map,
+                                "valid_kps": valid_kps,
+                                "kp_status_codes": kp_status_codes,
                             }
             
             with open(f"{self.smart_api_and_meta_map_cache}.tmp", "wb") as smart_api__and_meta_map_cache_temp:
@@ -140,9 +142,12 @@ class KPInfoCacher:
             cache = pickle.load(cache)
             smart_api_info = cache['smart_api_cache']
             meta_map = cache['meta_map_cache']
+            # Handle backwards compatibility - older caches might not have valid_kps
+            valid_kps = cache.get('valid_kps', set(meta_map.keys()))
+            kp_status_codes = cache.get('kp_status_codes', {})
 
 
-        return smart_api_info, meta_map
+        return smart_api_info, meta_map, valid_kps, kp_status_codes
 
     # --------------------------------- METHODS FOR BUILDING META MAP ----------------------------------------------- #
     # --- Note: These methods can't go in KPSelector because it would create a circular dependency with this class -- #
@@ -152,9 +157,14 @@ class KPInfoCacher:
         cache_file = pathlib.Path(self.smart_api_and_meta_map_cache )
         if cache_file.exists():
             with open(self.smart_api_and_meta_map_cache, "rb") as cache:
-                meta_map = pickle.load(cache)['meta_map_cache']
+                cache_data = pickle.load(cache)
+                meta_map = cache_data['meta_map_cache']
         else:
             meta_map = dict()
+
+        # Track which KPs have fresh/valid meta-KG data (returned HTTP 200)
+        valid_kps = set()
+        kp_status_codes = {}  # Track status codes for better error messages
 
         # Then (try to) get updated meta info from each KP
         for kp_infores_curie, kp_endpoint_url in allowed_kps_dict.items():
@@ -166,9 +176,12 @@ class KPInfoCacher:
                 except requests.exceptions.Timeout:
                     eprint(f"      Timed out when trying to hit {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                           f"(waited 10 seconds)")
+                    kp_status_codes[kp_infores_curie] = "timeout"
                 except Exception:
                     eprint(f"      Ran into a problem getting {kp_infores_curie}'s meta info")
+                    kp_status_codes[kp_infores_curie] = "connection_error"
                 else:
+                    kp_status_codes[kp_infores_curie] = str(kp_response.status_code)
                     if kp_response.status_code == 200:
                         try:
                             kp_meta_kg = kp_response.json()
@@ -182,6 +195,8 @@ class KPInfoCacher:
                             meta_map[kp_infores_curie] = {"predicates": self._convert_meta_kg_to_meta_map(kp_meta_kg),
                                                           "prefixes": {category: meta_node["id_prefixes"]
                                                                        for category, meta_node in kp_meta_kg["nodes"].items()}}
+                            # Track that this KP returned valid data
+                            valid_kps.add(kp_infores_curie)
                     else:
                         eprint(f"Unable to access {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                                f"(returned status of {kp_response.status_code} for URL {kp_endpoint_url})")
@@ -193,7 +208,7 @@ class KPInfoCacher:
                 eprint(f"Detected a stale KP in meta map ({stale_kp}) - deleting it")
                 del meta_map[stale_kp]
 
-        return meta_map
+        return meta_map, valid_kps, kp_status_codes
 
     @staticmethod
     def _convert_meta_kg_to_meta_map(kp_meta_kg: dict) -> dict:

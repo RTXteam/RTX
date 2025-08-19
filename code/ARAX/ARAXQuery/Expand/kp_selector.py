@@ -10,12 +10,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
 from kp_info_cacher import KPInfoCacher
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuery directory
-from ARAX_response import ARAXResponse
+from ARAX_response import ARAXResponse  # type: ignore
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelper")
-from biolink_helper import BiolinkHelper
+from biolink_helper import BiolinkHelper  # type: ignore
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.query_graph import QueryGraph
-from RTXConfiguration import RTXConfiguration
+from openapi_server.models.query_graph import QueryGraph  # type: ignore
+from RTXConfiguration import RTXConfiguration  # type: ignore
 
 
 RTX_CONFIG = RTXConfiguration()
@@ -27,29 +27,31 @@ class KPSelector:
         self.log = log
         self.kg2_mode = kg2_mode
         self.kp_cacher = KPInfoCacher()
-        self.meta_map, self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self._load_cached_kp_info()
+        self.meta_map, self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity, self.valid_kps_from_cache, self.kp_status_codes = self._load_cached_kp_info()
         if (not self.kg2_mode) and (self.kp_urls is None):
             raise ValueError("KP info cache has not been filled and we are not in KG2 mode; cannot initialize KP selector")
-        self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else set(self.kp_urls.keys())
+        self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else self.valid_kps_from_cache
         self.bh = BiolinkHelper()
 
     def _load_cached_kp_info(self) -> tuple:
         if self.kg2_mode:
             # We don't need any KP meta info when in KG2 mode, because there are no KPs to choose from
-            return None, None, None, None
+            return None, None, None, None, set(), {}
         else:
             # Load cached KP info
             kp_cacher = KPInfoCacher()
             try:
-                smart_api_info, meta_map = kp_cacher.load_kp_info_caches(self.log)
+                smart_api_info, meta_map, valid_kps, kp_status_codes = kp_cacher.load_kp_info_caches(self.log)
             except Exception as e:
                 self.log.error(f"Failed to load KP info caches due to {e}", error_code="LoadKPCachesFailed")
-                return None, None, None, None
+                return None, None, None, None, set(), {}
 
             return (meta_map,
                     smart_api_info["allowed_kp_urls"],
                     smart_api_info["kps_excluded_by_version"],
-                    smart_api_info["kps_excluded_by_maturity"])
+                    smart_api_info["kps_excluded_by_maturity"],
+                    valid_kps,
+                    kp_status_codes)
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[set[str]]:
         """
@@ -70,10 +72,19 @@ class KPSelector:
         obj_categories = set(self.bh.get_descendants(qg.nodes[qedge.object].categories))
         predicates = set(self.bh.get_descendants(qedge_predicates))
 
-        # use metamap to check kp for predicate triple
-        self.log.debug(f"selecting from {len(self.valid_kps)} kps")
+        # use metamap to check kp for predicate triple - only use valid KPs (those that returned HTTP 200 during cache refresh)
+        self.log.debug(f"selecting from {len(self.valid_kps)} valid kps")
         accepting_kps = set()
-        for kp in self.meta_map:
+        
+        # Log skipped KPs that have meta-KG data but are not valid (didn't return HTTP 200 during cache refresh)
+        stale_kps = set(self.meta_map.keys()).difference(self.valid_kps)
+        for stale_kp in stale_kps:
+            status_code = self.kp_status_codes.get(stale_kp, "unknown")
+            self.log.update_query_plan(qedge_key, stale_kp, "Skipped", f"MetaKG endpoint was unreachable ({status_code})")
+        
+        # Check if valid KPs support the query (only consider KPs that are both valid and have meta-KG data)
+        valid_kps_with_meta = self.valid_kps.intersection(set(self.meta_map.keys()))
+        for kp in valid_kps_with_meta:
             if self._triple_is_in_meta_map(kp,
                                            sub_categories,
                                            predicates,

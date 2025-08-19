@@ -1,6 +1,6 @@
 """SmartAPI registry access utility."""
 
-import requests
+import requests  # type: ignore
 import requests_cache
 import json
 import re
@@ -35,7 +35,7 @@ class SmartAPI:
         try:
             response_content.raise_for_status()
             response_dict = response_content.json()
-        except:
+        except Exception:
             return endpoints
 
         hits = response_dict["hits"]["hits"] if "hits" in response_dict["hits"] else response_dict["hits"]
@@ -75,7 +75,7 @@ class SmartAPI:
         try:
             response_content.raise_for_status()
             response_dict = response_content.json()
-        except:
+        except Exception:
             return endpoints
 
         hits = response_dict["hits"]["hits"] if "hits" in response_dict["hits"] else response_dict["hits"]
@@ -140,7 +140,7 @@ class SmartAPI:
 
             try:
                 smartapi_url = "https://smart-api.info/ui/" + hit["_id"]
-            except:
+            except Exception:
                 smartapi_url = None
 
             endpoints.append({
@@ -177,7 +177,7 @@ class SmartAPI:
         for ep in endpoints:
             infores_name = str(ep["infores_name"])
             component = str(ep["component"])
-            maturities = {server["maturity"] for server in ep["servers"] if server["maturity"] != None}
+            maturities = {server["maturity"] for server in ep["servers"] if server["maturity"] is not None}
             n_entries = 1
             # if new entry, start with n_entries = 1
             if infores_name not in entries:
@@ -247,7 +247,7 @@ class SmartAPI:
         all_KPs = [ep for ep in endpoints if ep["component"] == "KP"]
 
         if req_maturity:
-            if hierarchy == None:
+            if hierarchy is None:
                 hierarchy = ["development","staging","testing","production"]
             if req_maturity not in hierarchy:
                 raise ValueError("Invalid maturity passed to get_kps")
@@ -343,10 +343,10 @@ def main():
         output = smartapi.get_operations_endpoints(whitelist=args.whitelist, blacklist=args.blacklist)
 
     elif args.results_type == "get_kps":
-        if (args.hierarchy or args.flexible) and (args.req_maturity == None):
+        if (args.hierarchy or args.flexible) and (args.req_maturity is None):
             argparser.print_help()
             return
-        if args.hierarchy and args.flexible == None:
+        if args.hierarchy and args.flexible is None:
             argparser.print_help()
             return
         output = smartapi.get_all_trapi_kp_registrations(trapi_version=args.version, req_maturity=args.req_maturity, flexible=args.flexible, hierarchy=args.hierarchy, whitelist=args.whitelist, blacklist=args.blacklist)

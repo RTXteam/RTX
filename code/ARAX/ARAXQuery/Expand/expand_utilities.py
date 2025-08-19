@@ -7,24 +7,24 @@ import traceback
 from typing import Union, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.knowledge_graph import KnowledgeGraph
-from openapi_server.models.query_graph import QueryGraph
-from openapi_server.models.q_edge import QEdge
-from openapi_server.models.node import Node
-from openapi_server.models.edge import Edge
-from openapi_server.models.attribute import Attribute
-from openapi_server.models.message import Message
-from openapi_server.models.response import Response
+from openapi_server.models.knowledge_graph import KnowledgeGraph  # type: ignore
+from openapi_server.models.query_graph import QueryGraph  # type: ignore
+from openapi_server.models.q_edge import QEdge  # type: ignore
+from openapi_server.models.node import Node  # type: ignore
+from openapi_server.models.edge import Edge  # type: ignore
+from openapi_server.models.attribute import Attribute  # type: ignore
+from openapi_server.models.message import Message  # type: ignore
+from openapi_server.models.response import Response  # type: ignore
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
-from ARAX_response import ARAXResponse
-from ARAX_resultify import ARAXResultify
-from ARAX_overlay import ARAXOverlay
-from ARAX_ranker import ARAXRanker
+from ARAX_response import ARAXResponse  # type: ignore
+from ARAX_resultify import ARAXResultify  # type: ignore
+from ARAX_overlay import ARAXOverlay  # type: ignore
+from ARAX_ranker import ARAXRanker  # type: ignore
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
-from node_synonymizer import NodeSynonymizer
+from node_synonymizer import NodeSynonymizer  # type: ignore
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import BiolinkHelper  # type: ignore
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
