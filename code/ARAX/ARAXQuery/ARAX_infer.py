@@ -201,7 +201,7 @@ This function is invalid for non drug nodes (nodes that do not belong to either 
 
 **Notes:**
 
-**- The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).**
+**- The `infer` and `expand` modules are not recommended to be used together in a query because it may cause some errors due to the different qnodes generated from both the `infer` and `expand` modules for the same query node.**
 
                     """,
                 'brief_description': """
@@ -229,7 +229,7 @@ This function can be applied to  any arbitrary node CURIE, but it will not yield
 
 **- the 'subject_curie' and 'object_curie' are not allowed to be sepcified in the same time, that is, if you give a curie to either one, the other should be omitted. However, when a query graph (i.e., the object `query_graph`) exists, the parameters 'subject_curie' and 'object_curie' become invalid. Instead, use 'subject_qnode_id' or 'object_qnode_id' to specify the query gene or chemical of interest.**
 
-**- The `infer` and `expand` modules are not suggested to be used together in a query. If a query need to mix both `infer` and `expand` modules, they should be applied to the same query edge with the same `qedge_id` (e.g, `e00`).**
+**- The `infer` and `expand` modules are not recommended to be used together in a query because it may cause some errors due to the different qnodes generated from both the `infer` and `expand` modules for the same query node.**
                     """,
                 'brief_description': """
 chemical_gene_regulation_graph_expansion predicts the regulation relationship between chemicals and genes and provides along with an explination graph for each prediction. 
@@ -567,10 +567,11 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         if self.response.status != 'OK' or resp == -1:
             return self.response
 
-        # disable 'given a drug, predict what potential diseases it may treat'
-        if preferred_drug_curie and not preferred_disease_curie:
-            self.response.warning(f"Given a drug, predict what potential diseases it may treat is currently disabled.")
-            return self.response
+        # # disable 'given a drug, predict what potential diseases it may treat'
+        # if preferred_drug_curie and not preferred_disease_curie:
+        #     self.response.warning(f"Given a drug, predict what potential diseases it may treat is currently disabled.")
+        #     return self.response
+
 
         try:
             top_scores = XDTD.get_score_table(drug_curie_ids=preferred_drug_curie, disease_curie_ids=preferred_disease_curie)
@@ -592,8 +593,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             if len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for drug {preferred_drug_curie}. Likely the model considers there is no reasonable path for this drug.")
             
-            # Limit the number of drugs to the top n
-            top_scores = top_scores.iloc[:parameters['n_drugs'],:].reset_index(drop=True)
+            # Limit the number of diseases to the top n
+            top_scores = top_scores.iloc[:parameters['n_diseases'],:].reset_index(drop=True)
         elif preferred_disease_curie:
             if len(top_scores) == 0:
                 self.response.warning(f"Could not get top drugs for disease {preferred_disease_curie}. Likely the model was not trained with this disease. Or No predicted drugs for this disease with score >= 0.3.")
@@ -601,15 +602,15 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             if len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for disease {preferred_disease_curie}. Likely the model considers there is no reasonable path for this disease.")
         
-            # Limit the number of diseases to the top n
-            top_scores = top_scores.iloc[:parameters['n_diseases'],:].reset_index(drop=True)
+            # Limit the number of drugs to the top n
+            top_scores = top_scores.iloc[:parameters['n_drugs'],:].reset_index(drop=True)
         
         # Limit the number of paths to the top n
         top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:parameters['n_paths']] for row in top_scores.to_numpy() if (row[0], row[2]) in top_paths}
     
         iu = InferUtilities()
         qedge_id = parameters.get('qedge_id')
-        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_scores, top_paths, qedge_id, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
+        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_scores, top_paths, preferred_drug_curie, preferred_disease_curie, qedge_id)
 
         return self.response
 
@@ -874,10 +875,12 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 return self.response
             if top_paths is None or len(top_paths) == 0:
                 self.response.warning(f"Could not get any predicted paths for chemical {preferred_subject_curie}. Either Plover is not reachable or no paths found")
-                return self.response
+
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
-            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, normalized_subject_curie, None, top_predictions, top_paths, qedge_id, self.parameters['regulation_type'], self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
+            
+            
+            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, preferred_subject_curie, top_predictions, top_paths, qedge_id, self.parameters['regulation_type'])
         elif not preferred_subject_curie and preferred_object_curie:
             try:
                 top_predictions = XCRG.predict_top_N_chemicals(query_gene=preferred_object_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
@@ -896,7 +899,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
             
-            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, None, normalized_object_curie, top_predictions, top_paths, qedge_id,  self.parameters['regulation_type'], self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter)
+            self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, None, top_predictions, top_paths, qedge_id, self.parameters['regulation_type'])
 
         return self.response
 
