@@ -118,7 +118,7 @@ class ARAXDatabaseManager:
             'xcrg_decrease_model': self.get_remote_location('xcrg_decrease_model')
         }
         # database locations if inside rtx1 docker container
-        self.docker_databases_dir_path = '/mnt/data/orangeboard/databases'
+        self.docker_databases_dir_path = '/data'
         self.docker_central_paths = {
             'cohd_database': self.get_docker_path('cohd_database'),
             'curie_to_pmids': self.get_docker_path('curie_to_pmids'),
