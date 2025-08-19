@@ -1,17 +1,17 @@
 {
    "database_downloads": {
-      "node_synonymizer": "/efs/KG2.10.2/node_synonymizer_v1.0_KG2.10.2.sqlite",
-      "kg2c_sqlite": "/efs/KG2.10.2/kg2c_v1.0_KG2.10.2.sqlite",
-      "kg2c_meta_kg": "/efs/KG2.10.2/meta_kg_v1.0_KG2.10.2c.json",
-      "fda_approved_drugs": "/efs/KG2.10.2/fda_approved_drugs_v1.0_KG2.10.2c.pickle",
-      "autocomplete": "/efs/KG2.10.2/autocomplete_v1.0_KG2.10.2.sqlite",
-      "curie_to_pmids": "/efs/KG2.10.2/curie_to_pmids_v1.0_KG2.10.2.sqlite",
-      "curie_ngd": "/efs/KG2.10.2/curie_ngd_v1.0_KG2.10.2.sqlite",
-      "explainable_dtd_db": "/efs/KG2.10.2/ExplainableDTD_v1.0_KG2.10.0_refreshedTo_KG2.10.2.db",
-      "cohd_database": "/efs/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
-      "xcrg_embeddings": "/efs/KG2.10.2/chemical_gene_embeddings_v1.0.KG2.10.0_refreshedTo_KG2.10.2.npz",
-      "xcrg_increase_model": "/efs/KG2.10.0/xcrg_increase_model_v1.0.KG2.10.0.pt",
-      "xcrg_decrease_model": "/efs/KG2.10.0/xcrg_decrease_model_v1.0.KG2.10.0.pt"
+      "node_synonymizer": "/data/KG2.10.2/node_synonymizer_v1.0_KG2.10.2.sqlite",
+      "kg2c_sqlite": "/data/KG2.10.2/kg2c_v1.0_KG2.10.2.sqlite",
+      "kg2c_meta_kg": "/data/KG2.10.2/meta_kg_v1.0_KG2.10.2c.json",
+      "fda_approved_drugs": "/data/KG2.10.2/fda_approved_drugs_v1.0_KG2.10.2c.pickle",
+      "autocomplete": "/data/KG2.10.2/autocomplete_v1.0_KG2.10.2.sqlite",
+      "curie_to_pmids": "/data/KG2.10.2/curie_to_pmids_v1.0_KG2.10.2.sqlite",
+      "curie_ngd": "/data/KG2.10.2/curie_ngd_v1.0_KG2.10.2.sqlite",
+      "explainable_dtd_db": "/data/KG2.10.2/ExplainableDTD_v1.0_KG2.10.0_refreshedTo_KG2.10.2.db",
+      "cohd_database": "/data/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db",
+      "xcrg_embeddings": "/data/KG2.10.2/chemical_gene_embeddings_v1.0.KG2.10.0_refreshedTo_KG2.10.2.npz",
+      "xcrg_increase_model": "/data/KG2.10.0/xcrg_increase_model_v1.0.KG2.10.0.pt",
+      "xcrg_decrease_model": "/data/KG2.10.0/xcrg_decrease_model_v1.0.KG2.10.0.pt"
    },
    "plover_url_override": "https://kg2cplover.rtx.ai:9990",
    "neo4j": {
