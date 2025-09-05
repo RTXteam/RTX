@@ -105,10 +105,10 @@ def query(request_body):  # noqa: E501
     query['remote_address'] = connexion.request.headers.get('x-forwarded-for', '???')
 
     mime_type = 'application/json'
-
+    fork_mode = True  # :DEBUG: can turn this to False to disable fork-mode
     if query.get('stream_progress', False):  # if stream_progress is specified and if it is True:
 
-        fork_mode = True # :DEBUG: can turn this to False to disable fork-mode
+
         http_status = None
         mime_type = 'text/event-stream'
         if not fork_mode:
@@ -118,7 +118,10 @@ def query(request_body):  # noqa: E501
                                                              _run_query_and_return_json_generator_stream)
         resp_obj = flask.Response(json_generator, mimetype=mime_type)
     else:
-        json_generator = run_query_dict_in_child_process(query,
+        if not fork_mode:
+            json_generator = _run_query_and_return_json_generator_nonstream(query)
+        else:
+            json_generator = run_query_dict_in_child_process(query,
                                                          _run_query_and_return_json_generator_nonstream)
         status_line = next(json_generator)
         status_dict = json.loads(status_line)
