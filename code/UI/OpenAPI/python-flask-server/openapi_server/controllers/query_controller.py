@@ -105,7 +105,7 @@ def query(request_body):  # noqa: E501
     query['remote_address'] = connexion.request.headers.get('x-forwarded-for', '???')
 
     mime_type = 'application/json'
-    fork_mode = False  # :DEBUG: can turn this to False to disable fork-mode
+    fork_mode = True  # :DEBUG: can turn this to False to disable fork-mode
     if query.get('stream_progress', False):  # if stream_progress is specified and if it is True:
 
 
