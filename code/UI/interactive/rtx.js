@@ -4052,35 +4052,71 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 	span.style.fontStyle = "italic";
 	span.append("Click on graph background to see a full list of nodes and edges");
 	div.append(span);
+	div.append(document.createElement("br"));
+
+	span = document.createElement("span");
+        span.className = 'attbox';
+
+        var head = document.createElement("div");
+        head.className = 'head';
+        head.append("Node Info");
+        head.style.background = '#3d6d98';
+        span.append(head);
+
+        var atts_table = document.createElement("table");
 
 	var fields = [ "name","id","categories" ];
-	for (var field of fields) {
-	    if (this.data(field) == null) continue;
+        for (var field of fields) {
+            if (this.data(field) == null) continue;
+	    var row = document.createElement("tr");
+	    var cell = document.createElement("td");
+	    cell.className = "fieldname";
+            cell.append(field+": ");
+	    row.append(cell);
 
-	    var span = document.createElement("span");
-	    span.className = "fieldname";
-	    span.append(field+": ");
-	    div.append(span);
+	    cell = document.createElement("td");
 
-            var a = document.createElement("a");
-	    a.title = 'view ARAX synonyms';
-	    a.href = "javascript:lookup_synonym('"+this.data(field)+"',true)";
-	    a.innerHTML = this.data(field);
-	    div.append(a);
+            // handle all as arrays (hope no objects creep in...)
+            var values;
+            if (!Array.isArray(this.data(field)))
+                values = [ this.data(field) ];
+            else
+                values = this.data(field);
 
-	    div.append(document.createElement("br"));
+            var sep = '';
+            for (var val of values) {
+                var a = document.createElement("a");
+                if (field == 'categories') {
+                    a.title = 'view Biolink Model documentation for this concept';
+                    a.target = 'biolink';
+                    a.href = "https://biolink.github.io/biolink-model/" + val.replace("biolink:","");
+                }
+                else {
+                    a.title = 'view ARAX synonyms';
+                    a.href = "javascript:lookup_synonym('"+val+"',true)";
+                }
+                a.innerHTML = val;
+                cell.append(sep);
+		cell.append(a);
+                sep = ', ';
+            }
+            row.append(cell);
+	    atts_table.append(row);
 	}
+
+        span.append(atts_table);
+        div.append(span);
 
 
 	if (this.data('attributes'))
-	    show_attributes(i,div, this.data('attributes'),null,"value");
+	    show_attributes(i,div, this.data('attributes'),"Node Attribute","value");
 	else if (this.data('detail_lookup'))
-	    retrieve_attributes(i,div, this,null,"value");
+	    retrieve_attributes(i,div, this,"Node Attribute","value");
 
 
 	if (this.data('node_binding_attributes')) {
-	    div.append(document.createElement("br"));
-	    show_attributes(i,div, this.data('node_binding_attributes'),"Node Binding Attributes:","value");
+	    //div.append(document.createElement("br"));
+	    show_attributes(i,div, this.data('node_binding_attributes'),"Node Binding Attribute","value");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -4102,30 +4138,9 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 	span.append("Click on graph background to see a full list of nodes and edges");
 	div.append(span);
 
-	var a = document.createElement("a");
-	a.className = 'attvalue';
-	a.title = 'view ARAX synonyms';
-	a.href = "javascript:lookup_synonym('"+this.data('source')+"',true)";
-	a.innerHTML = this.data('source');
-	div.append(a);
-
-        var span = document.createElement("span");
-	span.className = 'attvalue';
-        span.append("----");
-	span.append(this.data('predicate'));
-        span.append("----");
-        div.append(span);
-
-        a = document.createElement("a");
-	a.className = 'attvalue';
-        a.style.marginRight = "20px";
-	a.title = 'view ARAX synonyms';
-	a.href = "javascript:lookup_synonym('"+this.data('target')+"',true)";
-	a.innerHTML = this.data('target');
-	div.append(a);
-
 	UIstate["edgesg"] = 0;
         span = document.createElement("span");
+	span.style.marginLeft = "40px";
 	if (!this.data('__has_sgs'))
 	    span.style.display = 'none';
 	span.id = 'd'+this.data('parentdivnum')+'_div_edge';
@@ -4134,26 +4149,61 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 
 	div.append(document.createElement("br"));
 
-	var fields = [ "relation","id" ];
-	for (var field of fields) {
-	    if (this.data(field) == null) continue;
+        span = document.createElement("span");
+        span.className = 'attbox';
 
-	    span = document.createElement("span");
-	    span.className = "fieldname";
-	    span.append(field+": ");
-	    div.append(span);
-	    if (this.data(field).toString().startsWith("http")) {
+        var head = document.createElement("div");
+        head.className = 'head';
+        head.append("Edge Info");
+        head.style.background = '#3d6d98';
+        span.append(head);
+
+        var atts_table = document.createElement("table");
+        var fields = [ "source", "predicate", "target", "relation","id" ];
+        for (var field of fields) {
+            if (this.data(field) == null) continue;
+	    var row = document.createElement("tr");
+            var cell = document.createElement("td");
+
+            cell.className = "fieldname";
+            cell.append(field+": ");
+            row.append(cell);
+
+	    cell = document.createElement("td");
+
+            if (field == "source" || field == "target") {
+		var link = document.createElement("a");
+		link.title = 'view ARAX synonyms';
+		link.href = "javascript:lookup_synonym('"+this.data(field)+"',true)";
+                link.append(this.data(field));
+		cell.append(link);
+            }
+            else if (field == "predicate") {
+                var link = document.createElement("a");
+		link.title = 'view Biolink Model documentation for this concept';
+		link.target = 'biolink';
+		link.href = "https://biolink.github.io/biolink-model/" + this.data('predicate').replace("biolink:","");
+                link.append(this.data(field));
+                cell.append(link);
+            }
+	    else if (this.data(field).toString().startsWith("http")) {
 		var link = document.createElement("a");
 		link.href = this.data(field);
 		link.target = "_blank";
 		link.append(this.data(field));
-		div.append(link);
+		cell.append(link);
 	    }
 	    else {
-		div.append(this.data(field));
-	    }
-	    div.append(document.createElement("br"));
+                cell.append(this.data(field));
+            }
+
+	    row.append(cell);
+            atts_table.append(row);
 	}
+
+        span.append(atts_table);
+        div.append(span);
+
 
 	show_qualifiers(div,
 			this.data('qualifiers'),
@@ -4165,21 +4215,18 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 		       );
 
 
-        if (this.data('attributes')) {
-	    show_attributes(i,div, this.data('attributes'),null,"value");
+	if (this.data('attributes')) {
+	    show_attributes(i,div, this.data('attributes'),"Edge Attribute","value");
 	    if (this.data('sources')) {
-		div.append(document.createElement("br"));
-		show_attributes(i,div, this.data('sources'),"Edge Sources:","resource_id");
-		//show_attributes(i,div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
+		show_attributes(i,div, this.data('sources'),"Edge Source","resource_id");
 	    }
 	}
 	else if (this.data('detail_lookup'))
-	    retrieve_attributes(i,div, this,null,"value");
+	    retrieve_attributes(i,div, this,"Edge Attribute","value");
 
 
 	if (this.data('edge_binding_attributes')) {
-            div.append(document.createElement("br"));
-            show_attributes(i,div, this.data('edge_binding_attributes'),"Edge Binding Attributes:","value");
+            show_attributes(i,div, this.data('edge_binding_attributes'),"Edge Binding Attribute","value");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -4192,18 +4239,20 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
     if (quals == null)
 	return;
 
-    var qtable = document.createElement("table");
-    qtable.className = 'numold explevel';
-    var row = document.createElement("tr");
-    var cell = document.createElement("td");
-    cell.className = 'attvalue';
-    cell.colSpan = '2';
-    cell.append("Qualified Statement");
-    row.append(cell);
-    qtable.append(row);
+    var span = document.createElement("span");
+    span.className = 'attbox';
+    span.title = "Click to view original JSON source";
+    span.onclick = function () { showJSONpopup("Qualifiers"+": ", JSON.stringify(quals,null,2), null); };
 
+    var head = document.createElement("div");
+    head.className = 'head';
+    head.append("Qualified Statement");
+    head.style.background = '#821';
+    span.append(head);
+
+    var qtable = document.createElement("table");
     var qsentence = document.createElement("span");
-    qsentence.className = 'explevel attvalue p9';
+    qsentence.className = 'attvalue';
 
     var orderedquals = [
 	'subject_direction_qualifier',
@@ -4264,7 +4313,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	    if (oq.includes('context_qualifier'))
 		pretext = "in ";
 
-	    frag.innerHTML = pretext + qual[0]['qualifier_value'] + postext + " ";
+	    frag.innerHTML = pretext + qual[0]['qualifier_value'].replace("biolink:","").replaceAll("_"," ") + postext + " ";
 	    celltext = qual[0]['qualifier_value'];
 	    if (hasdup)
 		celltext += " ** has duplicate values!";
@@ -4309,8 +4358,12 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	qtable.append(row);
     }
 
-    html_div.append(qsentence);
-    html_div.append(qtable);
+    span.append(qtable);
+    span.append(document.createElement("br"));
+    span.append(document.createElement("br"));
+    span.append(qsentence);
+
+    html_div.append(span);
 }
 
 
@@ -4334,8 +4387,7 @@ async function retrieve_attributes(num,html_div, cytobject, title, mainvalue) {
 	}
 	if (respjson.sources) {
 	    cytobject.data('sources', respjson.sources);
-            html_div.append(document.createElement("br"));
-            show_attributes(num,html_div, cytobject.data('sources'),"Edge Sources:","resource_id");
+            show_attributes(num,html_div, cytobject.data('sources'),"Edge Source","resource_id");
 	}
 	sesame('openmax',document.getElementById('a'+cytobject.data('parentdivnum')+'_div'));
     }
@@ -4344,7 +4396,7 @@ async function retrieve_attributes(num,html_div, cytobject, title, mainvalue) {
 }
 
 
-function show_attributes(num,html_div, atts, title, mainvalue) {
+function show_attributes(num,html_div, atts, title="attribute", mainvalue) {
     if (atts == null)
 	return;
 
@@ -4352,34 +4404,39 @@ function show_attributes(num,html_div, atts, title, mainvalue) {
 
     // always display iri first
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
+    for (let att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
+        var span = document.createElement("span");
+	span.className = 'attbox';
+	span.title = "Click to view original JSON source";
+        span.onclick = function () { showJSONpopup(title+": ", att, null); };
 
-    var atts_table = document.createElement("table");
-    if (title) {
-	atts_table.className = 'numold explevel';
-	var row = document.createElement("tr");
-	var cell = document.createElement("td");
-        cell.className = 'attvalue';
-	cell.colSpan = '2';
-	cell.append(title);
-	row.append(cell);
-	atts_table.append(row);
+        var head = document.createElement("div");
+        head.className = 'head';
+	head.append(title?title:"Attribute");
+	if (title.includes('Source'))
+	    head.style.background = '#291';
+	else if (title.includes('Binding'))
+	    head.style.background = '#821';
+        span.append(head);
+
+	var atts_table = document.createElement("table");
+        display_attribute(num,atts_table, att, semmeddb_sentences, mainvalue, false);
+	span.append(atts_table);
+	html_div.append(span);
     }
 
-    for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
-	display_attribute(num,atts_table, att, semmeddb_sentences, mainvalue);
-    }
-
-    html_div.append(atts_table);
 }
 
-function display_attribute(num,tab, att, semmeddb, mainvalue) {
+function display_attribute(num, tab, att, semmeddb, mainvalue, divider=true) {
     var row = document.createElement("tr");
     var cell = document.createElement("td");
 
-    cell.colSpan = '2';
-    cell.append(document.createElement("hr"));
-    row.append(cell);
-    tab.append(row);
+    if (divider) {
+	cell.colSpan = '2';
+	cell.append(document.createElement("hr"));
+	row.append(cell);
+	tab.append(row);
+    }
 
     var sub_atts = null;
 
@@ -4407,6 +4464,9 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		att[nom] = [ att[nom] ];
 
 	    var br = false;
+            if (nom == "attribute_type_id" || nom == "resource_role")
+                cell.className = 'attvalue';
+
 	    for (var val of att[nom]) {
 		if (br)
 		    cell.append(document.createElement("br"));
@@ -4419,6 +4479,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		    a.target = '_blank';
 		    a.href = val;
 		    a.innerHTML = val;
+		    a.addEventListener("click", function(e) { e.stopPropagation(); });
 		    cell.append(a);
 		}
 		else
@@ -4468,6 +4529,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
                     a.href = "https://pubmed.ncbi.nlm.nih.gov/" + val.split(":")[1] + '/';
 		    a.title = 'View in PubMed';
                     a.innerHTML = val;
+                    a.addEventListener("click", function(e) { e.stopPropagation(); });
                     cell.append(a);
 
 		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val]) {
@@ -4485,6 +4547,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		    a.href = "https://doi.org/" + val.split(":")[1];
 		    a.title = 'View in doi.org';
 		    a.innerHTML = val;
+                    a.addEventListener("click", function(e) { e.stopPropagation(); });
 		    cell.append(a);
 		}
 		else if (val.toString().startsWith("http")) {
@@ -4493,9 +4556,9 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		    a.target = '_blank';
 		    a.href = val;
 		    a.innerHTML = val;
+                    a.addEventListener("click", function(e) { e.stopPropagation(); });
 		    cell.append(a);
 		}
-
 		else if (att.attribute_type_id == "biolink:support_graphs") {
 		    UIstate["edgesg"]++;
                     var a = document.createElement("a");
@@ -4503,6 +4566,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
                     a.style.cursor = "pointer";
 		    a.title = 'View Aux Graph: '+ val;
 		    a.setAttribute('onclick', 'add_cyto('+num+',"AUX'+val+'");');
+		    a.addEventListener("click", function(e) { e.stopPropagation(); });
                     a.append(val);
 		    cell.append(a);
 
@@ -4543,6 +4607,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	    a.target = '_blank';
 	    a.href = value;
 	    a.innerHTML = value;
+            a.addEventListener("click", function(e) { e.stopPropagation(); });
 	    cell.append(a);
 	}
 	else {
