@@ -7217,8 +7217,8 @@ function retrieveKPInfo() {
 			}
 			else if (item["version"] == "1.5.0")
 			    text.className = "qprob p9";
-			//else if (item["version"] == "1.5.0")
-			//text.className = "qprob schp";
+			else if (item["version"] == "1.6.0")
+			    text.className = "qprob schp";
 			else
 			    text.className = "qprob p1";
                         text.append(item["version"]);
