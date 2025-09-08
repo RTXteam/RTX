@@ -3,8 +3,6 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 from converter.PathListToGraphConverter import PathListToGraphConverter
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.knowledge_graph import KnowledgeGraph
 
 class GraphToKnowledgeGraphConverter:
 
@@ -27,4 +25,4 @@ class GraphToKnowledgeGraphConverter:
 
         knowledge_graph = self.edge_extractor.get_edges(pairs, response)
 
-        return KnowledgeGraph().from_dict(knowledge_graph)
+        return knowledge_graph

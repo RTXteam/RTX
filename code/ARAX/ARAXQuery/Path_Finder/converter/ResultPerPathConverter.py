@@ -6,10 +6,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Names import Names
 from PathConverter import PathConverter
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.node_binding import NodeBinding
-from openapi_server.models.result import Result
-
 
 class ResultPerPathConverter:
 
@@ -31,30 +27,16 @@ class ResultPerPathConverter:
         self.names = names
         self.edge_extractor = edge_extractor
 
-    def convert(self, response):
-        self.extract_edges(response)
+    def convert(self, logger):
+        self.extract_edges(logger)
 
-        if response.envelope.message.results is None:
-            response.envelope.message.results = []
-
-        node_bindings = {
-            self.qnode_1_id: [NodeBinding(id=self.node_1_id, attributes=[])],
-            self.qnode_2_id: [NodeBinding(id=self.node_2_id, attributes=[])]
-        }
-
-        response.envelope.message.results.append(
-            Result(
-                id=self.names.result_name,
-                analyses=[],
-                node_bindings=node_bindings,
-                essence=self.names.result_name
-            )
-        )
+        aux_graphs = {}
+        knowledge_graph = {'edges': {}, 'nodes': {}}
 
         i = 0
         for path in self.paths:
             i = i + 1
-            PathConverter(
+            analysis, aux_graph , kg = PathConverter(
                 path,
                 self.qnode_1_id,
                 self.qnode_2_id,
@@ -64,9 +46,35 @@ class ResultPerPathConverter:
                 ),
                 self.edge_extractor,
                 path.compute_weight(),
-            ).convert(response)
+            ).convert(logger)
+            aux_graphs[f"{self.names.auxiliary_graph_name}_{i}"] = aux_graph
+            knowledge_graph['edges'].update(kg['edges'])
+            knowledge_graph['nodes'].update(kg['nodes'])
 
-    def extract_edges(self, response):
+
+        result = {
+            "id": self.names.result_name,
+            "analyses": [],
+            "node_bindings": {
+                self.qnode_1_id: [
+                    {
+                        "id": self.node_1_id,
+                        "attributes": []
+                    }
+                ],
+                self.qnode_2_id: [
+                    {
+                        "id": self.node_2_id,
+                        "attributes": []
+                    }
+                ]
+            },
+            "essence": self.names.result_name
+        }
+
+        return result, aux_graphs, knowledge_graph
+
+    def extract_edges(self, logger):
         pairs = set()
         for path in self.paths:
             n1 = path.links[0]
@@ -80,11 +88,11 @@ class ResultPerPathConverter:
                 for pair in pairs:
                     s = pair.split("--")
                     pair_list.append([s[0], s[1]])
-                self.edge_extractor.get_edges(pair_list, response)
+                self.edge_extractor.get_edges(pair_list, logger)
                 pairs = set()
         if len(pairs) > 0:
             pair_list = []
             for pair in pairs:
                 s = pair.split("--")
                 pair_list.append([s[0], s[1]])
-            self.edge_extractor.get_edges(pair_list, response)
+            self.edge_extractor.get_edges(pair_list, logger)

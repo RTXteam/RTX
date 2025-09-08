@@ -11,7 +11,7 @@ class EdgeExtractorFromPloverDB:
     def get_extractor_url(self):
         return self.plover_url
 
-    def get_edges(self, pairs, arax_response):
+    def get_edges(self, pairs, logger):
         cached_pairs = []
         i = 0
         while i < len(pairs):
@@ -49,5 +49,5 @@ class EdgeExtractorFromPloverDB:
                         knowledge_graph['edges'][str(edge)] = self.knowledge_graph['edges'][str(edge)]
             return knowledge_graph
         except Exception as e:
-            arax_response.warning(f"Cannot retrieve {query} from plover DB with url: {url}, Error: {e}")
+            logger.warning(f"Cannot retrieve {query} from plover DB with url: {url}, Error: {e}")
             return None

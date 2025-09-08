@@ -2,6 +2,7 @@ import json
 import sys
 
 from RTXConfiguration import RTXConfiguration
+from pathfinder.core.BidirectionalPathFinder import BidirectionalPathFinder
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -15,7 +16,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
 from Path_Finder.converter.ResultPerPathConverter import ResultPerPathConverter
 from Path_Finder.converter.Names import Names
-from Path_Finder.BidirectionalPathFinder import BidirectionalPathFinder
+from Path_Finder.utility import get_curie_ngd_path, get_kg2c_db_path
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
@@ -274,6 +275,9 @@ class ARAXConnect:
 
         path_finder = BidirectionalPathFinder(
             "MLRepo",
+            RTXConfiguration().plover_url,
+            get_curie_ngd_path(),
+            get_kg2c_db_path(),
             self.response
         )
         paths = path_finder.find_all_paths(
@@ -303,7 +307,7 @@ class ARAXConnect:
         edge_extractor = EdgeExtractorFromPloverDB(
             RTXConfiguration().plover_url
         )
-        ResultPerPathConverter(
+        result, aux_graphs, knowledge_graph = ResultPerPathConverter(
             paths,
             normalize_src_node_id,
             normalize_dst_node_id,
@@ -312,6 +316,21 @@ class ARAXConnect:
             names,
             edge_extractor
         ).convert(self.response)
+
+        if self.response.envelope.message.results is None:
+            self.response.envelope.message.results = []
+
+        if self.response.envelope.message.auxiliary_graphs is None:
+            self.response.envelope.message.auxiliary_graphs = {}
+
+        if self.response.envelope.message.knowledge_graph is None:
+            self.response.envelope.message.knowledge_graph = {}
+
+        kg = KnowledgeGraph().from_dict(knowledge_graph)
+        self.response.envelope.message.results.extend(result)
+        self.response.envelope.message.auxiliary_graphs.update(aux_graphs)
+        self.response.envelope.message.knowledge_graph.edges.update(kg.edges)
+        self.response.envelope.message.knowledge_graph.nodes.update(kg.nodes)
 
         mode = 'ARAX'
         if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
