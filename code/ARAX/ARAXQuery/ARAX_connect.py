@@ -346,6 +346,9 @@ class ARAXConnect:
                     if node.name.lower() in blocked_synonyms:
                         append = False
                         break
+                    if node.name.lower().startswith("cyp"):
+                        append = False
+                        break
             if append:
                 result.append(path)
         return result
