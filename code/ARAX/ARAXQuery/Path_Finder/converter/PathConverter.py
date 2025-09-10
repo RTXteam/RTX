@@ -12,14 +12,14 @@ class PathConverter:
             path,
             qnode_1_id,
             qnode_2_id,
-            names,
+            aux_name,
             edge_extractor,
             score
     ):
         self.path = path
         self.qnode_1_id = qnode_1_id
         self.qnode_2_id = qnode_2_id
-        self.names = names
+        self.aux_name = aux_name
         self.edge_extractor = edge_extractor
         self.score = score
 
@@ -32,13 +32,13 @@ class PathConverter:
         analysis = {
             "resource_id": "infores:arax",
             "path_bindings": {
-                "p0": [{"id": self.names.auxiliary_graph_name}]
+                "p0": [{"id": self.aux_name}]
             },
             "score": self.score
         }
 
         aux_graph = {
-            "edges": list(knowledge_graph_src_dest.edges.keys()),
+            "edges": list(knowledge_graph_src_dest["edges"].keys()),
             "attributes": []
         }
 

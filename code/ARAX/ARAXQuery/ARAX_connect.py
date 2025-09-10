@@ -15,11 +15,15 @@ import copy
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
 from Path_Finder.converter.ResultPerPathConverter import ResultPerPathConverter
-from Path_Finder.converter.Names import Names
 from Path_Finder.utility import get_curie_ngd_path, get_kg2c_db_path
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.result import Result
+from openapi_server.models.node_binding import NodeBinding
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph
+from openapi_server.models.path_binding import PathBinding
+from openapi_server.models.pathfinder_analysis import PathfinderAnalysis
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
@@ -300,10 +304,6 @@ class ARAXConnect:
                                   f"with a max path length of {self.parameters['max_path_length']}.")
             return self.response
 
-        names = Names(
-            result_name="result",
-            auxiliary_graph_name="aux",
-        )
         edge_extractor = EdgeExtractorFromPloverDB(
             RTXConfiguration().plover_url
         )
@@ -313,7 +313,7 @@ class ARAXConnect:
             normalize_dst_node_id,
             src_pinned_node,
             dst_pinned_node,
-            names,
+            "aux",
             edge_extractor
         ).convert(self.response)
 
@@ -327,8 +327,39 @@ class ARAXConnect:
             self.response.envelope.message.knowledge_graph = {}
 
         kg = KnowledgeGraph().from_dict(knowledge_graph)
-        self.response.envelope.message.results.extend(result)
-        self.response.envelope.message.auxiliary_graphs.update(aux_graphs)
+
+        analyses = []
+        for analys in result['analyses']:
+            path_bindings = {}
+            for key, value in analys['path_bindings'].items():
+                path_bindings[key] = [PathBinding(id=value[0]['id'])]
+            analyses.append(
+                PathfinderAnalysis(
+                    resource_id=analys["resource_id"],
+                    path_bindings=path_bindings,
+                    score=analys['score']
+                )
+            )
+
+        self.response.info(f"PathFinder found {len(analyses)} analyses")
+        self.response.info(f"PathFinder found result {len(result['analyses'])} analyses")
+
+        node_bindings = {}
+        for key, value in result["node_bindings"].items():
+            node_bindings[key] = [NodeBinding(id=value[0]['id'])]
+        self.response.envelope.message.results.append(
+            Result(
+                id=result["id"],
+                analyses=analyses,
+                node_bindings=node_bindings,
+                essence="result"
+            )
+        )
+        for key, value in aux_graphs.items():
+            self.response.envelope.message.auxiliary_graphs[key] = AuxiliaryGraph(
+                edges=value['edges'],
+                attributes=[]
+            )
         self.response.envelope.message.knowledge_graph.edges.update(kg.edges)
         self.response.envelope.message.knowledge_graph.nodes.update(kg.nodes)
 
@@ -348,6 +379,7 @@ class ARAXConnect:
                     node = path.links[i]
                     if node.category in descendants:
                         result.append(path)
+                        break
         return result
 
     def remove_block_list(self, paths):

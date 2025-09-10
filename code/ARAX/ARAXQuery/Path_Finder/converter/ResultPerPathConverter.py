@@ -3,7 +3,6 @@ import sys
 import json
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from Names import Names
 from PathConverter import PathConverter
 
 
@@ -16,7 +15,7 @@ class ResultPerPathConverter:
             node_2_id,
             qnode_1_id,
             qnode_2_id,
-            names,
+            aux_name,
             edge_extractor,
     ):
         self.paths = paths
@@ -24,13 +23,14 @@ class ResultPerPathConverter:
         self.node_2_id = node_2_id
         self.qnode_1_id = qnode_1_id
         self.qnode_2_id = qnode_2_id
-        self.names = names
+        self.aux_name = aux_name
         self.edge_extractor = edge_extractor
 
     def convert(self, logger):
         self.extract_edges(logger)
 
         aux_graphs = {}
+        analyses = []
         knowledge_graph = {'edges': {}, 'nodes': {}}
 
         i = 0
@@ -40,21 +40,19 @@ class ResultPerPathConverter:
                 path,
                 self.qnode_1_id,
                 self.qnode_2_id,
-                Names(
-                    result_name=f"{self.names.result_name}_{i}",
-                    auxiliary_graph_name=f"{self.names.auxiliary_graph_name}_{i}",
-                ),
+                f"{self.aux_name}_{i}",
                 self.edge_extractor,
                 path.compute_weight(),
             ).convert(logger)
-            aux_graphs[f"{self.names.auxiliary_graph_name}_{i}"] = aux_graph
+            aux_graphs[f"{self.aux_name}_{i}"] = aux_graph
+            analyses.append(analysis)
             knowledge_graph['edges'].update(kg['edges'])
             knowledge_graph['nodes'].update(kg['nodes'])
 
 
         result = {
-            "id": self.names.result_name,
-            "analyses": [],
+            "id": "result",
+            "analyses": analyses,
             "node_bindings": {
                 self.qnode_1_id: [
                     {
@@ -69,7 +67,8 @@ class ResultPerPathConverter:
                     }
                 ]
             },
-            "essence": self.names.result_name
+            "essence": "result",
+            "resource_id": "infores:arax",
         }
 
         return result, aux_graphs, knowledge_graph
