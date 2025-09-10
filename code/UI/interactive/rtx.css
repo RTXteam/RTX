@@ -652,6 +652,32 @@ td {
     text-transform: capitalize;
 }
 
+.attbox {
+    border: 2px solid #9bc;
+    border-radius: 20px;
+    xxx-padding: 5px;
+    background: aliceblue;
+    display: inline-block;
+    width: 425px;
+    height: 250px;
+    overflow: auto;
+    margin-right: 10px;
+    margin-bottom: 10px;
+    vertical-align: top;
+    scrollbar-color: #c40 transparent;
+    scrollbar-width: thin;
+}
+.attbox:hover {
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+    border-color: #000;
+    cursor: pointer;
+}
+.attbox > .head {
+    background: #444;
+    color: #fff;
+    text-align: center;
+    padding: 3px;
+}
 .attvalue {
     font-size: 15px;
     font-weight: bold;
