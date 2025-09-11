@@ -476,8 +476,6 @@ SQLite v3.11.0.
 
 The best way to contact Team Expander Agent is by 
 
-- sending an email message to
-**[`expander.agent@gmail.com`](mailto:expander.agent@gmail.com)**
 - logging an [issue](../../issues/) in this GitHub repository
 - (for members of the Biomedical Data Translator consortium) messaging us on the
 [NCATS Translator Slack](https://ncatstranslator.slack.com). 
