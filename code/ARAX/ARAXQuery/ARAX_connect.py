@@ -2,7 +2,7 @@ import json
 import sys
 
 from RTXConfiguration import RTXConfiguration
-from pathfinder.core.BidirectionalPathFinder import BidirectionalPathFinder
+from pathfinder.Pathfinder import Pathfinder
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -13,8 +13,6 @@ from collections import Counter
 import copy
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
-from Path_Finder.converter.ResultPerPathConverter import ResultPerPathConverter
 from Path_Finder.utility import get_curie_ngd_path, get_kg2c_db_path
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
@@ -277,46 +275,50 @@ class ARAXConnect:
         normalize_src_node_id = self.get_normalize_nodes(self.message.query_graph.nodes, src_pinned_node)
         normalize_dst_node_id = self.get_normalize_nodes(self.message.query_graph.nodes, dst_pinned_node)
 
-        path_finder = BidirectionalPathFinder(
+        blocked_curies, blocked_synonyms = self.get_block_list()
+        descendants = []
+        if category_constraint:
+            descendants = set(BiolinkHelper().get_descendants(category_constraint))
+
+        pathfinder = Pathfinder(
             "MLRepo",
             RTXConfiguration().plover_url,
             get_curie_ngd_path(),
             get_kg2c_db_path(),
+            blocked_curies,
+            blocked_synonyms,
             self.response
         )
-        paths = path_finder.find_all_paths(
-            normalize_src_node_id,
-            normalize_dst_node_id,
-            hops_numbers=self.parameters['max_path_length']
-        )
-
-        paths = self.remove_block_list(paths)
-
-        if category_constraint:
-            paths = self.filter_with_constraint(paths, category_constraint)
-
-        paths = paths[:100]
-
-        self.response.info(f"PathFinder found {len(paths)} paths")
-
-        if len(paths) == 0:
-            self.response.warning(f"Could not connect the nodes {src_pinned_node} and {dst_pinned_node} "
-                                  f"with a max path length of {self.parameters['max_path_length']}.")
-            return self.response
-
-        edge_extractor = EdgeExtractorFromPloverDB(
-            RTXConfiguration().plover_url
-        )
-        result, aux_graphs, knowledge_graph = ResultPerPathConverter(
-            paths,
+        result, aux_graphs, knowledge_graph = pathfinder.get_paths(
             normalize_src_node_id,
             normalize_dst_node_id,
             src_pinned_node,
             dst_pinned_node,
-            "aux",
-            edge_extractor
-        ).convert(self.response)
+            self.parameters['max_path_length'],
+            100,
+            descendants,
+        )
 
+        if len(result['analyses']) == 0:
+            self.response.warning(f"Could not connect the nodes {src_pinned_node} and {dst_pinned_node} "
+                                  f"with a max path length of {self.parameters['max_path_length']}.")
+            return self.response
+
+        self.convert_to_trapi(result, aux_graphs, knowledge_graph)
+
+        mode = 'ARAX'
+        if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
+            self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
+        return self.response
+
+    def get_block_list(self):
+        with open(os.path.dirname(os.path.abspath(__file__)) + '/../KnowledgeSources/general_concepts.json',
+                  'r') as file:
+            json_block_list = json.load(file)
+        synonyms = set(s.lower() for s in json_block_list['synonyms'])
+        return set(json_block_list['curies']), synonyms
+
+    def convert_to_trapi(self, result, aux_graphs, knowledge_graph):
         if self.response.envelope.message.results is None:
             self.response.envelope.message.results = []
 
@@ -341,9 +343,6 @@ class ARAXConnect:
                 )
             )
 
-        self.response.info(f"PathFinder found {len(analyses)} analyses")
-        self.response.info(f"PathFinder found result {len(result['analyses'])} analyses")
-
         node_bindings = {}
         for key, value in result["node_bindings"].items():
             node_bindings[key] = [NodeBinding(id=value[0]['id'])]
@@ -362,54 +361,6 @@ class ARAXConnect:
             )
         self.response.envelope.message.knowledge_graph.edges.update(kg.edges)
         self.response.envelope.message.knowledge_graph.nodes.update(kg.nodes)
-
-        mode = 'ARAX'
-        if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
-            self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
-        return self.response
-
-    def filter_with_constraint(self, paths, category_constraint):
-        biolink_helper = BiolinkHelper()
-        descendants = set(biolink_helper.get_descendants(category_constraint))
-        result = []
-        for path in paths:
-            path_length = len(path.links)
-            if path_length > 2:
-                for i in range(1, path_length - 1):
-                    node = path.links[i]
-                    if node.category in descendants:
-                        result.append(path)
-                        break
-        return result
-
-    def remove_block_list(self, paths):
-        blocked_curies, blocked_synonyms = self.get_block_list()
-        result = []
-        for path in paths:
-            append = True
-            path_length = len(path.links)
-            if path_length > 2:
-                for i in range(1, path_length - 1):
-                    node = path.links[i]
-                    if node.id in blocked_curies:
-                        append = False
-                        break
-                    if node.name.lower() in blocked_synonyms:
-                        append = False
-                        break
-                    if node.name.lower().startswith("cyp"):
-                        append = False
-                        break
-            if append:
-                result.append(path)
-        return result
-
-    def get_block_list(self):
-        with open(os.path.dirname(os.path.abspath(__file__)) + '/../KnowledgeSources/general_concepts.json',
-                  'r') as file:
-            json_block_list = json.load(file)
-        synonyms = set(s.lower() for s in json_block_list['synonyms'])
-        return set(json_block_list['curies']), synonyms
 
 
 ##########################################################################################
