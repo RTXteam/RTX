@@ -1289,7 +1289,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.5?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.6?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.append(head);
@@ -1490,7 +1490,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
-	    nr.title = 'Failed TRAPI 1.5 validation';
+	    nr.title = 'Failed TRAPI 1.6 validation';
 	}
         else if (jsonObj2.validation_result.status == "ERROR") {
             if (type == "all") {
@@ -1502,7 +1502,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&#x2755;';
 	    nr.className = 'explevel p3';
-            nr.title = 'There were TRAPI 1.5 validation errors';
+            nr.title = 'There were TRAPI 1.6 validation errors';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all") {
@@ -1531,7 +1531,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
-	    nr.title = 'Passed TRAPI 1.5 validation';
+	    nr.title = 'Passed TRAPI 1.6 validation';
 	}
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
@@ -1821,7 +1821,7 @@ function update_response_stats_on_error(rid,msg,clearall) {
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     if (!respObj["schema_version"])
-	respObj["schema_version"] = "1.5 (presumed)";
+	respObj["schema_version"] = "1.6 (presumed)";
     statusdiv.append("Rendering TRAPI "+respObj["schema_version"]+" message...");
 
     sesame('openmax',statusdiv);
@@ -2785,7 +2785,7 @@ function display_QG_from_JSON() {
 
     if ("nodes" in jsonInput &&
 	"edges" in jsonInput) {
-	process_graph(jsonInput,'QG',"1.5");
+	process_graph(jsonInput,'QG',"1.6");
 
 	if (cyobj[99999]) { cyobj[99999].elements().remove(); }
 	else add_cyto(99999,'QG');
