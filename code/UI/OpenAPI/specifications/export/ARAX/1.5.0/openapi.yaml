@@ -2,13 +2,13 @@ openapi: 3.0.1
 info:
   contact:
     email: edeutsch@systemsbiology.org
-  description: TRAPI 1.5 endpoint for the NCATS Biomedical Translator Reasoner called
+  description: TRAPI 1.6 endpoint for the NCATS Biomedical Translator Reasoner called
     ARAX
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
-  title: ARAX Translator Reasoner - TRAPI 1.5.0
+  title: ARAX Translator Reasoner - TRAPI 1.6.0
   version: 1.5.5
   x-translator:
     component: ARA
@@ -21,7 +21,7 @@ info:
         external JSON schema. See schema and examples at url
       url: https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
-    version: 1.5.0
+    version: 1.6.0
     asyncquery: true
     pathfinderquery: true
     multicuriequery: false
