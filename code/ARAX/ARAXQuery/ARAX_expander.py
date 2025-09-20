@@ -154,6 +154,9 @@ class ARAXExpander:
             response.error(str(e))
             return response
 
+        # Covert blocking of certain KPs
+        blocked_kp_list = [ 'infores:automat-robokop']
+
         # Save the original QG, if it hasn't already been saved in ARAXQuery (happens for DSL queries..)
         if not hasattr(response, "original_query_graph"):
             response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
@@ -385,6 +388,17 @@ class ARAXExpander:
                     for skipped_kp in queriable_kps.difference(kps_to_query):
                         skipped_message = "This KP was constrained by this edge"
                         response.update_query_plan(qedge_key, skipped_kp, "Skipped", skipped_message)
+
+                    # Quietly drop any KPs in the block list
+                    if len(blocked_kp_list) > 0:
+                        kps_to_query_not_blocked = {}
+                        for kp in kps_to_query:
+                            if kp in blocked_kp_list:
+                                response.update_query_plan(qedge_key, kp, "Skipped", "KP is blocked by covert ops")
+                                log.debug(f"KP {kp} has been blocked by covert ops for this query")
+                            else:
+                                kps_to_query_not_blocked[kp] = True
+                        kps_to_query = kps_to_query_not_blocked
 
                     log.info(f"Expand decided to use {len(kps_to_query)} KPs to answer {qedge_key}: {kps_to_query}")
                 else:
