@@ -10,14 +10,14 @@ import requests
 import requests_cache
 import sys
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, cast
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 
-from RTXConfiguration import RTXConfiguration  # type: ignore
-from ARAX_response import ARAXResponse  # type: ignore
+from RTXConfiguration import RTXConfiguration
+from ARAX_response import ARAXResponse
 from smartapi import SmartAPI
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -57,7 +57,8 @@ class KPInfoCacher:
 
                 smart_api_cache_contents = {"allowed_kp_urls": allowed_kp_urls,
                                             "kps_excluded_by_version": smart_api_helper.kps_excluded_by_version,
-                                            "kps_excluded_by_maturity": smart_api_helper.kps_excluded_by_maturity}
+                                            "kps_excluded_by_maturity": smart_api_helper.kps_excluded_by_maturity,
+                                            "kps_excluded_by_black_list": getattr(smart_api_helper, 'kps_excluded_by_black_list', set())}
                 
             else:
                 eprint("Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
@@ -65,7 +66,8 @@ class KPInfoCacher:
                     smart_api_cache_contents = pickle.load(cache_file)['smart_api_cache']
 
             # Grab KPs' meta map info based off of their /meta_knowledge_graph endpoints
-            meta_map, valid_kps, kp_status_codes = self._build_meta_map(allowed_kps_dict=smart_api_cache_contents["allowed_kp_urls"])
+            allowed_kp_urls = cast(Dict[str, str], smart_api_cache_contents["allowed_kp_urls"])
+            meta_map, valid_kps, kp_status_codes = self._build_meta_map(allowed_kps_dict=allowed_kp_urls)
 
 
             common_cache = {

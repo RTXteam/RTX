@@ -1,6 +1,6 @@
 """SmartAPI registry access utility."""
 
-import requests  # type: ignore
+import requests
 import requests_cache
 import json
 import re
@@ -8,6 +8,13 @@ import sys
 from functools import lru_cache
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
+
+# Hardcoded blacklist for KPs that are known to be failing or problematic
+# These infores CURIEs will be excluded from all SmartAPI-derived KP lists
+BLACKLISTED_KPS = {
+    'infores:spoke',
+}
 
 class SmartAPI:
     """SmartAPI."""
@@ -17,6 +24,7 @@ class SmartAPI:
         self.base_url = "http://smart-api.info/api"
         self.kps_excluded_by_version = set()
         self.kps_excluded_by_maturity = set()
+        self.kps_excluded_by_black_list = set()
         self.kps_accepted = set()
 
 
@@ -152,6 +160,11 @@ class SmartAPI:
                 "title": title,
                 "smartapi_url": smartapi_url
             })
+
+        # Apply ARAX hard blacklist first (absolute exclusion)
+        blacklisted_endpoints = [ep for ep in endpoints if ep["infores_name"] in BLACKLISTED_KPS]
+        self.kps_excluded_by_black_list = {ep["infores_name"] for ep in blacklisted_endpoints}
+        endpoints = [ep for ep in endpoints if ep["infores_name"] not in BLACKLISTED_KPS]
 
         if whitelist:
             endpoints = [ep for ep in endpoints if ep["infores_name"] in whitelist]

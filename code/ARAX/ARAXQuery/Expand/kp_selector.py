@@ -10,12 +10,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
 from kp_info_cacher import KPInfoCacher
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuery directory
-from ARAX_response import ARAXResponse  # type: ignore
+from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelper")
-from biolink_helper import BiolinkHelper  # type: ignore
+from biolink_helper import BiolinkHelper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.query_graph import QueryGraph  # type: ignore
-from RTXConfiguration import RTXConfiguration  # type: ignore
+from openapi_server.models.query_graph import QueryGraph
+from RTXConfiguration import RTXConfiguration
 
 
 RTX_CONFIG = RTXConfiguration()
@@ -27,7 +27,13 @@ class KPSelector:
         self.log = log
         self.kg2_mode = kg2_mode
         self.kp_cacher = KPInfoCacher()
-        self.meta_map, self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity, self.valid_kps_from_cache, self.kp_status_codes = self._load_cached_kp_info()
+        (self.meta_map,
+         self.kp_urls,
+         self.kps_excluded_by_version,
+         self.kps_excluded_by_maturity,
+         self.kps_excluded_by_black_list,
+         self.valid_kps_from_cache,
+         self.kp_status_codes) = self._load_cached_kp_info()
         if (not self.kg2_mode) and (self.kp_urls is None):
             raise ValueError("KP info cache has not been filled and we are not in KG2 mode; cannot initialize KP selector")
         self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else self.valid_kps_from_cache
@@ -50,6 +56,7 @@ class KPSelector:
                     smart_api_info["allowed_kp_urls"],
                     smart_api_info["kps_excluded_by_version"],
                     smart_api_info["kps_excluded_by_maturity"],
+                    smart_api_info.get("kps_excluded_by_black_list", set()),
                     valid_kps,
                     kp_status_codes)
 
@@ -110,6 +117,11 @@ class KPSelector:
         for kp in set(filter(None, self.kps_excluded_by_maturity)):
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a {maturity} TRAPI {version} endpoint")
             self.log.debug(f"Skipped {kp}: KP does not have a {maturity} TRAPI {version} endpoint")
+
+        # Log hard-blacklisted KPs
+        for kp in set(filter(None, getattr(self, 'kps_excluded_by_black_list', set()))):
+            self.log.update_query_plan(qedge_key, kp, "Skipped", "Blacklisted by ARAX (KP is unstable)")
+            self.log.debug(f"Skipped {kp}: Blacklisted by ARAX (KP is unstable)")
 
         return accepting_kps
 

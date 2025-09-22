@@ -19,7 +19,11 @@ RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 
 # Import after path setup
-from RTXConfiguration import RTXConfiguration  # type: ignore  # noqa: E402
+try:
+    from RTXConfiguration import RTXConfiguration
+except ImportError:
+    # Fallback if RTXConfiguration is not available
+    RTXConfiguration = None
 
 
 class KnowledgeSourceMetadata:
@@ -35,7 +39,7 @@ class KnowledgeSourceMetadata:
         self.predicates = None
         self.meta_knowledge_graph = KnowledgeSourceMetadata.cached_meta_knowledge_graph
         self.simplified_meta_knowledge_graph = KnowledgeSourceMetadata.cached_simplified_meta_knowledge_graph
-        self.RTXConfig = RTXConfiguration()
+        self.RTXConfig = RTXConfiguration() if RTXConfiguration is not None else None
 
     def _is_cache_valid(self) -> bool:
         """Check if the cached meta knowledge graph is still valid"""
@@ -48,7 +52,7 @@ class KnowledgeSourceMetadata:
     def _fetch_ploverdb_meta_kg(self) -> Optional[Dict[str, Any]]:
         """Fetch meta knowledge graph from PloverDB"""
         try:
-            plover_url = getattr(self.RTXConfig, 'plover_url', "https://kg2cplover.rtx.ai:9990")
+            plover_url = getattr(self.RTXConfig, 'plover_url', "https://kg2cplover.rtx.ai:9990") if self.RTXConfig is not None else "https://kg2cplover.rtx.ai:9990"
             response = requests.get(f"{plover_url}/meta_knowledge_graph", timeout=30)
             if response.status_code == 200:
                 return response.json()
@@ -64,7 +68,7 @@ class KnowledgeSourceMetadata:
         try:
             # Import here to avoid circular dependencies
             sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/Expand")
-            from kp_info_cacher import KPInfoCacher  # type: ignore
+            from kp_info_cacher import KPInfoCacher
             
             kp_cacher = KPInfoCacher()
             if kp_cacher.cache_file_present():
