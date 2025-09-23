@@ -49,16 +49,27 @@ class ARAXConnect:
             "description": "The maximum edges to connect two nodes with. If not provided defaults to 4."
         }
 
+        self.max_pathfinder_paths_info = {
+            "is_required": False,
+            "examples": 100,
+            "min": 1,
+            "max": 20000,
+            "type": "integer",
+            "description": "The maximum number of paths to return. The default is 100."
+        }
+
         self.command_definitions = {
             "connect_nodes": {
                 "dsl_command": "connect(action=connect_nodes)",
                 "description": """
                     `connect_nodes` Try to find reasonable paths between two bio entities. 
                         You have the option to limit the maximum number of edges in a path (via `max_path_length=<n>`)
+                        and the number of paths to return (via `max_pathfinder_paths=<n>`)
                     """,
                 'brief_description': "connect_nodes adds paths between two nodes specified in the query.",
                 "parameters": {
-                    "max_path_length": self.max_path_length_info
+                    "max_path_length": self.max_path_length_info,
+                    "max_pathfinder_paths": self.max_pathfinder_paths_info
                 }
             }
         }
