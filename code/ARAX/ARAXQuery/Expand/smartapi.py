@@ -12,7 +12,7 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 # Hardcoded blacklist for KPs that are known to be failing or problematic
 # These infores CURIEs will be excluded from all SmartAPI-derived KP lists
-BLACKLISTED_KPS = {
+BLOCKLISTED_KPS = {
     'infores:spoke',
 }
 
@@ -162,9 +162,9 @@ class SmartAPI:
             })
 
         # Apply ARAX hard blacklist first (absolute exclusion)
-        blacklisted_endpoints = [ep for ep in endpoints if ep["infores_name"] in BLACKLISTED_KPS]
-        self.kps_excluded_by_black_list = {ep["infores_name"] for ep in blacklisted_endpoints}
-        endpoints = [ep for ep in endpoints if ep["infores_name"] not in BLACKLISTED_KPS]
+        blocklisted_endpoints = [ep for ep in endpoints if ep["infores_name"] in BLOCKLISTED_KPS]
+        self.kps_excluded_by_black_list = {ep["infores_name"] for ep in blocklisted_endpoints}
+        endpoints = [ep for ep in endpoints if ep["infores_name"] not in BLOCKLISTED_KPS]
 
         if whitelist:
             endpoints = [ep for ep in endpoints if ep["infores_name"] in whitelist]

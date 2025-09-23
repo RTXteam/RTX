@@ -118,10 +118,10 @@ class KPSelector:
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a {maturity} TRAPI {version} endpoint")
             self.log.debug(f"Skipped {kp}: KP does not have a {maturity} TRAPI {version} endpoint")
 
-        # Log hard-blacklisted KPs
+        # Log hard-blocklisted KPs
         for kp in set(filter(None, getattr(self, 'kps_excluded_by_black_list', set()))):
-            self.log.update_query_plan(qedge_key, kp, "Skipped", "Blacklisted by ARAX (KP is unstable)")
-            self.log.debug(f"Skipped {kp}: Blacklisted by ARAX (KP is unstable)")
+            self.log.update_query_plan(qedge_key, kp, "Skipped", "Blocklisted by ARAX (KP is unstable)")
+            self.log.debug(f"Skipped {kp}: Blocklisted by ARAX (KP is unstable)")
 
         return accepting_kps
 
