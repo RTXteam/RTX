@@ -62,8 +62,11 @@ const attributes_to_truncate = [
 function main() {
     UIstate["submitter"] = 'ARAX GUI';
     UIstate['autorefresh'] = true;
+    UIstate['useicons'] = true;
     UIstate["timeout"] = '30';
     UIstate["pruning"] = '50';
+    UIstate["maxpaths"] = '100';
+    UIstate["maxpathlen"] = '4';
     UIstate["pid"] = null;
     UIstate["viewing"] = null;
     UIstate["version"] = checkUIversion(false);
@@ -90,9 +93,13 @@ function main() {
 	document.getElementById(prov+"_url").value = providers[prov].url;
 	document.getElementById(prov+"_url_button").disabled = true;
     }
-    for (var setting of ["submitter","timeout","pruning","maxresults","maxsyns"]) {
-	document.getElementById(setting+"_url").value = UIstate[setting];
-	document.getElementById(setting+"_url_button").disabled = true;
+    for (var setting of ["useicons","submitter","timeout","pruning","maxpaths","maxpathlen","maxresults","maxsyns"]) {
+	if (document.getElementById(setting+"_url")) {
+	    document.getElementById(setting+"_url").value = UIstate[setting];
+	    document.getElementById(setting+"_url_button").disabled = true;
+	}
+	else
+	    console.warn(setting+" html setting not found");
     }
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
@@ -217,14 +224,8 @@ function selectInput (input_id) {
 }
 
 
-function clearJSON() {
-    document.getElementById("jsonText").value = '';
-}
-function clearDSL() {
-    document.getElementById("dslText").value = '';
-}
-function clearResponse() {
-    document.getElementById("responseText").value = '';
+function clearTextbox(which) {
+    document.getElementById(which+"Text").value = '';
 }
 
 function pasteSyn(word) {
@@ -551,6 +552,17 @@ function postQuery_ARAX(qtype,queryObj) {
 	    queryObj.query_options = {};
 	queryObj.query_options['prune_threshold'] = UIstate["pruning"];
     }
+    if (UIstate["maxpaths"]) {
+	if (!queryObj.query_options)
+	    queryObj.query_options = {};
+	queryObj.query_options['max_pathfinder_paths'] = UIstate["maxpaths"];
+    }
+    if (UIstate["maxpathlen"]) {
+        if (!queryObj.query_options)
+            queryObj.query_options = {};
+        queryObj.query_options['max_path_length'] = UIstate["maxpathlen"];
+    }
+
     var cmddiv = document.createElement("div");
     cmddiv.id = "cmdoutput";
     statusdiv.append(cmddiv);
@@ -2516,7 +2528,7 @@ function showJSONpopup(wtitle,query,footer) {
 
 function process_q_options(q_opts) {
     if (q_opts.actions) {
-	clearDSL();
+	clearTextbox('dsl');
 	for (var act of q_opts.actions) {
 	    if (act.length > 1) // skip blank lines
 		document.getElementById("dslText").value += act + "\n";
@@ -2566,6 +2578,14 @@ function process_log(logarr) {
     }
     let starttime = null;
     for (var msg of logarr) {
+	if (typeof msg === 'string') {
+	    var tmp = {};
+	    tmp.level = "INFO";
+	    tmp.message = msg;
+	    msg.timestamp = null;
+	    msg = tmp;
+	}
+
 	if (msg.prefix) { // upconvert TRAPI 0.9.3 --> 1.0
 	    msg.level = msg.level_str;
 	    msg.code = null;
@@ -2573,16 +2593,9 @@ function process_log(logarr) {
 
 	status[msg.level]++;
 
-	// TOFIX when TIMESTAMP not present
+	// FIXed:: when TIMESTAMP not present
 	var span = document.createElement("span");
-	span.title = "Click to display elapsed time between two events";
 	span.className = "hoverable msg " + msg.level;
-	span.dataset.timestamp = Date.parse(msg.timestamp);
-	span.setAttribute('onclick', 'calc_timespan(this);');
-
-	if (!starttime)
-	    starttime = span.dataset.timestamp;
-
         if (msg.level == "DEBUG") { span.style.display = 'none'; }
 
 	var span2 = document.createElement("span");
@@ -2600,16 +2613,25 @@ function process_log(logarr) {
 	span2.append(msg.message);
 	span.append(span2);
 
-        let units = " s";
-	let diff = Math.abs(span.dataset.timestamp - starttime)/1000;
-	if (diff>66) {
-            diff = (diff/60).toFixed(4);
-	    units = " m";
+	if (msg.timestamp) {
+	    span.title = "Click to display elapsed time between two events";
+	    span.dataset.timestamp = Date.parse(msg.timestamp);
+	    span.setAttribute('onclick', 'calc_timespan(this);');
+
+	    if (!starttime)
+		starttime = span.dataset.timestamp;
+
+            let units = " s";
+	    let diff = Math.abs(span.dataset.timestamp - starttime)/1000;
+	    if (diff>66) {
+		diff = (diff/60).toFixed(4);
+		units = " m";
+	    }
+	    span2 = document.createElement("span");
+	    span2.style.float = 'right';
+            span2.append(diff+units);
+            span.append(span2);
 	}
-	span2 = document.createElement("span");
-	span2.style.float = 'right';
-        span2.append(diff+units);
-        span.append(span2);
 
 	document.getElementById("logdiv").append(span);
     }
@@ -4056,8 +4078,9 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 
 	span = document.createElement("span");
         span.className = 'attbox';
+	span.style.cursor = "auto";
 
-        var head = document.createElement("div");
+	var head = document.createElement("div");
         head.className = 'head';
         head.append("Node Info");
         head.style.background = '#3d6d98';
@@ -4115,7 +4138,6 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 
 
 	if (this.data('node_binding_attributes')) {
-	    //div.append(document.createElement("br"));
 	    show_attributes(i,div, this.data('node_binding_attributes'),"Node Binding Attribute","value");
 	}
 
@@ -4151,6 +4173,7 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 
         span = document.createElement("span");
         span.className = 'attbox';
+        span.style.cursor = "auto";
 
         var head = document.createElement("div");
         head.className = 'head';
@@ -4242,7 +4265,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
     var span = document.createElement("span");
     span.className = 'attbox';
     span.title = "Click to view original JSON source";
-    span.onclick = function () { showJSONpopup("Qualifiers"+": ", JSON.stringify(quals,null,2), null); };
+    span.onclick = function () { showJSONpopup("Qualifiers", JSON.stringify(quals,null,2), null); };
 
     var head = document.createElement("div");
     head.className = 'head';
@@ -4266,6 +4289,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	'object_aspect_qualifier',
 	'object',
 	'object_context_qualifier',
+	'disease_context_qualifier',
 	'pathway_context_qualifier'
     ];
 
@@ -4298,7 +4322,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	}
         else if (oq == 'predicate') {
 	    if (hadqpred) continue;
-	    frag.innerHTML = pred + " ";
+	    frag.innerHTML = pred.replace("biolink:","").replaceAll("_"," ") + " ";
 	    celltext = pred;
 	}
 	else {
@@ -4408,7 +4432,7 @@ function show_attributes(num,html_div, atts, title="attribute", mainvalue) {
         var span = document.createElement("span");
 	span.className = 'attbox';
 	span.title = "Click to view original JSON source";
-        span.onclick = function () { showJSONpopup(title+": ", att, null); };
+        span.onclick = function () { showJSONpopup(title, att, null); };
 
         var head = document.createElement("div");
         head.className = 'head';
@@ -4741,6 +4765,7 @@ function mapNodeColor(ele) {
 
 function mapNodeIcon(ele) {
     var ntype = ele.data().categories ? ele.data().categories[0] ? ele.data().categories[0] : "NA" : "NA";
+    if (!UIstate['useicons']) ntype = "NA";
     if (ntype.endsWith("AnatomicalEntity"))   { return "./ui_icons/humanoid.png";}
     if (ntype.endsWith("BehavioralFeature"))  { return "./ui_icons/behavior.png";}
     if (ntype.endsWith("BiologicalProcess"))  { return "./ui_icons/biological.png";}
@@ -8822,6 +8847,24 @@ function update_url(urlkey,value) {
 	UIstate[urlkey] = to;
 	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
+    else if (urlkey == 'maxpaths') {
+	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
+	if (isNaN(to))
+	    to = '100';
+	UIstate[urlkey] = to;
+	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
+    else if (urlkey == 'maxpathlen') {
+	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
+	if (isNaN(to))
+	    to = 4;
+	else if (to < 2)
+	    to = 1;
+	else if (to > 5)
+	    to = 5;
+	UIstate[urlkey] = to;
+	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
     else if (urlkey == 'maxresults') {
         var mx = parseInt(document.getElementById(urlkey+"_url").value.trim());
 	if (isNaN(mx))
@@ -8840,6 +8883,9 @@ function update_url(urlkey,value) {
 	UIstate[urlkey] = document.getElementById(urlkey+"_url").value.trim();
         document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
+    else if (urlkey == 'useicons') {
+        UIstate[urlkey] = document.getElementById(urlkey+"_url").value == "true";
+    }
     else {
 	providers[urlkey].url = document.getElementById(urlkey+"_url").value.trim();
 	document.getElementById(urlkey+"_url").value = providers[urlkey].url;
@@ -8848,7 +8894,7 @@ function update_url(urlkey,value) {
     var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
 function update_submit_button(urlkey) {
-    var currval = (urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxresults' || urlkey == 'maxsyns') ? UIstate[urlkey] : providers[urlkey].url;
+    var currval = (urlkey == 'useicons' || urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxpaths' || urlkey == 'maxpathlen' || urlkey == 'maxresults' || urlkey == 'maxsyns') ? UIstate[urlkey] : providers[urlkey].url;
 
     if (currval == document.getElementById(urlkey+"_url").value)
 	document.getElementById(urlkey+"_url_button").disabled = true;

@@ -299,7 +299,7 @@
       <a href="javascript:pasteExample('PATH1');" style="position:relative; left:140px;">Pathfinder</a>
     </span>
     <form id="jsonForm" name="jsonForm" method="post" action="postQuery('JSON','ARAX');">
-      <textarea placeholder="&#10;&#10;&#10;&#10;Enter, Copy-PASTE, or DRAG a file HERE with either&#10;a full TRAPI query object, or&#10;the value of the query_graph element" class="questionBox" wrap="off" ondrop="dropFile('jsoninput',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearJSON();">&#9587;</span>
+      <textarea placeholder="&#10;&#10;&#10;&#10;Enter, Copy-PASTE, or DRAG a file HERE with either&#10;a full TRAPI query object, or&#10;the value of the query_graph element" class="questionBox" wrap="off" ondrop="dropFile('jsoninput',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="jsonText"></textarea>&nbsp;<span title="clear JSON input" class="clq" onclick="clearTextbox('json');">&#9587;</span>
       <br>
       <a style="margin-left: 50px;" href="javascript:display_QG_from_JSON();">Edit in Visual QueryGraph pane</a>
       <br><br>
@@ -333,7 +333,7 @@
     <span class="tiny" style="position:relative; left:150px;">One line per DSL command, no quotes or commas;
     <a href="https://github.com/RTXteam/RTX/blob/master/code/ARAX/Documentation/DSL_Documentation.md" target="_new">more info here</a><a href="javascript:pasteExample('DSL');" style="position:relative; left:100px;">Example</a></span>
     <form id="dslForm" name="dslForm" method="post" action="postQuery('DSL','ARAX');">
-      <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="clearDSL();">&#9587;</span>
+      <textarea class="questionBox" wrap="off" id="dslText"></textarea>&nbsp;<span title="clear DSL input" class="clq" onclick="clearTextbox('dsl');">&#9587;</span>
       <br/>
       <span class="qgselect">
 	<select id="dsl_command" onchange="show_dsl_command_options(this.value)">
@@ -410,7 +410,7 @@
     <h3 style="display:inline;">Response Input:</h3>
     <span class="tiny" style="position:relative; left:150px;">DRAG a file (or copy-paste) with a <b>JSON TRAPI Response</b> into the box below</span>
     <form id="responseForm" name="responseForm" method="post" action="viewResponse();">
-      <textarea placeholder="&#10;&#10;&#10;&#10;&#10;PASTE a TRAPI response document, or DRAG a file into this box" class="questionBox" wrap="off" ondrop="dropFile('response',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearResponse();">&#9587;</span>
+      <textarea placeholder="&#10;&#10;&#10;&#10;&#10;PASTE a TRAPI response document, or DRAG a file into this box" class="questionBox" wrap="off" ondrop="dropFile('response',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="responseText"></textarea>&nbsp;<span title="clear response input" class="clq" onclick="clearTextbox('response');">&#9587;</span>
       <br/>
       <input type="button" class="questionBox button" name="action" value="VIEW" onClick="viewResponse();">
     </form>
@@ -634,6 +634,24 @@
     </span>
 
     <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF PATHFINDER RESULTS TO RETURN:</h3>
+      <input type="text" class="questionBox" id="maxpaths_url" onkeyup="enter_url(this,'maxpaths');" size="5" maxlength="5" value="100"/>
+      paths
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="maxpaths_url_button" value="Update" onClick="update_url('maxpaths',null);"/>
+    </span>
+
+    <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM PATH LENGTH FOR PATHFINDER RESULTS:</h3>
+      <input type="text" class="questionBox" id="maxpathlen_url" onkeyup="enter_url(this,'maxpathlen');" size="1" maxlength="1" value="4"/>
+      (max. 5)
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="maxpathlen_url_button" value="Update" onClick="update_url('maxpathlen',null);"/>
+    </span>
+
+    <span>
       <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
       <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
     </span>
@@ -705,12 +723,24 @@
     </span>
 
     <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">NODE DISPLAY:</h3>
+      <select class="qgbutton" onchange="enter_url(this,'useicons');" id="useicons_url">
+        <option value="true">Category-based Icons</option>
+        <option value="false">Generic Icon</option>
+      </select>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="useicons_url_button" value="Update" onClick="update_url('useicons',null);"/>
+    </span>
+
+    <span>
       <h3 style="margin-bottom:0px;">SUBMITTER (enter a generic name to help track queries):</h3>
       <input type="text" class="questionBox" id="submitter_url" onkeyup="enter_url(this,'submitter');" size="100" maxlength="1000"/>
     </span>
     <span>
       <input type="button" class="questionBox button" id="submitter_url_button" value="Update" onClick="update_url('submitter',null);"/>
     </span>
+
 
     <!-- label id="useCacheText" class="tiny blue">
       <span class="switch">
