@@ -123,6 +123,16 @@ class ARAXConnect:
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
                 return -1
+            if isinstance(allowable_parameters[key], str):
+                if allowable_parameters[key] == 'positiveInteger':
+                    try:
+                        value = int(item)
+                        assert value > 0
+                        return
+                    except:
+                        self.response.error(f"Supplied parameter value {key}={item} must be a positive integer")
+                        return -1
+
             if item not in allowable_parameters[key]:
                 if any([type(x) == int for x in allowable_parameters[key]]):
                     continue
@@ -242,7 +252,8 @@ class ARAXConnect:
 
         allowable_parameters = {
             'action': {'connect_nodes'},
-            'max_path_length': {1, 2, 3, 4, 5}
+            'max_path_length': {1, 2, 3, 4, 5},
+            'max_pathfinder_paths': 'positiveInteger'
         }
         if describe:
             allowable_parameters['brief_description'] = self.command_definitions['connect_nodes']
@@ -287,7 +298,10 @@ class ARAXConnect:
         if category_constraint:
             paths = self.filter_with_constraint(paths, category_constraint)
 
-        paths = paths[:100]
+        max_pathfinder_paths = 100
+        if 'max_pathfinder_paths' in self.parameters:
+            max_pathfinder_paths = int(self.parameters['max_pathfinder_paths'])
+        paths = paths[:max_pathfinder_paths]
 
         self.response.info(f"PathFinder found {len(paths)} paths")
 
