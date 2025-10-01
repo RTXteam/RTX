@@ -354,6 +354,7 @@ class ARAXConnect:
                     node = path.links[i]
                     if node.category in descendants:
                         result.append(path)
+                        break
         return result
 
     def remove_block_list(self, paths):
