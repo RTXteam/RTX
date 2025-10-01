@@ -220,5 +220,16 @@ def test_add_qedge_multitest():
         assert len(message.query_graph.edges) == 0
         assert response.error_code == parameters['error_code']
 
+def test_add_qpath():
+    response = ARAXResponse()
+    messenger = ARAXMessenger()
+    messenger.create_envelope(response)
+    assert response.status == 'OK'
+    message = response.envelope.message
+    messenger.add_qnode(response, { 'key': 'n00', 'ids': [ 'CHEMBL.COMPOUND:CHEMBL112' ] } )
+    messenger.add_qnode(response, { 'key': 'n01', 'ids': [ 'MONDO:0007739' ] } )
+    messenger.add_qpath(response, { 'key': 'p00', 'subject': 'n00', 'object': 'n01' } )
+    assert response.status == 'OK'
+    print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
 
 if __name__ == "__main__": pytest.main(['-v'])
