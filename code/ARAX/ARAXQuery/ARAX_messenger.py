@@ -120,7 +120,6 @@ class ARAXMessenger:
         message.query_graph = QueryGraph()
         message.query_graph.nodes = {}
         message.query_graph.edges = {}
-        message.query_graph.paths = {}
 
         #### Create empty results
         message.results = []
@@ -728,16 +727,19 @@ class ARAXMessenger:
         if message.query_graph is None:
             message.query_graph = QueryGraph()
             message.query_graph.nodes = {}
-            message.query_graph.edges = {}
             message.query_graph.paths = {}
-        if message.query_graph.edges is None:
-            message.query_graph.paths = {}
+
+        #### Extract the existing paths if any
+        if isinstance(message.query_graph, PathfinderQueryGraph):
+            query_graph_paths = message.query_graph.paths
+        else:
+            query_graph_paths = []
 
         #### Create a QPath
         qpath = QPath()
         if parameters['key'] is not None:
             key = parameters['key']
-            if key in message.query_graph.paths:
+            if key in query_graph_paths:
                 response.error(f"Duplicate key '{key}' specified when trying to create a new QPath", error_code="QPathDuplicateKey")
                 return response
         else:
@@ -766,8 +768,20 @@ class ARAXMessenger:
             response.error(f"While trying to add QPath, object is a required parameter", error_code="MissingTargetKey")
             return response
 
-        #### Add it to the query_graph path list
-        message.query_graph.paths[key] = qpath
+        #### If the query_graph is type PathfinderQueryGraph already, then just add the new qpath
+        if isinstance(message.query_graph, PathfinderQueryGraph):
+            message.query_graph.paths[key] = qpath
+
+        #### If the query_graph is type QueryGraph instead of PathfinderQueryGraph, then migrate to PathfinderQueryGraph
+        elif isinstance(message.query_graph, QueryGraph):
+            eprint(f"INFO: Converting a QueryGraph to a PathfinderQueryGraph")
+            new_query_graph = PathfinderQueryGraph(nodes = message.query_graph.nodes, paths = { key: qpath} )
+            message.query_graph = new_query_graph
+
+        #### Else fail
+        else:
+            response.error(f"Unrecognized class type for message.query_graph: {type(message.query_graph)}", error_code="UnknownQueryGraphType")
+            return response
 
         #### Return the response
         return response
@@ -777,19 +791,15 @@ class ARAXMessenger:
     #### Get the next free path key like pXX where XX is a zero-padded integer starting with 00
     def __get_next_free_path_key(self):
 
-        #### Set up local references to the message and verify the query_graph nodes
+        #### If the query_graph is absent of type legacy QueryGraph, then there are no paths yet
+        #### so just default to p00
         message = self.envelope.message
-        if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = {}
-            message.query_graph.edges = {}
-            message.query_graph.paths = {}
-        if message.query_graph.paths is None:
-            message.query_graph.paths = {}
-        qpaths = message.query_graph.paths
+        if message.query_graph is None or isinstance(message.query_graph, QueryGraph):
+            return 'p00'
 
-        #### Find the first unused key
+        #### Otherwise find the first unused key
         index = 0
+        qpaths = message.query_graph.paths
         while 1:
             pad = '0'
             if index > 9:

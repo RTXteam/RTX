@@ -228,8 +228,15 @@ def test_add_qpath():
     message = response.envelope.message
     messenger.add_qnode(response, { 'key': 'n00', 'ids': [ 'CHEMBL.COMPOUND:CHEMBL112' ] } )
     messenger.add_qnode(response, { 'key': 'n01', 'ids': [ 'MONDO:0007739' ] } )
-    messenger.add_qpath(response, { 'key': 'p00', 'subject': 'n00', 'object': 'n01' } )
+    messenger.add_qpath(response, { 'subject': 'n00', 'object': 'n01' } )
     assert response.status == 'OK'
-    print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
+    messenger.add_qnode(response, { 'key': 'n02', 'ids': [ 'MONDO:0007740' ] } )
+    messenger.add_qpath(response, { 'subject': 'n00', 'object': 'n02' } )
+    assert response.status == 'OK'
+    assert len(message.query_graph.paths) == 2
+    messenger.add_qpath(response, { 'key': 'p01', 'subject': 'n00', 'object': 'n02' } )
+    assert response.status == 'ERROR'
+    assert response.error_code == 'QPathDuplicateKey'
+    #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
 
 if __name__ == "__main__": pytest.main(['-v'])
