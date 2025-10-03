@@ -2943,6 +2943,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
     else if ('on' in result.node_bindings)
 	path_end = result.node_bindings['on'][0].id;
 
+    var uniq_paths = {};
     var num = 0;
     for (var ranal of result.analyses) {
 	num++;
@@ -2953,7 +2954,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         div.className = 'accordion';
 
 	var auxgraph = ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'];  // TODO: deal with more than one path_binding...?
-        add_aux_graph(kg,auxgraph,aux[auxgraph]["edges"],num,trapi);
+        add_aux_graph(kg,auxgraph,aux,num,trapi);
 	div.setAttribute('onclick', 'add_cyto('+num+',"AUX'+auxgraph+'","grid");sesame(this,a'+num+'_div);');
 
 	div.dataset.pnodes = "|filter|";
@@ -2965,6 +2966,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         span.append(kg.nodes[path_src]["name"]);
         div.append(span);
 
+	var pnodelist = '';
 	for (var pnode of get_node_list_in_paths(ranal.path_bindings,kg,aux).sort((a, b) => kg.nodes[a]['name'].localeCompare(kg.nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
 	    if (all_nodes[pnode]) {
                 all_nodes[pnode]['total']++;
@@ -2989,7 +2991,9 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 	    div.append(span);
 
 	    div.dataset.pnodes += "|"+pnode+"|";
+	    pnodelist += pnode;
 	}
+	div.dataset.pnodes += "|PATH::"+pnodelist+"|";
 
 	span = document.createElement("span");
         span.className = 'filtertag p0';
@@ -2997,6 +3001,18 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         span.append(kg.nodes[path_end]["name"]);
         div.append(span);
 
+	if (uniq_paths[pnodelist])
+	    uniq_paths[pnodelist]++;
+	else
+	    uniq_paths[pnodelist] = 1;
+        span = document.createElement("span");
+	span.id = "PATH::"+pnodelist+"::"+uniq_paths[pnodelist];
+        span.className = 'filterbutton p1';
+        span.title = "Show potentially-duplicate Paths";
+        span.append("dups?");
+        span.setAttribute('onclick', 'filter_results("paths","PATH::'+pnodelist+'");');
+        span.dataset.curie = pnodelist;
+        div.append(span);
 
 	var cnf = 'n/a';
         if (Number(ranal.score))
@@ -3045,6 +3061,15 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
     }
 
     document.getElementById("result_container").append(results_fragment);
+
+    for (var duppath in uniq_paths) {
+	for (var notadup of document.querySelectorAll('[id^="PATH::'+duppath+'::"]')) {
+	    if (uniq_paths[duppath] > 1)
+		notadup.innerHTML = "+" + (uniq_paths[duppath] - 1);
+	    else
+		notadup.style.display = 'none';
+	}
+    }
 
     var num = 1;
     for (let pnode of Object.keys(all_nodes).sort(function(a, b) { return all_nodes[a]['total'] > all_nodes[b]['total'] ? -1 : 1; }))
@@ -3189,6 +3214,10 @@ function display_pathfilter() {
             span.className = 'filterbutton p1';
             span.append(all_nodes[fcur.replace("X::","")]['name']);
 	}
+        else if (fcur.startsWith("PATH::")) {
+            span.className = 'filterbutton p1';
+            span.append('Potentially-duplicate Paths');
+	}
 	else {
             span.className = 'filterbutton p9';
             span.append(all_nodes[fcur]['name']);
@@ -3281,7 +3310,7 @@ function filter_paths(curie="CURRENT",only=false, display=true) {
 	    if (display)
 		pathhead.style.display = '';
             for (var curielabel of pathhead.children) {
-                if (curielabel.dataset && curielabel.dataset.curie) {
+                if (curielabel.dataset && curielabel.dataset.curie && all_nodes[curielabel.dataset.curie]) {
                     all_nodes[curielabel.dataset.curie]['filtered']++;
 
 		    if (display) {
@@ -3585,7 +3614,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 			    if (!(sgid in aux))
 				throw Error("Aux graph not found: "+sgid);
 
-			    add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+			    add_aux_graph(kg,sgid,aux,num,trapi);
 			}
 		    }
 		    else if (kmne.attributes) {
@@ -3593,7 +3622,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 			    if (att.attribute_type_id == "biolink:support_graphs" && att.value && att.value.length > 0) {
 				kmne.__has_sgs = true;
 				for (var sgid of att.value)
-				    add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+				    add_aux_graph(kg,sgid,aux,num,trapi);
 			    }
 			}
 		    }
@@ -3608,7 +3637,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
             for (var sg in result.analyses[0].support_graphs) {
 		var sgid = result.analyses[0].support_graphs[sg];
-		add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+		add_aux_graph(kg,sgid,aux,num,trapi);
 	    }
 	}
 
@@ -3617,11 +3646,11 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
     document.getElementById("result_container").append(results_fragment);
 }
 
-function add_aux_graph(kg,sgid,auxedges,parentnum,trapi) {
+function add_aux_graph(kg,sgid,auxgraphs,parentnum,trapi) {
     cytodata['AUX'+sgid] = [];
     var nodes = {};
 
-    for (var edgeid of auxedges) {
+    for (var edgeid of auxgraphs[sgid]["edges"]) {
 	if (!(edgeid in kg.edges))
 	    throw Error("AUX graph edge not defined in KG: "+edgeid);
 
@@ -3637,8 +3666,28 @@ function add_aux_graph(kg,sgid,auxedges,parentnum,trapi) {
 	    kmne.type = kmne.predicate;
 	if (kmne.qualifiers && kmne.qualifiers.length == 0)
 	    kmne.qualifiers = null;
-	//if (edge.attributes)
-	//kmne.edge_binding_attributes = edge.attributes;
+
+	// turtles, all the way down...
+	// ToDo: implement a hard stop at e.g. depth=5?
+        if (kmne.has_these_support_graphs && kmne.has_these_support_graphs.length > 0) {
+            kmne.__has_sgs = true;
+            for (var sssgid of kmne.has_these_support_graphs) {
+                if (!(sssgid in auxgraphs))
+                    throw Error("Aux graph not found: "+sssgid);
+
+                add_aux_graph(kg,sssgid,auxgraphs,parentnum,trapi);
+            }
+        }
+	else if (kmne.attributes) {
+            for (var satt of kmne.attributes) {
+                if (satt.attribute_type_id == "biolink:support_graphs" && satt.value && satt.value.length > 0) {
+                    kmne.__has_sgs = true;
+                    for (var sssgid of satt.value)
+                        add_aux_graph(kg,sssgid,auxgraphs,parentnum,trapi);
+                }
+            }
+	}
+
 	var tmpdata = { "data" : kmne };
 	cytodata['AUX'+sgid].push(tmpdata);
     }
@@ -4451,9 +4500,11 @@ function show_attributes(num,html_div, atts, title="attribute", mainvalue) {
 
 }
 
-function display_attribute(num, tab, att, semmeddb, mainvalue, divider=true) {
+function display_attribute(num, tab, orig_att, semmeddb, mainvalue, divider=true) {
     var row = document.createElement("tr");
     var cell = document.createElement("td");
+
+    var att = Object.create(orig_att); // make a copy!
 
     if (divider) {
 	cell.colSpan = '2';
@@ -4537,6 +4588,7 @@ function display_attribute(num, tab, att, semmeddb, mainvalue, divider=true) {
 	    for (var val of att[mainvalue]) {
 		if (br)
 		    cell.append(document.createElement("br"));
+                cell.append("\u25BA ");
 
 		if (val == null) {
                     cell.append("--NULL--");
@@ -4556,12 +4608,19 @@ function display_attribute(num, tab, att, semmeddb, mainvalue, divider=true) {
                     a.addEventListener("click", function(e) { e.stopPropagation(); });
                     cell.append(a);
 
-		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val]) {
+		    var sdbs = null;
+		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val])
+			sdbs = semmeddb[0]["value"][val];
+		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"] && semmeddb[0]["value"][0] && semmeddb[0]["value"][0][val])
+			sdbs = semmeddb[0]["value"][0][val];
+		    if (sdbs) {
 			cell.append(" : ");
 			var quote = document.createElement("i");
-			quote.append(semmeddb[0]["value"][val]["sentence"]);
+			//quote.append(semmeddb[0]["value"][val]["sentence"]);
+			quote.append(sdbs["sentence"]);
 			cell.append(quote);
-			cell.append(' ('+semmeddb[0]["value"][val]["publication date"]+')');
+			//cell.append(' ('+semmeddb[0]["value"][val]["publication date"]+')');
+			cell.append(' ('+sdbs["publication date"]+')');
 		    }
 		}
 		else if (val.toString().startsWith("DOI:")) {
