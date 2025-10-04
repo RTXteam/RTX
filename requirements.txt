@@ -1,6 +1,6 @@
 pandas==1.5.3
 numpy==1.24.2
-requests==2.32.0
+requests==2.32.4
 requests-cache
 matplotlib
 seaborn
