@@ -368,6 +368,7 @@ hr {
     border-radius: 12px;
     text-align: left;
     outline: none;
+    overflow: auto;
     font-size: 15px;
     transition: background-color 0.1s, border-radius 0.4s linear 0.1s;
 }
@@ -386,7 +387,7 @@ hr {
     color: #333;
 }
 
-.accordion:before {
+.accordion::before {
     content: ' \002B ';
     color: #fff;
     font-weight: bold;
@@ -394,7 +395,7 @@ hr {
     margin-left: 5px;
 }
 
-.openaccordion:before {
+.openaccordion::before {
     content: "\2212";
 }
 
@@ -677,6 +678,8 @@ td {
     color: #fff;
     text-align: center;
     padding: 3px;
+    position: sticky;
+    top: 0;
 }
 .attvalue {
     font-size: 15px;
@@ -784,7 +787,7 @@ td {
     transition: border .1s;
     font-weight: bold;
 }
-.wflistitemselected:before {
+.wflistitemselected::before {
     content: ' \279C ';
     float: right;
 }
@@ -863,7 +866,7 @@ td {
   -webkit-transition: .2s;
   transition: .2s;
 }
-.slider:before {
+.slider::before {
   position: absolute;
   content: "";
   height: 6px;
@@ -883,7 +886,7 @@ input:focus + .slider {
   box-shadow: 0 0 1px #047;
 }
 
-input:checked + .slider:before {
+input:checked + .slider::before {
   -webkit-transform: translateX(12px);
   -ms-transform: translateX(12px);
   transform: translateX(12px);

@@ -62,8 +62,11 @@ const attributes_to_truncate = [
 function main() {
     UIstate["submitter"] = 'ARAX GUI';
     UIstate['autorefresh'] = true;
+    UIstate['useicons'] = true;
     UIstate["timeout"] = '30';
     UIstate["pruning"] = '50';
+    UIstate["maxpaths"] = '100';
+    UIstate["maxpathlen"] = '4';
     UIstate["pid"] = null;
     UIstate["viewing"] = null;
     UIstate["version"] = checkUIversion(false);
@@ -90,9 +93,13 @@ function main() {
 	document.getElementById(prov+"_url").value = providers[prov].url;
 	document.getElementById(prov+"_url_button").disabled = true;
     }
-    for (var setting of ["submitter","timeout","pruning","maxresults","maxsyns"]) {
-	document.getElementById(setting+"_url").value = UIstate[setting];
-	document.getElementById(setting+"_url_button").disabled = true;
+    for (var setting of ["useicons","submitter","timeout","pruning","maxpaths","maxpathlen","maxresults","maxsyns"]) {
+	if (document.getElementById(setting+"_url")) {
+	    document.getElementById(setting+"_url").value = UIstate[setting];
+	    document.getElementById(setting+"_url_button").disabled = true;
+	}
+	else
+	    console.warn(setting+" html setting not found");
     }
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
@@ -217,14 +224,8 @@ function selectInput (input_id) {
 }
 
 
-function clearJSON() {
-    document.getElementById("jsonText").value = '';
-}
-function clearDSL() {
-    document.getElementById("dslText").value = '';
-}
-function clearResponse() {
-    document.getElementById("responseText").value = '';
+function clearTextbox(which) {
+    document.getElementById(which+"Text").value = '';
 }
 
 function pasteSyn(word) {
@@ -551,6 +552,17 @@ function postQuery_ARAX(qtype,queryObj) {
 	    queryObj.query_options = {};
 	queryObj.query_options['prune_threshold'] = UIstate["pruning"];
     }
+    if (UIstate["maxpaths"]) {
+	if (!queryObj.query_options)
+	    queryObj.query_options = {};
+	queryObj.query_options['max_pathfinder_paths'] = UIstate["maxpaths"];
+    }
+    if (UIstate["maxpathlen"]) {
+        if (!queryObj.query_options)
+            queryObj.query_options = {};
+        queryObj.query_options['max_path_length'] = UIstate["maxpathlen"];
+    }
+
     var cmddiv = document.createElement("div");
     cmddiv.id = "cmdoutput";
     statusdiv.append(cmddiv);
@@ -1289,7 +1301,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.5?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.6?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.append(head);
@@ -1490,7 +1502,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
-	    nr.title = 'Failed TRAPI 1.5 validation';
+	    nr.title = 'Failed TRAPI 1.6 validation';
 	}
         else if (jsonObj2.validation_result.status == "ERROR") {
             if (type == "all") {
@@ -1502,7 +1514,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&#x2755;';
 	    nr.className = 'explevel p3';
-            nr.title = 'There were TRAPI 1.5 validation errors';
+            nr.title = 'There were TRAPI 1.6 validation errors';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all") {
@@ -1531,7 +1543,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
-	    nr.title = 'Passed TRAPI 1.5 validation';
+	    nr.title = 'Passed TRAPI 1.6 validation';
 	}
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
@@ -1821,7 +1833,7 @@ function update_response_stats_on_error(rid,msg,clearall) {
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     if (!respObj["schema_version"])
-	respObj["schema_version"] = "1.5 (presumed)";
+	respObj["schema_version"] = "1.6 (presumed)";
     statusdiv.append("Rendering TRAPI "+respObj["schema_version"]+" message...");
 
     sesame('openmax',statusdiv);
@@ -2516,7 +2528,7 @@ function showJSONpopup(wtitle,query,footer) {
 
 function process_q_options(q_opts) {
     if (q_opts.actions) {
-	clearDSL();
+	clearTextbox('dsl');
 	for (var act of q_opts.actions) {
 	    if (act.length > 1) // skip blank lines
 		document.getElementById("dslText").value += act + "\n";
@@ -2566,6 +2578,14 @@ function process_log(logarr) {
     }
     let starttime = null;
     for (var msg of logarr) {
+	if (typeof msg === 'string') {
+	    var tmp = {};
+	    tmp.level = "INFO";
+	    tmp.message = msg;
+	    msg.timestamp = null;
+	    msg = tmp;
+	}
+
 	if (msg.prefix) { // upconvert TRAPI 0.9.3 --> 1.0
 	    msg.level = msg.level_str;
 	    msg.code = null;
@@ -2573,16 +2593,9 @@ function process_log(logarr) {
 
 	status[msg.level]++;
 
-	// TOFIX when TIMESTAMP not present
+	// FIXed:: when TIMESTAMP not present
 	var span = document.createElement("span");
-	span.title = "Click to display elapsed time between two events";
 	span.className = "hoverable msg " + msg.level;
-	span.dataset.timestamp = Date.parse(msg.timestamp);
-	span.setAttribute('onclick', 'calc_timespan(this);');
-
-	if (!starttime)
-	    starttime = span.dataset.timestamp;
-
         if (msg.level == "DEBUG") { span.style.display = 'none'; }
 
 	var span2 = document.createElement("span");
@@ -2600,16 +2613,25 @@ function process_log(logarr) {
 	span2.append(msg.message);
 	span.append(span2);
 
-        let units = " s";
-	let diff = Math.abs(span.dataset.timestamp - starttime)/1000;
-	if (diff>66) {
-            diff = (diff/60).toFixed(4);
-	    units = " m";
+	if (msg.timestamp) {
+	    span.title = "Click to display elapsed time between two events";
+	    span.dataset.timestamp = Date.parse(msg.timestamp);
+	    span.setAttribute('onclick', 'calc_timespan(this);');
+
+	    if (!starttime)
+		starttime = span.dataset.timestamp;
+
+            let units = " s";
+	    let diff = Math.abs(span.dataset.timestamp - starttime)/1000;
+	    if (diff>66) {
+		diff = (diff/60).toFixed(4);
+		units = " m";
+	    }
+	    span2 = document.createElement("span");
+	    span2.style.float = 'right';
+            span2.append(diff+units);
+            span.append(span2);
 	}
-	span2 = document.createElement("span");
-	span2.style.float = 'right';
-        span2.append(diff+units);
-        span.append(span2);
 
 	document.getElementById("logdiv").append(span);
     }
@@ -2785,7 +2807,7 @@ function display_QG_from_JSON() {
 
     if ("nodes" in jsonInput &&
 	"edges" in jsonInput) {
-	process_graph(jsonInput,'QG',"1.5");
+	process_graph(jsonInput,'QG',"1.6");
 
 	if (cyobj[99999]) { cyobj[99999].elements().remove(); }
 	else add_cyto(99999,'QG');
@@ -2921,6 +2943,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
     else if ('on' in result.node_bindings)
 	path_end = result.node_bindings['on'][0].id;
 
+    var uniq_paths = {};
     var num = 0;
     for (var ranal of result.analyses) {
 	num++;
@@ -2931,7 +2954,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         div.className = 'accordion';
 
 	var auxgraph = ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'];  // TODO: deal with more than one path_binding...?
-        add_aux_graph(kg,auxgraph,aux[auxgraph]["edges"],num,trapi);
+        add_aux_graph(kg,auxgraph,aux,num,trapi);
 	div.setAttribute('onclick', 'add_cyto('+num+',"AUX'+auxgraph+'","grid");sesame(this,a'+num+'_div);');
 
 	div.dataset.pnodes = "|filter|";
@@ -2943,6 +2966,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         span.append(kg.nodes[path_src]["name"]);
         div.append(span);
 
+	var pnodelist = '';
 	for (var pnode of get_node_list_in_paths(ranal.path_bindings,kg,aux).sort((a, b) => kg.nodes[a]['name'].localeCompare(kg.nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
 	    if (all_nodes[pnode]) {
                 all_nodes[pnode]['total']++;
@@ -2967,7 +2991,9 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 	    div.append(span);
 
 	    div.dataset.pnodes += "|"+pnode+"|";
+	    pnodelist += pnode;
 	}
+	div.dataset.pnodes += "|PATH::"+pnodelist+"|";
 
 	span = document.createElement("span");
         span.className = 'filtertag p0';
@@ -2975,6 +3001,18 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         span.append(kg.nodes[path_end]["name"]);
         div.append(span);
 
+	if (uniq_paths[pnodelist])
+	    uniq_paths[pnodelist]++;
+	else
+	    uniq_paths[pnodelist] = 1;
+        span = document.createElement("span");
+	span.id = "PATH::"+pnodelist+"::"+uniq_paths[pnodelist];
+        span.className = 'filterbutton p1';
+        span.title = "Show potentially-duplicate Paths";
+        span.append("dups?");
+        span.setAttribute('onclick', 'filter_results("paths","PATH::'+pnodelist+'");');
+        span.dataset.curie = pnodelist;
+        div.append(span);
 
 	var cnf = 'n/a';
         if (Number(ranal.score))
@@ -3023,6 +3061,15 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
     }
 
     document.getElementById("result_container").append(results_fragment);
+
+    for (var duppath in uniq_paths) {
+	for (var notadup of document.querySelectorAll('[id^="PATH::'+duppath+'::"]')) {
+	    if (uniq_paths[duppath] > 1)
+		notadup.innerHTML = "+" + (uniq_paths[duppath] - 1);
+	    else
+		notadup.style.display = 'none';
+	}
+    }
 
     var num = 1;
     for (let pnode of Object.keys(all_nodes).sort(function(a, b) { return all_nodes[a]['total'] > all_nodes[b]['total'] ? -1 : 1; }))
@@ -3167,6 +3214,10 @@ function display_pathfilter() {
             span.className = 'filterbutton p1';
             span.append(all_nodes[fcur.replace("X::","")]['name']);
 	}
+        else if (fcur.startsWith("PATH::")) {
+            span.className = 'filterbutton p1';
+            span.append('Potentially-duplicate Paths');
+	}
 	else {
             span.className = 'filterbutton p9';
             span.append(all_nodes[fcur]['name']);
@@ -3259,7 +3310,7 @@ function filter_paths(curie="CURRENT",only=false, display=true) {
 	    if (display)
 		pathhead.style.display = '';
             for (var curielabel of pathhead.children) {
-                if (curielabel.dataset && curielabel.dataset.curie) {
+                if (curielabel.dataset && curielabel.dataset.curie && all_nodes[curielabel.dataset.curie]) {
                     all_nodes[curielabel.dataset.curie]['filtered']++;
 
 		    if (display) {
@@ -3563,7 +3614,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 			    if (!(sgid in aux))
 				throw Error("Aux graph not found: "+sgid);
 
-			    add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+			    add_aux_graph(kg,sgid,aux,num,trapi);
 			}
 		    }
 		    else if (kmne.attributes) {
@@ -3571,7 +3622,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 			    if (att.attribute_type_id == "biolink:support_graphs" && att.value && att.value.length > 0) {
 				kmne.__has_sgs = true;
 				for (var sgid of att.value)
-				    add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+				    add_aux_graph(kg,sgid,aux,num,trapi);
 			    }
 			}
 		    }
@@ -3586,7 +3637,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
             for (var sg in result.analyses[0].support_graphs) {
 		var sgid = result.analyses[0].support_graphs[sg];
-		add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+		add_aux_graph(kg,sgid,aux,num,trapi);
 	    }
 	}
 
@@ -3595,11 +3646,11 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
     document.getElementById("result_container").append(results_fragment);
 }
 
-function add_aux_graph(kg,sgid,auxedges,parentnum,trapi) {
+function add_aux_graph(kg,sgid,auxgraphs,parentnum,trapi) {
     cytodata['AUX'+sgid] = [];
     var nodes = {};
 
-    for (var edgeid of auxedges) {
+    for (var edgeid of auxgraphs[sgid]["edges"]) {
 	if (!(edgeid in kg.edges))
 	    throw Error("AUX graph edge not defined in KG: "+edgeid);
 
@@ -3615,8 +3666,28 @@ function add_aux_graph(kg,sgid,auxedges,parentnum,trapi) {
 	    kmne.type = kmne.predicate;
 	if (kmne.qualifiers && kmne.qualifiers.length == 0)
 	    kmne.qualifiers = null;
-	//if (edge.attributes)
-	//kmne.edge_binding_attributes = edge.attributes;
+
+	// turtles, all the way down...
+	// ToDo: implement a hard stop at e.g. depth=5?
+        if (kmne.has_these_support_graphs && kmne.has_these_support_graphs.length > 0) {
+            kmne.__has_sgs = true;
+            for (var sssgid of kmne.has_these_support_graphs) {
+                if (!(sssgid in auxgraphs))
+                    throw Error("Aux graph not found: "+sssgid);
+
+                add_aux_graph(kg,sssgid,auxgraphs,parentnum,trapi);
+            }
+        }
+	else if (kmne.attributes) {
+            for (var satt of kmne.attributes) {
+                if (satt.attribute_type_id == "biolink:support_graphs" && satt.value && satt.value.length > 0) {
+                    kmne.__has_sgs = true;
+                    for (var sssgid of satt.value)
+                        add_aux_graph(kg,sssgid,auxgraphs,parentnum,trapi);
+                }
+            }
+	}
+
 	var tmpdata = { "data" : kmne };
 	cytodata['AUX'+sgid].push(tmpdata);
     }
@@ -4056,8 +4127,9 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 
 	span = document.createElement("span");
         span.className = 'attbox';
+	span.style.cursor = "auto";
 
-        var head = document.createElement("div");
+	var head = document.createElement("div");
         head.className = 'head';
         head.append("Node Info");
         head.style.background = '#3d6d98';
@@ -4115,7 +4187,6 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 
 
 	if (this.data('node_binding_attributes')) {
-	    //div.append(document.createElement("br"));
 	    show_attributes(i,div, this.data('node_binding_attributes'),"Node Binding Attribute","value");
 	}
 
@@ -4151,6 +4222,7 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 
         span = document.createElement("span");
         span.className = 'attbox';
+        span.style.cursor = "auto";
 
         var head = document.createElement("div");
         head.className = 'head';
@@ -4242,7 +4314,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
     var span = document.createElement("span");
     span.className = 'attbox';
     span.title = "Click to view original JSON source";
-    span.onclick = function () { showJSONpopup("Qualifiers"+": ", JSON.stringify(quals,null,2), null); };
+    span.onclick = function () { showJSONpopup("Qualifiers", JSON.stringify(quals,null,2), null); };
 
     var head = document.createElement("div");
     head.className = 'head';
@@ -4266,6 +4338,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	'object_aspect_qualifier',
 	'object',
 	'object_context_qualifier',
+	'disease_context_qualifier',
 	'pathway_context_qualifier'
     ];
 
@@ -4298,7 +4371,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	}
         else if (oq == 'predicate') {
 	    if (hadqpred) continue;
-	    frag.innerHTML = pred + " ";
+	    frag.innerHTML = pred.replace("biolink:","").replaceAll("_"," ") + " ";
 	    celltext = pred;
 	}
 	else {
@@ -4408,7 +4481,7 @@ function show_attributes(num,html_div, atts, title="attribute", mainvalue) {
         var span = document.createElement("span");
 	span.className = 'attbox';
 	span.title = "Click to view original JSON source";
-        span.onclick = function () { showJSONpopup(title+": ", att, null); };
+        span.onclick = function () { showJSONpopup(title, att, null); };
 
         var head = document.createElement("div");
         head.className = 'head';
@@ -4427,9 +4500,11 @@ function show_attributes(num,html_div, atts, title="attribute", mainvalue) {
 
 }
 
-function display_attribute(num, tab, att, semmeddb, mainvalue, divider=true) {
+function display_attribute(num, tab, orig_att, semmeddb, mainvalue, divider=true) {
     var row = document.createElement("tr");
     var cell = document.createElement("td");
+
+    var att = Object.create(orig_att); // make a copy!
 
     if (divider) {
 	cell.colSpan = '2';
@@ -4513,6 +4588,7 @@ function display_attribute(num, tab, att, semmeddb, mainvalue, divider=true) {
 	    for (var val of att[mainvalue]) {
 		if (br)
 		    cell.append(document.createElement("br"));
+                cell.append("\u25BA ");
 
 		if (val == null) {
                     cell.append("--NULL--");
@@ -4532,12 +4608,19 @@ function display_attribute(num, tab, att, semmeddb, mainvalue, divider=true) {
                     a.addEventListener("click", function(e) { e.stopPropagation(); });
                     cell.append(a);
 
-		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val]) {
+		    var sdbs = null;
+		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val])
+			sdbs = semmeddb[0]["value"][val];
+		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"] && semmeddb[0]["value"][0] && semmeddb[0]["value"][0][val])
+			sdbs = semmeddb[0]["value"][0][val];
+		    if (sdbs) {
 			cell.append(" : ");
 			var quote = document.createElement("i");
-			quote.append(semmeddb[0]["value"][val]["sentence"]);
+			//quote.append(semmeddb[0]["value"][val]["sentence"]);
+			quote.append(sdbs["sentence"]);
 			cell.append(quote);
-			cell.append(' ('+semmeddb[0]["value"][val]["publication date"]+')');
+			//cell.append(' ('+semmeddb[0]["value"][val]["publication date"]+')');
+			cell.append(' ('+sdbs["publication date"]+')');
 		    }
 		}
 		else if (val.toString().startsWith("DOI:")) {
@@ -4741,6 +4824,7 @@ function mapNodeColor(ele) {
 
 function mapNodeIcon(ele) {
     var ntype = ele.data().categories ? ele.data().categories[0] ? ele.data().categories[0] : "NA" : "NA";
+    if (!UIstate['useicons']) ntype = "NA";
     if (ntype.endsWith("AnatomicalEntity"))   { return "./ui_icons/humanoid.png";}
     if (ntype.endsWith("BehavioralFeature"))  { return "./ui_icons/behavior.png";}
     if (ntype.endsWith("BiologicalProcess"))  { return "./ui_icons/biological.png";}
@@ -8822,6 +8906,24 @@ function update_url(urlkey,value) {
 	UIstate[urlkey] = to;
 	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
+    else if (urlkey == 'maxpaths') {
+	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
+	if (isNaN(to))
+	    to = '100';
+	UIstate[urlkey] = to;
+	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
+    else if (urlkey == 'maxpathlen') {
+	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
+	if (isNaN(to))
+	    to = 4;
+	else if (to < 2)
+	    to = 1;
+	else if (to > 5)
+	    to = 5;
+	UIstate[urlkey] = to;
+	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
     else if (urlkey == 'maxresults') {
         var mx = parseInt(document.getElementById(urlkey+"_url").value.trim());
 	if (isNaN(mx))
@@ -8840,6 +8942,9 @@ function update_url(urlkey,value) {
 	UIstate[urlkey] = document.getElementById(urlkey+"_url").value.trim();
         document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
+    else if (urlkey == 'useicons') {
+        UIstate[urlkey] = document.getElementById(urlkey+"_url").value == "true";
+    }
     else {
 	providers[urlkey].url = document.getElementById(urlkey+"_url").value.trim();
 	document.getElementById(urlkey+"_url").value = providers[urlkey].url;
@@ -8848,7 +8953,7 @@ function update_url(urlkey,value) {
     var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
 function update_submit_button(urlkey) {
-    var currval = (urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxresults' || urlkey == 'maxsyns') ? UIstate[urlkey] : providers[urlkey].url;
+    var currval = (urlkey == 'useicons' || urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxpaths' || urlkey == 'maxpathlen' || urlkey == 'maxresults' || urlkey == 'maxsyns') ? UIstate[urlkey] : providers[urlkey].url;
 
     if (currval == document.getElementById(urlkey+"_url").value)
 	document.getElementById(urlkey+"_url_button").disabled = true;
