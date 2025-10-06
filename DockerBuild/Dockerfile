@@ -1,10 +1,10 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 # suppress debconf error messages:
 ARG DEBIAN_FRONTEND=noninteractive
 
 # build based on branch
-ARG BUILD_BRANCH=master
+ARG BUILD_BRANCH=issue2521
 
 # add user "rt" and give sudo privilege:
 RUN useradd rt -m -s /bin/bash
@@ -60,14 +60,16 @@ COPY remoteip.conf /etc/apache2/conf-available/remoteip.conf
 RUN a2enconf remoteip
 RUN cd /var/www && /usr/sbin/apachectl configtest
 
-# install python and packages
+# install python 3.12 and packages
 RUN apt-get update
 RUN apt-get install -y python3 python3-pip
 RUN apt-get install -y software-properties-common
 RUN add-apt-repository -y ppa:deadsnakes/ppa
-RUN apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv
-RUN rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3.9 -m pip install click==8.1.3 && python3.9 -m pip install -r requirements.txt && python3.9 -m pip install connexion[swagger-ui]
+RUN apt-get update && apt-get install -y python3.12 python3.12-dev python3.12-venv
+RUN rm /usr/bin/python3 && ln -s /usr/bin/python3.12 /usr/bin/python3
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
+RUN python3.12 -m pip install --upgrade pip setuptools wheel
+RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install click==8.1.3 && python3.12 -m pip install -r requirements.txt
 
 # setup services
 RUN export DEVAREA=production
