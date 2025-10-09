@@ -19,7 +19,7 @@ import time
 
 class QueryEBIOLS:
     TIMEOUT_SEC = 120
-    API_BASE_URL = "https://www.ebi.ac.uk/ols/api/ontologies"
+    API_BASE_URL = "https://www.ebi.ac.uk/ols4/api/ontologies"
     HANDLER_MAP = {
         'get_anatomy': '{ontology}/terms/{id}',
         'get_phenotype': '{ontology}/terms/{id}',
@@ -65,7 +65,7 @@ class QueryEBIOLS:
         """
         bto_iri = "http://purl.obolibrary.org/obo/" + bto_curie_id.replace(":", "_")
         bto_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(bto_iri))
-        res = QueryEBIOLS.send_query_get("bto/terms/", bto_iri_double_encoded)
+        res = QueryEBIOLS.send_query_get("bto/terms", bto_iri_double_encoded)
         ret_label = None
         if res is not None:
             res_json = res.json()
@@ -81,7 +81,7 @@ class QueryEBIOLS:
         """
         uberon_iri = "http://purl.obolibrary.org/obo/" + uberon_curie_id.replace(":", "_")
         uberon_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(uberon_iri))
-        res = QueryEBIOLS.send_query_get("uberon/terms/", uberon_iri_double_encoded)
+        res = QueryEBIOLS.send_query_get("uberon/terms", uberon_iri_double_encoded)
         ret_list = list()
         if res is not None:
             res_json = res.json()
@@ -101,7 +101,7 @@ class QueryEBIOLS:
         """
         uberon_iri = "http://purl.obolibrary.org/obo/" + uberon_curie_id.replace(":", "_")
         uberon_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(uberon_iri))
-        res = QueryEBIOLS.send_query_get("uberon/terms/", uberon_iri_double_encoded)
+        res = QueryEBIOLS.send_query_get("uberon/terms", uberon_iri_double_encoded)
         ret_list = list()
         if res is not None:
             res_json = res.json()
@@ -178,29 +178,30 @@ class QueryEBIOLS:
     def get_molecular_function_description(mf_id):
         return QueryEBIOLS.__get_entity("get_molecular_function", mf_id)
 
+    @staticmethod
+    def get_mesh_id_for_mondo_id(mondo_curie_id):
+        """
+        Converts a disease MONDO ID to MeSH id
+        :param mondo_curie_id: eg. "MONDO:0005148"
+        :return: a set of MeSH id's (eg. {"MESH:D003924"})
+        """
+        mondo_iri = "http://purl.obolibrary.org/obo/" + mondo_curie_id.replace(":", "_")
+        mondo_iri_double_encoded = urllib.parse.quote_plus(urllib.parse.quote_plus(mondo_iri))
+        res = QueryEBIOLS.send_query_get("mondo/terms", mondo_iri_double_encoded)
+        ret_list = list()
+        if res is not None:
+            res_json = res.json()
+            res_annotation = res_json.get("annotation", None)
+            if res_annotation is not None:
+                db_x_refs = res_annotation.get("database_cross_reference", None)
+                if db_x_refs is not None:
+                    ret_list = [mesh_id for mesh_id in db_x_refs if "MESH:" in mesh_id]
+        return set(ret_list)
+    
 
 if __name__ == "__main__":
     print(QueryEBIOLS.get_bto_id_for_uberon_id("UBERON:0000178"))
     print(QueryEBIOLS.get_bto_term_for_bto_id("BTO:0000089"))
     print(QueryEBIOLS.get_mesh_id_for_uberon_id("UBERON:0002107"))
     print(QueryEBIOLS.get_mesh_id_for_uberon_id("UBERON:0001162"))
-
-    def save_to_test_file(key, value):
-        f = open('tests/query_desc_test_data.json', 'r+')
-        try:
-            json_data = json.load(f)
-        except ValueError:
-            json_data = {}
-        f.seek(0)
-        f.truncate()
-        json_data[key] = value
-        json.dump(json_data, f)
-        f.close()
-
-    save_to_test_file('UBERON:0004476', QueryEBIOLS.get_anatomy_description('UBERON:0004476'))
-    save_to_test_file('CL:0000038', QueryEBIOLS.get_anatomy_description('CL:0000038'))
-    save_to_test_file('GO:0042535', QueryEBIOLS.get_bio_process_description('GO:0042535'))
-    save_to_test_file('HP:0011105', QueryEBIOLS.get_phenotype_description('HP:0011105'))
-    save_to_test_file('GO:0005573', QueryEBIOLS.get_cellular_component_description('GO:0005573'))
-    save_to_test_file('GO:0004689', QueryEBIOLS.get_molecular_function_description('GO:0004689'))
-    save_to_test_file('OMIM:604348', QueryEBIOLS.get_disease_description('OMIM:604348'))
+    print(QueryEBIOLS.get_mesh_id_for_mondo_id("MONDO:0005148"))
