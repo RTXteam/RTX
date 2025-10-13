@@ -13,13 +13,13 @@ hr {
 
 .banner {
     position: fixed;
+    top:0;left:0;
     width: 100%;
     min-height: 50px;
-    z-index: 9;
+    z-index: 8;
     box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
     color: #ddd;
-    background-color: #040;
-    background-image: url(banner.png);
+    background-color: rgba(61,109,152);
 }
 .banner::before {
     font-size: 40px;
@@ -84,21 +84,22 @@ hr {
 }
 
 .menuleft {
-    z-index: 8;
+    z-index: 9;
     position: fixed;
+    top:50px;left:0;
     width: 150px;
     height: 100%;
     font-size: 15px;
     font-weight: bold;
-    color: #000;
+    color: #fff;
     box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
-    background-color: #ccc;
+    background-color: rgba(61,109,152);
     overflow-y: auto;
     overflow-x: hidden;
     scrollbar-width: thin;  /* Firefox */
 }
 .menuleftitem  {
-    color: #666;
+    color: #c2cdd7;
     padding: 10px;
     text-align:right;
     display:block;
@@ -106,8 +107,8 @@ hr {
     cursor: pointer;
 }
 .menuleftitem:hover {
-    color: #000;
-    background-color: #9bc;
+    background-color: rgba(85,150,208);
+    color: #fff;
 }
 .menucurrent {
     padding: 10px;
@@ -129,6 +130,7 @@ hr {
 }
 
 .page {
+    margin-top: 60px;
     margin-left: 170px;
     margin-right: 10px;
 }
@@ -148,20 +150,27 @@ hr {
     padding-bottom: 2px;
 }
 
+.sbar {
+    border-bottom: 2px solid #ccc;
+    display: flex;
+}
+
 .slink {
     padding: 10px 20px;
     width: 70px;
     border-top: 1px solid #eee;
     border-left: 1px solid #eee;
     border-right: 1px solid #eee;
-    border-bottom: 4px solid #eee;
+    border-bottom: 2px solid #ccc;
+    margin-bottom: -2px;
     cursor: pointer;
 }
 .slink:hover {
     box-shadow: 0 0 5px #999;
+    border-color: #5596d0;
 }
 .slink_on {
-    border-bottom: 4px solid #c40;
+    border-bottom: 4px solid #3d6d98;
 }
 
 .sampleqs {
@@ -258,7 +267,7 @@ hr {
     color: #333;
 }
 
-#dslText, #wfJSON, #jsonText, #responseText {
+#dslText, #wfJSON, #jsonText, #responseText, #genesetText {
     width: 80%;
     height: 30em;
     overflow:scroll;
@@ -301,26 +310,29 @@ hr {
 }
 
 .statushead {
-    background-color: #ccc;
-    color: #000;
-/*    cursor: pointer; */
+    background-color: rgba(61,109,152);
+    color: #fff;
     margin-top: 15px;
     padding: 4px 10px;
     max-width: 100%;
-    border-top: 1px solid #444;
-    border-left: 25px solid #444;
-    border-right: 1px solid #444;
+    border-top: 1px solid #000;
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
     text-align: left;
     outline: none;
     font-size: 16px;
     font-weight:bold;
     transition: 0.1s;
 }
+.statusheadlink {
+    color: #ec1 !important;
+}
+
 .status {
-    border-top: 1px solid #999;
-    border-bottom: 1px solid #444;
-    border-left: 1px solid #444;
-    border-right: 1px solid #444;
+    border-top: 6px solid rgba(85,150,208);
+    border-bottom: 1px solid #000;
+    border-left: 1px solid #000;
+    border-right: 1px solid #000;
     padding: 0 25px;
     background-color: #fff;
     max-width: 100%;
@@ -496,12 +508,12 @@ hr {
     100% { background-color: #f80; }
 }
 
-.p9, .msgINFO    { background-color: #291; }
-.p7              { background-color: #7b4; }
-.p5              { background-color: #cc5; }
-.p3, .msgWARNING { background-color: #f80; }
-.p1, .msgERROR   { background-color: #821; }
-.p0, .msgDEBUG   { background-color: #444; }
+.p9, .msgINFO, .msgPASS { background-color: #291; }
+.p7, .msgDISABLED       { background-color: #7b4; }
+.p5, .msgSKIPPED        { background-color: #cc5; }
+.p3, .msgWARNING        { background-color: #f80; }
+.p1, .msgERROR, .msgFAIL{ background-color: #821; }
+.p0, .msgDEBUG, .msgNA  { background-color: #444; }
 
 
 .code200 { background-color: #5f5; }
@@ -704,13 +716,13 @@ td {
 .button {
     padding-left: 30px;
     padding-right: 30px;
-    background-color: #047;
+    background-color: #3d6d98;
     color: #fff;
     transition-duration: 0.2s;
 }
 .button:hover {
     cursor: pointer;
-    background-color: #9bc;
+    background-color: #ec1;
     color: #333;
 }
 .button:disabled {
@@ -732,7 +744,7 @@ td {
 }
 .qgbutton:hover {
     cursor: pointer;
-    background-color: #9bc;
+    background-color: #ec1;
     color: #333;
 }
 
@@ -839,7 +851,7 @@ td {
     color: initial;
     display: block;
 }
-.filtermenu a:hover { background-color: #9bc; }
+.filtermenu a:hover { background-color: #ec1; }
 .filterhead:hover   { background-color: #eee; }
 .filterhead:hover .filtermenu {
     display: block;
@@ -879,11 +891,11 @@ td {
 }
 
 input:checked + .slider {
-  background-color: #047;
+  background-color: #3d6d98;
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px #047;
+  box-shadow: 0 0 1px #3d6d98;
 }
 
 input:checked + .slider::before {

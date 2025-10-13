@@ -273,10 +273,12 @@ function reset_vars() {
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("provenance_container").innerHTML = "";
-    document.getElementById("menunummessages").innerHTML = "--";
-    document.getElementById("menunummessages").className = "numold menunum";
-    document.getElementById("menunumresults").innerHTML = "--";
-    document.getElementById("menunumresults").className = "numold menunum";
+
+    for (var indicator of ["menunummessages","menunumresults","menunumtrapi"]) {
+	document.getElementById(indicator).innerHTML = "--";
+	document.getElementById(indicator).className = "numold menunum";
+    }
+
     summary_table_html = '';
     summary_score_histogram = {};
     summary_tsv = [];
@@ -869,11 +871,12 @@ async function sendSyn() {
     div.className = "statushead";
     div.append("Synonym Results");
     text = document.createElement("a");
+    text.className = "statusheadlink";
+    text.style.float = "right";
     text.target = '_blank';
     text.title = 'link to this synonym entry';
     text.href = "http://"+ window.location.hostname + window.location.pathname + "?term=" + word;
     text.innerHTML = "[ Direct link to this entry ]";
-    text.style.float = "right";
     div.append(text);
     syndiv.append(div);
 
@@ -1481,7 +1484,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
                 vares.style.cursor = "pointer";
 		vares.title = "text report";
                 vares.append("text ");
-		var valink = document.createElement("a");
+		valink = document.createElement("a");
                 valink.target = '_validator';
                 valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
                 valink.append('Validation Codes Dictionary');
@@ -1491,6 +1494,8 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 
 	    statusdiv.append(document.createElement("br"));
+
+	    renderTRAPIReport(jsonObj2.validation_result);
 	}
 	if (jsonObj2.validation_result.status == "FAIL") {
 	    if (type == "all") {
@@ -1738,14 +1743,19 @@ function retrieve_response(resp_url, resp_id, type) {
 	return;
     }
 
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginLeft = "150px";
+    statusdiv.append(wait);
     statusdiv.append(document.createElement("hr"));
     sesame('openmax',statusdiv);
 
     var xhr = new XMLHttpRequest();
     xhr.open("get",  resp_url, true);
     //xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
     xhr.send(null);
     xhr.onloadend = function() {
+	wait.remove();
 	if ( xhr.status == 200 ) {
             if (document.getElementById("istrapi_"+resp_id))
 		document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
@@ -2474,6 +2484,146 @@ function render_queryplan_table(qp) {
     return table;
 }
 
+function renderTRAPIReport(report) {
+    document.getElementById("menunumtrapi").innerHTML = report.status;
+    document.getElementById("menunumtrapi").classList.add('numnew','msg'+report.status);
+
+    var trapidiv = document.getElementById("trapi_container");
+
+    var head = document.createElement("h2");
+    head.className = "qprob msg"+report.status;
+    head.append("TRAPI validation status: "+report.status);
+    trapidiv.append(head);
+
+    if (report.status == "DISABLED" || report.status == "NA") {
+	trapidiv.append(report.message);
+	if (report.validation_messages && report.validation_messages['info'] && report.validation_messages['info']['message'])
+	    trapidiv.append(" :: "+report.validation_messages['info']['message']);
+	return;
+    }
+
+    for (var vtype of ["critical","error","warning","info","skipped"]) {
+        if (Object.keys(report.validation_messages[vtype]).length < 1)
+	    continue;
+
+        var div = document.createElement("div");
+	div.className = "statushead";
+	div.append(vtype+" ("+Object.keys(report.validation_messages[vtype]).length+")");
+	trapidiv.append(div);
+
+        div = document.createElement("div");
+        div.className = "status";
+        var table = document.createElement("table");
+        table.className = 'sumtab';
+
+	var extrabr = false;
+	for (var vmsg in report.validation_messages[vtype]) {
+            var tr = document.createElement("tr");
+            var td = document.createElement("td");
+            td.colSpan = "3";
+            td.className = "error";
+            td.style.fontSize = 'x-large';
+            td.style.background = '#fff';
+	    if (extrabr) {
+                td.style.borderTop = "2px solid #444";
+		td.append(document.createElement("br"));
+	    }
+            td.append(vmsg);
+            tr.append(td);
+            table.append(tr);
+	    extrabr = true;
+
+            for (var where in report.validation_messages[vtype][vmsg]) {
+		tr = document.createElement("tr");
+		td = document.createElement("td");
+		td.className = "code501 attvalue";
+                td.style.borderTop = "2px solid #444";
+		td.colSpan = "3";
+		td.append(where);
+		tr.append(td);
+		table.append(tr);
+
+		var places = 0;
+		for (var what in report.validation_messages[vtype][vmsg][where]) {
+                    if (places++ > 10)
+                        break;
+
+                    tr = document.createElement("tr");
+                    td = document.createElement("td");
+                    td.append(what);
+                    tr.append(td);
+
+		    if (!report.validation_messages[vtype][vmsg][where][what]) {
+			td.colSpan = "3";
+                        table.append(tr);
+			continue;
+		    }
+		    td.className = "attvalue";
+                    tr.style.borderTop = "2px solid #444";
+
+		    var newtr = false;
+		    var shown = 0;
+		    for (var item of report.validation_messages[vtype][vmsg][where][what]) {
+			for (var element in item) {
+			    if (newtr) {
+				tr = document.createElement("tr");
+				td = document.createElement("td");
+				td.append('');
+				tr.append(td);
+			    }
+
+                            td = document.createElement("td");
+                            td.append(element);
+                            tr.append(td);
+
+                            td = document.createElement("td");
+			    td.style.textAlign = "right";
+                            td.append(item[element]);
+                            tr.append(td);
+
+			    table.append(tr);
+			    newtr = true;
+			}
+			if (shown++ > 6)
+			    break;
+		    }
+
+		    if (Object.keys(report.validation_messages[vtype][vmsg][where][what]).length > shown) {
+			tr = document.createElement("tr");
+			td = document.createElement("td");
+			td.colSpan = "2";
+			tr.append(td);
+
+			td = document.createElement("td");
+			td.className = "attvalue";
+			td.append("+"+(Object.keys(report.validation_messages[vtype][vmsg][where][what]).length - shown));
+			tr.append(td);
+                        table.append(tr);
+		    }
+		}
+
+		if (Object.keys(report.validation_messages[vtype][vmsg][where]).length > places) {
+                    tr = document.createElement("tr");
+                    td = document.createElement("td");
+                    td.colSpan = "2";
+                    tr.append(td);
+
+                    td = document.createElement("td");
+                    td.className = "attvalue";
+                    td.append("+"+(Object.keys(report.validation_messages[vtype][vmsg][where]).length - places));
+                    tr.append(td);
+                    table.append(tr);
+		}
+	    }
+	}
+	div.append(table);
+	trapidiv.append(div);
+	trapidiv.append(document.createElement("br"));
+	trapidiv.append(document.createElement("br"));
+    }
+
+}
+
 function showJSONpopup(wtitle,query,footer) {
     var popup;
     if (document.getElementById("kpq"))
@@ -2704,6 +2854,9 @@ function add_status_divs() {
     div.className = 'status';
     div.id = 'logdiv';
     document.getElementById("messages_container").append(div);
+
+    // trapi validation
+    document.getElementById("trapi_container").innerHTML = '';
 }
 
 function filtermsgs(span, type) {
@@ -6628,6 +6781,7 @@ function retrieveRecentResps() {
 	    div.append("Viewing "+numpks+" Most Recent ARS Queries from "+srcpks);
 
             var link = document.createElement("a");
+	    link.className = "statusheadlink";
 	    link.style.float = 'right';
 	    link.target = '_blank';
 	    link.title = 'link to this view';
@@ -6803,6 +6957,7 @@ function retrieveRecentQs(active) {
 
 	    if (hours > 0) {
 		var link = document.createElement("a");
+		link.className = "statusheadlink";
 		link.target = '_blank';
 		link.title = 'link to this view';
 		link.href = "http://"+ window.location.hostname + window.location.pathname + "?recent=" + hours;
@@ -7570,6 +7725,7 @@ function retrieveSysTestResults(testid=null) {
 	    else throw new Error('Unable to fetch ARS Translator system test results from '+apiurl);
 	})
         .then(data => {
+	    document.getElementById("systest_link").href = "?systest="+test_pk.replace("ARSARS_","");
             wspan.innerHTML = '<b>Report source:</b> '+apiurl;
 	    systest_node.innerHTML = '';
 
@@ -7608,7 +7764,6 @@ function retrieveSysTestResults(testid=null) {
 
 	    systest_node.append(document.createElement("br"));
 	    systest_node.append(document.createElement("br"));
-
         })
         .catch(error => {
             wspan.innerHTML = '';
@@ -7990,6 +8145,7 @@ function displayARSResults(parentnode,arsdata) {
     test2css['BadButForgivable'] = 'p3';
     test2css['NeverShow'] = 'p1';
     test2css['OverlyGeneric'] = 'p0';
+    test2css['PATHFINDER'] = 'scod';
 
     var hint = {};
     hint['TopAnswer'] = 'Result must be in the top 30 or top 10% of answers, whichever is greater';
@@ -8052,6 +8208,7 @@ function displayARSResults(parentnode,arsdata) {
     table.append(tr);
 
     var num = 0;
+    var add_to_link = '';
     for (var row of arsdata['row_data']) {
 	num++;
 	tr = document.createElement("tr");
@@ -8079,7 +8236,10 @@ function displayARSResults(parentnode,arsdata) {
 	tr.append(td);
 
 	var ttype = row.name.split(":")[0];
-        td = document.createElement("td");
+	if (ttype == 'PATHFINDER')
+	    add_to_link = 'pathfinder_';
+
+	td = document.createElement("td");
 	td.title = hint[ttype];
         td.dataset.value = ttype;
         if (stats['test_type'][ttype])
@@ -8104,7 +8264,7 @@ function displayARSResults(parentnode,arsdata) {
 	    link = document.createElement("a");
             link.target = "_radiator";
             link.title = 'view test JSON';
-	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/test_cases/'+row.TestCase+'.json';
+	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/'+add_to_link+'test_cases/'+row.TestCase+'.json';
 	    link.append(row.TestCase);
 	    td.append(link);
 	}
@@ -8119,7 +8279,7 @@ function displayARSResults(parentnode,arsdata) {
             link = document.createElement("a");
 	    link.target = "_radiator";
 	    link.title = 'view asset JSON';
-	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/test_assets/'+row.TestAsset+'.json';
+	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/'+add_to_link+'test_assets/'+row.TestAsset+'.json';
             link.append(row.TestAsset);
 	    td.append(link);
 	}
@@ -8323,7 +8483,7 @@ function add_to_dev_info(title,jobj) {
 function togglecolor(obj,tid) {
     var col = '#888';
     if (obj.checked == true) {
-	col = '#047';
+	col = '#3d6d98';
     }
     document.getElementById(tid).style.color = col;
 }
