@@ -1,5 +1,6 @@
 import connexion
 import six
+import json
 
 from openapi_server.models.async_query_status_response import AsyncQueryStatusResponse  # noqa: E501
 from openapi_server import util
@@ -24,9 +25,10 @@ def asyncquery_status(job_id):  # noqa: E501
     query_tracker = ARAXQueryTracker()
 
     response = query_tracker.get_job_status(job_id)
+    response_dict = response.to_dict()
 
     if response.status == 'UnknownJobId':
-        return( { "status": 404, "title": "Job id not found", "detail": response, "type": "about:blank" }, 404 )
+        return( { "status": 404, "title": "Job id not found", "detail": response_dict, "type": "about:blank" }, 404 )
 
-    return response
+    return response_dict
 
