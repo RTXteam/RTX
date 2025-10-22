@@ -4,7 +4,7 @@ import copy
 import sys
 import os
 import traceback
-from typing import Union, Optional
+from typing import Union, Optional, cast
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
@@ -290,8 +290,9 @@ def get_curie_synonyms(curie: Union[str, list[str]], log: Optional[ARAXResponse]
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
+        error_code = error_type.__name__ if error_type is not None else "UnknownError"
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
-                  error_code=error_type.__name__) # type: ignore[union-attr]
+                  error_code=error_code)
         return []
     else:
         if equivalent_curies_dict is not None:
@@ -320,8 +321,9 @@ def get_curie_synonyms_dict(curie: Union[str, list[str]],
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
+        error_code = error_type.__name__ if error_type is not None else "UnknownError"
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
-                  error_code=error_type.__name__) # type: ignore[union-attr]
+                  error_code=error_code)
         return dict()
     else:
         if equivalent_curies_dict is not None:
@@ -348,15 +350,17 @@ def get_canonical_curies_dict(curie: Union[str, list[str]], log: ARAXResponse) -
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
+        error_code = error_type.__name__ if error_type is not None else "UnknownError"
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
-                  error_code=error_type.__name__) # type: ignore[union-attr]
+                  error_code=error_code)
         return {}
     else:
         if canonical_curies_dict is not None:
             unrecognized_curies = {input_curie for input_curie in canonical_curies_dict if not canonical_curies_dict.get(input_curie)}
             if unrecognized_curies:
                 log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
-            return canonical_curies_dict
+            # Cast to proper type since we know the structure from NodeSynonymizer
+            return cast(dict[str, dict[str, str]], canonical_curies_dict)
         else:
             log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return {}
@@ -372,8 +376,9 @@ def get_canonical_curies_list(curie: Union[str, list[str]], log: ARAXResponse) -
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
+        error_code = error_type.__name__ if error_type is not None else "UnknownError"
         log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
-                  error_code=error_type.__name__) # type: ignore[union-attr]
+                  error_code=error_code)
         return []
     else:
         if canonical_curies_dict is not None:
@@ -420,7 +425,8 @@ def get_curie_names(curie: Union[str, list[str]], log: ARAXResponse) -> dict[str
     synonymizer = NodeSynonymizer()
     log.debug(f"Looking up names for {len(curies)} input curies using NodeSynonymizer.get_curie_names()")
     curie_to_name_map = synonymizer.get_curie_names(curies)
-    return curie_to_name_map
+    # Cast to proper type since we know the structure from NodeSynonymizer
+    return cast(dict[str, str], curie_to_name_map)
 
 
 def qg_is_fulfilled(query_graph: QueryGraph,
@@ -486,7 +492,7 @@ def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> set[str]:
 
 
 def is_subclass_self_qedge(qedge: QEdge) -> bool:
-    return qedge.subject == qedge.object and qedge.predicates == ["biolink:subclass_of"]
+    return bool(qedge.subject == qedge.object and qedge.predicates == ["biolink:subclass_of"])
 
 
 def flip_edge(edge: Edge, new_predicate: str) -> Edge:
@@ -601,7 +607,8 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph,
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(tb, error_code=error_type.__name__) # type: ignore[union-attr]
+        error_code = error_type.__name__ if error_type is not None else "UnknownError"
+        log.error(tb, error_code=error_code)
         log.error("Something went wrong removing semmeddb edges from the knowledge graph")
     else:
         log.info(f"{edges_removed_counter} Semmeddb Edges with low publication count successfully removed")
