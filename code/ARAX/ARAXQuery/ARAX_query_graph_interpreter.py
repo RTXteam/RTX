@@ -67,8 +67,19 @@ class ARAXQueryGraphInterpreter:
         # Detect a "pathfinder" QueryGraph pattern in the query and branch off to different behavior
         if hasattr(message.query_graph, 'paths') and message.query_graph.paths is not None and len(message.query_graph.paths) > 0:
             response.info("QueryGraphInterpreter recognized query_graph as a 'pathfinder' query: triggering pathfinder subsystem.")
+
+            max_pathfinder_paths_str = ''
+            if 'max_pathfinder_paths' in response.envelope.query_options:
+                max_pathfinder_paths_str = f", max_pathfinder_paths={response.envelope.query_options['max_pathfinder_paths']}"
+                response.info(f"QueryGraphInterpreter setting max_pathfinder_paths={response.envelope.query_options['max_pathfinder_paths']}")
+
+            max_path_length_str = ', max_path_length=4'
+            if 'max_path_length' in response.envelope.query_options:
+                max_path_length_str = f", max_path_length={response.envelope.query_options['max_path_length']}"
+                response.info(f"QueryGraphInterpreter setting max_path_length={response.envelope.query_options['max_path_length']}")
+
             response.data['araxi_commands'] = [
-                'connect(action=connect_nodes, max_path_length=4)',
+                f"connect(action=connect_nodes{max_path_length_str}{max_pathfinder_paths_str})",
             ]
             return response
 

@@ -62,8 +62,11 @@ const attributes_to_truncate = [
 function main() {
     UIstate["submitter"] = 'ARAX GUI';
     UIstate['autorefresh'] = true;
+    UIstate['useicons'] = true;
     UIstate["timeout"] = '30';
     UIstate["pruning"] = '50';
+    UIstate["maxpaths"] = '100';
+    UIstate["maxpathlen"] = '4';
     UIstate["pid"] = null;
     UIstate["viewing"] = null;
     UIstate["version"] = checkUIversion(false);
@@ -90,9 +93,13 @@ function main() {
 	document.getElementById(prov+"_url").value = providers[prov].url;
 	document.getElementById(prov+"_url_button").disabled = true;
     }
-    for (var setting of ["submitter","timeout","pruning","maxresults","maxsyns"]) {
-	document.getElementById(setting+"_url").value = UIstate[setting];
-	document.getElementById(setting+"_url_button").disabled = true;
+    for (var setting of ["useicons","submitter","timeout","pruning","maxpaths","maxpathlen","maxresults","maxsyns"]) {
+	if (document.getElementById(setting+"_url")) {
+	    document.getElementById(setting+"_url").value = UIstate[setting];
+	    document.getElementById(setting+"_url_button").disabled = true;
+	}
+	else
+	    console.warn(setting+" html setting not found");
     }
     var tab = getQueryVariable("tab") || "query";
     var syn = getQueryVariable("term") || null;
@@ -217,14 +224,8 @@ function selectInput (input_id) {
 }
 
 
-function clearJSON() {
-    document.getElementById("jsonText").value = '';
-}
-function clearDSL() {
-    document.getElementById("dslText").value = '';
-}
-function clearResponse() {
-    document.getElementById("responseText").value = '';
+function clearTextbox(which) {
+    document.getElementById(which+"Text").value = '';
 }
 
 function pasteSyn(word) {
@@ -272,10 +273,12 @@ function reset_vars() {
     document.getElementById("result_container").innerHTML = "";
     document.getElementById("summary_container").innerHTML = "";
     document.getElementById("provenance_container").innerHTML = "";
-    document.getElementById("menunummessages").innerHTML = "--";
-    document.getElementById("menunummessages").className = "numold menunum";
-    document.getElementById("menunumresults").innerHTML = "--";
-    document.getElementById("menunumresults").className = "numold menunum";
+
+    for (var indicator of ["menunummessages","menunumresults","menunumtrapi"]) {
+	document.getElementById(indicator).innerHTML = "--";
+	document.getElementById(indicator).className = "numold menunum";
+    }
+
     summary_table_html = '';
     summary_score_histogram = {};
     summary_tsv = [];
@@ -551,6 +554,17 @@ function postQuery_ARAX(qtype,queryObj) {
 	    queryObj.query_options = {};
 	queryObj.query_options['prune_threshold'] = UIstate["pruning"];
     }
+    if (UIstate["maxpaths"]) {
+	if (!queryObj.query_options)
+	    queryObj.query_options = {};
+	queryObj.query_options['max_pathfinder_paths'] = UIstate["maxpaths"];
+    }
+    if (UIstate["maxpathlen"]) {
+        if (!queryObj.query_options)
+            queryObj.query_options = {};
+        queryObj.query_options['max_path_length'] = UIstate["maxpathlen"];
+    }
+
     var cmddiv = document.createElement("div");
     cmddiv.id = "cmdoutput";
     statusdiv.append(cmddiv);
@@ -857,11 +871,12 @@ async function sendSyn() {
     div.className = "statushead";
     div.append("Synonym Results");
     text = document.createElement("a");
+    text.className = "statusheadlink";
+    text.style.float = "right";
     text.target = '_blank';
     text.title = 'link to this synonym entry';
     text.href = "http://"+ window.location.hostname + window.location.pathname + "?term=" + word;
     text.innerHTML = "[ Direct link to this entry ]";
-    text.style.float = "right";
     div.append(text);
     syndiv.append(div);
 
@@ -1289,7 +1304,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.5?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.6?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.append(head);
@@ -1469,7 +1484,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
                 vares.style.cursor = "pointer";
 		vares.title = "text report";
                 vares.append("text ");
-		var valink = document.createElement("a");
+		valink = document.createElement("a");
                 valink.target = '_validator';
                 valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
                 valink.append('Validation Codes Dictionary');
@@ -1479,6 +1494,8 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 
 	    statusdiv.append(document.createElement("br"));
+
+	    renderTRAPIReport(jsonObj2.validation_result);
 	}
 	if (jsonObj2.validation_result.status == "FAIL") {
 	    if (type == "all") {
@@ -1490,7 +1507,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
-	    nr.title = 'Failed TRAPI 1.5 validation';
+	    nr.title = 'Failed TRAPI 1.6 validation';
 	}
         else if (jsonObj2.validation_result.status == "ERROR") {
             if (type == "all") {
@@ -1502,7 +1519,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&#x2755;';
 	    nr.className = 'explevel p3';
-            nr.title = 'There were TRAPI 1.5 validation errors';
+            nr.title = 'There were TRAPI 1.6 validation errors';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all") {
@@ -1531,7 +1548,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
-	    nr.title = 'Passed TRAPI 1.5 validation';
+	    nr.title = 'Passed TRAPI 1.6 validation';
 	}
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
@@ -1726,14 +1743,19 @@ function retrieve_response(resp_url, resp_id, type) {
 	return;
     }
 
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginLeft = "150px";
+    statusdiv.append(wait);
     statusdiv.append(document.createElement("hr"));
     sesame('openmax',statusdiv);
 
     var xhr = new XMLHttpRequest();
     xhr.open("get",  resp_url, true);
     //xhr.setRequestHeader('Content-Type', 'application/json; charset=UTF-8');
+
     xhr.send(null);
     xhr.onloadend = function() {
+	wait.remove();
 	if ( xhr.status == 200 ) {
             if (document.getElementById("istrapi_"+resp_id))
 		document.getElementById("istrapi_"+resp_id).innerHTML = 'rendering...';
@@ -1821,7 +1843,7 @@ function update_response_stats_on_error(rid,msg,clearall) {
 function render_response(respObj,dispjson) {
     var statusdiv = document.getElementById("statusdiv");
     if (!respObj["schema_version"])
-	respObj["schema_version"] = "1.5 (presumed)";
+	respObj["schema_version"] = "1.6 (presumed)";
     statusdiv.append("Rendering TRAPI "+respObj["schema_version"]+" message...");
 
     sesame('openmax',statusdiv);
@@ -2462,6 +2484,146 @@ function render_queryplan_table(qp) {
     return table;
 }
 
+function renderTRAPIReport(report) {
+    document.getElementById("menunumtrapi").innerHTML = report.status;
+    document.getElementById("menunumtrapi").classList.add('numnew','msg'+report.status);
+
+    var trapidiv = document.getElementById("trapi_container");
+
+    var head = document.createElement("h2");
+    head.className = "qprob msg"+report.status;
+    head.append("TRAPI validation status: "+report.status);
+    trapidiv.append(head);
+
+    if (report.status == "DISABLED" || report.status == "NA") {
+	trapidiv.append(report.message);
+	if (report.validation_messages && report.validation_messages['info'] && report.validation_messages['info']['message'])
+	    trapidiv.append(" :: "+report.validation_messages['info']['message']);
+	return;
+    }
+
+    for (var vtype of ["critical","error","warning","info","skipped"]) {
+        if (Object.keys(report.validation_messages[vtype]).length < 1)
+	    continue;
+
+        var div = document.createElement("div");
+	div.className = "statushead";
+	div.append(vtype+" ("+Object.keys(report.validation_messages[vtype]).length+")");
+	trapidiv.append(div);
+
+        div = document.createElement("div");
+        div.className = "status";
+        var table = document.createElement("table");
+        table.className = 'sumtab';
+
+	var extrabr = false;
+	for (var vmsg in report.validation_messages[vtype]) {
+            var tr = document.createElement("tr");
+            var td = document.createElement("td");
+            td.colSpan = "3";
+            td.className = "error";
+            td.style.fontSize = 'x-large';
+            td.style.background = '#fff';
+	    if (extrabr) {
+                td.style.borderTop = "2px solid #444";
+		td.append(document.createElement("br"));
+	    }
+            td.append(vmsg);
+            tr.append(td);
+            table.append(tr);
+	    extrabr = true;
+
+            for (var where in report.validation_messages[vtype][vmsg]) {
+		tr = document.createElement("tr");
+		td = document.createElement("td");
+		td.className = "code501 attvalue";
+                td.style.borderTop = "2px solid #444";
+		td.colSpan = "3";
+		td.append(where);
+		tr.append(td);
+		table.append(tr);
+
+		var places = 0;
+		for (var what in report.validation_messages[vtype][vmsg][where]) {
+                    if (places++ > 10)
+                        break;
+
+                    tr = document.createElement("tr");
+                    td = document.createElement("td");
+                    td.append(what);
+                    tr.append(td);
+
+		    if (!report.validation_messages[vtype][vmsg][where][what]) {
+			td.colSpan = "3";
+                        table.append(tr);
+			continue;
+		    }
+		    td.className = "attvalue";
+                    tr.style.borderTop = "2px solid #444";
+
+		    var newtr = false;
+		    var shown = 0;
+		    for (var item of report.validation_messages[vtype][vmsg][where][what]) {
+			for (var element in item) {
+			    if (newtr) {
+				tr = document.createElement("tr");
+				td = document.createElement("td");
+				td.append('');
+				tr.append(td);
+			    }
+
+                            td = document.createElement("td");
+                            td.append(element);
+                            tr.append(td);
+
+                            td = document.createElement("td");
+			    td.style.textAlign = "right";
+                            td.append(item[element]);
+                            tr.append(td);
+
+			    table.append(tr);
+			    newtr = true;
+			}
+			if (shown++ > 6)
+			    break;
+		    }
+
+		    if (Object.keys(report.validation_messages[vtype][vmsg][where][what]).length > shown) {
+			tr = document.createElement("tr");
+			td = document.createElement("td");
+			td.colSpan = "2";
+			tr.append(td);
+
+			td = document.createElement("td");
+			td.className = "attvalue";
+			td.append("+"+(Object.keys(report.validation_messages[vtype][vmsg][where][what]).length - shown));
+			tr.append(td);
+                        table.append(tr);
+		    }
+		}
+
+		if (Object.keys(report.validation_messages[vtype][vmsg][where]).length > places) {
+                    tr = document.createElement("tr");
+                    td = document.createElement("td");
+                    td.colSpan = "2";
+                    tr.append(td);
+
+                    td = document.createElement("td");
+                    td.className = "attvalue";
+                    td.append("+"+(Object.keys(report.validation_messages[vtype][vmsg][where]).length - places));
+                    tr.append(td);
+                    table.append(tr);
+		}
+	    }
+	}
+	div.append(table);
+	trapidiv.append(div);
+	trapidiv.append(document.createElement("br"));
+	trapidiv.append(document.createElement("br"));
+    }
+
+}
+
 function showJSONpopup(wtitle,query,footer) {
     var popup;
     if (document.getElementById("kpq"))
@@ -2516,7 +2678,7 @@ function showJSONpopup(wtitle,query,footer) {
 
 function process_q_options(q_opts) {
     if (q_opts.actions) {
-	clearDSL();
+	clearTextbox('dsl');
 	for (var act of q_opts.actions) {
 	    if (act.length > 1) // skip blank lines
 		document.getElementById("dslText").value += act + "\n";
@@ -2566,6 +2728,14 @@ function process_log(logarr) {
     }
     let starttime = null;
     for (var msg of logarr) {
+	if (typeof msg === 'string') {
+	    var tmp = {};
+	    tmp.level = "INFO";
+	    tmp.message = msg;
+	    msg.timestamp = null;
+	    msg = tmp;
+	}
+
 	if (msg.prefix) { // upconvert TRAPI 0.9.3 --> 1.0
 	    msg.level = msg.level_str;
 	    msg.code = null;
@@ -2573,16 +2743,9 @@ function process_log(logarr) {
 
 	status[msg.level]++;
 
-	// TOFIX when TIMESTAMP not present
+	// FIXed:: when TIMESTAMP not present
 	var span = document.createElement("span");
-	span.title = "Click to display elapsed time between two events";
 	span.className = "hoverable msg " + msg.level;
-	span.dataset.timestamp = Date.parse(msg.timestamp);
-	span.setAttribute('onclick', 'calc_timespan(this);');
-
-	if (!starttime)
-	    starttime = span.dataset.timestamp;
-
         if (msg.level == "DEBUG") { span.style.display = 'none'; }
 
 	var span2 = document.createElement("span");
@@ -2600,16 +2763,25 @@ function process_log(logarr) {
 	span2.append(msg.message);
 	span.append(span2);
 
-        let units = " s";
-	let diff = Math.abs(span.dataset.timestamp - starttime)/1000;
-	if (diff>66) {
-            diff = (diff/60).toFixed(4);
-	    units = " m";
+	if (msg.timestamp) {
+	    span.title = "Click to display elapsed time between two events";
+	    span.dataset.timestamp = Date.parse(msg.timestamp);
+	    span.setAttribute('onclick', 'calc_timespan(this);');
+
+	    if (!starttime)
+		starttime = span.dataset.timestamp;
+
+            let units = " s";
+	    let diff = Math.abs(span.dataset.timestamp - starttime)/1000;
+	    if (diff>66) {
+		diff = (diff/60).toFixed(4);
+		units = " m";
+	    }
+	    span2 = document.createElement("span");
+	    span2.style.float = 'right';
+            span2.append(diff+units);
+            span.append(span2);
 	}
-	span2 = document.createElement("span");
-	span2.style.float = 'right';
-        span2.append(diff+units);
-        span.append(span2);
 
 	document.getElementById("logdiv").append(span);
     }
@@ -2682,6 +2854,9 @@ function add_status_divs() {
     div.className = 'status';
     div.id = 'logdiv';
     document.getElementById("messages_container").append(div);
+
+    // trapi validation
+    document.getElementById("trapi_container").innerHTML = '';
 }
 
 function filtermsgs(span, type) {
@@ -2785,7 +2960,7 @@ function display_QG_from_JSON() {
 
     if ("nodes" in jsonInput &&
 	"edges" in jsonInput) {
-	process_graph(jsonInput,'QG',"1.5");
+	process_graph(jsonInput,'QG',"1.6");
 
 	if (cyobj[99999]) { cyobj[99999].elements().remove(); }
 	else add_cyto(99999,'QG');
@@ -2921,6 +3096,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
     else if ('on' in result.node_bindings)
 	path_end = result.node_bindings['on'][0].id;
 
+    var uniq_paths = {};
     var num = 0;
     for (var ranal of result.analyses) {
 	num++;
@@ -2931,7 +3107,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         div.className = 'accordion';
 
 	var auxgraph = ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'];  // TODO: deal with more than one path_binding...?
-        add_aux_graph(kg,auxgraph,aux[auxgraph]["edges"],num,trapi);
+        add_aux_graph(kg,auxgraph,aux,num,trapi);
 	div.setAttribute('onclick', 'add_cyto('+num+',"AUX'+auxgraph+'","grid");sesame(this,a'+num+'_div);');
 
 	div.dataset.pnodes = "|filter|";
@@ -2943,6 +3119,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         span.append(kg.nodes[path_src]["name"]);
         div.append(span);
 
+	var pnodelist = '';
 	for (var pnode of get_node_list_in_paths(ranal.path_bindings,kg,aux).sort((a, b) => kg.nodes[a]['name'].localeCompare(kg.nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
 	    if (all_nodes[pnode]) {
                 all_nodes[pnode]['total']++;
@@ -2967,7 +3144,9 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 	    div.append(span);
 
 	    div.dataset.pnodes += "|"+pnode+"|";
+	    pnodelist += pnode;
 	}
+	div.dataset.pnodes += "|PATH::"+pnodelist+"|";
 
 	span = document.createElement("span");
         span.className = 'filtertag p0';
@@ -2975,6 +3154,18 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         span.append(kg.nodes[path_end]["name"]);
         div.append(span);
 
+	if (uniq_paths[pnodelist])
+	    uniq_paths[pnodelist]++;
+	else
+	    uniq_paths[pnodelist] = 1;
+        span = document.createElement("span");
+	span.id = "PATH::"+pnodelist+"::"+uniq_paths[pnodelist];
+        span.className = 'filterbutton p1';
+        span.title = "Show potentially-duplicate Paths";
+        span.append("dups?");
+        span.setAttribute('onclick', 'filter_results("paths","PATH::'+pnodelist+'");');
+        span.dataset.curie = pnodelist;
+        div.append(span);
 
 	var cnf = 'n/a';
         if (Number(ranal.score))
@@ -3023,6 +3214,15 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
     }
 
     document.getElementById("result_container").append(results_fragment);
+
+    for (var duppath in uniq_paths) {
+	for (var notadup of document.querySelectorAll('[id^="PATH::'+duppath+'::"]')) {
+	    if (uniq_paths[duppath] > 1)
+		notadup.innerHTML = "+" + (uniq_paths[duppath] - 1);
+	    else
+		notadup.style.display = 'none';
+	}
+    }
 
     var num = 1;
     for (let pnode of Object.keys(all_nodes).sort(function(a, b) { return all_nodes[a]['total'] > all_nodes[b]['total'] ? -1 : 1; }))
@@ -3167,6 +3367,10 @@ function display_pathfilter() {
             span.className = 'filterbutton p1';
             span.append(all_nodes[fcur.replace("X::","")]['name']);
 	}
+        else if (fcur.startsWith("PATH::")) {
+            span.className = 'filterbutton p1';
+            span.append('Potentially-duplicate Paths');
+	}
 	else {
             span.className = 'filterbutton p9';
             span.append(all_nodes[fcur]['name']);
@@ -3259,7 +3463,7 @@ function filter_paths(curie="CURRENT",only=false, display=true) {
 	    if (display)
 		pathhead.style.display = '';
             for (var curielabel of pathhead.children) {
-                if (curielabel.dataset && curielabel.dataset.curie) {
+                if (curielabel.dataset && curielabel.dataset.curie && all_nodes[curielabel.dataset.curie]) {
                     all_nodes[curielabel.dataset.curie]['filtered']++;
 
 		    if (display) {
@@ -3563,7 +3767,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 			    if (!(sgid in aux))
 				throw Error("Aux graph not found: "+sgid);
 
-			    add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+			    add_aux_graph(kg,sgid,aux,num,trapi);
 			}
 		    }
 		    else if (kmne.attributes) {
@@ -3571,7 +3775,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 			    if (att.attribute_type_id == "biolink:support_graphs" && att.value && att.value.length > 0) {
 				kmne.__has_sgs = true;
 				for (var sgid of att.value)
-				    add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+				    add_aux_graph(kg,sgid,aux,num,trapi);
 			    }
 			}
 		    }
@@ -3586,7 +3790,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
             for (var sg in result.analyses[0].support_graphs) {
 		var sgid = result.analyses[0].support_graphs[sg];
-		add_aux_graph(kg,sgid,aux[sgid]["edges"],num,trapi);
+		add_aux_graph(kg,sgid,aux,num,trapi);
 	    }
 	}
 
@@ -3595,11 +3799,11 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
     document.getElementById("result_container").append(results_fragment);
 }
 
-function add_aux_graph(kg,sgid,auxedges,parentnum,trapi) {
+function add_aux_graph(kg,sgid,auxgraphs,parentnum,trapi) {
     cytodata['AUX'+sgid] = [];
     var nodes = {};
 
-    for (var edgeid of auxedges) {
+    for (var edgeid of auxgraphs[sgid]["edges"]) {
 	if (!(edgeid in kg.edges))
 	    throw Error("AUX graph edge not defined in KG: "+edgeid);
 
@@ -3615,8 +3819,28 @@ function add_aux_graph(kg,sgid,auxedges,parentnum,trapi) {
 	    kmne.type = kmne.predicate;
 	if (kmne.qualifiers && kmne.qualifiers.length == 0)
 	    kmne.qualifiers = null;
-	//if (edge.attributes)
-	//kmne.edge_binding_attributes = edge.attributes;
+
+	// turtles, all the way down...
+	// ToDo: implement a hard stop at e.g. depth=5?
+        if (kmne.has_these_support_graphs && kmne.has_these_support_graphs.length > 0) {
+            kmne.__has_sgs = true;
+            for (var sssgid of kmne.has_these_support_graphs) {
+                if (!(sssgid in auxgraphs))
+                    throw Error("Aux graph not found: "+sssgid);
+
+                add_aux_graph(kg,sssgid,auxgraphs,parentnum,trapi);
+            }
+        }
+	else if (kmne.attributes) {
+            for (var satt of kmne.attributes) {
+                if (satt.attribute_type_id == "biolink:support_graphs" && satt.value && satt.value.length > 0) {
+                    kmne.__has_sgs = true;
+                    for (var sssgid of satt.value)
+                        add_aux_graph(kg,sssgid,auxgraphs,parentnum,trapi);
+                }
+            }
+	}
+
 	var tmpdata = { "data" : kmne };
 	cytodata['AUX'+sgid].push(tmpdata);
     }
@@ -4052,35 +4276,71 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 	span.style.fontStyle = "italic";
 	span.append("Click on graph background to see a full list of nodes and edges");
 	div.append(span);
+	div.append(document.createElement("br"));
+
+	span = document.createElement("span");
+        span.className = 'attbox';
+	span.style.cursor = "auto";
+
+	var head = document.createElement("div");
+        head.className = 'head';
+        head.append("Node Info");
+        head.style.background = '#3d6d98';
+        span.append(head);
+
+        var atts_table = document.createElement("table");
 
 	var fields = [ "name","id","categories" ];
-	for (var field of fields) {
-	    if (this.data(field) == null) continue;
+        for (var field of fields) {
+            if (this.data(field) == null) continue;
+	    var row = document.createElement("tr");
+	    var cell = document.createElement("td");
+	    cell.className = "fieldname";
+            cell.append(field+": ");
+	    row.append(cell);
 
-	    var span = document.createElement("span");
-	    span.className = "fieldname";
-	    span.append(field+": ");
-	    div.append(span);
+	    cell = document.createElement("td");
 
-            var a = document.createElement("a");
-	    a.title = 'view ARAX synonyms';
-	    a.href = "javascript:lookup_synonym('"+this.data(field)+"',true)";
-	    a.innerHTML = this.data(field);
-	    div.append(a);
+            // handle all as arrays (hope no objects creep in...)
+            var values;
+            if (!Array.isArray(this.data(field)))
+                values = [ this.data(field) ];
+            else
+                values = this.data(field);
 
-	    div.append(document.createElement("br"));
+            var sep = '';
+            for (var val of values) {
+                var a = document.createElement("a");
+                if (field == 'categories') {
+                    a.title = 'view Biolink Model documentation for this concept';
+                    a.target = 'biolink';
+                    a.href = "https://biolink.github.io/biolink-model/" + val.replace("biolink:","");
+                }
+                else {
+                    a.title = 'view ARAX synonyms';
+                    a.href = "javascript:lookup_synonym('"+val+"',true)";
+                }
+                a.innerHTML = val;
+                cell.append(sep);
+		cell.append(a);
+                sep = ', ';
+            }
+            row.append(cell);
+	    atts_table.append(row);
 	}
+
+        span.append(atts_table);
+        div.append(span);
 
 
 	if (this.data('attributes'))
-	    show_attributes(i,div, this.data('attributes'),null,"value");
+	    show_attributes(i,div, this.data('attributes'),"Node Attribute","value");
 	else if (this.data('detail_lookup'))
-	    retrieve_attributes(i,div, this,null,"value");
+	    retrieve_attributes(i,div, this,"Node Attribute","value");
 
 
 	if (this.data('node_binding_attributes')) {
-	    div.append(document.createElement("br"));
-	    show_attributes(i,div, this.data('node_binding_attributes'),"Node Binding Attributes:","value");
+	    show_attributes(i,div, this.data('node_binding_attributes'),"Node Binding Attribute","value");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -4102,30 +4362,9 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 	span.append("Click on graph background to see a full list of nodes and edges");
 	div.append(span);
 
-	var a = document.createElement("a");
-	a.className = 'attvalue';
-	a.title = 'view ARAX synonyms';
-	a.href = "javascript:lookup_synonym('"+this.data('source')+"',true)";
-	a.innerHTML = this.data('source');
-	div.append(a);
-
-        var span = document.createElement("span");
-	span.className = 'attvalue';
-        span.append("----");
-	span.append(this.data('predicate'));
-        span.append("----");
-        div.append(span);
-
-        a = document.createElement("a");
-	a.className = 'attvalue';
-        a.style.marginRight = "20px";
-	a.title = 'view ARAX synonyms';
-	a.href = "javascript:lookup_synonym('"+this.data('target')+"',true)";
-	a.innerHTML = this.data('target');
-	div.append(a);
-
 	UIstate["edgesg"] = 0;
         span = document.createElement("span");
+	span.style.marginLeft = "40px";
 	if (!this.data('__has_sgs'))
 	    span.style.display = 'none';
 	span.id = 'd'+this.data('parentdivnum')+'_div_edge';
@@ -4134,26 +4373,62 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 
 	div.append(document.createElement("br"));
 
-	var fields = [ "relation","id" ];
-	for (var field of fields) {
-	    if (this.data(field) == null) continue;
+        span = document.createElement("span");
+        span.className = 'attbox';
+        span.style.cursor = "auto";
 
-	    span = document.createElement("span");
-	    span.className = "fieldname";
-	    span.append(field+": ");
-	    div.append(span);
-	    if (this.data(field).toString().startsWith("http")) {
+        var head = document.createElement("div");
+        head.className = 'head';
+        head.append("Edge Info");
+        head.style.background = '#3d6d98';
+        span.append(head);
+
+        var atts_table = document.createElement("table");
+        var fields = [ "source", "predicate", "target", "relation","id" ];
+        for (var field of fields) {
+            if (this.data(field) == null) continue;
+	    var row = document.createElement("tr");
+            var cell = document.createElement("td");
+
+            cell.className = "fieldname";
+            cell.append(field+": ");
+            row.append(cell);
+
+	    cell = document.createElement("td");
+
+            if (field == "source" || field == "target") {
+		var link = document.createElement("a");
+		link.title = 'view ARAX synonyms';
+		link.href = "javascript:lookup_synonym('"+this.data(field)+"',true)";
+                link.append(this.data(field));
+		cell.append(link);
+            }
+            else if (field == "predicate") {
+                var link = document.createElement("a");
+		link.title = 'view Biolink Model documentation for this concept';
+		link.target = 'biolink';
+		link.href = "https://biolink.github.io/biolink-model/" + this.data('predicate').replace("biolink:","");
+                link.append(this.data(field));
+                cell.append(link);
+            }
+	    else if (this.data(field).toString().startsWith("http")) {
 		var link = document.createElement("a");
 		link.href = this.data(field);
 		link.target = "_blank";
 		link.append(this.data(field));
-		div.append(link);
+		cell.append(link);
 	    }
 	    else {
-		div.append(this.data(field));
-	    }
-	    div.append(document.createElement("br"));
+                cell.append(this.data(field));
+            }
+
+	    row.append(cell);
+            atts_table.append(row);
 	}
+
+        span.append(atts_table);
+        div.append(span);
+
 
 	show_qualifiers(div,
 			this.data('qualifiers'),
@@ -4165,21 +4440,18 @@ function add_cyto(i,dataid, layout='breadthfirst') {
 		       );
 
 
-        if (this.data('attributes')) {
-	    show_attributes(i,div, this.data('attributes'),null,"value");
+	if (this.data('attributes')) {
+	    show_attributes(i,div, this.data('attributes'),"Edge Attribute","value");
 	    if (this.data('sources')) {
-		div.append(document.createElement("br"));
-		show_attributes(i,div, this.data('sources'),"Edge Sources:","resource_id");
-		//show_attributes(i,div, this.data('sources'),"Edge Sources:","upstream_resource_ids");
+		show_attributes(i,div, this.data('sources'),"Edge Source","resource_id");
 	    }
 	}
 	else if (this.data('detail_lookup'))
-	    retrieve_attributes(i,div, this,null,"value");
+	    retrieve_attributes(i,div, this,"Edge Attribute","value");
 
 
 	if (this.data('edge_binding_attributes')) {
-            div.append(document.createElement("br"));
-            show_attributes(i,div, this.data('edge_binding_attributes'),"Edge Binding Attributes:","value");
+            show_attributes(i,div, this.data('edge_binding_attributes'),"Edge Binding Attribute","value");
 	}
 
 	sesame('openmax',document.getElementById('a'+this.data('parentdivnum')+'_div'));
@@ -4192,18 +4464,20 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
     if (quals == null)
 	return;
 
-    var qtable = document.createElement("table");
-    qtable.className = 'numold explevel';
-    var row = document.createElement("tr");
-    var cell = document.createElement("td");
-    cell.className = 'attvalue';
-    cell.colSpan = '2';
-    cell.append("Qualified Statement");
-    row.append(cell);
-    qtable.append(row);
+    var span = document.createElement("span");
+    span.className = 'attbox';
+    span.title = "Click to view original JSON source";
+    span.onclick = function () { showJSONpopup("Qualifiers", JSON.stringify(quals,null,2), null); };
 
+    var head = document.createElement("div");
+    head.className = 'head';
+    head.append("Qualified Statement");
+    head.style.background = '#821';
+    span.append(head);
+
+    var qtable = document.createElement("table");
     var qsentence = document.createElement("span");
-    qsentence.className = 'explevel attvalue p9';
+    qsentence.className = 'attvalue';
 
     var orderedquals = [
 	'subject_direction_qualifier',
@@ -4217,6 +4491,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	'object_aspect_qualifier',
 	'object',
 	'object_context_qualifier',
+	'disease_context_qualifier',
 	'pathway_context_qualifier'
     ];
 
@@ -4249,7 +4524,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	}
         else if (oq == 'predicate') {
 	    if (hadqpred) continue;
-	    frag.innerHTML = pred + " ";
+	    frag.innerHTML = pred.replace("biolink:","").replaceAll("_"," ") + " ";
 	    celltext = pred;
 	}
 	else {
@@ -4264,7 +4539,7 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	    if (oq.includes('context_qualifier'))
 		pretext = "in ";
 
-	    frag.innerHTML = pretext + qual[0]['qualifier_value'] + postext + " ";
+	    frag.innerHTML = pretext + qual[0]['qualifier_value'].replace("biolink:","").replaceAll("_"," ") + postext + " ";
 	    celltext = qual[0]['qualifier_value'];
 	    if (hasdup)
 		celltext += " ** has duplicate values!";
@@ -4309,8 +4584,12 @@ function show_qualifiers(html_div, quals, subj, sname, pred, obj, oname) {
 	qtable.append(row);
     }
 
-    html_div.append(qsentence);
-    html_div.append(qtable);
+    span.append(qtable);
+    span.append(document.createElement("br"));
+    span.append(document.createElement("br"));
+    span.append(qsentence);
+
+    html_div.append(span);
 }
 
 
@@ -4334,8 +4613,7 @@ async function retrieve_attributes(num,html_div, cytobject, title, mainvalue) {
 	}
 	if (respjson.sources) {
 	    cytobject.data('sources', respjson.sources);
-            html_div.append(document.createElement("br"));
-            show_attributes(num,html_div, cytobject.data('sources'),"Edge Sources:","resource_id");
+            show_attributes(num,html_div, cytobject.data('sources'),"Edge Source","resource_id");
 	}
 	sesame('openmax',document.getElementById('a'+cytobject.data('parentdivnum')+'_div'));
     }
@@ -4344,7 +4622,7 @@ async function retrieve_attributes(num,html_div, cytobject, title, mainvalue) {
 }
 
 
-function show_attributes(num,html_div, atts, title, mainvalue) {
+function show_attributes(num,html_div, atts, title="attribute", mainvalue) {
     if (atts == null)
 	return;
 
@@ -4352,34 +4630,41 @@ function show_attributes(num,html_div, atts, title, mainvalue) {
 
     // always display iri first
     var iri = atts.filter(a => a.attribute_type_id == "biolink:IriType");
+    for (let att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
+        var span = document.createElement("span");
+	span.className = 'attbox';
+	span.title = "Click to view original JSON source";
+        span.onclick = function () { showJSONpopup(title, att, null); };
 
-    var atts_table = document.createElement("table");
-    if (title) {
-	atts_table.className = 'numold explevel';
-	var row = document.createElement("tr");
-	var cell = document.createElement("td");
-        cell.className = 'attvalue';
-	cell.colSpan = '2';
-	cell.append(title);
-	row.append(cell);
-	atts_table.append(row);
+        var head = document.createElement("div");
+        head.className = 'head';
+	head.append(title?title:"Attribute");
+	if (title.includes('Source'))
+	    head.style.background = '#291';
+	else if (title.includes('Binding'))
+	    head.style.background = '#821';
+        span.append(head);
+
+	var atts_table = document.createElement("table");
+        display_attribute(num,atts_table, att, semmeddb_sentences, mainvalue, false);
+	span.append(atts_table);
+	html_div.append(span);
     }
 
-    for (var att of iri.concat(atts.filter(a => a.attribute_type_id != "biolink:IriType"))) {
-	display_attribute(num,atts_table, att, semmeddb_sentences, mainvalue);
-    }
-
-    html_div.append(atts_table);
 }
 
-function display_attribute(num,tab, att, semmeddb, mainvalue) {
+function display_attribute(num, tab, orig_att, semmeddb, mainvalue, divider=true) {
     var row = document.createElement("tr");
     var cell = document.createElement("td");
 
-    cell.colSpan = '2';
-    cell.append(document.createElement("hr"));
-    row.append(cell);
-    tab.append(row);
+    var att = Object.create(orig_att); // make a copy!
+
+    if (divider) {
+	cell.colSpan = '2';
+	cell.append(document.createElement("hr"));
+	row.append(cell);
+	tab.append(row);
+    }
 
     var sub_atts = null;
 
@@ -4407,6 +4692,9 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		att[nom] = [ att[nom] ];
 
 	    var br = false;
+            if (nom == "attribute_type_id" || nom == "resource_role")
+                cell.className = 'attvalue';
+
 	    for (var val of att[nom]) {
 		if (br)
 		    cell.append(document.createElement("br"));
@@ -4419,6 +4707,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		    a.target = '_blank';
 		    a.href = val;
 		    a.innerHTML = val;
+		    a.addEventListener("click", function(e) { e.stopPropagation(); });
 		    cell.append(a);
 		}
 		else
@@ -4452,6 +4741,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	    for (var val of att[mainvalue]) {
 		if (br)
 		    cell.append(document.createElement("br"));
+                cell.append("\u25BA ");
 
 		if (val == null) {
                     cell.append("--NULL--");
@@ -4468,14 +4758,22 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
                     a.href = "https://pubmed.ncbi.nlm.nih.gov/" + val.split(":")[1] + '/';
 		    a.title = 'View in PubMed';
                     a.innerHTML = val;
+                    a.addEventListener("click", function(e) { e.stopPropagation(); });
                     cell.append(a);
 
-		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val]) {
+		    var sdbs = null;
+		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"][val])
+			sdbs = semmeddb[0]["value"][val];
+		    if (semmeddb && semmeddb[0] && semmeddb[0]["value"] && semmeddb[0]["value"][0] && semmeddb[0]["value"][0][val])
+			sdbs = semmeddb[0]["value"][0][val];
+		    if (sdbs) {
 			cell.append(" : ");
 			var quote = document.createElement("i");
-			quote.append(semmeddb[0]["value"][val]["sentence"]);
+			//quote.append(semmeddb[0]["value"][val]["sentence"]);
+			quote.append(sdbs["sentence"]);
 			cell.append(quote);
-			cell.append(' ('+semmeddb[0]["value"][val]["publication date"]+')');
+			//cell.append(' ('+semmeddb[0]["value"][val]["publication date"]+')');
+			cell.append(' ('+sdbs["publication date"]+')');
 		    }
 		}
 		else if (val.toString().startsWith("DOI:")) {
@@ -4485,6 +4783,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		    a.href = "https://doi.org/" + val.split(":")[1];
 		    a.title = 'View in doi.org';
 		    a.innerHTML = val;
+                    a.addEventListener("click", function(e) { e.stopPropagation(); });
 		    cell.append(a);
 		}
 		else if (val.toString().startsWith("http")) {
@@ -4493,9 +4792,9 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 		    a.target = '_blank';
 		    a.href = val;
 		    a.innerHTML = val;
+                    a.addEventListener("click", function(e) { e.stopPropagation(); });
 		    cell.append(a);
 		}
-
 		else if (att.attribute_type_id == "biolink:support_graphs") {
 		    UIstate["edgesg"]++;
                     var a = document.createElement("a");
@@ -4503,6 +4802,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
                     a.style.cursor = "pointer";
 		    a.title = 'View Aux Graph: '+ val;
 		    a.setAttribute('onclick', 'add_cyto('+num+',"AUX'+val+'");');
+		    a.addEventListener("click", function(e) { e.stopPropagation(); });
                     a.append(val);
 		    cell.append(a);
 
@@ -4543,6 +4843,7 @@ function display_attribute(num,tab, att, semmeddb, mainvalue) {
 	    a.target = '_blank';
 	    a.href = value;
 	    a.innerHTML = value;
+            a.addEventListener("click", function(e) { e.stopPropagation(); });
 	    cell.append(a);
 	}
 	else {
@@ -4676,6 +4977,7 @@ function mapNodeColor(ele) {
 
 function mapNodeIcon(ele) {
     var ntype = ele.data().categories ? ele.data().categories[0] ? ele.data().categories[0] : "NA" : "NA";
+    if (!UIstate['useicons']) ntype = "NA";
     if (ntype.endsWith("AnatomicalEntity"))   { return "./ui_icons/humanoid.png";}
     if (ntype.endsWith("BehavioralFeature"))  { return "./ui_icons/behavior.png";}
     if (ntype.endsWith("BiologicalProcess"))  { return "./ui_icons/biological.png";}
@@ -6479,6 +6781,7 @@ function retrieveRecentResps() {
 	    div.append("Viewing "+numpks+" Most Recent ARS Queries from "+srcpks);
 
             var link = document.createElement("a");
+	    link.className = "statusheadlink";
 	    link.style.float = 'right';
 	    link.target = '_blank';
 	    link.title = 'link to this view';
@@ -6654,6 +6957,7 @@ function retrieveRecentQs(active) {
 
 	    if (hours > 0) {
 		var link = document.createElement("a");
+		link.className = "statusheadlink";
 		link.target = '_blank';
 		link.title = 'link to this view';
 		link.href = "http://"+ window.location.hostname + window.location.pathname + "?recent=" + hours;
@@ -7152,8 +7456,8 @@ function retrieveKPInfo() {
 			}
 			else if (item["version"] == "1.5.0")
 			    text.className = "qprob p9";
-			//else if (item["version"] == "1.5.0")
-			//text.className = "qprob schp";
+			else if (item["version"] == "1.6.0")
+			    text.className = "qprob schp";
 			else
 			    text.className = "qprob p1";
                         text.append(item["version"]);
@@ -7421,6 +7725,7 @@ function retrieveSysTestResults(testid=null) {
 	    else throw new Error('Unable to fetch ARS Translator system test results from '+apiurl);
 	})
         .then(data => {
+	    document.getElementById("systest_link").href = "?systest="+test_pk.replace("ARSARS_","");
             wspan.innerHTML = '<b>Report source:</b> '+apiurl;
 	    systest_node.innerHTML = '';
 
@@ -7459,7 +7764,6 @@ function retrieveSysTestResults(testid=null) {
 
 	    systest_node.append(document.createElement("br"));
 	    systest_node.append(document.createElement("br"));
-
         })
         .catch(error => {
             wspan.innerHTML = '';
@@ -7841,6 +8145,7 @@ function displayARSResults(parentnode,arsdata) {
     test2css['BadButForgivable'] = 'p3';
     test2css['NeverShow'] = 'p1';
     test2css['OverlyGeneric'] = 'p0';
+    test2css['PATHFINDER'] = 'scod';
 
     var hint = {};
     hint['TopAnswer'] = 'Result must be in the top 30 or top 10% of answers, whichever is greater';
@@ -7903,6 +8208,7 @@ function displayARSResults(parentnode,arsdata) {
     table.append(tr);
 
     var num = 0;
+    var add_to_link = '';
     for (var row of arsdata['row_data']) {
 	num++;
 	tr = document.createElement("tr");
@@ -7930,7 +8236,10 @@ function displayARSResults(parentnode,arsdata) {
 	tr.append(td);
 
 	var ttype = row.name.split(":")[0];
-        td = document.createElement("td");
+	if (ttype == 'PATHFINDER')
+	    add_to_link = 'pathfinder_';
+
+	td = document.createElement("td");
 	td.title = hint[ttype];
         td.dataset.value = ttype;
         if (stats['test_type'][ttype])
@@ -7955,7 +8264,7 @@ function displayARSResults(parentnode,arsdata) {
 	    link = document.createElement("a");
             link.target = "_radiator";
             link.title = 'view test JSON';
-	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/test_cases/'+row.TestCase+'.json';
+	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/'+add_to_link+'test_cases/'+row.TestCase+'.json';
 	    link.append(row.TestCase);
 	    td.append(link);
 	}
@@ -7970,7 +8279,7 @@ function displayARSResults(parentnode,arsdata) {
             link = document.createElement("a");
 	    link.target = "_radiator";
 	    link.title = 'view asset JSON';
-	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/test_assets/'+row.TestAsset+'.json';
+	    link.href = 'https://github.com/NCATSTranslator/Tests/blob/main/'+add_to_link+'test_assets/'+row.TestAsset+'.json';
             link.append(row.TestAsset);
 	    td.append(link);
 	}
@@ -8174,7 +8483,7 @@ function add_to_dev_info(title,jobj) {
 function togglecolor(obj,tid) {
     var col = '#888';
     if (obj.checked == true) {
-	col = '#047';
+	col = '#3d6d98';
     }
     document.getElementById(tid).style.color = col;
 }
@@ -8757,6 +9066,24 @@ function update_url(urlkey,value) {
 	UIstate[urlkey] = to;
 	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
+    else if (urlkey == 'maxpaths') {
+	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
+	if (isNaN(to))
+	    to = '100';
+	UIstate[urlkey] = to;
+	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
+    else if (urlkey == 'maxpathlen') {
+	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
+	if (isNaN(to))
+	    to = 4;
+	else if (to < 2)
+	    to = 1;
+	else if (to > 5)
+	    to = 5;
+	UIstate[urlkey] = to;
+	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
+    }
     else if (urlkey == 'maxresults') {
         var mx = parseInt(document.getElementById(urlkey+"_url").value.trim());
 	if (isNaN(mx))
@@ -8775,6 +9102,9 @@ function update_url(urlkey,value) {
 	UIstate[urlkey] = document.getElementById(urlkey+"_url").value.trim();
         document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
+    else if (urlkey == 'useicons') {
+        UIstate[urlkey] = document.getElementById(urlkey+"_url").value == "true";
+    }
     else {
 	providers[urlkey].url = document.getElementById(urlkey+"_url").value.trim();
 	document.getElementById(urlkey+"_url").value = providers[urlkey].url;
@@ -8783,7 +9113,7 @@ function update_url(urlkey,value) {
     var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
 function update_submit_button(urlkey) {
-    var currval = (urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxresults' || urlkey == 'maxsyns') ? UIstate[urlkey] : providers[urlkey].url;
+    var currval = (urlkey == 'useicons' || urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxpaths' || urlkey == 'maxpathlen' || urlkey == 'maxresults' || urlkey == 'maxsyns') ? UIstate[urlkey] : providers[urlkey].url;
 
     if (currval == document.getElementById(urlkey+"_url").value)
 	document.getElementById(urlkey+"_url_button").disabled = true;

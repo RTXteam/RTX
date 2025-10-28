@@ -49,16 +49,27 @@ class ARAXConnect:
             "description": "The maximum edges to connect two nodes with. If not provided defaults to 4."
         }
 
+        self.max_pathfinder_paths_info = {
+            "is_required": False,
+            "examples": 100,
+            "min": 1,
+            "max": 20000,
+            "type": "integer",
+            "description": "The maximum number of paths to return. The default is 100."
+        }
+
         self.command_definitions = {
             "connect_nodes": {
                 "dsl_command": "connect(action=connect_nodes)",
                 "description": """
                     `connect_nodes` Try to find reasonable paths between two bio entities. 
                         You have the option to limit the maximum number of edges in a path (via `max_path_length=<n>`)
+                        and the number of paths to return (via `max_pathfinder_paths=<n>`)
                     """,
                 'brief_description': "connect_nodes adds paths between two nodes specified in the query.",
                 "parameters": {
-                    "max_path_length": self.max_path_length_info
+                    "max_path_length": self.max_path_length_info,
+                    "max_pathfinder_paths": self.max_pathfinder_paths_info
                 }
             }
         }
@@ -123,6 +134,16 @@ class ARAXConnect:
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
                 return -1
+            if isinstance(allowable_parameters[key], str):
+                if allowable_parameters[key] == 'positiveInteger':
+                    try:
+                        value = int(item)
+                        assert value > 0
+                        return
+                    except:
+                        self.response.error(f"Supplied parameter value {key}={item} must be a positive integer")
+                        return -1
+
             if item not in allowable_parameters[key]:
                 if any([type(x) == int for x in allowable_parameters[key]]):
                     continue
@@ -242,7 +263,8 @@ class ARAXConnect:
 
         allowable_parameters = {
             'action': {'connect_nodes'},
-            'max_path_length': {1, 2, 3, 4, 5}
+            'max_path_length': {1, 2, 3, 4, 5},
+            'max_pathfinder_paths': 'positiveInteger'
         }
         if describe:
             allowable_parameters['brief_description'] = self.command_definitions['connect_nodes']
@@ -287,7 +309,10 @@ class ARAXConnect:
         if category_constraint:
             paths = self.filter_with_constraint(paths, category_constraint)
 
-        paths = paths[:100]
+        max_pathfinder_paths = 100
+        if 'max_pathfinder_paths' in self.parameters:
+            max_pathfinder_paths = int(self.parameters['max_pathfinder_paths'])
+        paths = paths[:max_pathfinder_paths]
 
         self.response.info(f"PathFinder found {len(paths)} paths")
 
@@ -329,6 +354,7 @@ class ARAXConnect:
                     node = path.links[i]
                     if node.category in descendants:
                         result.append(path)
+                        break
         return result
 
     def remove_block_list(self, paths):
@@ -343,9 +369,13 @@ class ARAXConnect:
                     if node.id in blocked_curies:
                         append = False
                         break
-                    if node.name.lower() in blocked_synonyms:
-                        append = False
-                        break
+                    if node.name is not None:
+                        if node.name.lower() in blocked_synonyms:
+                            append = False
+                            break
+                        if node.name.lower().startswith("cyp"):
+                            append = False
+                            break
             if append:
                 result.append(path)
         return result

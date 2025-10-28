@@ -44,7 +44,7 @@ class Path:
         return weight / len(self.links)
 
     def make_new_path(self, last_link):
-        new_links = [Node(link.id, link.weight, link.name, link.degree) for link in self.links]
+        new_links = [Node(link.id, link.weight, link.name, link.degree, link.category) for link in self.links]
         new_links.append(last_link)
         return Path(self.path_limit - 1, new_links)
 
@@ -56,7 +56,7 @@ class Path:
     def path_src_to_id(self, id):
         new_links = []
         for link in self.links:
-            new_links.append(Node(link.id, link.weight, link.name, link.degree))
+            new_links.append(Node(link.id, link.weight, link.name, link.degree, link.category))
             if link.id == id:
                 break
         return Path(len(new_links) - 1, new_links)
@@ -64,7 +64,7 @@ class Path:
     def path_id_to_dest(self, id):
         new_links = []
         for link in reversed(self.links):
-            new_links.append(Node(link.id, link.weight, link.name, link.degree))
+            new_links.append(Node(link.id, link.weight, link.name, link.degree, link.category))
             if link.id == id:
                 break
         new_links.reverse()

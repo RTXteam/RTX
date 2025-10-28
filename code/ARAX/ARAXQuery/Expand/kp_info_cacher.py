@@ -45,8 +45,14 @@ class KPInfoCacher:
         try:
             # Grab KP registrations from Smart API
             smart_api_helper = SmartAPI()
-            smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
+            #smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
+            #                                                                             req_maturity=self.rtx_config.maturity)
+            # When we start advertising that ARAX is TRAPI 1.6.0, we still want to use 1.5.0 KPs.
+            # This is a hack to be removed when we are ready to roll out TRAPI 2.0
+            forced_kp_version = '1.5.0'
+            smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=forced_kp_version,
                                                                                          req_maturity=self.rtx_config.maturity)
+
             if not smart_api_kp_registrations:
                 eprint("Didn't get any KP registrations back from SmartAPI!")
             previous_cache_exists = pathlib.Path(self.smart_api_and_meta_map_cache).exists()
