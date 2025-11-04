@@ -27,7 +27,7 @@ from sqlalchemy.orm.session import Session
 
 # Constants
 REFRESH_TIME_LIMIT_SECONDS = 60.0
-AGE_BEFORE_REFRESH_HOURS = 0.2
+AGE_BEFORE_REFRESH_HOURS = 0.3
 NO_CACHED_RESPONSE = -2
 CONNECTION_ERROR = -1
 
@@ -219,7 +219,7 @@ class KPQueryCacher:
 
 
 
-    def get_result(self, query_url: str, query_object: dict, kp_curie: str, timeout=30, async_session=None) -> tuple:
+    async def get_result(self, query_url: str, query_object: dict, kp_curie: str, timeout=30, async_session=None) -> tuple:
         """
         Looks for a cached result based on the query object.
         If found, updates access stats and returns the decompressed response.
@@ -240,7 +240,7 @@ class KPQueryCacher:
 
         #### Else send it to the service
         #eprint(f"*** Fetch data directly from KP {query_url} using payload {query_object}, timeout={timeout}")
-        response_data, http_code, elapsed_time, error = self.async_post_query_to_web_service(query_url, query_object, timeout=timeout, async_session=async_session)
+        response_data, http_code, elapsed_time, error = await self.async_post_query_to_web_service(query_url, query_object, timeout=timeout, async_session=async_session)
         n_results = self._get_n_results(response_data)
         #eprint(f"*** Fetched a response with http_code={http_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds with error={error}")
 
@@ -350,7 +350,8 @@ class KPQueryCacher:
                     elapsed = time.time() - start_time
                     # Raise an exception for bad status codes (4xx, 5xx)
                     response.raise_for_status() 
-                    return response.json(), response.status_code, elapsed, None
+                    json_response = await response.json()
+                    return json_response, response.status, elapsed, None
 
             except requests.exceptions.HTTPError as e:
                 # Got a 4xx or 5xx response
@@ -605,26 +606,25 @@ class KPQueryCacher:
             cache_stats['http_status_codes'][http_status_code] += 1
 
         column_data = [
-            [ "kp_query_id", "id", "Integer identifier of the cached KP query" ],
-            [ "status", "status", "Status of the cached KP query" ],
-            [ "query_age_hr", "age hr", "Age of the cache entry in hours" ],
-            [ "kp_curie", "KP curie", "CURIE of the target KP" ],
-            [ "query_url", "query url", "Endpoint URL of the target KP" ],
-            [ "first_request_datetime", "first datetime", "Datetime of the first attempt at this query" ],
-            [ "last_request_datetime", "last datetime", "Datetime of the most recent request of this query" ],
-            [ "first_query_elapsed", "first elapsed", "Elapsed of the first query attempt in seconds" ],
-            [ "first_query_http_code", "first code", "HTTP code of the first query attempt (-1 is a timeout)" ],
-            [ "first_query_n_results", "first n results", "Number of TRAPI results in first query attempt" ],
-            [ "n_requests", "n requests", "Number of total ARAX requests for this query" ],
-            [ "last_attempted_refresh_datetime", "last attempted datetime", "Datetime of the last attempt to refresh this query" ],
-            [ "last_successful_refresh_datetime", "last success datetime", "Datetime of the last successful attempt to refresh this query" ],
-            [ "n_successful_refreshes", "n success", "Number of successful refreshes" ],
-            [ "n_failed_refreshes", "n failed", "Number of failed refreshes" ],
-            [ "last_refresh_elapsed", "last elapsed", "Elapsed time of the last refresh attempt in seconds" ],
-            [ "last_refresh_http_code", "last code", "HTTP code of the last refresh attempt (-1 is a timeout)" ],
-            [ "last_refresh_n_results", "last n results", "Number of TRAPI results in the most recent successful refresh attempt" ],
-            [ "n_refresh_same_results", "n same", "Number of refreshes that yielded the same results as the most recent successful refresh" ],
-            [ "n_refresh_different_results", "n diff", "Number of refreshes that yielded different results as the most recent successful refresh" ]
+            { "key": "kp_query_id", "title": "id", "title_hover": "Integer identifier of the cached KP query" },
+            { "key": "status", "title": "status", "title_hover": "Status of the cached KP query" },
+            { "key": "query_age_hr", "title": "age hr", "title_hover": "Age of the cache entry in hours", "red_if_greater_than_stat": "age_before_refresh_hr" },
+            { "key": "kp_curie", "title": "KP curie", "title_hover": "CURIE of the target KP", "cell_hover_key": "query_url" },
+            { "key": "first_request_datetime", "title": "first datetime", "title_hover": "Datetime of the first attempt at this query" },
+            { "key": "last_request_datetime", "title": "last datetime", "title_hover": "Datetime of the most recent request of this query" },
+            { "key": "first_query_elapsed", "title": "first elapsed", "title_hover": "Elapsed of the first query attempt in seconds", "red_if_greater_than_value": 5 },
+            { "key": "first_query_http_code", "title": "first code", "title_hover": "HTTP code of the first query attempt (-1 is a timeout)", "red_if_not_equal_to_value": 200 },
+            { "key": "first_query_n_results", "title": "first n results", "title_hover": "Number of TRAPI results in first query attempt" },
+            { "key": "n_requests", "title": "n requests", "title_hover": "Number of total ARAX requests for this query" },
+            { "key": "last_attempted_refresh_datetime", "title": "last attempted datetime", "title_hover": "Datetime of the last attempt to refresh this query" },
+            { "key": "last_successful_refresh_datetime", "title": "last success datetime", "title_hover": "Datetime of the last successful attempt to refresh this query" },
+            { "key": "n_successful_refreshes", "title": "n success", "title_hover": "Number of successful refreshes" },
+            { "key": "n_failed_refreshes", "title": "n failed", "title_hover": "Number of failed refreshes", "red_if_greater_than_value": 0 },
+            { "key": "last_refresh_elapsed", "title": "last elapsed", "title_hover": "Elapsed time of the last refresh attempt in seconds", "red_if_greater_than_value": 5 },
+            { "key": "last_refresh_http_code", "title": "last code", "title_hover": "HTTP code of the last refresh attempt (-1 is a timeout)", "red_if_not_equal_to_value": 200 },
+            { "key": "last_refresh_n_results", "title": "last n results", "title_hover": "Number of TRAPI results in the most recent successful refresh attempt" },
+            { "key": "n_refresh_same_results", "title": "n same", "title_hover": "Number of refreshes that yielded the same results as the most recent successful refresh" },
+            { "key": "n_refresh_different_results", "title": "n diff", "title_hover": "Number of refreshes that yielded different results as the most recent successful refresh", "red_if_greater_than_value": 0 },
         ]
 
         cache_stats['total_cache_size_MiB'] = sum(os.path.getsize(f"{self.cache_dir}/{file}") for file in os.listdir(self.cache_dir)) / 1024 / 1024
