@@ -674,7 +674,7 @@ class ARAXExpander:
                     response = infer_response
                     overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(response.envelope.message.knowledge_graph)
 
-                    wait_time = round(time.time() - start)
+                    wait_time = round(time.time() - start, 2)
                     if response.status == "OK":
                         done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, dict()))} " \
                                        f"edges in {wait_time} seconds"
