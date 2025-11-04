@@ -525,6 +525,8 @@ class KPQueryCacher:
             records = session.query(KPQuery).all()
             cached_queries = [record.to_dict() for record in records]
 
+        columns_to_round = { 'query_age_hr': 3, 'first_query_elapsed': 2, 'last_refresh_elapsed': 2 }
+
         cache_stats = { 'n_cached_queries': len(cached_queries),
                         'age_before_refresh_hr': AGE_BEFORE_REFRESH_HOURS,
                         'min_query_age_hr': 9999999,
@@ -539,6 +541,9 @@ class KPQueryCacher:
             seconds_difference = time_difference.total_seconds()
             hours_difference = seconds_difference / 3600
             cached_query['query_age_hr'] = hours_difference
+
+            for column,digits in columns_to_round.items():
+                cached_query[column] = round(cached_query[column], digits)
 
             if hours_difference < cache_stats['min_query_age_hr']:
                 cache_stats['min_query_age_hr'] = hours_difference
