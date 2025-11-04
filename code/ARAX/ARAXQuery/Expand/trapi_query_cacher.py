@@ -514,6 +514,22 @@ class KPQueryCacher:
 
 
 
+    def get_cached_input_query(self, kp_query_id: int) -> str:
+        """
+        Fetches the input query for a given kp_query_id
+
+        :return: A dict-list representation of the KP query payload.
+        """
+        session = self.Session()
+        record = session.query(KPQuery).filter_by(kp_query_id=kp_query_id).first()
+        if not record:
+            print(f"kp_query_id {kp_query_id} not found")
+            return
+
+        return record.query_object
+
+
+
     def list_cached_queries(self) -> str:
         """
         Generates a JSON-encoded list of all query records in the cache.
@@ -598,6 +614,7 @@ def main():
     argparser.add_argument('--query_number', action='store', help='Specify a number 0-9 to perform a test query with MONDO:000514n')
     argparser.add_argument('--summarize', action='count', help='Summarize the queries in the cache')
     argparser.add_argument('--list', action='count', help='List all queries in the cache')
+    argparser.add_argument('--show_input_query', action='store', help='Print the input query for a given kp_query_id')
     argparser.add_argument('--refresh', action='count', help='Refresh all queries in the cache')
     params = argparser.parse_args()
 
@@ -612,6 +629,14 @@ def main():
         eprint(f"(Re)initializing the query cache")
         cacher.initialize_cache()
         eprint(f"Complete")
+        return
+
+    if params.show_input_query:
+        result = cacher.get_cached_input_query(params.show_input_query)
+        if isinstance(result, dict):
+            print(json.dumps(result, indent=2))
+        else:
+            print(result)
         return
 
     if params.query_number:
