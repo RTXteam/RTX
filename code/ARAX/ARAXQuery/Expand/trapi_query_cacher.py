@@ -18,6 +18,8 @@ from contextlib import contextmanager
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 # External dependencies
+import aiohttp
+import asyncio
 import requests
 from sqlalchemy import create_engine, Column, Integer, String, Float, PickleType
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -217,7 +219,7 @@ class KPQueryCacher:
 
 
 
-    def get_result(self, query_url: str, query_object: dict, kp_curie: str, timeout=30) -> tuple:
+    def get_result(self, query_url: str, query_object: dict, kp_curie: str, timeout=30, async_session=None) -> tuple:
         """
         Looks for a cached result based on the query object.
         If found, updates access stats and returns the decompressed response.
@@ -238,7 +240,7 @@ class KPQueryCacher:
 
         #### Else send it to the service
         #eprint(f"*** Fetch data directly from KP {query_url} using payload {query_object}, timeout={timeout}")
-        response_data, http_code, elapsed_time, error = self.post_query_to_web_service(query_url, query_object, timeout=timeout)
+        response_data, http_code, elapsed_time, error = self.post_query_to_web_service(query_url, query_object, timeout=timeout, async_session=async_session)
         n_results = self._get_n_results(response_data)
         #eprint(f"*** Fetched a response with http_code={http_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds with error={error}")
 
@@ -303,7 +305,7 @@ class KPQueryCacher:
 
 
 
-    def post_query_to_web_service(self, query_url: str, query_object: dict, timeout: int = 30) -> tuple:
+    async def post_query_to_web_service(self, query_url: str, query_object: dict, timeout: int = 30, async_session=None) -> tuple:
         """
         Posts the query to the remote KP.
 
@@ -313,22 +315,41 @@ class KPQueryCacher:
         :return: A tuple of (response_data, http_status_code, elapsed_time, error_message)
         """
         start_time = time.time()
-        try:
-            response = requests.post(query_url, json=query_object, timeout=timeout, headers={'accept': 'application/json'})
-            elapsed = time.time() - start_time
-            # Raise an exception for bad status codes (4xx, 5xx)
-            response.raise_for_status() 
-            return response.json(), response.status_code, elapsed, None
-            
-        except requests.exceptions.HTTPError as e:
-            # Got a 4xx or 5xx response
-            elapsed = time.time() - start_time
-            return None, e.response.status_code, elapsed, str(e)
+        if async_session is None:
+            try:
+                response = requests.post(query_url, json=query_object, timeout=timeout, headers={'accept': 'application/json'})
+                elapsed = time.time() - start_time
+                # Raise an exception for bad status codes (4xx, 5xx)
+                response.raise_for_status() 
+                return response.json(), response.status_code, elapsed, None
+                
+            except requests.exceptions.HTTPError as e:
+                # Got a 4xx or 5xx response
+                elapsed = time.time() - start_time
+                return None, e.response.status_code, elapsed, str(e)
 
-        except requests.exceptions.RequestException as e:
-            # Connection error, timeout, DNS error, etc.
-            elapsed = time.time() - start_time
-            return None, CONNECTION_ERROR, elapsed, str(e) # -1 for non-HTTP errors
+            except requests.exceptions.RequestException as e:
+                # Connection error, timeout, DNS error, etc.
+                elapsed = time.time() - start_time
+                return None, CONNECTION_ERROR, elapsed, str(e) # -1 for non-HTTP errors
+        else:
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+                try:
+                    async with session.post(query_url, json=query_object, timeout=timeout, headers={'accept': 'application/json'}) as response:
+                        elapsed = time.time() - start_time
+                        # Raise an exception for bad status codes (4xx, 5xx)
+                        response.raise_for_status() 
+                        return response.json(), response.status_code, elapsed, None
+
+                except requests.exceptions.HTTPError as e:
+                    # Got a 4xx or 5xx response
+                    elapsed = time.time() - start_time
+                    return None, e.response.status_code, elapsed, str(e)
+
+                except requests.exceptions.RequestException as e:
+                    # Connection error, timeout, DNS error, etc.
+                    elapsed = time.time() - start_time
+                    return None, CONNECTION_ERROR, elapsed, str(e) # -1 for non-HTTP errors
 
 
 
