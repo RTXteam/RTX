@@ -543,7 +543,8 @@ class KPQueryCacher:
             cached_query['query_age_hr'] = hours_difference
 
             for column,digits in columns_to_round.items():
-                cached_query[column] = round(cached_query[column], digits)
+                if cached_query[column] is not None:
+                    cached_query[column] = round(cached_query[column], digits)
 
             if hours_difference < cache_stats['min_query_age_hr']:
                 cache_stats['min_query_age_hr'] = hours_difference
