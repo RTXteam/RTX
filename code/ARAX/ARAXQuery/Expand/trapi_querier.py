@@ -22,6 +22,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuer
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
 from trapi_query_cacher import KPQueryCacher
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
@@ -281,12 +282,12 @@ class TRAPIQuerier:
         waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
         self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Waiting", waiting_message, query=query_sent)
         start = time.time()
-        self.log.debug(f"{self.kp_infores_curie}: Sending query to {self.kp_infores_curie} API ({self.kp_endpoint})")
+        self.log.debug(f"{self.kp_infores_curie}: Sending query to {self.kp_infores_curie} API ({self.kp_endpoint}) with timeout={query_timeout}")
 
         # Send the query graph to the KP's TRAPI API
         cacher = KPQueryCacher()
         try:
-            response_data, http_code, elapsed_time, error = cacher.get_cached_result(f"{self.kp_endpoint}/query",
+            response_data, http_code, elapsed_time, error = cacher.get_result(f"{self.kp_endpoint}/query",
                                                                                      request_body, 
                                                                                      kp_curie=self.kp_infores_curie, 
                                                                                      timeout=query_timeout)
@@ -322,7 +323,11 @@ class TRAPIQuerier:
         json_response = cast(dict[str, Any], json_response)
         answer_kg = self._load_kp_json_response(json_response, query_graph)
         num_edges = len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))
-        done_message = f"Returned {num_edges} edges in {wait_time} seconds"
+
+        cache_flag = ''
+        if isinstance(error, str):
+            cache_flag = "from cache "
+        done_message = f"Returned {num_edges} edges {cache_flag}in {wait_time} seconds"
 
         if cd == 0:
             self.log.update_query_plan(qedge_key,
