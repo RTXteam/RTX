@@ -25,6 +25,7 @@ from sqlalchemy.orm.session import Session
 
 # Constants
 REFRESH_TIME_LIMIT_SECONDS = 60.0
+AGE_BEFORE_REFRESH_HOURS = 0.2
 NO_CACHED_RESPONSE = -2
 CONNECTION_ERROR = -1
 
@@ -229,14 +230,20 @@ class KPQueryCacher:
         """
 
         #### Try to get the response from the cache
-        response_data, http_code, elapsed_time, error = self.get_cached_result(query_url, query_object, timeout=timeout)
+        #eprint(f"*** Checking cache for query with {kp_curie} to {query_url}")
+        response_data, http_code, elapsed_time, error = self.get_cached_result(query_url, query_object)
         if http_code != NO_CACHED_RESPONSE: 
-            return response_data, http_code, elapsed_time, error
+            #eprint("*** Found cached result")
+            return response_data, http_code, elapsed_time, 'from cache'
 
         #### Else send it to the service
+        #eprint(f"*** Fetch data directly from KP {query_url} using payload {query_object}, timeout={timeout}")
         response_data, http_code, elapsed_time, error = self.post_query_to_web_service(query_url, query_object, timeout=timeout)
+        n_results = self._get_n_results(response_data)
+        #eprint(f"*** Fetched a response with http_code={http_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds with error={error}")
 
         #### And store that result in the cache
+        #eprint("*** Store the response in the cache")
         self.store_response(
             kp_curie=kp_curie,
             query_url=query_url,
@@ -296,7 +303,7 @@ class KPQueryCacher:
 
 
 
-    def post_query_to_web_service(self, query_object: dict, query_url: str, timeout: int = 30) -> tuple:
+    def post_query_to_web_service(self, query_url: str, query_object: dict, timeout: int = 30) -> tuple:
         """
         Posts the query to the remote KP.
 
@@ -307,7 +314,7 @@ class KPQueryCacher:
         """
         start_time = time.time()
         try:
-            response = requests.post(query_url, json=query_object, timeout=timeout)
+            response = requests.post(query_url, json=query_object, timeout=timeout, headers={'accept': 'application/json'})
             elapsed = time.time() - start_time
             # Raise an exception for bad status codes (4xx, 5xx)
             response.raise_for_status() 
@@ -387,8 +394,8 @@ class KPQueryCacher:
         to refresh the data. Updates refresh statistics for each record.
         """
 
-        timestamp = str(datetime.now().isoformat())
-        eprint(f"{timestamp}: INFO: KPQueryCacher.refresh_cache: Starting KP response cache refresh process")
+        #timestamp = str(datetime.now().isoformat())
+        #eprint(f"{timestamp}: INFO: KPQueryCacher.refresh_cache: Starting KP response cache refresh process")
         start_time = time.time()
 
         session = self.Session()
@@ -412,7 +419,7 @@ class KPQueryCacher:
                 cache_stats['max_query_age'] = hours_difference
 
             #eprint(f"      kp_query_id={cached_query['kp_query_id']}  Stale by {hours_difference:.3f} hours")
-            if hours_difference > .2:
+            if hours_difference > AGE_BEFORE_REFRESH_HOURS:
                 cached_queries_to_refresh.append(cached_query)
 
         timestamp = str(datetime.now().isoformat())
@@ -435,8 +442,8 @@ class KPQueryCacher:
             
             # 2. Post the query
             response_data, status_code, elapsed, error = self.post_query_to_web_service(
-                record.query_object, 
                 record.query_url,
+                record.query_object, 
                 timeout=30
             )
             
@@ -502,8 +509,8 @@ class KPQueryCacher:
         #finally:
         session.close()
 
-        timestamp = str(datetime.now().isoformat())
-        eprint(f"{timestamp}: INFO: KPQueryCacher.refresh_cache: Refresh process complete for now")
+        #timestamp = str(datetime.now().isoformat())
+        #eprint(f"{timestamp}: INFO: KPQueryCacher.refresh_cache: Refresh process complete for now")
 
 
 
@@ -518,7 +525,11 @@ class KPQueryCacher:
             records = session.query(KPQuery).all()
             cached_queries = [record.to_dict() for record in records]
 
-        cache_stats = { 'n_cached_queries': len(cached_queries), 'min_query_age_hr': 9999999, 'max_query_age_hr': 0.0, 'http_status_codes': {} }
+        cache_stats = { 'n_cached_queries': len(cached_queries),
+                        'age_before_refresh_hr': AGE_BEFORE_REFRESH_HOURS,
+                        'min_query_age_hr': 9999999,
+                        'max_query_age_hr': 0.0,
+                        'http_status_codes': {} }
         time_now = datetime.now()
         for cached_query in cached_queries:
 
@@ -579,6 +590,7 @@ def main():
     argparser.add_argument('--verbose', action='count', help='If set, print more information about ongoing processing' )
     argparser.add_argument('--initialize_cache', action='count', help='Invoke this parameter to (re)initialize the cache')
     argparser.add_argument('--query_number', action='store', help='Specify a number 0-9 to perform a test query with MONDO:000514n')
+    argparser.add_argument('--summarize', action='count', help='Summarize the queries in the cache')
     argparser.add_argument('--list', action='count', help='List all queries in the cache')
     argparser.add_argument('--refresh', action='count', help='Refresh all queries in the cache')
     params = argparser.parse_args()
@@ -632,7 +644,7 @@ def main():
         eprint(f"No cache entry found")
 
         eprint(f"Fetch data directly from KP {kp_url}")
-        response_data, http_code, elapsed_time, error = cacher.post_query_to_web_service(trapi_query, kp_url, timeout=10)
+        response_data, http_code, elapsed_time, error = cacher.post_query_to_web_service(kp_url, trapi_query, timeout=10)
         n_results = cacher._get_n_results(response_data)
         print(f"Fetched a response with http_code={http_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
 
@@ -649,10 +661,20 @@ def main():
         print("Response stored.")
         return
 
+    if params.summarize:
+        eprint("Summarize queries in the cache")
+        response = cacher.list_cached_queries()
+        eprint(json.dumps(response['cache_stats'], indent=2, sort_keys=True))
+        for entry in response['cache_data']:
+            print(f"{entry['kp_query_id']}\t{entry['kp_curie']:50s}\t{entry['first_request_datetime']}\t{entry['first_query_n_results']}\t{entry['n_requests']}\t{entry['last_refresh_n_results']}")
+        return
+
+
     if params.list:
         eprint("List all queries in the cache")
         response = cacher.list_cached_queries()
         eprint(json.dumps(response['cache_stats'], indent=2, sort_keys=True))
+        eprint(json.dumps(response['cache_data'], indent=2, sort_keys=False))
         return
 
 
