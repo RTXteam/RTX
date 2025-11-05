@@ -32,7 +32,7 @@ RUN chmod -R 700 /home/rt/.ssh
 
 # install network troubleshooting utilities and emacs, in case we need them
 RUN apt-get update && apt-get install -y \
-    netcat \
+    netcat-openbsd \
     dnsutils \
     iputils-ping \
     traceroute \
@@ -68,9 +68,8 @@ RUN apt-get install -y python3 python3-pip
 RUN apt-get install -y software-properties-common
 RUN add-apt-repository -y ppa:deadsnakes/ppa
 RUN apt-get update && apt-get install -y python3.12 python3.12-dev python3.12-venv
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
-RUN python3.12 -m pip install --upgrade pip setuptools wheel
-RUN su rt && cd /mnt/data/orangeboard/test/RTX && python3.12 -m pip install click==8.1.3 && python3.12 -m pip install -r requirements.txt
+RUN apt-get install -y python3-pip
+RUN su rt && cd /mnt/data/orangeboard/test/RTX && python3.12 -m pip install click==8.1.3 --break-system-packages && python3.12 -m pip install -r requirements.txt --break-system-packages
 
 # setup services
 RUN export DEVAREA=test
