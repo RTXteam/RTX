@@ -687,17 +687,17 @@ class ARAXExpander:
                         response.info(f"Launching ARAX inferer")
                         infer_response = inferer.apply(response, infer_input_parameters)
                         elapsed_time = time.time() - start
-                        response.info(f"Got result from ARAX inferer after {elapsed_time}. Storing the result in the cache.")
+                        infer_response.info(f"Got result from ARAX inferer after {elapsed_time}. Storing the result in the cache.")
                         cacher.store_response(
                             kp_curie=kp_curie,
                             query_url=kp_url,
                             query_object=infer_input_parameters,
-                            response_object=response_data,
+                            response_object=infer_response,
                             http_code=200,
                             elapsed_time=elapsed_time,
                             status="OK"
                         )
-                        response.info(f"Stored result in the cache.")
+                        infer_response.info(f"Stored result in the cache.")
 
                     # return infer_response
                     response = infer_response
