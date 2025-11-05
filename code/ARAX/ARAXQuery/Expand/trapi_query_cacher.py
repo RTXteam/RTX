@@ -563,6 +563,27 @@ class KPQueryCacher:
 
 
 
+    def delete_input_query(self, kp_query_id: int) -> str:
+        """
+        Deletes given kp_query_id
+
+        :return: nothing.
+        """
+        session = self.Session()
+        record = session.query(KPQuery).filter_by(kp_query_id=kp_query_id).first()
+        if record:
+            eprint(f"INFO: Deleting record for kp_query_id={kp_query_id}")
+            session.delete(record)
+            session.commit()
+            eprint(f"INFO: Done")
+            return
+        
+        eprint(f"ERROR: Unable to find record for kp_query_id={kp_query_id}")
+
+        return
+
+
+
     def list_cached_queries(self) -> str:
         """
         Generates a JSON-encoded list of all query records in the cache.
@@ -647,6 +668,7 @@ def main():
     argparser.add_argument('--summarize', action='count', help='Summarize the queries in the cache')
     argparser.add_argument('--list', action='count', help='List all queries in the cache')
     argparser.add_argument('--show_input_query', action='store', help='Print the input query for a given kp_query_id')
+    argparser.add_argument('--delete_query', action='store', help='Delete the given kp_query_id')
     argparser.add_argument('--refresh', action='count', help='Refresh all queries in the cache')
     params = argparser.parse_args()
 
@@ -669,6 +691,10 @@ def main():
             print(json.dumps(result, indent=2))
         else:
             print(result)
+        return
+
+    if params.delete_query:
+        result = cacher.delete_input_query(params.delete_query)
         return
 
     if params.query_number:
