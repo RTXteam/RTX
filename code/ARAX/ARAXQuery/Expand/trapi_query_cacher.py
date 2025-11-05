@@ -439,6 +439,10 @@ class KPQueryCacher:
         cache_stats = { 'min_query_age': 9999999, 'max_query_age': 0.0 }
         for cached_query in cached_queries:
 
+            #### Skip non http entries
+            if not cached_query['query_url'].startswith('http'):
+                continue
+
             time_now = datetime.now()
             time_at_last_refresh_str = cached_query['last_successful_refresh_datetime'] or cached_query['last_attempted_refresh_datetime'] or cached_query['first_request_datetime']
             time_at_last_refresh = datetime.strptime(time_at_last_refresh_str, "%Y-%m-%d %H:%M:%S")
