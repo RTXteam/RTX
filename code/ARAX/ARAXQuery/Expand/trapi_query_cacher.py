@@ -190,8 +190,10 @@ class KPQueryCacher:
 
     def _write_cache_file(self, filepath: str, data: any):
         """Pickles and writes data to a compressed cache file."""
+        eprint(f"Writing caching file {filepath}")
         with gzip.open(filepath, 'wb') as f:
             pickle.dump(data, f)
+        eprint(f"Done writing caching file {filepath}")
 
 
 
@@ -393,7 +395,7 @@ class KPQueryCacher:
         try:
             self._write_cache_file(filepath, response_object)
         except Exception as e:
-            print(f"Failed to write cache file {filepath}: {e}")
+            eprint(f"Failed to write cache file {filepath}: {e}")
             return # Don't create a DB record if file write fails
 
         # 2. Create the new database record
