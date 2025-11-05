@@ -590,6 +590,31 @@ class KPQueryCacher:
 
 
 
+    def dump_response(self, kp_query_id: int) -> str:
+        """
+        Dumps the response for a given kp_query_id
+
+        :return: dict response.
+        """
+        session = self.Session()
+        record = session.query(KPQuery).filter_by(kp_query_id=kp_query_id).first()
+        if record:
+            query_hash = record.query_hash
+            filepath = self._get_cache_filepath(query_hash)
+            try:
+                response_data = self._read_cache_file(filepath)
+                return response_data
+
+            except FileNotFoundError as e:
+                eprint(f"ERROR: Unable to read hash file {filepath}")
+                return
+        
+        eprint(f"ERROR: Unable to find record for kp_query_id={kp_query_id}")
+
+        return
+
+
+
     def list_cached_queries(self) -> str:
         """
         Generates a JSON-encoded list of all query records in the cache.
@@ -674,6 +699,7 @@ def main():
     argparser.add_argument('--summarize', action='count', help='Summarize the queries in the cache')
     argparser.add_argument('--list', action='count', help='List all queries in the cache')
     argparser.add_argument('--show_input_query', action='store', help='Print the input query for a given kp_query_id')
+    argparser.add_argument('--dump_response', action='store', help='Dump the response for a given kp_query_id')
     argparser.add_argument('--delete_query', action='store', help='Delete the given kp_query_id')
     argparser.add_argument('--refresh', action='count', help='Refresh all queries in the cache')
     params = argparser.parse_args()
@@ -701,6 +727,11 @@ def main():
 
     if params.delete_query:
         result = cacher.delete_input_query(params.delete_query)
+        return
+
+    if params.dump_response:
+        response = cacher.dump_response(params.dump_response)
+        eprint(json.dumps(response, indent=2, sort_keys=False))
         return
 
     if params.query_number:
