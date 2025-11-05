@@ -288,7 +288,7 @@ class TRAPIQuerier:
                     if response.status == 200:
                         json_response = await response.json()
                     else:
-                        wait_time = round(time.time() - start)
+                        wait_time = f"{time.time() - start:.2f}"
                         http_error_message = f"Returned HTTP error {response.status} after {wait_time} seconds"
                         self.log.warning(f"{self.kp_infores_curie}: {http_error_message}. Query sent to KP was: {request_body}")
                         self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", http_error_message)
@@ -299,12 +299,12 @@ class TRAPIQuerier:
                 self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Timed out", timeout_message)
                 return QGOrganizedKnowledgeGraph()
             except Exception as ex:
-                wait_time = round(time.time() - start)
+                wait_time = f"{time.time() - start:.2f}"
                 exception_message = f"Request threw exception after {wait_time} seconds: {type(ex)}"
                 self.log.warning(f"{self.kp_infores_curie}: {exception_message}")
                 self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", exception_message)
                 return QGOrganizedKnowledgeGraph()
-        wait_time = round(time.time() - start)
+        wait_time = f"{time.time() - start:.2f}"
         json_response, cd = \
             _remove_attributes_with_invalid_values(json_response,
                                                    self.kp_infores_curie,
@@ -339,7 +339,7 @@ class TRAPIQuerier:
                                             json=request_body,
                                             headers={'accept': 'application/json'},
                                             timeout=query_timeout)
-                self.log.wait_time = round(time.time() - start)
+                self.log.wait_time = f"{time.time() - start:.2f}"
         except Exception:
             timeout_message = f"Query timed out after {query_timeout} seconds"
             self.log.warning(f"{self.kp_infores_curie}: {timeout_message}")
