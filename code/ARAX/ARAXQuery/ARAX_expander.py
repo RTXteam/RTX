@@ -30,6 +30,7 @@ from openapi_server.models.attribute_constraint import AttributeConstraint
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.retrieval_source import RetrievalSource
 from Expand.trapi_querier import TRAPIQuerier
+from Expand.trapi_query_cacher import KPQueryCacher
 
 UNBOUND_NODES_KEY = "__UNBOUND__"
 
@@ -668,8 +669,36 @@ class ARAXExpander:
                     infer_input_parameters = {"action": "drug_treatment_graph_expansion",
                                               'disease_curie': object_curie, 'qedge_id': inferred_qedge_key,
                                               'drug_curie': subject_curie}
-                    inferer = ARAXInfer()
-                    infer_response = inferer.apply(response, infer_input_parameters)
+
+                    #### Check the cache to see if we have this query cached already
+                    cacher = KPQueryCacher()
+                    kp_curie = "xDTD"
+                    kp_url = "xDTD"
+                    response.info(f"Looking for a previously cached result from {kp_curie}")
+                    response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, infer_input_parameters)
+                    if response_code != -2: 
+                        n_results = cacher._get_n_results(response_data)
+                        response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
+                        infer_response = response_data
+
+                    #### Else run the inferer to get the result and then cache it
+                    else:
+                        inferer = ARAXInfer()
+                        response.info(f"Launching ARAX inferer")
+                        infer_response = inferer.apply(response, infer_input_parameters)
+                        elapsed_time = time.time() - start
+                        response.info(f"Got result from ARAX inferer after {elapsed_time}. Storing the result in the cache.")
+                        cacher.store_response(
+                            kp_curie=kp_curie,
+                            query_url=kp_url,
+                            query_object=infer_input_parameters,
+                            response_object=response_data,
+                            http_code=200,
+                            elapsed_time=elapsed_time,
+                            status="OK"
+                        )
+                        response.info(f"Stored result in the cache.")
+
                     # return infer_response
                     response = infer_response
                     overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(response.envelope.message.knowledge_graph)
