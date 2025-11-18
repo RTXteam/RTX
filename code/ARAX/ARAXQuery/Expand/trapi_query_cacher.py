@@ -190,10 +190,11 @@ class KPQueryCacher:
 
     def _write_cache_file(self, filepath: str, data: any):
         """Pickles and writes data to a compressed cache file."""
-        eprint(f"Writing caching file {filepath}")
+        #eprint(f"Writing caching file {filepath}")
+        #eprint(f"data content: {data}")
         with gzip.open(filepath, 'wb') as f:
             pickle.dump(data, f)
-        eprint(f"Done writing caching file {filepath}")
+        #eprint(f"Done writing caching file {filepath}")
 
 
 
@@ -296,13 +297,13 @@ class KPQueryCacher:
             except FileNotFoundError as e:
                 # Cache inconsistency: DB record exists, but file is missing.
                 # Delete the bad record and return None.
-                print(f"Cache inconsistency detected. Deleting record for hash: {query_hash}")
+                eprint(f"Cache inconsistency detected. Deleting record for hash: {query_hash}")
                 session.delete(record)
                 return None, NO_CACHED_RESPONSE, time.time() - start_time, e
 
             except Exception as e:
                 # Other read error
-                print(f"Error reading cache file {filepath}: {e}")
+                eprint(f"Error reading cache file {filepath}: {e}")
                 return None, NO_CACHED_RESPONSE, time.time() - start_time, e
 
 
@@ -399,6 +400,7 @@ class KPQueryCacher:
             return # Don't create a DB record if file write fails
 
         # 2. Create the new database record
+        #eprint(f"Writing new cache record with query_url={query_url}")
         new_record = KPQuery(
             status=status,
             kp_curie=kp_curie,
@@ -731,7 +733,7 @@ def main():
 
     if params.dump_response:
         response = cacher.dump_response(params.dump_response)
-        eprint(json.dumps(response, indent=2, sort_keys=False))
+        print(json.dumps(response, indent=2, sort_keys=False))
         return
 
     if params.query_number:
