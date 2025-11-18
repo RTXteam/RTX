@@ -31,6 +31,7 @@ from openapi_server.models.attribute import Attribute
 from openapi_server.models.retrieval_source import RetrievalSource
 from Expand.trapi_querier import TRAPIQuerier
 from Expand.trapi_query_cacher import KPQueryCacher
+from ARAX_messenger import ARAXMessenger
 
 UNBOUND_NODES_KEY = "__UNBOUND__"
 
@@ -330,6 +331,8 @@ class ARAXExpander:
             # Get any inferred results from ARAX Infer
             if inferred_qedge_keys:
                 response, overarching_kg = self.get_inferred_answers(inferred_qedge_keys, query_graph, response)
+                #### Update the local message with a potentially new message created in previous method call
+                message = response.envelope.message
                 if log.status != 'OK':
                     return response
                 # Now mark qedges as 'lookup' if this is an inferred query
@@ -550,6 +553,18 @@ class ARAXExpander:
                                                  message.encountered_kryptonite_edges_info, response)
                 # Remove any paths that are now dead-ends
                 if inferred_qedge_keys and len(inferred_qedge_keys) == 1:
+
+                    #### Write some state information to files for debugging
+                    debug_filepath = os.path.dirname(os.path.abspath(__file__))
+                    if hasattr(response, 'dtd_from_cache') and response.dtd_from_cache is True:
+                        debug_filepath += "/zz_cache_"
+                    else:
+                        debug_filepath += "/zz_fresh_"
+                    with open(debug_filepath + "query_graph.json", 'w') as outfile:
+                        print(f"*******line 564: message.query_graph={message.query_graph}", file=outfile)
+                    with open(debug_filepath + "overarching_kg.json", 'w') as outfile:
+                        print(f"*******line 566: overarching_kg={overarching_kg}", file=outfile)
+
                     overarching_kg = self._remove_dead_end_paths(message.query_graph, overarching_kg, response)
                 else:
                     overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
@@ -679,7 +694,16 @@ class ARAXExpander:
                     if response_code != -2: 
                         n_results = cacher._get_n_results(response_data)
                         response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
-                        infer_response = response_data
+                        #### Transform the dict message into objects
+                        response.envelope.message = ARAXMessenger().from_dict(response_data['message'])
+                        response.envelope.message.encountered_kryptonite_edges_info = response_data['message']['encountered_kryptonite_edges_info']
+                        for node_key, node in response_data['message']['knowledge_graph']['nodes'].items():
+                            response.info(f"Copying qnode_keys for node {node_key}") 
+                            response.envelope.message.knowledge_graph.nodes[node_key].qnode_keys = node['qnode_keys']
+                        for edge_key, edge in response_data['message']['knowledge_graph']['edges'].items():
+                            response.info(f"Copying qedge_keys for edge {edge_key}") 
+                            response.envelope.message.knowledge_graph.edges[edge_key].qedge_keys = edge['qedge_keys']
+                        response.dtd_from_cache = True
 
                     #### Else run the inferer to get the result and then cache it
                     else:
@@ -687,20 +711,27 @@ class ARAXExpander:
                         response.info(f"Launching ARAX inferer")
                         infer_response = inferer.apply(response, infer_input_parameters)
                         elapsed_time = time.time() - start
-                        infer_response.info(f"Got result from ARAX inferer after {elapsed_time}. Storing the result in the cache.")
+                        response.info(f"Got result from ARAX inferer after {elapsed_time}. Converting to_dict()")
+                        response_object = response.envelope.to_dict()
+                        response_object['message']['encountered_kryptonite_edges_info'] = response.envelope.message.encountered_kryptonite_edges_info
+                        for node_key, node in response.envelope.message.knowledge_graph.nodes.items():
+                            response_object['message']['knowledge_graph']['nodes'][node_key]['qnode_keys'] = node.qnode_keys
+                        for edge_key, edge in response.envelope.message.knowledge_graph.edges.items():
+                            response_object['message']['knowledge_graph']['edges'][edge_key]['qedge_keys'] = edge.qedge_keys
+                        response.info(f"Storing result in the cache")
                         cacher.store_response(
                             kp_curie=kp_curie,
                             query_url=kp_url,
                             query_object=infer_input_parameters,
-                            response_object=infer_response,
+                            response_object=response_object,
                             http_code=200,
                             elapsed_time=elapsed_time,
                             status="OK"
                         )
-                        infer_response.info(f"Stored result in the cache.")
+                        response.info(f"Stored result in the cache.")
 
                     # return infer_response
-                    response = infer_response
+                    #response = infer_response  # these are already always the same object?
                     overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(response.envelope.message.knowledge_graph)
 
                     wait_time = round(time.time() - start, 2)
