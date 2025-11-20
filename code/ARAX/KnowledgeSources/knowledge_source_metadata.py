@@ -1,10 +1,7 @@
 #!/bin/env python3
 import sys
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
-
 import os
 import json
-import ast
 import re
 import inspect
 import csv
@@ -12,13 +9,21 @@ import requests
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
+# Add paths for imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 
-from RTXConfiguration import RTXConfiguration
+# Import after path setup
+try:
+    from RTXConfiguration import RTXConfiguration
+except ImportError:
+    # Fallback if RTXConfiguration is not available
+    RTXConfiguration = None
 
 
 class KnowledgeSourceMetadata:
@@ -34,7 +39,7 @@ class KnowledgeSourceMetadata:
         self.predicates = None
         self.meta_knowledge_graph = KnowledgeSourceMetadata.cached_meta_knowledge_graph
         self.simplified_meta_knowledge_graph = KnowledgeSourceMetadata.cached_simplified_meta_knowledge_graph
-        self.RTXConfig = RTXConfiguration()
+        self.RTXConfig = RTXConfiguration() if RTXConfiguration is not None else None
 
     def _is_cache_valid(self) -> bool:
         """Check if the cached meta knowledge graph is still valid"""
@@ -47,7 +52,7 @@ class KnowledgeSourceMetadata:
     def _fetch_ploverdb_meta_kg(self) -> Optional[Dict[str, Any]]:
         """Fetch meta knowledge graph from PloverDB"""
         try:
-            plover_url = getattr(self.RTXConfig, 'plover_url', "https://kg2cplover.rtx.ai:9990")
+            plover_url = getattr(self.RTXConfig, 'plover_url', "https://kg2cplover.rtx.ai:9990") if self.RTXConfig is not None else "https://kg2cplover.rtx.ai:9990"
             response = requests.get(f"{plover_url}/meta_knowledge_graph", timeout=30)
             if response.status_code == 200:
                 return response.json()
@@ -72,7 +77,7 @@ class KnowledgeSourceMetadata:
                     def error(self, msg): eprint(f"ERROR: {msg}")
                     def debug(self, msg): eprint(f"DEBUG: {msg}")
                 
-                smart_api_info, meta_map = kp_cacher.load_kp_info_caches(MockARAXResponse())
+                smart_api_info, meta_map, valid_kps, kp_status_codes = kp_cacher.load_kp_info_caches(MockARAXResponse())
                 
                 if meta_map:
                     eprint(f"Merging data from {len(meta_map)} knowledge providers")
@@ -370,7 +375,7 @@ class KnowledgeSourceMetadata:
 
     #### Get a list of all supported subjects, predicates, and objects and return in /meta_knowledge_graph format
     def create_simplified_meta_knowledge_graph(self):
-        method_name = inspect.stack()[0][3]
+        # method_name = inspect.stack()[0][3]  # Unused variable
 
         self.simplified_meta_knowledge_graph = {
             'predicates_by_categories': {},
@@ -400,4 +405,5 @@ def main():
     meta_knowledge_graph = ksm.get_meta_knowledge_graph(format='simple')
     print(json.dumps(meta_knowledge_graph,sort_keys=True,indent=2))
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()
