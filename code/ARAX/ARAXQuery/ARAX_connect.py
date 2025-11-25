@@ -301,7 +301,7 @@ class ARAXConnect:
         paths = path_finder.find_all_paths(
             normalize_src_node_id,
             normalize_dst_node_id,
-            hops_numbers=self.parameters['max_path_length']
+            hops_numbers=5
         )
 
         paths = self.remove_block_list(paths)
@@ -309,7 +309,7 @@ class ARAXConnect:
         if category_constraint:
             paths = self.filter_with_constraint(paths, category_constraint)
 
-        max_pathfinder_paths = 100
+        max_pathfinder_paths = 500
         if 'max_pathfinder_paths' in self.parameters:
             max_pathfinder_paths = int(self.parameters['max_pathfinder_paths'])
         paths = paths[:max_pathfinder_paths]
@@ -363,6 +363,8 @@ class ARAXConnect:
         for path in paths:
             append = True
             path_length = len(path.links)
+            if path_length > self.parameters['max_path_length'] + 1:
+                continue
             if path_length > 2:
                 for i in range(1, path_length - 1):
                     node = path.links[i]
