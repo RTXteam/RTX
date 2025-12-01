@@ -51,11 +51,11 @@ class ARAXConnect:
 
         self.max_pathfinder_paths_info = {
             "is_required": False,
-            "examples": 100,
+            "examples": 500,
             "min": 1,
             "max": 20000,
             "type": "integer",
-            "description": "The maximum number of paths to return. The default is 100."
+            "description": "The maximum number of paths to return. The default is 500."
         }
 
         self.command_definitions = {
@@ -313,7 +313,7 @@ class ARAXConnect:
         if 'max_pathfinder_paths' in self.parameters:
             max_pathfinder_paths = int(self.parameters['max_pathfinder_paths'])
         paths = paths[:max_pathfinder_paths]
-
+        self.response.info(f"Model release date: 12/01/2025")
         self.response.info(f"PathFinder found {len(paths)} paths")
 
         if len(paths) == 0:
