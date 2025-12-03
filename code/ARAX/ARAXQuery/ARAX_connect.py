@@ -10,12 +10,16 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 import os
 from collections import Counter
 import copy
+import time
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
 from Path_Finder.converter.ResultPerPathConverter import ResultPerPathConverter
 from Path_Finder.converter.Names import Names
 from Path_Finder.BidirectionalPathFinder import BidirectionalPathFinder
+
+from Expand.trapi_query_cacher import KPQueryCacher
+from ARAX_messenger import ARAXMessenger
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
@@ -185,14 +189,44 @@ class ARAXConnect:
         self.response.data['parameters'] = parameters
         self.parameters = parameters
 
-        getattr(self, '_' + self.__class__.__name__ + '__' + parameters[
-            'action'])()  # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string
+        #### Check the cache to see if we have this query cached already
+        start = time.time()
+        cacher = KPQueryCacher()
+        kp_curie = "PathFinder"
+        kp_url = "PathFinder"
+        response_envelope_as_dict = self.response.envelope.to_dict()
+        pathfinder_input_data = { 'query_graph': response_envelope_as_dict['message']['query_graph'], 'parameters': parameters }
+        self.response.info(f"Looking for a previously cached result from {kp_curie}")
+        response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, pathfinder_input_data)
+        if response_code != -2: 
+            n_results = cacher._get_n_results(response_data)
+            self.response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
+            self.response.envelope.message = ARAXMessenger().from_dict(response_data['message'])
 
-        self.response.debug(f"Applying Connect to Message with parameters {parameters}")
+        else:
+            self.response.debug(f"Applying Connect to Message with parameters {parameters}")
+            getattr(self, '_' + self.__class__.__name__ + '__' + parameters[
+                'action'])()  # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string
+
+            elapsed_time = time.time() - start
+            self.response.info(f"Got result from ARAX PathFinder Connect after {elapsed_time}. Converting to_dict()")
+            response_object = self.response.envelope.to_dict()
+            self.response.info(f"Storing result in the cache")
+            cacher.store_response(
+                kp_curie=kp_curie,
+                query_url=kp_url,
+                query_object=pathfinder_input_data,
+                response_object=response_object,
+                http_code=200,
+                elapsed_time=elapsed_time,
+                status="OK"
+            )
+            self.response.info(f"Stored result in the cache.")
 
         if self.report_stats:  # helper to report information in debug if class self.report_stats = True
             self.response = self.report_response_stats(self.response)
         return self.response
+
 
     def get_pinned_nodes(self):
         pinned_nodes = []
