@@ -275,8 +275,14 @@ class KPQueryCacher:
         """
 
         start_time = time.time()
-        query_hash = self._hash_query(query_url + str(query_object))
-        
+        use_json = False
+        if query_url == 'PathFinder':
+            use_json = True
+        if use_json:
+            query_hash = self._hash_query(query_url + json.dumps(query_object, sort_keys=True))
+        else:
+            query_hash = self._hash_query(query_url + str(query_object))
+
         with self._get_session() as session:
             record = session.query(KPQuery).filter_by(query_url=query_url, query_hash=query_hash).first()
             
@@ -387,7 +393,15 @@ class KPQueryCacher:
         :param elapsed_time: The time the query took.
         :param status: The initial status string (e.g., "OK" or "FAILED").
         """
-        query_hash = self._hash_query(query_url + str(query_object))
+
+        use_json = False
+        if query_url == 'PathFinder':
+            use_json = True
+        if use_json:
+            query_hash = self._hash_query(query_url + json.dumps(query_object, sort_keys=True))
+        else:
+            query_hash = self._hash_query(query_url + str(query_object))
+
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         n_results = self._get_n_results(response_object)
         
