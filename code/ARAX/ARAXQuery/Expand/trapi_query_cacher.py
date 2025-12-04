@@ -404,11 +404,17 @@ class KPQueryCacher:
         else:
             query_hash = self._hash_query(query_url + str(query_object))
 
+        eprint(f"*** Planning to write a cache entry for query_url={query_url}, query_object={query_object} which yields query_hash={query_hash}")
+
         now_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         n_results = self._get_n_results(response_object)
         
         # 1. Write the compressed response file
         filepath = self._get_cache_filepath(query_hash)
+        if sys.path.exists(filepath):
+            eprint(f"There is already a file {filepath}. Assuming that some parallel job beat us to it. Skip writing and database record")
+            return
+
         try:
             self._write_cache_file(filepath, response_object)
         except Exception as e:
