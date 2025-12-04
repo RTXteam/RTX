@@ -23,6 +23,7 @@ from ARAX_messenger import ARAXMessenger
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.pathfinder_analysis import PathfinderAnalysis
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
@@ -204,15 +205,25 @@ class ARAXConnect:
             self.response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
             self.response.envelope.message = ARAXMessenger().from_dict(response_data['message'])
 
+            # Hack to explicitly convert the analyses to PathfinderAnalysis objects because this doesn't work automatically. It should. Maybe move this into Messenger? FIXME
+            i_analysis = 0
+            for analysis_dict in response_data['message']['results'][0]['analyses']:
+                analysis_obj = PathfinderAnalysis.from_dict(analysis_dict)
+                self.response.envelope.message.results[0].analyses[i_analysis] = analysis_obj
+                i_analysis += 1
+
         else:
             self.response.debug(f"Applying Connect to Message with parameters {parameters}")
+
+            #### This will effectively call __connect_nodes() unless the user injects something else
             getattr(self, '_' + self.__class__.__name__ + '__' + parameters[
                 'action'])()  # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string
 
+            #### Store the result into the cache for next time
             elapsed_time = time.time() - start
             self.response.info(f"Got result from ARAX PathFinder Connect after {elapsed_time}. Converting to_dict()")
             response_object = self.response.envelope.to_dict()
-            self.response.info(f"Storing result in the cache")
+            self.response.info(f"Storing resulting dict in the cache")
             cacher.store_response(
                 kp_curie=kp_curie,
                 query_url=kp_url,
