@@ -687,11 +687,15 @@ class ARAXExpander:
 
                     #### Check the cache to see if we have this query cached already
                     cacher = KPQueryCacher()
+                    enable_caching = False
                     kp_curie = "xDTD"
                     kp_url = "xDTD"
-                    response.info(f"Looking for a previously cached result from {kp_curie}")
-                    response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, infer_input_parameters)
-                    if response_code != -2: 
+                    if enable_caching:
+                        response.info(f"Looking for a previously cached result from {kp_curie}")
+                        response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, infer_input_parameters)
+                    else:
+                        response.info(f"KP results caching for xDTD is currently disabled, pending further debugging")
+                    if enable_caching and response_code != -2: 
                         n_results = cacher._get_n_results(response_data)
                         response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
                         #### Transform the dict message into objects
