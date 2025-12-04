@@ -195,7 +195,8 @@ class ARAXConnect:
         kp_curie = "PathFinder"
         kp_url = "PathFinder"
         response_envelope_as_dict = self.response.envelope.to_dict()
-        pathfinder_input_data = { 'query_graph': response_envelope_as_dict['message']['query_graph'], 'parameters': parameters }
+        cleaned_parameters = self._clean_parameters(parameters)
+        pathfinder_input_data = { 'query_graph': response_envelope_as_dict['message']['query_graph'], 'parameters': cleaned_parameters }
         self.response.info(f"Looking for a previously cached result from {kp_curie}")
         response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, pathfinder_input_data)
         if response_code != -2: 
@@ -226,6 +227,14 @@ class ARAXConnect:
         if self.report_stats:  # helper to report information in debug if class self.report_stats = True
             self.response = self.report_response_stats(self.response)
         return self.response
+
+
+    #### During processing, sometimes these parameters change from a string (of an integer) to an integer, so just force them all to strings for the purpose of cache comparison
+    def _clean_parameters(self, parameters):
+        cleaned_parameters = parameters.copy()
+        cleaned_parameters['max_path_length'] = str(cleaned_parameters['max_path_length'])
+        cleaned_parameters['max_pathfinder_paths'] = str(cleaned_parameters['max_pathfinder_paths'])
+        return cleaned_parameters
 
 
     def get_pinned_nodes(self):
