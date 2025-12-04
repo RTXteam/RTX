@@ -275,11 +275,11 @@ class KPQueryCacher:
         """
 
         start_time = time.time()
-        use_json = False
+        use_new_mode = False
         if query_url == 'PathFinder':
-            use_json = True
-        if use_json:
-            query_hash = self._hash_query(query_url + json.dumps(query_object, sort_keys=True))
+            use_new_mode = True
+        if use_new_mode:
+            query_hash = self._hash_query( { 'query_url': query_url, 'query_object': query_object } )
         else:
             query_hash = self._hash_query(query_url + str(query_object))
 
@@ -396,11 +396,11 @@ class KPQueryCacher:
         :param status: The initial status string (e.g., "OK" or "FAILED").
         """
 
-        use_json = False
+        use_new_mode = False
         if query_url == 'PathFinder':
-            use_json = True
-        if use_json:
-            query_hash = self._hash_query(query_url + json.dumps(query_object, sort_keys=True))
+            use_new_mode = True
+        if use_new_mode:
+            query_hash = self._hash_query( { 'query_url': query_url, 'query_object': query_object } )
         else:
             query_hash = self._hash_query(query_url + str(query_object))
 
