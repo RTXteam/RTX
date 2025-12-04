@@ -11,6 +11,7 @@ import pkgutil
 from importlib.metadata import version
 
 from ARAX_query_tracker import ARAXQueryTracker
+from Expand.trapi_query_cacher import KPQueryCacher
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")
 from RTXConfiguration import RTXConfiguration
@@ -128,6 +129,9 @@ class ARAXBackgroundTasker:
                     eprint(result.stdout.decode('utf-8'))
         eprint("INFO: End listing databases area contents")
 
+        #### Set up the KP Cacher to be used for periodic refreshing
+        kp_cacher = KPQueryCacher()
+
         # Loop forever doing various things
         my_pid = os.getpid()
         while True:
@@ -198,6 +202,15 @@ class ARAXBackgroundTasker:
                 n_clients += 1
                 n_ongoing_queries += n_queries
 
+            #### Refresh the KP cache
+            start_time = time.time()
+            kp_cacher.refresh_cache()
+            elapsed_time = time.time() - start_time
+            if elapsed_time < FREQ_CHECK_ONGOING_SEC - 1:
+                time_to_sleep = FREQ_CHECK_ONGOING_SEC - round(elapsed_time)
+            else:
+                time_to_sleep = 2
+
             load_tuple = psutil.getloadavg()
 
             timestamp = str(datetime.datetime.now().isoformat())
@@ -205,7 +218,7 @@ class ARAXBackgroundTasker:
                    f"(PID {my_pid}) status: waiting. Current "
                    f"load is {load_tuple}, n_clients={n_clients}, "
                    f"n_ongoing_queries={n_ongoing_queries}")
-            time.sleep(FREQ_CHECK_ONGOING_SEC)
+            time.sleep(time_to_sleep)
 
 
 def main():

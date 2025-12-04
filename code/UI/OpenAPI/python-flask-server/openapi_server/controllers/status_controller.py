@@ -5,6 +5,7 @@ import sys
 from openapi_server import util
 from ARAX_query_tracker import ARAXQueryTracker
 from Expand.smartapi import SmartAPI
+from Expand.trapi_query_cacher import KPQueryCacher
 from recent_uuid_manager import RecentUUIDManager
 
 
@@ -26,6 +27,10 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
 
     :rtype: object
     """
+
+    if mode is not None and mode == 'kp_cache':
+        cacher = KPQueryCacher()
+        return cacher.list_cached_queries()
 
     if mode is not None and mode == 'recent_pks':
         manager = RecentUUIDManager()
