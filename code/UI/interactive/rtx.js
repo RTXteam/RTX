@@ -106,13 +106,14 @@ function main() {
     var rec = getQueryVariable("recent") || null;
     var pks = getQueryVariable("latest") || null;
     var sys = getQueryVariable("systest") || null;
+    var kpc = getQueryVariable("kpcache") || null;
     var sai = getQueryVariable("smartapi") || getQueryVariable("smartAPI") || null;
 
     retrieveTestRunnerResultsList(sys);
 
     var response_id = getQueryVariable("r") || getQueryVariable("id") || null;
     if (response_id) {
-	response_id.trim();
+	response_id = response_id.trim();
 	var statusdiv = document.getElementById("statusdiv");
 	statusdiv.innerHTML = '';
 	statusdiv.append("You have requested response id = " + response_id);
@@ -158,6 +159,10 @@ function main() {
 	    var timeout = setTimeout(function() { retrieveSysTestResults("ARSARS_"+sys); }, 50 );  // give it time...
 	else
 	    retrieveSysTestResults();
+    }
+    else if (kpc) {
+        tab = "kpcache";
+        retrieveKPCacheInfo();
     }
     openSection(tab);
     dragElement(document.getElementById('nodeeditor'));
@@ -262,17 +267,16 @@ function reset_vars() {
     display_qg_popup('node','hide');
     display_qg_popup('edge','hide');
     display_qg_popup('filters','hide');
-    document.getElementById("queryplan_container").innerHTML = "";
+
+    for (var container of ["queryplan_container","filter_nodelist","result_container","summary_container","provenance_container","trapi_container"])
+	document.getElementById(container).innerHTML = "";
+
     if (document.getElementById("queryplan_stream")) {
 	document.getElementById("queryplan_streamhead").remove();
 	document.getElementById("queryplan_stream").remove();
     }
     document.getElementById("filter_container").style.display = 'none';
-    document.getElementById("filter_nodelist").innerHTML = "";
     document.getElementById("result_container").style.marginLeft = '';
-    document.getElementById("result_container").innerHTML = "";
-    document.getElementById("summary_container").innerHTML = "";
-    document.getElementById("provenance_container").innerHTML = "";
 
     for (var indicator of ["menunummessages","menunumresults","menunumtrapi"]) {
 	document.getElementById(indicator).innerHTML = "--";
@@ -1364,6 +1368,7 @@ function process_ars_message(ars_msg, level) {
 
 
     if (ars_msg.actor.agent == 'ars-default-agent') {
+	tr.className = ''; // NOT hoverable;
 	td = document.createElement("td");
 	td.colSpan = "7";
 	link = document.createElement("a");
@@ -1631,6 +1636,8 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 		    table.style.width = "100%";
 		    table.style.borderCollapse = "collapse";
 		    tr = document.createElement("tr");
+		    tr.style.position = "sticky";
+		    tr.style.top = "0";
 		    td = document.createElement("th");
 		    td.colSpan = "4";
 		    td.style.background = "#3d6d98";
@@ -1667,6 +1674,8 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
                     table.style.borderCollapse = "collapse";
                     tr = document.createElement("tr");
 		    tr.style.background = "initial";
+                    tr.style.position = "sticky";
+                    tr.style.top = "0";
 		    td = document.createElement("th");
 		    td.colSpan = "2";
                     td.style.background = "#3d6d98";
@@ -2517,19 +2526,28 @@ function renderTRAPIReport(report) {
         table.className = 'sumtab';
 
 	var extrabr = false;
+	var count = 0;
 	for (var vmsg in report.validation_messages[vtype]) {
+	    count++;
             var tr = document.createElement("tr");
             var td = document.createElement("td");
             td.colSpan = "3";
-            td.className = "error";
+            td.className = "essence";
             td.style.fontSize = 'x-large';
             td.style.background = '#fff';
 	    if (extrabr) {
                 td.style.borderTop = "2px solid #444";
 		td.append(document.createElement("br"));
 	    }
-            td.append(vmsg);
-            tr.append(td);
+            td.append("["+count+"/"+Object.keys(report.validation_messages[vtype]).length+"] "+vmsg);
+            var valink = document.createElement("a");
+	    valink.style.marginLeft = "20px";
+            valink.target = '_validator';
+            valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html#"+vmsg.replaceAll("_","-").replaceAll(".","-");
+            valink.title = 'more info';
+            valink.append('[ ? ]');
+            td.append(valink);
+	    tr.append(td);
             table.append(tr);
 	    extrabr = true;
 
@@ -2658,6 +2676,12 @@ function showJSONpopup(wtitle,query,footer) {
     pre.style.color = "#000";
     if (query && typeof query === 'object' && query.constructor === Object)
 	pre.append(JSON.stringify(query,null,2));
+    else if (Array.isArray(query)) {
+        for (var item of query) {
+	    pre.append("- "+item);
+	    pre.append(document.createElement("br"));
+	}
+    }
     else
 	pre.innerText = query;
     div.append(pre);
@@ -6945,6 +6969,15 @@ function retrieveRecentQs(active) {
 	    else throw new Error('Something went wrong with '+apicall);
 	})
         .then(data => {
+	    if (data.recent_queries.length < 1) {
+		qfspan.innerHTML = '';
+		var span = document.createElement("h2");
+		span.style.margin = "50px";
+		span.append("There are no Queries to show");
+		recents_node.append(span);
+		return;
+	    }
+
 	    var stats = {};
 	    stats.elapsed   = 0;
 	    stats.state     = {};
@@ -7111,6 +7144,12 @@ function retrieveRecentQs(active) {
 			    stats.status[query[field]]++;
 		        else
 			    stats.status[query[field]] = 1;
+		    }
+                    else if (field == "elapsed") {
+                        if (query[field] > 3600)
+			    td.append(qdur);
+			else
+			    td.append(query[field]);
 		    }
 		    else
 			td.append(query[field]);
@@ -7423,14 +7462,14 @@ function retrieveKPInfo() {
 		table.append(tr);
 
 		tr = document.createElement("tr");
+		tr.style.background = '#3d6d98';
+		tr.style.color = '#fff';
                 td = document.createElement("th")
-		td.style.background = '#fff';
 		td.style.fontSize = 'x-large';
 		td.append(component+" Info");
 		tr.append(td);
 		for (var head of ["Status","Maturity","Description","URL"] ) {
 		    td = document.createElement("th")
-                    td.style.background = '#fff';
 		    td.append(head);
 		    tr.append(td);
 		}
@@ -7628,6 +7667,154 @@ function retrieveKPInfo() {
 }
 
 
+function retrieveKPCacheInfo() {
+    var kpcache_node = document.getElementById("kpcache_container");
+    kpcache_node.innerHTML = '';
+    kpcache_node.className = '';
+
+    var wspan = document.getElementById("kpcache_wait");
+    wspan.innerHTML = '';
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginRight = "10px";
+    wspan.append(wait);
+    wspan.append('Loading...');
+
+    fetch(providers["ARAX"].url + "/status?mode=kp_cache")
+        .then(response => {
+            if (response.ok) return response.json();
+            else throw new Error('Something went wrong with /status?mode=kp_cache');
+        })
+        .then(data => {
+            wspan.innerHTML = '';
+
+	    var table = document.createElement("table");
+            table.className = 'stattab';
+            var tr = document.createElement("tr");
+            var td = document.createElement("th");
+            td.colSpan = "2";
+            td.append("Cache Stats");
+            tr.append(td);
+            table.append(tr);
+
+            for (let stat in data['cache_stats']) {
+		tr = document.createElement("tr");
+                td = document.createElement("td");
+		td.style.textTransform = 'capitalize';
+                td.append(stat.replaceAll("_"," "));
+                //td.append(stat);
+		tr.append(td);
+		td = document.createElement("td");
+		if (stat == 'http_status_codes') {
+		    for (let code in data['cache_stats'][stat]) {
+                        var span = document.createElement("span");
+                        span.className = 'code' + code;
+			span.style.padding = '2px 6px';
+			span.style.marginRight = '20px';
+			span.title = "HTTP status code = " + code;
+			span.append(code);
+                        td.append(span);
+			td.append(data['cache_stats'][stat][code]);
+			//td.append(code + " :: " + data['cache_stats'][stat][code]);
+			td.append(document.createElement("br"));
+		    }
+		}
+		else if (['max_query_age_hr','min_query_age_hr','total_cache_size_MiB'].includes(stat))
+		    td.append(Number(data['cache_stats'][stat]).toFixed(3));
+		else
+		    td.append(data['cache_stats'][stat]);
+		tr.append(td);
+                table.append(tr);
+	    }
+            kpcache_node.append(table);
+            kpcache_node.append(document.createElement("br"));
+            kpcache_node.append(document.createElement("br"));
+
+            var stats = {};
+            stats.status                 = {};
+            stats.kp_curie               = {};
+	    stats.first_query_http_code  = {};
+	    stats.last_refresh_http_code = {};
+
+	    table = document.createElement("table");
+	    table.id = 'kpcache_table';
+            table.className = 'sumtab';
+	    tr = document.createElement("tr");
+	    for (let heading of data['column_data']) {
+		td = document.createElement("th");
+		td.id = 'filter_'+heading['key'];
+		td.dataset.filterstring = '';
+		td.append(heading['title']);
+		td.title = heading['title_hover'];
+		tr.append(td);
+		table.append(tr);
+	    }
+
+            for (let item of data['cache_data']) {
+		tr = document.createElement("tr");
+		tr.className = 'hoverable';
+
+		for (let heading of data['column_data']) {
+		    var td = document.createElement("td");
+
+		    if (heading['cell_hover_key'])
+			td.title = item[heading['cell_hover_key']];
+
+                    if ('red_if_not_equal_to_value' in heading &&
+			item[heading['key']] != heading['red_if_not_equal_to_value'])
+			td.className = 'error';
+                    if ('red_if_greater_than_value' in heading &&
+			item[heading['key']] > heading['red_if_greater_than_value'])
+			td.className = 'error';
+                    if (heading['red_if_greater_than_stat'] &&
+			item[heading['key']] > data['cache_stats'][heading['red_if_greater_than_stat']])
+			td.className = 'error';
+
+		    if (heading['key'] == 'status') {
+			var span = document.createElement("span");
+			if (item[heading['key']] == "OK")
+			    span.className = 'explevel p9';
+			else
+			    span.className = 'explevel p3';
+			span.append(item[heading['key']]);
+			td.append(span);
+		    }
+		    else
+			td.append(item[heading['key']]);
+
+		    if (heading['key'] in stats) {
+			td.dataset.value = item[heading['key']];
+                        if (stats[heading['key']][item[heading['key']]])
+                            stats[heading['key']][item[heading['key']]]++;
+                        else
+                            stats[heading['key']][item[heading['key']]] = 1;
+		    }
+
+		    tr.append(td);
+		}
+                table.append(tr);
+            }
+
+	    kpcache_node.append(table);
+            kpcache_node.append(document.createElement("br"));
+            kpcache_node.append(document.createElement("br"));
+
+            for (var filterfield in stats) {
+                if (Object.keys(stats[filterfield]).length > 1) {
+                    add_filtermenu('kpcache_table',filterfield, stats[filterfield]);
+                }
+            }
+
+	})
+        .catch(error => {
+            wspan.innerHTML = '';
+            kpcache_node.className = "error";
+            kpcache_node.innerHTML =  "<br>" + error + "<br><br>";
+            console.error(error);
+        });
+
+}
+
+
 function retrieveTestRunnerResultsList(thisone=null) {
     var url = 'https://arax.ncats.io/devLM/ARS-testing/testRunnerResults.json';
 
@@ -7658,7 +7845,7 @@ function retrieveTestRunnerResultsList(thisone=null) {
 	    }
 	})
         .catch(error => {
-	    div.append("ERROR: "+error);
+            add_user_msg(error,"WARNING",false);
 	    console.error(error);
 	});
 
@@ -7690,7 +7877,7 @@ function retrieveSysTestResultsList(num) {
 	    }
 	})
         .catch(error => {
-	    div.append("ERROR: "+error);
+            add_user_msg(error,"WARNING",false);
 	    console.error(error);
 	});
 
@@ -8219,7 +8406,6 @@ function displayARSResults(parentnode,arsdata) {
 	tr.append(td);
 
 	td = document.createElement("td");
-	td.style.textAlign = "right";
 	var link = document.createElement("a");
         link.style.cursor = "pointer";
 	link.target = "_radiator";
@@ -8238,6 +8424,8 @@ function displayARSResults(parentnode,arsdata) {
 	var ttype = row.name.split(":")[0];
 	if (ttype == 'PATHFINDER')
 	    add_to_link = 'pathfinder_';
+	else
+            td.style.textAlign = "right";
 
 	td = document.createElement("td");
 	td.title = hint[ttype];
@@ -9310,7 +9498,7 @@ function dropFile(where,event) {
     var file = event.dataTransfer.files[0];
     reader = new FileReader();
 
-    if (where == 'response' || where == 'jsoninput') {
+    if (where == 'response' || where == 'jsoninput' || where == 'pigeaninput') {
 	reader.onload = function(ev) {
             event.target.value = ev.target.result;
             const lineCount = ev.target.result.split('\n').length;

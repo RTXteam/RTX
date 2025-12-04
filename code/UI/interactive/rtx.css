@@ -267,12 +267,12 @@ hr {
     color: #333;
 }
 
-#dslText, #wfJSON, #jsonText, #responseText, #genesetText {
+#dslText, #wfJSON, #jsonText, #responseText, #pigeanText {
     width: 80%;
     height: 30em;
     overflow:scroll;
 }
-#jsonText::placeholder, #responseText::placeholder {
+#jsonText::placeholder, #responseText::placeholder, #pigeanText::placeholder {
     font-size: xx-large;
     text-align: center;
 }
@@ -433,7 +433,7 @@ hr {
 .menunum {
     font-size: 12px;
     vertical-align: super;
-    border: 1px solid;
+    border: 1px solid #c2cdd7;
     padding: 2px 4px;
     transition-duration: 2s;
 }
@@ -444,7 +444,6 @@ hr {
 .numnew {
     background-color: #291;
     color: #fff;
-    border-color: #291;
 }
 
 .progress {
@@ -585,7 +584,8 @@ pre {
     border-collapse:collapse;
 }
 
-table.sumtab {
+table.sumtab, table.stattab {
+    min-width: 300px;
     border-collapse:collapse;
 }
 
@@ -593,11 +593,11 @@ table.sumtab {
     background-color: #ee6 !important;
 }
 
-.sumtab th {
+.sumtab th, .stattab th {
     border-bottom: 1px solid #000;
     text-transform: uppercase;
 }
-.sumtab tr td {
+.sumtab tr td, .stattab tr td {
     border-bottom: 1px solid #aaa;
     padding: 5px;
 }
@@ -605,6 +605,13 @@ table.sumtab {
     background-color: #eee;
 }
 
+.stattab td:first-child {
+    background-color: #3d6d98;
+    color: #fff;
+}
+.stattab td:nth-child(2) {
+    text-align:right;
+}
 
 .msg {
     display: block;
@@ -668,7 +675,6 @@ td {
 .attbox {
     border: 2px solid #9bc;
     border-radius: 20px;
-    xxx-padding: 5px;
     background: aliceblue;
     display: inline-block;
     width: 425px;
@@ -964,7 +970,7 @@ input:checked + .slider::before {
 }
 
 .drophere {
-    background: #9bc;
+    background: rgba(85,150,208);
     background-position: center;
     background-repeat: no-repeat;
     background-image:url("download.png");
