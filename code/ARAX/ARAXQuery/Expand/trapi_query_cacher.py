@@ -411,7 +411,7 @@ class KPQueryCacher:
         
         # 1. Write the compressed response file
         filepath = self._get_cache_filepath(query_hash)
-        if sys.path.exists(filepath):
+        if os.path.exists(filepath):
             eprint(f"There is already a file {filepath}. Assuming that some parallel job beat us to it. Skip writing and database record")
             return
 
