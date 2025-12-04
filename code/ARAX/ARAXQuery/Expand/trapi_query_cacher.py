@@ -283,9 +283,11 @@ class KPQueryCacher:
         else:
             query_hash = self._hash_query(query_url + str(query_object))
 
+        eprint(f"*** Looking for pre-existing query_url={query_url}, query_object={query_object} which yields query_hash={query_hash}")
+
         with self._get_session() as session:
             record = session.query(KPQuery).filter_by(query_url=query_url, query_hash=query_hash).first()
-            
+
             if not record:
                 return None, NO_CACHED_RESPONSE, time.time() - start_time, None
                 
