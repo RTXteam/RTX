@@ -243,8 +243,10 @@ class ARAXConnect:
     #### During processing, sometimes these parameters change from a string (of an integer) to an integer, so just force them all to strings for the purpose of cache comparison
     def _clean_parameters(self, parameters):
         cleaned_parameters = parameters.copy()
-        cleaned_parameters['max_path_length'] = str(cleaned_parameters['max_path_length'])
-        cleaned_parameters['max_pathfinder_paths'] = str(cleaned_parameters['max_pathfinder_paths'])
+        if 'max_path_length' in cleaned_parameters:
+            cleaned_parameters['max_path_length'] = str(cleaned_parameters['max_path_length'])
+        if 'max_pathfinder_paths' in cleaned_parameters:
+            cleaned_parameters['max_pathfinder_paths'] = str(cleaned_parameters['max_pathfinder_paths'])
         return cleaned_parameters
 
 
