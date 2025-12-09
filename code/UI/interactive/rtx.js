@@ -65,7 +65,7 @@ function main() {
     UIstate['useicons'] = true;
     UIstate["timeout"] = '30';
     UIstate["pruning"] = '50';
-    UIstate["maxpaths"] = '100';
+    UIstate["maxpaths"] = '500';
     UIstate["maxpathlen"] = '4';
     UIstate["pid"] = null;
     UIstate["viewing"] = null;
@@ -246,7 +246,7 @@ function pasteExample(type) {
 	document.getElementById("dslText").value = '# This program creates two query nodes and a query edge between them, looks for matching edges in the KG,\n# overlays NGD metrics, and returns the top 30 results\nadd_qnode(name=acetaminophen, key=n0)\nadd_qnode(categories=biolink:Protein, key=n1)\nadd_qedge(subject=n0, object=n1, key=e0)\nexpand()\noverlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)\nresultify()\nfilter_results(action=limit_number_of_results, max_results=30)\n';
     }
     else if (type == "JSON1") {
-	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicates": ["biolink:interacts_with"]\n      }\n   },\n   "nodes": {\n      "n00": {\n         "ids":        ["CHEMBL.COMPOUND:CHEMBL112"]\n      },\n      "n01": {\n         "categories":  ["biolink:Protein"]\n      }\n   }\n}\n';
+	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicates": ["biolink:interacts_with"]\n      }\n   },\n   "nodes": {\n      "n00": {\n         "ids":        ["CHEBI:46195"]\n      },\n      "n01": {\n         "categories":  ["biolink:Protein"]\n      }\n   }\n}\n';
     }
     else if (type == "JSON2") {
 	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "attribute_constraints": [],\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:treats"\n      ],\n      "qualifier_constraints": [],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Disease"\n      ],\n      "constraints": [],\n      "ids": [\n        "MONDO:0015564"\n      ],\n      "is_set": false\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ],\n      "constraints": [],\n      "is_set": false\n    }\n  }\n}\n';
@@ -1500,7 +1500,14 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 
 	    statusdiv.append(document.createElement("br"));
 
-	    renderTRAPIReport(jsonObj2.validation_result);
+	    try {
+		renderTRAPIReport(jsonObj2.validation_result);
+	    }
+            catch(e) {
+		nr.innerHTML = '&cross;&cross;&cross;';
+		nr.className = 'explevel p1';
+		nr.title = 'Failed to parse TRAPI validation report';
+	    }
 	}
 	if (jsonObj2.validation_result.status == "FAIL") {
 	    if (type == "all") {
@@ -1933,8 +1940,8 @@ function render_response(respObj,dispjson) {
     let isPathFinder = false;
     if ( respObj["table_column_names"] )
 	add_to_summary(respObj["table_column_names"],0);
-    else if (respObj.message.results && respObj.message.results.length == 1) {
-	isPathFinder = true; // might need refining...
+    else if (respObj.message.results && respObj.message.results.length == 1 && respObj.message.results[0].analyses && respObj.message.results[0].analyses[0].path_bindings) {
+	isPathFinder = true;
 	add_to_summary(["Node","Curie","Count"],0);
     }
     else
@@ -2510,6 +2517,14 @@ function renderTRAPIReport(report) {
 	    trapidiv.append(" :: "+report.validation_messages['info']['message']);
 	return;
     }
+    if (!report.validator_version || report.validator_version != '5.0.0') {
+	trapidiv.append(report.validation_messages_text);
+        trapidiv.append(document.createElement("br"));
+        trapidiv.append(document.createElement("br"));
+	trapidiv.append("Validator version too old ("+report.validator_version+"); no report generated.");
+        return;
+    }
+
 
     for (var vtype of ["critical","error","warning","info","skipped"]) {
         if (Object.keys(report.validation_messages[vtype]).length < 1)
@@ -2551,86 +2566,55 @@ function renderTRAPIReport(report) {
             table.append(tr);
 	    extrabr = true;
 
-            for (var where in report.validation_messages[vtype][vmsg]) {
+	    var things = 0;
+            for (var what in report.validation_messages[vtype][vmsg]) {
 		tr = document.createElement("tr");
 		td = document.createElement("td");
-		td.className = "code501 attvalue";
-                td.style.borderTop = "2px solid #444";
-		td.colSpan = "3";
-		td.append(where);
+		td.colSpan = "2";
 		tr.append(td);
 		table.append(tr);
 
-		var places = 0;
-		for (var what in report.validation_messages[vtype][vmsg][where]) {
-                    if (places++ > 10)
-                        break;
+		if (things > 9) {
+                    td.className = "attvalue";
+                    td.append("+"+(Object.keys(report.validation_messages[vtype][vmsg]).length - things));
+		    break;
+		}
 
-                    tr = document.createElement("tr");
-                    td = document.createElement("td");
-                    td.append(what);
-                    tr.append(td);
+		td.append(what);
+		things++;
 
-		    if (!report.validation_messages[vtype][vmsg][where][what]) {
-			td.colSpan = "3";
-                        table.append(tr);
-			continue;
-		    }
-		    td.className = "attvalue";
-                    tr.style.borderTop = "2px solid #444";
+		if (!report.validation_messages[vtype][vmsg][what])
+		    continue;
 
-		    var newtr = false;
-		    var shown = 0;
-		    for (var item of report.validation_messages[vtype][vmsg][where][what]) {
-			for (var element in item) {
-			    if (newtr) {
-				tr = document.createElement("tr");
-				td = document.createElement("td");
-				td.append('');
-				tr.append(td);
-			    }
+		td.style.borderTop = "2px solid #444";
+		td.className = "code501 attvalue";
 
-                            td = document.createElement("td");
-                            td.append(element);
-                            tr.append(td);
+		var shown = 0;
+		for (var item of report.validation_messages[vtype][vmsg][what]) {
+		    tr = document.createElement("tr");
+		    table.append(tr);
 
-                            td = document.createElement("td");
-			    td.style.textAlign = "right";
-                            td.append(item[element]);
-                            tr.append(td);
-
-			    table.append(tr);
-			    newtr = true;
-			}
-			if (shown++ > 6)
-			    break;
-		    }
-
-		    if (Object.keys(report.validation_messages[vtype][vmsg][where][what]).length > shown) {
-			tr = document.createElement("tr");
+		    if (shown > 6) {
 			td = document.createElement("td");
-			td.colSpan = "2";
 			tr.append(td);
 
 			td = document.createElement("td");
 			td.className = "attvalue";
-			td.append("+"+(Object.keys(report.validation_messages[vtype][vmsg][where][what]).length - shown));
+			td.append("+"+(Object.keys(report.validation_messages[vtype][vmsg][what]).length - shown));
 			tr.append(td);
-                        table.append(tr);
+			break;
 		    }
-		}
+		    for (var element in item) {
+			td = document.createElement("td");
+                        td.append(element);
+			tr.append(td);
 
-		if (Object.keys(report.validation_messages[vtype][vmsg][where]).length > places) {
-                    tr = document.createElement("tr");
-                    td = document.createElement("td");
-                    td.colSpan = "2";
-                    tr.append(td);
-
-                    td = document.createElement("td");
-                    td.className = "attvalue";
-                    td.append("+"+(Object.keys(report.validation_messages[vtype][vmsg][where]).length - places));
-                    tr.append(td);
-                    table.append(tr);
+                        td = document.createElement("td");
+			td.style.textAlign = "right";
+                        td.append(item[element]);
+                        tr.append(td);
+			shown++;
+		    }
 		}
 	    }
 	}
@@ -9257,7 +9241,7 @@ function update_url(urlkey,value) {
     else if (urlkey == 'maxpaths') {
 	var to = parseInt(document.getElementById(urlkey+"_url").value.trim());
 	if (isNaN(to))
-	    to = '100';
+	    to = '500';
 	UIstate[urlkey] = to;
 	document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
