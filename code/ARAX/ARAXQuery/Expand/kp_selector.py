@@ -19,7 +19,7 @@ from RTXConfiguration import RTXConfiguration
 
 
 RTX_CONFIG = RTXConfiguration()
-
+KPS_SKIP_METAKG_CHECKS = {'infores:retriever'}
 
 class KPSelector:
 
@@ -74,6 +74,7 @@ class KPSelector:
         self.log.debug(f"selecting from {len(self.valid_kps)} kps")
         accepting_kps = set()
         for kp in self.meta_map:
+            # kp should contain the infores CURIE of the knowledge provider
             if self._triple_is_in_meta_map(kp,
                                            sub_categories,
                                            predicates,
@@ -86,7 +87,12 @@ class KPSelector:
                                              sub_categories):
                 accepting_kps.add(kp)
             else:
-                self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
+                if kp not in KPS_SKIP_METAKG_CHECKS:
+                    self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
+                else:
+                    # this KP is one that is marked for skipping MetaKG checks (see RTXteam/RTX issue 2598)
+                    self.log.debug(f"For qedge {qedge_key}, skipping MetaKG checks for querying {kp}")
+                    accepting_kps.add(kp)
         kps_missing_meta_info = self.valid_kps.difference(set(self.meta_map))
         for missing_kp in kps_missing_meta_info:
             self.log.update_query_plan(qedge_key, missing_kp, "Skipped", "No MetaKG info available")
