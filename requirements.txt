@@ -58,3 +58,4 @@ opentelemetry-sdk==1.17.0
 opentelemetry-semantic-conventions==0.38b0
 opentelemetry-util-http==0.38b0
 xgboost==1.7.6 # compatible with Python 3.12
+httpx
