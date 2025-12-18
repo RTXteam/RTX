@@ -52,10 +52,12 @@ RUN apt-get update && apt-get install -y python3.12 python3.12-dev python3.12-ve
 RUN rm -f /usr/bin/python3 && ln -s /usr/bin/python3.12 /usr/bin/python3
 
 # install python deps using python 3.12
-RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install --upgrade pip"
-RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install click==8.1.3"
-RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install -r requirements.txt"
-RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install 'connexion[swagger-ui]'"
+# Note: Ubuntu 24.04 enforces PEP 668 (externally-managed environment), so system-wide pip installs are blocked. 
+# added --break-system-packages to bypass this restriction
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install --upgrade pip --break-system-packages"
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install click==8.1.3 --break-system-packages"
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install -r requirements.txt --break-system-packages"
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install 'connexion[swagger-ui]' --break-system-packages"
 
 # setup services
 RUN export DEVAREA=production
