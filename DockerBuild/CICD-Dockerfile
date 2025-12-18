@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 
 # suppress debconf error messages:
 ARG DEBIAN_FRONTEND=noninteractive
@@ -28,7 +28,7 @@ RUN chmod -R 700 /home/rt/.ssh
 # clone RTX repo
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt.rt /mnt/data/orangeboard/production
-RUN su rt && cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git
+RUN su - rt -c "cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git"
 RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
@@ -41,21 +41,28 @@ COPY remoteip.conf /etc/apache2/conf-available/remoteip.conf
 RUN a2enconf remoteip
 RUN cd /var/www && /usr/sbin/apachectl configtest
 
-# install python and packages
+# install python 3.12 and packages
 RUN apt-get update
 RUN apt-get install -y python3 python3-pip
 RUN apt-get install -y software-properties-common
 RUN add-apt-repository -y ppa:deadsnakes/ppa
-RUN apt-get update && apt-get install -y python3.9 python3.9-dev python3.9-venv
-RUN rm /usr/bin/python3 && ln -s /usr/bin/python3.9 /usr/bin/python3
-RUN su rt && cd /mnt/data/orangeboard/production/RTX && python3.9 -m pip install click==8.1.3 && python3.9 -m pip install -r requirements.txt && python3.9 -m pip install connexion[swagger-ui]
+RUN apt-get update && apt-get install -y python3.12 python3.12-dev python3.12-venv
+
+# make python3 be python 3.12 (used by RTX_OpenAPI.start and various scripts)
+RUN rm -f /usr/bin/python3 && ln -s /usr/bin/python3.12 /usr/bin/python3
+
+# install python deps using python 3.12
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install --upgrade pip"
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install click==8.1.3"
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install -r requirements.txt"
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install 'connexion[swagger-ui]'"
 
 # setup services
 RUN export DEVAREA=production
 RUN cat /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flask-server/RTX_OpenAPI | sed 's/template/production/g' > /etc/init.d/RTX_OpenAPI_production
 RUN chmod 700 /etc/init.d/RTX_OpenAPI_production
-RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flask-server && cp -p RTX_OpenAPI RTX_OpenAPI_production && sed -i 's/template/production/g' RTX_OpenAPI_production
-RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flask-server && cp -p RTX_OpenAPI.start RTX_OpenAPI_production.start && sed -i 's/template/production/g' RTX_OpenAPI_production.start
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flask-server && cp -p RTX_OpenAPI RTX_OpenAPI_production && sed -i 's/template/production/g' RTX_OpenAPI_production"
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flask-server && cp -p RTX_OpenAPI.start RTX_OpenAPI_production.start && sed -i 's/template/production/g' RTX_OpenAPI_production.start"
 RUN update-rc.d RTX_OpenAPI_production defaults
 
 # autocomplete
@@ -65,4 +72,4 @@ RUN cd /mnt/data/orangeboard/production/RTX/code/autocomplete && sed -i 's/devED
 RUN update-rc.d RTX_Complete defaults
 
 # setup config.domain
-RUN su rt && cd /mnt/data/orangeboard/production/RTX/code/ && echo "Github actions ARAX test suite" > config.domain
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX/code/ && echo 'Github actions ARAX test suite' > config.domain"
