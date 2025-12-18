@@ -57,7 +57,7 @@ RUN python3 --version | grep -qi "3.12" || (echo "ERROR: python3 symlink failed"
 # install python3.12 deps using python3 (which points to python3.12) for consistency
 # Note: Ubuntu 24.04 enforces PEP 668 (externally-managed environment), so system-wide pip installs are blocked. 
 # added --break-system-packages to bypass this restriction
-RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install --upgrade pip --break-system-packages
+# pip 24.0 is already installed via apt (Debian-managed), skip upgrade
 RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install click==8.1.3 --break-system-packages
 RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install -r requirements.txt --break-system-packages
 RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install 'connexion[swagger-ui]' --break-system-packages
