@@ -4,12 +4,13 @@
 <meta charset="utf-8"/>
 <title>ARAX User Interface</title>
 <link rel="shortcut icon" href="favicon.ico">
-<link rel="stylesheet" type="text/css" href="rtx.css?v=23">
+<link rel="stylesheet" type="text/css" href="rtx.css?v=25">
 <link rel="stylesheet" type="text/css" href="dd.css">
 <script src="cytoscape.min.js"></script>
 <script src="cytoscape-expand-collapse.js"></script>
 <script src="config.js"></script>
 <script src="rtx.js"></script>
+<script src="pigean.js"></script>
 <script src="araxi.js"></script>
 <script src="wfoperations.js"></script>
 <script src="//unpkg.com/timelines-chart"></script>
@@ -27,7 +28,7 @@
 <div id="useralerts"></div>
 
 <div class="menuleft">
-  <br><br><br>
+  <br>
   &nbsp;Input<br>
   <div id="queryMenu" onclick="openSection('query');" class="menucurrent">Queries</div>
   <div id="settingsMenu" onclick="openSection('settings');" class="menuleftitem">Settings</div>
@@ -43,17 +44,25 @@
   <div id="kgMenu" onclick="openSection('kg');add_cyto(0,'KG');" class="menuleftitem" title="Integrated and interactive graphical view of all results">Knowledge Graph</div>
   <div id="resultsMenu" onclick="openSection('results');" class="menuleftitem">Results&nbsp;<span class="menunum" title="Individual interactive view of results" id="menunumresults">-</span></div>
   <div id="messagesMenu" onclick="openSection('messages');" class="menuleftitem">Messages&nbsp;<span class="menunum" id="menunummessages">-</span></div>
+  <div id="trapiMenu" onclick="openSection('trapi');" class="menuleftitem">TRAPI&nbsp;<span class="menunum" id="menunumtrapi">-</span></div>
   <hr>
   &nbsp;Tools<br>
   <div id="synonymMenu" onclick="openSection('synonym');" class="menuleftitem">Synonyms</div>
+  <div id="pigeanMenu" onclick="openSection('pigean');" class="menuleftitem">PIGEAN&nbsp;<span class="numold menunum">beta</span></div>
   <div id="devMenu" onclick="openSection('dev');" class="menuleftitem">Dev Info</div>
-  <br><br>
-  <div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">System Activity</div>
+  <hr>
+  &nbsp;Translator<br>
+  <div id="systestMenu" onclick="openSection('systest');" class="menuleftitem">Testing</div>
   <div id="kpinfoMenu" onclick="openSection('kpinfo');" class="menuleftitem">SmartAPI Info</div>
-  <div id="systestMenu" onclick="openSection('systest');" class="menuleftitem">Translator Testing</div>
+  <hr>
+  &nbsp;ARAX<br>
+  <div id="recentqsMenu" onclick="openSection('recentqs');" class="menuleftitem">System Activity</div>
+  <div id="kpcacheMenu" onclick="openSection('kpcache');" class="menuleftitem">KP Cache Info</div>
+  <br>
+  <hr>
   <div onclick="window.location = 'index.html';" class="menuleftitem">Reset All</div>
   <hr>
-  <div title="ARAX UI version" class="tiny" id="uiversionstring">version...</div>
+  <div title="ARAX UI version" style="font-size:x-small" id="uiversionstring">version...</div>
   <br>
 </div>
 
@@ -67,7 +76,6 @@
 
 
 <div class="page">
-<br><br><br><br>
 
 <!-- div class="statushead">TRAPI 1.4</div>
 <div id="topnotice" class="status">
@@ -80,20 +88,16 @@
 </div>
 
 <div class="pagesection" id="queryDiv">
-  <h3 class="stitle">Query</h3>
-  <h3 style="width:320px;" class="stitle">Import</h3>
-  <br>&nbsp;
-  <img src="qg.png"    class="slink" id="qgraph_link" onclick="selectInput('qgraph');" title="Enter Query Graph"/>
-  <img src="qwf.png"   class="slink" id="qwf_link"    onclick="selectInput('qwf');"    title="Enter Query via Workflow"/>
-  <img src="qjson.png" class="slink" id="qjson_link"  onclick="selectInput('qjson');"  title="Enter JSON representation of Query Graph"/>
-  <img src="qdsl.png"  class="slink" id="qdsl_link"   onclick="selectInput('qdsl');"   title="Enter Query using the ARAXi Domain-Specific Language"/>
-  <img src="qpf.png"   class="slink" id="qpf_link"    onclick="selectInput('qpf'); "   title="Enter PathFinder Query"/>
-  <img src="qid.png"   class="slink" id="qid_link"    onclick="selectInput('qid');"    title="Retrieve stored response by id"/>
-  <img src="resp.png"  class="slink" id="resp_link"   onclick="selectInput('resp');"   title="View/Render Response JSON object"/>
-  <img src="qnew.png"  class="slink" id="qnew_link"   onclick="selectInput('qnew');"   title="View list of most recent queries"/>
 
+  <!-- h3 class="stitle">Query</h3>
+       <h3 style="width:320px;" class="stitle">Import</h3 -->
+
+  <div class="sbar">
+    <img src="qg.png"    class="slink" id="qgraph_link" onclick="selectInput('qgraph');" title="Enter Query Graph"/><img src="qwf.png"   class="slink" id="qwf_link"    onclick="selectInput('qwf');"    title="Enter Query via Workflow"/><img src="qjson.png" class="slink" id="qjson_link"  onclick="selectInput('qjson');"  title="Enter JSON representation of Query Graph"/><img src="qdsl.png"  class="slink" id="qdsl_link"   onclick="selectInput('qdsl');"   title="Enter Query using the ARAXi Domain-Specific Language"/><img src="qpf.png"   class="slink" id="qpf_link"    onclick="selectInput('qpf'); "   title="Enter PathFinder Query"/><img src="qid.png"   class="slink" id="qid_link"    onclick="selectInput('qid');"    title="Retrieve stored response by id"/><img src="resp.png"  class="slink" id="resp_link"   onclick="selectInput('resp');"   title="View/Render Response JSON object"/><img src="qnew.png"  class="slink" id="qnew_link"   onclick="selectInput('qnew');"   title="View list of most recent queries"/>
+  </div>
+  <br><br>
   <div class="inputsection" id="qgraph_input">
-    <h3 style="display:inline;">Query Graph:</h3>
+    <h3 style="display:inline;">Query Graph Input:</h3>
     <span class="qgmenu">
       <span class="qgbutton" title="edit query graph" class="clq" onclick="qg_edit(true);">&#9998; Edit Graph</span>
       <span class="qgbutton" title="add new node" class="clq" onclick="qg_node('new',true);">&#10010; Node</span>
@@ -545,6 +549,10 @@
   <div id="messages_container"></div>
 </div>
 
+<div class="pagesection" id="trapiDiv">
+  <div id="trapi_container"></div>
+</div>
+
 <div class="pagesection" id="synonymDiv">
   <h3 style="display:inline;">Synonym Lookup:</h3>
   <br>
@@ -568,6 +576,23 @@
   <div id="dev_result_json_container"></div>
 </div>
 
+<div class="pagesection" id="pigeanDiv">
+  <h3 style="display:inline;">Enrich Gene Sets via the PIGEAN Framework:</h3>
+  <span style="margin-left:250px;">
+    Import from:
+    <input type="button" class="questionBox button" name="action" value="List A" onClick="pigean_add_curielist_input('LIST_A');" title="Import curies from List A">
+    <input type="button" class="questionBox button" name="action" value="List B" onClick="pigean_add_curielist_input('LIST_B');" title="Import curies from List B">
+  </span>
+  <br>
+  <textarea placeholder="&#10;&#10;&#10;&#10;Enter a list of Gene Symbols (one per line),&#10;DRAG a file HERE, &#10;and/or select from List A/B" class="questionBox" style="width:50%" wrap="off" ondrop="dropFile('pigeaninput',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)" id="pigeanText"></textarea>&nbsp;<span title="clear Gene Set input" class="clq" onclick="clearTextbox('pigean');">&#9587;</span>
+  <br>
+  p-value cutoff: <input type="text" class="questionBox" id="pigeanPvalue" value="0.5" size="8" maxlength="8"/>
+  <input type="button" class="questionBox button" name="action" value="Post Gene List for Enrichment (FULL) " onClick="postGenes('pigean');">
+  <input type="button" class="questionBox button" name="action" value="Post Gene List for Enrichment (translator_gene) " onClick="postGenes('translator_gene');">
+  <br><br>
+  <div id="pigeanresultsDiv"></div>
+</div>
+
 
 <div class="pagesection" style="overflow:visible;" id="recentqsDiv">
   <div class="statushead">Recent ARAX System Activity
@@ -586,7 +611,7 @@
 
 <div class="pagesection" style="overflow:visible;" id="kpinfoDiv">
   <div class="statushead">SmartAPI Information
-    <span style="float:right;"><a href="?smartapi=1">[ Direct link to this page ]</a></span>
+    <span style="float:right;"><a class="statusheadlink" href="?smartapi=1">[ Direct link to this page ]</a></span>
   </div>
   <div class="status">
     <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveKPInfo();"/>
@@ -595,9 +620,20 @@
   </div>
 </div>
 
+<div class="pagesection" style="overflow:visible;" id="kpcacheDiv">
+  <div class="statushead">KP Cache Information
+    <span style="float:right;"><a class="statusheadlink" href="?kpcache=1">[ Direct link to this page ]</a></span>
+  </div>
+  <div class="status">
+    <input type="button" class="questionBox button" name="action" value="Load / Refresh" onClick="retrieveKPCacheInfo();"/>
+    <span style="margin-left:50px;" id="kpcache_wait"></span>
+    <div id="kpcache_container"><br>Click on the button above to view KP Cache info<br><br></div>
+  </div>
+</div>
+
 <div class="pagesection" style="overflow:visible;" id="systestDiv">
   <div class="statushead">Translator Testing
-    <span style="float:right;"><a href="?systest=1" id="systest_link">[ Direct link to this page ]</a></span>
+    <span style="float:right;"><a class="statusheadlink" href="?systest=1" id="systest_link">[ Direct link to this page ]</a></span>
   </div>
   <div class="status" style='min-height:300px;' ondrop="dropFile('araxtest',event)" ondragover="allowDrop(event)" ondragleave="stopDrop(event)">
     Select Test Report to view: 
@@ -635,7 +671,7 @@
 
     <span>
       <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">MAXIMUM NUMBER OF PATHFINDER RESULTS TO RETURN:</h3>
-      <input type="text" class="questionBox" id="maxpaths_url" onkeyup="enter_url(this,'maxpaths');" size="5" maxlength="5" value="100"/>
+      <input type="text" class="questionBox" id="maxpaths_url" onkeyup="enter_url(this,'maxpaths');" size="5" maxlength="5" value="500"/>
       paths
     </span>
     <span>

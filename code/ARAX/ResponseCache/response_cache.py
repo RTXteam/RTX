@@ -20,6 +20,7 @@ import requests_cache
 from flask import Flask,redirect
 import copy
 import multiprocessing
+from importlib import metadata
 
 import boto3
 import timeit
@@ -49,6 +50,11 @@ from openapi_server.models.response import Response as Envelope
 
 trapi_version = '1.5.0'
 biolink_version = '4.2.1'
+
+try:
+    validator_version = f"{metadata.version('reasoner-validator')}"
+except metadata.PackageNotFoundError:
+    validator_version = ""
 
 component_cache_dir = os.path.dirname(os.path.abspath(__file__))+"/json_cache"
 if os.path.exists(component_cache_dir):
@@ -403,7 +409,7 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
-                enable_validation = False
+                enable_validation = True
                 schema_version = trapi_version
                 if enable_validation:
                     #if True:
@@ -414,10 +420,12 @@ class ResponseCache:
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                         validator.check_compliance_of_trapi_response(envelope)
                         validation_messages_text = validator.dumps()
+                        validation_messages_text = validation_messages_text[:120] + '...truncated'
                         raw_messages: Dict[str, List[Dict[str,str]]] = validator.get_all_messages()
                         messages = raw_messages['Validate TRAPI Response']['Standards Test']
                         #eprint(json.dumps(messages, indent=2, sort_keys=True))
 
+                        envelope['validation_result'] = { 'status': '?', 'version': schema_version, 'message': 'Internal error', 'validation_messages': messages, 'validation_messages_text': validation_messages_text, 'validator_version': validator_version }
                         critical_errors = 0
                         errors = 0
                         if 'critical' in messages and len(messages['critical']) > 0:
@@ -425,11 +433,14 @@ class ResponseCache:
                         if 'error' in messages and len(messages['error']) > 0:
                             errors = len(messages['error'])
                         if critical_errors > 0:
-                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'FAIL'
+                            envelope['validation_result']['message'] = 'There were critical validator errors'
                         elif errors > 0:
-                            envelope['validation_result'] = { 'status': 'ERROR', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'ERROR'
+                            envelope['validation_result']['message'] = 'There were validator errors'
                         else:
-                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'PASS'
+                            envelope['validation_result']['message'] = ''
 
                     #else:
                     except Exception as error:
@@ -497,7 +508,7 @@ class ResponseCache:
 
 
             #### Perform a validation on it
-            enable_validation = False
+            enable_validation = True
             schema_version = trapi_version
             #if 'schema_version' in envelope:
             #    schema_version = envelope['schema_version']
@@ -744,7 +755,9 @@ class ResponseCache:
                         raw_messages: Dict[str, List[Dict[str,str]]] = validator.get_all_messages()
                         messages = raw_messages['Validate TRAPI Response']['Standards Test']
                         validation_messages_text = validator.dumps()
+                        validation_messages_text = validation_messages_text[:120] + '...truncated'
 
+                        envelope['validation_result'] = { 'status': '?', 'version': schema_version, 'size': content_size, 'message': 'Internal error', 'validation_messages': messages, 'validation_messages_text': validation_messages_text, 'validator_version': validator_version }
                         critical_errors = 0
                         errors = 0
                         if 'critical' in messages and len(messages['critical']) > 0:
@@ -752,11 +765,14 @@ class ResponseCache:
                         if 'error' in messages and len(messages['error']) > 0:
                             errors = len(messages['error'])
                         if critical_errors > 0:
-                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'FAIL'
+                            envelope['validation_result']['message'] = 'There were critical validator errors'
                         elif errors > 0:
-                            envelope['validation_result'] = { 'status': 'ERROR', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'ERROR'
+                            envelope['validation_result']['message'] = 'There were validator errors'
                         else:
-                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'PASS'
+                            envelope['validation_result']['message'] = ''
 
                     else:
                         envelope['validation_result'] = { 'status': 'DISABLED', 'version': schema_version, 'message': 'Validation disabled.', 'validation_messages': { "critical": {}, "error": {}, "warning": {}, "info": { "message": 'Validation has been temporarily disabled due to various problems running it. It may return if the problems can be resolved.' } } }

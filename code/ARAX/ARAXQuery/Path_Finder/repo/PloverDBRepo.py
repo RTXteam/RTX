@@ -88,7 +88,9 @@ class PloverDBRepo(Repository):
                     edges[neighbor_id] = [edge_info]
                 else:
                     edges[neighbor_id].append(edge_info)
-            return json['nodes']['n1'][node_id_input][1], nodes, edges
+            if node_id_input in json['nodes']['n1']:
+                return json['nodes']['n1'][node_id_input][1], nodes, edges
+            return None, None, None
         except requests.exceptions.RequestException as e:
             logging.error("A requests error occurred: %s", e, exc_info=True)
             raise e

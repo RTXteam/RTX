@@ -229,7 +229,7 @@ paths:
       operationId: asyncquery_status
       parameters:
       - description: Identifier of the job for status request
-        example: rXEOAosN3L
+        example: 800000
         explode: false
         in: path
         name: job_id
