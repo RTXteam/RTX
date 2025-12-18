@@ -16,20 +16,20 @@ RUN apt-get install -y git sudo curl rsync
 RUN usermod -aG sudo rt
 RUN echo "rt ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/rt
 RUN touch /home/rt/.sudo_as_admin_successful
-RUN chown rt.rt /home/rt/.sudo_as_admin_successful
+RUN chown rt:rt /home/rt/.sudo_as_admin_successful
 
 # configure ssh for user rt
 RUN mkdir /home/rt/.ssh
 RUN echo "StrictHostKeyChecking no" > /home/rt/.ssh/config
 RUN echo "UserKnownHostsFile /dev/null" >> /home/rt/.ssh/config
-RUN chown -R rt.rt /home/rt/.ssh
+RUN chown -R rt:rt /home/rt/.ssh
 RUN chmod -R 700 /home/rt/.ssh
 
 # clone RTX repo
 RUN mkdir -p /mnt/data/orangeboard/production
-RUN chown -R rt.rt /mnt/data/orangeboard/production
+RUN chown -R rt:rt /mnt/data/orangeboard/production
 RUN su - rt -c "cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git"
-RUN chown -R rt.rt /mnt/data/orangeboard/production/RTX
+RUN chown -R rt:rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -yq apache2
@@ -51,13 +51,21 @@ RUN apt-get update && apt-get install -y python3.12 python3.12-dev python3.12-ve
 # make python3 be python 3.12 (used by RTX_OpenAPI.start and various scripts)
 RUN rm -f /usr/bin/python3 && ln -s /usr/bin/python3.12 /usr/bin/python3
 
-# install python deps using python 3.12
+# verify symlink works
+RUN python3 --version | grep -qi "3.12" || (echo "ERROR: python3 symlink failed" && exit 1)
+
+# install python3.12 deps using python3 (which points to python3.12) for consistency
 # Note: Ubuntu 24.04 enforces PEP 668 (externally-managed environment), so system-wide pip installs are blocked. 
 # added --break-system-packages to bypass this restriction
-RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install --upgrade pip --break-system-packages"
-RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install click==8.1.3 --break-system-packages"
-RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install -r requirements.txt --break-system-packages"
-RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && python3.12 -m pip install 'connexion[swagger-ui]' --break-system-packages"
+RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install --upgrade pip --break-system-packages
+RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install click==8.1.3 --break-system-packages
+RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install -r requirements.txt --break-system-packages
+RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install 'connexion[swagger-ui]' --break-system-packages
+
+# verify packages are installed and accessible
+RUN python3 -c "import requests; import click; import connexion; print('All packages imported successfully')" || (echo "ERROR: Packages not found" && exit 1)
+
+RUN chown -R rt:rt /mnt/data/orangeboard/production/RTX
 
 # setup services
 RUN export DEVAREA=production
