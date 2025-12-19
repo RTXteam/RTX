@@ -41,8 +41,8 @@ jobs:
         #path: /home/ubuntu/RTX
         ref: ${{ github.head_ref || github.ref_name }}
 
-    - name: Set up Python environment  # UPDATED Python version setup
-      uses: actions/setup-python@v4
+    - name: Set up Python environment
+      uses: RTXteam/setup-python@v4
       with:
         python-version: '3.12'
     
@@ -54,8 +54,8 @@ jobs:
       working-directory: ${{ github.workspace }}
       # continue-on-error: true
       run: |
-
-        pip install -r requirements.txt
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements.txt
         python code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists --remove_unused
 
     - name: Stop any running containers

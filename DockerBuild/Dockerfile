@@ -6,7 +6,7 @@ FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 
 # build based on branch
-ARG BUILD_BRANCH=issue2521
+ARG BUILD_BRANCH=master
 
 # add user "rt" and give sudo privilege:
 RUN useradd rt -m -s /bin/bash
