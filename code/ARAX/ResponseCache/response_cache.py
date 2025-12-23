@@ -48,7 +48,7 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.5.0'
+trapi_version = '1.6.0'
 biolink_version = '4.2.1'
 
 try:
