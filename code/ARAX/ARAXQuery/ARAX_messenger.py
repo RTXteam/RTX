@@ -103,7 +103,7 @@ class ARAXMessenger:
         envelope.type = "translator_reasoner_response"
         envelope.resource_id = "ARAX"
         envelope.tool_version = RTXConfiguration().version
-        envelope.schema_version = "1.6.0"
+        envelope.schema_version = RTXConfiguration().trapi_version
         envelope.biolink_version = biolink_helper.get_current_arax_biolink_version()
         envelope.status = "OK"
         envelope.description = "Created empty template response"
