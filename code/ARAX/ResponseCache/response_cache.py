@@ -48,7 +48,8 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.6.0'
+# only certain versions of TRAPI can be validated; place default in position [0]
+valid_trapi_versions = ['1.6.0', '1.5.0']
 biolink_version = '4.2.1'
 
 try:
@@ -410,7 +411,9 @@ class ResponseCache:
 
                 #### Perform a validation on it
                 enable_validation = True
-                schema_version = trapi_version
+                schema_version = valid_trapi_versions[0]
+                if 'schema_version' in envelope and envelope['schema_version'] in valid_trapi_versions:
+                    schema_version = envelope['schema_version']
                 if enable_validation:
                     #if True:
                     try:
@@ -509,9 +512,9 @@ class ResponseCache:
 
             #### Perform a validation on it
             enable_validation = True
-            schema_version = trapi_version
-            #if 'schema_version' in envelope:
-            #    schema_version = envelope['schema_version']
+            schema_version = valid_trapi_versions[0]
+            if 'schema_version' in envelope and envelope['schema_version'] in valid_trapi_versions:
+                schema_version = envelope['schema_version']
             try:
                 if enable_validation:
 
@@ -736,13 +739,15 @@ class ResponseCache:
                     is_trapi = False
 
                 if not is_trapi:
-                    envelope['validation_result'] = { 'status': 'NA', 'version': trapi_version, 'size': content_size, 'message': 'Returned response is not TRAPI: ' + actual_response }
+                    envelope['validation_result'] = { 'status': 'NA', 'version': valid_trapi_versions[0], 'size': content_size, 'message': 'Returned response is not TRAPI: ' + actual_response }
                     return envelope
 
 
                 #### Perform a validation on it
                 enable_validation = True
-                schema_version = trapi_version
+                schema_version = valid_trapi_versions[0]
+                if 'schema_version' in envelope and envelope['schema_version'] in valid_trapi_versions:
+                    schema_version = envelope['schema_version']
                 try:
                     if enable_validation:
 
