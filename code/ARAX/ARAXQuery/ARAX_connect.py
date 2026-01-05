@@ -354,11 +354,16 @@ class ARAXConnect:
             "MLRepo",
             self.response
         )
-        paths = path_finder.find_all_paths(
-            normalize_src_node_id,
-            normalize_dst_node_id,
-            hops_numbers=5
-        )
+        try:
+            paths = path_finder.find_all_paths(
+                normalize_src_node_id,
+                normalize_dst_node_id,
+                hops_numbers=5
+            )
+        except Exception as e:
+            self.response.error(f"PathFinder failed to find paths between {src_pinned_node} and {dst_pinned_node}. "
+                                f"Error message is: {e}", http_status=500)
+            return self.response
 
         paths = self.remove_block_list(paths)
 
