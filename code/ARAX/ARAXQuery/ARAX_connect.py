@@ -200,7 +200,7 @@ class ARAXConnect:
         pathfinder_input_data = { 'query_graph': response_envelope_as_dict['message']['query_graph'], 'parameters': cleaned_parameters }
         self.response.info(f"Looking for a previously cached result from {kp_curie}")
         response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, pathfinder_input_data)
-        if response_code != -2: 
+        if response_code != -2 and response_code == 200: 
             n_results = cacher._get_n_results(response_data)
             self.response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
             self.response.envelope.message = ARAXMessenger().from_dict(response_data['message'])
@@ -216,8 +216,14 @@ class ARAXConnect:
             self.response.debug(f"Applying Connect to Message with parameters {parameters}")
 
             #### This will effectively call __connect_nodes() unless the user injects something else
-            getattr(self, '_' + self.__class__.__name__ + '__' + parameters[
+            result = getattr(self, '_' + self.__class__.__name__ + '__' + parameters[
                 'action'])()  # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string
+
+            status = 'OK'
+            http_status = 200
+            if result is not None and getattr(result, 'http_status', None) is not None:
+                http_status = result.http_status
+                status = result.status
 
             #### Store the result into the cache for next time
             elapsed_time = time.time() - start
@@ -229,9 +235,9 @@ class ARAXConnect:
                 query_url=kp_url,
                 query_object=pathfinder_input_data,
                 response_object=response_object,
-                http_code=200,
+                http_code=http_status,
                 elapsed_time=elapsed_time,
-                status="OK"
+                status=status
             )
             self.response.info(f"Stored result in the cache.")
 
