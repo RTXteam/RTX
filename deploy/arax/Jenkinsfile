@@ -53,9 +53,9 @@ pipeline {
           }
           steps {
               script {
-                  // Build using CICD-Dockerfile (production Dockerfile) instead of test Dockerfile
+                  // Build using Dockerfile for ITRB CI
                   sh """
-                  docker build --build-arg BUILD_BRANCH=${ENV_BUILD_BRANCH} --no-cache -f DockerBuild/CICD-Dockerfile -t ${env.IMAGE_NAME} ./DockerBuild/
+                  docker build --build-arg BUILD_BRANCH=${ENV_BUILD_BRANCH} --no-cache -f DockerBuild/Dockerfile -t ${env.IMAGE_NAME} ./DockerBuild/
                   """
                   sh '''
                   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin  853771734544.dkr.ecr.us-east-1.amazonaws.com
