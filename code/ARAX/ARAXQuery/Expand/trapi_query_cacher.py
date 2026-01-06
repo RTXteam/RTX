@@ -421,24 +421,24 @@ class KPQueryCacher:
                     eprint(f"But yet there is no query record to be found, that is weird. Just give up.")
                     return None, NO_CACHED_RESPONSE, 0, None
 
-                if record.first_query_http_code is None or record.first_query_http_code != 200:
-                    record.status = status
-                    record.kp_curie = kp_curie
-                    record.query_url = query_url
-                    record.query_hash = query_hash
-                    record.query_object = query_object
-                    record.first_request_datetime = now_str
-                    record.last_request_datetime = now_str
-                    record.first_query_elapsed = elapsed_time
-                    record.first_query_http_code = http_code
-                    record.first_query_n_results = n_results
-                    record.n_requests = 1
-                    record.n_successful_refreshes = 0
-                    record.n_failed_refreshes = 0
-                    record.n_refresh_same_results = 0
-                    record.n_refresh_different_results = 0
-                    session.commit()
-                    updated_existing_record = True
+                eprint(f"The existing record number {record.kp_query_id} has a first_query_http_code={record.first_query_http_code}. Update the record with new information")
+                record.status = status
+                record.kp_curie = kp_curie
+                record.query_url = query_url
+                record.query_hash = query_hash
+                record.query_object = query_object
+                record.first_request_datetime = now_str
+                record.last_request_datetime = now_str
+                record.first_query_elapsed = elapsed_time
+                record.first_query_http_code = http_code
+                record.first_query_n_results = n_results
+                record.n_requests = 1
+                record.n_successful_refreshes = 0
+                record.n_failed_refreshes = 0
+                record.n_refresh_same_results = 0
+                record.n_refresh_different_results = 0
+                session.commit()
+                updated_existing_record = True
 
         try:
             self._write_cache_file(filepath, response_object)
