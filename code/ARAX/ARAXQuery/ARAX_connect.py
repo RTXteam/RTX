@@ -364,7 +364,7 @@ class ARAXConnect:
             paths = path_finder.find_all_paths(
                 normalize_src_node_id,
                 normalize_dst_node_id,
-                hops_numbers=5
+                hops_numbers=6
             )
         except Exception as e:
             self.response.error(f"PathFinder failed to find paths between {src_pinned_node} and {dst_pinned_node}. "
