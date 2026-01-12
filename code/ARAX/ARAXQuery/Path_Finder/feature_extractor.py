@@ -14,7 +14,8 @@ def get_neighbors_info(curie, ngd_repo, plover_repo, degree_repo):
         for curie_, num_of_pmids in node_pmids_length:
             content_by_curie[curie_]['pmids'] = num_of_pmids
         for ngd in curie_ngd_list:
-            content_by_curie[ngd[0]]['ngd'] = ngd[1]
+            if ngd[0] in content_by_curie:
+                content_by_curie[ngd[0]]['ngd'] = ngd[1]
         for node_id, value in neighbors.items():
             content_by_curie[node_id]['name'] = value['name']
             content_by_curie[node_id]['category'] = value['category']
@@ -63,6 +64,7 @@ def get_category(cat_str, category_to_idx):
     cat_onehot = np.zeros(58, dtype=float)
 
     if cat_str:
-        cat_idx = category_to_idx[cat_str]
-        cat_onehot[cat_idx] = 1.0
+        if cat_str in category_to_idx:
+            cat_idx = category_to_idx[cat_str]
+            cat_onehot[cat_idx] = 1.0
     return cat_onehot
