@@ -180,7 +180,7 @@ def train(x, y, group):
         'gamma': 3.87
     }
     bst = xgb.train(params, dtrain, num_boost_round=200)
-    bst.save_model("pathfinder_xgboost_model")
+    bst.save_model("pathfinder_xgboost_model_kg_2_10_2")
     logging.info("Training finished")
 
 
@@ -202,7 +202,7 @@ def train_on_data_source(data_source):
 
 
 def post_train(data_source):
-    pretrained_path = "pathfinder_xgboost_model"
+    pretrained_path = "pathfinder_xgboost_model_kg_2_10_2"
 
     x, y, group = load_data(data_source)
 
@@ -231,11 +231,11 @@ def post_train(data_source):
         xgb_model=pretrained_path
     )
 
-    bst_AB.save_model("pathfinder_xgboost_model_KEGG")
+    bst_AB.save_model("pathfinder_xgboost_model_kg_2_10_2_KEGG")
 
 
 def refresh_model(data_source):
-    pretrained_path = "pathfinder_xgboost_model"
+    pretrained_path = "pathfinder_xgboost_model_kg_2_10_2"
 
     x, y, group = load_data(data_source)
 
@@ -256,7 +256,7 @@ def refresh_model(data_source):
         xgb_model=pretrained_path
     )
 
-    bst_refreshed.save_model("pathfinder_xgboost_model_KEGG_refreshed")
+    bst_refreshed.save_model("pathfinder_xgboost_model_kg_2_10_2_KEGG_refreshed")
 
 
 def feature_importance():
