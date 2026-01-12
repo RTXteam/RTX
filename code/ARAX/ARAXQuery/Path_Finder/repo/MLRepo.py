@@ -54,7 +54,7 @@ class MLRepo(Repository):
             self.ancestors_by_id = pickle.load(f)
 
         self.bst_loaded = xgb.Booster()
-        self.bst_loaded.load_model(abs_path + '/pathfinder_xgboost_model')
+        self.bst_loaded.load_model(abs_path + '/pathfinder_xgboost_model_kg_2_10_2')
 
     def get_neighbors(self, node, limit=-1):
         if limit <= 0:
