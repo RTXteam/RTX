@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import pickle
+import random
 import sys
 
 import numpy as np
@@ -30,7 +31,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../NodeS
 from node_synonymizer import NodeSynonymizer
 
 
-def create_training_data():
+def drugbank_training_data():
     with open('./../data/training.json', 'r') as file:
         data = json.load(file)
     training = []
@@ -49,7 +50,36 @@ def create_training_data():
     return training
 
 
-def gather_data():
+def kegg_training_data():
+    with open('./../data/KEGG.json', 'r') as file:
+        data = json.load(file)
+    training = []
+    for key, value in data.items():
+        if len(value) == 0:
+            continue
+
+        related_CURIE = set()
+        related_CURIE.update(value)
+
+        for rel in related_CURIE:
+            curies = set(related_CURIE)
+            curies.remove(rel)
+            training.append((rel, curies))
+
+    random.seed(41)
+    random.shuffle(training)
+
+    return training
+
+
+def create_training_data(data_source):
+    if data_source == "KEGG":
+        return kegg_training_data()
+    else:
+        return drugbank_training_data()
+
+
+def gather_data(data_source):
     node_degree_repo = NodeDegreeRepo()
     degree_categories = node_degree_repo.get_degree_categories()
     sorted_degree_category = sorted(list(degree_categories))
@@ -67,7 +97,7 @@ def gather_data():
                 indices_of_ancestors.append(edge_category_to_idx[ancestor])
         ancestors_by_indices[value] = indices_of_ancestors
 
-    training_data = create_training_data()
+    training_data = create_training_data(data_source)
     i = 0
     logging.info(len(training_data))
     node_synonymizer = NodeSynonymizer()
@@ -120,25 +150,23 @@ def gather_data():
     for i in range(len(x_list)):
         x[i] = x_list[i]
 
-    np.save("X_data.npy", x)
-    np.save("y_data.npy", y)
-    with open("group.pkl", "wb") as f:
+    np.save(f"./{data_source}/X_data.npy", x)
+    np.save(f"./{data_source}/y_data.npy", y)
+    with open(f"./{data_source}/group.pkl", "wb") as f:
         pickle.dump(group, f)
-    with open("curie.pkl", "wb") as f:
+    with open(f"./{data_source}/curie.pkl", "wb") as f:
         pickle.dump(curie, f)
-    with open("curies.pkl", "wb") as f:
+    with open(f"./{data_source}/curies.pkl", "wb") as f:
         pickle.dump(curies, f)
-    with open("ancestors_by_indices.pkl", "wb") as f:
+    with open(f"./{data_source}/ancestors_by_indices.pkl", "wb") as f:
         pickle.dump(ancestors_by_indices, f)
-    with open("sorted_category_list.pkl", "wb") as f:
+    with open(f"./{data_source}/sorted_category_list.pkl", "wb") as f:
         pickle.dump(sorted_category_list, f)
-    with open("node_degree_category_by_indices.pkl", "wb") as f:
+    with open(f"./{data_source}/node_degree_category_by_indices.pkl", "wb") as f:
         pickle.dump(degree_category_to_idx, f)
 
 
-def train():
-    x, y, group = load_data()
-
+def train(x, y, group):
     dtrain = xgb.DMatrix(x, label=y)
     dtrain.set_group(group)
     params = {  # hyperparameters extracted from the last hyperparameter-tuning.log
@@ -152,8 +180,83 @@ def train():
         'gamma': 3.87
     }
     bst = xgb.train(params, dtrain, num_boost_round=200)
-    bst.save_model("pathfinder_xgboost_model")
+    bst.save_model("pathfinder_xgboost_model_kg_2_10_2")
     logging.info("Training finished")
+
+
+def train_all():
+    x_k, y_k, group_k = load_data("KEGG")
+    x_d, y_d, group_d = load_data("Drugbank")
+
+    x = np.vstack([x_k, x_d])
+    y = np.concatenate([y_k, y_d])
+    group = np.concatenate([group_k, group_d])
+
+    train(x, y, group)
+
+
+def train_on_data_source(data_source):
+    x, y, group = load_data(data_source)
+
+    train(x, y, group)
+
+
+def post_train(data_source):
+    pretrained_path = "pathfinder_xgboost_model_kg_2_10_2"
+
+    x, y, group = load_data(data_source)
+
+    dtrain = xgb.DMatrix(x, label=y)
+    dtrain.set_group(group)
+
+    params_ft = {
+        'objective': 'rank:pairwise',
+        'eval_metric': 'ndcg',
+        'eta': 0.05,
+        'max_depth': 10,
+        'subsample': 0.91,
+        'colsample_bytree': 0.84,
+        'min_child_weight': 8,
+        'gamma': 3.87,
+        'lambda': 1.0,
+        'alpha': 0.0,
+        'tree_method': 'hist',
+        'random_state': 42,
+    }
+
+    bst_AB = xgb.train(
+        params_ft,
+        dtrain,
+        num_boost_round=150,
+        xgb_model=pretrained_path
+    )
+
+    bst_AB.save_model("pathfinder_xgboost_model_kg_2_10_2_KEGG")
+
+
+def refresh_model(data_source):
+    pretrained_path = "pathfinder_xgboost_model_kg_2_10_2"
+
+    x, y, group = load_data(data_source)
+
+    dtrain = xgb.DMatrix(x, label=y)
+    dtrain.set_group(group)
+
+    params_refresh = {
+        'objective': 'rank:pairwise',
+        'eval_metric': 'ndcg',
+        'process_type': 'update',
+        'updater': 'refresh',
+        'refresh_leaf': True,
+    }
+    bst_refreshed = xgb.train(
+        params_refresh,
+        dtrain,
+        num_boost_round=0,
+        xgb_model=pretrained_path
+    )
+
+    bst_refreshed.save_model("pathfinder_xgboost_model_kg_2_10_2_KEGG_refreshed")
 
 
 def feature_importance():
@@ -170,6 +273,11 @@ def feature_importance():
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    gather_data()
+    # data_source = "drugbank"
+    # gather_data(data_source)
     # tune_hyperparameters()
-    train()
+    # train()
+    post_train("KEGG_")
+    # train(data_source)
+    # refresh_model(data_source)
+    # train_all(data_source)
