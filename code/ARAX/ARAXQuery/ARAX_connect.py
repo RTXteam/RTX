@@ -381,6 +381,7 @@ class ARAXConnect:
                 src_pinned_node,
                 dst_pinned_node,
                 self.parameters['max_path_length'],
+                6,
                 max_pathfinder_paths,
                 descendants,
             )
