@@ -29,7 +29,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymize
 from node_synonymizer import NodeSynonymizer
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 
 class ARAXConnect:
@@ -411,7 +411,7 @@ class ARAXConnect:
         return self.response
 
     def filter_with_constraint(self, paths, category_constraint):
-        biolink_helper = BiolinkHelper()
+        biolink_helper = get_biolink_helper()
         descendants = set(biolink_helper.get_descendants(category_constraint))
         result = []
         for path in paths:

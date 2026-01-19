@@ -22,7 +22,7 @@ from openapi_server.models.retrieval_source import RetrievalSource
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../KnowledgeSources/COHD_local/scripts/")
 from COHDIndex import COHDIndex
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
 
@@ -40,7 +40,7 @@ class OverlayClinicalInfo:
         self.who_knows_about_what = {'COHD': ['small_molecule', 'phenotypic_feature', 'disease', 'drug',
                                                 'biolink:SmallMolecule', 'biolink:PhenotypicFeature', 'biolink:Disease', 'biolink:Drug']}  # FIXME: replace this with information about the KP's, KS's, and their API's
         self.node_curie_to_type = dict()
-        self.biolink_helper = BiolinkHelper()
+        self.biolink_helper = get_biolink_helper()
         self.global_iter = 0
         try:
             self.cohdIndex = COHDIndex()

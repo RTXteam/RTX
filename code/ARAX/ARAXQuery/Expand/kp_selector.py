@@ -12,7 +12,7 @@ from kp_info_cacher import KPInfoCacher
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelper")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
 from RTXConfiguration import RTXConfiguration
@@ -31,7 +31,7 @@ class KPSelector:
         if (not self.kg2_mode) and (self.kp_urls is None):
             raise ValueError("KP info cache has not been filled and we are not in KG2 mode; cannot initialize KP selector")
         self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else set(self.kp_urls.keys())
-        self.bh = BiolinkHelper()
+        self.bh = get_biolink_helper()
 
     def _load_cached_kp_info(self) -> tuple:
         if self.kg2_mode:
