@@ -106,9 +106,6 @@ def query(request_body):  # noqa: E501
 
     mime_type = 'application/json'
     fork_mode = True  # :DEBUG: can turn this to False to disable fork-mode
-
-    # import multiprocessing
-    # multiprocessing.set_start_method('fork')
     if query.get('stream_progress', False):  # if stream_progress is specified and if it is True:
 
 
