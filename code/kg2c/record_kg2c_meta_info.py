@@ -16,7 +16,7 @@ from collections import defaultdict
 from typing import Dict, Set
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 
 KG2C_DIR = f"{os.path.dirname(os.path.abspath(__file__))}"
@@ -112,7 +112,7 @@ def generate_fda_approved_drugs_pickle(edges_by_id: Dict[str, Dict[str, any]], f
 
 def record_select_meta_info(biolink_version: str, is_test: bool):
     logging.info("Starting to record KG2c meta info..")
-    bh = BiolinkHelper(biolink_version)
+    bh = get_biolink_helper(biolink_version)
     start = time.time()
 
     # Load the 'lite' KG2c file into node/edge dictionaries

@@ -28,7 +28,7 @@ import convert_kg2c_tsvs_to_jsonl
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAX/BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 KG2C_ARRAY_DELIMITER = "ǂ"  # Need to use a delimiter that does not appear in any list items (strings)
 KG2PRE_ARRAY_DELIMITER = ";"
@@ -361,7 +361,7 @@ def create_kg2c_lite_json_file(canonicalized_nodes_dict: Dict[str, Dict[str, any
 def create_kg2c_tsv_files(canonicalized_nodes_dict: Dict[str, Dict[str, any]],
                           canonicalized_edges_dict: Dict[str, Dict[str, any]],
                           biolink_version: str, is_test: bool):
-    bh = BiolinkHelper(biolink_version)
+    bh = get_biolink_helper(biolink_version)
     # Convert array fields into the format neo4j wants and do some final processing
     array_node_columns = _get_array_properties("node").union({"node_labels"})
     array_edge_columns = _get_array_properties("edge")
@@ -652,7 +652,7 @@ def remove_overly_general_nodes(canonicalized_nodes_dict: Dict[str, Dict[str, an
                                 canonicalized_edges_dict: Dict[str, Dict[str, any]],
                                 biolink_version: str) -> Tuple[Dict[str, Dict[str, any]], Dict[str, Dict[str, any]]]:
     logging.info(f"Removing overly general nodes from the graph..")
-    bh = BiolinkHelper(biolink_version)
+    bh = get_biolink_helper(biolink_version)
     # Remove all nodes that have a biolink category as an equivalent identifier, as well as a few others
     all_biolink_categories = set(bh.get_descendants("biolink:NamedThing"))
     overly_general_curies = {"MESH:D010361", "SO:0001217", "MONDO:0000001", "FMA:67257", "MESH:D002477",

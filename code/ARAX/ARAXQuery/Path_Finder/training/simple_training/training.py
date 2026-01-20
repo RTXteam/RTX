@@ -12,7 +12,7 @@ from hyperparameter_tuning import tune_hyperparameters
 from data_loader import load_data
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -88,7 +88,7 @@ def gather_data(data_source):
     with open((os.path.dirname(os.path.abspath(__file__)) + '/edge_category_to_idx.pkl'), "rb") as f:
         edge_category_to_idx = pickle.load(f)
     ancestors_by_indices = {}
-    biolink_helper = BiolinkHelper()
+    biolink_helper = get_biolink_helper()
     for key, value in edge_category_to_idx.items():
         ancestors = biolink_helper.get_ancestors(key)
         indices_of_ancestors = []
