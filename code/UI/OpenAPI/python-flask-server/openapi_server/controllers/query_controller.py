@@ -43,7 +43,7 @@ def run_query_dict_in_child_process(query_dict: dict,
         sys.stdin = open('/dev/null', 'r')          # parent and child process should not share the same stdin stream object
         os.close(read_fd)                   # child doesn't read from the pipe, it writes to it
         setproctitle.setproctitle("python3 query_controller::run_query_dict_in_child_process")       
-        #resource.setrlimit(resource.RLIMIT_AS, (rlimit_child_process_bytes, rlimit_child_process_bytes))  # set a virtual memory limit for the child process
+        resource.setrlimit(resource.RLIMIT_AS, (rlimit_child_process_bytes, rlimit_child_process_bytes))  # set a virtual memory limit for the child process
         signal.signal(signal.SIGPIPE, child_receive_sigpipe) # get rid of signal handler so we don't double-print to the log on SIGPIPE error
         signal.signal(signal.SIGCHLD, signal.SIG_IGN) # disregard any SIGCHLD signal in the child process
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
@@ -105,7 +105,7 @@ def query(request_body):  # noqa: E501
     query['remote_address'] = connexion.request.headers.get('x-forwarded-for', '???')
 
     mime_type = 'application/json'
-    fork_mode = False  # :DEBUG: can turn this to False to disable fork-mode
+    fork_mode = True  # :DEBUG: can turn this to False to disable fork-mode
 
     # import multiprocessing
     # multiprocessing.set_start_method('fork')
