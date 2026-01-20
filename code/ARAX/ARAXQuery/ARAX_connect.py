@@ -30,7 +30,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymize
 from node_synonymizer import NodeSynonymizer
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 
 class ARAXConnect:
@@ -360,7 +360,7 @@ class ARAXConnect:
         blocked_curies, blocked_synonyms = self.get_block_list()
         descendants = []
         if category_constraint:
-            descendants = set(BiolinkHelper().get_descendants(category_constraint))
+            descendants = set(get_biolink_helper().get_descendants(category_constraint))
 
         pathfinder = Pathfinder(
             "MLRepo",
