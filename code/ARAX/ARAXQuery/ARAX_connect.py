@@ -198,12 +198,14 @@ class ARAXConnect:
         kp_url = "PathFinder"
         response_envelope_as_dict = self.response.envelope.to_dict()
         cleaned_parameters = self._clean_parameters(parameters)
-        pathfinder_input_data = { 'query_graph': response_envelope_as_dict['message']['query_graph'], 'parameters': cleaned_parameters }
+        pathfinder_input_data = {'query_graph': response_envelope_as_dict['message']['query_graph'],
+                                 'parameters': cleaned_parameters}
         self.response.info(f"Looking for a previously cached result from {kp_curie}")
         response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, pathfinder_input_data)
         if response_code != -2 and response_code == 200:
             n_results = cacher._get_n_results(response_data)
-            self.response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
+            self.response.info(
+                f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
             self.response.envelope.message = ARAXMessenger().from_dict(response_data['message'])
 
             # Hack to explicitly convert the analyses to PathfinderAnalysis objects because this doesn't work automatically. It should. Maybe move this into Messenger? FIXME
@@ -246,7 +248,6 @@ class ARAXConnect:
             self.response = self.report_response_stats(self.response)
         return self.response
 
-
     #### During processing, sometimes these parameters change from a string (of an integer) to an integer, so just force them all to strings for the purpose of cache comparison
     def _clean_parameters(self, parameters):
         cleaned_parameters = parameters.copy()
@@ -255,7 +256,6 @@ class ARAXConnect:
         if 'max_pathfinder_paths' in cleaned_parameters:
             cleaned_parameters['max_pathfinder_paths'] = str(cleaned_parameters['max_pathfinder_paths'])
         return cleaned_parameters
-
 
     def get_pinned_nodes(self):
         pinned_nodes = []
@@ -376,14 +376,16 @@ class ARAXConnect:
             max_pathfinder_paths = int(self.parameters['max_pathfinder_paths'])
         try:
             result, aux_graphs, knowledge_graph = pathfinder.get_paths(
-                normalize_src_node_id,
-                normalize_dst_node_id,
-                src_pinned_node,
-                dst_pinned_node,
-                self.parameters['max_path_length'],
-                6,
-                max_pathfinder_paths,
-                descendants,
+                src_node_id=normalize_src_node_id,
+                dst_node_id=normalize_dst_node_id,
+                src_pinned_node=src_pinned_node,
+                dst_pinned_node=dst_pinned_node,
+                hops_numbers=self.parameters['max_path_length'],
+                max_hops_to_explore=4,
+                limit=max_pathfinder_paths,
+                prune_top_k=50,
+                degree_threshold=30000,
+                category_constraints=descendants,
             )
         except Exception as e:
             self.response.error(f"PathFinder failed to find paths between {src_pinned_node} and {dst_pinned_node}. "
