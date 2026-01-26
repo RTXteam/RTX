@@ -21,7 +21,7 @@ from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery','']))
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'BiolinkHelper','']))
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 from openapi_server.models.edge import Edge
 from openapi_server.models.qualifier import Qualifier
 from openapi_server.models.retrieval_source import RetrievalSource
@@ -184,7 +184,7 @@ class creativeCRG:
 
         ## set up parameters
         self.response = response
-        self.bh = BiolinkHelper()
+        self.bh = get_biolink_helper()
         self.predicate_depth_map = self.bh.get_predicate_depth_map()
         self.relevant_node_categories = ['biolink:Drug', 'biolink:PathologicalProcess', 'biolink:GeneOrGeneProduct', 'biolink:ChemicalEntity',
                                          'biolink:SmallMolecule', 'biolink:Gene', 'biolink:BiologicalProcess', 'biolink:Pathway', 'biolink:Disease',

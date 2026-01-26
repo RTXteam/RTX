@@ -15,7 +15,7 @@ from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -53,7 +53,7 @@ def trim_to_size(input_list, length):
 class ARAXExpander:
 
     def __init__(self):
-        self.bh = BiolinkHelper()
+        self.bh = get_biolink_helper()
         self.rtxc = RTXConfiguration()
         self.plover_url = self.rtxc.plover_url
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
@@ -431,9 +431,9 @@ class ARAXExpander:
                     kp_answers = loop.run_until_complete(task_group)
                     loop.close()
                 else:
-                    log.error("Expand could not find any KPs to answer "
-                              f"{qedge_key} with.", error_code="NoResults")
-                    return response
+                    kp_answers = []
+                    log.warning("Expand could not find any KPs to answer "
+                                f"{qedge_key} with.")
 
                 # Merge KPs' answers into our overarching KG
                 log.debug("Got answers from all KPs; merging them into one KG")
@@ -694,7 +694,7 @@ class ARAXExpander:
                         response.info(f"Looking for a previously cached result from {kp_curie}")
                         response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, infer_input_parameters)
                     else:
-                        response.info(f"KP results caching for xDTD is currently disabled, pending further debugging")
+                        response.info("KP results caching for xDTD is currently disabled, pending further debugging")
                     if enable_caching and response_code != -2: 
                         n_results = cacher._get_n_results(response_data)
                         response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
@@ -707,12 +707,12 @@ class ARAXExpander:
                         for edge_key, edge in response_data['message']['knowledge_graph']['edges'].items():
                             response.info(f"Copying qedge_keys for edge {edge_key}") 
                             response.envelope.message.knowledge_graph.edges[edge_key].qedge_keys = edge['qedge_keys']
-                        response.dtd_from_cache = True
+                        response.dtd_from_cache = True   # type: ignore[attr-defined]
 
                     #### Else run the inferer to get the result and then cache it
                     else:
                         inferer = ARAXInfer()
-                        response.info(f"Launching ARAX inferer")
+                        response.info("Launching ARAX inferer")
                         infer_response = inferer.apply(response, infer_input_parameters)
                         elapsed_time = time.time() - start
                         response.info(f"Got result from ARAX inferer after {elapsed_time}. Converting to_dict()")
@@ -722,7 +722,7 @@ class ARAXExpander:
                             response_object['message']['knowledge_graph']['nodes'][node_key]['qnode_keys'] = node.qnode_keys
                         for edge_key, edge in response.envelope.message.knowledge_graph.edges.items():
                             response_object['message']['knowledge_graph']['edges'][edge_key]['qedge_keys'] = edge.qedge_keys
-                        response.info(f"Storing result in the cache")
+                        response.info("Storing result in the cache")
                         cacher.store_response(
                             kp_curie=kp_curie,
                             query_url=kp_url,
@@ -732,10 +732,10 @@ class ARAXExpander:
                             elapsed_time=elapsed_time,
                             status="OK"
                         )
-                        response.info(f"Stored result in the cache.")
+                        response.info("Stored result in the cache.")
 
                     # return infer_response
-                    #response = infer_response  # these are already always the same object?
+                    response = infer_response  # these are already always the same object?
                     overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(response.envelope.message.knowledge_graph)
 
                     wait_time = round(time.time() - start, 2)

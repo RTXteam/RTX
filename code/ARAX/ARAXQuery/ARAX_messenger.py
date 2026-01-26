@@ -33,7 +33,7 @@ from openapi_server.models.q_path import QPath
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_current_arax_biolink_version
 
 
 class ARAXMessenger:
@@ -98,13 +98,12 @@ class ARAXMessenger:
         self.message = message
 
         #### Fill it with default information
-        biolink_helper = BiolinkHelper()
         envelope.id = None
         envelope.type = "translator_reasoner_response"
         envelope.resource_id = "ARAX"
         envelope.tool_version = RTXConfiguration().version
-        envelope.schema_version = "1.5.0"
-        envelope.biolink_version = biolink_helper.get_current_arax_biolink_version()
+        envelope.schema_version = RTXConfiguration().trapi_version
+        envelope.biolink_version = get_current_arax_biolink_version()
         envelope.status = "OK"
         envelope.description = "Created empty template response"
         envelope.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"

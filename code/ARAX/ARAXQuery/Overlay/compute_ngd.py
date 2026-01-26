@@ -137,7 +137,9 @@ class ComputeNGD:
                                 # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                                 EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                                 # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
-                                EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
+                                EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                                EdgeAttribute(original_attribute_name=None, value="statistical_association", attribute_type_id="biolink:knowledge_level", value_url=None, description=None),
+                                EdgeAttribute(original_attribute_name=None, value="automated_agent", attribute_type_id="biolink:agent_type", value_url=None, description=None)
                                 #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                                 #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
                                 #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)
@@ -247,7 +249,9 @@ class ComputeNGD:
                         # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
                         # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
-                        EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
+                        EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                        EdgeAttribute(original_attribute_name=None, value="statistical_association", attribute_type_id="biolink:knowledge_level", value_url=None, description=None),
+                        EdgeAttribute(original_attribute_name=None, value="automated_agent", attribute_type_id="biolink:agent_type", value_url=None, description=None)
                         #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                         #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
                         #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)

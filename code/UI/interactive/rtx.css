@@ -520,6 +520,7 @@ hr {
 .code404 { background-color: #ec1; }
 .code500 { background-color: #d22; color: #eee; }
 .code501 { background-color: #bbb; }
+.code503 { background-color: #f80; }
 .code598 { background-color: #f55; }
 
 

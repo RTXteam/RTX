@@ -12,7 +12,7 @@ from hyperparameter_tuning import tune_hyperparameters
 from data_loader import load_data
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -88,7 +88,7 @@ def gather_data(data_source):
     with open((os.path.dirname(os.path.abspath(__file__)) + '/edge_category_to_idx.pkl'), "rb") as f:
         edge_category_to_idx = pickle.load(f)
     ancestors_by_indices = {}
-    biolink_helper = BiolinkHelper()
+    biolink_helper = get_biolink_helper()
     for key, value in edge_category_to_idx.items():
         ancestors = biolink_helper.get_ancestors(key)
         indices_of_ancestors = []
@@ -180,7 +180,7 @@ def train(x, y, group):
         'gamma': 3.87
     }
     bst = xgb.train(params, dtrain, num_boost_round=200)
-    bst.save_model("pathfinder_xgboost_model")
+    bst.save_model("pathfinder_xgboost_model_kg_2_10_2")
     logging.info("Training finished")
 
 
@@ -202,7 +202,7 @@ def train_on_data_source(data_source):
 
 
 def post_train(data_source):
-    pretrained_path = "pathfinder_xgboost_model"
+    pretrained_path = "pathfinder_xgboost_model_kg_2_10_2"
 
     x, y, group = load_data(data_source)
 
@@ -231,11 +231,11 @@ def post_train(data_source):
         xgb_model=pretrained_path
     )
 
-    bst_AB.save_model("pathfinder_xgboost_model_KEGG")
+    bst_AB.save_model("pathfinder_xgboost_model_kg_2_10_2_KEGG")
 
 
 def refresh_model(data_source):
-    pretrained_path = "pathfinder_xgboost_model"
+    pretrained_path = "pathfinder_xgboost_model_kg_2_10_2"
 
     x, y, group = load_data(data_source)
 
@@ -256,7 +256,7 @@ def refresh_model(data_source):
         xgb_model=pretrained_path
     )
 
-    bst_refreshed.save_model("pathfinder_xgboost_model_KEGG_refreshed")
+    bst_refreshed.save_model("pathfinder_xgboost_model_kg_2_10_2_KEGG_refreshed")
 
 
 def feature_importance():

@@ -24,7 +24,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -506,7 +506,7 @@ def flip_qedge(qedge: QEdge, new_predicates: list[str]):
 
 def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
     non_canonical_predicates_used = set()
-    biolink_helper = BiolinkHelper()
+    biolink_helper = get_biolink_helper()
     for qedge_id, edges in kg.edges_by_qg_id.items():
         for edge in edges.values():
             canonical_predicate = biolink_helper.get_canonical_predicates(edge.predicate)[0]
