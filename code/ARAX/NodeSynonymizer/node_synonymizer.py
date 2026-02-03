@@ -10,7 +10,6 @@ import time
 import math
 from collections import defaultdict, Counter
 from typing import Optional, Union, List, Set, Dict, Tuple
-
 import pandas as pd
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
@@ -34,9 +33,20 @@ class NodeSynonymizer:
         self.rtx_config = RTXConfiguration()
         self.sqlite_file_name = sqlite_file_name
         # Use specified node syonymizer sqlite file, if provided; otherwise use synonymizer specified in config_dbs.json
-        self.database_name = self.sqlite_file_name if self.sqlite_file_name else self.rtx_config.node_synonymizer_path.split("/")[-1]
+        db_file_from_config = self.rtx_config.node_synonymizer_path
         synonymizer_dir = os.path.dirname(os.path.abspath(__file__))
-        self.database_path = f"{synonymizer_dir}/{self.database_name}"
+        if sqlite_file_name:
+            self.database_name = os.path.basename(sqlite_file_name)
+            if self.database_name != sqlite_file_name:
+                self.database_path = sqlite_file_name
+            else:
+                self.database_path = os.path.join(synonymizer_dir, self.database_name)
+        else:
+            self.database_name = os.path.basename(db_file_from_config)
+            if self.database_name != db_file_from_config:
+                self.database_path = db_file_from_config
+            else:
+                self.database_path = os.path.join(synonymizer_dir, self.database_name)
         self.placeholder_lookup_values_str = "**LOOKUP_VALUES_GO_HERE**"
         self.unnecessary_chars_map = {ord(char): None for char in string.punctuation + string.whitespace}
         self.kg2_infores_curie = "infores:rtx-kg2"
