@@ -2,7 +2,6 @@ import argparse
 import ast
 import json
 import os
-import pathlib
 import sqlite3
 import string
 import sys
@@ -37,13 +36,13 @@ class NodeSynonymizer:
         synonymizer_dir = os.path.dirname(os.path.abspath(__file__))
         if sqlite_file_name:
             self.database_name = os.path.basename(sqlite_file_name)
-            if self.database_name != sqlite_file_name:
+            if os.path.dirname(sqlite_file_name):
                 self.database_path = sqlite_file_name
             else:
                 self.database_path = os.path.join(synonymizer_dir, self.database_name)
         else:
             self.database_name = os.path.basename(db_file_from_config)
-            if self.database_name != db_file_from_config:
+            if os.path.dirname(db_file_from_config):
                 self.database_path = db_file_from_config
             else:
                 self.database_path = os.path.join(synonymizer_dir, self.database_name)
@@ -52,10 +51,9 @@ class NodeSynonymizer:
         self.kg2_infores_curie = "infores:rtx-kg2"
         self.sri_nn_infores_curie = "infores:sri-node-normalizer"
         self.arax_infores_curie = "infores:arax"
-
-        if not pathlib.Path(self.database_path).exists():
-            raise ValueError(f"Specified synonymizer does not exist locally."
-                             f" It should be at: {self.database_path}")
+        if not os.path.exists(self.database_path):
+            raise FileNotFoundError(f"Specified synonymizer does not exist locally."
+                                    f" It should be at: {self.database_path}")
         else:
             self.db_connection = sqlite3.connect(self.database_path)
 
@@ -330,7 +328,7 @@ class NodeSynonymizer:
     def get_distinct_category_list(self, debug: bool = False) -> list:
         start = time.time()
 
-        sql_query = f"""SELECT DISTINCT category FROM nodes"""
+        sql_query = """SELECT DISTINCT category FROM nodes"""
         matching_rows = self._execute_sql_query(sql_query)
         result = []
         for row in matching_rows:
@@ -358,7 +356,7 @@ class NodeSynonymizer:
                 max_synonyms_int = int(max_synonyms_raw)
                 if max_synonyms_int > 0:
                     max_synonyms = max_synonyms_int
-            except:
+            except (ValueError, TypeError):
                 pass
 
         # Convert any input curies to Set format
@@ -471,7 +469,7 @@ class NodeSynonymizer:
                         try:
                             if 'value' in attribute and math.isnan(attribute['value']):
                                 attribute['value'] = None
-                        except:
+                        except TypeError:
                             pass
 
         if debug:
@@ -542,7 +540,7 @@ class NodeSynonymizer:
         elif some_value is None:
             return set()
         else:
-            raise ValueError(f"Input is not an allowable data type (list, set, or string)!")
+            raise ValueError("Input is not an allowable data type (list, set, or string)!")
 
     @staticmethod
     def _add_biolink_prefix(category: Optional[str]) -> Optional[str]:
