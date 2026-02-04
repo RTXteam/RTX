@@ -791,12 +791,6 @@ class ARAXQuery:
                         filter_results.apply(response, action['parameters'])
                         response.debug(f"After filtering, there are {len(response.envelope.message.results)} results")
 
-                    # elif action['command'] == 'query_graph_reasoner':
-                    #     response.info("Sending current query_graph to the QueryGraphReasoner")
-                    #     qgr = QueryGraphReasoner()
-                    #     message = qgr.answer(ast.literal_eval(repr(message.query_graph)), TxltrApiFormat=True)
-                    #     self.message = message
-
                     elif action['command'] == 'connect':
                         connect.apply(response, action['parameters'])
 
