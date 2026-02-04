@@ -15,7 +15,7 @@ from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -53,7 +53,7 @@ def trim_to_size(input_list, length):
 class ARAXExpander:
 
     def __init__(self):
-        self.bh = BiolinkHelper()
+        self.bh = get_biolink_helper()
         self.rtxc = RTXConfiguration()
         self.plover_url = self.rtxc.plover_url
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
@@ -513,6 +513,20 @@ class ARAXExpander:
                                                  for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
                                                  if edge.predicate in self.treats_like_predicates}
                     if higher_level_treats_edges:
+                        
+                        # To resolve issue 2573: implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
+                        higher_level_treats_edges_temp = dict()
+                        for edge_key_temp, edge_temp in higher_level_treats_edges.items():
+                            if "biolink:in_clinical_trials_for" in edge_key_temp and "infores:multiomics-clinicaltrials:" in edge_key_temp:
+                                if [x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"][0] == True:
+                                    higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+                                else:
+                                    continue
+                            else:
+                                higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+                        higher_level_treats_edges = higher_level_treats_edges_temp
+                        
+                        
                         # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
                         virtual_qedge_key = f"creative_expand_treats_{qedge_key}"
                         virtual_qedge = QEdge(subject=qedge.subject,

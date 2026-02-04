@@ -2,6 +2,7 @@ import json
 import sys
 
 from RTXConfiguration import RTXConfiguration
+from pathfinder.Pathfinder import Pathfinder
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -13,23 +14,23 @@ import copy
 import time
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from Path_Finder.converter.EdgeExtractorFromPloverDB import EdgeExtractorFromPloverDB
-from Path_Finder.converter.ResultPerPathConverter import ResultPerPathConverter
-from Path_Finder.converter.Names import Names
-from Path_Finder.BidirectionalPathFinder import BidirectionalPathFinder
-
+from Path_Finder.utility import get_curie_ngd_path, get_kg2c_db_path
 from Expand.trapi_query_cacher import KPQueryCacher
 from ARAX_messenger import ARAXMessenger
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
+from openapi_server.models.result import Result
+from openapi_server.models.node_binding import NodeBinding
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph
+from openapi_server.models.path_binding import PathBinding
 from openapi_server.models.pathfinder_analysis import PathfinderAnalysis
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 
 class ARAXConnect:
@@ -197,12 +198,14 @@ class ARAXConnect:
         kp_url = "PathFinder"
         response_envelope_as_dict = self.response.envelope.to_dict()
         cleaned_parameters = self._clean_parameters(parameters)
-        pathfinder_input_data = { 'query_graph': response_envelope_as_dict['message']['query_graph'], 'parameters': cleaned_parameters }
+        pathfinder_input_data = {'query_graph': response_envelope_as_dict['message']['query_graph'],
+                                 'parameters': cleaned_parameters}
         self.response.info(f"Looking for a previously cached result from {kp_curie}")
         response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, pathfinder_input_data)
-        if response_code != -2: 
+        if response_code != -2 and response_code == 200:
             n_results = cacher._get_n_results(response_data)
-            self.response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
+            self.response.info(
+                f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
             self.response.envelope.message = ARAXMessenger().from_dict(response_data['message'])
 
             # Hack to explicitly convert the analyses to PathfinderAnalysis objects because this doesn't work automatically. It should. Maybe move this into Messenger? FIXME
@@ -216,8 +219,14 @@ class ARAXConnect:
             self.response.debug(f"Applying Connect to Message with parameters {parameters}")
 
             #### This will effectively call __connect_nodes() unless the user injects something else
-            getattr(self, '_' + self.__class__.__name__ + '__' + parameters[
+            result = getattr(self, '_' + self.__class__.__name__ + '__' + parameters[
                 'action'])()  # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string
+
+            status = 'OK'
+            http_status = 200
+            if result is not None and getattr(result, 'http_status', None) is not None:
+                http_status = result.http_status
+                status = result.status
 
             #### Store the result into the cache for next time
             elapsed_time = time.time() - start
@@ -229,16 +238,15 @@ class ARAXConnect:
                 query_url=kp_url,
                 query_object=pathfinder_input_data,
                 response_object=response_object,
-                http_code=200,
+                http_code=http_status,
                 elapsed_time=elapsed_time,
-                status="OK"
+                status=status
             )
             self.response.info(f"Stored result in the cache.")
 
         if self.report_stats:  # helper to report information in debug if class self.report_stats = True
             self.response = self.report_response_stats(self.response)
         return self.response
-
 
     #### During processing, sometimes these parameters change from a string (of an integer) to an integer, so just force them all to strings for the purpose of cache comparison
     def _clean_parameters(self, parameters):
@@ -248,7 +256,6 @@ class ARAXConnect:
         if 'max_pathfinder_paths' in cleaned_parameters:
             cleaned_parameters['max_pathfinder_paths'] = str(cleaned_parameters['max_pathfinder_paths'])
         return cleaned_parameters
-
 
     def get_pinned_nodes(self):
         pinned_nodes = []
@@ -350,93 +357,52 @@ class ARAXConnect:
         normalize_src_node_id = self.get_normalize_nodes(self.message.query_graph.nodes, src_pinned_node)
         normalize_dst_node_id = self.get_normalize_nodes(self.message.query_graph.nodes, dst_pinned_node)
 
-        path_finder = BidirectionalPathFinder(
+        blocked_curies, blocked_synonyms = self.get_block_list()
+        descendants = []
+        if category_constraint:
+            descendants = set(get_biolink_helper().get_descendants(category_constraint))
+
+        pathfinder = Pathfinder(
             "MLRepo",
+            RTXConfiguration().plover_url,
+            get_curie_ngd_path(),
+            get_kg2c_db_path(),
+            blocked_curies,
+            blocked_synonyms,
             self.response
         )
-        paths = path_finder.find_all_paths(
-            normalize_src_node_id,
-            normalize_dst_node_id,
-            hops_numbers=5
-        )
-
-        paths = self.remove_block_list(paths)
-
-        if category_constraint:
-            paths = self.filter_with_constraint(paths, category_constraint)
-
         max_pathfinder_paths = 500
         if 'max_pathfinder_paths' in self.parameters:
             max_pathfinder_paths = int(self.parameters['max_pathfinder_paths'])
-        paths = paths[:max_pathfinder_paths]
-        self.response.info(f"Model release date: 12/01/2025")
-        self.response.info(f"PathFinder found {len(paths)} paths")
+        try:
+            result, aux_graphs, knowledge_graph = pathfinder.get_paths(
+                src_node_id=normalize_src_node_id,
+                dst_node_id=normalize_dst_node_id,
+                src_pinned_node=src_pinned_node,
+                dst_pinned_node=dst_pinned_node,
+                hops_numbers=self.parameters['max_path_length'],
+                max_hops_to_explore=4,
+                limit=max_pathfinder_paths,
+                prune_top_k=50,
+                degree_threshold=30000,
+                category_constraints=descendants,
+            )
+        except Exception as e:
+            self.response.error(f"PathFinder failed to find paths between {src_pinned_node} and {dst_pinned_node}. "
+                                f"Error message is: {e}", http_status=500)
+            return self.response
 
-        if len(paths) == 0:
+        if len(result['analyses']) == 0:
             self.response.warning(f"Could not connect the nodes {src_pinned_node} and {dst_pinned_node} "
                                   f"with a max path length of {self.parameters['max_path_length']}.")
             return self.response
 
-        names = Names(
-            result_name="result",
-            auxiliary_graph_name="aux",
-        )
-        edge_extractor = EdgeExtractorFromPloverDB(
-            RTXConfiguration().plover_url
-        )
-        ResultPerPathConverter(
-            paths,
-            normalize_src_node_id,
-            normalize_dst_node_id,
-            src_pinned_node,
-            dst_pinned_node,
-            names,
-            edge_extractor
-        ).convert(self.response)
+        self.convert_to_trapi(result, aux_graphs, knowledge_graph)
 
         mode = 'ARAX'
         if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
             self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
         return self.response
-
-    def filter_with_constraint(self, paths, category_constraint):
-        biolink_helper = BiolinkHelper()
-        descendants = set(biolink_helper.get_descendants(category_constraint))
-        result = []
-        for path in paths:
-            path_length = len(path.links)
-            if path_length > 2:
-                for i in range(1, path_length - 1):
-                    node = path.links[i]
-                    if node.category in descendants:
-                        result.append(path)
-                        break
-        return result
-
-    def remove_block_list(self, paths):
-        blocked_curies, blocked_synonyms = self.get_block_list()
-        result = []
-        for path in paths:
-            append = True
-            path_length = len(path.links)
-            if path_length > self.parameters['max_path_length'] + 1:
-                continue
-            if path_length > 2:
-                for i in range(1, path_length - 1):
-                    node = path.links[i]
-                    if node.id in blocked_curies:
-                        append = False
-                        break
-                    if node.name is not None:
-                        if node.name.lower() in blocked_synonyms:
-                            append = False
-                            break
-                        if node.name.lower().startswith("cyp"):
-                            append = False
-                            break
-            if append:
-                result.append(path)
-        return result
 
     def get_block_list(self):
         with open(os.path.dirname(os.path.abspath(__file__)) + '/../KnowledgeSources/general_concepts.json',
@@ -444,6 +410,50 @@ class ARAXConnect:
             json_block_list = json.load(file)
         synonyms = set(s.lower() for s in json_block_list['synonyms'])
         return set(json_block_list['curies']), synonyms
+
+    def convert_to_trapi(self, result, aux_graphs, knowledge_graph):
+        if self.response.envelope.message.results is None:
+            self.response.envelope.message.results = []
+
+        if self.response.envelope.message.auxiliary_graphs is None:
+            self.response.envelope.message.auxiliary_graphs = {}
+
+        if self.response.envelope.message.knowledge_graph is None:
+            self.response.envelope.message.knowledge_graph = {}
+
+        kg = KnowledgeGraph().from_dict(knowledge_graph)
+
+        analyses = []
+        for analys in result['analyses']:
+            path_bindings = {}
+            for key, value in analys['path_bindings'].items():
+                path_bindings[key] = [PathBinding(id=value[0]['id'])]
+            analyses.append(
+                PathfinderAnalysis(
+                    resource_id=analys["resource_id"],
+                    path_bindings=path_bindings,
+                    score=analys['score']
+                )
+            )
+
+        node_bindings = {}
+        for key, value in result["node_bindings"].items():
+            node_bindings[key] = [NodeBinding(id=value[0]['id'])]
+        self.response.envelope.message.results.append(
+            Result(
+                id=result["id"],
+                analyses=analyses,
+                node_bindings=node_bindings,
+                essence="result"
+            )
+        )
+        for key, value in aux_graphs.items():
+            self.response.envelope.message.auxiliary_graphs[key] = AuxiliaryGraph(
+                edges=value['edges'],
+                attributes=[]
+            )
+        self.response.envelope.message.knowledge_graph.edges.update(kg.edges)
+        self.response.envelope.message.knowledge_graph.nodes.update(kg.nodes)
 
 
 ##########################################################################################

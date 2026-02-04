@@ -2,8 +2,8 @@
 
 pandas==2.3.1  # UPGRADED: pandas 1.5.3 doesn't support Python 3.12
 numpy==1.26.4  # UPGRADED: numpy 1.24.2 doesn't support Python 3.12
-requests==2.32.0
-requests-cache
+requests==2.32.3
+requests-cache==1.2.1
 matplotlib
 seaborn
 psutil
@@ -15,20 +15,21 @@ lxml==4.9.4  # UPGRADED: 4.9.1 doesn't build on Python 3.12, 4.9.4 has pre-built
 nltk==3.7
 scipy==1.15.3  # UPGRADED: scipy 1.10.1 doesn't support Python 3.12
 scikit-learn==1.7.1 # compatible with Python 3.12
-connexion==2.14.1
+connexion==2.14.2
 connexion[swagger-ui]
 Flask==2.2.5
 Flask-Cors==3.0.10
 SQLAlchemy==1.4.47
 pymysql==1.1.1
-CacheControl==0.12.11
+CacheControl==0.14.4
+filelock==3.20.3
 lockfile==0.12.2
 # simple-crypt==4.1.7 REMOVED - incompatible with Python 3.12 (depends on old pycrypto)
 pycryptodome==3.23.0  # ADDED: Modern replacement for pycrypto, compatible with Python 3.12
 tomark==0.1.4
 md-toc==8.1.4
 pickledb==0.9.2
-pytest==7.2.2
+pytest==8.1.1
 joblib==1.2.0
 PyYAML==6.0.2  # UPGRADED: 6.0 doesn't have pre-built wheels for Python 3.12, 6.0.2 does
 ujson==5.4.0
@@ -37,7 +38,7 @@ aiohttp==3.9.4
 boto3==1.40.16  # UPGRADED: 1.24.59 doesn't support urllib3>=2.5.0 required by reasoner-validator 5.0.0
 tornado==6.4.1
 MarkupSafe==2.1.2
-reasoner-validator==5.0.0  # UPGRADED to the latest version that supports python3.12 
+reasoner-validator==6.0.1 
 pronto==2.5.3
 pygit2==1.18.0  # UPGRADED: 1.10.0 doesn't build on Python 3.12, 1.18.0 has pre-built wheels
 tabulate==0.9.0
@@ -57,5 +58,7 @@ opentelemetry-proto==1.17.0
 opentelemetry-sdk==1.17.0
 opentelemetry-semantic-conventions==0.38b0
 opentelemetry-util-http==0.38b0
-xgboost==1.7.6 # compatible with Python 3.12
+xgboost==2.1.4 # compatible with Python 3.12
+catrax-pathfinder==1.1.1
+biolink-helper-pkg==1.0.0
 httpx

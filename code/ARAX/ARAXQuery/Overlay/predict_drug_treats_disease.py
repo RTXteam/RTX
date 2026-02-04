@@ -21,7 +21,7 @@ from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../ARAX/BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../")
 from RTXConfiguration import RTXConfiguration
@@ -35,7 +35,7 @@ class PredictDrugTreatsDisease:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
-        self.biolink_helper = BiolinkHelper()
+        self.biolink_helper = get_biolink_helper()
         ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
         pathlist = os.path.realpath(__file__).split(os.path.sep)
         RTXindex = pathlist.index("RTX")

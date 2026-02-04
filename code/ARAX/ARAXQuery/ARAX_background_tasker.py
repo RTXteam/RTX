@@ -123,10 +123,15 @@ class ARAXBackgroundTasker:
                 eprint(f"  {filepath}")
                 if os.path.islink(filepath):
                     resolved_path = os.path.dirname(os.readlink(filepath))
-                    eprint(f"  {resolved_path}")
+                    eprint(f"--- Directory listing of {resolved_path}")
                     result = subprocess.run(['ls', '-l', resolved_path],
                                             stdout=subprocess.PIPE)
                     eprint(result.stdout.decode('utf-8'))
+                    if 'KG2.10.2' in resolved_path:
+                        resolved_path = resolved_path.replace('KG2.10.2', 'KG2.10.0')
+                        eprint(f"--- Directory listing of {resolved_path}")
+                        result = subprocess.run(['ls', '-l', resolved_path], stdout=subprocess.PIPE)
+                        eprint(result.stdout.decode('utf-8'))
         eprint("INFO: End listing databases area contents")
 
         #### Set up the KP Cacher to be used for periodic refreshing

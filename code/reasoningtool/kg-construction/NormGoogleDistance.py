@@ -182,7 +182,6 @@ class NormGoogleDistance:
             return response
         else:
             value = QueryNCBIeUtils.multi_normalized_google_distance([mesh_term1, mesh_term2])
-            print(type(value))
             if math.isnan(value):
                 response['value'] = None
                 response['response_code'] = "OK"
