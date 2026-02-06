@@ -185,9 +185,13 @@ class KPInfoCacher:
                         if not isinstance(kp_meta_kg, dict):
                             eprint(f"Skipping {kp_infores_curie} because they returned an invalid meta knowledge graph")
                         else:
-                            meta_map[kp_infores_curie] = {"predicates": self._convert_meta_kg_to_meta_map(kp_meta_kg),
+                            conversion_results = self._convert_meta_kg_to_meta_map(kp_meta_kg)
+                            meta_map[kp_infores_curie] = {"predicates": conversion_results['meta_map'],
                                                           "prefixes": {category: meta_node["id_prefixes"]
                                                                        for category, meta_node in kp_meta_kg["nodes"].items()}}
+                            conversion_errors = conversion_results['errors']
+                            if conversion_errors:
+                                eprint(f"for KP {kp_infores_curie}, in converting the meta KG to the meta map, {len(conversion_errors)} errors occurred")
                     else:
                         eprint(f"Unable to access {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                                f"(returned status of {kp_response.status_code} for URL {kp_endpoint_url})")
@@ -203,15 +207,19 @@ class KPInfoCacher:
 
     @staticmethod
     def _convert_meta_kg_to_meta_map(kp_meta_kg: dict) -> dict:
+        # returns a dictionary with two entries, whose keys and values are:
+        #  - `meta_map`: a dictionary containing the meta_map
+        #  - `errors`: a list of string error messages from the conversion
+        error_messages = []
         kp_meta_map: dict[str, dict[str, set[str]]] = dict()
         for meta_edge in kp_meta_kg["edges"]:
             subject_category = meta_edge["subject"]
             if not (subject_category.startswith("biolink:")):
-                eprint(f"in _convert_meta_kg_to_meta_map; invalid subject category: {subject_category}")
+                error_messages.append(f"in _convert_meta_kg_to_meta_map; invalid subject category: {subject_category}")
                 subject_category = "biolink:" + subject_category
             object_category = meta_edge["object"]
             if not (object_category.startswith("biolink:")):
-                eprint(f"in _convert_meta_kg_to_meta_map; invalid object category: {object_category}")
+                error_messages.append(f"in _convert_meta_kg_to_meta_map; invalid object category: {object_category}")
                 object_category = "biolink:" + object_category
             predicate = meta_edge["predicate"]
             if subject_category not in kp_meta_map:
@@ -219,7 +227,8 @@ class KPInfoCacher:
             if object_category not in kp_meta_map[subject_category]:
                 kp_meta_map[subject_category][object_category] = set()
             kp_meta_map[subject_category][object_category].add(predicate)
-        return kp_meta_map
+        return {'meta_map': kp_meta_map,
+                'errors': error_messages}
 
 
 if __name__ == "__main__":
