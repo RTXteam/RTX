@@ -206,7 +206,13 @@ class KPInfoCacher:
         kp_meta_map: dict[str, dict[str, set[str]]] = dict()
         for meta_edge in kp_meta_kg["edges"]:
             subject_category = meta_edge["subject"]
+            if not (subject_category.startswith("biolink:")):
+                eprint(f"in _convert_meta_kg_to_meta_map; invalid subject category: {subject_category}")
+                subject_category = "biolink:" + subject_category
             object_category = meta_edge["object"]
+            if not (object_category.startswith("biolink:")):
+                eprint(f"in _convert_meta_kg_to_meta_map; invalid object category: {object_category}")
+                object_category = "biolink:" + object_category
             predicate = meta_edge["predicate"]
             if subject_category not in kp_meta_map:
                 kp_meta_map[subject_category] = dict()
