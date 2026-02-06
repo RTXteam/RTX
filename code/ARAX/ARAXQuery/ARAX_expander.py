@@ -15,7 +15,7 @@ from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
@@ -30,6 +30,8 @@ from openapi_server.models.attribute_constraint import AttributeConstraint
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.retrieval_source import RetrievalSource
 from Expand.trapi_querier import TRAPIQuerier
+from Expand.trapi_query_cacher import KPQueryCacher
+from ARAX_messenger import ARAXMessenger
 
 UNBOUND_NODES_KEY = "__UNBOUND__"
 
@@ -51,7 +53,7 @@ def trim_to_size(input_list, length):
 class ARAXExpander:
 
     def __init__(self):
-        self.bh = BiolinkHelper()
+        self.bh = get_biolink_helper()
         self.rtxc = RTXConfiguration()
         self.plover_url = self.rtxc.plover_url
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
@@ -153,6 +155,9 @@ class ARAXExpander:
         except ValueError as e:
             response.error(str(e))
             return response
+
+        # Covert blocking of certain KPs
+        blocked_kp_list = [ 'infores:automat-robokop', 'infores:knowledge-collaboratory' ]
 
         # Save the original QG, if it hasn't already been saved in ARAXQuery (happens for DSL queries..)
         if not hasattr(response, "original_query_graph"):
@@ -326,6 +331,8 @@ class ARAXExpander:
             # Get any inferred results from ARAX Infer
             if inferred_qedge_keys:
                 response, overarching_kg = self.get_inferred_answers(inferred_qedge_keys, query_graph, response)
+                #### Update the local message with a potentially new message created in previous method call
+                message = response.envelope.message
                 if log.status != 'OK':
                     return response
                 # Now mark qedges as 'lookup' if this is an inferred query
@@ -386,6 +393,17 @@ class ARAXExpander:
                         skipped_message = "This KP was constrained by this edge"
                         response.update_query_plan(qedge_key, skipped_kp, "Skipped", skipped_message)
 
+                    # Drop any KPs in the block list
+                    if len(blocked_kp_list) > 0:
+                        kps_to_query_not_blocked = {}
+                        for kp in kps_to_query:
+                            if kp in blocked_kp_list:
+                                response.update_query_plan(qedge_key, kp, "Skipped", "KP is blocked due to data quality issues")
+                                log.debug(f"KP {kp} has been blocked due to data quality issues")
+                            else:
+                                kps_to_query_not_blocked[kp] = True
+                        kps_to_query = kps_to_query_not_blocked
+
                     log.info(f"Expand decided to use {len(kps_to_query)} KPs to answer {qedge_key}: {kps_to_query}")
                 else:
                     kps_to_query = set(eu.convert_to_list(parameters["kp"]))
@@ -413,9 +431,9 @@ class ARAXExpander:
                     kp_answers = loop.run_until_complete(task_group)
                     loop.close()
                 else:
-                    log.error("Expand could not find any KPs to answer "
-                              f"{qedge_key} with.", error_code="NoResults")
-                    return response
+                    kp_answers = []
+                    log.warning("Expand could not find any KPs to answer "
+                                f"{qedge_key} with.")
 
                 # Merge KPs' answers into our overarching KG
                 log.debug("Got answers from all KPs; merging them into one KG")
@@ -495,6 +513,20 @@ class ARAXExpander:
                                                  for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
                                                  if edge.predicate in self.treats_like_predicates}
                     if higher_level_treats_edges:
+                        
+                        # To resolve issue 2573: implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
+                        higher_level_treats_edges_temp = dict()
+                        for edge_key_temp, edge_temp in higher_level_treats_edges.items():
+                            if "biolink:in_clinical_trials_for" in edge_key_temp and "infores:multiomics-clinicaltrials:" in edge_key_temp:
+                                if [x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"][0] == True:
+                                    higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+                                else:
+                                    continue
+                            else:
+                                higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+                        higher_level_treats_edges = higher_level_treats_edges_temp
+                        
+                        
                         # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
                         virtual_qedge_key = f"creative_expand_treats_{qedge_key}"
                         virtual_qedge = QEdge(subject=qedge.subject,
@@ -516,7 +548,7 @@ class ARAXExpander:
                                                sources=[RetrievalSource(resource_id="infores:arax",
                                                                         resource_role="primary_knowledge_source")],
                                                attributes=[Attribute(attribute_type_id="biolink:agent_type",
-                                                                     value="automated_agent",
+                                                                     value="computational_model",
                                                                      attribute_source="infores:arax"),
                                                            Attribute(attribute_type_id="biolink:knowledge_level",
                                                                      value="prediction",
@@ -535,6 +567,18 @@ class ARAXExpander:
                                                  message.encountered_kryptonite_edges_info, response)
                 # Remove any paths that are now dead-ends
                 if inferred_qedge_keys and len(inferred_qedge_keys) == 1:
+
+                    #### Write some state information to files for debugging
+                    debug_filepath = os.path.dirname(os.path.abspath(__file__))
+                    if hasattr(response, 'dtd_from_cache') and response.dtd_from_cache is True:
+                        debug_filepath += "/zz_cache_"
+                    else:
+                        debug_filepath += "/zz_fresh_"
+                    with open(debug_filepath + "query_graph.json", 'w') as outfile:
+                        print(f"*******line 564: message.query_graph={message.query_graph}", file=outfile)
+                    with open(debug_filepath + "overarching_kg.json", 'w') as outfile:
+                        print(f"*******line 566: overarching_kg={overarching_kg}", file=outfile)
+
                     overarching_kg = self._remove_dead_end_paths(message.query_graph, overarching_kg, response)
                 else:
                     overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
@@ -654,13 +698,61 @@ class ARAXExpander:
                     infer_input_parameters = {"action": "drug_treatment_graph_expansion",
                                               'disease_curie': object_curie, 'qedge_id': inferred_qedge_key,
                                               'drug_curie': subject_curie}
-                    inferer = ARAXInfer()
-                    infer_response = inferer.apply(response, infer_input_parameters)
+
+                    #### Check the cache to see if we have this query cached already
+                    cacher = KPQueryCacher()
+                    enable_caching = False
+                    kp_curie = "xDTD"
+                    kp_url = "xDTD"
+                    if enable_caching:
+                        response.info(f"Looking for a previously cached result from {kp_curie}")
+                        response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, infer_input_parameters)
+                    else:
+                        response.info("KP results caching for xDTD is currently disabled, pending further debugging")
+                    if enable_caching and response_code != -2: 
+                        n_results = cacher._get_n_results(response_data)
+                        response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
+                        #### Transform the dict message into objects
+                        response.envelope.message = ARAXMessenger().from_dict(response_data['message'])
+                        response.envelope.message.encountered_kryptonite_edges_info = response_data['message']['encountered_kryptonite_edges_info']
+                        for node_key, node in response_data['message']['knowledge_graph']['nodes'].items():
+                            response.info(f"Copying qnode_keys for node {node_key}") 
+                            response.envelope.message.knowledge_graph.nodes[node_key].qnode_keys = node['qnode_keys']
+                        for edge_key, edge in response_data['message']['knowledge_graph']['edges'].items():
+                            response.info(f"Copying qedge_keys for edge {edge_key}") 
+                            response.envelope.message.knowledge_graph.edges[edge_key].qedge_keys = edge['qedge_keys']
+                        response.dtd_from_cache = True   # type: ignore[attr-defined]
+
+                    #### Else run the inferer to get the result and then cache it
+                    else:
+                        inferer = ARAXInfer()
+                        response.info("Launching ARAX inferer")
+                        infer_response = inferer.apply(response, infer_input_parameters)
+                        elapsed_time = time.time() - start
+                        response.info(f"Got result from ARAX inferer after {elapsed_time}. Converting to_dict()")
+                        response_object = response.envelope.to_dict()
+                        response_object['message']['encountered_kryptonite_edges_info'] = response.envelope.message.encountered_kryptonite_edges_info
+                        for node_key, node in response.envelope.message.knowledge_graph.nodes.items():
+                            response_object['message']['knowledge_graph']['nodes'][node_key]['qnode_keys'] = node.qnode_keys
+                        for edge_key, edge in response.envelope.message.knowledge_graph.edges.items():
+                            response_object['message']['knowledge_graph']['edges'][edge_key]['qedge_keys'] = edge.qedge_keys
+                        response.info("Storing result in the cache")
+                        cacher.store_response(
+                            kp_curie=kp_curie,
+                            query_url=kp_url,
+                            query_object=infer_input_parameters,
+                            response_object=response_object,
+                            http_code=200,
+                            elapsed_time=elapsed_time,
+                            status="OK"
+                        )
+                        response.info("Stored result in the cache.")
+
                     # return infer_response
-                    response = infer_response
+                    response = infer_response  # these are already always the same object?
                     overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(response.envelope.message.knowledge_graph)
 
-                    wait_time = round(time.time() - start)
+                    wait_time = round(time.time() - start, 2)
                     if response.status == "OK":
                         done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, dict()))} " \
                                        f"edges in {wait_time} seconds"

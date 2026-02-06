@@ -45,8 +45,14 @@ class KPInfoCacher:
         try:
             # Grab KP registrations from Smart API
             smart_api_helper = SmartAPI()
-            smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
+            #smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
+            #                                                                             req_maturity=self.rtx_config.maturity)
+            # When we start advertising that ARAX is TRAPI 1.6.0, we still want to use 1.5.0 KPs.
+            # This is a hack to be removed when we are ready to roll out TRAPI 2.0
+            forced_kp_version = '1.5.0'
+            smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=forced_kp_version,
                                                                                          req_maturity=self.rtx_config.maturity)
+
             if not smart_api_kp_registrations:
                 eprint("Didn't get any KP registrations back from SmartAPI!")
             previous_cache_exists = pathlib.Path(self.smart_api_and_meta_map_cache).exists()
@@ -179,9 +185,13 @@ class KPInfoCacher:
                         if not isinstance(kp_meta_kg, dict):
                             eprint(f"Skipping {kp_infores_curie} because they returned an invalid meta knowledge graph")
                         else:
-                            meta_map[kp_infores_curie] = {"predicates": self._convert_meta_kg_to_meta_map(kp_meta_kg),
+                            conversion_results = self._convert_meta_kg_to_meta_map(kp_meta_kg)
+                            meta_map[kp_infores_curie] = {"predicates": conversion_results['meta_map'],
                                                           "prefixes": {category: meta_node["id_prefixes"]
                                                                        for category, meta_node in kp_meta_kg["nodes"].items()}}
+                            conversion_errors = conversion_results['errors']
+                            if conversion_errors:
+                                eprint(f"for KP {kp_infores_curie}, in converting the meta KG to the meta map, {len(conversion_errors)} errors occurred")
                     else:
                         eprint(f"Unable to access {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                                f"(returned status of {kp_response.status_code} for URL {kp_endpoint_url})")
@@ -197,17 +207,28 @@ class KPInfoCacher:
 
     @staticmethod
     def _convert_meta_kg_to_meta_map(kp_meta_kg: dict) -> dict:
+        # returns a dictionary with two entries, whose keys and values are:
+        #  - `meta_map`: a dictionary containing the meta_map
+        #  - `errors`: a list of string error messages from the conversion
+        error_messages = []
         kp_meta_map: dict[str, dict[str, set[str]]] = dict()
         for meta_edge in kp_meta_kg["edges"]:
             subject_category = meta_edge["subject"]
+            if not (subject_category.startswith("biolink:")):
+                error_messages.append(f"in _convert_meta_kg_to_meta_map; invalid subject category: {subject_category}; missing biolink CURIE prefix")
+                subject_category = "biolink:" + subject_category
             object_category = meta_edge["object"]
+            if not (object_category.startswith("biolink:")):
+                error_messages.append(f"in _convert_meta_kg_to_meta_map; invalid object category: {object_category}; missing biolink CURIE prefix")
+                object_category = "biolink:" + object_category
             predicate = meta_edge["predicate"]
             if subject_category not in kp_meta_map:
                 kp_meta_map[subject_category] = dict()
             if object_category not in kp_meta_map[subject_category]:
                 kp_meta_map[subject_category][object_category] = set()
             kp_meta_map[subject_category][object_category].add(predicate)
-        return kp_meta_map
+        return {'meta_map': kp_meta_map,
+                'errors': error_messages}
 
 
 if __name__ == "__main__":

@@ -12,14 +12,14 @@ from kp_info_cacher import KPInfoCacher
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelper")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
 from RTXConfiguration import RTXConfiguration
 
 
 RTX_CONFIG = RTXConfiguration()
-
+KPS_SKIP_METAKG_CHECKS = {'infores:retriever'}
 
 class KPSelector:
 
@@ -31,7 +31,7 @@ class KPSelector:
         if (not self.kg2_mode) and (self.kp_urls is None):
             raise ValueError("KP info cache has not been filled and we are not in KG2 mode; cannot initialize KP selector")
         self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else set(self.kp_urls.keys())
-        self.bh = BiolinkHelper()
+        self.bh = get_biolink_helper()
 
     def _load_cached_kp_info(self) -> tuple:
         if self.kg2_mode:
@@ -74,6 +74,7 @@ class KPSelector:
         self.log.debug(f"selecting from {len(self.valid_kps)} kps")
         accepting_kps = set()
         for kp in self.meta_map:
+            # kp should contain the infores CURIE of the knowledge provider
             if self._triple_is_in_meta_map(kp,
                                            sub_categories,
                                            predicates,
@@ -86,7 +87,12 @@ class KPSelector:
                                              sub_categories):
                 accepting_kps.add(kp)
             else:
-                self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
+                if kp not in KPS_SKIP_METAKG_CHECKS:
+                    self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
+                else:
+                    # this KP is one that is marked for skipping MetaKG checks (see RTXteam/RTX issue 2598)
+                    self.log.debug(f"For qedge {qedge_key}, skipping MetaKG checks for querying {kp}")
+                    accepting_kps.add(kp)
         kps_missing_meta_info = self.valid_kps.difference(set(self.meta_map))
         for missing_kp in kps_missing_meta_info:
             self.log.update_query_plan(qedge_key, missing_kp, "Skipped", "No MetaKG info available")

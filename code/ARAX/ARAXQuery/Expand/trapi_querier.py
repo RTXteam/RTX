@@ -21,6 +21,9 @@ from Expand.kp_selector import KPSelector
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
+from trapi_query_cacher import KPQueryCacher
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
@@ -267,6 +270,8 @@ class TRAPIQuerier:
 
         return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}, kg_id_to_parent_query_id_map
 
+
+
     async def _answer_query_using_kp_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         request_body = self._get_prepped_request_body(query_graph)
         query_sent = copy.deepcopy(request_body)
@@ -277,34 +282,40 @@ class TRAPIQuerier:
         waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
         self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Waiting", waiting_message, query=query_sent)
         start = time.time()
+        self.log.debug(f"{self.kp_infores_curie}: Sending query to {self.kp_infores_curie} API ({self.kp_endpoint}) with timeout={query_timeout}")
+
         # Send the query graph to the KP's TRAPI API
-        self.log.debug(f"{self.kp_infores_curie}: Sending query to {self.kp_infores_curie} API ({self.kp_endpoint})")
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-            try:
-                async with session.post(f"{self.kp_endpoint}/query",
-                                        json=request_body,
-                                        headers={'accept': 'application/json'},
-                                        timeout=query_timeout) as response:
-                    if response.status == 200:
-                        json_response = await response.json()
-                    else:
-                        wait_time = round(time.time() - start)
-                        http_error_message = f"Returned HTTP error {response.status} after {wait_time} seconds"
-                        self.log.warning(f"{self.kp_infores_curie}: {http_error_message}. Query sent to KP was: {request_body}")
-                        self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", http_error_message)
-                        return QGOrganizedKnowledgeGraph()
-            except asyncio.exceptions.TimeoutError:
-                timeout_message = f"Query timed out after {query_timeout} seconds"
+        cacher = KPQueryCacher()
+        try:
+            response_data, http_code, elapsed_time, error = await cacher.get_result(f"{self.kp_endpoint}/query",
+                                                                                     request_body, 
+                                                                                     kp_curie=self.kp_infores_curie, 
+                                                                                     timeout=query_timeout, async_session=True)
+            if http_code == 200:
+                json_response = response_data
+
+            elif http_code == -1:
+                wait_time = round(time.time() - start, 2)
+                timeout_message = f"Query timed out after {wait_time} seconds"
                 self.log.warning(f"{self.kp_infores_curie}: {timeout_message}")
                 self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Timed out", timeout_message)
                 return QGOrganizedKnowledgeGraph()
-            except Exception as ex:
-                wait_time = round(time.time() - start)
-                exception_message = f"Request threw exception after {wait_time} seconds: {type(ex)}"
-                self.log.warning(f"{self.kp_infores_curie}: {exception_message}")
-                self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", exception_message)
+
+            else:
+                wait_time = round(time.time() - start, 2)
+                http_error_message = f"Returned HTTP error {http_code} after {wait_time} seconds"
+                self.log.warning(f"{self.kp_infores_curie}: {http_error_message}. Query sent to KP was: {request_body}")
+                self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", http_error_message)
                 return QGOrganizedKnowledgeGraph()
-        wait_time = round(time.time() - start)
+
+        except Exception as ex:
+            wait_time = round(time.time() - start, 2)
+            exception_message = f"Request threw exception after {wait_time} seconds: {type(ex)}"
+            self.log.warning(f"{self.kp_infores_curie}: {exception_message}")
+            self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", exception_message)
+            return QGOrganizedKnowledgeGraph()
+
+        wait_time = round(time.time() - start, 2)
         json_response, cd = \
             _remove_attributes_with_invalid_values(json_response,
                                                    self.kp_infores_curie,
@@ -312,7 +323,12 @@ class TRAPIQuerier:
         json_response = cast(dict[str, Any], json_response)
         answer_kg = self._load_kp_json_response(json_response, query_graph)
         num_edges = len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))
-        done_message = f"Returned {num_edges} edges in {wait_time} seconds"
+
+        cache_flag = ''
+        if isinstance(error, str):
+            cache_flag = "from cache "
+        done_message = f"Returned {num_edges} edges {cache_flag}in {wait_time} seconds"
+
         if cd == 0:
             self.log.update_query_plan(qedge_key,
                                        self.kp_infores_curie,
@@ -324,6 +340,8 @@ class TRAPIQuerier:
                                        "Warning",
                                        done_message + "; " + warn_msg)
         return answer_kg
+
+
 
     def _answer_query_using_kp(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
         # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
@@ -339,7 +357,7 @@ class TRAPIQuerier:
                                             json=request_body,
                                             headers={'accept': 'application/json'},
                                             timeout=query_timeout)
-                self.log.wait_time = round(time.time() - start)
+                self.log.wait_time = round(time.time() - start, 2)
         except Exception:
             timeout_message = f"Query timed out after {query_timeout} seconds"
             self.log.warning(f"{self.kp_infores_curie}: {timeout_message}")

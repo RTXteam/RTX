@@ -19,9 +19,9 @@ from ARAX_response import ARAXResponse
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration
+from RTXConfiguration import RTXConfiguration  #noqa: E402
 RTXConfig = RTXConfiguration()
-from ARAX_database_manager import ARAXDatabaseManager
+from ARAX_database_manager import ARAXDatabaseManager  #noqa: E402
 
 
 DEBUG = True
@@ -70,7 +70,7 @@ class ExplainableDTD(object):
 
         if build:
             if path_to_score_results is None:
-                self.logger.error(f"Please set a path to 'path_to_score_results'")
+                self.logger.error("Please set a path to 'path_to_score_results'")
                 raise
             elif not os.path.exists(path_to_score_results) or not len(os.listdir(path_to_score_results)) > 0:
                 self.logger.error(f"The given path '{path_to_score_results}' doesn't exist or is an empty folder")
@@ -78,7 +78,7 @@ class ExplainableDTD(object):
             else:
                 self.path_to_score_results = path_to_score_results
             if path_to_path_results is None:
-                self.logger.error(f"Please set a path to 'path_to_path_results'")
+                self.logger.error("Please set a path to 'path_to_path_results'")
                 raise
             elif not os.path.exists(path_to_path_results) or not len(os.listdir(path_to_path_results)) > 0:
                 self.logger.error(f"The given path '{path_to_path_results}' doesn't exist or is an empty folder")
@@ -127,10 +127,7 @@ class ExplainableDTD(object):
                 # get it remotely
                 DBmanager = ARAXDatabaseManager()
                 if DBmanager.check_versions():
-                    self.response.debug(
-                        f"Downloading databases because mismatch in local versions and remote versions was found... (will take a few minutes)")
-                    self.response = DBmanager.update_databases(response=self.response)
-                #os.system(f"scp {RTXConfig.db_username}@{RTXConfig.db_host}:{RTXConfig.explainable_dtd_db_path} {database}")
+                    raise FileNotFoundError("ARAX database manager indicates that there are missing databases")
                 self.connection = sqlite3.connect(database)
                 print("INFO: Connecting to database", flush=True)
                 self.is_connected = True
@@ -145,7 +142,7 @@ class ExplainableDTD(object):
             try:
                 self.connection.commit()
                 self.connection.close()
-            except:
+            except sqlite3.ProgrammingError:
                 self.logger.info("Database appears to be already disconnected")
             self.success_con = False
         else:
@@ -157,11 +154,11 @@ class ExplainableDTD(object):
 
         if self.success_con is True:
             self.logger.info(f"Creating database {self.database_name}")
-            self.connection.execute(f"DROP TABLE IF EXISTS PREDICTION_SCORE_TABLE")
-            self.connection.execute(f"CREATE TABLE PREDICTION_SCORE_TABLE( drug_id VARCHAR(255), drug_name VARCHAR(255), disease_id VARCHAR(255), disease_name VARCHAR(255), tn_score FLOAT, tp_score FLOAT, unknown_score FLOAT)")
-            self.connection.execute(f"DROP TABLE IF EXISTS PATH_RESULT_TABLE")
-            self.connection.execute(f"CREATE TABLE PATH_RESULT_TABLE(  drug_id VARCHAR(255), drug_name VARCHAR(255), disease_id VARCHAR(255), disease_name VARCHAR(255), path VARCHAR(255), path_score FLOAT )")
-            self.logger.info(f"Creating tables is completed")
+            self.connection.execute("DROP TABLE IF EXISTS PREDICTION_SCORE_TABLE")
+            self.connection.execute("CREATE TABLE PREDICTION_SCORE_TABLE( drug_id VARCHAR(255), drug_name VARCHAR(255), disease_id VARCHAR(255), disease_name VARCHAR(255), tn_score FLOAT, tp_score FLOAT, unknown_score FLOAT)")
+            self.connection.execute("DROP TABLE IF EXISTS PATH_RESULT_TABLE")
+            self.connection.execute("CREATE TABLE PATH_RESULT_TABLE(  drug_id VARCHAR(255), drug_name VARCHAR(255), disease_id VARCHAR(255), disease_name VARCHAR(255), path VARCHAR(255), path_score FLOAT )")
+            self.logger.info("Creating tables is completed")
 
     ## Populate the tables
     def populate_table(self):
@@ -174,11 +171,11 @@ class ExplainableDTD(object):
                 with open(f"{self.path_to_score_results}/{file_name}", 'r') as file_in:
                     content_list = file_in.readlines()
                     col_name = content_list.pop(0)
-                    insert_command1 = f"INSERT INTO PREDICTION_SCORE_TABLE("
-                    insert_command2 = f" values ("
+                    insert_command1 = "INSERT INTO PREDICTION_SCORE_TABLE("
+                    insert_command2 = " values ("
                     for col in col_name.strip().split("\t"):
                         insert_command1 = insert_command1 + f"{col},"
-                        insert_command2 = insert_command2 + f"?,"
+                        insert_command2 = insert_command2 + "?,"
 
                     insert_command = insert_command1 + ")" + insert_command2 + ")"
                     insert_command = insert_command.replace(',)', ')')
@@ -201,11 +198,11 @@ class ExplainableDTD(object):
                 with open(f"{self.path_to_path_results}/{file_name}", 'r') as file_in:
                     content_list = file_in.readlines()
                     col_name = content_list.pop(0)
-                    insert_command1 = f"INSERT INTO PATH_RESULT_TABLE("
-                    insert_command2 = f" values ("
+                    insert_command1 = "INSERT INTO PATH_RESULT_TABLE("
+                    insert_command2 = " values ("
                     for col in col_name.strip().split("\t"):
                         insert_command1 = insert_command1 + f"{col},"
-                        insert_command2 = insert_command2 + f"?,"
+                        insert_command2 = insert_command2 + "?,"
 
                     insert_command = insert_command1 + ")" + insert_command2 + ")"
                     insert_command = insert_command.replace(',)', ')')
@@ -221,24 +218,24 @@ class ExplainableDTD(object):
                     self.connection.commit()
             self.connection.commit()
 
-            self.logger.info(f"Populating tables is completed")
+            self.logger.info("Populating tables is completed")
 
     def create_indexes(self):
 
         if self.success_con is True:
-            self.logger.info(f"Creating INDEXes on PREDICTION_SCORE_TABLE",)
-            self.connection.execute(f"CREATE INDEX idx_PREDICTION_SCORE_TABLE_drug_id ON PREDICTION_SCORE_TABLE(drug_id)")
-            self.connection.execute(f"CREATE INDEX idx_PREDICTION_SCORE_TABLE_drug_name ON PREDICTION_SCORE_TABLE(drug_name)")
-            self.connection.execute(f"CREATE INDEX idx_PREDICTION_SCORE_TABLE_disease_id ON PREDICTION_SCORE_TABLE(disease_id)")
-            self.connection.execute(f"CREATE INDEX idx_PREDICTION_SCORE_TABLE_disease_name ON PREDICTION_SCORE_TABLE(disease_name)")
+            self.logger.info("Creating INDEXes on PREDICTION_SCORE_TABLE",)
+            self.connection.execute("CREATE INDEX idx_PREDICTION_SCORE_TABLE_drug_id ON PREDICTION_SCORE_TABLE(drug_id)")
+            self.connection.execute("CREATE INDEX idx_PREDICTION_SCORE_TABLE_drug_name ON PREDICTION_SCORE_TABLE(drug_name)")
+            self.connection.execute("CREATE INDEX idx_PREDICTION_SCORE_TABLE_disease_id ON PREDICTION_SCORE_TABLE(disease_id)")
+            self.connection.execute("CREATE INDEX idx_PREDICTION_SCORE_TABLE_disease_name ON PREDICTION_SCORE_TABLE(disease_name)")
 
-            self.logger.info(f"Creating INDEXes on PREDICTION_SCORE_TABLE",)
-            self.connection.execute(f"CREATE INDEX idx_PATH_RESULT_TABLE_drug_id ON PATH_RESULT_TABLE(drug_id)")
-            self.connection.execute(f"CREATE INDEX idx_PATH_RESULT_TABLE_drug_name ON PATH_RESULT_TABLE(drug_name)")
-            self.connection.execute(f"CREATE INDEX idx_PATH_RESULT_TABLE_disease_id ON PATH_RESULT_TABLE(disease_id)")
-            self.connection.execute(f"CREATE INDEX idx_PATH_RESULT_TABLE_disease_name ON PATH_RESULT_TABLE(disease_name)")
+            self.logger.info("Creating INDEXes on PREDICTION_SCORE_TABLE",)
+            self.connection.execute("CREATE INDEX idx_PATH_RESULT_TABLE_drug_id ON PATH_RESULT_TABLE(drug_id)")
+            self.connection.execute("CREATE INDEX idx_PATH_RESULT_TABLE_drug_name ON PATH_RESULT_TABLE(drug_name)")
+            self.connection.execute("CREATE INDEX idx_PATH_RESULT_TABLE_disease_id ON PATH_RESULT_TABLE(disease_id)")
+            self.connection.execute("CREATE INDEX idx_PATH_RESULT_TABLE_disease_name ON PATH_RESULT_TABLE(disease_name)")
 
-            self.logger.info(f"INFO: Creating INDEXes is completed")
+            self.logger.info("INFO: Creating INDEXes is completed")
 
     def get_score_table(self, drug_curie_ids=None, disease_curie_ids=None):
         """get the score table for given drug and/or disease curie ids

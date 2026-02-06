@@ -14,7 +14,7 @@ from ARAX_messenger import ARAXMessenger
 from ARAX_expander import ARAXExpander
 from ARAX_resultify import ARAXResultify
 from ARAX_decorator import ARAXDecorator
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 import traceback
 from collections import Counter
 from collections.abc import Hashable
@@ -55,7 +55,7 @@ class InferUtilities:
         self.message = None
         self.parameters = None
         self.report_stats = True
-        self.bh = BiolinkHelper()
+        self.bh = get_biolink_helper()
 
     def __get_formated_edge_key(self, edge: Edge, primary_knowledge_source: str, kp: str = 'infores:rtx-kg2') -> str:
         qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
