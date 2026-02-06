@@ -215,11 +215,11 @@ class KPInfoCacher:
         for meta_edge in kp_meta_kg["edges"]:
             subject_category = meta_edge["subject"]
             if not (subject_category.startswith("biolink:")):
-                error_messages.append(f"in _convert_meta_kg_to_meta_map; invalid subject category: {subject_category}")
+                error_messages.append(f"in _convert_meta_kg_to_meta_map; invalid subject category: {subject_category}; missing biolink CURIE prefix")
                 subject_category = "biolink:" + subject_category
             object_category = meta_edge["object"]
             if not (object_category.startswith("biolink:")):
-                error_messages.append(f"in _convert_meta_kg_to_meta_map; invalid object category: {object_category}")
+                error_messages.append(f"in _convert_meta_kg_to_meta_map; invalid object category: {object_category}; missing biolink CURIE prefix")
                 object_category = "biolink:" + object_category
             predicate = meta_edge["predicate"]
             if subject_category not in kp_meta_map:
