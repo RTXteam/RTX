@@ -548,7 +548,7 @@ class ARAXExpander:
                                                sources=[RetrievalSource(resource_id="infores:arax",
                                                                         resource_role="primary_knowledge_source")],
                                                attributes=[Attribute(attribute_type_id="biolink:agent_type",
-                                                                     value="automated_agent",
+                                                                     value="computational_model",
                                                                      attribute_source="infores:arax"),
                                                            Attribute(attribute_type_id="biolink:knowledge_level",
                                                                      value="prediction",
