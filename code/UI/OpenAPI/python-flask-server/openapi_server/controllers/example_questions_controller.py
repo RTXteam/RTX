@@ -1,7 +1,11 @@
 import connexion
 import six
+import sys
+import os
 
 from openapi_server import util
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../../reasoningtool/QuestionAnswering")
 
 from QuestionExamples import QuestionExamples
 
