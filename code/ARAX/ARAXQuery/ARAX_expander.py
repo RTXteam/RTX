@@ -514,7 +514,7 @@ class ARAXExpander:
                                                  if edge.predicate in self.treats_like_predicates}
                     if higher_level_treats_edges:
                         
-                        # To resolve issue 2573: implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
+                        # issue2634 - curated CTKP edges implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
                         higher_level_treats_edges_temp = dict()
                         for edge_key_temp, edge_temp in higher_level_treats_edges.items():
                             if "biolink:in_clinical_trials_for" in edge_key_temp and "infores:multiomics-clinicaltrials:" in edge_key_temp:
@@ -526,6 +526,15 @@ class ARAXExpander:
                                 higher_level_treats_edges_temp[edge_key_temp] = edge_temp
                         higher_level_treats_edges = higher_level_treats_edges_temp
                         
+                        # issue2634 - curated DAKP edges implement elevation to treats prediction if and only if the applied_to_treat predicate has evidence count (N_cases) >10 
+                        higher_level_treats_edges_temp = dict()
+                        for edge_key_temp, edge_temp in higher_level_treats_edges.items():
+                            if "biolink:applied_to_treat" in edge_key_temp and "infores:multiomics-drugapprovals:" in edge_key_temp:
+                                if [x.value for x in edge_temp.attributes if x.attribute_type_id == "N_cases"][0] > 10:
+                                    higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+                                else:
+                                    continue
+                        higher_level_treats_edges = higher_level_treats_edges_temp
                         
                         # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
                         virtual_qedge_key = f"creative_expand_treats_{qedge_key}"
