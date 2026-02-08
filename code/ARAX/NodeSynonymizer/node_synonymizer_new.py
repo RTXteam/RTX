@@ -143,8 +143,11 @@ class NodeSynonymizer:
             for input_curie in curies_set:
                 if input_curie in api_results and api_results[input_curie] is not None:
                     result = api_results[input_curie]
-                    # Get all equivalent identifiers
-                    equivalent_ids = [equiv.get("identifier") for equiv in result.get("equivalent_identifiers", [])]
+                    # Get all equivalent identifiers from POST /get_normalized_nodes response.
+                    # Filter: the API can return entries without "identifier" key, which would
+                    # inject None into the list. Old SQLite code never had this issue because
+                    # node IDs came from a NOT NULL column. Guard added to match that contract.
+                    equivalent_ids = [equiv.get("identifier") for equiv in result.get("equivalent_identifiers", []) if equiv.get("identifier")]
                     # Also include the main ID
                     main_id = result.get("id", {}).get("identifier")
                     if main_id:
@@ -223,13 +226,18 @@ class NodeSynonymizer:
 
         # Convert any input values to Set format
         curies_set = self._convert_to_set_format(curies)
-        results_dict = dict()
+        # Init before the if-block so empty/None input returns {} instead of NameError.
+        # Old SQLite code returned results_dict (also init'd empty before its if-block).
+        # New code picks the most specific category via bmt hierarchy levels from
+        # POST /get_normalized_nodes "type" array, which differs from old code that
+        # returned the raw category string from the SQLite nodes.category column.
+        best_by_parent = dict()
 
         if curies_set:
             curies_list = list(curies_set)
             api_results = self._call_normalizer_api(curies_list)
-            results_dict = {k: {t: self.category_levels.get(t.replace("biolink:", ""), None) 
-                               for t in v.get('type', [])} 
+            results_dict = {k: {t: self.category_levels.get(t.replace("biolink:", ""), None)
+                               for t in v.get('type', [])}
                            for k, v in api_results.items() if v is not None}
             results_dict = {k: {t: l for t, l in v.items() if l is not None} for k, v in results_dict.items()}
             best_by_parent = {
