@@ -60,6 +60,6 @@ opentelemetry-semantic-conventions==0.38b0
 opentelemetry-util-http==0.38b0
 xgboost==2.1.4 # compatible with Python 3.12
 catrax-pathfinder==1.1.1
-biolink-helper-pkg==1.0.0
+biolink-helper-pkg==1.0.1
 httpx
 openapi-generator-cli==7.19.0
