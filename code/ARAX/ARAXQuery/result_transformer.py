@@ -207,7 +207,13 @@ class ResultTransformer:
                 else:
                     new_results.append(result)
                     
+            # Report how many results were eliminated due to the “infinite NGD edge score” filter.
+            num_removed_results = len(message.results) - len(new_results)
+            response.debug(f"Number of results eliminated due to the “infinite NGD edge score” filter: {num_removed_results}")
             message.results = new_results
+
+            # Update response's `total_results_count` field
+            response.total_results_count = len(message.results)
 
             # Return the original query graph in the response, rather than our edited version
             response.debug(f"Replacing ARAX's internal edited QG with the original input QG..")

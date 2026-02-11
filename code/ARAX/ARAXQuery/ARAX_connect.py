@@ -381,9 +381,9 @@ class ARAXConnect:
                 src_pinned_node=src_pinned_node,
                 dst_pinned_node=dst_pinned_node,
                 hops_numbers=self.parameters['max_path_length'],
-                max_hops_to_explore=4,
+                max_hops_to_explore=6,
                 limit=max_pathfinder_paths,
-                prune_top_k=50,
+                prune_top_k=30,
                 degree_threshold=30000,
                 category_constraints=descendants,
             )

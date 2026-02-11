@@ -513,6 +513,20 @@ class ARAXExpander:
                                                  for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
                                                  if edge.predicate in self.treats_like_predicates}
                     if higher_level_treats_edges:
+                        
+                        # To resolve issue 2573: implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
+                        higher_level_treats_edges_temp = dict()
+                        for edge_key_temp, edge_temp in higher_level_treats_edges.items():
+                            if "biolink:in_clinical_trials_for" in edge_key_temp and "infores:multiomics-clinicaltrials:" in edge_key_temp:
+                                if [x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"][0] == True:
+                                    higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+                                else:
+                                    continue
+                            else:
+                                higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+                        higher_level_treats_edges = higher_level_treats_edges_temp
+                        
+                        
                         # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
                         virtual_qedge_key = f"creative_expand_treats_{qedge_key}"
                         virtual_qedge = QEdge(subject=qedge.subject,
@@ -534,7 +548,7 @@ class ARAXExpander:
                                                sources=[RetrievalSource(resource_id="infores:arax",
                                                                         resource_role="primary_knowledge_source")],
                                                attributes=[Attribute(attribute_type_id="biolink:agent_type",
-                                                                     value="automated_agent",
+                                                                     value="computational_model",
                                                                      attribute_source="infores:arax"),
                                                            Attribute(attribute_type_id="biolink:knowledge_level",
                                                                      value="prediction",
