@@ -286,7 +286,7 @@ class ResponseCache:
                 s3.Object(bucket_name, response_filename).put(Body=serialized_response)
                 t1 = timeit.default_timer()
 
-                response.info(f"INFO: Successfully wrote {response_filename} to {region_name} S3 bucket {bucket_name} in {t1-t0} seconds")
+                response.info(f"Successfully wrote {response_filename} to {region_name} S3 bucket {bucket_name} in {t1-t0} seconds")
                 succeeded_to_s3 = True
 
             except:
