@@ -168,13 +168,11 @@ class KPSelector:
                     # Grab equivalent curies with the same prefix as the input curie, if available
                     if input_curie_prefix in supported_equiv_curies_by_prefix:
                         chosen_prefix = input_curie_prefix
-                    # Otherwise pick any supported curie prefix present
+                    # Otherwise pick the first supported prefix encountered while scanning
+                    # equivalent_curies. This mirrors old behavior and stays deterministic
+                    # now that synonymizer output order is stable.
                     else:
-                        #
-                        # Pick one fallback prefix in a stable way
-                        # This removes random flips between runs
-                        #
-                        chosen_prefix = sorted(supported_equiv_curies_by_prefix)[0]
+                        chosen_prefix = next(iter(supported_equiv_curies_by_prefix))
                     for curie_to_send in supported_equiv_curies_by_prefix[chosen_prefix]:
                         if curie_to_send not in converted_curies_seen:
                             converted_curies.append(curie_to_send)
