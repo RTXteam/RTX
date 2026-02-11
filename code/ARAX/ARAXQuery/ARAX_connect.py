@@ -438,7 +438,7 @@ class ARAXConnect:
 
         node_bindings = {}
         for key, value in result["node_bindings"].items():
-            node_bindings[key] = [NodeBinding(id=value[0]['id'])]
+            node_bindings[key] = [NodeBinding(id=value[0]['id'], attributes=[])]
         self.response.envelope.message.results.append(
             Result(
                 id=result["id"],
