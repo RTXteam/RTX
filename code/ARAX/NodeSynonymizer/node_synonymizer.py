@@ -154,7 +154,7 @@ class NodeSynonymizer:
                     main_id = result.get("id", {}).get("identifier")
                     if main_id:
                         equivalent_ids.append(main_id)
-                    results_dict[input_curie] = list(set(equivalent_ids))
+                    results_dict[input_curie] = self._dedupe_preserve_order(equivalent_ids)
 
         if names_set:
             name_to_curie = self._call_name_resolver_api(list(names_set))
@@ -169,7 +169,7 @@ class NodeSynonymizer:
                         main_id = result.get("id", {}).get("identifier")
                         if main_id:
                             equivalent_ids.append(main_id)
-                        results_dict[name] = list(set(equivalent_ids))
+                        results_dict[name] = self._dedupe_preserve_order(equivalent_ids)
 
         if include_unrecognized_entities:
             unrecognized_curies = (curies_set.union(names_set)).difference(results_dict)
@@ -570,6 +570,20 @@ class NodeSynonymizer:
             return set(some_value)
         except TypeError as error:
             raise ValueError("Input is not an allowable data type (list, set, or string)!") from error
+
+    @staticmethod
+    def _dedupe_preserve_order(values: List[str]) -> List[str]:
+        #
+        # Keep first seen order
+        # This is stable across runs
+        #
+        seen: set[str] = set()
+        ordered_values: List[str] = []
+        for value in values:
+            if value not in seen:
+                seen.add(value)
+                ordered_values.append(value)
+        return ordered_values
 
     @staticmethod
     def _add_biolink_prefix(category: Optional[str]) -> Optional[str]:
