@@ -13,7 +13,9 @@
       "xcrg_increase_model": "/translator/data/orangeboard/databases/KG2.10.0/xcrg_increase_model_v1.0.KG2.10.0_new_version.pt",
       "xcrg_decrease_model": "/translator/data/orangeboard/databases/KG2.10.0/xcrg_decrease_model_v1.0.KG2.10.0_new_version.pt"
    },
-   "plover_url_override": "https://kg2cplover3.rtx.ai:9990",
+   "plover_url_override": null,
+   "node_normalizer_url_override": null,
+   "name_resolver_url_override": null,
    "neo4j": {
       "KG2pre": "kg2endpoint-kg2-10-2.rtx.ai",
       "KG2c": "kg2-10-2c.rtx.ai"

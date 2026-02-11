@@ -400,15 +400,18 @@ def test_cluster_graphs():
     assert results[PTGS1_NAME]["knowledge_graph"]
     print(json.dumps(results[PTGS1_NAME]["knowledge_graph"], indent=2))
     assert results[PTGS1_NAME]["knowledge_graph"]["nodes"]
-    assert results[PTGS1_NAME]["knowledge_graph"]["edges"]
+    # Edge assertions commented out: the old SQLite synonymizer stored intra-cluster edges
+    # (same_as, similar_to, has_similar_name) from its build-time clustering algorithm.
+    # The SRI Node Normalizer API only returns node equivalence clusters, not edges.
+    # assert results[PTGS1_NAME]["knowledge_graph"]["edges"]
     assert len(results[PTGS1_NAME]["knowledge_graph"]["nodes"]) == len(results[PTGS1_NAME]["nodes"])
 
-    for edge in results[PTGS1_NAME]["knowledge_graph"]["edges"].values():
-        assert edge["subject"] in results[PTGS1_NAME]["knowledge_graph"]["nodes"]
-        assert edge["object"] in results[PTGS1_NAME]["knowledge_graph"]["nodes"]
-        assert edge["predicate"].startswith("biolink:")
-        assert edge["sources"]
-        assert edge["attributes"]
+    # for edge in results[PTGS1_NAME]["knowledge_graph"]["edges"].values():
+    #     assert edge["subject"] in results[PTGS1_NAME]["knowledge_graph"]["nodes"]
+    #     assert edge["object"] in results[PTGS1_NAME]["knowledge_graph"]["nodes"]
+    #     assert edge["predicate"].startswith("biolink:")
+    #     assert edge["sources"]
+    #     assert edge["attributes"]
 
     for node in results[PTGS1_NAME]["knowledge_graph"]["nodes"].values():
         assert node["categories"]
@@ -426,7 +429,9 @@ def test_truncate_cluster():
     assert len(results[ACETAMINOPHEN_CURIE]["knowledge_graph"]["nodes"]) == 2
     assert len(results[ACETAMINOPHEN_CURIE]["knowledge_graph"]["edges"]) < 20
     assert results[ACETAMINOPHEN_CURIE]["total_synonyms"] > 2
-    assert results[ACETAMINOPHEN_CURIE]["categories"]["biolink:Drug"] > 2
+    # SRI Node Normalizer prefers SmallMolecule for acetaminophen.
+    # Old SQLite also had Drug members in all-categories counts.
+    assert results[ACETAMINOPHEN_CURIE]["categories"]["biolink:SmallMolecule"] > 2
     assert "biolink:Disease" not in results[ACETAMINOPHEN_CURIE]["categories"]
 
     print(json.dumps(results[PARKINSONS_CURIE]["nodes"], indent=2))
@@ -435,7 +440,7 @@ def test_truncate_cluster():
     assert len(results[PARKINSONS_CURIE]["knowledge_graph"]["edges"]) < 20
     assert results[PARKINSONS_CURIE]["total_synonyms"] > 2
     assert results[PARKINSONS_CURIE]["categories"]["biolink:Disease"] > 2
-    assert "biolink:Drug" not in results[PARKINSONS_CURIE]["categories"]
+    assert "biolink:SmallMolecule" not in results[PARKINSONS_CURIE]["categories"]
 
 
 if __name__ == "__main__":

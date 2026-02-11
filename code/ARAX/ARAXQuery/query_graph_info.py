@@ -96,9 +96,11 @@ class QueryGraphInfo:
 
                     canonical_curies = synonymizer.get_canonical_curies(curies=curies_list, return_all_categories=True)
                     response.debug(f"canonical_curies={canonical_curies}, curie={curie}")
-                    if curie in canonical_curies and canonical_curies[curie] is not None and 'preferred_type' in canonical_curies[curie]:
+                    # The synonymizer returns `preferred_category` and not `preferred_type`.
+                    # Put it in a list because QueryGraph categories are stored as a list.
+                    if curie in canonical_curies and canonical_curies[curie] is not None and 'preferred_category' in canonical_curies[curie]:
                         node_info[key]['has_categories'] = True
-                        node_info[key]['categories'] = canonical_curies[curie]['preferred_type']
+                        node_info[key]['categories'] = [canonical_curies[curie]['preferred_category']]
 
             if qnode.categories is not None:
                 node_info[key]['has_categories'] = True
