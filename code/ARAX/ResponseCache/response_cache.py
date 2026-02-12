@@ -651,7 +651,10 @@ class ResponseCache:
                     return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
                 response_dict['ars_host'] = ars_host
-                response_dict['ui_host'] = ars_host.replace('ars','ui').replace('-prod','')
+                if "-dev" in ars_host:
+                    response_dict['ui_host'] = 'transltr-bma-ui-dev.ncats.io'
+                else:
+                    response_dict['ui_host'] = ars_host.replace('ars','ui').replace('-prod','')
 
                 return response_dict
 
