@@ -538,9 +538,10 @@ class ARAXExpander:
                                     higher_level_treats_edges_temp[edge_key_temp] = edge_temp
                                 else:
                                     continue
+                            else:
+                                higher_level_treats_edges_temp[edge_key_temp] = edge_temp
                         higher_level_treats_edges = higher_level_treats_edges_temp
                         
-
                         # issue2634 - curated TMKP edges implement elevation to treats prediction if and only if the treats_or_applied_or_studied_to_treat predicate has evidence count (biolink:evidence_count) > 5 
                         higher_level_treats_edges_temp = dict()
                         for edge_key_temp, edge_temp in higher_level_treats_edges.items():
@@ -552,6 +553,8 @@ class ARAXExpander:
                                     higher_level_treats_edges_temp[edge_key_temp] = edge_temp
                                 else:
                                     continue
+                            else:
+                                higher_level_treats_edges_temp[edge_key_temp] = edge_temp
                         higher_level_treats_edges = higher_level_treats_edges_temp
                         
                         # issue2634 - curated CTD edges implement elevation to treats prediction if and only if the treats_or_applied_or_studied_to_treat predicate has evidence count (biolink:evidence_count) > 5 
@@ -566,6 +569,8 @@ class ARAXExpander:
                                     higher_level_treats_edges_temp[edge_key_temp] = edge_temp
                                 else:
                                     continue
+                            else:
+                                higher_level_treats_edges_temp[edge_key_temp] = edge_temp
                         higher_level_treats_edges = higher_level_treats_edges_temp
                         
                         # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
