@@ -18,7 +18,6 @@ def test_create_message_basic():
     messenger = ARAXMessenger()
     messenger.create_envelope(response)
     assert response.status == 'OK'
-    message = response.envelope.message
     assert response.envelope.type == 'translator_reasoner_response'
     assert response.envelope.schema_version == '1.6.0'
 
@@ -117,6 +116,7 @@ def test_add_qnode_bad_name():
     response = ARAXResponse()
     messenger = ARAXMessenger()
     messenger.create_envelope(response)
+    messenger.add_qnode(response,{ 'name': 'Big Bird' })
     assert response.status == 'OK'
     message = response.envelope.message
     messenger.add_qnode(response,{ 'name': 'Big Bird' })

@@ -9,7 +9,6 @@ import json
 import os
 import sys
 import timeit
-
 import pytest
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer/")
@@ -145,7 +144,6 @@ def test_get_canonical_curies_simple():
 def test_get_canonical_curies_single_curie():
     synonymizer = NodeSynonymizer()
     results = synonymizer.get_canonical_curies(ATRIAL_FIBRILLATION_CURIE)
-    print(results)
     assert len(results) == 1
     assert ATRIAL_FIBRILLATION_CURIE in results
     assert results[ATRIAL_FIBRILLATION_CURIE]
@@ -155,13 +153,10 @@ def test_get_canonical_curies_unrecognized():
     curies = [ATRIAL_FIBRILLATION_CURIE, FAKE_CURIE]
     synonymizer = NodeSynonymizer()
     results = synonymizer.get_canonical_curies(curies)
-    print(results)
     assert results.get(ATRIAL_FIBRILLATION_CURIE)
     assert FAKE_CURIE in results
     assert results[FAKE_CURIE] is None
-
     results = synonymizer.get_canonical_curies(FAKE_CURIE)
-    print(results)
     assert len(results) == 1
     assert FAKE_CURIE in results
     assert results[FAKE_CURIE] is None
@@ -171,7 +166,6 @@ def test_get_canonical_curies_by_names():
     synonymizer = NodeSynonymizer()
     names = [CERVICAL_RIB_NAME, WARFARIN_NAME, FAKE_NAME]
     results = synonymizer.get_canonical_curies(names=names)
-    print(results)
     assert len(results) == 3
     assert results[FAKE_NAME] is None
     for name in [CERVICAL_RIB_NAME, WARFARIN_NAME]:
@@ -249,6 +243,10 @@ def test_get_equivalent_nodes_by_name():
     assert PARKINSONS_CURIE in results[PARKINSONS_NAME]
     assert PARKINSONS_CURIE_2 in results[PARKINSONS_NAME]
 
+def test_bad_name():
+    synonymizer = NodeSynonymizer()
+    results = synonymizer.get_canonical_curies(names=["Big Bird"])
+    assert results['Big Bird'] is None
 
 def test_get_equivalent_nodes_by_curies_and_names():
     synonymizer = NodeSynonymizer()

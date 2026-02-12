@@ -85,6 +85,15 @@ class NodeSynonymizer:
                     if curie and curie in api_results and api_results[curie] is not None:
                         result = api_results[curie]
                         types = result.get("type", [])
+                        if "id" not in result:
+                            raise ValueError(f"for name {name}, there is no field 'id' in the result")
+                        result_name_dict = result["id"]
+                        if "label" not in result_name_dict:
+                            raise ValueError(f"for name {name}, there is no 'label' field in the 'id' dictionary in the result")
+                        result_name = result_name_dict['label']
+                        if result_name.lower() != name.lower():
+                            results_dict[name] = None
+                            continue
                         preferred_category = types[0] if types else None
                         if preferred_category:
                             preferred_category = preferred_category.replace("biolink:", "")
