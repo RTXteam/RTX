@@ -565,7 +565,7 @@ class ARAXExpander:
                                 len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:agent_type" and x.value == "manual_agent"]) > 0 and
                                 len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"]) > 0):
                                 pub_list = [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"][0]
-                                if len(pub_list) > 5:
+                                if len(pub_list) > 0:
                                     higher_level_treats_edges_temp[edge_key_temp] = edge_temp
                                 else:
                                     continue
