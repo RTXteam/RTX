@@ -499,11 +499,12 @@ class ARAXExpander:
                                 del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
                 # Handle Expand's creative treats predicate answers
                 if be_creative_treats and qedge_key in overarching_kg.edges_by_qg_id:  # Skip if no answers
-                    # First remove any SemMedDB treats_or_applied-type edges (not trustworthy)
+                    # First remove any SemMedDB treats_or_applied-type edges with < 10 associated publications (not trustworthy)
                     edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
                                            if edge.predicate in self.treats_like_predicates and
-                                           any(source.resource_id == "infores:semmeddb" for source in edge.sources)}
-                    log.debug(f"Removing {len(edge_keys_to_remove)} semmeddb treats_or_applied-type edges "
+                                           "infores:semmeddb" in edge_key and
+                                           [len(x.value) for x in edge.attributes if x.attribute_type_id == "biolink:publications"][0] < 10}
+                    log.debug(f"Removing {len(edge_keys_to_remove)} semmeddb treats_or_applied-type edges with < 10 associated publications "
                               f"fulfilling {qedge_key}")
                     for edge_key in edge_keys_to_remove:
                         del overarching_kg.edges_by_qg_id[qedge_key][edge_key]
@@ -514,63 +515,44 @@ class ARAXExpander:
                                                  if edge.predicate in self.treats_like_predicates}
                     if higher_level_treats_edges:
                         
-                        # issue2634 - curated CTKP edges implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
                         higher_level_treats_edges_temp = dict()
                         for edge_key_temp, edge_temp in higher_level_treats_edges.items():
+                            
+                            # issue2634 - curated CTKP edges implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
                             if ("biolink:in_clinical_trials_for" in edge_key_temp and 
                                 "infores:multiomics-clinicaltrials" in edge_key_temp and
                                 len([x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"]) > 0):
                                 if [x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"][0] == True:
                                     higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-                                else:
-                                    continue
-                            else:
-                                higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-                        higher_level_treats_edges = higher_level_treats_edges_temp
-                        
-                        # issue2634 - curated DAKP/FAERS edges implement elevation to treats prediction if and only if the applied_to_treat predicate has evidence count (N_cases) >10 
-                        higher_level_treats_edges_temp = dict()
-                        for edge_key_temp, edge_temp in higher_level_treats_edges.items():
-                            if ("biolink:applied_to_treat" in edge_key_temp and 
+                            
+                            # issue2634 - curated DAKP/FAERS edges implement elevation to treats prediction if and only if the applied_to_treat predicate has evidence count (N_cases) >10 
+                            elif ("biolink:applied_to_treat" in edge_key_temp and 
                                 ("infores:multiomics-drugapprovals" in edge_key_temp or "infores:faers" in edge_key_temp) and
                                 len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:number_of_cases"]) > 0):
                                 if [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:number_of_cases"][0] > 24:
                                     higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-                                else:
-                                    continue
-                            else:
-                                higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-                        higher_level_treats_edges = higher_level_treats_edges_temp
-                        
-                        # issue2634 - curated TMKP edges implement elevation to treats prediction if and only if the treats_or_applied_or_studied_to_treat predicate has evidence count (biolink:evidence_count) > 5 
-                        higher_level_treats_edges_temp = dict()
-                        for edge_key_temp, edge_temp in higher_level_treats_edges.items():
-                            if ("biolink:treats_or_applied_or_studied_to_treat" in edge_key_temp and
+                                    
+                            # issue2634 - curated TMKP edges implement elevation to treats prediction if and only if the treats_or_applied_or_studied_to_treat predicate has evidence count (biolink:evidence_count) > 5 
+                            elif ("biolink:treats_or_applied_or_studied_to_treat" in edge_key_temp and
                                 "infores:text-mining-provider-cooccurrence" in edge_key_temp and
                                 len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:agent_type" and x.value == "text_mining_agent"]) > 0 and
                                 len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:evidence_count"]) > 0):
                                 if [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:evidence_count"][0] > 5:
                                     higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-                                else:
-                                    continue
-                            else:
+                            
+                            # issue2634 - allow elevation to treats prediction for all curated CTD edges
+                            elif "infores:ctd" in edge_key_temp:
                                 higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-                        higher_level_treats_edges = higher_level_treats_edges_temp
-                        
-                        # issue2634 - curated CTD edges implement elevation to treats prediction if and only if the treats_or_applied_or_studied_to_treat predicate has evidence count (biolink:evidence_count) > 5 
-                        higher_level_treats_edges_temp = dict()
-                        for edge_key_temp, edge_temp in higher_level_treats_edges.items():
-                            if ("biolink:treats_or_applied_or_studied_to_treat" in edge_key_temp and
-                                "infores:ctd" in edge_key_temp and
-                                len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:agent_type" and x.value == "manual_agent"]) > 0 and
-                                len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"]) > 0):
-                                pub_list = [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"][0]
-                                if len(pub_list) > 0:
+
+                            # issue2634 - SemMedDB treats_or_applied-type edges with >= 10 associated publications are elevated to treats prediction
+                            elif ("infores:semmeddb" in edge_key_temp and
+                                len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"]) > 0 and
+                                [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"][0] >= 10):
                                     higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-                                else:
-                                    continue
+
+                            # issue2634 - for other non-treats edges, do not elevate to treats prediction
                             else:
-                                higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+                                pass
                         higher_level_treats_edges = higher_level_treats_edges_temp
                         
                         # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
