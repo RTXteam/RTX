@@ -98,7 +98,7 @@ class AsyncQuery(Model):
         if callback is None:
             raise ValueError("Invalid value for `callback`, must not be `None`")  # noqa: E501
         if callback is not None and not re.search(r'^https?:\/\/', callback):  # noqa: E501
-            raise ValueError("Invalid value for `callback`, must be a follow pattern or equal to `/^https?:\/\//`")  # noqa: E501
+            raise ValueError(r"Invalid value for `callback`, must be a follow pattern or equal to `/^https?:\/\//`")  # noqa: E501
 
         self._callback = callback
 

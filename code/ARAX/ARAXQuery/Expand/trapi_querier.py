@@ -396,6 +396,14 @@ class TRAPIQuerier:
                                 'submitter': 'infores:arax'}
         if self.kp_infores_curie == "infores:rtx-kg2":
             body['return_minimal_metadata'] = True  # Don't want KG2 attributes because ARAX adds them later (faster)
+
+        # If sending a query to Retriever: specify Tier 1 only, unless tiers is already present
+        if self.kp_infores_curie == "infores:retriever":
+            body.setdefault('parameters', {})
+            if 'tiers' not in body['parameters']:
+                body['parameters']['tiers'] = [ 1 ]
+                self.log.info(f"For query to {self.kp_infores_curie}, set body.parameters.tiers to {body['parameters']['tiers']}")
+
         return body
 
     def _load_kp_json_response(self, json_response: dict, qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
