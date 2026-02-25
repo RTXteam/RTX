@@ -547,7 +547,7 @@ class ARAXExpander:
                             # issue2634 - SemMedDB treats_or_applied-type edges with >= 10 associated publications are elevated to treats prediction
                             elif ("infores:semmeddb" in edge_key_temp and
                                 len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"]) > 0 and
-                                [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"][0] >= 10):
+                                [len(x.value) for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"][0] >= 10):
                                     higher_level_treats_edges_temp[edge_key_temp] = edge_temp
 
                             # issue2634 - for other non-treats edges, do not elevate to treats prediction
