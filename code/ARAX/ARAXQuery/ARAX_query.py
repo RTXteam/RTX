@@ -1800,7 +1800,7 @@ def main():
     elif params.example_number == 1848:
         query = {"operations": {"actions": ["add_qnode(key=n0, ids=[MONDO:0009061], is_set=false)",
             "add_qnode(key=n1, is_set=false, categories=[biolink:ChemicalEntity])",
-            "add_qedge(key=e0, subject=n0, object=n1, predicates=[biolink:has_real_world_evidence_of_association_with])",
+            "add_qedge(key=e0, subject=n0, object=n1, predicates=[biolink:associated_with])",
             "expand(kp=infores:cohd)",
             "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=N1,subject_qnode_key=n0,object_qnode_key=n1)",
             "scoreless_resultify(ignore_edge_direction=true)",
