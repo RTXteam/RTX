@@ -149,7 +149,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
 #     assert len(response.envelope.message.query_graph.nodes) == 2
 #     assert len(response.envelope.message.query_graph.paths) == 1
 
-
+@pytest.mark.slow
 def test_TRAPI_unconstrained_query():
     query = {
         "message": {
@@ -185,7 +185,7 @@ def test_TRAPI_unconstrained_query():
     assert len(response.envelope.message.query_graph.nodes) == 2
     assert len(response.envelope.message.query_graph.paths) == 1
 
-
+@pytest.mark.slow
 def test_TRAPI_constrained_query():
     query = {
         "message": {
