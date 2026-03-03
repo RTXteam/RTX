@@ -383,7 +383,7 @@ class ARAXConnect:
                 hops_numbers=self.parameters['max_path_length'],
                 max_hops_to_explore=self.parameters['max_path_length'],
                 limit=max_pathfinder_paths,
-                prune_top_k=300,
+                prune_top_k=200,
                 degree_threshold=10000000,
                 category_constraints=descendants,
             )
