@@ -58,7 +58,7 @@ opentelemetry-proto==1.17.0
 opentelemetry-sdk==1.17.0
 opentelemetry-semantic-conventions==0.38b0
 opentelemetry-util-http==0.38b0
-catrax-pathfinder==1.2.1
+catrax-pathfinder==1.2.2
 biolink-helper-pkg==1.0.1
 httpx
 openapi-generator-cli==7.19.0
