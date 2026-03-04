@@ -34,7 +34,7 @@ joblib==1.2.0
 PyYAML==6.0.2  # UPGRADED: 6.0 doesn't have pre-built wheels for Python 3.12, 6.0.2 does
 ujson==5.4.0
 # asyncio==3.4.3 # built into Python 3.12
-aiohttp==3.9.4
+aiohttp==3.13.3
 boto3==1.40.16  # UPGRADED: 1.24.59 doesn't support urllib3>=2.5.0 required by reasoner-validator 5.0.0
 tornado==6.4.1
 MarkupSafe==2.1.2
