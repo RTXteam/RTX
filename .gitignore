@@ -13,6 +13,7 @@
 
 # cache files
 **/.web_cache
+code/ARAX/ARAXQuery/Expand/trapi_query_cacher_responses/*
 
 # config.json
 **/config.json
