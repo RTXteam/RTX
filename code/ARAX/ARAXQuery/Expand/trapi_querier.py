@@ -7,8 +7,6 @@ import time
 from collections import defaultdict
 import math
 
-import aiohttp
-import asyncio
 import requests
 from typing import Union, Optional, Any, cast
 
@@ -25,15 +23,15 @@ from trapi_query_cacher import KPQueryCacher
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
-from openapi_server.models.node import Node
-from openapi_server.models.edge import Edge
-from openapi_server.models.q_node import QNode
-from openapi_server.models.q_edge import QEdge
-from openapi_server.models.query_graph import QueryGraph
-from openapi_server.models.result import Result
-from openapi_server.models.attribute import Attribute
-from openapi_server.models.retrieval_source import RetrievalSource
-
+from openapi_server.models.node import Node  # noqa: E402
+from openapi_server.models.edge import Edge  # noqa: E402
+from openapi_server.models.q_node import QNode  # noqa: E402
+from openapi_server.models.q_edge import QEdge  # noqa: E402
+from openapi_server.models.query_graph import QueryGraph  # noqa: E402
+from openapi_server.models.result import Result  # noqa: E402
+from openapi_server.models.attribute import Attribute  # noqa: E402
+from openapi_server.models.retrieval_source import RetrievalSource  # noqa: E402
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph  # noqa: E402
 
 def _remove_attributes_with_invalid_values(response_json: dict,
                                            kp_curie: str,
@@ -86,8 +84,10 @@ class TRAPIQuerier:
                                                      resource_role="aggregator_knowledge_source",
                                                      upstream_resource_ids=[self.kp_infores_curie])
 
-    async def answer_one_hop_query_async(self, query_graph: QueryGraph,
-                                         be_creative_treats: bool = False) -> QGOrganizedKnowledgeGraph:
+    async def answer_one_hop_query_async(
+            self, query_graph: QueryGraph,
+            be_creative_treats: bool = False
+    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, AuxiliaryGraph] | None]:
         """
         This function answers a one-hop (single-edge) query using the specified KP.
         :param query_graph: A TRAPI query graph.
@@ -108,7 +108,7 @@ class TRAPIQuerier:
 
         self._verify_is_one_hop_query_graph(qg_copy)
         if log.status != 'OK':
-            return final_kg
+            return final_kg, None
 
         # Verify that the KP accepts these predicates/categories/prefixes
         if self.kp_infores_curie != "infores:rtx-kg2":
@@ -116,14 +116,14 @@ class TRAPIQuerier:
                 if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_infores_curie):
                     log.error(f"{self.kp_infores_curie} cannot answer queries with the specified categories/predicates",
                               error_code="UnsupportedQG")
-                    return final_kg
+                    return final_kg, None
 
         # Convert the QG so that it uses curies with prefixes the KP likes
         qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_infores_curie, log)
         if not qg_copy:  # Means no equivalent curies with supported prefixes were found
             skipped_message = "No equivalent curies with supported prefixes found"
             log.update_query_plan(qedge_key, self.kp_infores_curie, "Skipped", skipped_message)
-            return final_kg
+            return final_kg, None
 
         # Treat this as a creative 'treats' query
         if be_creative_treats:
@@ -134,11 +134,11 @@ class TRAPIQuerier:
                          f"predicates: {qedge.predicates}")
 
         # Answer the query using the KP and load its answers into our object model
-        final_kg = await self._answer_query_using_kp_async(qg_copy)
+        return await self._answer_query_using_kp_async(qg_copy)
 
-        return final_kg
-
-    def answer_one_hop_query(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
+    def answer_one_hop_query(
+            self, query_graph: QueryGraph
+    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, AuxiliaryGraph] | None]:
         """
         This function answers a one-hop (single-edge) query using the specified KP.
         :param query_graph: A TRAPI query graph.
@@ -151,9 +151,10 @@ class TRAPIQuerier:
         qg_copy = copy.deepcopy(query_graph)  # Create a copy so we don't modify the original
         qedge_key = next(qedge_key for qedge_key in qg_copy.edges)
 
+
         self._verify_is_one_hop_query_graph(qg_copy)
         if log.status != 'OK':
-            return final_kg
+            return final_kg, None
 
         # Verify that the KP accepts these predicates/categories/prefixes
         if self.kp_infores_curie != "infores:rtx-kg2":
@@ -161,20 +162,21 @@ class TRAPIQuerier:
                 if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_infores_curie):
                     log.error(f"{self.kp_infores_curie} cannot answer queries with the specified categories/predicates",
                               error_code="UnsupportedQG")
-                    return final_kg
+                    return final_kg, None
 
         # Convert the QG so that it uses curies with prefixes the KP likes
         qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_infores_curie, log)
         if not qg_copy:  # Means no equivalent curies with supported prefixes were found
             skipped_message = "No equivalent curies with supported prefixes found"
             log.update_query_plan(qedge_key, self.kp_infores_curie, "Skipped", skipped_message)
-            return final_kg
+            return final_kg, None
 
         # Answer the query using the KP and load its answers into our object model
-        final_kg = self._answer_query_using_kp(qg_copy)
-        return final_kg
+        return self._answer_query_using_kp(qg_copy)
 
-    def answer_single_node_query(self, single_node_qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
+    def answer_single_node_query(
+            self, single_node_qg: QueryGraph
+    ) -> QGOrganizedKnowledgeGraph:
         """
         This function answers a single-node (edge-less) query using the specified KP.
         :param single_node_qg: A TRAPI query graph containing a single node (no edges).
@@ -191,7 +193,7 @@ class TRAPIQuerier:
             return final_kg
 
         # Answer the query using the KP and load its answers into our object model
-        final_kg = self._answer_query_using_kp(qg_copy)
+        final_kg, _ = self._answer_query_using_kp(qg_copy)
         return final_kg
 
     def _verify_is_one_hop_query_graph(self, query_graph: QueryGraph):
@@ -272,7 +274,9 @@ class TRAPIQuerier:
 
 
 
-    async def _answer_query_using_kp_async(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
+    async def _answer_query_using_kp_async(
+            self, query_graph: QueryGraph
+    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, AuxiliaryGraph] | None]:
         request_body = self._get_prepped_request_body(query_graph)
         query_sent = copy.deepcopy(request_body)
         query_timeout = self._get_query_timeout_length()
@@ -299,21 +303,21 @@ class TRAPIQuerier:
                 timeout_message = f"Query timed out after {wait_time} seconds"
                 self.log.warning(f"{self.kp_infores_curie}: {timeout_message}")
                 self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Timed out", timeout_message)
-                return QGOrganizedKnowledgeGraph()
+                return QGOrganizedKnowledgeGraph(), None
 
             else:
                 wait_time = round(time.time() - start, 2)
                 http_error_message = f"Returned HTTP error {http_code} after {wait_time} seconds"
                 self.log.warning(f"{self.kp_infores_curie}: {http_error_message}. Query sent to KP was: {request_body}")
                 self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", http_error_message)
-                return QGOrganizedKnowledgeGraph()
+                return QGOrganizedKnowledgeGraph(), None
 
         except Exception as ex:
             wait_time = round(time.time() - start, 2)
             exception_message = f"Request threw exception after {wait_time} seconds: {type(ex)}"
             self.log.warning(f"{self.kp_infores_curie}: {exception_message}")
             self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", exception_message)
-            return QGOrganizedKnowledgeGraph()
+            return QGOrganizedKnowledgeGraph(), None
 
         wait_time = round(time.time() - start, 2)
         json_response, cd = \
@@ -321,7 +325,15 @@ class TRAPIQuerier:
                                                    self.kp_infores_curie,
                                                    self.log)
         json_response = cast(dict[str, Any], json_response)
-        answer_kg = self._load_kp_json_response(json_response, query_graph)
+
+        aux_graphs: dict[str, AuxiliaryGraph] | None
+        answer_kg, aux_graphs = self._load_kp_json_response(json_response, query_graph)
+        # :DEBUG:
+        if aux_graphs is not None:
+            aux_graphs_serializable = {k: v.to_dict() for k, v in aux_graphs.items()}
+            with open("aux-graphs.json", "w") as fo:
+                json.dump(aux_graphs_serializable, fo)
+        # :DEBUG:
         num_edges = len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))
 
         cache_flag = ''
@@ -339,15 +351,16 @@ class TRAPIQuerier:
             self.log.update_query_plan(qedge_key, self.kp_infores_curie,
                                        "Warning",
                                        done_message + "; " + warn_msg)
-        return answer_kg
+        return answer_kg, aux_graphs
 
 
 
-    def _answer_query_using_kp(self, query_graph: QueryGraph) -> QGOrganizedKnowledgeGraph:
+    def _answer_query_using_kp(
+            self, query_graph: QueryGraph
+    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, AuxiliaryGraph] | None]:
         # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
         request_body = self._get_prepped_request_body(query_graph)
         query_timeout = self._get_query_timeout_length()
-
         # Send the query graph to the KP's TRAPI API
         self.log.debug(f"{self.kp_infores_curie}: Sending query to {self.kp_infores_curie} API ({self.kp_endpoint})")
         try:
@@ -362,12 +375,12 @@ class TRAPIQuerier:
             timeout_message = f"Query timed out after {query_timeout} seconds"
             self.log.warning(f"{self.kp_infores_curie}: {timeout_message}")
             self.log.timed_out = query_timeout
-            return QGOrganizedKnowledgeGraph()
+            return QGOrganizedKnowledgeGraph(), None
         if kp_response.status_code != 200:
             self.log.warning(f"{self.kp_infores_curie} API returned response of {kp_response.status_code}. "
                              f"Response from KP was: {kp_response.text}")
             self.log.http_error = f"HTTP {kp_response.status_code}"
-            return QGOrganizedKnowledgeGraph()
+            return QGOrganizedKnowledgeGraph(), None
         else:
             json_response = kp_response.json()
 
@@ -375,8 +388,8 @@ class TRAPIQuerier:
                                                                   self.kp_infores_curie,
                                                                   self.log)
         json_response = cast(dict[str, Any], json_response)
-        answer_kg = self._load_kp_json_response(json_response, query_graph)
-        return answer_kg
+        answer_kg, aux_graphs = self._load_kp_json_response(json_response, query_graph)
+        return answer_kg, aux_graphs
 
     def _get_prepped_request_body(self, qg: QueryGraph) -> dict:
         # Liberally use is_set to improve performance since we don't need individual results
@@ -406,17 +419,19 @@ class TRAPIQuerier:
 
         return body
 
-    def _load_kp_json_response(self, json_response: dict, qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
+    def _load_kp_json_response(
+            self, json_response: dict, qg: QueryGraph
+    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, AuxiliaryGraph] | None]:
         # Load the results into the object model
         answer_kg = QGOrganizedKnowledgeGraph()
         if not json_response.get("message"):
             self.log.warning(f"{self.kp_infores_curie}: No 'message' was included in the response from {self.kp_infores_curie}. "
                              f"Response was: {json.dumps(json_response, indent=4)}")
-            return answer_kg
+            return answer_kg, None
         elif not json_response["message"].get("results"):
             self.log.debug(f"{self.kp_infores_curie}: No 'results' were returned.")
             json_response["message"]["results"] = []  # Setting this to empty list helps downstream processing
-            return answer_kg
+            return answer_kg, None
         else:
             self.log.debug(f"{self.kp_infores_curie}: Got results from {self.kp_infores_curie}.")
             kp_message = ARAXMessenger().from_dict(json_response["message"])
@@ -494,27 +509,41 @@ class TRAPIQuerier:
                                     edge = kp_message.knowledge_graph.edges[edge_id]
                                     nodes_referenced_in_result_analysis_edges.add(edge.subject)
                                     nodes_referenced_in_result_analysis_edges.add(edge.object)
+        self.log.debug(f"Number of nodes referenced in result analysis edges: {len(nodes_referenced_in_result_analysis_edges)}")
+
+        nodes_referenced_in_aux_graphs = set()
+        edges_referenced_in_aux_graphs = set()
+        if returned_edge_keys_missing_qg_bindings:
+            for aux_graph_id, aux_graph in kp_message.auxiliary_graphs.items():
+                for edge_id in aux_graph.edges:
+                    if edge_id in kp_message.knowledge_graph.edges:
+                        edges_referenced_in_aux_graphs.add(edge_id)
+                        edge = kp_message.knowledge_graph.edges[edge_id]
+                        nodes_referenced_in_aux_graphs.add(edge.subject)
+                        nodes_referenced_in_aux_graphs.add(edge.object)
 
         allowed_unbound_nodes = dict()
         unreferenced_unbound_nodes = dict()
         for node_key, node in returned_node_keys_missing_qg_bindings.items():
-            if node_key in nodes_referenced_in_result_analysis_edges:
+            if node_key in nodes_referenced_in_result_analysis_edges or \
+               node_key in nodes_referenced_in_aux_graphs:
                 allowed_unbound_nodes[node_key] = node
             else:
                 unreferenced_unbound_nodes[node_key] = node
         answer_kg.unbound_nodes = allowed_unbound_nodes
-        allowed_unbound_edges = set()
-        if returned_edge_keys_missing_qg_bindings:
-            for aux_graph_id, aux_graph in kp_message.auxiliary_graphs.items():
-                for edge_id in aux_graph.edges:
-                    allowed_unbound_edges.add(edge_id)
-        returned_edge_keys_missing_qg_bindings -= allowed_unbound_edges
-        if returned_edge_keys_missing_qg_bindings:
-            self.log.warning(f"{self.kp_infores_curie}: {len(returned_edge_keys_missing_qg_bindings)} edges in the KP's answer "
-                             f"KG have no bindings to the QG: {returned_edge_keys_missing_qg_bindings}")
+
+        returned_unreferenced_unbound_edges = returned_edge_keys_missing_qg_bindings - \
+            edges_referenced_in_aux_graphs
+
+        if returned_unreferenced_unbound_edges:
+            self.log.warning(f"{self.kp_infores_curie}: {len(returned_unreferenced_unbound_edges)} "
+                             "edges in the KP's answer KG have no bindings to the QG and are not "
+                             f"referenced in aux graphs: {returned_unreferenced_unbound_edges}")
+
         if unreferenced_unbound_nodes:
-            self.log.warning(f"{self.kp_infores_curie}: {len(unreferenced_unbound_nodes)} nodes in the KP's answer "
-                             f"KG have no bindings to the QG and are not referenced in any analysis: {set(unreferenced_unbound_nodes.keys())}")
+            self.log.warning(f"{self.kp_infores_curie}: {len(unreferenced_unbound_nodes)} "
+                             "nodes in the KP's answer KG have no bindings to the QG and are "
+                             f"not referenced in any analysis: {set(unreferenced_unbound_nodes.keys())}")
 
         # Fill out our unofficial node.query_ids property
         for nodes in answer_kg.nodes_by_qg_id.values():
@@ -524,7 +553,7 @@ class TRAPIQuerier:
         # Add subclass_of edges for any parent to child relationships KPs returned
         answer_kg = self._add_subclass_of_edges(answer_kg)
 
-        return answer_kg
+        return answer_kg, kp_message.auxiliary_graphs
 
     @staticmethod
     def _strip_empty_properties(qnode_or_qedge: Union[QNode, QEdge]) -> dict[str, Any]:

@@ -173,7 +173,7 @@ class KPSelector:
                 else:
                     unsupported_curies.add(input_curie)
             if unsupported_curies:
-                self.log.warning(f"{kp}: Could not find curies with prefixes {kp} prefers for these curies: "
+                self.log.warning(f"{kp}: Could not find curies with prefixes {kp} prefers, for these curies: "
                                  f"{unsupported_curies}; will not send these to KP")
             return list(converted_curies)
 

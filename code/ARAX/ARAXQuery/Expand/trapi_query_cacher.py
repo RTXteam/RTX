@@ -12,18 +12,17 @@ import pickle
 import json
 import hashlib
 import time
-import shutil
 from datetime import datetime
 from contextlib import contextmanager
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
-
 # External dependencies
 import aiohttp
-import asyncio
 import requests
 from sqlalchemy import create_engine, Column, Integer, String, Float, PickleType
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.orm.session import Session
+from typing import cast, Any, Collection
+
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 # Constants
 REFRESH_TIME_LIMIT_SECONDS = 60.0
@@ -37,7 +36,7 @@ CONNECTION_ERROR = -1
 # Define the declarative base
 Base = declarative_base()
 
-class KPQuery(Base):
+class KPQuery(Base):  # type: ignore[misc, valid-type]
     """
     SQLAlchemy model for a cached Knowledge Provider (KP) query.
     
@@ -158,7 +157,7 @@ class KPQueryCacher:
 
 
 
-    def _hash_query(self, query_object: dict) -> str:
+    def _hash_query(self, query_object: dict | str) -> str:
         """
         Creates a stable SHA-256 hash of a query object.
         
@@ -181,14 +180,14 @@ class KPQueryCacher:
 
 
 
-    def _read_cache_file(self, filepath: str) -> any:
+    def _read_cache_file(self, filepath: str) -> Any:
         """Reads and de-pickles a compressed cache file."""
         with gzip.open(filepath, 'rb') as f:
             return pickle.load(f)
 
 
 
-    def _write_cache_file(self, filepath: str, data: any):
+    def _write_cache_file(self, filepath: str, data: Any):
         """Pickles and writes data to a compressed cache file."""
         #eprint(f"Writing caching file {filepath}")
         #eprint(f"data content: {data}")
@@ -198,7 +197,7 @@ class KPQueryCacher:
 
 
 
-    def _get_n_results(self, response_object: any) -> int:
+    def _get_n_results(self, response_object: Any) -> int | None:
         """
         Heuristically determines the number of results from a response object.
         
@@ -380,7 +379,7 @@ class KPQueryCacher:
                        kp_curie: str, 
                        query_url: str, 
                        query_object: dict, 
-                       response_object: any, 
+                       response_object: Any, 
                        http_code: int, 
                        elapsed_time: float,
                        status: str = "OK"):
@@ -605,7 +604,7 @@ class KPQueryCacher:
 
 
 
-    def get_cached_input_query(self, kp_query_id: int) -> str:
+    def get_cached_input_query(self, kp_query_id: int) -> str | None:
         """
         Fetches the input query for a given kp_query_id
 
@@ -615,13 +614,13 @@ class KPQueryCacher:
         record = session.query(KPQuery).filter_by(kp_query_id=kp_query_id).first()
         if not record:
             print(f"kp_query_id {kp_query_id} not found")
-            return
+            return None
 
         return record.query_object
 
 
 
-    def delete_input_query(self, kp_query_id: int) -> str:
+    def delete_input_query(self, kp_query_id: int) -> None:
         """
         Deletes given kp_query_id
 
@@ -634,15 +633,15 @@ class KPQueryCacher:
             session.delete(record)
             session.commit()
             eprint(f"INFO: Done")
-            return
+            return None
         
         eprint(f"ERROR: Unable to find record for kp_query_id={kp_query_id}")
 
-        return
+        return None
 
 
 
-    def dump_response(self, kp_query_id: int) -> str:
+    def dump_response(self, kp_query_id: int) -> str | None:
         """
         Dumps the response for a given kp_query_id
 
@@ -659,15 +658,15 @@ class KPQueryCacher:
 
             except FileNotFoundError as e:
                 eprint(f"ERROR: Unable to read hash file {filepath}")
-                return
+                return None
         
         eprint(f"ERROR: Unable to find record for kp_query_id={kp_query_id}")
 
-        return
+        return None
 
 
 
-    def list_cached_queries(self) -> str:
+    def list_cached_queries(self) -> dict[str, Collection[object]]:
         """
         Generates a JSON-encoded list of all query records in the cache.
         The 'query_object' field is redacted to avoid serializing large data.
@@ -699,15 +698,16 @@ class KPQueryCacher:
                 if cached_query[column] is not None:
                     cached_query[column] = round(cached_query[column], digits)
 
-            if hours_difference < cache_stats['min_query_age_hr']:
+            if hours_difference < cast(float, cache_stats['min_query_age_hr']):
                 cache_stats['min_query_age_hr'] = hours_difference
-            if hours_difference > cache_stats['max_query_age_hr']:
+            if hours_difference > cast(float, cache_stats['max_query_age_hr']):
                 cache_stats['max_query_age_hr'] = hours_difference
 
             http_status_code = cached_query['last_refresh_http_code'] or cached_query['first_query_http_code']
-            if http_status_code not in cache_stats['http_status_codes']:
-                cache_stats['http_status_codes'][http_status_code] = 0
-            cache_stats['http_status_codes'][http_status_code] += 1
+            http_status_codes = cast(dict, cache_stats['http_status_codes'])
+            if http_status_code not in http_status_codes:
+                http_status_codes[http_status_code] = 0
+            http_status_codes[http_status_code] += 1
 
         column_data = [
             { "key": "kp_query_id", "title": "id", "title_hover": "Integer identifier of the cached KP query" },

@@ -29,6 +29,7 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.attribute_constraint import AttributeConstraint
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.retrieval_source import RetrievalSource
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 from Expand.trapi_querier import TRAPIQuerier
 from Expand.trapi_query_cacher import KPQueryCacher
 from ARAX_messenger import ARAXMessenger
@@ -340,6 +341,7 @@ class ARAXExpander:
                     for edge in query_sub_graph.edges.keys():
                         query_sub_graph.edges[edge].knowledge_type = 'lookup'
 
+            aux_graphs_combined: dict[str, AuxiliaryGraph] = {}
             # Expand the query graph edge-by-edge (in regular 'lookup' fashion)
             for qedge_key in ordered_qedge_keys_to_expand:
                 log.debug(f"Expanding qedge {qedge_key}")
@@ -438,17 +440,31 @@ class ARAXExpander:
                 # Merge KPs' answers into our overarching KG
                 log.debug("Got answers from all KPs; merging them into one KG")
                 for index, response_tuple in enumerate(kp_answers):
-                    answer_kg = response_tuple[0]
+                    answer_kg, _, aux_graphs = response_tuple
                     # Store any kryptonite edge answers as needed
                     if qedge.exclude and not answer_kg.is_empty():
                         self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
                     # Otherwise just merge the answer into the overarching KG
                     else:
-                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, query_graph, response)
+                        self._merge_answer_into_message_kg(answer_kg,
+                                                           overarching_kg,
+                                                           message.query_graph,
+                                                           query_graph,
+                                                           response)
                     if response.status != 'OK':
                         return response
+
+                    kp_queried = kps_to_query[index]
+                    if aux_graphs is not None:
+                        for sgraph_id, sgraph_obj in aux_graphs.items():
+                            if sgraph_id in aux_graphs_combined:
+                                log.warning(f"For KP {kp_queried}, aux graph with ID {sgraph_id} was returned, "
+                                            "but there is already another aux graph with that ID; skipping")
+                                continue
+                            aux_graphs_combined[sgraph_id] = sgraph_obj
                 log.debug(f"After merging KPs' answers, total KG counts are: {eu.get_printable_counts_by_qg_id(overarching_kg)}")
+                log.debug(f"After merging KPs' answers, total aux graphs are: {len(aux_graphs_combined)}")
 
                 # Handle any constraints for this qedge and/or its qnodes (that require post-filtering)
                 qnode_keys = {qedge.subject, qedge.object}
@@ -522,7 +538,7 @@ class ARAXExpander:
                             if (edge_temp.predicate == "biolink:in_clinical_trials_for" and 
                                 any(source.resource_id == "infores:multiomics-clinicaltrials" for source in edge_temp.sources) and
                                 len([x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"]) > 0):
-                                if [x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"][0] == True:
+                                if [x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"][0]:
                                     higher_level_treats_edges_temp[edge_key_temp] = edge_temp
                             
                             # issue2634 - curated DAKP/FAERS edges implement elevation to treats prediction if and only if the applied_to_treat predicate has evidence count (N_cases) >10 
@@ -657,7 +673,7 @@ class ARAXExpander:
 
         # Convert message knowledge graph back to standard TRAPI
         message.knowledge_graph = eu.convert_qg_organized_kg_to_standard_kg(overarching_kg)
-
+        message.auxiliary_graphs = aux_graphs_combined
         # Decorate all nodes with additional attributes info from KG2c if requested (iri, description, etc.)
         if not parameters.get("return_minimal_metadata"):
             decorator = ARAXDecorator()
@@ -864,15 +880,17 @@ class ARAXExpander:
         return response, overarching_kg
 
     # Note: this function is also used by the module `Overlay/fisher_exact_test.py`.
-    async def expand_edge_async(self,
-                                edge_qg: QueryGraph,
-                                kp_to_use: str,
-                                user_specified_kp: bool,
-                                kp_timeout: Optional[int],
-                                kp_selector: KPSelector,
-                                log: ARAXResponse,
-                                multiple_kps: bool = False,
-                                be_creative_treats: bool = False) -> tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+    async def expand_edge_async(
+            self,
+            edge_qg: QueryGraph,
+            kp_to_use: str,
+            user_specified_kp: bool,
+            kp_timeout: Optional[int],
+            kp_selector: KPSelector,
+            log: ARAXResponse,
+            multiple_kps: bool = False,
+            be_creative_treats: bool = False
+    ) -> tuple[QGOrganizedKnowledgeGraph, ARAXResponse, dict[str, AuxiliaryGraph] | None]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
@@ -882,13 +900,13 @@ class ARAXExpander:
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
             log.error("Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       "a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
-            return answer_kg, log
+            return answer_kg, log, None
         # Make sure the specified KP is a valid option
         allowable_kps = kp_selector.valid_kps
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
-            return answer_kg, log
+            return answer_kg, log, None
 
         # Route this query to the KP's TRAPI API
         try:
@@ -897,8 +915,9 @@ class ARAXExpander:
                                       user_specified_kp=user_specified_kp,
                                       kp_timeout=kp_timeout,
                                       kp_selector=kp_selector)
-            answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg,
-                                                                    be_creative_treats=be_creative_treats)
+            answer_kg, aux_graphs = await kp_querier.answer_one_hop_query_async(
+                edge_qg,
+                be_creative_treats=be_creative_treats)
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -909,12 +928,12 @@ class ARAXExpander:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
                             f"get answers from that KP. Error was: {tb}")
             log.update_query_plan(qedge_key, kp_to_use, "Error", f"Process error-ed out with {log.status}")
-            return QGOrganizedKnowledgeGraph(), log
+            return QGOrganizedKnowledgeGraph(), log, aux_graphs
 
         if log.status != 'OK':
             if multiple_kps:
                 log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
-            return answer_kg, log
+            return answer_kg, log, aux_graphs
 
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
 
@@ -938,7 +957,7 @@ class ARAXExpander:
         if any(edges for edges in answer_kg.edges_by_qg_id.values()):  # Make sure the KP actually returned something
             answer_kg = self._remove_self_edges(answer_kg, kp_to_use, log)
 
-        return answer_kg, log
+        return answer_kg, log, aux_graphs
 
     @staticmethod
     def _expand_node(qnode_key: str,
@@ -1124,8 +1143,13 @@ class ARAXExpander:
         return sub_query_graph
 
     @staticmethod
-    def _merge_answer_into_message_kg(answer_kg: QGOrganizedKnowledgeGraph, overarching_kg: QGOrganizedKnowledgeGraph,
-                                      overarching_qg: QueryGraph, expands_qg: QueryGraph, log: ARAXResponse):
+    def _merge_answer_into_message_kg(
+            answer_kg: QGOrganizedKnowledgeGraph,
+            overarching_kg: QGOrganizedKnowledgeGraph,
+            overarching_qg: QueryGraph,
+            expands_qg: QueryGraph,
+            log: ARAXResponse
+    ):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
         pinned_curies_map = defaultdict(set)
