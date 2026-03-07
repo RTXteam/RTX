@@ -62,6 +62,8 @@ class ARAXExpander:
         self.supported_qedge_attribute_constraints = {"knowledge_source": {"==": "*"},
                                                       "primary_knowledge_source": {"==": "*"},
                                                       "aggregator_knowledge_source": {"==": "*"}}
+        # NOTE: nothing in the code-base seems to reference self.supported_qedge_qualifier_constraints;
+        #       that makes me wonder if there is a bug, and if we should be using this attribute, somewhere? (SAR):
         self.supported_qedge_qualifier_constraints = {"biolink:qualified_predicate", "biolink:object_direction_qualifier",
                                                       "biolink:object_aspect_qualifier"}
         self.treats_like_predicates = set(self.bh.get_descendants("biolink:treats_or_applied_or_studied_to_treat")).difference({"biolink:treats"})
@@ -145,6 +147,7 @@ class ARAXExpander:
         return parameter_info_dict
 
     def apply(self, response, input_parameters, mode: str = "ARAX"):
+        _ = mode  # this quiets a vulture error without breaking API contract
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
@@ -656,8 +659,7 @@ class ARAXExpander:
                                               query_graph,
                                               user_specified_kp,
                                               kp_timeout,
-                                              log,
-                                              self.plover_url)
+                                              log)
                 if log.status != 'OK':
                     return response
                 self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, query_graph, log)
@@ -673,6 +675,31 @@ class ARAXExpander:
 
         # Convert message knowledge graph back to standard TRAPI
         message.knowledge_graph = eu.convert_qg_organized_kg_to_standard_kg(overarching_kg)
+
+        # check aux graphs to see if edges are still in the KG
+        aux_graphs_delete = set()
+
+        for aux_graph_id, aux_graph_obj in aux_graphs_combined.items():
+            aux_graph_dict = aux_graph_obj.to_dict()
+            aux_graph_edges = aux_graph_dict.get("edges", [])
+            aux_graph_edges_final = []
+            for edge_id in aux_graph_edges:
+                if edge_id not in message.knowledge_graph.edges:
+                    log.warning(f"for aux graph {aux_graph_id}, edge {edge_id} is not in the KG; skipping edge")
+                else:
+                    aux_graph_edges_final.append(edge_id)
+            if aux_graph_edges_final:
+                aux_graph_dict["edges"] = aux_graph_edges_final
+                aux_graphs_combined[aux_graph_id] = AuxiliaryGraph.from_dict(aux_graph_dict)
+            else:
+                # slate this aux graph for deletion, since it has no edges
+                # (but don't delete it yet; don't want to modify our iterable
+                # while we are iterating over it):
+                aux_graphs_delete.add(aux_graph_id)
+        # for any aux graph that no longer has _any_ edges, delete that aux graph
+        for aux_graph_id in aux_graphs_delete:
+            aux_graphs_combined.pop(aux_graph_id, None)
+
         message.auxiliary_graphs = aux_graphs_combined
         # Decorate all nodes with additional attributes info from KG2c if requested (iri, description, etc.)
         if not parameters.get("return_minimal_metadata"):
@@ -922,7 +949,8 @@ class ARAXExpander:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             if user_specified_kp:
-                log.error(f"An uncaught error was thrown while trying to Expand using {kp_to_use}. Error was: {tb}",
+                log.error(f"An uncaught error of type {error_type} was thrown while "
+                          f"trying to Expand using {kp_to_use}. Error was: {tb}",
                           error_code="UncaughtError")
             else:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
@@ -965,8 +993,7 @@ class ARAXExpander:
                      query_graph: QueryGraph,
                      user_specified_kp: bool,
                      kp_timeout: Optional[int],
-                     log: ARAXResponse,
-                     url: str) -> QGOrganizedKnowledgeGraph:
+                     log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider (for now only KG2 is supported)
         log.debug(f"Expanding node {qnode_key} using {kps_to_use}")
         qnode = query_graph.nodes[qnode_key]
@@ -1301,7 +1328,8 @@ class ARAXExpander:
         log.info(f"Pruning back {qnode_key_to_prune} nodes because there are more than {prune_threshold}")
         kg_copy = copy.deepcopy(kg)
         qg_for_resultify = copy.deepcopy(qg)
-        qg_for_resultify.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality
+        # Necessary for assessment of answer quality:
+        qg_for_resultify.nodes[qnode_key_to_prune].is_set = False
         num_edges_in_kg = sum([len(edges) for edges in kg.edges_by_qg_id.values()])
         overlay_fet = True if num_edges_in_kg < 100000 else False
         # Use fisher exact test and the ranker to prune down answers for this qnode
@@ -1350,7 +1378,8 @@ class ARAXExpander:
         log.debug("Pruning any paths that are now dead ends (with help of Resultify)")
         is_set_true_qg = copy.deepcopy(expands_qg)
         for qnode in is_set_true_qg.nodes.values():
-            qnode.is_set = True  # This makes resultify run faster and doesn't hurt in this case
+            # this makes resultify run faster and doesn't hurt in this case:
+            qnode.is_set = True
         resultify_response = eu.create_results(is_set_true_qg, kg, log)
         if resultify_response.status == "OK":
             pruned_kg = eu.convert_standard_kg_to_qg_organized_kg(resultify_response.envelope.message.knowledge_graph)
