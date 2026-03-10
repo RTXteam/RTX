@@ -127,7 +127,8 @@ class RTXConfiguration:
         else:
             self.jaeger_port = 6831
             self.jaeger_endpoint = "jaeger.rtx.ai"
-            self.telemetry_enabled = True
+            # Local run: disable telemetry by default for non-ITRB to avoid OTEL connection timeouts
+            self.telemetry_enabled = False
         # Download the latest copy of config_secrets.json as appropriate (or override by local file, if present)
         if os.path.exists(config_secrets_local_file_path):
             config_secrets_file_path = config_secrets_local_file_path

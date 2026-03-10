@@ -42,8 +42,12 @@ def run_query_dict_in_child_process(query_dict: dict,
         sys.stdout = open('/dev/null', 'w')         # parent and child process should not share the same stdout stream object
         sys.stdin = open('/dev/null', 'r')          # parent and child process should not share the same stdin stream object
         os.close(read_fd)                   # child doesn't read from the pipe, it writes to it
-        setproctitle.setproctitle("python3 query_controller::run_query_dict_in_child_process")       
-        resource.setrlimit(resource.RLIMIT_AS, (rlimit_child_process_bytes, rlimit_child_process_bytes))  # set a virtual memory limit for the child process
+        setproctitle.setproctitle("python3 query_controller::run_query_dict_in_child_process")
+        try:
+            resource.setrlimit(resource.RLIMIT_AS, (rlimit_child_process_bytes, rlimit_child_process_bytes))
+        except (ValueError, OSError) as e:
+            # Local run: macOS may reject RLIMIT_AS or use different limits; continue without memory limit
+            eprint("[query_controller]: setrlimit(RLIMIT_AS) failed:", e)
         signal.signal(signal.SIGPIPE, child_receive_sigpipe) # get rid of signal handler so we don't double-print to the log on SIGPIPE error
         signal.signal(signal.SIGCHLD, signal.SIG_IGN) # disregard any SIGCHLD signal in the child process
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
@@ -105,7 +109,8 @@ def query(request_body):  # noqa: E501
     query['remote_address'] = connexion.request.headers.get('x-forwarded-for', '???')
 
     mime_type = 'application/json'
-    fork_mode = True  # :DEBUG: can turn this to False to disable fork-mode
+    # Local run: ARAX_NO_FORK=1 runs query in-process to avoid fork+setrlimit issues on macOS
+    fork_mode = os.environ.get("ARAX_NO_FORK") != "1"
     if query.get('stream_progress', False):  # if stream_progress is specified and if it is True:
 
 

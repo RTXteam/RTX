@@ -362,9 +362,12 @@ class ARAXConnect:
         if category_constraint:
             descendants = set(get_biolink_helper().get_descendants(category_constraint))
 
+        plover_url = RTXConfiguration().plover_url
+        # Local run: log Plover URL used for PathFinder/connect_nodes
+        self.response.info(f"Calling Plover at URL: {plover_url}")
         pathfinder = Pathfinder(
             "MLRepo",
-            RTXConfiguration().plover_url,
+            plover_url,
             get_curie_ngd_path(),
             get_kg2c_db_path(),
             blocked_curies,

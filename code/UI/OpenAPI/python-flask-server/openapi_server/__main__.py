@@ -34,7 +34,9 @@ child_pid = None
 global parent_pid
 parent_pid = None
 
-CONFIG_FILE = 'openapi_server/flask_config.json'
+# Local run: resolve paths from this file so ARAX can be started from repo root (any CWD)
+_FLASK_SERVER_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONFIG_FILE = os.path.join(_FLASK_SERVER_ROOT, 'openapi_server', 'flask_config.json')
 
 def instrument(app, host, port):
     
@@ -86,87 +88,112 @@ def main():
         local_config = {"port": FLASK_DEFAULT_TCP_PORT}
     tcp_port = local_config['port']
 
+    # Local run: set ARAX_NO_FORK=1 to skip background tasker fork (avoids macOS fork issues)
     parent_pid = os.getpid()
+    no_fork = os.environ.get("ARAX_NO_FORK") == "1"
+    disable_telemetry = os.environ.get("ARAX_DISABLE_TELEMETRY") == "1"
 
-    pid = os.fork()
-    if pid == 0:  # I am the child process
-        from ARAX_background_tasker import ARAXBackgroundTasker
-        sys.stdout = open('/dev/null', 'w')
-        sys.stdin = open('/dev/null', 'r')
-        setproctitle.setproctitle("python3 ARAX_background_tasker"
-                                  f"::run_tasks [port={tcp_port}]")
-        eprint("Starting background tasker in a child process")
+    if no_fork:
+        eprint("ARAX_NO_FORK=1: running Flask only (no background tasker)")
+        # Local run: refresh KP info cache at startup so Expand works without background tasker
         try:
-            ARAXBackgroundTasker(parent_pid).run_tasks()
+            sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../ARAX/ARAXQuery/Expand")
+            from kp_info_cacher import KPInfoCacher
+            eprint("Refreshing KP info caches for local run...")
+            KPInfoCacher().refresh_kp_info_caches()
+            eprint("KP info caches refreshed.")
         except Exception as e:
-            eprint("Error in ARAXBackgroundTasker.run_tasks()")
-            eprint(traceback.format_exc())
-            raise e
-        eprint("Background tasker child process ended unexpectedly")
-    elif pid > 0:  # I am the parent process
-        import signal
-        import atexit
-
-        def receive_sigterm(signal_number, frame):
-            if signal_number == signal.SIGTERM:
-                if parent_pid == os.getpid():
-                    try:
-                        os.kill(child_pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        eprint(f"child process {child_pid} is already gone; "
-                               "exiting now")
-                    sys.exit(0)
-                else:
-                    # handle exit gracefully in the child process
-                    os._exit(0)
-
-        @atexit.register
-        def ignore_sigchld():
-            signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-
-        def receive_sigchld(signal_number, frame):
-            if signal_number == signal.SIGCHLD:
-                while True:
-                    try:
-                        pid, _ = os.waitpid(-1, os.WNOHANG)
-                        if pid == 0:
-                            break
-                    except ChildProcessError as e:
-                        eprint(repr(e) +
-                               "; this is expected if there are "
-                               "no more child processes to reap")
-                        break
-
-        def receive_sigpipe(signal_number, frame):
-            if signal_number == signal.SIGPIPE:
-                eprint("pipe error")
-        import connexion
-        import flask_cors
-        from openapi_server.provider import CustomJSONProvider
-        app = connexion.App(__name__, specification_dir='./openapi/')
-        app.json_provider_class = CustomJSONProvider
-        eprint(f"Using JSON provider: {type(app.app.json)}")
-        app.add_api('openapi.yaml',
-                    arguments={'title': 'ARAX Translator Reasoner'},
-                    pythonic_params=True)
-        flask_cors.CORS(app.app)
-
-        # Start the service
-        eprint(f"Background tasker is running in child process {pid}")
-        child_pid = pid
-        signal.signal(signal.SIGCHLD, receive_sigchld)
-        signal.signal(signal.SIGPIPE, receive_sigpipe)
-        signal.signal(signal.SIGTERM, receive_sigterm)
-
-        eprint("Starting flask application in the parent process")
-        setproctitle.setproctitle(setproctitle.getproctitle() +
-                                  f" [port={tcp_port}]")
-        if rtx_config.telemetry_enabled:
-            instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
-        app.run(port=local_config['port'], threaded=True)
+            eprint(f"KP cache refresh failed (Expand may fail if cache is missing or stale): {e}")
+        _run_flask(rtx_config, local_config, tcp_port, disable_telemetry)
     else:
-        eprint("[__main__]: fork() unsuccessful")
-        assert False, "****** fork() unsuccessful in __main__"
+        pid = os.fork()
+        if pid == 0:  # I am the child process
+            from ARAX_background_tasker import ARAXBackgroundTasker
+            sys.stdout = open('/dev/null', 'w')
+            sys.stdin = open('/dev/null', 'r')
+            setproctitle.setproctitle("python3 ARAX_background_tasker"
+                                      f"::run_tasks [port={tcp_port}]")
+            eprint("Starting background tasker in a child process")
+            try:
+                ARAXBackgroundTasker(parent_pid).run_tasks()
+            except Exception as e:
+                eprint("Error in ARAXBackgroundTasker.run_tasks()")
+                eprint(traceback.format_exc())
+                raise e
+            eprint("Background tasker child process ended unexpectedly")
+        elif pid > 0:  # I am the parent process
+            import signal
+            import atexit
+
+            def receive_sigterm(signal_number, frame):
+                if signal_number == signal.SIGTERM:
+                    if parent_pid == os.getpid():
+                        try:
+                            os.kill(child_pid, signal.SIGKILL)
+                        except ProcessLookupError:
+                            eprint(f"child process {child_pid} is already gone; "
+                                   "exiting now")
+                        sys.exit(0)
+                    else:
+                        os._exit(0)
+
+            @atexit.register
+            def ignore_sigchld():
+                signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
+            def receive_sigchld(signal_number, frame):
+                if signal_number == signal.SIGCHLD:
+                    while True:
+                        try:
+                            pid, _ = os.waitpid(-1, os.WNOHANG)
+                            if pid == 0:
+                                break
+                        except ChildProcessError as e:
+                            eprint(repr(e) +
+                                   "; this is expected if there are "
+                                   "no more child processes to reap")
+                            break
+
+            def receive_sigpipe(signal_number, frame):
+                if signal_number == signal.SIGPIPE:
+                    eprint("pipe error")
+
+            eprint(f"Background tasker is running in child process {pid}")
+            child_pid = pid
+            signal.signal(signal.SIGCHLD, receive_sigchld)
+            signal.signal(signal.SIGPIPE, receive_sigpipe)
+            signal.signal(signal.SIGTERM, receive_sigterm)
+
+            _run_flask(rtx_config, local_config, tcp_port, disable_telemetry)
+        else:
+            eprint("[__main__]: fork() unsuccessful")
+            assert False, "****** fork() unsuccessful in __main__"
+
+
+def _run_flask(rtx_config, local_config, tcp_port, disable_telemetry):
+    import connexion
+    import flask_cors
+    from openapi_server.provider import CustomJSONProvider
+    # Local run: use absolute openapi dir so CWD does not need to be the flask server dir
+    openapi_dir = os.path.join(_FLASK_SERVER_ROOT, 'openapi_server', 'openapi')
+    app = connexion.App(__name__, specification_dir=openapi_dir)
+    app.json_provider_class = CustomJSONProvider
+    eprint(f"Using JSON provider: {type(app.app.json)}")
+    app.add_api('openapi.yaml',
+                arguments={'title': 'ARAX Translator Reasoner'},
+                pythonic_params=True)
+    flask_cors.CORS(app.app)
+
+    eprint("Starting flask application in the parent process")
+    setproctitle.setproctitle(setproctitle.getproctitle() +
+                              f" [port={tcp_port}]")
+    # Local run: ARAX_DISABLE_TELEMETRY=1 skips OTEL/Jaeger to avoid connection timeouts locally
+    if not disable_telemetry and rtx_config.telemetry_enabled:
+        instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
+    else:
+        if disable_telemetry:
+            eprint("ARAX_DISABLE_TELEMETRY=1: tracing disabled")
+    app.run(port=local_config['port'], threaded=True)
 
 
 if __name__ == '__main__':
