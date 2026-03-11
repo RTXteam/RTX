@@ -1,4 +1,3 @@
-#!/bin/env python3
 import copy
 import json
 import sys
@@ -8,7 +7,7 @@ from collections import defaultdict
 import math
 
 import requests
-from typing import Union, Optional, Any, cast
+from typing import cast, Any, Iterable, Optional, Union
 
 import requests_cache
 
@@ -32,6 +31,7 @@ from openapi_server.models.result import Result  # noqa: E402
 from openapi_server.models.attribute import Attribute  # noqa: E402
 from openapi_server.models.retrieval_source import RetrievalSource  # noqa: E402
 from openapi_server.models.auxiliary_graph import AuxiliaryGraph  # noqa: E402
+
 
 def _remove_attributes_with_invalid_values(response_json: dict,
                                            kp_curie: str,
@@ -63,6 +63,21 @@ def _remove_attributes_with_invalid_values(response_json: dict,
     return [r, count_att_dropped]
 
 
+def _summarize_set_elements(x: Iterable[str]) -> str:
+    """
+    Return a comma-delimited representation of the first 10 elements of Iterable[str].
+
+    - If the set has fewer than 11 elements, return all elements.
+    - Otherwise return the first 10 elements in lexicographic order followed by an ellipsis.
+    """
+    sorted_x = sorted(x)
+
+    if len(sorted_x) <= 10:
+        return "[" + ", ".join(sorted_x) + "]"
+
+    return "[" + ", ".join(sorted_x[:10]) + ", ... ]"
+
+
 class TRAPIQuerier:
 
     def __init__(self, response_object: ARAXResponse,
@@ -78,7 +93,7 @@ class TRAPIQuerier:
             kp_selector = KPSelector()
         self.kp_selector = kp_selector
         self.kp_endpoint = kp_selector.kp_urls[self.kp_infores_curie]
-        self.qnodes_with_single_id: dict[str, str] = dict()  # This is set during the processing of each query
+        self.qnodes_with_single_id: dict[str, str] = {}  # This is set during the processing of each query
         self.arax_infores_curie = "infores:arax"
         self.arax_retrieval_source = RetrievalSource(resource_id=self.arax_infores_curie,
                                                      resource_role="aggregator_knowledge_source",
@@ -87,7 +102,8 @@ class TRAPIQuerier:
     async def answer_one_hop_query_async(
             self, query_graph: QueryGraph,
             be_creative_treats: bool = False
-    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, AuxiliaryGraph] | None]:
+    ) -> tuple[QGOrganizedKnowledgeGraph,
+               dict[str, AuxiliaryGraph] | None]:
         """
         This function answers a one-hop (single-edge) query using the specified KP.
         :param query_graph: A TRAPI query graph.
@@ -138,7 +154,8 @@ class TRAPIQuerier:
 
     def answer_one_hop_query(
             self, query_graph: QueryGraph
-    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, AuxiliaryGraph] | None]:
+    ) -> tuple[QGOrganizedKnowledgeGraph,
+               dict[str, AuxiliaryGraph] | None]:
         """
         This function answers a one-hop (single-edge) query using the specified KP.
         :param query_graph: A TRAPI query graph.
@@ -212,7 +229,11 @@ class TRAPIQuerier:
             self.log.error(f"answer_single_node_query() was passed a query graph that has edges: "
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
 
-    def _get_kg_to_qg_mappings_from_results(self, results: list[Result], qg: QueryGraph) -> tuple[dict[str, dict[str, set[str]]], dict[str, set[str]]]:
+    def _get_kg_to_qg_mappings_from_results(
+            self,
+            results: list[Result],
+            qg: QueryGraph
+    ) -> tuple[dict[str, dict[str, set[str]]], dict[str, set[str]]]:
         """
         This function returns a dictionary in which one can lookup which qnode_keys/qedge_keys a given node/edge
         fulfills. Like: {"nodes": {"PR:11": {"n00"}, "MESH:22": {"n00", "n01"} ... }, "edges": { ... }}
@@ -276,7 +297,8 @@ class TRAPIQuerier:
 
     async def _answer_query_using_kp_async(
             self, query_graph: QueryGraph
-    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, AuxiliaryGraph] | None]:
+    ) -> tuple[QGOrganizedKnowledgeGraph,
+               dict[str, AuxiliaryGraph] | None]:
         request_body = self._get_prepped_request_body(query_graph)
         query_sent = copy.deepcopy(request_body)
         query_timeout = self._get_query_timeout_length()
@@ -327,14 +349,8 @@ class TRAPIQuerier:
         json_response = cast(dict[str, Any], json_response)
 
         aux_graphs: dict[str, AuxiliaryGraph] | None
-        answer_kg, aux_graphs = self._load_kp_json_response(json_response, query_graph)
-        # :DEBUG:
-        if aux_graphs is not None:
-            aux_graphs_serializable = {k: v.to_dict() for k, v in aux_graphs.items()}
-            with open("aux-graphs.json", "w") as fo:
-                json.dump(aux_graphs_serializable, fo)
-        # :DEBUG:
-        num_edges = len(answer_kg.edges_by_qg_id.get(qedge_key, dict()))
+        qg_org_kg, aux_graphs = self._load_kp_json_response(json_response, query_graph)
+        num_edges = len(qg_org_kg.edges_by_qg_id.get(qedge_key, {}))
 
         cache_flag = ''
         if isinstance(error, str):
@@ -351,18 +367,20 @@ class TRAPIQuerier:
             self.log.update_query_plan(qedge_key, self.kp_infores_curie,
                                        "Warning",
                                        done_message + "; " + warn_msg)
-        return answer_kg, aux_graphs
+
+        return qg_org_kg, aux_graphs
 
 
 
     def _answer_query_using_kp(
             self, query_graph: QueryGraph
-    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, AuxiliaryGraph] | None]:
+    ) -> tuple[QGOrganizedKnowledgeGraph,
+               dict[str, AuxiliaryGraph] | None]:
         # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
         request_body = self._get_prepped_request_body(query_graph)
         query_timeout = self._get_query_timeout_length()
         # Send the query graph to the KP's TRAPI API
-        self.log.debug(f"{self.kp_infores_curie}: Sending query to {self.kp_infores_curie} API ({self.kp_endpoint})")
+        self.log.debug(f"{self.kp_infores_curie}: Sending query to KP API ({self.kp_endpoint})")
         try:
             with requests_cache.disabled():
                 start = time.time()
@@ -388,8 +406,8 @@ class TRAPIQuerier:
                                                                   self.kp_infores_curie,
                                                                   self.log)
         json_response = cast(dict[str, Any], json_response)
-        answer_kg, aux_graphs = self._load_kp_json_response(json_response, query_graph)
-        return answer_kg, aux_graphs
+
+        return self._load_kp_json_response(json_response, query_graph)
 
     def _get_prepped_request_body(self, qg: QueryGraph) -> dict:
         # Liberally use is_set to improve performance since we don't need individual results
@@ -415,135 +433,186 @@ class TRAPIQuerier:
             body.setdefault('parameters', {})
             if 'tiers' not in body['parameters']:
                 body['parameters']['tiers'] = [ 1 ]
-                self.log.info(f"For query to {self.kp_infores_curie}, set body.parameters.tiers to {body['parameters']['tiers']}")
+                self.log.info(f"For query to {self.kp_infores_curie}, "
+                              f"set body.parameters.tiers to {body['parameters']['tiers']}")
 
         return body
 
+
     def _load_kp_json_response(
-            self, json_response: dict, qg: QueryGraph
-    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, AuxiliaryGraph] | None]:
+            self,
+            json_response: dict,
+            qg: QueryGraph
+    ) -> tuple[QGOrganizedKnowledgeGraph,
+               dict[str, AuxiliaryGraph] | None]:
+
+        kp_curie = self.kp_infores_curie
+
         # Load the results into the object model
         answer_kg = QGOrganizedKnowledgeGraph()
-        if not json_response.get("message"):
-            self.log.warning(f"{self.kp_infores_curie}: No 'message' was included in the response from {self.kp_infores_curie}. "
+        message = json_response.get("message")
+        if not message:
+            self.log.warning(f"{kp_curie}: No 'message' was included in the response. "
                              f"Response was: {json.dumps(json_response, indent=4)}")
             return answer_kg, None
-        elif not json_response["message"].get("results"):
-            self.log.debug(f"{self.kp_infores_curie}: No 'results' were returned.")
-            json_response["message"]["results"] = []  # Setting this to empty list helps downstream processing
+
+        arax_message = ARAXMessenger().from_dict(message)
+
+        kg = arax_message.knowledge_graph
+        if not kg:
+            self.log.error(f"{kp_curie}: no knowledge graph was returned")
             return answer_kg, None
-        else:
-            self.log.debug(f"{self.kp_infores_curie}: Got results from {self.kp_infores_curie}.")
-            kp_message = ARAXMessenger().from_dict(json_response["message"])
+
+        aux_graphs = arax_message.auxiliary_graphs or {}
+
+        results = arax_message.results or []
+        if not results:
+            self.log.debug(f"{kp_curie}: No 'results' were returned.")
+            return answer_kg, aux_graphs
+        self.log.debug(f"{kp_curie}: Got results from KP.")
 
         # Work around genetics provider's curie whitespace bug for now  TODO: remove once they've fixed it
-        if self.kp_infores_curie == "infores:genetics-data-provider":
-            self._remove_whitespace_from_curies(kp_message)
+        if kp_curie == "infores:genetics-data-provider":
+            self._remove_whitespace_from_curies(arax_message)
 
         # Build a map that indicates which qnodes/qedges a given node/edge fulfills
-        kg_to_qg_mappings, query_curie_mappings = self._get_kg_to_qg_mappings_from_results(kp_message.results, qg)
+        kg_to_qg_mappings, query_curie_mappings = \
+            self._get_kg_to_qg_mappings_from_results(results, qg)
 
         # Populate our final KG with the returned edges
-        returned_edge_keys_missing_qg_bindings = set()
-        nodes_dict = kp_message.knowledge_graph.nodes
-        for returned_edge_key, returned_edge in kp_message.knowledge_graph.edges.items():
-            # Catch invalid subject/object
-            if not returned_edge.subject or not returned_edge.object:
-                self.log.warning(f"{self.kp_infores_curie}: Edge has empty subject/object, skipping. "
-                                 f"subject: '{returned_edge.subject}', object: '{returned_edge.object}'")
+        unbound_edges = {}
+        nodes_dict = kg.nodes or {}
+        edges_dict = kg.edges or {}
+        for edge_key, edge in edges_dict.items():
+            # check the edge's subject and object properties:
+            if not edge.subject or not edge.object:
+                # the edge's `subject` or `object` property is empty; log a warning and skip this edge
+                self.log.warning(f"{kp_curie}: Edge has empty subject/object, skipping. "
+                                 f"subject: '{edge.subject}', object: '{edge.object}'")
                 continue
-            if returned_edge.subject not in nodes_dict or returned_edge.object not in nodes_dict:
-                self.log.warning(f"{self.kp_infores_curie}: Edge is an orphan, skipping. "
-                                 f"subject: '{returned_edge.subject}', object: '{returned_edge.object}'")
+            if edge.subject not in nodes_dict or edge.object not in nodes_dict:
+                # the edge's `subject` or `object` refers to a node ID that is not in the KG;
+                # log a warning and skip this edge
+                self.log.warning(f"{kp_curie}: Edge is an orphan, skipping. "
+                                 f"subject: '{edge.subject}', object: '{edge.object}'")
                 continue
 
-            arax_edge_key = self._get_arax_edge_key(returned_edge)  # Convert to an ID that's unique for us
-
-            # Put in a placeholder for missing required attribute fields to try to keep our answer TRAPI-compliant
-            if returned_edge.attributes:
-                for attribute in returned_edge.attributes:
+            # Put in a placeholder for missing required attribute fields, for TRAPI-compliance
+            if edge.attributes:
+                for attribute in edge.attributes:
                     if not attribute.attribute_type_id:
-                        attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_infores_curie})"
+                        attribute.attribute_type_id = \
+                            f"not provided (this attribute came from {kp_curie})"
 
             # Indicate that this edge passed through ARAX
-            if returned_edge.sources:
-                returned_edge.sources.append(self.arax_retrieval_source)
+            if edge.sources:
+                edge.sources.append(self.arax_retrieval_source)
             else:
-                returned_edge.sources = [self.arax_retrieval_source]
+                edge.sources = [self.arax_retrieval_source]
 
-            # Delete any support graph references for now # TODO: Extract such support graphs? #2060
-            if returned_edge.attributes:
-                returned_edge.attributes = [attribute for attribute in returned_edge.attributes
-                                            if attribute.attribute_type_id != "biolink:support_graphs"]
+            # Create ARAX-generated edge key that's unique for us
+            arax_edge_key = self._get_arax_edge_key(edge)
 
-            if returned_edge_key in kg_to_qg_mappings['edges']:
-                for qedge_key in kg_to_qg_mappings['edges'][returned_edge_key]:
-                    answer_kg.add_edge(arax_edge_key, returned_edge, qedge_key)
+            if edge_key in kg_to_qg_mappings['edges']:
+                for qedge_key in kg_to_qg_mappings['edges'][edge_key]:
+                    # for each `qedge_key` to which this edge is bound,
+                    # add the edge to `answer_kg` with the ARAX edge key
+                    answer_kg.add_edge(arax_edge_key, edge, qedge_key)
             else:
-                returned_edge_keys_missing_qg_bindings.add(returned_edge_key)
+                unbound_edges[edge_key] = edge
 
         # Populate our final KG with the returned nodes
-        returned_node_keys_missing_qg_bindings = dict()
-        nodes_referenced_in_result_analysis_edges = set()
-        for returned_node_key, returned_node in kp_message.knowledge_graph.nodes.items():
-            if not returned_node_key:
-                self.log.warning(f"{self.kp_infores_curie}: Node has empty ID, skipping. Node key is: "
-                                 f"'{returned_node_key}'")
-            elif returned_node_key not in kg_to_qg_mappings['nodes']:
-                returned_node_keys_missing_qg_bindings[returned_node_key] = returned_node
+        unbound_nodes = {}
+
+        for node_key, node in nodes_dict.items():
+            if not node_key:
+                self.log.warning(f"{kp_curie}: Node has empty ID, skipping. "
+                                 f"Node key is: '{node_key}'")
+                continue
+            if node_key in kg_to_qg_mappings['nodes']:
+                # this node is bound to a qnode; add to answer KG
+                for qnode_key in kg_to_qg_mappings['nodes'][node_key]:
+                    answer_kg.add_node(node_key, node, qnode_key)
             else:
-                for qnode_key in kg_to_qg_mappings['nodes'][returned_node_key]:
-                    answer_kg.add_node(returned_node_key, returned_node, qnode_key)
-            if returned_node.attributes:
-                for attribute in returned_node.attributes:
-                    if not attribute.attribute_type_id:
-                        attribute.attribute_type_id = f"not provided (this attribute came from {self.kp_infores_curie})"
-        if returned_node_keys_missing_qg_bindings:
-            for result in kp_message.results:
-                for analysis in result.analyses:
-                    for qedge_key, edge_bindings in analysis.edge_bindings.items():
+                # this node is not bound to a query node; store it in
+                # `unbound_nodes`
+                unbound_nodes[node_key] = node
+
+            # if a node attrib has no `attribute_type_id`, put in a KP blame message
+            for attribute in node.attributes or []:
+                if not attribute.attribute_type_id:
+                    attribute.attribute_type_id = \
+                        f"not provided (this attribute came from {kp_curie})"
+
+        # KPs can return result-specific "analyses" each of which can "bind" a
+        # qedges to one or more edge keys in the knowledge graph. Each such
+        # bound edge can, in turn, reference nodes (including nodes that are not
+        # bound to qnodes) via the edge's subject and/or object
+        # properties. These nodes should _not_ get dropped from the KG, since
+        # the result analysis is semantically incomplete without them. To
+        # compile a dictionary of such nodes, it is necessary to iterate through
+        # results, analyses, and edges (in that specific order of nesting from
+        # outermost to innermost loop). But, if there are no unbound nodes, there
+        # is no need to do this, since all nodes will already be in the answer KG.
+        nodes_linked_in_bound_edges = set()
+        if unbound_nodes:
+            for result in results:
+                for analysis in result.analyses or []:
+                    edge_bindings_iterable = analysis.edge_bindings or {}
+                    for qedge_key, edge_bindings in edge_bindings_iterable.items():
                         if qedge_key in qg.edges:
-                            for edge_binding in edge_bindings:
+                            for edge_binding in edge_bindings or []:
                                 edge_id = edge_binding.id
-                                if edge_id in kp_message.knowledge_graph.edges:
-                                    edge = kp_message.knowledge_graph.edges[edge_id]
-                                    nodes_referenced_in_result_analysis_edges.add(edge.subject)
-                                    nodes_referenced_in_result_analysis_edges.add(edge.object)
-        self.log.debug(f"Number of nodes referenced in result analysis edges: {len(nodes_referenced_in_result_analysis_edges)}")
+                                if edge_id in edges_dict:
+                                    edge = edges_dict[edge_id]
+                                    nodes_linked_in_bound_edges.add(edge.subject)
+                                    nodes_linked_in_bound_edges.add(edge.object)
+        self.log.debug("Number of nodes referenced in result analysis edges: "
+                       f"{len(nodes_linked_in_bound_edges)}")
 
         nodes_referenced_in_aux_graphs = set()
-        edges_referenced_in_aux_graphs = set()
-        if returned_edge_keys_missing_qg_bindings:
-            for aux_graph_id, aux_graph in kp_message.auxiliary_graphs.items():
-                for edge_id in aux_graph.edges:
-                    if edge_id in kp_message.knowledge_graph.edges:
-                        edges_referenced_in_aux_graphs.add(edge_id)
-                        edge = kp_message.knowledge_graph.edges[edge_id]
-                        nodes_referenced_in_aux_graphs.add(edge.subject)
-                        nodes_referenced_in_aux_graphs.add(edge.object)
+        unbound_edges_keep = {}
+        # KPs can also return auxiliary graphs, which can reference edges.
+        # Any edge referenced by an auxiliary graph can also reference nodes,
+        # which should be retained in the knowledge graph for semantic
+        # completeness.
+        if unbound_edges and aux_graphs:
+            for aux_graph_id, aux_graph in aux_graphs.items():
+                for edge_id in aux_graph.edges or []:
+                    edge = edges_dict.get(edge_id)
+                    if edge is None:
+                        self.log.warning(f"{kp_curie}: aux graph {aux_graph_id} "
+                                         f"references edge not in KG: {edge_id}")
+                        continue
+                    if edge_id in unbound_edges:
+                        unbound_edges_keep[edge_id] = edge
+                    nodes_referenced_in_aux_graphs.add(edge.subject)
+                    nodes_referenced_in_aux_graphs.add(edge.object)
+        answer_kg.unbound_edges = unbound_edges_keep
 
-        allowed_unbound_nodes = dict()
-        unreferenced_unbound_nodes = dict()
-        for node_key, node in returned_node_keys_missing_qg_bindings.items():
-            if node_key in nodes_referenced_in_result_analysis_edges or \
+        unbound_nodes_keep = {}
+        unbound_nodes_not_kept = {}
+        for node_key, node in unbound_nodes.items():
+            if node_key in nodes_linked_in_bound_edges or \
                node_key in nodes_referenced_in_aux_graphs:
-                allowed_unbound_nodes[node_key] = node
+                unbound_nodes_keep[node_key] = node
             else:
-                unreferenced_unbound_nodes[node_key] = node
-        answer_kg.unbound_nodes = allowed_unbound_nodes
+                unbound_nodes_not_kept[node_key] = node
+        answer_kg.unbound_nodes = unbound_nodes_keep
 
-        returned_unreferenced_unbound_edges = returned_edge_keys_missing_qg_bindings - \
-            edges_referenced_in_aux_graphs
+        if unbound_nodes_not_kept:
+            curie_summary = _summarize_set_elements(unbound_nodes_not_kept.keys())
+            self.log.warning(f"{kp_curie}: {len(unbound_nodes_not_kept)} "
+                             "nodes in the KP's answer KG have no bindings to the QG "
+                             "and are not referenced in any analysis or aux graphs: "
+                             f"{curie_summary}")
 
-        if returned_unreferenced_unbound_edges:
-            self.log.warning(f"{self.kp_infores_curie}: {len(returned_unreferenced_unbound_edges)} "
-                             "edges in the KP's answer KG have no bindings to the QG and are not "
-                             f"referenced in aux graphs: {returned_unreferenced_unbound_edges}")
-
-        if unreferenced_unbound_nodes:
-            self.log.warning(f"{self.kp_infores_curie}: {len(unreferenced_unbound_nodes)} "
-                             "nodes in the KP's answer KG have no bindings to the QG and are "
-                             f"not referenced in any analysis: {set(unreferenced_unbound_nodes.keys())}")
+        unreferenced_unbound_edges = set(unbound_edges) - set(unbound_edges_keep)
+        if unreferenced_unbound_edges:
+            edge_key_summary = _summarize_set_elements(unreferenced_unbound_edges)
+            self.log.warning(f"{kp_curie}: {len(unreferenced_unbound_edges)} "
+                             "edges in the KP's answer KG have no bindings to the QG "
+                             f"and are not referenced in aux graphs: {edge_key_summary}")
 
         # Fill out our unofficial node.query_ids property
         for nodes in answer_kg.nodes_by_qg_id.values():
@@ -553,23 +622,31 @@ class TRAPIQuerier:
         # Add subclass_of edges for any parent to child relationships KPs returned
         answer_kg = self._add_subclass_of_edges(answer_kg)
 
-        return answer_kg, kp_message.auxiliary_graphs
+        return answer_kg, aux_graphs
 
     @staticmethod
     def _strip_empty_properties(qnode_or_qedge: Union[QNode, QEdge]) -> dict[str, Any]:
         dict_version_of_object = qnode_or_qedge.to_dict()
-        stripped_dict = {property_name: value for property_name, value in dict_version_of_object.items()
-                         if dict_version_of_object.get(property_name) not in [None, []]}
+        stripped_dict = {property_name: value \
+                         for property_name, value \
+                         in dict_version_of_object.items()
+                         if dict_version_of_object.get(property_name) \
+                         not in [None, []]}
         return stripped_dict
 
     def _get_arax_edge_key(self, edge: Edge) -> str:
-        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
+        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value \
+                           for qualifier in edge.qualifiers} if edge.qualifiers else {}
         qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
         qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
         qualified_object_aspect = qualifiers_dict.get("biolink:object_aspect_qualifier")
-        qualified_portion = f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
+        qualified_portion = \
+            f"{qualified_predicate}--{qualified_object_direction}--{qualified_object_aspect}"
         primary_ks = eu.get_primary_knowledge_source(edge)
-        edge_key = f"{self.kp_infores_curie}:{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_ks}"
+        kp_curie = self.kp_infores_curie
+        edge_key = \
+            f"{kp_curie}:{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--" \
+            f"{primary_ks}"
         return edge_key
 
     def _get_query_timeout_length(self) -> int:

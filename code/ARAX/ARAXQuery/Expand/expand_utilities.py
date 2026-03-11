@@ -35,10 +35,12 @@ class QGOrganizedKnowledgeGraph:
     def __init__(self,
                  nodes: Optional[dict[str, dict[str, Node]]] = None,
                  edges: Optional[dict[str, dict[str, Edge]]] = None,
-                 unbound_nodes: Optional[dict[str, Node]] = None):
-        self.nodes_by_qg_id = nodes if nodes else dict()
-        self.edges_by_qg_id = edges if edges else dict()
-        self.unbound_nodes = unbound_nodes if unbound_nodes else dict()
+                 unbound_nodes: Optional[dict[str, Node]] = None,
+                 unbound_edges: Optional[dict[str, Edge]] = None):
+        self.nodes_by_qg_id = nodes if nodes else {}
+        self.edges_by_qg_id = edges if edges else {}
+        self.unbound_nodes = unbound_nodes if unbound_nodes else {}
+        self.unbound_edges = unbound_edges if unbound_edges else {}
 
     def __str__(self):
         return f"nodes_by_qg_id:\n{self.nodes_by_qg_id}\nedges_by_qg_id:\n{self.edges_by_qg_id}\nunbound_nodes:\n{self.unbound_nodes}"
@@ -275,6 +277,10 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
             else:
                 edge.qedge_keys = [qedge_key]
                 standard_kg.edges[edge_key] = edge
+    for node_key, node in organized_kg.unbound_nodes.items():
+        standard_kg.nodes[node_key] = node
+    for edge_key, edge in organized_kg.unbound_edges.items():
+        standard_kg.edges[edge_key] = edge
     return standard_kg
 
 

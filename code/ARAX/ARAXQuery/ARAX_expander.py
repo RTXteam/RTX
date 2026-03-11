@@ -146,12 +146,17 @@ class ARAXExpander:
         }
         return parameter_info_dict
 
-    def apply(self, response, input_parameters, mode: str = "ARAX"):
-        _ = mode  # this quiets a vulture error without breaking API contract
+    def apply(
+            self,
+            response,
+            input_parameters,
+            mode: str = "ARAX"
+    ):
+        _ = mode  # this quiets a vulture error without breaking the API contract
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
-            message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
+            message.knowledge_graph = KnowledgeGraph(nodes={}, edges={})
         log = response
         # Fetch the list of all registered kps with compatible versions
         try:
@@ -187,7 +192,7 @@ class ARAXExpander:
 
         # Create global slots to store some info that needs to persist between expand() calls
         if not hasattr(message, "encountered_kryptonite_edges_info"):
-            message.encountered_kryptonite_edges_info = dict()
+            message.encountered_kryptonite_edges_info = {}
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -344,7 +349,12 @@ class ARAXExpander:
                     for edge in query_sub_graph.edges.keys():
                         query_sub_graph.edges[edge].knowledge_type = 'lookup'
 
+            # Stores just the portion of the KG that is the "aux_graph" edges and nodes
+            unbound_kg = KnowledgeGraph(nodes={}, edges={})
+
+            # Stores the aux_graph data that will go into the final message
             aux_graphs_combined: dict[str, AuxiliaryGraph] = {}
+
             # Expand the query graph edge-by-edge (in regular 'lookup' fashion)
             for qedge_key in ordered_qedge_keys_to_expand:
                 log.debug(f"Expanding qedge {qedge_key}")
@@ -443,14 +453,17 @@ class ARAXExpander:
                 # Merge KPs' answers into our overarching KG
                 log.debug("Got answers from all KPs; merging them into one KG")
                 for index, response_tuple in enumerate(kp_answers):
-                    answer_kg, _, aux_graphs = response_tuple
+                    kp_queried = kps_to_query[index]
+                    qg_org_kg, aux_graphs, _ = response_tuple
+
+                    node_keys = qg_org_kg.get_all_node_keys()
                     # Store any kryptonite edge answers as needed
-                    if qedge.exclude and not answer_kg.is_empty():
-                        self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
+                    if qedge.exclude and not qg_org_kg.is_empty():
+                        self._store_kryptonite_edge_info(qg_org_kg, qedge_key, message.query_graph,
                                                          message.encountered_kryptonite_edges_info, response)
                     # Otherwise just merge the answer into the overarching KG
                     else:
-                        self._merge_answer_into_message_kg(answer_kg,
+                        self._merge_answer_into_message_kg(qg_org_kg,
                                                            overarching_kg,
                                                            message.query_graph,
                                                            query_graph,
@@ -458,7 +471,6 @@ class ARAXExpander:
                     if response.status != 'OK':
                         return response
 
-                    kp_queried = kps_to_query[index]
                     if aux_graphs is not None:
                         for sgraph_id, sgraph_obj in aux_graphs.items():
                             if sgraph_id in aux_graphs_combined:
@@ -466,6 +478,53 @@ class ARAXExpander:
                                             "but there is already another aux graph with that ID; skipping")
                                 continue
                             aux_graphs_combined[sgraph_id] = sgraph_obj
+                            for edge_id in sgraph_obj.edges:
+                                if edge_id in overarching_kg.edges_by_qg_id.get(qedge_key, {}):
+                                    # if this edge is in the overarching KG,
+                                    # its subject and object nodes must also be;
+                                    # so we can just skip to the next edge
+                                    # in qg_org_kg
+                                    continue
+                                # at this point, look for the edge in qg_org_kg
+                                edge = qg_org_kg.unbound_edges.get(edge_id, None)
+                                if edge is None:
+                                    log.warning(f"{kp_queried}: For qedge {qedge_key}, the response "
+                                                f"from the KP has an auxiliary graph {sgraph_id} "
+                                                f"that references an edge_id not in KG: {edge_id}; "
+                                                "not recording this aux graph edge in the KG")
+                                    continue
+                                subject_node_id = edge.subject
+                                if subject_node_id not in node_keys:
+                                    # subject node is not qnode bound
+                                    subject_node = qg_org_kg.unbound_nodes.get(subject_node_id)
+                                    if not subject_node:
+                                        # subject node is not in the unbound nodes dictionary; warn
+                                        log.warning(f"{kp_queried}: For qedge {qedge_key}, the response "
+                                                    f"from the KP has an auxiliary graph {sgraph_id} "
+                                                    f"that references a subject node ID not in "
+                                                    f"the KG: {subject_node_id}; "
+                                                    "not recording this aux graph edge in the KG")
+                                        continue
+                                else:
+                                    subject_node = None
+                                object_node_id = edge.object
+                                if object_node_id not in node_keys:
+                                    object_node = qg_org_kg.unbound_nodes.get(object_node_id)
+                                    if object_node is None:
+                                        log.warning(f"{kp_queried}: For qedge {qedge_key}, the response "
+                                                    f"from the KP has an auxiliary graph {sgraph_id} "
+                                                    f"that references an object node ID not in "
+                                                    f"the KG: {object_node_id}; "
+                                                    "not recording this aux graph edge in the KG")
+                                        continue
+                                else:
+                                    object_node = None
+                                if edge_id not in unbound_kg.edges:
+                                    unbound_kg.edges[edge_id] = edge
+                                if subject_node is not None and subject_node_id not in unbound_kg.nodes:
+                                    unbound_kg.nodes[subject_node_id] = subject_node
+                                if object_node is not None and object_node_id not in unbound_kg.nodes:
+                                    unbound_kg.nodes[object_node_id] = object_node
                 log.debug(f"After merging KPs' answers, total KG counts are: {eu.get_printable_counts_by_qg_id(overarching_kg)}")
                 log.debug(f"After merging KPs' answers, total aux graphs are: {len(aux_graphs_combined)}")
 
@@ -516,6 +575,7 @@ class ARAXExpander:
                         for kedge_key in kedges_to_remove:
                             if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
                                 del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
+
                 # Handle Expand's creative treats predicate answers
                 if be_creative_treats and qedge_key in overarching_kg.edges_by_qg_id:  # Skip if no answers
                     # First remove any SemMedDB treats_or_applied-type edges with < 10 associated publications (not trustworthy)
@@ -534,7 +594,7 @@ class ARAXExpander:
                                                  if edge.predicate in self.treats_like_predicates}
                     if higher_level_treats_edges:
                         
-                        higher_level_treats_edges_temp = dict()
+                        higher_level_treats_edges_temp = {}
                         for edge_key_temp, edge_temp in higher_level_treats_edges.items():
                             
                             # issue2634 - curated CTKP edges implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
@@ -581,7 +641,7 @@ class ARAXExpander:
                                               option_group_id=f"creative_expand_treats_group_{qedge_key}")
                         virtual_qedge.filled = True  # Resultify needs this flag
                         message.query_graph.edges[virtual_qedge_key] = virtual_qedge
-                        overarching_kg.edges_by_qg_id[virtual_qedge_key] = dict()
+                        overarching_kg.edges_by_qg_id[virtual_qedge_key] = {}
 
                         # Lump the higher-level treats edges together by subject/object
                         subj_obj_map = defaultdict(set)
@@ -615,19 +675,26 @@ class ARAXExpander:
                 # Remove any paths that are now dead-ends
                 if inferred_qedge_keys and len(inferred_qedge_keys) == 1:
 
-                    #### Write some state information to files for debugging
-                    debug_filepath = os.path.dirname(os.path.abspath(__file__))
-                    if hasattr(response, 'dtd_from_cache') and response.dtd_from_cache is True:
-                        debug_filepath += "/zz_cache_"
-                    else:
-                        debug_filepath += "/zz_fresh_"
-                    with open(debug_filepath + "query_graph.json", 'w') as outfile:
-                        print(f"*******line 564: message.query_graph={message.query_graph}", file=outfile)
-                    with open(debug_filepath + "overarching_kg.json", 'w') as outfile:
-                        print(f"*******line 566: overarching_kg={overarching_kg}", file=outfile)
+                    # ======================================================================================
+                    # SAR: I commented out the code block below; I am assuming this is debug-only code
+                    #      code that was not intended to be used when ARAX-expand is running in production:
+                    # --------------------------------------------------------------------------------------
+                    # #### Write some state information to files for debugging
+                    # debug_filepath = os.path.dirname(os.path.abspath(__file__))
+                    # if hasattr(response, 'dtd_from_cache') and response.dtd_from_cache is True:
+                    #     debug_filepath += "/zz_cache_"
+                    # else:
+                    #     debug_filepath += "/zz_fresh_"
+                    # with open(debug_filepath + "query_graph.json", 'w') as outfile:
+                    #     print(f"*******line 564: message.query_graph={message.query_graph}", file=outfile)
+                    # with open(debug_filepath + "overarching_kg.json", 'w') as outfile:
+                    #     print(f"*******line 566: overarching_kg={overarching_kg}", file=outfile)
+                    # ======================================================================================
 
+                    # message.query_graph is the original copy of the QG, unmodified
                     overarching_kg = self._remove_dead_end_paths(message.query_graph, overarching_kg, response)
                 else:
+                    # query_graph is the local copy of the QG that has been modified for use by Expand
                     overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
                 if response.status != 'OK':
                     return response
@@ -676,6 +743,23 @@ class ARAXExpander:
         # Convert message knowledge graph back to standard TRAPI
         message.knowledge_graph = eu.convert_qg_organized_kg_to_standard_kg(overarching_kg)
 
+        log.debug(f"unbound_kg node count: {len(unbound_kg.nodes)}; "
+                  f"unbound_kg edge count: {len(unbound_kg.edges)}")
+
+        kg = message.knowledge_graph
+        log.debug(f"message KG node count before merging unbound KG: {len(kg.nodes)}; "
+                  f"message KG edge count before merging unbound KG: {len(kg.edges)}")
+
+        for edge_id, edge in unbound_kg.edges.items():
+            if edge_id not in kg.edges:
+                kg.edges[edge_id] = edge
+        for node_id, node in unbound_kg.nodes.items():
+            if node_id not in kg.nodes:
+                kg.nodes[node_id] = node
+
+        log.debug(f"message KG node count after merging unbound KG: {len(kg.nodes)}; "
+                  f"message KG edge count after merging unbound KG: {len(kg.edges)}")
+
         # check aux graphs to see if edges are still in the KG
         aux_graphs_delete = set()
 
@@ -684,7 +768,7 @@ class ARAXExpander:
             aux_graph_edges = aux_graph_dict.get("edges", [])
             aux_graph_edges_final = []
             for edge_id in aux_graph_edges:
-                if edge_id not in message.knowledge_graph.edges:
+                if edge_id not in unbound_kg.edges:
                     log.warning(f"for aux graph {aux_graph_id}, edge {edge_id} is not in the KG; skipping edge")
                 else:
                     aux_graph_edges_final.append(edge_id)
@@ -701,6 +785,7 @@ class ARAXExpander:
             aux_graphs_combined.pop(aux_graph_id, None)
 
         message.auxiliary_graphs = aux_graphs_combined
+
         # Decorate all nodes with additional attributes info from KG2c if requested (iri, description, etc.)
         if not parameters.get("return_minimal_metadata"):
             decorator = ARAXDecorator()
@@ -710,7 +795,6 @@ class ARAXExpander:
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
 
         # Return the response and done
-        kg = message.knowledge_graph
         log.info(f"After Expand, the KG has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
                  f"({eu.get_printable_counts_by_qg_id(overarching_kg)})")
         
@@ -825,7 +909,7 @@ class ARAXExpander:
 
                     wait_time = round(time.time() - start, 2)
                     if response.status == "OK":
-                        done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, dict()))} " \
+                        done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, {}))} " \
                                        f"edges in {wait_time} seconds"
                         response.update_query_plan(inferred_qedge_key, "arax-xdtd", "Done", done_message)
                     else:
@@ -888,7 +972,7 @@ class ARAXExpander:
 
                     wait_time = round(time.time() - start)
                     if response.status == "OK":
-                        done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, dict()))} " \
+                        done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, {}))} " \
                                        f"edges in {wait_time} seconds"
                         response.update_query_plan(inferred_qedge_key, "arax-xcrg", "Done", done_message)
                     else:
@@ -917,7 +1001,9 @@ class ARAXExpander:
             log: ARAXResponse,
             multiple_kps: bool = False,
             be_creative_treats: bool = False
-    ) -> tuple[QGOrganizedKnowledgeGraph, ARAXResponse, dict[str, AuxiliaryGraph] | None]:
+    ) -> tuple[QGOrganizedKnowledgeGraph,
+               dict[str, AuxiliaryGraph] | None,
+               ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
@@ -927,13 +1013,13 @@ class ARAXExpander:
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
             log.error("Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
                       "a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
-            return answer_kg, log, None
+            return answer_kg, None, log
         # Make sure the specified KP is a valid option
         allowable_kps = kp_selector.valid_kps
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
-            return answer_kg, log, None
+            return answer_kg, None, log
 
         # Route this query to the KP's TRAPI API
         try:
@@ -942,7 +1028,7 @@ class ARAXExpander:
                                       user_specified_kp=user_specified_kp,
                                       kp_timeout=kp_timeout,
                                       kp_selector=kp_selector)
-            answer_kg, aux_graphs = await kp_querier.answer_one_hop_query_async(
+            qg_org_kg, aux_graphs = await kp_querier.answer_one_hop_query_async(
                 edge_qg,
                 be_creative_treats=be_creative_treats)
         except Exception:
@@ -956,20 +1042,21 @@ class ARAXExpander:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
                             f"get answers from that KP. Error was: {tb}")
             log.update_query_plan(qedge_key, kp_to_use, "Error", f"Process error-ed out with {log.status}")
-            return QGOrganizedKnowledgeGraph(), log, aux_graphs
+            return QGOrganizedKnowledgeGraph(), aux_graphs, log
 
         if log.status != 'OK':
             if multiple_kps:
                 log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
-            return answer_kg, log, aux_graphs
+            return qg_org_kg, aux_graphs, log
 
-        log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+        log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(qg_org_kg)})")
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)
-        if kp_to_use != 'infores:rtx-kg2':  # KG2c is already deduplicated and uses canonical predicates
-            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
-            answer_kg,\
-                dropped_edge_counts = self._deduplicate_nodes(answer_kg,
+        # KG2c and retriever are already deduplicated and uses canonical predicates
+        if kp_to_use != 'infores:rtx-kg2' and kp_to_use != 'infores:retriever':
+            qg_org_kg = eu.check_for_canonical_predicates(qg_org_kg, kp_to_use, log)
+            qg_org_kg,\
+                dropped_edge_counts = self._deduplicate_nodes(qg_org_kg,
                                                               kp_to_use,
                                                               log)
             for qedge_key, count in dropped_edge_counts.items():
@@ -982,10 +1069,14 @@ class ARAXExpander:
                                           done_str + "; "
                                           f"{count} edges dropped due "
                                           "to node reference failure")
-        if any(edges for edges in answer_kg.edges_by_qg_id.values()):  # Make sure the KP actually returned something
-            answer_kg = self._remove_self_edges(answer_kg, kp_to_use, log)
+        if any(edges for edges in qg_org_kg.edges_by_qg_id.values()):  # Make sure the KP actually returned something
+            qg_org_kg = self._remove_self_edges(qg_org_kg, kp_to_use, log)
 
-        return answer_kg, log, aux_graphs
+        log.info(f"{kp_to_use}: checking unbound nodes and edges in result; "
+                 f"number of unbound nodes: {len(qg_org_kg.unbound_nodes)}; "
+                 f"number of unbound edges: {len(qg_org_kg.unbound_edges)}")
+
+        return qg_org_kg, aux_graphs, log
 
     @staticmethod
     def _expand_node(qnode_key: str,
@@ -997,7 +1088,7 @@ class ARAXExpander:
         # This function expands a single node using the specified knowledge provider (for now only KG2 is supported)
         log.debug(f"Expanding node {qnode_key} using {kps_to_use}")
         qnode = query_graph.nodes[qnode_key]
-        single_node_qg = QueryGraph(nodes={qnode_key: qnode}, edges=dict())
+        single_node_qg = QueryGraph(nodes={qnode_key: qnode}, edges={})
         answer_kg = QGOrganizedKnowledgeGraph()
         if log.status != 'OK':
             return answer_kg
@@ -1020,7 +1111,7 @@ class ARAXExpander:
 
     def _get_query_graph_for_edge(self, qedge_key: str, full_qg: QueryGraph, overarching_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
-        edge_qg = QueryGraph(nodes=dict(), edges=dict())
+        edge_qg = QueryGraph(nodes={}, edges={})
         qedge = full_qg.edges[qedge_key]
         qnode_keys = [qedge.subject, qedge.object]
 
@@ -1067,18 +1158,22 @@ class ARAXExpander:
         return edge_qg
 
     @staticmethod
-    def _deduplicate_nodes(answer_kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> \
-            tuple[QGOrganizedKnowledgeGraph, dict[str, int]]:
+    def _deduplicate_nodes(
+            answer_kg: QGOrganizedKnowledgeGraph,
+            kp_name: str,
+            log: ARAXResponse
+    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, int]]:
         log.debug(f"{kp_name}: Deduplicating nodes")
-        deduplicated_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in answer_kg.nodes_by_qg_id},
-                                                    edges={qedge_key: dict() for qedge_key in answer_kg.edges_by_qg_id})
-        curie_mappings = dict()
+        deduplicated_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: {} for qnode_key in answer_kg.nodes_by_qg_id},
+                                                    edges={qedge_key: {} for qedge_key in answer_kg.edges_by_qg_id})
+        deduplicated_kg.unbound_edges = answer_kg.unbound_edges
+        curie_mappings = {}
 
         # First deduplicate the bound nodes
         for qnode_key, nodes in {**answer_kg.nodes_by_qg_id, UNBOUND_NODES_KEY: answer_kg.unbound_nodes}.items():
             # Load preferred curie info from NodeSynonymizer
             log.debug(f"{kp_name}: Getting preferred curies for {qnode_key} nodes returned in this step")
-            canonicalized_nodes = eu.get_canonical_curies_dict(list(nodes), log) if nodes else dict()
+            canonicalized_nodes = eu.get_canonical_curies_dict(list(nodes), log) if nodes else {}
             if log.status != 'OK':
                 return deduplicated_kg
 
@@ -1113,7 +1208,7 @@ class ARAXExpander:
                         deduplicated_kg.unbound_nodes[preferred_curie] = node
 
         # Then update the edges to reflect changes made to the nodes
-        dropped_edge_count = dict()
+        dropped_edge_count = {}
         for qedge_key, edges in answer_kg.edges_by_qg_id.items():
             dropped_edge_count[qedge_key] = 0
             for edge_key, edge in edges.items():
@@ -1138,7 +1233,7 @@ class ARAXExpander:
     @staticmethod
     def _extract_query_subgraph(qedge_keys_to_expand: list[str], query_graph: QueryGraph, log: ARAXResponse) -> QueryGraph:
         # This function extracts a sub-query graph containing the provided qedge IDs from a larger query graph
-        sub_query_graph = QueryGraph(nodes=dict(), edges=dict())
+        sub_query_graph = QueryGraph(nodes={}, edges={})
 
         for qedge_key in qedge_keys_to_expand:
             # Make sure this query edge actually exists in the query graph
@@ -1241,6 +1336,7 @@ class ARAXExpander:
                     del overarching_qg.edges[qedge_key]
                     del expands_qg.edges[qedge_key]
 
+
     @staticmethod
     def _store_kryptonite_edge_info(kryptonite_kg: QGOrganizedKnowledgeGraph, kryptonite_qedge_key: str, qg: QueryGraph,
                                     encountered_kryptonite_edges_info: dict[str, dict[str, set[str]]], log: ARAXResponse):
@@ -1254,7 +1350,7 @@ class ARAXExpander:
         kryptonite_qedge = qg.edges[kryptonite_qedge_key]
         # First just initiate empty nested dictionaries/sets as needed
         if kryptonite_qedge_key not in encountered_kryptonite_edges_info:
-            encountered_kryptonite_edges_info[kryptonite_qedge_key] = dict()
+            encountered_kryptonite_edges_info[kryptonite_qedge_key] = {}
         kryptonite_nodes_dict = encountered_kryptonite_edges_info[kryptonite_qedge_key]
         if kryptonite_qedge.subject not in kryptonite_nodes_dict:
             kryptonite_nodes_dict[kryptonite_qedge.subject] = set()
@@ -1397,9 +1493,9 @@ class ARAXExpander:
         # Example node_connections_map: {'n01': {'UMLS:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22'}}}, ...}
         # Initiate entries for this edge's nodes as needed
         if edge.subject not in node_connections_map[qnode_key_a]:
-            node_connections_map[qnode_key_a][edge.subject] = dict()
+            node_connections_map[qnode_key_a][edge.subject] = {}
         if edge.object not in node_connections_map[qnode_key_b]:
-            node_connections_map[qnode_key_b][edge.object] = dict()
+            node_connections_map[qnode_key_b][edge.object] = {}
         # Initiate empty sets for the qnode keys connected to each of the nodes as needed
         if qnode_key_b not in node_connections_map[qnode_key_a][edge.subject]:
             node_connections_map[qnode_key_a][edge.subject][qnode_key_b] = set()
@@ -1513,7 +1609,7 @@ class ARAXExpander:
 
     def _set_and_validate_parameters(self, input_parameters: dict[str, Any], kp_selector: KPSelector,
                                      log: ARAXResponse) -> dict[str, Any]:
-        parameters: dict[str, Any] = dict()
+        parameters: dict[str, Any] = {}
         parameter_info_dict = self.get_parameter_info_dict()
 
         # First set parameters to their defaults
@@ -1582,7 +1678,7 @@ class ARAXExpander:
               a Sep. 2021 mini-hackathon that that was the least bad option vs. copying nodes/edges in such a situation.
         """
         # First create a lookup map of the curies we'll need to remap
-        canonical_to_input_curie_map = dict()
+        canonical_to_input_curie_map = {}
         for qnode_key, qnode in qg.nodes.items():
             if qnode.ids:
                 canonical_nodes_info = eu.get_canonical_curies_dict(qnode.ids, log)
