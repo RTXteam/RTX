@@ -1,4 +1,5 @@
-#!/mnt/data/python/Python-3.9.18/bin/python3
+#!/usr/bin/env python3
+### OLD :: #!/mnt/data/python/Python-3.9.18/bin/python3
 import datetime
 import importlib
 import json
