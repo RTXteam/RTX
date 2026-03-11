@@ -235,7 +235,7 @@ def analyze_message_get_referenced_IDs(
     # - nodes that are bound via a NodeBinding object in a Result
     # - edges that are bound via an Analysis object in a Result
     # but there may well be edges that are referenced in an Aux Graph;
-    # need to traverse all edges in the KG to discover any that
+    # need to traverse all bound edges in the KG to discover any that
     # reference an AuxiliaryGraph via an Edge attribute of type
     # `biolink:support_graph`; then discover the edges referenced
     # by that AuxiliaryGraph, and then what nodes those edges (in the KG)
