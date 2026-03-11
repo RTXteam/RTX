@@ -314,6 +314,13 @@ class ARAXExpander:
         # Expand any specified edges
         inferred_qedge_keys = [qedge_key for qedge_key, qedge in query_graph.edges.items() if
                                qedge.knowledge_type == "inferred"]
+
+        # Stores just the portion of the KG that is the "aux_graph" edges and nodes
+        unbound_kg = KnowledgeGraph(nodes={}, edges={})
+
+        # Stores the aux_graph data that will go into the final message
+        aux_graphs_combined: dict[str, AuxiliaryGraph] = {}
+
         if qedge_keys_to_expand:
             query_sub_graph = self._extract_query_subgraph(qedge_keys_to_expand, query_graph, log)
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
@@ -348,12 +355,6 @@ class ARAXExpander:
                 if inferred_qedge_keys and len(query_graph.edges) == 1:
                     for edge in query_sub_graph.edges.keys():
                         query_sub_graph.edges[edge].knowledge_type = 'lookup'
-
-            # Stores just the portion of the KG that is the "aux_graph" edges and nodes
-            unbound_kg = KnowledgeGraph(nodes={}, edges={})
-
-            # Stores the aux_graph data that will go into the final message
-            aux_graphs_combined: dict[str, AuxiliaryGraph] = {}
 
             # Expand the query graph edge-by-edge (in regular 'lookup' fashion)
             for qedge_key in ordered_qedge_keys_to_expand:
