@@ -673,6 +673,7 @@ class ARAXExpander:
                 # Apply any kryptonite ("not") qedges
                 self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
                                                  message.encountered_kryptonite_edges_info, response)
+
                 # Remove any paths that are now dead-ends
                 if inferred_qedge_keys and len(inferred_qedge_keys) == 1:
 
@@ -737,7 +738,8 @@ class ARAXExpander:
         # Get rid of any lingering expand-added subclass self-qedges that are no longer relevant (edges pruned)
         all_qedge_keys = set(message.query_graph.edges)
         for qedge_key in all_qedge_keys:
-            if not overarching_kg.edges_by_qg_id.get(qedge_key) and eu.is_expand_created_subclass_qedge_key(qedge_key, message.query_graph):
+            if not overarching_kg.edges_by_qg_id.get(qedge_key) and \
+               eu.is_expand_created_subclass_qedge_key(qedge_key, message.query_graph):
                 log.debug(f"Deleting {qedge_key} from the QG because no edges fulfill it anymore")
                 del message.query_graph.edges[qedge_key]
 
@@ -798,7 +800,7 @@ class ARAXExpander:
         # Return the response and done
         log.info(f"After Expand, the KG has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
                  f"({eu.get_printable_counts_by_qg_id(overarching_kg)})")
-        
+
         return response
 
     @staticmethod
@@ -1300,6 +1302,8 @@ class ARAXExpander:
         # Merge edges
         qedge_keys_with_answers = {qedge_key for qedge_key, edges in answer_kg.edges_by_qg_id.items() if edges}
         for qedge_key in qedge_keys_with_answers:
+            overarching_qg_qedges = str(overarching_qg.edges.keys())
+            log.debug(f"in merge: qedge_key: {qedge_key} oqg_edges: {overarching_qg_qedges}")
             # Add this qedge to the QG if it's a subclass_of edge that TRAPIQuerier added to the QG
             if qedge_key not in overarching_qg.edges:
                 # Make sure the key conforms to the format TRAPIQuerier assigns to subclass_of self-qedges
