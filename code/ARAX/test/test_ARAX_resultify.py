@@ -190,14 +190,20 @@ def _run_resultify_directly(query_graph: QueryGraph,
     return response, message
 
 
-def _convert_shorthand_to_qg(shorthand_qnodes: Dict[str, str], shorthand_qedges: Dict[str, str]) -> QueryGraph:
-    return QueryGraph(nodes={qnode_key: QNode(is_set=bool(is_set)) for qnode_key, is_set in shorthand_qnodes.items()},
+def _convert_shorthand_to_qg(
+        shorthand_qnodes: Dict[str, str],
+        shorthand_qedges: Dict[str, str]
+) -> QueryGraph:
+    return QueryGraph(nodes={qnode_key: QNode(is_set=bool(is_set)) \
+                             for qnode_key, is_set in shorthand_qnodes.items()},
                       edges={qedge_key: QEdge(subject=qnodes.split("--")[0],
-                                              object=qnodes.split("--")[1]) for qedge_key, qnodes in shorthand_qedges.items()})
+                                              object=qnodes.split("--")[1]) \
+                             for qedge_key, qnodes in shorthand_qedges.items()})
 
 
-def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]], shorthand_edges: Dict[str, List[str]]) -> KnowledgeGraph:
-    nodes_dict = dict()
+def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]],
+                             shorthand_edges: Dict[str, List[str]]) -> KnowledgeGraph:
+    nodes_dict = {}
     for qnode_key, nodes_list in shorthand_nodes.items():
         for node_key in nodes_list:
             node = nodes_dict.get(node_key, Node())
@@ -205,7 +211,7 @@ def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]], shorthand_ed
                 node.qnode_keys = []
             node.qnode_keys.append(qnode_key)
             nodes_dict[node_key] = node
-    edges_dict = dict()
+    edges_dict = {}
     for qedge_key, edges_list in shorthand_edges.items():
         for edge_key in edges_list:
             source_node_key = edge_key.split("--")[0]
