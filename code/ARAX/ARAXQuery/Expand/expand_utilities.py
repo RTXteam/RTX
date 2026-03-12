@@ -15,6 +15,7 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.message import Message
 from openapi_server.models.response import Response
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_resultify import ARAXResultify
@@ -649,8 +650,14 @@ def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool
     return basic_format_met and qnode_is_valid
 
 
-def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse, overlay_fet: bool = False,
-                   rank_results: bool = False, qnode_key_to_prune: Optional[str] = None,) -> Response:
+def create_results(
+        qg: QueryGraph,
+        kg: QGOrganizedKnowledgeGraph,
+        log: ARAXResponse,
+        overlay_fet: bool = False,
+        rank_results: bool = False,
+        qnode_key_to_prune: str | None = None,
+) -> Response:
     regular_format_kg = convert_qg_organized_kg_to_standard_kg(kg)
     resultifier = ARAXResultify()
     prune_response = ARAXResponse()
@@ -714,7 +721,8 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
 
     # Create results and rank them as appropriate
     log.debug("Calling Resultify from Expand..")
-    resultifier.apply(prune_response, {})
+    resultifier.response = prune_response
+    resultifier.resultify(mode='ARAX')
     if rank_results:
         try:
             log.debug("Ranking Expand's intermediate pruning results")
