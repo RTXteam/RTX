@@ -7,18 +7,23 @@ Usage:
 import sys
 import os
 from typing import List, Dict, Optional
-
 import pytest
 import yaml
+import pprint
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
+from ARAX_expander import ARAXExpander
+from ARAX_messenger import ARAXMessenger
+from ARAX_resultify import ARAXResultify
+from kp_info_cacher import KPInfoCacher
 import Expand.expand_utilities as eu
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.attribute import Attribute
+from openapi_server.models.query_graph import QueryGraph
 
 
 def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
@@ -1627,6 +1632,55 @@ def test_creative_treats_predicate_alteration_2412():
                 assert set(aux_graph.edges).issubset(message.knowledge_graph.edges)
 
 
+
+def test_issue_2662():
+    kpic = KPInfoCacher()
+    saved_trapi_version = kpic.forced_kp_version
+    kpic.forced_kp_version = "1.6.0"
+    kpic.refresh_kp_info_caches()
+    saved_arax_response_output = ARAXResponse.output
+    ARAXResponse.output = 'STDERR'
+    query_graph_dict = {
+        "edges": {
+            "50efaa83": {
+                "knowledge_type": "lookup",
+                "object": "on",
+                "predicates": [
+                    "biolink:treats"
+                ],
+                "subject": "sn"
+            }
+        },
+        "nodes": {
+            "on": {
+                "ids": [
+                    "MONDO:0002041"
+                ]
+            },
+            "sn": {
+                "ids": [
+                    "CHEBI:474180"
+                ]
+            }
+        }
+    }
+    query_graph = QueryGraph.from_dict(query_graph_dict)
+    response = ARAXResponse(status='OK',
+                            logging_level=ARAXResponse.DEBUG)
+    ARAXMessenger().create_envelope(response)
+    response.envelope.message.query_graph = query_graph
+    expander = ARAXExpander()
+    expander.apply(response, {})
+    resultifier = ARAXResultify()
+    resultifier.apply(response, {})
+    result_message = response.envelope.message
+    result_message_bi = result_message.to_dict()
+    aux_graphs = result_message.auxiliary_graphs
+    assert len(aux_graphs) > 0
+    pprint.pprint(result_message_bi['auxiliary_graphs'])
+    kpic.forced_kp_version = saved_trapi_version
+    kpic.refresh_kp_info_caches()
+    ARAXResponse.output = saved_arax_response_output
 
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
