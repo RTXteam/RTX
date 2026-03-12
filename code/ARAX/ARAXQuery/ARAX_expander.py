@@ -50,7 +50,6 @@ def trim_to_size(input_list, length):
     else:
         return input_list
 
-
 class ARAXExpander:
 
     def __init__(self):
@@ -460,8 +459,11 @@ class ARAXExpander:
                     node_keys = qg_org_kg.get_all_node_keys()
                     # Store any kryptonite edge answers as needed
                     if qedge.exclude and not qg_org_kg.is_empty():
-                        self._store_kryptonite_edge_info(qg_org_kg, qedge_key, message.query_graph,
-                                                         message.encountered_kryptonite_edges_info, response)
+                        self._store_kryptonite_edge_info(qg_org_kg,
+                                                         qedge_key,
+                                                         message.query_graph,
+                                                         message.encountered_kryptonite_edges_info,
+                                                         response)
                     # Otherwise just merge the answer into the overarching KG
                     else:
                         self._merge_answer_into_message_kg(qg_org_kg,
@@ -530,174 +532,42 @@ class ARAXExpander:
                 log.debug(f"After merging KPs' answers, total aux graphs are: {len(aux_graphs_combined)}")
 
                 # Handle any constraints for this qedge and/or its qnodes (that require post-filtering)
-                qnode_keys = {qedge.subject, qedge.object}
-                qnode_keys_with_answers = qnode_keys.intersection(set(overarching_kg.nodes_by_qg_id))
-                for qnode_key in qnode_keys_with_answers:
-                    qnode = query_graph.nodes[qnode_key]
-                    if qnode.constraints:
-                        for constraint in qnode.constraints:
-                            if constraint.id == "biolink:highest_FDA_approval_status" and constraint.operator == "==" and constraint.value == "regular approval":
-                                log.info(f"Applying qnode {qnode_key} constraint: {'NOT ' if constraint._not else ''}"
-                                         f"biolink:highest_FDA_approval_status == regular approval")
-                                fda_approved_drug_ids = self._load_fda_approved_drug_ids()
-                                answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
-                                if constraint._not:
-                                    nodes_to_remove = answer_node_ids.intersection(fda_approved_drug_ids)
-                                else:
-                                    nodes_to_remove = answer_node_ids.difference(fda_approved_drug_ids)
-                                log.debug(f"Removing {len(nodes_to_remove)} nodes fulfilling {qnode_key} for FDA "
-                                          f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
-                                overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
+                self._apply_qnode_post_filters(qedge_key,
+                                               query_graph,
+                                               overarching_kg,
+                                               log)
 
                 # Handle knowledge source constraints for this qedge
-                # Removing kedges that have any sources that are constrained
-                log.debug("Handling any knowledge source constraints")
-                allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
-                log.debug(f"KP allowlist is {allowlist}, denylist is {denylist}")
-                if qedge_key in overarching_kg.edges_by_qg_id:
-                    kedges_to_remove = []
-                    for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
-                        edge_sources = {retrieval_source.resource_id for retrieval_source in kedge.sources} if kedge.sources else set()
-                        if edge_sources:
-                            # always accept arax as a source
-                            if edge_sources == {"infores:arax"}:
-                                continue
-                            # Don't keep edges that ONLY come from excluded sources
-                            if edge_sources.issubset(denylist):
-                                kedges_to_remove.append(kedge_key)
-                                break
-                            # Only keep edges that come from at least ONE allowed source
-                            elif allowlist and not edge_sources.intersection(allowlist):
-                                kedges_to_remove.append(kedge_key)
-                                break
-                    if kedges_to_remove:
-                        log.debug(f"Removing {len(kedges_to_remove)} edges because they do not fulfill knowledge source constraint")
-                        # remove kedges which have been determined to be constrained
-                        for kedge_key in kedges_to_remove:
-                            if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
-                                del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
+                # (remove edges that have any sources that are constrained)
+                self._apply_knowledge_source_constraints(qedge_key,
+                                                         message.query_graph,
+                                                         overarching_kg,
+                                                         log)
 
-                # Handle Expand's creative treats predicate answers
-                if be_creative_treats and qedge_key in overarching_kg.edges_by_qg_id:  # Skip if no answers
-                    # First remove any SemMedDB treats_or_applied-type edges with < 10 associated publications (not trustworthy)
-                    edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
-                                           if edge.predicate in self.treats_like_predicates and
-                                           any(source.resource_id == "infores:semmeddb" for source in edge.sources) and
-                                           [len(x.value) for x in edge.attributes if x.attribute_type_id == "biolink:publications"][0] < 10}
-                    log.debug(f"Removing {len(edge_keys_to_remove)} semmeddb treats_or_applied-type edges with < 10 associated publications "
-                              f"fulfilling {qedge_key}")
-                    for edge_key in edge_keys_to_remove:
-                        del overarching_kg.edges_by_qg_id[qedge_key][edge_key]
-
-                    # Use remaining treats-like edges as support for one merged 'treats' edge (per subj/obj pair)
-                    higher_level_treats_edges = {edge_key: edge
-                                                 for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
-                                                 if edge.predicate in self.treats_like_predicates}
-                    if higher_level_treats_edges:
-                        
-                        higher_level_treats_edges_temp = {}
-                        for edge_key_temp, edge_temp in higher_level_treats_edges.items():
-                            
-                            # issue2634 - curated CTKP edges implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
-                            if (edge_temp.predicate == "biolink:in_clinical_trials_for" and 
-                                any(source.resource_id == "infores:multiomics-clinicaltrials" for source in edge_temp.sources) and
-                                len([x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"]) > 0):
-                                if [x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"][0]:
-                                    higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-                            
-                            # issue2634 - curated DAKP/FAERS edges implement elevation to treats prediction if and only if the applied_to_treat predicate has evidence count (N_cases) >10 
-                            elif (edge_temp.predicate == "biolink:applied_to_treat" and
-                                (any(source.resource_id == "infores:multiomics-drugapprovals" for source in edge_temp.sources) or any(source.resource_id == "infores:faers" for source in edge_temp.sources)) and
-                                len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:number_of_cases"]) > 0):
-                                if [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:number_of_cases"][0] > 24:
-                                    higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-                                    
-                            # issue2634 - curated TMKP edges implement elevation to treats prediction if and only if the treats_or_applied_or_studied_to_treat predicate has evidence count (biolink:evidence_count) > 5 
-                            elif (edge_temp.predicate == "biolink:treats_or_applied_or_studied_to_treat" and
-                                  any(source.resource_id == "infores:text-mining-provider-cooccurrence" for source in edge_temp.sources) and
-                                len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:agent_type" and x.value == "text_mining_agent"]) > 0 and
-                                len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:evidence_count"]) > 0):
-                                if [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:evidence_count"][0] > 5:
-                                    higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-                            
-                            # issue2634 - allow elevation to treats prediction for all curated CTD edges
-                            elif any(source.resource_id == "infores:ctd" for source in edge_temp.sources):
-                                higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-
-                            # issue2634 - SemMedDB treats_or_applied-type edges with >= 10 associated publications are elevated to treats prediction
-                            elif (any(source.resource_id == "infores:semmeddb" for source in edge_temp.sources) and
-                                len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"]) > 0 and
-                                [len(x.value) for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"][0] >= 10):
-                                    higher_level_treats_edges_temp[edge_key_temp] = edge_temp
-
-                            # issue2634 - for other non-treats edges, do not elevate to treats prediction
-                            else:
-                                pass
-                        higher_level_treats_edges = higher_level_treats_edges_temp
-                        
-                        # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
-                        virtual_qedge_key = f"creative_expand_treats_{qedge_key}"
-                        virtual_qedge = QEdge(subject=qedge.subject,
-                                              object=qedge.object,
-                                              option_group_id=f"creative_expand_treats_group_{qedge_key}")
-                        virtual_qedge.filled = True  # Resultify needs this flag
-                        message.query_graph.edges[virtual_qedge_key] = virtual_qedge
-                        overarching_kg.edges_by_qg_id[virtual_qedge_key] = {}
-
-                        # Lump the higher-level treats edges together by subject/object
-                        subj_obj_map = defaultdict(set)
-                        for higher_treats_edge_key, higher_treats_edge in higher_level_treats_edges.items():
-                            hash_key = (higher_treats_edge.subject, higher_treats_edge.object)
-                            subj_obj_map[hash_key].add(higher_treats_edge_key)
-
-                        for (subj_key, obj_key), higher_treats_edge_keys in subj_obj_map.items():
-                            # Create a lumped edge to represent all of these edges
-                            lumped_edge = Edge(subject=subj_key, object=obj_key, predicate="biolink:treats",
-                                               sources=[RetrievalSource(resource_id="infores:arax",
-                                                                        resource_role="primary_knowledge_source")],
-                                               attributes=[Attribute(attribute_type_id="biolink:agent_type",
-                                                                     value="computational_model",
-                                                                     attribute_source="infores:arax"),
-                                                           Attribute(attribute_type_id="biolink:knowledge_level",
-                                                                     value="prediction",
-                                                                     attribute_source="infores:arax")])
-                            lumped_edge_key = f"creative_expand_treats_edge:{subj_key}--treats--{obj_key}--infores:arax"
-                            overarching_kg.edges_by_qg_id[qedge_key][lumped_edge_key] = lumped_edge
-
-                            # Move the higher-level treats edges so that they fulfill the virtual qedge instead
-                            for higher_treats_edge_key in higher_treats_edge_keys:
-                                higher_treats_edge = overarching_kg.edges_by_qg_id[qedge_key][higher_treats_edge_key]
-                                overarching_kg.edges_by_qg_id[virtual_qedge_key][higher_treats_edge_key] = higher_treats_edge
-                                del overarching_kg.edges_by_qg_id[qedge_key][higher_treats_edge_key]
+                # If there are creative-treats edges: handle Expand's creative treats predicate answers
+                if be_creative_treats and qedge_key in overarching_kg.edges_by_qg_id:
+                    self._handle_creative_treats_predicate_answers(qedge_key,
+                                                                   overarching_kg,
+                                                                   message.query_graph,
+                                                                   log)
 
                 # Apply any kryptonite ("not") qedges
-                self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
-                                                 message.encountered_kryptonite_edges_info, response)
+                self._apply_any_kryptonite_edges(overarching_kg,
+                                                 message.query_graph,
+                                                 message.encountered_kryptonite_edges_info,
+                                                 response)
 
                 # Remove any paths that are now dead-ends
                 if inferred_qedge_keys and len(inferred_qedge_keys) == 1:
-
-                    # ======================================================================================
-                    # SAR: I commented out the code block below; I am assuming this is debug-only code
-                    #      code that was not intended to be used when ARAX-expand is running in production:
-                    # --------------------------------------------------------------------------------------
-                    # #### Write some state information to files for debugging
-                    # debug_filepath = os.path.dirname(os.path.abspath(__file__))
-                    # if hasattr(response, 'dtd_from_cache') and response.dtd_from_cache is True:
-                    #     debug_filepath += "/zz_cache_"
-                    # else:
-                    #     debug_filepath += "/zz_fresh_"
-                    # with open(debug_filepath + "query_graph.json", 'w') as outfile:
-                    #     print(f"*******line 564: message.query_graph={message.query_graph}", file=outfile)
-                    # with open(debug_filepath + "overarching_kg.json", 'w') as outfile:
-                    #     print(f"*******line 566: overarching_kg={overarching_kg}", file=outfile)
-                    # ======================================================================================
-
                     # message.query_graph is the original copy of the QG, unmodified
-                    overarching_kg = self._remove_dead_end_paths(message.query_graph, overarching_kg, response)
+                    overarching_kg = self._remove_dead_end_paths(message.query_graph,
+                                                                 overarching_kg,
+                                                                 response)
                 else:
                     # query_graph is the local copy of the QG that has been modified for use by Expand
-                    overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
+                    overarching_kg = self._remove_dead_end_paths(query_graph,
+                                                                 overarching_kg,
+                                                                 response)
                 if response.status != 'OK':
                     return response
 
@@ -802,6 +672,168 @@ class ARAXExpander:
                  f"({eu.get_printable_counts_by_qg_id(overarching_kg)})")
 
         return response
+
+    def _apply_knowledge_source_constraints(
+        self,
+        qedge_key: str,
+        query_graph: QueryGraph,
+        overarching_kg: QGOrganizedKnowledgeGraph,
+        log: ARAXResponse,
+    ) -> None:
+        log.debug("Handling any knowledge source constraints")
+        qedge = query_graph.edges[qedge_key]
+        allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
+        log.debug(f"KP allowlist is {allowlist}, denylist is {denylist}")
+        if qedge_key in overarching_kg.edges_by_qg_id:
+            kedges_to_remove = []
+            for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
+                edge_sources = {retrieval_source.resource_id for retrieval_source in kedge.sources} if kedge.sources else set()
+                if edge_sources:
+                    # always accept arax as a source
+                    if edge_sources == {"infores:arax"}:
+                        continue
+                    # Don't keep edges that ONLY come from excluded sources
+                    if edge_sources.issubset(denylist):
+                        kedges_to_remove.append(kedge_key)
+                        break
+                    # Only keep edges that come from at least ONE allowed source
+                    elif allowlist and not edge_sources.intersection(allowlist):
+                        kedges_to_remove.append(kedge_key)
+                        break
+            if kedges_to_remove:
+                log.debug(f"Removing {len(kedges_to_remove)} edges because they do not fulfill knowledge source constraint")
+                # remove kedges which have been determined to be constrained
+                for kedge_key in kedges_to_remove:
+                    if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
+                        del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
+
+
+    def _apply_qnode_post_filters(
+        self,
+        qedge_key: str,
+        query_graph: QueryGraph,
+        overarching_kg: QGOrganizedKnowledgeGraph,
+        log: ARAXResponse,
+    ) -> None:
+        qedge = query_graph.edges[qedge_key]
+        qnode_keys = {qedge.subject, qedge.object}
+        qnode_keys_with_answers = qnode_keys.intersection(set(overarching_kg.nodes_by_qg_id))
+        for qnode_key in qnode_keys_with_answers:
+            qnode = query_graph.nodes[qnode_key]
+            if qnode.constraints:
+                for constraint in qnode.constraints:
+                    if constraint.id == "biolink:highest_FDA_approval_status" and constraint.operator == "==" and constraint.value == "regular approval":
+                        log.info(f"Applying qnode {qnode_key} constraint: {'NOT ' if constraint._not else ''}"
+                                 f"biolink:highest_FDA_approval_status == regular approval")
+                        fda_approved_drug_ids = self._load_fda_approved_drug_ids()
+                        answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
+                        if constraint._not:
+                            nodes_to_remove = answer_node_ids.intersection(fda_approved_drug_ids)
+                        else:
+                            nodes_to_remove = answer_node_ids.difference(fda_approved_drug_ids)
+                        log.debug(f"Removing {len(nodes_to_remove)} nodes fulfilling {qnode_key} for FDA "
+                                  f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
+                        overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
+
+
+    def _handle_creative_treats_predicate_answers(
+        self,
+        qedge_key: str,
+        overarching_kg: QGOrganizedKnowledgeGraph,
+        query_graph: QueryGraph,
+        log: ARAXResponse,
+    ) -> None:
+        qedge = query_graph.edges[qedge_key]
+        # First remove any SemMedDB treats_or_applied-type edges with < 10 associated publications (not trustworthy)
+        edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
+                               if edge.predicate in self.treats_like_predicates and
+                               any(source.resource_id == "infores:semmeddb" for source in edge.sources) and
+                               [len(x.value) for x in edge.attributes if x.attribute_type_id == "biolink:publications"][0] < 10}
+        log.debug(f"Removing {len(edge_keys_to_remove)} semmeddb treats_or_applied-type edges with < 10 associated publications "
+                  f"fulfilling {qedge_key}")
+        for edge_key in edge_keys_to_remove:
+            del overarching_kg.edges_by_qg_id[qedge_key][edge_key]
+
+        # Use remaining treats-like edges as support for one merged 'treats' edge (per subj/obj pair)
+        higher_level_treats_edges = {edge_key: edge
+                                     for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
+                                     if edge.predicate in self.treats_like_predicates}
+        if higher_level_treats_edges:
+
+            higher_level_treats_edges_temp = {}
+            for edge_key_temp, edge_temp in higher_level_treats_edges.items():
+
+                # issue2634 - curated CTKP edges implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
+                if (edge_temp.predicate == "biolink:in_clinical_trials_for" and
+                    any(source.resource_id == "infores:multiomics-clinicaltrials" for source in edge_temp.sources) and
+                    len([x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"]) > 0):
+                    if [x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"][0]:
+                        higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+
+                # issue2634 - curated DAKP/FAERS edges implement elevation to treats prediction if and only if the applied_to_treat predicate has evidence count (N_cases) >10
+                elif (edge_temp.predicate == "biolink:applied_to_treat" and
+                    (any(source.resource_id == "infores:multiomics-drugapprovals" for source in edge_temp.sources) or any(source.resource_id == "infores:faers" for source in edge_temp.sources)) and
+                    len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:number_of_cases"]) > 0):
+                    if [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:number_of_cases"][0] > 24:
+                        higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+
+                # issue2634 - curated TMKP edges implement elevation to treats prediction if and only if the treats_or_applied_or_studied_to_treat predicate has evidence count (biolink:evidence_count) > 5
+                elif (edge_temp.predicate == "biolink:treats_or_applied_or_studied_to_treat" and
+                      any(source.resource_id == "infores:text-mining-provider-cooccurrence" for source in edge_temp.sources) and
+                    len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:agent_type" and x.value == "text_mining_agent"]) > 0 and
+                    len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:evidence_count"]) > 0):
+                    if [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:evidence_count"][0] > 5:
+                        higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+
+                # issue2634 - allow elevation to treats prediction for all curated CTD edges
+                elif any(source.resource_id == "infores:ctd" for source in edge_temp.sources):
+                    higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+
+                # issue2634 - SemMedDB treats_or_applied-type edges with >= 10 associated publications are elevated to treats prediction
+                elif (any(source.resource_id == "infores:semmeddb" for source in edge_temp.sources) and
+                    len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"]) > 0 and
+                    [len(x.value) for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"][0] >= 10):
+                        higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+
+                # issue2634 - for other non-treats edges, do not elevate to treats prediction
+                else:
+                    pass
+            higher_level_treats_edges = higher_level_treats_edges_temp
+
+            # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
+            virtual_qedge_key = f"creative_expand_treats_{qedge_key}"
+            virtual_qedge = QEdge(subject=qedge.subject,
+                                  object=qedge.object,
+                                  option_group_id=f"creative_expand_treats_group_{qedge_key}")
+            virtual_qedge.filled = True  # Resultify needs this flag
+            query_graph.edges[virtual_qedge_key] = virtual_qedge
+            overarching_kg.edges_by_qg_id[virtual_qedge_key] = {}
+
+            # Lump the higher-level treats edges together by subject/object
+            subj_obj_map = defaultdict(set)
+            for higher_treats_edge_key, higher_treats_edge in higher_level_treats_edges.items():
+                hash_key = (higher_treats_edge.subject, higher_treats_edge.object)
+                subj_obj_map[hash_key].add(higher_treats_edge_key)
+
+            for (subj_key, obj_key), higher_treats_edge_keys in subj_obj_map.items():
+                # Create a lumped edge to represent all of these edges
+                lumped_edge = Edge(subject=subj_key, object=obj_key, predicate="biolink:treats",
+                                   sources=[RetrievalSource(resource_id="infores:arax",
+                                                            resource_role="primary_knowledge_source")],
+                                   attributes=[Attribute(attribute_type_id="biolink:agent_type",
+                                                         value="computational_model",
+                                                         attribute_source="infores:arax"),
+                                               Attribute(attribute_type_id="biolink:knowledge_level",
+                                                         value="prediction",
+                                                         attribute_source="infores:arax")])
+                lumped_edge_key = f"creative_expand_treats_edge:{subj_key}--treats--{obj_key}--infores:arax"
+                overarching_kg.edges_by_qg_id[qedge_key][lumped_edge_key] = lumped_edge
+
+                # Move the higher-level treats edges so that they fulfill the virtual qedge instead
+                for higher_treats_edge_key in higher_treats_edge_keys:
+                    higher_treats_edge = overarching_kg.edges_by_qg_id[qedge_key][higher_treats_edge_key]
+                    overarching_kg.edges_by_qg_id[virtual_qedge_key][higher_treats_edge_key] = higher_treats_edge
+                    del overarching_kg.edges_by_qg_id[qedge_key][higher_treats_edge_key]
 
     @staticmethod
     def get_inferred_answers(inferred_qedge_keys: list[str],
@@ -1371,8 +1403,10 @@ class ARAXExpander:
                   f"{kryptonite_qedge_key} kryptonite edges")
 
     @staticmethod
-    def _apply_any_kryptonite_edges(organized_kg: QGOrganizedKnowledgeGraph, full_query_graph: QueryGraph,
-                                    encountered_kryptonite_edges_info: dict[str, dict[str, set[str]]], log):
+    def _apply_any_kryptonite_edges(
+            organized_kg: QGOrganizedKnowledgeGraph,
+            full_query_graph: QueryGraph,
+            encountered_kryptonite_edges_info: dict[str, dict[str, set[str]]], log):
         """
         This function breaks any paths in the KG for which a "not" (exclude=True) condition has been met; the remains
         of the broken paths not used in other paths in the KG are cleaned up during later pruning of dead ends. The
@@ -1424,8 +1458,13 @@ class ARAXExpander:
                 log.warning(f"All {qedge_key} edges have been deleted!")
 
     @staticmethod
-    def _prune_kg(qnode_key_to_prune: str, prune_threshold: int, kg: QGOrganizedKnowledgeGraph,
-                  qg: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+    def _prune_kg(
+            qnode_key_to_prune: str,
+            prune_threshold: int,
+            kg: QGOrganizedKnowledgeGraph,
+            qg: QueryGraph,
+            log: ARAXResponse
+    ) -> QGOrganizedKnowledgeGraph:
         log.info(f"Pruning back {qnode_key_to_prune} nodes because there are more than {prune_threshold}")
         kg_copy = copy.deepcopy(kg)
         qg_for_resultify = copy.deepcopy(qg)
@@ -1471,7 +1510,11 @@ class ARAXExpander:
         return kg
 
     @staticmethod
-    def _remove_dead_end_paths(expands_qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+    def _remove_dead_end_paths(
+            expands_qg: QueryGraph,
+            kg: QGOrganizedKnowledgeGraph,
+            log: ARAXResponse,
+    ) -> QGOrganizedKnowledgeGraph:
         """
         This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         found in the last expansion will connect to edges in the next one)
