@@ -67,7 +67,7 @@ def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]
     node_keys_by_qg_key: dict[str, set[str]] = dict()
     if knowledge_graph.nodes:
         for key, node in knowledge_graph.nodes.items():
-            for qnode_key in node.qnode_keys:
+            for qnode_key in getattr(node, 'qnode_keys', []):
                 if qnode_key not in node_keys_by_qg_key:
                     node_keys_by_qg_key[qnode_key] = set()
                 node_keys_by_qg_key[qnode_key].add(key)
@@ -79,7 +79,7 @@ def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]
     edge_keys_by_qg_key: dict[str, set[str]] = dict()
     if knowledge_graph.edges:
         for key, edge in knowledge_graph.edges.items():
-            for qedge_key in edge.qedge_keys:
+            for qedge_key in getattr(edge, 'qedge_keys', []):
                 if qedge_key not in edge_keys_by_qg_key:
                     edge_keys_by_qg_key[qedge_key] = set()
                 edge_keys_by_qg_key[qedge_key].add(key)
