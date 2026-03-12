@@ -9,7 +9,6 @@ import os
 from typing import List, Dict, Optional
 import pytest
 import yaml
-import pprint
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
@@ -1675,11 +1674,10 @@ def test_issue_2662():
     resultifier.apply(response, {})
     result_message = response.envelope.message
     result_message_bi = result_message.to_dict()
-    aux_graphs = result_message.auxiliary_graphs
-    assert len(aux_graphs) > 0
-    pprint.pprint(result_message_bi['auxiliary_graphs'])
     kpic.forced_kp_version = saved_trapi_version
     kpic.refresh_kp_info_caches()
+    aux_graphs = result_message.auxiliary_graphs
+    assert aux_graphs is not None and len(aux_graphs) > 0
     ARAXResponse.output = saved_arax_response_output
 
 if __name__ == "__main__":
