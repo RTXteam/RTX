@@ -249,13 +249,13 @@ def convert_standard_kg_to_qg_organized_kg(standard_kg: KnowledgeGraph) -> QGOrg
     organized_kg = QGOrganizedKnowledgeGraph()
     if standard_kg.nodes:
         for node_key, node in standard_kg.nodes.items():
-            for qnode_key in node.qnode_keys:
+            for qnode_key in getattr(node, 'qnode_keys', []):
                 if qnode_key not in organized_kg.nodes_by_qg_id:
                     organized_kg.nodes_by_qg_id[qnode_key] = dict()
                 organized_kg.nodes_by_qg_id[qnode_key][node_key] = node
     if standard_kg.edges:
         for edge_key, edge in standard_kg.edges.items():
-            for qedge_key in edge.qedge_keys:
+            for qedge_key in getattr(edge, 'qedge_keys', []):
                 if qedge_key not in organized_kg.edges_by_qg_id:
                     organized_kg.edges_by_qg_id[qedge_key] = dict()
                 organized_kg.edges_by_qg_id[qedge_key][edge_key] = edge
