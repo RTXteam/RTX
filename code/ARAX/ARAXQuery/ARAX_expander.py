@@ -745,10 +745,27 @@ class ARAXExpander:
     ) -> None:
         qedge = query_graph.edges[qedge_key]
         # First remove any SemMedDB treats_or_applied-type edges with < 10 associated publications (not trustworthy)
-        edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
-                               if edge.predicate in self.treats_like_predicates and
-                               any(source.resource_id == "infores:semmeddb" for source in edge.sources) and
-                               [len(x.value) for x in edge.attributes if x.attribute_type_id == "biolink:publications"][0] < 10}
+        edge_keys_to_remove = {
+            edge_key
+            for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
+            if edge.predicate in self.treats_like_predicates
+            and any(source.resource_id == "infores:semmeddb" for source in edge.sources)
+            and (
+                (pub_count := next(
+                    (
+                        len(x.value)
+                        for x in (edge.attributes or [])
+                        if x.attribute_type_id == "biolink:publications"
+                    ),
+                    None,
+                )) is not None
+                and pub_count < 10
+            )
+        }
+        # edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
+        #                        if edge.predicate in self.treats_like_predicates and
+        #                        any(source.resource_id == "infores:semmeddb" for source in edge.sources) and
+        #                        [len(x.value) for x in edge.attributes if x.attribute_type_id == "biolink:publications"][0] < 10}
         log.debug(f"Removing {len(edge_keys_to_remove)} semmeddb treats_or_applied-type edges with < 10 associated publications "
                   f"fulfilling {qedge_key}")
         for edge_key in edge_keys_to_remove:
