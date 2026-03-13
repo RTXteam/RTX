@@ -25,9 +25,13 @@ from openapi_server.models.attribute import Attribute
 from openapi_server.models.query_graph import QueryGraph
 
 
-def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
-                                       kg_should_be_incomplete=False, debug=False, should_throw_error=False,
-                                       error_code: Optional[str] = None, timeout: Optional[int] = None,
+def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None,
+                                       json_query: Optional[dict] = None,
+                                       kg_should_be_incomplete=False,
+                                       debug=False,
+                                       should_throw_error=False,
+                                       error_code: Optional[str] = None,
+                                       timeout: Optional[int] = None,
                                        return_message: bool = False) -> tuple:
     # Run the query
     araxq = ARAXQuery()
@@ -1116,7 +1120,6 @@ def test_xdtd_expand():
                 assert support_graph_attribute.value[0] in message.auxiliary_graphs
 
 
-@pytest.mark.slow
 def test_xdtd_different_categories():
     query = {
             "nodes": {
@@ -1663,22 +1666,21 @@ def test_issue_2662():
             }
         }
     }
-    query_graph = QueryGraph.from_dict(query_graph_dict)
-    response = ARAXResponse(status='OK',
-                            logging_level=ARAXResponse.DEBUG)
-    ARAXMessenger().create_envelope(response)
-    response.envelope.message.query_graph = query_graph
-    expander = ARAXExpander()
-    expander.apply(response, {})
-    resultifier = ARAXResultify()
-    resultifier.apply(response, {})
-    result_message = response.envelope.message
-    result_message_bi = result_message.to_dict()
+    envelope_dict = {
+        "message": {
+            "query_graph": query_graph_dict
+        }
+    }
+    message = ARAXQuery().query_return_message(envelope_dict).message
     kpic.forced_kp_version = saved_trapi_version
     kpic.refresh_kp_info_caches()
-    aux_graphs = result_message.auxiliary_graphs
-    assert aux_graphs is not None and len(aux_graphs) > 0
     ARAXResponse.output = saved_arax_response_output
+    aux_graphs = message.auxiliary_graphs
+    assert aux_graphs is not None and len(aux_graphs) > 0
+    kg = message.knowledge_graph
+    assert len(kg.nodes) > 3
+    assert len(kg.edges) > 3
+
 
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
