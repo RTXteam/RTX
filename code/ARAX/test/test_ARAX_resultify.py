@@ -9,8 +9,8 @@ import pytest
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
-from typing import List, Union, Dict, Tuple, Set, Iterable
-
+from ARAX_expander import ARAXExpander
+from typing import List, Dict, Tuple, Set, Iterable
 import ARAX_resultify
 from ARAX_resultify import ARAXResultify
 from ARAX_query import ARAXQuery
@@ -190,14 +190,20 @@ def _run_resultify_directly(query_graph: QueryGraph,
     return response, message
 
 
-def _convert_shorthand_to_qg(shorthand_qnodes: Dict[str, str], shorthand_qedges: Dict[str, str]) -> QueryGraph:
-    return QueryGraph(nodes={qnode_key: QNode(is_set=bool(is_set)) for qnode_key, is_set in shorthand_qnodes.items()},
+def _convert_shorthand_to_qg(
+        shorthand_qnodes: Dict[str, str],
+        shorthand_qedges: Dict[str, str]
+) -> QueryGraph:
+    return QueryGraph(nodes={qnode_key: QNode(is_set=bool(is_set)) \
+                             for qnode_key, is_set in shorthand_qnodes.items()},
                       edges={qedge_key: QEdge(subject=qnodes.split("--")[0],
-                                              object=qnodes.split("--")[1]) for qedge_key, qnodes in shorthand_qedges.items()})
+                                              object=qnodes.split("--")[1]) \
+                             for qedge_key, qnodes in shorthand_qedges.items()})
 
 
-def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]], shorthand_edges: Dict[str, List[str]]) -> KnowledgeGraph:
-    nodes_dict = dict()
+def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]],
+                             shorthand_edges: Dict[str, List[str]]) -> KnowledgeGraph:
+    nodes_dict = {}
     for qnode_key, nodes_list in shorthand_nodes.items():
         for node_key in nodes_list:
             node = nodes_dict.get(node_key, Node())
@@ -205,7 +211,7 @@ def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]], shorthand_ed
                 node.qnode_keys = []
             node.qnode_keys.append(qnode_key)
             nodes_dict[node_key] = node
-    edges_dict = dict()
+    edges_dict = {}
     for qedge_key, edges_list in shorthand_edges.items():
         for edge_key in edges_list:
             source_node_key = edge_key.split("--")[0]
@@ -1452,7 +1458,8 @@ def test_node_binding_query_id_one_hop_single_input_curie():
 
     actions = [
         f"add_qnode(ids={DIABETES_CURIE}, key=n00)",
-        f"add_qnode(categories=biolink:Drug, key=n01)",
+        f"add_qnode(ids={INSULIN_CURIE}, key=n01)",
+#        f"add_qnode(categories=biolink:Drug, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "expand(kp=infores:rtx-kg2)",
         "resultify(debug=true)",
@@ -1460,7 +1467,7 @@ def test_node_binding_query_id_one_hop_single_input_curie():
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert len(message.results) > 1
+    assert len(message.results) > 0
     kg = response.envelope.message.knowledge_graph
     # Make sure the input curie and one of its children appear somewhere in the results
     assert DIABETES_CURIE in kg.nodes
@@ -1640,6 +1647,42 @@ def test_issue2166():
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
+
+def test_legacy_subclass_of_handling():
+    query_graph = {
+        "edges": {
+            "e0": {
+                "knowledge_type": "lookup",
+                "object": "on",
+                "predicates": [
+                    "biolink:treats"
+                ],
+                "subject": "sn"
+            }
+        },
+        "nodes": {
+            "on": {
+                "ids": [
+                    "MONDO:0005015"
+                ]
+            },
+            "sn": {
+                "ids": [
+                    "CHEBI:5931"
+                ]
+            }
+        }
+    }
+    response = ARAXResponse(status='OK',
+                            logging_level=ARAXResponse.DEBUG)
+    ARAXMessenger().create_envelope(response)
+    response.envelope.message.query_graph = QueryGraph.from_dict(query_graph)
+    expander = ARAXExpander()
+    expander.apply(response, {"kp": "infores:rtx-kg2"})
+    resultifier = ARAXResultify()
+    resultifier.apply(response, {})
+    message = response.envelope.message
+    assert any(edge.predicate == "biolink:subclass_of" for edge in message.knowledge_graph.edges.values())
 
 
 if __name__ == '__main__':

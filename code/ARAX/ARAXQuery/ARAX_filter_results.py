@@ -26,7 +26,7 @@ class ARAXFilterResults:
             'sort_by_node_count',
             'sort_by_score'
         }
-        self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
+        self.report_stats = False  # Set this to False when ready to go to production, this is only for debugging purposes
 
         #Parameter descriptions
         self.edge_attribute_info = {
@@ -350,6 +350,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
         #### Return the response and done
         if self.report_stats:  # helper to report information in debug if class self.report_stats = True
             self.response = self.report_response_stats(self.response)
+
         return self.response
 
     def __sort_by_edge_attribute(self, describe=False):

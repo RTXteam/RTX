@@ -15,6 +15,7 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.message import Message
 from openapi_server.models.response import Response
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_resultify import ARAXResultify
@@ -35,10 +36,12 @@ class QGOrganizedKnowledgeGraph:
     def __init__(self,
                  nodes: Optional[dict[str, dict[str, Node]]] = None,
                  edges: Optional[dict[str, dict[str, Edge]]] = None,
-                 unbound_nodes: Optional[dict[str, Node]] = None):
-        self.nodes_by_qg_id = nodes if nodes else dict()
-        self.edges_by_qg_id = edges if edges else dict()
-        self.unbound_nodes = unbound_nodes if unbound_nodes else dict()
+                 unbound_nodes: Optional[dict[str, Node]] = None,
+                 unbound_edges: Optional[dict[str, Edge]] = None):
+        self.nodes_by_qg_id = nodes if nodes else {}
+        self.edges_by_qg_id = edges if edges else {}
+        self.unbound_nodes = unbound_nodes if unbound_nodes else {}
+        self.unbound_edges = unbound_edges if unbound_edges else {}
 
     def __str__(self):
         return f"nodes_by_qg_id:\n{self.nodes_by_qg_id}\nedges_by_qg_id:\n{self.edges_by_qg_id}\nunbound_nodes:\n{self.unbound_nodes}"
@@ -246,13 +249,13 @@ def convert_standard_kg_to_qg_organized_kg(standard_kg: KnowledgeGraph) -> QGOrg
     organized_kg = QGOrganizedKnowledgeGraph()
     if standard_kg.nodes:
         for node_key, node in standard_kg.nodes.items():
-            for qnode_key in node.qnode_keys:
+            for qnode_key in getattr(node, 'qnode_keys', []):
                 if qnode_key not in organized_kg.nodes_by_qg_id:
                     organized_kg.nodes_by_qg_id[qnode_key] = dict()
                 organized_kg.nodes_by_qg_id[qnode_key][node_key] = node
     if standard_kg.edges:
         for edge_key, edge in standard_kg.edges.items():
-            for qedge_key in edge.qedge_keys:
+            for qedge_key in getattr(edge, 'qedge_keys', []):
                 if qedge_key not in organized_kg.edges_by_qg_id:
                     organized_kg.edges_by_qg_id[qedge_key] = dict()
                 organized_kg.edges_by_qg_id[qedge_key][edge_key] = edge
@@ -275,6 +278,10 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
             else:
                 edge.qedge_keys = [qedge_key]
                 standard_kg.edges[edge_key] = edge
+    for node_key, node in organized_kg.unbound_nodes.items():
+        standard_kg.nodes[node_key] = node
+    for edge_key, edge in organized_kg.unbound_edges.items():
+        standard_kg.edges[edge_key] = edge
     return standard_kg
 
 
@@ -643,8 +650,14 @@ def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool
     return basic_format_met and qnode_is_valid
 
 
-def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse, overlay_fet: bool = False,
-                   rank_results: bool = False, qnode_key_to_prune: Optional[str] = None,) -> Response:
+def create_results(
+        qg: QueryGraph,
+        kg: QGOrganizedKnowledgeGraph,
+        log: ARAXResponse,
+        overlay_fet: bool = False,
+        rank_results: bool = False,
+        qnode_key_to_prune: str | None = None,
+) -> Response:
     regular_format_kg = convert_qg_organized_kg_to_standard_kg(kg)
     resultifier = ARAXResultify()
     prune_response = ARAXResponse()
@@ -708,7 +721,8 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
 
     # Create results and rank them as appropriate
     log.debug("Calling Resultify from Expand..")
-    resultifier.apply(prune_response, {})
+    resultifier.response = prune_response
+    resultifier.resultify(mode='ARAX')
     if rank_results:
         try:
             log.debug("Ranking Expand's intermediate pruning results")
