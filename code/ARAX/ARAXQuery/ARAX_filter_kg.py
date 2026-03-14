@@ -30,7 +30,7 @@ class ARAXFilterKG:
             'remove_orphaned_nodes',
             'remove_general_concept_nodes'
         }
-        self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
+        self.report_stats = False  # Set this to False when ready to go to production, this is only for debugging purposes
 
         #parameter descriptions
         self.edge_type_info = {
