@@ -463,7 +463,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 response.debug(f"Query graph is {message.query_graph}")
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
-                response.debug(f"Number of nodes in KG by type is {Counter([next(x.categories, None) \
+                response.debug(f"Number of nodes in KG by type is {Counter([next(iter(x.categories), None) \
                 for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
                 #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes.values()])}")  # don't really need to worry about this now
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
