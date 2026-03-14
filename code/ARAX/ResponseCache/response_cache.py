@@ -50,7 +50,7 @@ from openapi_server.models.response import Response as Envelope
 
 # only certain versions of TRAPI can be validated; place default in position [0]
 valid_trapi_versions = ['1.6.0', '1.5.0']
-biolink_version = '4.2.1'
+biolink_version = '4.3.6'
 
 try:
     validator_version = f"{metadata.version('reasoner-validator')}"
