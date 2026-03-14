@@ -1,15 +1,14 @@
 import sys
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
-
 import os
 import json
 import ast
-import re
-import numpy as np
 from ARAX_response import ARAXResponse
 import traceback
 from collections import Counter
 from collections.abc import Hashable
+
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
 
 class ARAXFilterKG:
 
@@ -464,7 +463,8 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 response.debug(f"Query graph is {message.query_graph}")
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
-                response.debug(f"Number of nodes in KG by type is {Counter([x.categories[0] for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
+                response.debug(f"Number of nodes in KG by type is {Counter([next(iter(x.categories), None) \
+                for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
                 #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes.values()])}")  # don't really need to worry about this now
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
                 response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges.values()])}")
@@ -506,16 +506,16 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
                 return -1
-            elif type(item) == list or type(item) == set:
+            elif type(item) is list or type(item) is set:
                     for item_val in item:
                         if item_val not in allowable_parameters[key]:
                             self.response.warning(
                                 f"Supplied value {item_val} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
                             return -1
             elif item not in allowable_parameters[key]:
-                if any([type(x) == float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
+                if any([type(x) is float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
                     continue
-                elif any([type(x) == int for x in allowable_parameters[key]]):
+                elif any([type(x) is int for x in allowable_parameters[key]]):
                     continue
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.warning(
@@ -642,7 +642,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             # check if all required parameters are provided
             if 'edge_attribute' not in parameters.keys():
-                self.response.error(f"The parameter edge_attribute must be provided to remove edges by discrete attribute, allowable parameters include: {set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str])}")
+                self.response.error(f"The parameter edge_attribute must be provided to remove edges by discrete attribute, allowable parameters include: {set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) is str])}")
             if self.response.status != 'OK':
                 return self.response
             known_values = set()
@@ -650,11 +650,11 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 for edge in message.knowledge_graph.edges.values():
                     if hasattr(edge, parameters['edge_attribute']):
                         value = edge.to_dict()[parameters['edge_attribute']]
-                        if type(value) == str:
+                        if type(value) is str:
                             known_values.add(value)
-                        elif type(value) == list:
+                        elif type(value) is list:
                             for x in value:
-                                if type(x) == str:
+                                if type(x) is str:
                                     known_values.add(x)
             known_attributes = set()
             provided_by_attributes = {'knowledge_source',
@@ -685,7 +685,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                             known_attributes = known_attributes.union(provided_by_attributes)
 
             allowable_parameters = {'action': {'remove_edges_by_discrete_attribute'},
-                                    'edge_attribute': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str or type(val) == list]).union(known_attributes),
+                                    'edge_attribute': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) is str or type(val) is list]).union(known_attributes),
                                     'value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
@@ -805,7 +805,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code=error_type.__name__)
-            self.response.error(f"parameter 'threshold' must be a float")
+            self.response.error("parameter 'threshold' must be a float")
         if self.response.status != 'OK':
             return self.response
 
@@ -924,7 +924,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"parameter 'threshold' must be a float")
+                self.response.error("parameter 'threshold' must be a float")
             if self.response.status != 'OK':
                 return self.response
             supplied_threshhold = edge_params['threshold']
@@ -1079,7 +1079,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"parameter 'threshold' must be a float")
+                self.response.error("parameter 'threshold' must be a float")
             if self.response.status != 'OK':
                 return self.response
             supplied_threshhold = edge_params['threshold']
@@ -1236,7 +1236,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"parameter 'n' must be an integer")
+                self.response.error("parameter 'n' must be an integer")
             if self.response.status != 'OK':
                 return self.response
             supplied_threshhold = edge_params['threshold']
@@ -1366,7 +1366,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             # check if all required parameters are provided
             if 'node_property' not in parameters.keys():
-                self.response.error(f"The parameter node_property must be provided to remove nodes by propery, allowable parameters include: {set([key for x in self.message.knowledge_graph.nodes.values() for key, val in x.to_dict().items() if type(val) == str])}")
+                self.response.error(f"The parameter node_property must be provided to remove nodes by propery, allowable parameters include: {set([key for x in self.message.knowledge_graph.nodes.values() for key, val in x.to_dict().items() if type(val) is str])}")
             if self.response.status != 'OK':
                 return self.response
             known_values = set()
@@ -1374,10 +1374,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 for node in message.knowledge_graph.nodes.values():
                     if hasattr(node, parameters['node_property']):
                         value = node.to_dict()[parameters['node_property']]
-                        if type(value) == str:
+                        if type(value) is str:
                             known_values.add(value)
             allowable_parameters = {'action': {'remove_nodes_by_property'},
-                                    'node_property': set([key for x in self.message.knowledge_graph.nodes.values() for key, val in x.to_dict().items() if type(val) == str]),
+                                    'node_property': set([key for x in self.message.knowledge_graph.nodes.values() for key, val in x.to_dict().items() if type(val) is str]),
                                     'property_value': known_values
                                 }
         else:
@@ -1423,12 +1423,12 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         Allowable parameters: {perform_action': boolean}
         :return:
         """
-        message = self.message
-        parameters = self.parameters
+
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'remove_general_concept_nodes'},
-                                    'perform_action': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
-                                   }
+        allowable_parameters = {
+            'action': {'remove_general_concept_nodes'},
+            'perform_action': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
+        }
 
         # A little function to describe what this thing does
         if describe:
@@ -1602,4 +1602,5 @@ def main():
     print(sorted(vals))
 
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()
