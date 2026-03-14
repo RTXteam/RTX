@@ -734,7 +734,7 @@ def test_issue_1848():
                             "subject": "n0",
                             "object": "n1",
                             "predicates": [
-                                "biolink:has_real_world_evidence_of_association_with"
+                                "biolink:associated_with"
                             ]
                         },
                         "e1": {

@@ -397,7 +397,7 @@ def main():
     #predicates = ksm.get_kg_predicates()
     #print(json.dumps(predicates,sort_keys=True,indent=2))
 
-    meta_knowledge_graph = ksm.get_meta_knowledge_graph(format='simple')
+    meta_knowledge_graph = ksm.get_meta_knowledge_graph(format_='simple')
     print(json.dumps(meta_knowledge_graph,sort_keys=True,indent=2))
 
 if __name__ == "__main__": main()

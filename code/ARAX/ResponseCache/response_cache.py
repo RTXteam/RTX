@@ -50,7 +50,7 @@ from openapi_server.models.response import Response as Envelope
 
 # only certain versions of TRAPI can be validated; place default in position [0]
 valid_trapi_versions = ['1.6.0', '1.5.0']
-biolink_version = '4.2.1'
+biolink_version = '4.3.6'
 
 try:
     validator_version = f"{metadata.version('reasoner-validator')}"
@@ -286,7 +286,7 @@ class ResponseCache:
                 s3.Object(bucket_name, response_filename).put(Body=serialized_response)
                 t1 = timeit.default_timer()
 
-                response.info(f"INFO: Successfully wrote {response_filename} to {region_name} S3 bucket {bucket_name} in {t1-t0} seconds")
+                response.info(f"Successfully wrote {response_filename} to {region_name} S3 bucket {bucket_name} in {t1-t0} seconds")
                 succeeded_to_s3 = True
 
             except:
@@ -651,7 +651,10 @@ class ResponseCache:
                     return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
                 response_dict['ars_host'] = ars_host
-                response_dict['ui_host'] = ars_host.replace('ars','ui').replace('-prod','')
+                if "-dev" in ars_host:
+                    response_dict['ui_host'] = 'transltr-bma-ui-dev.ncats.io'
+                else:
+                    response_dict['ui_host'] = ars_host.replace('ars','ui').replace('-prod','')
 
                 return response_dict
 

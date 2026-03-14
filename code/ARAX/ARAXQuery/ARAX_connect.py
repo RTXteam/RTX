@@ -381,10 +381,10 @@ class ARAXConnect:
                 src_pinned_node=src_pinned_node,
                 dst_pinned_node=dst_pinned_node,
                 hops_numbers=self.parameters['max_path_length'],
-                max_hops_to_explore=4,
+                max_hops_to_explore=self.parameters['max_path_length'],
                 limit=max_pathfinder_paths,
-                prune_top_k=50,
-                degree_threshold=30000,
+                prune_top_k=200,
+                degree_threshold=10000000,
                 category_constraints=descendants,
             )
         except Exception as e:
@@ -438,7 +438,7 @@ class ARAXConnect:
 
         node_bindings = {}
         for key, value in result["node_bindings"].items():
-            node_bindings[key] = [NodeBinding(id=value[0]['id'])]
+            node_bindings[key] = [NodeBinding(id=value[0]['id'], attributes=[])]
         self.response.envelope.message.results.append(
             Result(
                 id=result["id"],

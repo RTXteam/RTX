@@ -87,7 +87,7 @@ def test_gene_to_pathway_issue_9():
             "query_graph": {
                 "nodes": {
                     "n0": {
-                        "ids": ["NCBIGENE:1017"],
+                        "ids": ["NCBIGene:1017"],
                         "categories": ["biolink:Gene"]
                     },
                     "n1": {
