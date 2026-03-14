@@ -21,9 +21,6 @@ from cache_control_helper import CacheControlHelper
 import sys
 import json
 
-from QueryPubChem import QueryPubChem
-
-
 class QueryMyChem:
     TIMEOUT_SEC = 120
     API_BASE_URL = 'http://mychem.info/v1'
@@ -201,7 +198,6 @@ class QueryMyChem:
             return meddra_code_set
         if chembl_id[:7].upper() == "CHEMBL:":
             chembl_id = "CHEMBL" + chembl_id[7:]
-        # pubchem_id = QueryPubChem.get_pubchem_id_for_chembl_id(chembl_id)
         pubchem_id = QueryMyChem.get_pubchem_cid(chembl_id)
         if pubchem_id is None:
             return meddra_code_set
