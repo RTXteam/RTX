@@ -1170,8 +1170,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
         # Programmatically generating an informative description for each result
         # seems difficult, but having something non-None is required by the
-        # database.  Just put in a placeholder for now, as is done by the
-        # QueryGraphReasoner
+        # database.  Just put in a placeholder for now.
         result.description = "No description available"  # see issue 642
 
         results.append(result)
