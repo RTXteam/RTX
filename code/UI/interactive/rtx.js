@@ -108,6 +108,7 @@ function main() {
     var pks = getQueryVariable("latest") || null;
     var sys = getQueryVariable("systest") || null;
     var kpc = getQueryVariable("kpcache") || null;
+    var upt = getQueryVariable("uptime") || null;
     var sai = getQueryVariable("smartapi") || getQueryVariable("smartAPI") || null;
 
     retrieveTestRunnerResultsList(sys);
@@ -164,6 +165,10 @@ function main() {
     else if (kpc) {
         tab = "kpcache";
         retrieveKPCacheInfo();
+    }
+    else if (upt) {
+        tab = "uptime";
+	retrieveUptimeInfo();
     }
     openSection(tab);
     dragElement(document.getElementById('nodeeditor'));
@@ -991,7 +996,7 @@ async function sendSyn() {
 	table.className = 'sumtab';
 	tr = document.createElement("tr");
 	for (var head of ["Identifier","Label","Category","KG2pre","KG2pre Name","KG2pre Category","SRI_NN","SRI Name","SRI Category"] ) {
-	    td = document.createElement("th")
+	    td = document.createElement("th");
 	    td.append(head);
 	    tr.append(td);
 	}
@@ -999,14 +1004,14 @@ async function sendSyn() {
 	for (var syn of allweknow[word].nodes) {
 	    tr = document.createElement("tr");
 	    tr.className = 'hoverable';
-	    td = document.createElement("td")
+	    td = document.createElement("td");
 	    td.append(link_to_identifiers_dot_org(syn.identifier));
 	    td.append(syn.identifier);
 	    tr.append(td);
-	    td = document.createElement("td")
+	    td = document.createElement("td");
 	    td.append(syn.label);
 	    tr.append(td);
-	    td = document.createElement("td")
+	    td = document.createElement("td");
 	    td.append(syn.category);
 	    tr.append(td);
 
@@ -3299,6 +3304,7 @@ function filter_results(which, what="CURRENT", only=false) {
 }
 
 function display_filternodes(howmany=null) {
+    document.getElementById('nodefilter_div').innerHTML = '';
     document.getElementById('nodefilter_div').style.gridTemplateRows = 'repeat('+Math.ceil(Object.keys(all_nodes).length/5)+', auto)';
     for (let fnode of Object.keys(all_nodes).sort((a, b) => all_nodes[a]['name'].localeCompare(all_nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
 	let htmlnode;
@@ -7664,6 +7670,251 @@ function retrieveKPInfo() {
 }
 
 
+function retrieveUptimeInfo() {
+    document.getElementById("server_uptime_container").innerHTML = '';
+
+    var uptime_node = document.getElementById("uptime_container");
+    uptime_node.innerHTML = '';
+    uptime_node.className = '';
+
+    var wspan = document.getElementById("uptime_wait");
+    wspan.innerHTML = '';
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginRight = "10px";
+    wspan.append(wait);
+    wspan.append('Loading...');
+
+    fetch("https://uptime.rtx.ai/status/")
+        .then(response => {
+            if (response.ok) return response.json();
+            else throw new Error('Something went wrong with UPTIME');
+        })
+        .then(data => {
+            wspan.innerHTML = '';
+
+            var table = document.createElement("table");
+            table.className = 'sumtab';
+            var tr = document.createElement("tr");
+            var td;
+	    for (var head of ["Endpoint (click for more info)","Status","Status Since","(Duration)","Code Version"] ) {
+		td = document.createElement("th");
+		td.append(head);
+		tr.append(td);
+            }
+            table.append(tr);
+
+            for (let server of data) {
+		tr = document.createElement("tr");
+
+		for (var field of ["url","is_up","last_state_change_str","last_state_change_ts","code_version"] ) {
+                    td = document.createElement("td");
+		    if (field == "is_up") {
+                        var span = document.createElement("span");
+                        span.style.whiteSpace = "nowrap";
+			if (server[field]) {
+                            span.className = 'qprob p9';
+			    span.innerHTML = '&check;';
+			}
+                        else {
+                            span.className = 'qprob p1';
+			    span.innerHTML = '&cross;';
+			}
+			span.title = "Up: " + server[field];
+                        td.append(span);
+		    }
+                    else if (field == "code_version") {
+			td.style.fontFamily = 'consolas';
+			td.innerHTML = server[field].replaceAll("\n\n","<br>");
+		    }
+                    else if (field == "last_state_change_ts") {
+			var since = Date.now()/1000 - server[field];
+			const days = Math.floor(since / 86400);
+			since-= days * 86400;
+			const hours = Math.floor(since / 3600) % 24;
+			since -= hours * 3600;
+			const minutes = Math.floor(since / 60) % 60;
+			//since -= minutes * 60;
+			//const seconds = Math.floor(since % 60);
+
+			td.append(`(${days}d, ${hours}h, ${minutes}m)`);
+		    }
+		    else {
+			if (field == "url") {
+			    td.className = 'attvalue linklike';
+			    td.title = "Click for more info";
+			    td.onclick = function() { retrieveServerInfo(server.id); };
+			}
+			td.append(server[field]);
+		    }
+		    tr.append(td);
+		}
+		table.append(tr);
+	    }
+
+	    uptime_node.append(document.createElement("br"));
+	    uptime_node.append(table);
+	    uptime_node.append(document.createElement("br"));
+	    uptime_node.append(document.createElement("br"));
+	})
+        .catch(error => {
+            wspan.innerHTML = '';
+            uptime_node.className = "error";
+	    uptime_node.append(document.createElement("br"));
+	    uptime_node.append(document.createElement("br"));
+            uptime_node.append(error);
+	    uptime_node.append(document.createElement("br"));
+            console.error(error);
+        });
+
+}
+
+function retrieveServerInfo(server_id=null) {
+    if (!server_id) return;
+
+    var server_info = document.getElementById("server_uptime_container");
+    server_info.innerHTML = '';
+
+    var div = document.createElement("div");
+    div.className = "statushead";
+    div.append("Server Info");
+    server_info.append(div);
+
+    div = document.createElement("div");
+    div.className = "status";
+    server_info.append(div);
+
+    var wspan = document.getElementById("uptime_wait");
+    wspan.innerHTML = '';
+    var wait = getAnimatedWaitBar("100px");
+    wait.style.marginRight = "10px";
+    wspan.append(wait);
+    wspan.append('Loading...');
+
+    fetch("https://uptime.rtx.ai/api/monitor/"+server_id)
+        .then(response => {
+            if (response.ok) return response.json();
+            else throw new Error('Something went wrong with UPTIME MONITOR');
+        })
+        .then(data => {
+            wspan.innerHTML = '';
+
+            var table = document.createElement("table");
+            table.className = 'stattab';
+            var tr = document.createElement("tr");
+            var td = document.createElement("th");
+            td.colSpan = "2";
+            td.append("Server Stats");
+            tr.append(td);
+            table.append(tr);
+
+            for (var field in data) {
+                if (typeof data[field] != 'string' && typeof data[field] != 'number' && typeof data[field] != 'boolean' || field == 'code_version')
+		    continue;
+
+		tr = document.createElement("tr");
+		td = document.createElement("td");
+                td.style.textTransform = 'capitalize';
+                td.append(field.replaceAll("_"," "));
+		tr.append(td);
+
+                td = document.createElement("td");
+                td.append(data[field]);
+                tr.append(td);
+
+		table.append(tr);
+	    }
+            div.append(table);
+            div.append(document.createElement("br"));
+
+	    table = document.createElement("table");
+	    table.className = 'sumtab';
+	    div.append(table);
+
+	    tr = document.createElement("tr");
+            for (var head of ["timestamp","Status Code","Response Time (ms)"] ) {
+                td = document.createElement("th");
+                td.append(head);
+                tr.append(td);
+            }
+            table.append(tr);
+
+            for (var server of data.recent_checks.reverse()) {
+                tr = document.createElement("tr");
+
+                for (var field of ["timestamp","status_code","response_time_ms"] ) {
+                    td = document.createElement("td");
+                    if (field == "status_code") {
+                        var span = document.createElement("span");
+                        span.style.whiteSpace = "nowrap";
+                        if (server[field] == 200)
+                            span.className = 'qprob p9';
+                        else
+                            span.className = 'qprob p1';
+			span.append(server[field]);
+                        td.append(span);
+                    }
+                    else {
+                        td.append(server[field]);
+                    }
+                    tr.append(td);
+                }
+                table.append(tr);
+            }
+
+	    if (data.recent_events && data.recent_events.length > 0) {
+		tr = document.createElement("tr");
+                td = document.createElement("th");
+		td.style.background = 'white';
+		td.colSpan = '3';
+		td.append(document.createElement("br"));
+		td.append(document.createElement("br"));
+                td.append("Recent Events");
+                tr.append(td);
+		table.append(tr);
+            }
+
+            for (var server of data.recent_events) {
+                tr = document.createElement("tr");
+
+                for (var field of ["timestamp","status"] ) {
+                    td = document.createElement("td");
+                    if (field == "status") {
+                        var span = document.createElement("span");
+                        span.style.whiteSpace = "nowrap";
+                        if (server.is_up)
+                            span.className = 'qprob p9';
+                        else {
+			    td.style.textAlign = 'right';
+                            span.className = 'qprob p1';
+			}
+                        span.append(server[field]);
+			td.colSpan = '2';
+                        td.append(span);
+                    }
+                    else {
+                        td.append(server[field]);
+                    }
+                    tr.append(td);
+                }
+                table.append(tr);
+            }
+            div.append(document.createElement("br"));
+            div.append(document.createElement("br"));
+
+	})
+        .catch(error => {
+            wspan.innerHTML = '';
+	    div.className = "error";
+            div.append(document.createElement("br"));
+            div.append(document.createElement("br"));
+            div.append(error);
+            div.append(document.createElement("br"));
+            console.error(error);
+        });
+
+}
+
+
 function retrieveKPCacheInfo() {
     var kpcache_node = document.getElementById("kpcache_container");
     kpcache_node.innerHTML = '';
@@ -7774,6 +8025,8 @@ function retrieveKPCacheInfo() {
 			span.style.whiteSpace = "nowrap";
 			if (item[heading['key']] == "OK")
 			    span.className = 'explevel p9';
+			else if (item[heading['key']] == "ERROR")
+			    span.className = 'explevel p1';
 			else
 			    span.className = 'explevel p3';
 			span.append(item[heading['key']]);
@@ -7809,8 +8062,11 @@ function retrieveKPCacheInfo() {
         .catch(error => {
             wspan.innerHTML = '';
             kpcache_node.className = "error";
-            kpcache_node.innerHTML =  "<br>" + error + "<br><br>";
-            console.error(error);
+            kpcache_node.append(document.createElement("br"));
+            kpcache_node.append(error);
+            kpcache_node.append(document.createElement("br"));
+            kpcache_node.append(document.createElement("br"));
+	    console.error(error);
         });
 
 }
@@ -8348,6 +8604,7 @@ function displayARSResults(parentnode,arsdata) {
     stats.status_list = {};
     stats.status_list['PASSED'] = 1;
     stats.status_list['FAILED'] = 1;
+    stats.status_list['NO_RESULTS'] = 1;
     stats.status_list['No results'] = 1;
     for (var agent of arsdata['ara_list']) {
 	stats[agent] = {};
@@ -8513,7 +8770,7 @@ function displayARSResults(parentnode,arsdata) {
 		    testspassed++;
 		    teststotal++;
 		}
-		else if (row[agent] == 'No results') {
+		else if (row[agent] == 'No results' || row[agent] == 'NO_RESULTS') {
 		    span.innerHTML = '0';
 		    span.className = 'explevel p0';
 		}
@@ -8585,7 +8842,7 @@ function displayARSResults(parentnode,arsdata) {
 	    span.innerHTML = '&check;';
 	    span.className = 'explevel p9';
 	}
-	else if (status == 'No results') {
+	else if (status == 'No results' || status == 'NO_RESULTS') {
 	    span.innerHTML = '0';
 	    span.className = 'explevel p0';
 	}

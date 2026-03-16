@@ -522,7 +522,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                 "end_node_key"}
         node_params_to_check = set(self.parameters).intersection(possible_node_params)
         qnode_keys_to_check = {self.parameters[node_param] for node_param in node_params_to_check}
-        if not all(any(node for node in message.knowledge_graph.nodes.values() if qnode_key in node.qnode_keys)
+        if not all(any(node for node in message.knowledge_graph.nodes.values() if qnode_key in getattr(node, 'qnode_keys', []))
                    for qnode_key in qnode_keys_to_check):
             response.debug("Nothing to overlay (one or more of the specified qnodes is not fulfilled in the KG)")
             return response
