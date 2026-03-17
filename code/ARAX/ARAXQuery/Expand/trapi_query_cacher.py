@@ -751,7 +751,7 @@ class KPQueryCacher:
                     cached_query[column] = round(cached_query[column], digits)
 
             #### Update the stats except for PathFinder which does not get updated
-            if cached_query['kp_curie'] not in [ 'PathFinder' ]:
+            if cached_query['kp_curie'] not in [ 'PathFinder', 'xDTD' ]:
                 if hours_difference < cast(float, cache_stats['min_query_age_hr']):
                     cache_stats['min_query_age_hr'] = hours_difference
                 if hours_difference > cast(float, cache_stats['max_query_age_hr']):
