@@ -488,6 +488,12 @@ class KPQueryCacher:
         records = session.query(KPQuery).all()
         cached_queries = [record.to_dict() for record in records]
 
+        #### Sort our list to prioritize the least-recently refreshed
+        for item in cached_queries:
+            if item['last_attempted_refresh_datetime'] is None:
+                item['last_attempted_refresh_datetime'] = ''
+        cached_queries.sort(key=lambda x: x['last_attempted_refresh_datetime'])
+
         cached_queries_to_refresh = []
         cache_stats = { 'min_query_age': 9999999, 'max_query_age': 0.0 }
         for cached_query in cached_queries:
