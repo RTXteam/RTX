@@ -14,7 +14,6 @@ import CachedMethods
 from cache_control_helper import CacheControlHelper
 
 from QueryNCBIeUtils import QueryNCBIeUtils
-from QueryDisont import QueryDisont  # DOID -> MeSH
 from QueryEBIOLS import QueryEBIOLS  # UBERON -> MeSH
 from QueryMyChem import QueryMyChem
 import sqlite3
@@ -94,7 +93,7 @@ class NormGoogleDistance:
             "UBERON" +
             "CL" - not supposed to be here?
             "NCBIGene" +
-            "DOID" +
+            "DOID" -
             "OMIM" +
             "ChEMBL" +
         """
@@ -148,18 +147,10 @@ class NormGoogleDistance:
             elif curie_list[0] == "NCBIGene":
                 gene_id = curie_id.split(':')[1]
                 names = QueryNCBIeUtils.get_pubmed_from_ncbi_gene(gene_id)
+            elif curie_list[0] == "MONDO":
+                names = list(QueryEBIOLS.get_mesh_id_for_mondo_id(curie_id))
             elif curie_list[0] == "DOID":
-                mesh_id = QueryDisont.query_disont_to_mesh_id(curie_id)
-                names = []
-                for uid in mesh_id:
-                    uid_num = int(uid[1:]) + 68000000
-                    name = QueryNCBIeUtils.get_mesh_terms_for_mesh_uid(uid_num)
-                    if name is not None:
-                        names += name
-                if len(names) == 0:
-                    names = None
-                else:
-                    names[0] = names[0] + '[MeSH Terms]'
+                raise ValueError(f"NormGoogleDistance.py is now unable to obtain a MeSH ID from a DOID {curie_id}")
             elif curie_list[0] == "OMIM":
                 names = QueryNCBIeUtils.get_mesh_terms_for_omim_id(curie_list[1])
             elif curie_list[0] == "ChEMBL":
@@ -175,44 +166,6 @@ class NormGoogleDistance:
                         return [name]
             return names
         return [description.replace(';', '|')]
-
-    @staticmethod
-    # @CachedMethods.register
-    def get_ngd_for_all(curie_id_list, description_list):
-        """
-        Takes a list of currie ids and descriptions then calculates the normalized google distance for the set of nodes.
-        Params:
-            curie_id_list - a list of strings containing the curie ids of the nodes. Formatted <source abbreviation>:<number> e.g. DOID:8398
-            description_list - a list of strings containing the English names for the nodes
-        """
-        assert len(curie_id_list) == len(description_list)
-        terms = [None] * len(curie_id_list)
-        for a in range(len(description_list)):
-            terms[a] = NormGoogleDistance.get_mesh_term_for_all(curie_id_list[a], description_list[a])
-            if type(terms[a]) != list:
-                terms[a] = [terms[a]]
-            if len(terms[a]) == 0:
-                terms[a] = [description_list[a]]
-            if len(terms[a]) > 30:
-                terms[a] = terms[a][:30]
-        terms_combined = [''] * len(terms)
-        mesh_flags = [True] * len(terms)
-        for a in range(len(terms)):
-            if len(terms[a]) > 1:
-                if not terms[a][0].endswith('[uid]'):
-                    for b in range(len(terms[a])):
-                        if QueryNCBIeUtils.is_mesh_term(terms[a][b]) and not terms[a][b].endswith('[MeSH Terms]'):
-                            terms[a][b] += '[MeSH Terms]'
-                terms_combined[a] = '|'.join(terms[a])
-                mesh_flags[a] = False
-            else:
-                terms_combined[a] = terms[a][0]
-                if terms[a][0].endswith('[MeSH Terms]'):
-                    terms_combined[a] = terms[a][0][:-12]
-                elif not QueryNCBIeUtils.is_mesh_term(terms[a][0]):
-                    mesh_flags[a] = False
-        ngd = QueryNCBIeUtils.multi_normalized_google_distance(terms_combined, mesh_flags)
-        return ngd
 
     @staticmethod
     def api_ngd(mesh_term1, mesh_term2):
