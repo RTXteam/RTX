@@ -4,8 +4,9 @@ Usage:
     Run all expand tests: pytest -v test_ARAX_expand.py
     Run a single test: pytest -v test_ARAX_expand.py -k test_branched_query
 """
-import sys
+import json
 import os
+import sys
 from typing import List, Dict, Optional
 import pytest
 import yaml
@@ -1680,6 +1681,51 @@ def test_issue_2662():
     kg = message.knowledge_graph
     assert len(kg.nodes) > 3
     assert len(kg.edges) > 3
+
+
+def test_issue_2678():
+    kpic = KPInfoCacher()
+    saved_trapi_version = kpic.forced_kp_version
+    kpic.forced_kp_version = "1.6.0"
+    kpic.refresh_kp_info_caches()
+    saved_arax_response_output = ARAXResponse.output
+    query_graph_dict = {
+        "edges": {
+            "50efaa83": {
+                "knowledge_type": "lookup",
+                "object": "on",
+                "predicates": [
+                    "biolink:treats_or_applied_or_studied_to_treat"
+                ],
+                "subject": "sn"
+            }
+        },
+        "nodes": {
+            "on": {
+                "ids": [
+                    "MONDO:0016098"
+                ]
+            },
+            "sn": {
+                "ids": [
+                    "CHEBI:229659"
+                ]
+            }
+        }
+    }
+    envelope_dict = {
+        "message": {
+            "query_graph": query_graph_dict
+        }
+    }
+    aq = ARAXQuery()
+    response = aq.query_return_message(envelope_dict)
+    message = response.message
+    messages_str = json.dumps(aq.response.messages)
+    disease_node = message.knowledge_graph.nodes['MONDO:0016098']
+    kpic.forced_kp_version = saved_trapi_version
+    kpic.refresh_kp_info_caches()
+    assert 'biolink:PhenotypicFeature' not in messages_str
 
 
 if __name__ == "__main__":
