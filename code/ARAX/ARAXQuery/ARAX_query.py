@@ -757,6 +757,9 @@ class ARAXQuery:
                     elif action['command'] == 'add_qedge':
                         messenger.add_qedge(response,action['parameters'])
 
+                    elif action['command'] == 'add_qpath':
+                        messenger.add_qpath(response,action['parameters'])
+
                     elif action['command'] == 'expand':
                         self.inject_int_value_into_parameters('kp_timeout', response.envelope.query_options, action['parameters'], 'UserTimeoutNotInt')
                         self.inject_int_value_into_parameters('prune_threshold', response.envelope.query_options, action['parameters'], 'PruneThresholdNotInt')
