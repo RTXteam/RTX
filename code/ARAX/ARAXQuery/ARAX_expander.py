@@ -169,9 +169,10 @@ class ARAXExpander:
 
         # Save the original QG, if it hasn't already been saved in ARAXQuery (happens for DSL queries..)
         if not hasattr(response, "original_query_graph"):
-            response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
+            response.original_query_graph = copy.deepcopy(message.query_graph)
             response.debug(f"Saving original query graph (has qnodes {set(response.original_query_graph.nodes)} "
                            f"and qedges {set(response.original_query_graph.edges)})..")
+
 
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = copy.deepcopy(message.query_graph)
@@ -261,23 +262,18 @@ class ARAXExpander:
 
         # Add in any category equivalencies to the QG (e.g., protein == gene, since KPs handle these differently)
         for qnode_key, qnode in query_graph.nodes.items():
-            if qnode.ids and not qnode.categories:
-                # Infer categories for expand's internal use (in KP selection and etc.)
-                qnode.categories = eu.get_preferred_categories(qnode.ids, log)
-                # remove all descendent categories of "biolink:ChemicalEntity" and replace them with "biolink:ChemicalEntity"
-                # This is so SPOKE will be correctly chosen as a KP for queries where a pinned qnode has a category which descends from ChemicalEntity. More info on Github issue1773
-                categories_set = set(qnode.categories)
-                chem_entity_descendents = set(self.bh.get_descendants("biolink:ChemicalEntity"))
-                filtered_categories = categories_set - chem_entity_descendents
-                if categories_set != filtered_categories:
-                    filtered_categories.add("biolink:ChemicalEntity")
-                qnode.categories = list(filtered_categories)
+            if qnode.ids:
+                qnode.categories = None
+                log.debug(f"for qnode {qnode_key} which is specified by id {qnode.ids}, setting categories to None")
+            elif qnode.categories:
+                log.debug(f"for qnode {qnode_key} which is specified by categories {qnode.categories}, applying conflations")
+                qnode.categories = self.bh.add_conflations(qnode.categories)
+                log.debug(f"For qnode {qnode_key}, conflated categories are: {qnode.categories}")
+            else:
+                root_category = self.bh.get_root_category()
+                qnode.categories = [root_category]
+                log.debug(f"For qnode {qnode_key}, which has no ids and no supplied categories, using root category {root_category}")
 
-                log.debug(f"Inferred category for qnode {qnode_key} is {qnode.categories}")
-            elif not qnode.categories:
-                # Default to NamedThing if no category was specified
-                qnode.categories = [self.bh.get_root_category()]
-            qnode.categories = self.bh.add_conflations(qnode.categories)
         # Make sure QG only uses canonical predicates
         log.debug("Making sure QG only uses canonical predicates")
         qedge_keys = set(query_graph.edges)
@@ -875,7 +871,7 @@ class ARAXExpander:
                     else:
                         # object_curie = None
                         response.error(f"No CURIEs found for qnode {qedge.object}; ARAXInfer/XDTD requires that the"
-                                f" object qnode has 'ids' specified", error_code="NoCURIEs")
+                                       f" object qnode has 'ids' specified", error_code="NoCURIEs")
                         return response, overarching_kg
                     if subject_qnode.ids and len(subject_qnode.ids) >= 1:
                         subject_curie = subject_qnode.ids[0]  # FIXME: will need a way to handle multiple IDs

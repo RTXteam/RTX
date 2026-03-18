@@ -1656,12 +1656,12 @@ def test_issue_2662():
         "nodes": {
             "on": {
                 "ids": [
-                    "MONDO:0002041"
+                    "MONDO:0005015"
                 ]
             },
             "sn": {
                 "ids": [
-                    "CHEBI:474180"
+                    "CHEBI:5931"
                 ]
             }
         }
