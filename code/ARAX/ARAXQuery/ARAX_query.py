@@ -834,7 +834,8 @@ class ARAXQuery:
                     return response
 
                 #### Immediately after resultify, run the experimental ranker
-                if action['command'] == 'resultify' and mode != 'RTXKG2':
+                if action['command'] == 'resultify' and mode != 'RTXKG2' \
+                   and 'connect' not in (a['command'] for a in actions):
                     response.info("Running experimental reranker on results")
                     try:
                         ranker = ARAXRanker()
