@@ -1,11 +1,9 @@
 import sys
-import os
-import json
-import ast
-from ARAX_response import ARAXResponse
 import traceback
 from collections import Counter
 from collections.abc import Hashable
+from Filter_KG.remove_edges import RemoveEdges
+from Filter_KG.remove_nodes import RemoveNodes
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -622,7 +620,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             edge_params['remove_connected_nodes'] = False
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_predicate()
         return response
@@ -741,7 +738,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_property()
         return response
@@ -840,7 +836,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_attribute()
         return response
@@ -995,7 +990,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_stats()
         return response
@@ -1150,7 +1144,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_stats()
         return response
@@ -1307,7 +1300,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_stats()
         return response
@@ -1346,7 +1338,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         node_params = self.parameters
 
         # now do the call out to NGD
-        from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
         response = RN.remove_nodes_by_category()
         return response
@@ -1412,7 +1403,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
         response = RN.remove_nodes_by_property()
         return response
@@ -1444,7 +1434,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
 
         node_params = self.parameters
         # now do the call out to NGD
-        from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
         response = RN.remove_general_concept_nodes()        
         return response
@@ -1483,124 +1472,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         node_params = self.parameters
 
         # now do the call out to NGD
-        from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
         response = RN.remove_orphaned_nodes()
         return response
 
-##########################################################################################
-def main():
-    ### Note that most of this is just manually doing what ARAXQuery() would normally do for you
-
-    #### Create a response object
-    response = ARAXResponse()
-
-    #### Create an ActionsParser object
-    from actions_parser import ActionsParser
-    actions_parser = ActionsParser()
-
-    #### Set a simple list of actions
-    # actions_list = [
-    #    "overlay(compute_confidence_scores=true)",
-    #    "return(message=true,store=false)"
-    # ]
-
-    actions_list = [
-        #"filter_kg(action=remove_edges_by_predicate, edge_predicate=physically_interacts_with, remove_connected_nodes=false)",
-        #"filter_kg(action=remove_edges_by_predicate, edge_predicate=physically_interacts_with, remove_connected_nodes=something)",
-        #"filter(action=remove_nodes_by_category, node_category=protein)",
-        #"overlay(action=compute_ngd)",
-        #"filter(action=remove_edges_by_continuous_attribute, edge_attribute=ngd, threshold=.63, direction=below, remove_connected_nodes=t)",
-        #"filter(action=remove_edges_by_continuous_attribute, edge_attribute=ngd, threshold=.6, remove_connected_nodes=False)",
-        "filter(action=remove_orphaned_nodes)",
-        "return(message=true,store=false)"
-    ]
-
-    #### Parse the action_list and print the result
-    result = actions_parser.parse(actions_list)
-    response.merge(result)
-    if result.status != 'OK':
-        print(response.show(level=ARAXResponse.DEBUG))
-        return response
-    actions = result.data['actions']
-
-    #### Read message #2 from the database. This should be the acetaminophen proteins query result message
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../ResponseCache")
-    from response_cache import ResponseCache
-    response_cache = ResponseCache()
-
-    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
-    # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
-    # message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
-    # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
-    # message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
-    # message_dict = araxdb.getMessage(10)
-    message_dict = response_cache.get_response(314204)
-
-    #### The stored message comes back as a dict. Transform it to objects
-    from ARAX_messenger import ARAXMessenger
-    message = ARAXMessenger().from_dict(message_dict)
-    # print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
-
-    #### Create an overlay object and use it to apply action[0] from the list
-    #filterkg = ARAXFilterKG()
-    #result = filterkg.apply(message, actions[0]['parameters'])
-    #response.merge(result)
-
-    # Apply overlay so you get an edge attribute to work with, then apply the filter
-    #from ARAX_overlay import ARAXOverlay
-    #overlay = ARAXOverlay()
-    #result = overlay.apply(message, actions[0]['parameters'])
-    #response.merge(result)
-    # then apply the filter
-    filterkg = ARAXFilterKG()
-    result = filterkg.apply(message, actions[0]['parameters'])
-    response.merge(result)
-
-    # if result.status != 'OK':
-    #    print(response.show(level=ARAXResponse.DEBUG))
-    #    return response
-    # response.data = result.data
-
-    #### If successful, show the result
-    # print(response.show(level=ARAXResponse.DEBUG))
-    # response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
-    #    'resource_id': message.resource_id, 'tool_version': message.tool_version }
-    # response.data['message_stats']['confidence_scores'] = []
-    # for result in message.results:
-    #    response.data['message_stats']['confidence_scores'].append(result.confidence)
-
-    # print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
-    # print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
-    # a comment on the end so you can better see the network on github
-
-    # look at the response
-    # print(response.show(level=ARAXResponse.DEBUG))
-    # print(response.show())
-    # print("Still executed")
-
-    # look at the edges
-    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())),sort_keys=True,indent=2))
-    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes.values())), sort_keys=True, indent=2))
-    # print(json.dumps(message.to_dict(), sort_keys=True, indent=2))
-    # print(response.show(level=ARAXResponse.DEBUG))
-
-    # just print off the values
-    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2))
-    # for edge in message.knowledge_graph.edges.values():
-    #    if hasattr(edge, 'attributes') and edge.attributes and len(edge.attributes) >= 1:
-    #        print(edge.attributes.pop().value)
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2))
-    print(response.show(level=ARAXResponse.DEBUG))
-    vals = []
-    for key, node in message.knowledge_graph.nodes.items():
-        print(key)
-    print(len(message.knowledge_graph.nodes))
-    for edge in message.knowledge_graph.edges.values():
-        if hasattr(edge, 'attributes') and edge.attributes and len(edge.attributes) >= 1:
-            vals.append(edge.attributes.pop().value)
-    print(sorted(vals))
-
-
-if __name__ == "__main__":
-    main()
