@@ -1090,7 +1090,7 @@ class ARAXExpander:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
                             f"get answers from that KP. Error was: {tb}")
             log.update_query_plan(qedge_key, kp_to_use, "Error", f"Process error-ed out with {log.status}")
-            return QGOrganizedKnowledgeGraph(), aux_graphs, log
+            return QGOrganizedKnowledgeGraph(), {}, log
 
         if log.status != 'OK':
             if multiple_kps:

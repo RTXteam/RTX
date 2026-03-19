@@ -302,9 +302,13 @@ class TRAPIQuerier:
         request_body = self._get_prepped_request_body(query_graph)
         query_sent = copy.deepcopy(request_body)
         query_timeout = self._get_query_timeout_length()
-        qedge_key = next(qedge_key for qedge_key in query_graph.edges)
-
-        num_input_curies = max([len(eu.convert_to_list(qnode.ids)) for qnode in query_graph.nodes.values()])
+        if not query_graph.edges:
+            raise ValueError("query graph has no edges")
+        qedge_key = next(iter(query_graph.edges))
+        num_input_curies = max(
+            (len(eu.convert_to_list(qnode.ids)) for qnode in query_graph.nodes.values()),
+            default=0,
+        )
         waiting_message = f"Query with {num_input_curies} curies sent: waiting for response"
         self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Waiting", waiting_message, query=query_sent)
         start = time.time()
@@ -312,13 +316,15 @@ class TRAPIQuerier:
 
         # Send the query graph to the KP's TRAPI API
         cacher = KPQueryCacher()
+        r = None
         try:
             response_data, http_code, elapsed_time, error = await cacher.get_result(f"{self.kp_endpoint}/query",
-                                                                                     request_body, 
-                                                                                     kp_curie=self.kp_infores_curie, 
-                                                                                     timeout=query_timeout, async_session=True)
+                                                                                    request_body,
+                                                                                    kp_curie=self.kp_infores_curie,
+                                                                                    timeout=query_timeout,
+                                                                                    async_session=True)
             if http_code == 200:
-                json_response = response_data
+                r = response_data
 
             elif http_code == -1:
                 wait_time = round(time.time() - start, 2)
@@ -336,26 +342,61 @@ class TRAPIQuerier:
 
         except Exception as ex:
             wait_time = round(time.time() - start, 2)
-            exception_message = f"Request threw exception after {wait_time} seconds: {type(ex)}"
+            exception_message = f"Request threw exception after {wait_time} seconds: {type(ex).__name__}: {ex}"
             self.log.warning(f"{self.kp_infores_curie}: {exception_message}")
             self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", exception_message)
             return QGOrganizedKnowledgeGraph(), None
 
-        wait_time = round(time.time() - start, 2)
-        json_response, cd = \
-            _remove_attributes_with_invalid_values(json_response,
-                                                   self.kp_infores_curie,
-                                                   self.log)
-        json_response = cast(dict[str, Any], json_response)
+        if not isinstance(r, dict):
+            self.log.warning(f"{self.kp_endpoint}: response is not a dict; got {type(r).__name__}")
+            self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", "Response is malformed")
+            return QGOrganizedKnowledgeGraph(), None
+        message = r.get('message')
+        if not isinstance(message, dict):
+            self.log.warning(f"{self.kp_endpoint}: response.message is not a dict; got {type(message).__name__}")
+            self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Warning", "Response message is malformed")
+            return QGOrganizedKnowledgeGraph(), None
+        kg = message.get('knowledge_graph')
+        if not isinstance(kg, dict):
+            self.log.warning(f"{self.kp_endpoint}: response.message.knowledge_graph is not a dict; got {type(kg).__name__}")
+            self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Warning", "Message KG is malformed")
+            return QGOrganizedKnowledgeGraph(), None
+        edges = kg.get('edges')
+        if not isinstance(edges, dict):
+            self.log.warning(f"{self.kp_endpoint}: response.message.knowledge_graph.edges is not a dict; got {type(edges).__name__}")
+            self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Warning", "KG edges are malformed")
+            return QGOrganizedKnowledgeGraph(), None
+        nodes = kg.get('nodes')
+        if not isinstance(nodes, dict):
+            self.log.warning(f"{self.kp_endpoint}: response.message.knowledge_graph.nodes is not a dict; got {type(nodes).__name__}")
+            self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Warning", "KG nodes are malformed")
+            return QGOrganizedKnowledgeGraph(), None
+        r, cd = _remove_attributes_with_invalid_values(
+            r,
+            self.kp_infores_curie,
+            self.log
+        )
+        if not isinstance(r, dict):
+            self.log.warning(f"{self.kp_endpoint}: cleaned response is not a dict; got {type(r).__name__}")
+            self.log.update_query_plan(qedge_key, self.kp_infores_curie, "Error", "Cleaned response is malformed")
+            return QGOrganizedKnowledgeGraph(), None
+        r = cast(dict[str, Any], r)
 
         aux_graphs: dict[str, AuxiliaryGraph] | None
-        qg_org_kg, aux_graphs = self._load_kp_json_response(json_response, query_graph)
+        qg_org_kg, aux_graphs = self._load_kp_json_response(r, query_graph)
         num_edges = len(qg_org_kg.edges_by_qg_id.get(qedge_key, {}))
 
-        cache_flag = ''
-        if isinstance(error, str):
-            cache_flag = "from cache "
-        done_message = f"Returned {num_edges} edges {cache_flag}in {wait_time} seconds"
+        # This requires some explanation. If we get here, then the call to `get_result` was
+        # successful. So at this point, there are two possibilities for the `error` variable:
+        # - If the response is read from the cache successfully, then `error` contains
+        #   the string "from cache"
+        # - If the response is queried de-novo from the KP successfully, then `error`
+        #   contains None
+        cache_phrase = " from cache" if error == "from cache" else ""
+
+        wait_time = round(time.time() - start, 2)
+
+        done_message = f"Returned {num_edges} edges{cache_phrase} in {wait_time} seconds"
 
         if cd == 0:
             self.log.update_query_plan(qedge_key,
