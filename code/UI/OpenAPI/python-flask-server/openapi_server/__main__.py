@@ -23,7 +23,7 @@ Implementation notes:
 
 Configuration:
 - The configuration file (`flask_config.json`) resides alongside this module and may define:
-    - `port` (int): TCP port for the Flask server (default: 5001)
+    - `port` (int): TCP port for the Flask server (default: 5000)
     - `check_databases` (bool): Whether to verify/update databases at startup
     - `run_background_tasker` (bool): Whether to launch the background tasker
     - `force_disable_telemetry` (bool): Override to disable OpenTelemetry
@@ -69,7 +69,7 @@ def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-FLASK_DEFAULT_TCP_PORT = 5001
+FLASK_DEFAULT_TCP_PORT = 5000
 
 HERE = Path(__file__).resolve().parent
 
