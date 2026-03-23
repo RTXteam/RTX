@@ -47,8 +47,6 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../../AR
 import ARAX_query  # pylint: disable=import-outside-toplevel,import-error,wrong-import-position
 
 
-RLIMIT_CHILD_PROCESS_BYTES = 34359738368  # 32 GiB
-
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
@@ -60,7 +58,8 @@ def child_receive_sigpipe(signal_number, _):
 
 
 def run_query_dict_in_child_process(query_dict: dict,
-                                    query_runner: Callable) -> Iterator[str]:
+                                    query_runner: Callable,
+                                    child_rlimit: int | None = None) -> Iterator[str]:
     eprint("[query_controller]: Creating pipe and "
            "forking a child to handle the query")
     read_fd, write_fd = os.pipe()
@@ -81,9 +80,13 @@ def run_query_dict_in_child_process(query_dict: dict,
         os.close(read_fd)                   # child doesn't read from the pipe, it writes to it
         setproctitle.setproctitle("python3 query_controller::run_query_dict_in_child_process")
         # set a virtual memory limit for the child process
-        resource.setrlimit(
-            resource.RLIMIT_AS, (RLIMIT_CHILD_PROCESS_BYTES,
-                                 RLIMIT_CHILD_PROCESS_BYTES))
+        if child_rlimit is not None:
+            soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+            new_soft = min(child_rlimit, hard)
+            if sys.platform != "darwin":
+                resource.setrlimit(resource.RLIMIT_AS, (new_soft, hard))            
+            else:
+                print("skipping resetting RLIMIT_AS since we are running on macOS", file=sys.stderr)
         # get rid of signal handler so we don't double-print to the log on SIGPIPE error
         signal.signal(signal.SIGPIPE, child_receive_sigpipe)
         # disregard any SIGCHLD signal in the child process
@@ -136,7 +139,10 @@ def query(request_body: dict) -> tuple[flask.Response, int | None]:  # noqa: E50
     """
 
     app = flask.current_app
-    fork_mode = app.config.get("QUERY_CONTROLLER_FORK_MODE", True)
+    fork_mode = app.config.get("QUERY_FORK_MODE", True)
+    child_rlimit = None
+    if fork_mode:
+        child_rlimit = app.config.get("CHILD_PROCESS_RLIMIT", None)
 
     # Note that we never even get here if the request_body is not schema-valid JSON
 
@@ -157,20 +163,26 @@ def query(request_body: dict) -> tuple[flask.Response, int | None]:  # noqa: E50
         http_status = None
         if not fork_mode:
             json_generator = _run_query_and_return_json_generator_stream(
-                request_body)
+                request_body
+            )
         else:
             json_generator = run_query_dict_in_child_process(
                 request_body,
-                _run_query_and_return_json_generator_stream)
+                _run_query_and_return_json_generator_stream,
+                child_rlimit
+            )
         resp_obj = flask.Response(json_generator, mimetype="text/event-stream")
     else:
         if not fork_mode:
             json_generator = _run_query_and_return_json_generator_nonstream(
-                request_body)
+                request_body
+            )
         else:
             json_generator = run_query_dict_in_child_process(
                 request_body,
-                _run_query_and_return_json_generator_nonstream)
+                _run_query_and_return_json_generator_nonstream,
+                child_rlimit
+            )
         status_line = next(json_generator)
         status_dict = json.loads(status_line)
         http_status = status_dict['__http_status__']
