@@ -124,6 +124,7 @@ def main():
     check_databases = local_config.get('check_databases', True)
     run_background_tasker = local_config.get('run_background_tasker', True)
     force_disable_telemetry = local_config.get('force_disable_telemetry', False)
+    query_controller_fork_mode = local_config.get('query_controller_fork_mode', True)
 
     if check_databases:
         from ARAX_database_manager import ARAXDatabaseManager  # pylint: disable=import-outside-toplevel, import-error
@@ -200,7 +201,7 @@ def main():
             assert False, "****** fork() unsuccessful in __main__"
 
     # loading overly general nodes JSON file
-    from Filter_KG.remove_nodes import RemoveNodes
+    from Filter_KG.remove_nodes import RemoveNodes  # pylint: disable=import-outside-toplevel, import-error
     RemoveNodes.load_block_list_file()
 
     # Import web framework components only in parent process
@@ -211,6 +212,7 @@ def main():
     app = connexion.App(__name__, specification_dir=str(specification_dir))
     app.app.json_provider_class = CustomJSONProvider
     app.app.json = app.app.json_provider_class(app.app)
+    app.app.config["QUERY_CONTROLLER_FORK_MODE"] = query_controller_fork_mode
     eprint(f"Using JSON provider: {type(app.app.json).__name__}")
     app.add_api('openapi.yaml',
                 arguments={'title': 'ARAX Translator Reasoner'},
