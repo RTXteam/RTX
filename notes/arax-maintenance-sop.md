@@ -395,6 +395,10 @@ with the version-pinned dependency. You then need to _test_ the updated
 to make sure it works as modified. If your code update introduces a dependency
 on a mypy types package like `types-requests` or whatever, you need to put
 that in `RTX/dev-requirements.txt` as a pinned dependency and test it with `pip`.
+7. All newly contributed python code from the OSU team should adhere to the [PEP8 Style Guide for
+   Python Code](https://peps.python.org/pep-0008/). Among other things, this means: No hard tabs; four space indentation;
+   max 79 characters per line; proper use of CamelCase or snake_case or CAPS_SNAKE_CASE;
+   proper use of whitespace around infix operators; etc.
 
 ## Commit to your branch
 Do not commit to the `master` branch; at this point, you should commit your
