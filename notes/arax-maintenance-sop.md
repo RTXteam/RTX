@@ -354,7 +354,7 @@ leak through into the commit.
 3. Please review your code with a modern code LLM (e.g., Anthropic Claude Opus
 or ChatGPT) to check for bugs before committing. It's a good idea to upload 
 both the original module and the updated module, and to ask the LLM to review 
-the diffs for issues.
+the diffs for issues (or, in some cases, to just upload the diffs to the LLM).
 4. Please visually inspect every line of your code diffs with `git diff` 
 before committing; this is the perfect opportunity to catch debug code 
 (which would be indicated with a `# :DEBUG:` line comment) before it gets 
