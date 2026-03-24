@@ -40,13 +40,36 @@ procedure at each major new release of ARAX databases.
 1. Look at the shell script 
 [`generate-db-symlinks.sh`](https://github.com/RTXteam/RTX/blob/master/code/generate-db-symlinks.sh)
 and, from it, compile a list of all the files referenced in that script (each of them is
-an "ARAX database" of some kind or other). Downloaded all the ARAX databases on
+an "ARAX database" of some kind or other). Download all the ARAX databases on
 the list that you compiled, to your development machine, to a directory that
 you choose (but which will be persistent across ARAX issues); we'll call that
 directory `DB_DIR` (assume `DB_DIR` is an absolute path to the directory you
 chose). Then underneath `DB_DIR`, there should be subdirectories like `KG2.10.2`,
 `KG2.10.0`, and `KG2.8.0` (the latter is to hold the COHD database which hasn't been
-refreshed in a very long time). At present, the `DB_DIR` directory structure would
+refreshed in a very long time).
+```
+mkdir DB_DIR
+mkdir DB_DIR/KG2.10.2
+mkdir DB_DIR/KG2.10.0
+mkdir DB_DIR/KG2.8.0
+```
+To download the databases, you would need
+ssh access to `arax-databases.rtx.ai` as user `rtxconfig`; but if you do not have that,
+as long as you have ssh access to `arax-databases.rtx.ai` as user `ubuntu`, you can 
+log in as `ubuntu` and configure ssh access as user `rtxconfig`, for yourself, like this:
+```
+scp ~/.ssh/id_ecdsa.pub ubuntu@arax-databases.rtx.ai:
+ssh ubuntu@arax-databases.rtx.ai
+sudo sh -c 'cat id_ecdsa.pub >> /home/rtxconfig/.ssh/authorized_keys'
+sudo chown rtxconfig:rtxconfig /home/rtxconfig/.ssh/authorized_keys
+sudo chmod 600 /home/rtxconfig/.ssh/authorized_keys
+```
+Then you can download files like this:
+```
+mkdir DB_DIR/KG2.10.2
+scp -C rtxconfig@arax-databases.rtx.ai:KG2.10.2/node_synonymizer_v1.0_KG2.10.2.sqlite DB_DIR/KG2.10.2/
+```
+After downloading the databases, the `DB_DIR` directory structure would
 look like this:
 ```
 DB_DIR/KG2.10.0
@@ -64,7 +87,8 @@ DB_DIR/KG2.10.2/curie_ngd_v1.0_KG2.10.2.sqlite
 DB_DIR/KG2.10.2/curie_to_pmids_v1.0_KG2.10.2.sqlite
 DB_DIR/KG2.10.2/fda_approved_drugs_v1.0_KG2.10.2c.pickle
 ```
-But remember, you should check `generate-db-symlinks.sh` since that has the
+To get your list of database files, check `generate-db-symlinks.sh` since that script
+should have the
 latest list of database dependencies.
 
 2. On your local dev system, create a directory for you ARAX development work; you can 
