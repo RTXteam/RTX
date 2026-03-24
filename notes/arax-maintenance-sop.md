@@ -444,7 +444,7 @@ the local code repository is on `master`. Staying in the same `RTX` directory:
 7. `git fetch origin`
 8. `git checkout issue-XXX`
 9. `git pull origin issue-XXX`
-10. Run the unit tests, using your updated code: `cd code/ARAX && pytest -v --cache-clear`<br />
+10. Run all the pytests, using your updated code: `cd code/ARAX && pytest -v --cache-clear`<br />
 All 153 standard ARAX unit tests should pass, when run in the `arax.nats.io/beta` devarea.
 11. Next is to run the example queries, using your updated code. You will need to restart ARAX. 
 Exit out of the shell session for user `rt`,
@@ -509,7 +509,10 @@ service RTX_OpenAPI_beta stop
 service RTX_OpenAPI_beta start
 tail -f /tmp/RTX_OpenAPI_beta.elog
 ```
-Test ARAX via the pytest suite and the ARAX User Interface again. If everything
+If you had to fix merge conflicts or if your issue
+branch was behind `master` when you merged, rerun all the pytests. 
+In any case, you will need to test the ARAX User Interface again with the
+Example 1 query. If everything
 is working, then proceed.
 2. Change your local `ARAX_DEV_DIR/issue-XXX/RTX` to `master`:
 ```
