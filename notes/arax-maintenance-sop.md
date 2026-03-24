@@ -399,6 +399,11 @@ that in `RTX/dev-requirements.txt` as a pinned dependency and test it with `pip`
    Python Code](https://peps.python.org/pep-0008/). Among other things, this means: No hard tabs; four space indentation;
    max 79 characters per line; proper use of CamelCase or snake_case or CAPS_SNAKE_CASE;
    proper use of whitespace around infix operators; etc.
+8. Where possible, try to minimize use of "path surgery", i.e., `sys.path.append`.
+_Some_ path surgery is inevitable given the bifurcation of the code-base into
+`RTX/code/UI/OpenAPI/python-flask-server` and `RTX/code/ARAX` subtrees, but please
+try to minimize it, bearing in mind that ARAX is run using `python -m` so it should be
+able to interpret dotted imports like `from openapi_server.models.node import Node`.
 
 ## Commit to your branch
 Do not commit to the `master` branch; at this point, you should commit your
