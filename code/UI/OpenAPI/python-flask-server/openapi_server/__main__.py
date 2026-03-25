@@ -113,17 +113,23 @@ def main():
     add_to_syspath(araxquery_dir)
 
     config_file_path = HERE / "flask_config.json"
-    # Read any load configuration details for this instance
+    # Read any local configuration details for this instance
+    local_config = {}
     try:
         with config_file_path.open('r', encoding="utf-8") as infile:
             local_config = json.load(infile)
-    except Exception:  # pylint: disable=broad-exception-caught
-        eprint(f"Error loading config file: {config_file_path}")
-        local_config = {}
+        eprint(f"Loaded config file {config_file_path}")
+    except FileNotFoundError:
+        eprint("Using default config options because could not find "
+               f"config file: {config_file_path}")
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Invalid JSON in config file: {config_file_path}: {exc}") from exc
+    except OSError as exc:
+        raise RuntimeError(f"Unable to read config file: {config_file_path}: {exc}") from exc
     tcp_port = local_config.get('port', FLASK_DEFAULT_TCP_PORT)
     check_databases = local_config.get('check_databases', True)
     run_background_tasker = local_config.get('run_background_tasker', True)
-    force_disable_telemetry = local_config.get('force_disable_telemetry', False)
+    force_disable_telemetry = local_config.get('force_disable_telemetry', True)
     query_fork_mode = local_config.get('query_fork_mode', True)
     child_process_rlimit = local_config.get('child_process_rlimit', 34359738368)
 
