@@ -120,6 +120,7 @@ def main():
     except Exception:  # pylint: disable=broad-exception-caught
         eprint(f"Error loading config file: {config_file_path}")
         local_config = {}
+    eprint(f"Loaded config file {config_file_path}")
     tcp_port = local_config.get('port', FLASK_DEFAULT_TCP_PORT)
     check_databases = local_config.get('check_databases', True)
     run_background_tasker = local_config.get('run_background_tasker', True)
