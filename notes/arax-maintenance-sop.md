@@ -10,7 +10,7 @@ NodeSynonymizer, etc.). However, much of the content may also be useful for
 other developers working on ARAX.
 
 ## Preparing your local dev computer to maintain ARAX
-To efficiently maintain ARAX, it is esential to have a local development system that you don't have
+To efficiently maintain ARAX, it is essential to have a local development system that you don't have
 to `ssh` into. You will need to have Linux or macOS (though Linux on Windows via WSL is also probably
 fine); either `x86_64` or `ARM64` architecture is probably fine (the parts of ARAX that the Ramsey
 Lab maintains seem to work fine on both architectures). Your local development computer should have:
@@ -91,13 +91,13 @@ To get your list of database files, check `generate-db-symlinks.sh` since that s
 should have the
 latest list of database dependencies.
 
-2. On your local dev system, create a directory for you ARAX development work; you can 
+2. On your local dev system, create a directory for your ARAX development work; you can 
 call it whatever you want, but in this document we will denote the directory's
 absolute path by `ARAX_DEV_DIR`. You will need to install the script
 `generate-db-symlinks.sh` into that directory and make it executable:
 ```
 cd ARAX_DEV_DIR
-curl -o geneate-db-symlinks.sh -s -L \
+curl -o generate-db-symlinks.sh -s -L \
   https://raw.githubusercontent.com/RTXteam/RTX/refs/heads/master/code/generate-db-symlinks.sh
 chmod a+x generate-db-symlinks.sh
 ```
@@ -116,7 +116,7 @@ maintenance.
     "query_fork_mode": false
 }
 ```
-Once you done these steps, you are ready to work on a maintenance task for ARAX;
+Once you done with these steps, you are ready to work on a maintenance task for ARAX;
 continue with the procedure in the next section, which you should follow (from
 that section's beginning) for each ARAX maintenance task that you work on.
 
@@ -141,7 +141,7 @@ and see if you get any results.
    In the issue, you should also describe what happens when the JSON or ARAXi
    query graph is run through ARAX, that is not correct/expected behavior.
    This is essential so that the maintainer can know whether or not they have
-   successfull reproduced the bug. Please include information such as:
+   successful reproduced the bug. Please include information such as:
    - The ARAX host that you ran your query on
    - The date/time (including timezone) when you ran your query
    - If you have it, the relevant excerpt from the ARAX ".elog" file (`/tmp/RTX_OpenAPI_DEVAREA.elog`), where
@@ -152,7 +152,7 @@ and see if you get any results.
      
 2. If no one has done so already, create a GitHub issue in the 
    [`RTXteam/RTX` issue tracker](https://github.com/RTXteam/RTX/issues). In the issue
-   metadata in GitHub, under "Type", selects `bug`, `feature`, or `task`, as appropriate.
+   metadata in GitHub, under "Type", select `bug`, `feature`, or `task`, as appropriate.
    Further, under "Labels", select "High Priority" if you know that it is a high-priority
    issue.  Often, maybe a third of the time, there is a "parent issue" in some
    other GitHub project area (e.g., [NCATSTranslator/Feedback](https://github.com/NCATSTranslator/Feedback/)) 
@@ -306,7 +306,7 @@ that follows.
 #### Note on testing if you are working on Shepherd-ARAX
 If you are doing work on "Shepherd-ARAX", then you should
 first run the unit tests and example queries with `self.forced_kp_version = '1.5.0'`, and then set 
-`self.forced_kp_version = '1.6.0'` for your ; this is because many unit tests
+`self.forced_kp_version = '1.6.0'` for your development/testing work; this is because many unit tests
 will probably not (yet) pass, if ARAX is only querying `infores:retriever`.
 Also, if you are working on Shepherd-ARAX, when you reach the point of
 testing in an `arax.ncats.io` dev-area, you should test on
@@ -326,8 +326,8 @@ a matter of running the query graph JSON (or ARAXi) submitted with the issue.
 If you are aiming to work on an ARAX bug, and if you can't reproduce the issue
 locally on your development computer, ask for help before proceeding.
 
-## Consider writing a unit test for the bug or feature you working on
-If possible, write a new unit test to excercise the bug (or not-yet-implemented
+## Consider writing a unit test for the bug or feature you are working on
+If possible, write a new unit test to exercise the bug (or not-yet-implemented
 feature) on your dev system (this is sometimes not reasonably possible, but if
 it is straightforward to do it, you are encouraged to do it). Unit tests go in the
 `RTX/code/ARAX/test` directory.  This would provide a durable benefit for the
@@ -439,13 +439,13 @@ Note the branch and whether there are local changes. If the local `RTX` code is 
 currently on the `master` branch, and/or if there are locally modified modules
 or config files (not counting untracked files), then someone else is _probably
 already using `arax.ncats.io/beta` for testing, and you should _reach out before
-proceeding_. Only proceed if there are no locally modified untracked files and
+proceeding_. Only proceed if there are no locally modified tracked files and
 the local code repository is on `master`. Staying in the same `RTX` directory:
 7. `git fetch origin`
 8. `git checkout issue-XXX`
 9. `git pull origin issue-XXX`
 10. Run all the pytests, using your updated code: `cd code/ARAX && pytest -v --cache-clear`<br />
-All 153 standard ARAX unit tests should pass, when run in the `arax.nats.io/beta` devarea.
+All 153 standard ARAX unit tests should pass, when run in the `arax.ncats.io/beta` devarea.
 11. Next is to run the example queries, using your updated code. You will need to restart ARAX. 
 Exit out of the shell session for user `rt`,
 by typing `exit`. You should see the root account prompt `#`:
@@ -559,7 +559,7 @@ Before deleting, you may wish to save any special testing scripts or JSON query 
 attachments in the issue (it is better to attach them to the issue than to 
 just leave them in your issue work folder on your development computer).
 9. Close issue `XXX` in the ARAX issue tracker. Only do this when all previous
-steps are completed. If you are not yet done, indicate the how far you got
+steps are completed. If you are not yet done, indicate how far you got
 on the checklist, as a comment in the issue, so you will know where to resume.
 
 
