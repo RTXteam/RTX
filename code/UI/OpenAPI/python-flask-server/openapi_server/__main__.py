@@ -117,13 +117,15 @@ def main():
     try:
         with config_file_path.open('r', encoding="utf-8") as infile:
             local_config = json.load(infile)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         eprint(f"Error loading config file: {config_file_path}")
         local_config = {}
     tcp_port = local_config.get('port', FLASK_DEFAULT_TCP_PORT)
     check_databases = local_config.get('check_databases', True)
     run_background_tasker = local_config.get('run_background_tasker', True)
     force_disable_telemetry = local_config.get('force_disable_telemetry', False)
+    query_fork_mode = local_config.get('query_fork_mode', True)
+    child_process_rlimit = local_config.get('child_process_rlimit', 34359738368)
 
     if check_databases:
         from ARAX_database_manager import ARAXDatabaseManager  # pylint: disable=import-outside-toplevel, import-error
@@ -136,7 +138,7 @@ def main():
                 dbmanager.update_databases()
             else:
                 eprint("Databases seem to be complete")
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             eprint(traceback.format_exc())
             raise
         del dbmanager
@@ -155,7 +157,7 @@ def main():
                 ARAXBackgroundTasker(parent_pid).run_tasks()
                 eprint("Background tasker child process ended unexpectedly")
                 os._exit(1)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
                 eprint("Error in ARAXBackgroundTasker.run_tasks()")
                 eprint(traceback.format_exc())
                 os._exit(1)
@@ -200,7 +202,7 @@ def main():
             assert False, "****** fork() unsuccessful in __main__"
 
     # loading overly general nodes JSON file
-    from Filter_KG.remove_nodes import RemoveNodes
+    from Filter_KG.remove_nodes import RemoveNodes  # pylint: disable=import-outside-toplevel, import-error
     RemoveNodes.load_block_list_file()
 
     # Import web framework components only in parent process
@@ -211,6 +213,8 @@ def main():
     app = connexion.App(__name__, specification_dir=str(specification_dir))
     app.app.json_provider_class = CustomJSONProvider
     app.app.json = app.app.json_provider_class(app.app)
+    app.app.config["QUERY_FORK_MODE"] = query_fork_mode
+    app.app.config["CHILD_PROCESS_RLIMIT"] = child_process_rlimit
     eprint(f"Using JSON provider: {type(app.app.json).__name__}")
     app.add_api('openapi.yaml',
                 arguments={'title': 'ARAX Translator Reasoner'},

@@ -1,23 +1,56 @@
-import connexion
-import flask
+"""
+Query controller for executing ARAX queries within a Flask/Connexion API.
+
+This module implements the `/query` endpoint for the Translator Reasoner API,
+providing both streaming and non-streaming execution modes. Queries are
+submitted as JSON dictionaries (validated upstream by Connexion) and executed
+via the ARAXQuery engine.
+
+Key features:
+- Optional execution of queries in a forked child process to isolate resource
+  usage and improve robustness (`QUERY_CONTROLLER_FORK_MODE`).
+- Inter-process communication using an OS pipe, allowing the child process to
+  stream JSON output back to the parent.
+- Support for streaming responses using Server-Sent Events (SSE) when
+  `stream_progress` is requested.
+- Enforcement of per-query memory limits in forked child processes.
+- Defensive handling of signals (e.g., SIGPIPE) and process termination to
+  prevent resource corruption or duplicate output.
+- Injection of client metadata (e.g., remote IP address) into the query payload
+  for downstream logging and analysis.
+
+Design notes:
+- The child process uses `os._exit()` to avoid invoking Python cleanup handlers
+  that could interfere with resources shared with the parent.
+- Standard input/output streams are redirected in the child process to avoid
+  shared buffering issues after `fork()`.
+- Generators are used to stream JSON responses incrementally, minimizing memory
+  overhead for large results.
+- The first yielded line in non-streaming mode encodes the HTTP status, followed
+  by the serialized response payload.
+
+This module assumes that all incoming requests have already passed OpenAPI
+schema validation via Connexion.
+"""
 import json
 import os
 import sys
 import signal
 import resource
 import traceback
-from typing import Iterable, Callable
+from typing import Callable, Iterator
+import connexion
+import flask
 import setproctitle
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../../ARAX/ARAXQuery")
-import ARAX_query
+import ARAX_query  # pylint: disable=import-outside-toplevel,import-error,wrong-import-position
 
 
-rlimit_child_process_bytes = 34359738368  # 32 GiB
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
 
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
-
-def child_receive_sigpipe(signal_number, frame):
+def child_receive_sigpipe(signal_number, _):
     if signal_number == signal.SIGPIPE:
         eprint("[query_controller]: child process detected a "
                "SIGPIPE; exiting python")
@@ -25,7 +58,8 @@ def child_receive_sigpipe(signal_number, frame):
 
 
 def run_query_dict_in_child_process(query_dict: dict,
-                                    query_runner: Callable) -> Iterable[str]:
+                                    query_runner: Callable,
+                                    child_rlimit: int | None = None) -> Iterator[str]:
     eprint("[query_controller]: Creating pipe and "
            "forking a child to handle the query")
     read_fd, write_fd = os.pipe()
@@ -39,28 +73,40 @@ def run_query_dict_in_child_process(query_dict: dict,
     pid = os.fork()
 
     if pid == 0:  # I am the child process
-        sys.stdout = open('/dev/null', 'w')         # parent and child process should not share the same stdout stream object
-        sys.stdin = open('/dev/null', 'r')          # parent and child process should not share the same stdin stream object
+        # parent and child process should not share the same stdout stream object
+        sys.stdout = open(os.devnull, 'w', encoding='utf-8')  # pylint: disable=consider-using-with
+        # parent and child process should not share the same stdin stream object
+        sys.stdin = open(os.devnull, 'r', encoding='utf-8')  # pylint: disable=consider-using-with
         os.close(read_fd)                   # child doesn't read from the pipe, it writes to it
-        setproctitle.setproctitle("python3 query_controller::run_query_dict_in_child_process")       
-        resource.setrlimit(resource.RLIMIT_AS, (rlimit_child_process_bytes, rlimit_child_process_bytes))  # set a virtual memory limit for the child process
-        signal.signal(signal.SIGPIPE, child_receive_sigpipe) # get rid of signal handler so we don't double-print to the log on SIGPIPE error
-        signal.signal(signal.SIGCHLD, signal.SIG_IGN) # disregard any SIGCHLD signal in the child process
+        setproctitle.setproctitle("python3 query_controller::run_query_dict_in_child_process")
+        # set a virtual memory limit for the child process
+        if child_rlimit is not None:
+            soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+            new_soft = min(child_rlimit, hard)
+            if sys.platform != "darwin":
+                resource.setrlimit(resource.RLIMIT_AS, (new_soft, hard))            
+            else:
+                print("skipping resetting RLIMIT_AS since we are running on macOS", file=sys.stderr)
+        # get rid of signal handler so we don't double-print to the log on SIGPIPE error
+        signal.signal(signal.SIGPIPE, child_receive_sigpipe)
+        # disregard any SIGCHLD signal in the child process
+        signal.signal(signal.SIGCHLD, signal.SIG_IGN)
         signal.signal(signal.SIGTERM, signal.SIG_DFL)
         try:
-            with os.fdopen(write_fd, "w") as write_fo:  # child process needs to get a stream object for the file descriptor `write_fd`
+            # child process needs to get a stream object for the file descriptor `write_fd`
+            with os.fdopen(write_fd, "w") as write_fo:
                 json_string_generator = query_runner(query_dict)
                 for json_string in json_string_generator:
                     write_fo.write(json_string)
                     write_fo.flush()
-# The reason why I am catching BaseException in the child process is because I
-# want to ensure that under no circumstances does the child process's cpython
-# exit with sys.exit; I only want it to exit with sys._exit, so no resource
-# (that I might have missed) that is jointly owned by child process and parent
-# process will be closed by the child process. The assumption that if such
-# resources exist, they are owned by the parent process and not to be touched by
-# the child process:                    
-        except BaseException as e:
+        except BaseException as e:  # pylint: disable=broad-exception-caught
+            # The reason why I am catching BaseException in the child process is because I
+            # want to ensure that under no circumstances does the child process's cpython
+            # exit with sys.exit; I only want it to exit with sys._exit, so no resource
+            # (that I might have missed) that is jointly owned by child process and parent
+            # process will be closed by the child process. The assumption that if such
+            # resources exist, they are owned by the parent process and not to be touched by
+            # the child process:
             print("Exception in query_controller.run_query_dict_in_child_process: "
                   f"{type(e)}\n{traceback.format_exc()}", file=sys.stderr)
             os._exit(1)
@@ -75,7 +121,7 @@ def run_query_dict_in_child_process(query_dict: dict,
     return read_fo
 
 
-def _run_query_and_return_json_generator_nonstream(query_dict: dict) -> Iterable[str]:
+def _run_query_and_return_json_generator_nonstream(query_dict: dict) -> Iterator[str]:
     envelope = ARAX_query.ARAXQuery().query_return_message(query_dict)
     envelope_dict = envelope.to_dict()
     http_status = getattr(envelope, 'http_status', 200)
@@ -84,48 +130,62 @@ def _run_query_and_return_json_generator_nonstream(query_dict: dict) -> Iterable
     yield json.dumps(envelope_dict, sort_keys=True, allow_nan=False) + "\n"
 
 
-def _run_query_and_return_json_generator_stream(query_dict: dict) -> Iterable[str]:
+def _run_query_and_return_json_generator_stream(query_dict: dict) -> Iterator[str]:
     return ARAX_query.ARAXQuery().query_return_stream(query_dict)
 
 
-def query(request_body):  # noqa: E501
+def query(request_body: dict) -> tuple[flask.Response, int | None]:  # noqa: E501
     """Initiate a query and wait to receive a Response
-
-    :param request_body: Query information to be submitted
-    :type request_body: Dict[str, ]
-
-    :rtype: Response
     """
+
+    app = flask.current_app
+    fork_mode = app.config.get("QUERY_FORK_MODE", True)
+    child_rlimit = None
+    if fork_mode:
+        child_rlimit = app.config.get("CHILD_PROCESS_RLIMIT", None)
 
     # Note that we never even get here if the request_body is not schema-valid JSON
 
-    query = connexion.request.get_json()
+    request_body = dict(request_body)
 
+    x_forwarded_for = connexion.request.headers.get("x-forwarded-for")
+    remote_address = (
+        x_forwarded_for.split(",")[0].strip()
+        if x_forwarded_for
+        else connexion.request.remote_addr or "???"
+    )
     #### Record the remote IP address in the query for now so it is available downstream
-    query['remote_address'] = connexion.request.headers.get('x-forwarded-for', '???')
+    request_body['remote_address'] = remote_address
 
-    mime_type = 'application/json'
-    fork_mode = True  # :DEBUG: can turn this to False to disable fork-mode
-    if query.get('stream_progress', False):  # if stream_progress is specified and if it is True:
-
+    # if stream_progress is specified and if it is True:
+    if request_body.get('stream_progress', False):
 
         http_status = None
-        mime_type = 'text/event-stream'
         if not fork_mode:
-            json_generator = _run_query_and_return_json_generator_stream(query)
+            json_generator = _run_query_and_return_json_generator_stream(
+                request_body
+            )
         else:
-            json_generator = run_query_dict_in_child_process(query,
-                                                             _run_query_and_return_json_generator_stream)
-        resp_obj = flask.Response(json_generator, mimetype=mime_type)
+            json_generator = run_query_dict_in_child_process(
+                request_body,
+                _run_query_and_return_json_generator_stream,
+                child_rlimit
+            )
+        resp_obj = flask.Response(json_generator, mimetype="text/event-stream")
     else:
         if not fork_mode:
-            json_generator = _run_query_and_return_json_generator_nonstream(query)
+            json_generator = _run_query_and_return_json_generator_nonstream(
+                request_body
+            )
         else:
-            json_generator = run_query_dict_in_child_process(query,
-                                                         _run_query_and_return_json_generator_nonstream)
+            json_generator = run_query_dict_in_child_process(
+                request_body,
+                _run_query_and_return_json_generator_nonstream,
+                child_rlimit
+            )
         status_line = next(json_generator)
         status_dict = json.loads(status_line)
-        http_status = status_dict['__http_status__']        
+        http_status = status_dict['__http_status__']
         response_serialized_str = next(json_generator)
-        resp_obj = flask.Response(response_serialized_str)
-    return (resp_obj, http_status)
+        resp_obj = flask.Response(response_serialized_str, mimetype="application/json")
+    return resp_obj, http_status
