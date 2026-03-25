@@ -3,15 +3,17 @@
 ##### Stephen Ramsey, March 23, 2026
 
 ## Who is this document for?
-This procedure is primarily intended for use by Ramsey Lab team members working
+This procedure is _primarily_ intended for use by Ramsey Lab team members working
 on maintenance of the ARAX system; it is specialized for the parts of the ARAX
 system that the Ramsey Lab team members are likely to work on (Expand, Resultify,
 NodeSynonymizer, etc.). However, much of the content may also be useful for 
-other developers working on ARAX.
+other developers working on ARAX (and those non-OSU team members can skip over the 
+process steps and suggested coding standards described in this document that 
+don't apply to them or the parts of ARAX that they work on).
 
 ## Preparing your local dev computer to maintain ARAX
 To efficiently maintain ARAX, it is essential to have a local development system that you don't have
-to `ssh` into. You will need to have Linux or macOS (though Linux on Windows via WSL is also probably
+to `ssh` into. You will need to have Linux or macOS (though Linux running on Windows via WSL2 is also probably
 fine); either `x86_64` or `ARM64` architecture is probably fine (the parts of ARAX that the Ramsey
 Lab maintains seem to work fine on both architectures). Your local development computer should have:
 
@@ -34,10 +36,10 @@ It's also helpful to have basic network troubleshooting utilities like
 
 ### Setup of your local dev system 
 You only need to perform this "setup" procedure once; you don't need to do it
-each time you work on a new ARAX issue. You will, however, need to redo this
-procedure at each major new release of ARAX databases.
+each time you work on a new ARAX issue. You will, however, need to carry out this
+procedure after each major new release of ARAX databases.
 
-1. Look at the shell script 
+1. Inspect the shell script 
 [`generate-db-symlinks.sh`](https://github.com/RTXteam/RTX/blob/master/code/generate-db-symlinks.sh)
 and, from it, compile a list of all the files referenced in that script (each of them is
 an "ARAX database" of some kind or other). Download all the ARAX databases on
@@ -119,6 +121,8 @@ maintenance.
 Once you done with these steps, you are ready to work on a maintenance task for ARAX;
 continue with the procedure in the next section, which you should follow (from
 that section's beginning) for each ARAX maintenance task that you work on.
+For extensive documentation on the `flask_config.json` file schema, see
+the [relevant section of the ARAX wiki](https://github.com/RTXteam/RTX/wiki/Config,-databases,-and-SFTP#flask_configjson).
 
 ### Potential gotcha: TCP port
 It is possible that TCP port 5001 is aready in use on your computer, by some
@@ -419,7 +423,7 @@ given how issue-specific development work on ARAX is typically done):
 git commit -m '#XXX' module1.py module2.py module3.py
 git push origin issue-XXX
 ```
-Do not push your code to `master` at this point.
+Do not push your code to the `master` branch at this point.
 
 ## Test on a `arax.ncats.io` dev-area
 You'll now want to test your code on `arax.ncats.io`, on one of the available 
