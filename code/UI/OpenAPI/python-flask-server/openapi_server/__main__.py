@@ -123,7 +123,7 @@ def main():
     tcp_port = local_config.get('port', FLASK_DEFAULT_TCP_PORT)
     check_databases = local_config.get('check_databases', True)
     run_background_tasker = local_config.get('run_background_tasker', True)
-    force_disable_telemetry = local_config.get('force_disable_telemetry', False)
+    force_disable_telemetry = local_config.get('force_disable_telemetry', True)
     query_fork_mode = local_config.get('query_fork_mode', True)
     child_process_rlimit = local_config.get('child_process_rlimit', 34359738368)
 
