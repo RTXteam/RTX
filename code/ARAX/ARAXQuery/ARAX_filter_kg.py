@@ -1,15 +1,12 @@
 import sys
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
-
-import os
-import json
-import ast
-import re
-import numpy as np
-from ARAX_response import ARAXResponse
 import traceback
 from collections import Counter
 from collections.abc import Hashable
+from Filter_KG.remove_edges import RemoveEdges
+from Filter_KG.remove_nodes import RemoveNodes
+
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
 
 class ARAXFilterKG:
 
@@ -31,7 +28,7 @@ class ARAXFilterKG:
             'remove_orphaned_nodes',
             'remove_general_concept_nodes'
         }
-        self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
+        self.report_stats = False  # Set this to False when ready to go to production, this is only for debugging purposes
 
         #parameter descriptions
         self.edge_type_info = {
@@ -464,7 +461,8 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 response.debug(f"Query graph is {message.query_graph}")
             if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
-                response.debug(f"Number of nodes in KG by type is {Counter([x.categories[0] for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
+                response.debug(f"Number of nodes in KG by type is {Counter([next(iter(x.categories), None) \
+                for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
                 #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes.values()])}")  # don't really need to worry about this now
                 response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
                 response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges.values()])}")
@@ -506,16 +504,16 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
                 return -1
-            elif type(item) == list or type(item) == set:
+            elif type(item) is list or type(item) is set:
                     for item_val in item:
                         if item_val not in allowable_parameters[key]:
                             self.response.warning(
                                 f"Supplied value {item_val} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
                             return -1
             elif item not in allowable_parameters[key]:
-                if any([type(x) == float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
+                if any([type(x) is float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
                     continue
-                elif any([type(x) == int for x in allowable_parameters[key]]):
+                elif any([type(x) is int for x in allowable_parameters[key]]):
                     continue
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.warning(
@@ -622,7 +620,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             edge_params['remove_connected_nodes'] = False
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_predicate()
         return response
@@ -642,7 +639,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             # check if all required parameters are provided
             if 'edge_attribute' not in parameters.keys():
-                self.response.error(f"The parameter edge_attribute must be provided to remove edges by discrete attribute, allowable parameters include: {set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str])}")
+                self.response.error(f"The parameter edge_attribute must be provided to remove edges by discrete attribute, allowable parameters include: {set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) is str])}")
             if self.response.status != 'OK':
                 return self.response
             known_values = set()
@@ -650,11 +647,11 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 for edge in message.knowledge_graph.edges.values():
                     if hasattr(edge, parameters['edge_attribute']):
                         value = edge.to_dict()[parameters['edge_attribute']]
-                        if type(value) == str:
+                        if type(value) is str:
                             known_values.add(value)
-                        elif type(value) == list:
+                        elif type(value) is list:
                             for x in value:
-                                if type(x) == str:
+                                if type(x) is str:
                                     known_values.add(x)
             known_attributes = set()
             provided_by_attributes = {'knowledge_source',
@@ -685,7 +682,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                             known_attributes = known_attributes.union(provided_by_attributes)
 
             allowable_parameters = {'action': {'remove_edges_by_discrete_attribute'},
-                                    'edge_attribute': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) == str or type(val) == list]).union(known_attributes),
+                                    'edge_attribute': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) is str or type(val) is list]).union(known_attributes),
                                     'value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
@@ -741,7 +738,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_property()
         return response
@@ -805,7 +801,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code=error_type.__name__)
-            self.response.error(f"parameter 'threshold' must be a float")
+            self.response.error("parameter 'threshold' must be a float")
         if self.response.status != 'OK':
             return self.response
 
@@ -840,7 +836,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_attribute()
         return response
@@ -924,7 +919,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"parameter 'threshold' must be a float")
+                self.response.error("parameter 'threshold' must be a float")
             if self.response.status != 'OK':
                 return self.response
             supplied_threshhold = edge_params['threshold']
@@ -995,7 +990,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_stats()
         return response
@@ -1079,7 +1073,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"parameter 'threshold' must be a float")
+                self.response.error("parameter 'threshold' must be a float")
             if self.response.status != 'OK':
                 return self.response
             supplied_threshhold = edge_params['threshold']
@@ -1150,7 +1144,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_stats()
         return response
@@ -1236,7 +1229,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"parameter 'n' must be an integer")
+                self.response.error("parameter 'n' must be an integer")
             if self.response.status != 'OK':
                 return self.response
             supplied_threshhold = edge_params['threshold']
@@ -1307,7 +1300,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_edges import RemoveEdges
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_stats()
         return response
@@ -1346,7 +1338,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         node_params = self.parameters
 
         # now do the call out to NGD
-        from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
         response = RN.remove_nodes_by_category()
         return response
@@ -1366,7 +1357,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
             # check if all required parameters are provided
             if 'node_property' not in parameters.keys():
-                self.response.error(f"The parameter node_property must be provided to remove nodes by propery, allowable parameters include: {set([key for x in self.message.knowledge_graph.nodes.values() for key, val in x.to_dict().items() if type(val) == str])}")
+                self.response.error(f"The parameter node_property must be provided to remove nodes by propery, allowable parameters include: {set([key for x in self.message.knowledge_graph.nodes.values() for key, val in x.to_dict().items() if type(val) is str])}")
             if self.response.status != 'OK':
                 return self.response
             known_values = set()
@@ -1374,10 +1365,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                 for node in message.knowledge_graph.nodes.values():
                     if hasattr(node, parameters['node_property']):
                         value = node.to_dict()[parameters['node_property']]
-                        if type(value) == str:
+                        if type(value) is str:
                             known_values.add(value)
             allowable_parameters = {'action': {'remove_nodes_by_property'},
-                                    'node_property': set([key for x in self.message.knowledge_graph.nodes.values() for key, val in x.to_dict().items() if type(val) == str]),
+                                    'node_property': set([key for x in self.message.knowledge_graph.nodes.values() for key, val in x.to_dict().items() if type(val) is str]),
                                     'property_value': known_values
                                 }
         else:
@@ -1412,7 +1403,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
             return self.response
 
         # now do the call out to NGD
-        from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
         response = RN.remove_nodes_by_property()
         return response
@@ -1423,12 +1413,12 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         Allowable parameters: {perform_action': boolean}
         :return:
         """
-        message = self.message
-        parameters = self.parameters
+
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
-        allowable_parameters = {'action': {'remove_general_concept_nodes'},
-                                    'perform_action': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
-                                   }
+        allowable_parameters = {
+            'action': {'remove_general_concept_nodes'},
+            'perform_action': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'}
+        }
 
         # A little function to describe what this thing does
         if describe:
@@ -1444,7 +1434,6 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
 
         node_params = self.parameters
         # now do the call out to NGD
-        from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
         response = RN.remove_general_concept_nodes()        
         return response
@@ -1483,123 +1472,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         node_params = self.parameters
 
         # now do the call out to NGD
-        from Filter_KG.remove_nodes import RemoveNodes
         RN = RemoveNodes(self.response, self.message, node_params)
         response = RN.remove_orphaned_nodes()
         return response
 
-##########################################################################################
-def main():
-    ### Note that most of this is just manually doing what ARAXQuery() would normally do for you
-
-    #### Create a response object
-    response = ARAXResponse()
-
-    #### Create an ActionsParser object
-    from actions_parser import ActionsParser
-    actions_parser = ActionsParser()
-
-    #### Set a simple list of actions
-    # actions_list = [
-    #    "overlay(compute_confidence_scores=true)",
-    #    "return(message=true,store=false)"
-    # ]
-
-    actions_list = [
-        #"filter_kg(action=remove_edges_by_predicate, edge_predicate=physically_interacts_with, remove_connected_nodes=false)",
-        #"filter_kg(action=remove_edges_by_predicate, edge_predicate=physically_interacts_with, remove_connected_nodes=something)",
-        #"filter(action=remove_nodes_by_category, node_category=protein)",
-        #"overlay(action=compute_ngd)",
-        #"filter(action=remove_edges_by_continuous_attribute, edge_attribute=ngd, threshold=.63, direction=below, remove_connected_nodes=t)",
-        #"filter(action=remove_edges_by_continuous_attribute, edge_attribute=ngd, threshold=.6, remove_connected_nodes=False)",
-        "filter(action=remove_orphaned_nodes)",
-        "return(message=true,store=false)"
-    ]
-
-    #### Parse the action_list and print the result
-    result = actions_parser.parse(actions_list)
-    response.merge(result)
-    if result.status != 'OK':
-        print(response.show(level=ARAXResponse.DEBUG))
-        return response
-    actions = result.data['actions']
-
-    #### Read message #2 from the database. This should be the acetaminophen proteins query result message
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../ResponseCache")
-    from response_cache import ResponseCache
-    response_cache = ResponseCache()
-
-    #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
-    # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
-    # message_dict = araxdb.getMessage(14)  # pleuropneumonia -> phenotypic_feature # work computer
-    # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
-    # message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
-    # message_dict = araxdb.getMessage(10)
-    message_dict = response_cache.get_response(314204)
-
-    #### The stored message comes back as a dict. Transform it to objects
-    from ARAX_messenger import ARAXMessenger
-    message = ARAXMessenger().from_dict(message_dict)
-    # print(json.dumps(message.to_dict(),sort_keys=True,indent=2))
-
-    #### Create an overlay object and use it to apply action[0] from the list
-    #filterkg = ARAXFilterKG()
-    #result = filterkg.apply(message, actions[0]['parameters'])
-    #response.merge(result)
-
-    # Apply overlay so you get an edge attribute to work with, then apply the filter
-    #from ARAX_overlay import ARAXOverlay
-    #overlay = ARAXOverlay()
-    #result = overlay.apply(message, actions[0]['parameters'])
-    #response.merge(result)
-    # then apply the filter
-    filterkg = ARAXFilterKG()
-    result = filterkg.apply(message, actions[0]['parameters'])
-    response.merge(result)
-
-    # if result.status != 'OK':
-    #    print(response.show(level=ARAXResponse.DEBUG))
-    #    return response
-    # response.data = result.data
-
-    #### If successful, show the result
-    # print(response.show(level=ARAXResponse.DEBUG))
-    # response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
-    #    'resource_id': message.resource_id, 'tool_version': message.tool_version }
-    # response.data['message_stats']['confidence_scores'] = []
-    # for result in message.results:
-    #    response.data['message_stats']['confidence_scores'].append(result.confidence)
-
-    # print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
-    # print(json.dumps(ast.literal_eval(repr(response.data['message_stats'])),sort_keys=True,indent=2))
-    # a comment on the end so you can better see the network on github
-
-    # look at the response
-    # print(response.show(level=ARAXResponse.DEBUG))
-    # print(response.show())
-    # print("Still executed")
-
-    # look at the edges
-    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())),sort_keys=True,indent=2))
-    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.nodes.values())), sort_keys=True, indent=2))
-    # print(json.dumps(message.to_dict(), sort_keys=True, indent=2))
-    # print(response.show(level=ARAXResponse.DEBUG))
-
-    # just print off the values
-    # print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2))
-    # for edge in message.knowledge_graph.edges.values():
-    #    if hasattr(edge, 'attributes') and edge.attributes and len(edge.attributes) >= 1:
-    #        print(edge.attributes.pop().value)
-    print(json.dumps(ast.literal_eval(repr(message.knowledge_graph.edges.values())), sort_keys=True, indent=2))
-    print(response.show(level=ARAXResponse.DEBUG))
-    vals = []
-    for key, node in message.knowledge_graph.nodes.items():
-        print(key)
-    print(len(message.knowledge_graph.nodes))
-    for edge in message.knowledge_graph.edges.values():
-        if hasattr(edge, 'attributes') and edge.attributes and len(edge.attributes) >= 1:
-            vals.append(edge.attributes.pop().value)
-    print(sorted(vals))
-
-
-if __name__ == "__main__": main()

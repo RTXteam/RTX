@@ -25,11 +25,13 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 class KPInfoCacher:
 
+
     def __init__(self):
         self.rtx_config = RTXConfiguration()
         version_string = f"{self.rtx_config.trapi_major_version}--{self.rtx_config.maturity}"
         self.cache_refresh_pid_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_refresh.pid"
         self.smart_api_and_meta_map_cache = f"{os.path.dirname(os.path.abspath(__file__))}/cache_smart_api_and_meta_map_{version_string}.pkl"
+        self.forced_kp_version = '1.5.0'
 
     def refresh_kp_info_caches(self):
         """
@@ -49,8 +51,7 @@ class KPInfoCacher:
             #                                                                             req_maturity=self.rtx_config.maturity)
             # When we start advertising that ARAX is TRAPI 1.6.0, we still want to use 1.5.0 KPs.
             # This is a hack to be removed when we are ready to roll out TRAPI 2.0
-            forced_kp_version = '1.5.0'
-            smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=forced_kp_version,
+            smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.forced_kp_version,
                                                                                          req_maturity=self.rtx_config.maturity)
 
             if not smart_api_kp_registrations:

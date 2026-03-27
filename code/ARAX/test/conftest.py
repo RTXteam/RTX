@@ -10,6 +10,8 @@ from ARAX_database_manager import ARAXDatabaseManager
 sys.path.append(os.path.sep.join([*pathlist[:(pathlist.index("RTX") + 1)], "code", "ARAX", "ARAXQuery", "Expand"]))
 from kp_info_cacher import KPInfoCacher
 
+from Filter_KG.remove_nodes import RemoveNodes
+RemoveNodes.load_block_list_file()
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -25,7 +27,10 @@ def pytest_addoption(parser):
         "--runonlyexternal", action="store_true", default=False, help="run only external tests"
     )
     parser.addoption(
-        "--nodatabases", action="store_true", default=False, help="do not download databases"
+        "--nodatabases", action="store_true", default=False, help="(deprecated, now the default) do not download databases"
+    )
+    parser.addoption(
+        "--withdatabases", action="store_true", default=False, help="download/update databases before running tests"
     )
 
 def pytest_configure(config):
@@ -39,13 +44,12 @@ def pytest_sessionstart(session):
     """
 
     config = session.config
-    if not config.getoption("--nodatabases"):
-    # Ensure local databases are up to date
-        print(f"Running database manager to check for missing databases..")
+    if config.getoption("--withdatabases"):
+        print("Running database manager to check for missing databases..")
         db_manager = ARAXDatabaseManager(allow_downloads=True)
         db_manager.update_databases()
     else:
-        print("not checking ARAX databases")
+        print("Skipping database check (pass --withdatabases to download/update databases)")
 
     # Refresh KP info cache if it hasn't been updated in more than an hour
     kp_info_cacher = KPInfoCacher()

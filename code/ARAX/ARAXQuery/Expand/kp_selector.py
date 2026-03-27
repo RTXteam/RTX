@@ -180,7 +180,7 @@ class KPSelector:
                 else:
                     unsupported_curies.add(input_curie)
             if unsupported_curies:
-                self.log.warning(f"{kp}: Could not find curies with prefixes {kp} prefers for these curies: "
+                self.log.warning(f"{kp}: Could not find curies with prefixes {kp} prefers, for these curies: "
                                  f"{unsupported_curies}; will not send these to KP")
             return converted_curies
 
@@ -191,27 +191,31 @@ class KPSelector:
                     # Just convert them into canonical curies
                     qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
                 else:
+                    if qnode.categories:
                     # Otherwise figure out which kind of curies KPs want
-                    categories = eu.convert_to_list(qnode.categories)
-                    supported_prefixes = self._get_supported_prefixes(categories, kp_name)
-                    used_prefixes = {self._get_uppercase_prefix(curie) for curie in qnode.ids}
-                    # Only convert curie(s) if any use an unsupported prefix
-                    if used_prefixes.issubset(supported_prefixes):
-                        self.log.debug(f"{kp_name}: All {qnode_key} curies use prefix(es) {kp_name} supports; no "
-                                       f"conversion necessary")
-                    else:
-                        self.log.debug(f"{kp_name}: One or more {qnode_key} curies use a prefix {kp_name} doesn't "
-                                       f"support; will convert these")
-                        converted_curies = self.get_desirable_equivalent_curies(qnode.ids, qnode.categories, kp_name)
-                        if converted_curies:
-                            log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
-                                      f"{len(converted_curies)} curies tailored for {kp_name}")
-                            qnode.ids = converted_curies
+                        categories = eu.convert_to_list(qnode.categories)
+                        supported_prefixes = self._get_supported_prefixes(categories, kp_name)
+                        used_prefixes = {self._get_uppercase_prefix(curie) for curie in qnode.ids}
+                        # Only convert curie(s) if any use an unsupported prefix
+                        if used_prefixes.issubset(supported_prefixes):
+                            self.log.debug(f"{kp_name}: All {qnode_key} curies use prefix(es) {kp_name} supports; no "
+                                           f"conversion necessary")
                         else:
-                            log.info(f"{kp_name} cannot answer the query because no equivalent curies were found "
-                                     f"with prefixes it supports for qnode {qnode_key}. Original curies were: "
-                                     f"{qnode.ids}")
-                            return None
+                            self.log.debug(f"{kp_name}: One or more {qnode_key} curies use a prefix {kp_name} doesn't "
+                                           f"support; will convert these")
+                            converted_curies = self.get_desirable_equivalent_curies(qnode.ids, qnode.categories, kp_name)
+                            if converted_curies:
+                                log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
+                                          f"{len(converted_curies)} curies tailored for {kp_name}")
+                                qnode.ids = converted_curies
+                            else:
+                                log.info(f"{kp_name} cannot answer the query because no equivalent curies were found "
+                                         f"with prefixes it supports for qnode {qnode_key}. Original curies were: "
+                                         f"{qnode.ids}")
+                                return None
+                    else:
+                        # the query graph has no categories; just ask NodeNorm what the preferred CURIE is and use that
+                        qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
         return qg
 
     @staticmethod

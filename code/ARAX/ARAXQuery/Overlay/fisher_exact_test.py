@@ -525,7 +525,7 @@ class ComputeFTEST:
                     )
 
                 # then run it from your sync code
-                answer_kg, log = asyncio.run(run_expand())
+                answer_kg, _, log = asyncio.run(run_expand())
                 
                 if log.status != 'OK':
                     self.response.error(f"Fail to query adjacent nodes from infores:rtx-kg2 for {node_curie}")

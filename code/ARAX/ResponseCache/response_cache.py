@@ -50,7 +50,7 @@ from openapi_server.models.response import Response as Envelope
 
 # only certain versions of TRAPI can be validated; place default in position [0]
 valid_trapi_versions = ['1.6.0', '1.5.0']
-biolink_version = '4.2.1'
+biolink_version = '4.3.6'
 
 try:
     validator_version = f"{metadata.version('reasoner-validator')}"
@@ -218,8 +218,12 @@ class ResponseCache:
     #### Store a new response into the database
     def add_new_response(self,response):
 
+        #### Run connect again because if the object has been lying around for a while the connection may have been lost
+        self.connect()
+
         DEBUG = True
         session = self.session
+
         envelope = response.envelope
         message = envelope.message
 
@@ -924,17 +928,17 @@ class ResponseCache:
     ##################################################################################################
     #### Fetch the configs stored in the MySQL server
     def get_configs(self):
+
         session = self.session
+        configs = {}
+
+        #configs['S3BucketMigrationDatetime'] = '2023-10-11 15:00:00'
+        #return configs
 
         query_result = session.query(ResponseCacheConfigSetting).all()
 
-        configs = {}
         for row in query_result:
-            #print(row.__dict__)
             configs[row.key] = row.value
-
-        #### Force value for testing code logic on one instance endpoint only:
-        #configs['S3BucketMigrationDatetime'] = '2023-10-11 15:00:00'
 
         return configs
 

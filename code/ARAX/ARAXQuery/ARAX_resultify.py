@@ -21,6 +21,7 @@ import math
 import os
 import sys
 from typing import Union, Iterable, cast, Optional, DefaultDict, Any
+import collections.abc
 from ARAX_response import ARAXResponse
 
 __author__ = 'Stephen Ramsey and Amy Glen'
@@ -44,6 +45,349 @@ from openapi_server.models.node_binding import NodeBinding
 from openapi_server.models.edge_binding import EdgeBinding
 from openapi_server.models.result import Result
 from openapi_server.models.analysis import Analysis
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph
+from openapi_server.models.message import Message
+from openapi_server.models.attribute import Attribute
+
+# SAR: defining this without leading underscore since we may
+# want to start using this function in ARAX_expander.py
+def analyze_message_get_referenced_IDs(
+        message: Message,
+        log: ARAXResponse
+) -> tuple[set[str], set[str], set[str], set[int]]:
+    kg = message.knowledge_graph
+    if kg is None:
+        log.error("Message has no knowledge graph; returning")
+        return set(), set(), set(), set()
+    aux_graphs: dict[str, AuxiliaryGraph] | None = message.auxiliary_graphs
+    if aux_graphs is None:
+        log.error("Message has no auxiliary graphs dictionary; returning")
+        return set(), set(), set(), set()
+    results = message.results
+    if results is None:
+        log.error("Message has no results list; returning")
+        return set(), set(), set(), set()
+    referenced_nodes = set()
+    referenced_edges = set()
+    referenced_results = set()
+    for result_index, result in enumerate(results):
+        result_nodes = set()
+        result_edges = set()
+        skip_result = False
+        if not hasattr(result, 'node_bindings') or result.node_bindings is None:
+            log.warning(f"Result {result_index} has no node_bindings attribute; skipping")
+            continue
+        result_node_bindings = result.node_bindings
+        if not isinstance(result_node_bindings, dict):
+            log.warning(f"Result {result_index} node bindings is not a dictionary; skipping")
+            continue
+        for qnode_id, node_binding_list in result.node_bindings.items():
+            if skip_result:
+                break
+            for node_binding_index, node_binding in enumerate(node_binding_list):
+                if not isinstance(node_binding, NodeBinding):
+                    log.warning(f"Result {result_index} "
+                                f"qnode {qnode_id} "
+                                f"node binding index {node_binding_index} "
+                                "object is not a NodeBinding object; skipping")
+                    skip_result = True
+                    break
+                if not hasattr(node_binding, 'id') or node_binding.id is None:
+                    log.warning(f"Result {result_index} "
+                                f"qnode {qnode_id} "
+                                "node object has no id attribute; skipping")
+                    skip_result = True
+                    break
+                node_id = node_binding.id
+                if node_id not in kg.nodes:
+                    log.warning(f"Result {result_index} "
+                                f"qnode {qnode_id} "
+                                f"node_id {node_id} "
+                                "is not in the KG; skipping")
+                    skip_result = True
+                    break
+                result_nodes.add(node_binding.id)
+        if skip_result:
+            continue
+        if not hasattr(result, 'analyses') or result.analyses is None:
+            log.warning(f"Result {result_index} has no analyses attribute; skipping")
+            continue
+        for analysis_index, analysis in enumerate(result.analyses):
+            if skip_result:
+                break
+            if not hasattr(analysis, 'resource_id') or analysis.resource_id is None:
+                log.warning(f"Result {result_index} "
+                            f"analysis {analysis_index} "
+                            "has no resource_id attribute, skipping")
+                skip_result = True
+                break
+            resource_id = analysis.resource_id
+            if not hasattr(analysis, 'edge_bindings') or analysis.edge_bindings is None:
+                log.warning(f"Result {result_index} "
+                            f"analysis {analysis_index} "
+                            f"(from {resource_id}) "
+                            "has no edge_bindings attribute, skipping")
+                skip_result = True
+                break
+            edge_bindings = analysis.edge_bindings
+            if not isinstance(edge_bindings, dict):
+                log.warning(f"Result {result_index} "
+                            f"analysis {analysis_index} "
+                            f"(from {resource_id}) "
+                            "edge bindings is not a dictionary, skipping")
+                skip_result = True
+                break
+            for qedge_id, qedge_bindings in edge_bindings.items():
+                if skip_result:
+                    break
+                if not isinstance(qedge_bindings,
+                                  list):
+                    log.warning(f"Result {result_index} "
+                                f"analysis {analysis_index} "
+                                f"(from {resource_id}) "
+                                f"qedge {qedge_id} "
+                                "edge_binding value is not a list, skipping")
+                    skip_result = True
+                    break
+                for edge_binding_index, edge_binding_obj in enumerate(qedge_bindings):
+                    if not isinstance(edge_binding_obj, EdgeBinding):
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    "is not an EdgeBinding object, skipping")
+                        skip_result = True
+                        break
+                    if not hasattr(edge_binding_obj, 'id') or edge_binding_obj.id is None:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    "does not have an id attribute, skipping")
+                        skip_result = True
+                        break
+                    edge_id = edge_binding_obj.id
+                    if edge_id not in kg.edges:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    f"edge_id: {edge_id} "
+                                    "is not in the KG, skipping")
+                        skip_result = True
+                        break
+                    edge = kg.edges[edge_id]
+                    if not hasattr(edge, 'subject') or edge.subject is None:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    f"edge_id: {edge_id} "
+                                    "has no subject, skipping")
+                        skip_result = True
+                        break
+                    edge_subject_node_id = edge.subject
+                    if edge_subject_node_id not in kg.nodes:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    f"edge_id: {edge_id} "
+                                    f"subject ID: {edge_subject_node_id} "
+                                    "is not in the KG, skipping")
+                        skip_result = True
+                        break
+                    if not hasattr(edge, 'object') or edge.object is None:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    f"edge_id: {edge_id} "
+                                    "has no object, skipping")
+                        skip_result = True
+                        break
+                    edge_object_node_id = edge.object
+                    if edge_object_node_id not in kg.nodes:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    f"edge_id: {edge_id} "
+                                    f"object ID: {edge_object_node_id} "
+                                    "is not in the KG, skipping")
+                        skip_result = True
+                        break
+                    result_edges.add(edge_id)
+                    result_nodes.add(edge_subject_node_id)
+                    result_nodes.add(edge_object_node_id)
+        if not skip_result:
+            referenced_results.add(result_index)
+            referenced_nodes.update(result_nodes)
+            referenced_edges.update(result_edges)
+    # so far, we have iterated over Result objects to discover:
+    # - nodes that are bound via a NodeBinding object in a Result
+    # - edges that are bound via an Analysis object in a Result
+    # but there may well be edges that are referenced in an Aux Graph;
+    # need to traverse all bound edges in the KG to discover any that
+    # reference an AuxiliaryGraph via an Edge attribute of type
+    # `biolink:support_graph`; then discover the edges referenced
+    # by that AuxiliaryGraph, and then what nodes those edges (in the KG)
+    # are referenced via `subject` or `object` attributes:
+    referenced_aux_graphs = set()
+    for edge_id, edge in kg.edges.items():
+        if not hasattr(edge, 'subject') or edge.subject is None:
+            log.warning(f"KG edge {edge_id} has no subject; skipping")
+            continue
+        edge_subject_node_id = edge.subject
+        if not hasattr(edge, 'object') or edge.object is None:
+            log.warning(f"KG edge {edge_id} has no object; skipping")
+            continue
+        edge_object_node_id = edge.object
+        if edge_subject_node_id in referenced_nodes and edge_object_node_id in referenced_nodes:
+            referenced_edges.add(edge_id)
+        if edge_id not in referenced_edges:
+            continue
+        edge_attrs = getattr(edge, 'attributes', [])
+        if edge_attrs is None:
+            edge_attrs = []
+        if not isinstance(edge_attrs, list):
+            log.warning(f"KG edge {edge_id} "
+                        "attribute \'attributes\' is not a list; skipping")
+            continue
+        for edge_attr_index, edge_attr in enumerate(edge_attrs):
+            if not isinstance(edge_attr, Attribute):
+                log.warning(f"KG edge {edge_id} "
+                            f"attribute {edge_attr_index} "
+                            "is not an Attribute; skipping")
+                continue
+            if not hasattr(edge_attr, 'attribute_type_id') \
+               or edge_attr.attribute_type_id is None:
+                log.warning(f"KG edge {edge_id} "
+                            f"attribute {edge_attr_index} "
+                            "has no attribute_type_id; skipping")
+                continue
+            attribute_type_id = edge_attr.attribute_type_id
+            if attribute_type_id != "biolink:support_graphs":
+                continue
+            if not hasattr(edge_attr, 'value') \
+               or edge_attr.value is None:
+                log.warning(f"KG edge {edge_id} "
+                            f"attribute {edge_attr_index} "
+                            "has no value attribute; skipping")
+                continue
+            edge_attr_values = edge_attr.value
+            if not isinstance(edge_attr_values, list):
+                log.warning(f"KG edge {edge_id} "
+                            f"attribute {edge_attr_index} "
+                            "value attribute is not a list; skipping")
+                continue
+            for edge_attr_value_index, edge_attr_value \
+                    in enumerate(edge_attr_values):
+                if edge_attr_value is None:
+                    log.warning(f"KG edge {edge_id} "
+                                f"attribute {edge_attr_index} "
+                                f"attribute value {edge_attr_value_index} "
+                                "value is None; skipping")
+                    # keep looking at other values for this attribute, if there are any
+                    # (the TRAPI spec seems to allow for multiple support_graphs for
+                    # an edge in a KnowledgeGraph)
+                    continue
+                aux_graph_id = str(edge_attr_value)
+                if aux_graph_id not in aux_graphs:
+                    log.warning(f"KG edge {edge_id} "
+                                f"attribute {edge_attr_index} "
+                                f"attribute value {edge_attr_value_index} "
+                                f"references aux graph ID {aux_graph_id} "
+                                "which is not in the aux graphs object; skipping")
+                    continue
+                aux_graph = aux_graphs[aux_graph_id]
+                if not isinstance(aux_graph, AuxiliaryGraph):
+                    log.warning(f"KG edge {edge_id} "
+                                f"attribute {edge_attr_index} "
+                                f"references aux graph {aux_graph_id} "
+                                "which is not an AuxiliaryGraph; skipping")
+                    continue
+                if not hasattr(aux_graph, 'edges'):
+                    log.warning(f"KG edge {edge_id} "
+                                f"attribute {edge_attr_index} "
+                                f"references aux graph {aux_graph_id} "
+                                "that does not have an edges attribute; skipping")
+                    continue
+                edges = aux_graph.edges
+                if not isinstance(edges, list):
+                    log.warning(f"KG edge {edge_id} "
+                                f"attribute {edge_attr_index} "
+                                f"references aux graph {aux_graph_id} "
+                                "whose edges attribute is not a list; skipping")
+                    continue
+                skip_aux_graph = False
+                aux_graph_edges = set()
+                aux_graph_nodes = set()
+                for aux_edge_id in edges:
+                    if skip_aux_graph:
+                        break
+                    if aux_edge_id not in kg.edges:
+                        log.warning(f"KG edge {edge_id} "
+                                    f"attribute {edge_attr_index} "
+                                    f"references aux graph {aux_graph_id} "
+                                    f"containing edge {aux_edge_id} "
+                                    "which is not in the KG; skipping")
+                        skip_aux_graph = True
+                        break
+                    aux_edge = kg.edges[aux_edge_id]
+                    if not hasattr(aux_edge, 'subject') \
+                       or aux_edge.subject is None:
+                        log.warning(f"KG edge {edge_id} "
+                                    f"attribute {edge_attr_index} "
+                                    f"references aux graph {aux_graph_id} "
+                                    f"containing edge {aux_edge_id} "
+                                    "which has no subject; skipping")
+                        skip_aux_graph = True
+                        break
+                    aux_edge_subject = aux_edge.subject
+                    if aux_edge_subject not in kg.nodes:
+                        log.warning(f"KG edge {edge_id} "
+                                    f"attribute {edge_attr_index} "
+                                    f"references aux graph {aux_graph_id} "
+                                    f"containing edge {aux_edge_id} "
+                                    f"with subject node ID {aux_edge_subject} "
+                                    "which is not in the KG; skipping")
+                        skip_aux_graph = True
+                        break
+                    if not hasattr(aux_edge, 'object') or aux_edge.object is None:
+                        log.warning(f"KG edge {edge_id} "
+                                    f"attribute {edge_attr_index} "
+                                    f"references aux graph {aux_graph_id} "
+                                    f"containing edge {aux_edge_id} "
+                                    "which has no object; skipping")
+                        skip_aux_graph = True
+                        break
+                    aux_edge_object = aux_edge.object
+                    if aux_edge_object not in kg.nodes:
+                        log.warning(f"KG edge {edge_id} "
+                                    f"attribute {edge_attr_index} "
+                                    f"references aux graph {aux_graph_id} "
+                                    f"containing edge {aux_edge_id} "
+                                    f"with object node ID {aux_edge_object} "
+                                    "which is not in the KG; skipping")
+                        skip_aux_graph = True
+                        break
+                    aux_graph_nodes.add(aux_edge_subject)
+                    aux_graph_nodes.add(aux_edge_object)
+                    aux_graph_edges.add(aux_edge_id)
+                if not skip_aux_graph:
+                    referenced_aux_graphs.add(aux_graph_id)
+                    referenced_nodes.update(aux_graph_nodes)
+                    referenced_edges.update(aux_graph_edges)
+
+    return referenced_nodes, referenced_edges, referenced_aux_graphs, referenced_results
 
 
 class ARAXResultify:
@@ -92,11 +436,20 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
         }
         return [command_definition]
 
-    def apply(self, response: ARAXResponse, input_parameters: dict, mode: str = "ARAX") -> ARAXResponse:
+
+    def apply(
+            self,
+            response: ARAXResponse,
+            input_parameters: dict,
+            mode: str = "ARAX"
+    ) -> ARAXResponse:
 
         # Define a default response
         self.response = response
-        self.message = response.envelope.message
+        message = response.envelope.message
+        self.message = message
+        if message.auxiliary_graphs is None:
+            message.auxiliary_graphs = {}
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -111,19 +464,54 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
         response.data['parameters'] = input_parameters
         self.parameters = input_parameters
 
+        # inspect the message.query_graph to see if there are edges; if there are no edges,
+        # this is probably a pathfinder result accidentally passed to ARAX-resultify; give
+        # a helpful error message in that case
+        if not hasattr(message.query_graph, 'edges'):
+            response.warning("In ARAX-resultify, the query graph has no edges attribute; "
+                             "most likely this is because a Pathfinder (or ARAX-connect) "
+                             "analysis message was passed to ARAX-resultify using the "
+                             "resultify() ARAXi command; resultify() should not be used "
+                             "with Pathfinder; after connect(), the paths are already "
+                             "in the message and can be displayed by the ARAX UI")
+            return response
+
         response.debug(f"Applying Resultifier to Message with parameters {input_parameters}")
 
-        if not self.message.knowledge_graph:
-            self.response.error("No message.knowledge_graph exists for resultify to create results from",
+        kg = message.knowledge_graph
+        if not kg:
+            response.error("No message.knowledge_graph exists for resultify to create results from",
                                 error_code="NoKG")
             return response
 
-        # call _resultify
-        self._resultify(mode=mode, describe=False)
+        # call resultify
+        nodes_bound, edges_bound = self.resultify(mode=mode, describe=False)
 
-        # Clean up the KG (should only contain nodes used in the results)
-        self._clean_up_kg()
+        ref_nodes, ref_edges, ref_aux_graphs, ref_results = \
+            analyze_message_get_referenced_IDs(message,
+                                               response)
 
+        # rebuild the knowledge graph and auxiliary graphs
+        # to ensure that they are internally consistent
+        kg_new = KnowledgeGraph({node_id: node for node_id, node \
+                                 in kg.nodes.items() \
+                                 if node_id in ref_nodes},
+                                {edge_id: edge for edge_id, edge \
+                                 in kg.edges.items() \
+                                 if edge_id in ref_edges})
+        aux_graphs_new = {aux_graph_id: aux_graph for aux_graph_id, aux_graph \
+                          in message.auxiliary_graphs.items() \
+                          if aux_graph_id in ref_aux_graphs}
+        message.knowledge_graph = kg_new
+
+        message.auxiliary_graphs = aux_graphs_new
+        message.results = [result for res_id, result in enumerate(message.results) \
+                           if res_id in ref_results]
+
+        response.debug("At end of resultify: "
+                       f"nodes: {len(kg_new.nodes)} "
+                       f"edges: {len(kg_new.edges)} "
+                       f"aux_graphs: {len(aux_graphs_new)}")
         # Return the response and done
         return response
 
@@ -186,9 +574,13 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
             edge.qedge_keys = list(kg_edge_keys_to_qedge_keys[edge_key])
         return response
 
-    def _resultify(self, mode: str, describe: bool = False):
+    def resultify(
+            self,
+            mode: str,
+            describe: bool = False
+    ) -> tuple[set[str], set[str]]:
         """From a knowledge graph and a query graph (both in a Message object), extract a list of Results objects, each containing
-        lists of NodeBinding and EdgeBinding objects. Add a list of Results objects to self.message.rseults.
+        lists of NodeBinding and EdgeBinding objects. Add a list of Results objects to self.message.results.
 
         It is required that `self.parameters` contain the following:
             ignore_edge_direction: a parameter of type `bool` indicating whether
@@ -201,23 +593,28 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
 
         """
         assert self.response is not None
-        results = self.message.results
-        if results is not None and len(results) > 0:
-            self.response.info("Clearing previous results and computing a new set of results")
-            self.message.results = []
-            results = self.message.results
-            self.message.n_results = 0
-
+        response = self.response
         message = self.message
+        if message is None:
+            message = response.envelope.message
         parameters = self.parameters
+        if parameters is None:
+            parameters = {}
+
+        results = message.results
+        if results is not None and len(results) > 0:
+            response.info("Clearing previous results and computing a new set of results")
+            results = []
+            message.results = results
+            message.n_results = 0
 
         debug_mode = parameters.get('debug', None)
         if debug_mode is not None:
             try:
                 debug_mode = _parse_boolean_case_insensitive(debug_mode)
             except Exception as e:
-                self.response.error(str(e))
-                return
+                response.error(str(e))
+                return set(), set()
 
         for parameter_name in parameters.keys():
             if parameter_name == '':
@@ -225,16 +622,18 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
             if parameter_name not in ARAXResultify.ALLOWED_PARAMETERS:
                 error_string = "parameter type is not allowed in ARAXResultify: " + str(parameter_name)
                 if not debug_mode:
-                    self.response.error(error_string)
-                    return
+                    response.error(error_string)
+                    return set(), set()
                 else:
                     raise ValueError(error_string)
 
         kg = message.knowledge_graph
+        response.debug(f"KG node count: {len(kg.nodes)}; "
+                       f"KG edge count: {len(kg.edges)}")
         # Only resultify the portion of the QG that's been expanded #1848
-        qg = _filter_to_expanded_portion(message.query_graph, self.response)
+        qg = _filter_to_expanded_portion(message.query_graph, response)
         # Ignore kryptonite ("not") edges/nodes in Resultify (Expand takes care of those) #1119
-        qg = _get_qg_without_kryptonite_portions(qg, self.response)
+        qg = _get_qg_without_kryptonite_portions(qg, response)
 
         ignore_edge_direction = parameters.get('ignore_edge_direction', None)
         if ignore_edge_direction is not None:
@@ -243,17 +642,24 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
             except ValueError as e:
                 error_string = "parameter value is not allowed in ARAXResultify: " + str(ignore_edge_direction)
                 if not debug_mode:
-                    self.response.error(error_string)
-                    return
+                    response.error(error_string)
+                    return set(), set()
                 else:
                     raise e
 
+        nodes_bound = {node_id: node for node_id, node in kg.nodes.items() \
+                       if hasattr(node, "qnode_keys") and node.qnode_keys}
+        edges_bound = {edge_id: edge for edge_id, edge in kg.edges.items() \
+                       if hasattr(edge, "qedge_keys") and edge.qedge_keys}
+        kg_bound = KnowledgeGraph(nodes=nodes_bound,
+                                  edges=edges_bound)
+
         # Actually create results
-        results = _get_results_for_kg_by_qg(kg,
+        results = _get_results_for_kg_by_qg(kg_bound,
                                             qg,
                                             mode,
                                             ignore_edge_direction,
-                                            self.response)
+                                            response)
         message_code = 'OK'
         code_description = 'Result list computed from KG and QG'
 
@@ -263,27 +669,14 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
             code_description = 'no results returned'
             if len(kg.nodes) == 0:
                 code_description += '; empty knowledge graph'
-            self.response.warning(code_description)
+            response.warning(code_description)
 
         message.n_results = len(results)
         message.code_description = code_description
         message.message_code = message_code
-
-    def _clean_up_kg(self):
-        self.response.debug("Cleaning up the KG to remove nodes not used in the results")
-        results = self.message.results
-        kg = self.message.knowledge_graph
-
-        node_keys_used_in_results = {node_binding.id for result in results
-                                     for node_binding_list in result.node_bindings.values()
-                                     for node_binding in node_binding_list}
-        cleaned_kg = KnowledgeGraph(nodes={node_key: node for node_key, node in kg.nodes.items()
-                                           if node_key in node_keys_used_in_results},
-                                    edges={edge_key: edge for edge_key, edge in kg.edges.items() if
-                                           {edge.subject, edge.object}.issubset(node_keys_used_in_results)})
-        self.message.knowledge_graph = cleaned_kg
-        self.response.info(f"After cleaning, the KG contains {len(self.message.knowledge_graph.nodes)} nodes and "
-                           f"{len(self.message.knowledge_graph.edges)} edges")
+        response.debug(f"num nodes in kg_bound: {len(kg_bound.nodes)}")
+        response.debug(f"num edges in kg_bound: {len(kg_bound.edges)}")
+        return set(nodes_bound), set(edges_bound)
 
 
 def _make_edge_key(node1_id: str,
@@ -465,12 +858,16 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     if ignore_edge_direction is None:
         return _get_results_for_kg_by_qg(kg, qg, mode, log=log)
 
-    kg_node_keys_without_qnode_key = [node_key for node_key, node in kg.nodes.items() if not node.qnode_keys]
+    kg_node_keys_without_qnode_key = [node_key for node_key, node in kg.nodes.items() \
+                                      if not hasattr(node, 'qnode_keys') or \
+                                      not node.qnode_keys]
     if len(kg_node_keys_without_qnode_key) > 0:
         log.error("these node IDs do not have qnode_keys set: " + str(kg_node_keys_without_qnode_key), error_code="MissingQNodeKeys")
         return []
 
-    kg_edge_keys_without_qedge_key = [edge_key for edge_key, edge in kg.edges.items() if not edge.qedge_keys]
+    kg_edge_keys_without_qedge_key = [edge_key for edge_key, edge in kg.edges.items() \
+                                      if not hasattr(edge, 'qedge_keys') or \
+                                      not edge.qedge_keys]
     if len(kg_edge_keys_without_qedge_key) > 0:
         log.error("these edges do not have qedge_keys set: " + str(kg_edge_keys_without_qedge_key), error_code="MissingQEdgeKeys")
         return []
@@ -785,8 +1182,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
         # Programmatically generating an informative description for each result
         # seems difficult, but having something non-None is required by the
-        # database.  Just put in a placeholder for now, as is done by the
-        # QueryGraphReasoner
+        # database.  Just put in a placeholder for now.
         result.description = "No description available"  # see issue 642
 
         results.append(result)

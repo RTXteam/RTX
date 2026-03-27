@@ -71,7 +71,7 @@ hr {
     font-weight:bold;
     padding: 55px 15px 10px 15px;
 }
-.banner a:hover, .banner a:active{
+.banner a:hover, .banner a:active {
     text-decoration: none;
     color: #c40;
     background-color: #eee;
@@ -550,11 +550,12 @@ h1 b {
     color: #9bc;
 }
 
-a, a:visited {
+a, a:visited, .linklike {
+    cursor: pointer;
     text-decoration: none;
     color: #c40;
 }
-a:hover, a:active {
+a:hover, a:active, .linklike:hover {
     text-decoration: underline;
 }
 

@@ -202,7 +202,7 @@ class ARAXConnect:
                                  'parameters': cleaned_parameters}
         self.response.info(f"Looking for a previously cached result from {kp_curie}")
         response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, pathfinder_input_data)
-        if response_code != -2 and response_code == 200:
+        if response_code != -2 and response_code == 200 and self.response.envelope.message.results:
             n_results = cacher._get_n_results(response_data)
             self.response.info(
                 f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")

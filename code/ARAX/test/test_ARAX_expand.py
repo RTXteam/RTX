@@ -4,26 +4,35 @@ Usage:
     Run all expand tests: pytest -v test_ARAX_expand.py
     Run a single test: pytest -v test_ARAX_expand.py -k test_branched_query
 """
-import sys
+import json
 import os
+import sys
 from typing import List, Dict, Optional
-
 import pytest
 import yaml
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
+from ARAX_expander import ARAXExpander
+from ARAX_messenger import ARAXMessenger
+from ARAX_resultify import ARAXResultify
+from kp_info_cacher import KPInfoCacher
 import Expand.expand_utilities as eu
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.attribute import Attribute
+from openapi_server.models.query_graph import QueryGraph
 
 
-def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json_query: Optional[dict] = None,
-                                       kg_should_be_incomplete=False, debug=False, should_throw_error=False,
-                                       error_code: Optional[str] = None, timeout: Optional[int] = None,
+def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None,
+                                       json_query: Optional[dict] = None,
+                                       kg_should_be_incomplete=False,
+                                       debug=False,
+                                       should_throw_error=False,
+                                       error_code: Optional[str] = None,
+                                       timeout: Optional[int] = None,
                                        return_message: bool = False) -> tuple:
     # Run the query
     araxq = ARAXQuery()
@@ -1112,7 +1121,6 @@ def test_xdtd_expand():
                 assert support_graph_attribute.value[0] in message.auxiliary_graphs
 
 
-@pytest.mark.slow
 def test_xdtd_different_categories():
     query = {
             "nodes": {
@@ -1626,6 +1634,98 @@ def test_creative_treats_predicate_alteration_2412():
                 aux_graph = message.auxiliary_graphs[aux_graph_key]
                 assert set(aux_graph.edges).issubset(message.knowledge_graph.edges)
 
+
+
+def test_issue_2662():
+    kpic = KPInfoCacher()
+    saved_trapi_version = kpic.forced_kp_version
+    kpic.forced_kp_version = "1.6.0"
+    kpic.refresh_kp_info_caches()
+    saved_arax_response_output = ARAXResponse.output
+    ARAXResponse.output = 'STDERR'
+    query_graph_dict = {
+        "edges": {
+            "50efaa83": {
+                "knowledge_type": "lookup",
+                "object": "on",
+                "predicates": [
+                    "biolink:treats"
+                ],
+                "subject": "sn"
+            }
+        },
+        "nodes": {
+            "on": {
+                "ids": [
+                    "MONDO:0005015"
+                ]
+            },
+            "sn": {
+                "ids": [
+                    "CHEBI:5931"
+                ]
+            }
+        }
+    }
+    envelope_dict = {
+        "message": {
+            "query_graph": query_graph_dict
+        }
+    }
+    message = ARAXQuery().query_return_message(envelope_dict).message
+    kpic.forced_kp_version = saved_trapi_version
+    kpic.refresh_kp_info_caches()
+    ARAXResponse.output = saved_arax_response_output
+    aux_graphs = message.auxiliary_graphs
+    assert aux_graphs is not None and len(aux_graphs) > 0
+    kg = message.knowledge_graph
+    assert len(kg.nodes) > 3
+    assert len(kg.edges) > 3
+
+
+def test_issue_2678():
+    kpic = KPInfoCacher()
+    saved_trapi_version = kpic.forced_kp_version
+    kpic.forced_kp_version = "1.6.0"
+    kpic.refresh_kp_info_caches()
+    saved_arax_response_output = ARAXResponse.output
+    query_graph_dict = {
+        "edges": {
+            "50efaa83": {
+                "knowledge_type": "lookup",
+                "object": "on",
+                "predicates": [
+                    "biolink:treats_or_applied_or_studied_to_treat"
+                ],
+                "subject": "sn"
+            }
+        },
+        "nodes": {
+            "on": {
+                "ids": [
+                    "MONDO:0016098"
+                ]
+            },
+            "sn": {
+                "ids": [
+                    "CHEBI:229659"
+                ]
+            }
+        }
+    }
+    envelope_dict = {
+        "message": {
+            "query_graph": query_graph_dict
+        }
+    }
+    aq = ARAXQuery()
+    response = aq.query_return_message(envelope_dict)
+    message = response.message
+    messages_str = json.dumps(aq.response.messages)
+    disease_node = message.knowledge_graph.nodes['MONDO:0016098']
+    kpic.forced_kp_version = saved_trapi_version
+    kpic.refresh_kp_info_caches()
+    assert 'biolink:PhenotypicFeature' not in messages_str
 
 
 if __name__ == "__main__":
