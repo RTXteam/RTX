@@ -71,6 +71,8 @@ class ComputeNGD:
         The formula can be found here on [wikipedia.](https://en.wikipedia.org/wiki/Normalized_Google_distance) 
         Where in this case f(x,y) is the number of PubMed abstracts both concepts apear in, f(x)/f(y) are the number of abstracts individual concepts apear in, and N is the number of pubmed articles times the average number of search terms per article (35 million * 20).
         """
+
+        attribute_source = 'infores:arax'
         
         # if you want to add virtual edges, identify the subject/objects, decorate the edges, add them to the KG, and then add one to the QG corresponding to them
         # FW: changing this so if there is a virtual relation label but no subject and object then add edges for all subject object pairs in the quesry graph.
@@ -108,7 +110,12 @@ class ComputeNGD:
                             edge_value = ngd_value
                         else:
                             edge_value = default_value
-                        edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
+                        edge_attribute = EdgeAttribute(attribute_type_id=type,
+                                                       original_attribute_name=name,
+                                                       value=str(edge_value),
+                                                       value_url=url,
+                                                       description=ngd_description,
+                                                       attribute_source=attribute_source)  # populate the NGD edge attribute
                         if edge_attribute:
                             added_flag = True
                             # make the edge, add the attribute
@@ -131,15 +138,37 @@ class ComputeNGD:
                             self.global_iter += 1
                             edge_attribute_list = [
                                 edge_attribute,
-                                EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="EDAM-OPERATION:0226"),
+                                EdgeAttribute(original_attribute_name="virtual_relation_label",
+                                              value=relation,
+                                              attribute_type_id="EDAM-OPERATION:0226",
+                                              attribute_source=attribute_source),
                                 #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                                 # EdgeAttribute(original_attribute_name=None, value="infores:rtx-kg2", attribute_type_id="biolink:knowledge_source", attribute_source="infores:rtx-kg2", value_type_id="biolink:InformationResource"),
                                 # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                                EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
+                                EdgeAttribute(original_attribute_name="defined_datetime",
+                                              value=defined_datetime,
+                                              attribute_type_id="metatype:Datetime",
+                                              attribute_source=attribute_source),
                                 # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
-                                EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                                EdgeAttribute(original_attribute_name=None, value="statistical_association", attribute_type_id="biolink:knowledge_level", value_url=None, description=None),
-                                EdgeAttribute(original_attribute_name=None, value="automated_agent", attribute_type_id="biolink:agent_type", value_url=None, description=None)
+                                EdgeAttribute(original_attribute_name=None,
+                                              value=True,
+                                              attribute_type_id="EDAM-DATA:1772",
+                                              attribute_source=attribute_source,
+                                              value_type_id="metatype:Boolean",
+                                              value_url=None,
+                                              description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                                EdgeAttribute(original_attribute_name=None,
+                                              value="statistical_association",
+                                              attribute_type_id="biolink:knowledge_level",
+                                              value_url=None,
+                                              description=None,
+                                              attribute_source=attribute_source),
+                                EdgeAttribute(original_attribute_name=None,
+                                              value="automated_agent",
+                                              attribute_type_id="biolink:agent_type",
+                                              value_url=None,
+                                              description=None,
+                                              attribute_source=attribute_source)
                                 #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                                 #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
                                 #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)
@@ -153,7 +182,10 @@ class ComputeNGD:
                             ## fix #1980 issue
                             temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
                             if len(temp_list) != 0:
-                                pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=temp_list)
+                                pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications",
+                                                               original_attribute_name="publications",
+                                                               value=temp_list,
+                                                               attribute_source=attribute_source)
                                 edge_attribute_list.append(pmid_attribute)
 
                             #### FIXME temporary hack by EWD
@@ -220,7 +252,12 @@ class ComputeNGD:
                     edge_value = ngd_value
                 else:
                     edge_value = default_value
-                edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
+                edge_attribute = EdgeAttribute(attribute_type_id=type,
+                                               original_attribute_name=name,
+                                               value=str(edge_value),
+                                               value_url=url,
+                                               description=ngd_description,
+                                               attribute_source=attribute_source)  # populate the NGD edge attribute
 
                 if edge_attribute:
                     added_flag = True
@@ -243,15 +280,37 @@ class ComputeNGD:
                     self.global_iter += 1
                     edge_attribute_list = [
                         edge_attribute,
-                        EdgeAttribute(original_attribute_name="virtual_relation_label", value=relation, attribute_type_id="EDAM-OPERATION:0226"),
+                        EdgeAttribute(original_attribute_name="virtual_relation_label",
+                                      value=relation,
+                                      attribute_type_id="EDAM-OPERATION:0226",
+                                      attribute_source=attribute_source),
                         #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
                         # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="biolink:knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                         # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
-                        EdgeAttribute(original_attribute_name="defined_datetime", value=defined_datetime, attribute_type_id="metatype:Datetime"),
+                        EdgeAttribute(original_attribute_name="defined_datetime",
+                                      value=defined_datetime,
+                                      attribute_type_id="metatype:Datetime",
+                                      attribute_source=attribute_source),
                         # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
-                        EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                        EdgeAttribute(original_attribute_name=None, value="statistical_association", attribute_type_id="biolink:knowledge_level", value_url=None, description=None),
-                        EdgeAttribute(original_attribute_name=None, value="automated_agent", attribute_type_id="biolink:agent_type", value_url=None, description=None)
+                        EdgeAttribute(original_attribute_name=None,
+                                      value=True,
+                                      attribute_type_id="EDAM-DATA:1772",
+                                      attribute_source=attribute_source,
+                                      value_type_id="metatype:Boolean",
+                                      value_url=None,
+                                      description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                        EdgeAttribute(original_attribute_name=None,
+                                      value="statistical_association",
+                                      attribute_type_id="biolink:knowledge_level",
+                                      value_url=None,
+                                      description=None,
+                                      attribute_source=attribute_source),
+                        EdgeAttribute(original_attribute_name=None,
+                                      value="automated_agent",
+                                      attribute_type_id="biolink:agent_type",
+                                      value_url=None,
+                                      description=None,
+                                      attribute_source=attribute_source)
                         #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                         #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
                         #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)
@@ -265,7 +324,10 @@ class ComputeNGD:
                     ## fix #1980 issue
                     temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
                     if len(temp_list) != 0:
-                        pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="publications", value=temp_list)
+                        pmid_attribute = EdgeAttribute(attribute_type_id="biolink:publications",
+                                                       original_attribute_name="publications",
+                                                       value=temp_list,
+                                                       attribute_source=attribute_source)
                         edge_attribute_list.append(pmid_attribute)
 
                     #### FIXME temporary hack by EWD
@@ -331,12 +393,21 @@ class ComputeNGD:
                         edge_value = ngd_value
                     else:
                         edge_value = default_value
-                    ngd_edge_attribute = EdgeAttribute(attribute_type_id=type, original_attribute_name=name, value=str(edge_value), value_url=url, description=ngd_description)  # populate the NGD edge attribute
+                    ngd_edge_attribute = EdgeAttribute(attribute_type_id=type,
+                                                       original_attribute_name=name,
+                                                       value=str(edge_value),
+                                                       value_url=url,
+                                                       description=ngd_description,
+                                                       attribute_source=attribute_source)  # populate the NGD edge attribute
                     edge.attributes.append(ngd_edge_attribute)  # append it to the list of attributes
                     ## fix #1980 issue
                     temp_list = [f"PMID:{pmid}" for pmid in pmid_set]
                     if len(temp_list) != 0:
-                        pmid_edge_attribute = EdgeAttribute(attribute_type_id="biolink:publications", original_attribute_name="ngd_publications", value_type_id="EDAM-DATA:1187", value=temp_list)
+                        pmid_edge_attribute = EdgeAttribute(attribute_type_id="biolink:publications",
+                                                            original_attribute_name="ngd_publications",
+                                                            value_type_id="EDAM-DATA:1187",
+                                                            value=temp_list,
+                                                            attribute_source=attribute_source)
                         edge.attributes.append(pmid_edge_attribute)
             except Exception:
                 tb = traceback.format_exc()
