@@ -541,6 +541,8 @@ class TRAPIQuerier:
             # Put in a placeholder for missing required attribute fields, for TRAPI-compliance
             if edge.attributes:
                 for attribute in edge.attributes:
+                    if not attribute.attribute_source:
+                        attribute.attribute_source = kp_curie
                     if not attribute.attribute_type_id:
                         attribute.attribute_type_id = \
                             f"not provided (this attribute came from {kp_curie})"
