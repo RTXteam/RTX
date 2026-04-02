@@ -29,7 +29,7 @@ REFRESH_TIME_LIMIT_SECONDS = 60.0
 AGE_BEFORE_REFRESH_HOURS = 6.0
 NO_CACHED_RESPONSE = -2
 CONNECTION_ERROR = -1
-
+CLEAR_CACHE_AFTER = 30 * 24 * 60 * 60 # Clear cache completely after 30 days
 
 # --- SQLAlchemy Model Definition ---
 
@@ -92,7 +92,7 @@ class KPQueryCacher:
     Manages caching of web queries to a SQLite database and compressed files.
     """
 
-    def __init__(self):
+    def __init__(self, mode=None):
         """
         Initializes the cacher.
         """
@@ -110,6 +110,10 @@ class KPQueryCacher:
         Base.metadata.create_all(self.engine)
         print(f"Cacher initialized. database: '{self.db_file_path}'\n                    cachedir: '{self.cache_dir}'")
 
+        if str(mode) == 'BackgroundTasker':
+            if True:
+                eprint(f"INFO: BackgroundTasker initialization now always clears the KP Query Cache")
+                self.initialize_cache()
 
 
     def initialize_cache(self):
