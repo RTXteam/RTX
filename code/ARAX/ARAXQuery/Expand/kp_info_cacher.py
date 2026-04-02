@@ -31,7 +31,7 @@ class KPInfoCacher:
         version_string = f"{self.rtx_config.trapi_major_version}--{self.rtx_config.maturity}"
         self.cache_refresh_pid_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_refresh.pid"
         self.smart_api_and_meta_map_cache = f"{os.path.dirname(os.path.abspath(__file__))}/cache_smart_api_and_meta_map_{version_string}.pkl"
-        self.forced_kp_version = '1.5.0'
+        self.forced_kp_version = '1.6.0'
 
     def refresh_kp_info_caches(self):
         """
