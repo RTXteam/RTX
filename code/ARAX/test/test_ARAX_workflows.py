@@ -231,9 +231,9 @@ def test_FET_example_2():
 
 
 def test_FET_example_3():
-    # This a FET 3-top example: try to find the proteins connected to diseases that share the same phenotypes of age-related macular degeneration（MONDO:0005150)
+    # This a FET 3-hop example: try to find the genes connected to diseases that share the same phenotypes of a given disease
     query = {"operations": {"actions": [
-        "add_qnode(ids=MONDO:0005150, key=n00, categories=biolink:Disease)",
+        "add_qnode(ids=MONDO:0005148, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=infores:retriever)",
@@ -244,7 +244,7 @@ def test_FET_example_3():
         "expand(edge_key=e01, kp=infores:retriever)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_keys=[n02])",
-        "add_qnode(categories=biolink:Protein, key=n03)",
+        "add_qnode(categories=biolink:Gene, key=n03)",
         "add_qedge(subject=n02, object=n03, key=e02)",
         "expand(edge_key=e02, kp=infores:retriever)",
         "resultify()",
