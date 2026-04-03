@@ -165,7 +165,7 @@ def test_example_3():
 
 
 def test_FET_example_1():
-    # This a FET 3-top example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
+    # This a FET 3-hop example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
     query = {"operations": {"actions": [
         "add_qnode(ids=DOID:12889, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Gene, is_set=true, key=n01)",
@@ -200,7 +200,7 @@ def test_FET_example_1():
 
 
 def test_FET_example_2():
-    # This a FET 2-top example: try to find the diseases that share the same protein with ibuprofen (CHEMBL.COMPOUND:CHEMBL521)
+    # This a FET 2-hop example: try to find the diseases that share the same protein with ibuprofen (CHEMBL.COMPOUND:CHEMBL521)
     query = {"operations": {"actions": [
         "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL1472, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n01, categories=biolink:Protein)",
@@ -236,17 +236,17 @@ def test_FET_example_3():
         "add_qnode(ids=MONDO:0005148, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:retriever)",
+        "expand(edge_key=e00, kp=infores:retriever, prune_threshold=20)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_keys=[n01])",
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(subject=n01,object=n02,key=e01)",
-        "expand(edge_key=e01, kp=infores:retriever)",
+        "expand(edge_key=e01, kp=infores:retriever, prune_threshold=20)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_keys=[n02])",
         "add_qnode(categories=biolink:Gene, key=n03)",
         "add_qedge(subject=n02, object=n03, key=e02)",
-        "expand(edge_key=e02, kp=infores:retriever)",
+        "expand(edge_key=e02, kp=infores:retriever, prune_threshold=20)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -266,7 +266,7 @@ def test_FET_example_3():
 
 
 def test_FET_example_4():
-    # This a FET 2-top example collecting nodes and edges from KG2: try to find the diseases that share the same protein with Parkinson disease（DOID:14330)
+    # This a FET 2-hop example collecting nodes and edges from KG2: try to find the diseases that share the same protein with Parkinson disease（DOID:14330)
     query = {"operations": {"actions": [
         "add_qnode(ids=DOID:10718, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Protein, key=n01)",
