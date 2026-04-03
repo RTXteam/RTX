@@ -158,7 +158,7 @@ def test_720_multiple_qg_ids_in_different_results():
         "add_qedge(key=e00, subject=n00, object=n01)",
         "add_qedge(key=e01, subject=n01, object=n02, predicates=biolink:physically_interacts_with)",
         "add_qedge(key=e02, subject=n02, object=n03, predicates=biolink:physically_interacts_with)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -178,35 +178,6 @@ def test_bte_query():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_single_node_query_with_synonyms():
-    actions_list = [
-        "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL1771)",
-        "expand(node_key=n00, kp=infores:rtx-kg2)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-
-
-def test_single_node_query_with_no_results():
-    actions_list = [
-        "add_qnode(key=n00, ids=FAKE:curie)",
-        "expand(kp=infores:rtx-kg2)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
-    assert not nodes_by_qg_id and not edges_by_qg_id
-
-
-def test_single_node_query_with_list():
-    actions_list = [
-        "add_qnode(key=n00, ids=[CHEMBL.COMPOUND:CHEMBL108, CHEMBL.COMPOUND:CHEMBL110])",
-        "expand(kp=infores:rtx-kg2)",
-        "return(message=true, store=false)"
-    ]
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id['n00']) == 2
-
-
 @pytest.mark.slow
 def test_branched_query():
     actions_list = [
@@ -217,7 +188,7 @@ def test_branched_query():
         "add_qedge(subject=n01, object=n00, key=e00)",
         "add_qedge(subject=n02, object=n00, key=e01)",
         "add_qedge(subject=n00, object=n03, key=e02)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -229,8 +200,8 @@ def test_query_that_expands_same_edge_twice():
         "add_qnode(key=n00, ids=DOID:9065, categories=biolink:Disease)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:treats_or_applied_or_studied_to_treat)",
-        "expand(kp=infores:rtx-kg2)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -241,7 +212,7 @@ def test_771_continue_if_no_results_query():
         "add_qnode(ids=UniProtKB:P14136, key=n00)",
         "add_qnode(ids=NOTAREALCURIE, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -255,7 +226,7 @@ def test_774_continue_if_no_results_query():
         "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n1)",
         "add_qnode(ids=DOID:8295, key=n2)",
         "add_qedge(subject=n1, object=n2, key=e1)",
-        "expand(edge_key=e1, kp=infores:rtx-kg2)",
+        "expand(edge_key=e1, kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -264,10 +235,10 @@ def test_774_continue_if_no_results_query():
 
 def test_curie_list_query():
     actions_list = [
-        "add_qnode(ids=[DOID:6419, DOID:3717, DOID:11406], key=n00)",
+        "add_qnode(ids=[MONDO:0008542, MONDO:0005027, MONDO:0005036], key=n00)",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:has_phenotype, key=e00)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -280,7 +251,7 @@ def test_query_with_curies_on_both_ends():
         "add_qnode(ids=MONDO:0005393, key=n00)",  # Gout
         "add_qnode(ids=UMLS:C0018100, key=n01)",  # Antigout agents
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -294,7 +265,7 @@ def test_query_with_intermediate_curie_node():
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:treats_or_applied_or_studied_to_treat)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:related_to)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -305,7 +276,7 @@ def test_847_dont_expand_curie_less_edge():
         "add_qnode(key=n00, categories=biolink:Protein)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, should_throw_error=True,
@@ -318,7 +289,7 @@ def test_deduplication_and_self_edges():
         "add_qnode(ids=UMLS:C0004572, key=n00)",  # Babesia
         "add_qnode(key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -339,7 +310,7 @@ def test_873_consider_both_gene_and_protein():
         "add_qnode(ids=DOID:9452, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id_protein, edges_by_qg_id_protein = _run_query_and_do_standard_testing(actions_list_protein)
@@ -347,7 +318,7 @@ def test_873_consider_both_gene_and_protein():
         "add_qnode(ids=DOID:9452, key=n00)",
         "add_qnode(categories=biolink:Gene, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)",
     ]
     nodes_by_qg_id_gene, edges_by_qg_id_gene = _run_query_and_do_standard_testing(actions_list_gene)
@@ -479,7 +450,7 @@ def test_exclude_edge_parallel():
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:causes, key=e01)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -492,7 +463,7 @@ def test_exclude_edge_parallel():
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:causes, exclude=true, key=e01)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
@@ -515,7 +486,7 @@ def test_exclude_edge_perpendicular():
         # 'Exclude' portion (just optional for now to get a baseline)
         f"add_qnode(categories=biolink:Pathway, key=nx0, option_group_id=1, ids=[{exclude_curies}])",
         "add_qedge(subject=n01, object=nx0, key=ex0, option_group_id=1, predicates=biolink:related_to)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -534,7 +505,7 @@ def test_exclude_edge_perpendicular():
         # 'Exclude' portion
         f"add_qnode(categories=biolink:Pathway, key=nx0, ids=[{exclude_curies}])",
         "add_qedge(subject=n01, object=nx0, key=ex0, exclude=True, predicates=biolink:related_to)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_not, edges_by_qg_id_not = _run_query_and_do_standard_testing(actions_list)
@@ -550,8 +521,8 @@ def test_exclude_edge_ordering():
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes_to_condition, exclude=true, key=e01)",
-        "expand(kp=infores:rtx-kg2, edge_key=e00)",
-        "expand(kp=infores:rtx-kg2, edge_key=e01)",
+        "expand(kp=infores:retriever, edge_key=e00)",
+        "expand(kp=infores:retriever, edge_key=e01)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_a, edges_by_qg_id_a = _run_query_and_do_standard_testing(actions_list)
@@ -560,7 +531,7 @@ def test_exclude_edge_ordering():
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes_to_condition, exclude=true, key=e01)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_b, edges_by_qg_id_b = _run_query_and_do_standard_testing(actions_list)
@@ -569,7 +540,7 @@ def test_exclude_edge_ordering():
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:predisposes_to_condition, exclude=true, key=e01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_c, edges_by_qg_id_c = _run_query_and_do_standard_testing(actions_list)
@@ -585,7 +556,7 @@ def test_exclude_edge_no_results():
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:not_a_real_edge_type, exclude=true, key=e01)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -598,7 +569,7 @@ def test_option_group_query_one_hop():
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n00, object=n01, predicates=biolink:affects, option_group_id=1)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -614,7 +585,7 @@ def test_option_group_query_no_results():
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:related_to)",
         "add_qedge(key=e01, subject=n00, object=n02, option_group_id=1, predicates=biolink:overlaps)",
         "add_qedge(key=e02, subject=n02, object=n01, option_group_id=1, predicates=biolink:affects)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -625,7 +596,7 @@ def test_category_and_predicate_format():
         "add_qnode(ids=UniProtKB:P42857, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:affects)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -644,7 +615,7 @@ def test_issue_1212():
         "add_qnode(ids=FAKE:Curie, categories=biolink:ChemicalEntity, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list, kg_should_be_incomplete=True)
@@ -656,7 +627,7 @@ def test_issue_1314():
         "add_qnode(key=n0, ids=DRUGBANK:DB00394, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n1, categories=biolink:Disease)",
         "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:subject_of_treatment_application_or_study_for_treatment_by)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -678,7 +649,7 @@ def test_issue_1236_a():
         "add_qnode(ids=NCBIGene:1803, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:gene_associated_with_condition)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id_kg2_only, edges_by_qg_id_kg2_only = _run_query_and_do_standard_testing(actions_list_kg2_only)
@@ -691,7 +662,7 @@ def test_issue_1236_b():
         "add_qnode(ids=DOID:14330, categories=biolink:Disease, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:condition_associated_with_gene)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -702,7 +673,7 @@ def test_kg2_predicate_hierarchy_reasoning():
         "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, categories=biolink:ChemicalEntity, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:affects)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -716,7 +687,7 @@ def test_domain_range_exclusion():
         "add_qnode(ids=UMLS:C1510438, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:diagnoses)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -731,7 +702,7 @@ def test_issue_1373_pinned_curies():
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:related_to)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:related_to)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -815,7 +786,7 @@ def test_qualified_regulates_query():
                     {
                         "id": "knowledge_source",
                         "name": "knowledge source",
-                        "value": ["infores:rtx-kg2"],
+                        "value": ["infores:retriever"],
                         "operator": "==",
                         "not": False
                     }
@@ -831,7 +802,7 @@ def test_1516_single_quotes_in_ids():
         "add_qnode(key=n0,ids=UniProtKB:P00491)",
         "add_qnode(key=n1)",
         "add_qedge(key=e01,subject=n0,object=n1)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -839,14 +810,14 @@ def test_1516_single_quotes_in_ids():
 
 def test_input_curie_remapping():
     actions = [
-        "add_qnode(key=n0, ids=KEGG.COMPOUND:C02700)",
+        "add_qnode(key=n0, ids=KEGG.COMPOUND:C00022)",
         "add_qnode(key=n1, categories=biolink:Protein)",
         "add_qedge(key=e01, subject=n0, object=n1)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
-    assert "KEGG.COMPOUND:C02700" in nodes_by_qg_id["n0"]
+    assert "KEGG.COMPOUND:C00022" in nodes_by_qg_id["n0"]
 
 
 def test_constraint_validation():
@@ -893,7 +864,7 @@ def test_edge_constraints():
                         {
                             "id": "knowledge_source",
                             "name": "knowledge source",
-                            "value": ["infores:rtx-kg2","infores:arax","infores:drugbank"],
+                            "value": ["infores:retriever","infores:arax","infores:drugbank"],
                             "operator": "==",
                             "not": False
                         }
@@ -909,7 +880,7 @@ def test_canonical_predicates():
         "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL945)",
         "add_qnode(key=n01, categories=biolink:BiologicalEntity)",
         "add_qedge(key=e00, subject=n00, object=n01, predicates=biolink:participates_in)",  # Not canonical
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -938,7 +909,7 @@ def test_merging_node_attributes_1450():
         "add_qnode(key=n1, categories=biolink:Disease)",
         "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:treats_or_applied_or_studied_to_treat)",
         "expand(kp=infores:biothings-explorer)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -947,7 +918,7 @@ def test_merging_node_attributes_1450():
         "add_qnode(key=n0, ids=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(key=n1, categories=biolink:Disease)",
         "add_qedge(key=e01, subject=n0, object=n1, predicates=biolink:treats_or_applied_or_studied_to_treat)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "expand(kp=infores:biothings-explorer)",
         "return(message=true, store=false)"
     ]
@@ -989,7 +960,7 @@ def test_almost_cycle_1565():
         "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:related_to)",
         "add_qedge(subject=n1, object=n2, key=e1, predicates=biolink:related_to)",
         "add_qedge(subject=n0, object=n2, key=e2, predicates=biolink:related_to)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -1077,7 +1048,7 @@ def test_inverted_treats_handling():
         "add_qnode(key=n0, ids=MONDO:0005077)",
         "add_qnode(key=n1, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:treats_or_applied_or_studied_to_treat)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -1436,7 +1407,7 @@ def test_kp_list():
         "add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(key=qg1, categories=biolink:Protein)",
         "add_qedge(subject=qg1, object=qg0, key=qe0, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=qe0, kp=[infores:rtx-kg2, infores:molepro])",
+        "expand(edge_key=qe0, kp=[infores:retriever])",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions, timeout=30)
@@ -1444,10 +1415,10 @@ def test_kp_list():
 
 def test_missing_epc_attributes():
     actions = [
-        "add_qnode(name=Parkinson's disease, key=n0)",
+        "add_qnode(ids=MONDO:0005180, key=n0)",
         "add_qnode(categories=biolink:Drug, key=n1)",
         "add_qedge(subject=n1, object=n0, key=e0, predicates=biolink:predisposes_to_condition)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
@@ -1463,41 +1434,12 @@ def test_missing_epc_attributes():
                 assert publications
 
 
-def test_kg2_version():
-    query = {
-      "nodes": {
-        "n00": {
-          "ids": ["RTX:KG2c"]
-        }
-      },
-      "edges": {}
-    }
-    nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
-
-    # First grab KG2 version from the KG2c build node
-    assert nodes_by_qg_id["n00"]
-    assert len(nodes_by_qg_id["n00"]) == 1
-    build_node = nodes_by_qg_id["n00"]["RTX:KG2c"]
-    kg2c_build_node_version = build_node.name.replace("RTX-KG", "").strip("c")
-    print(f"KG2 version from KG2c build node is: {kg2c_build_node_version}")
-
-    # Then grab KG2 version from the OpenAPI spec
-    code_dir = os.path.dirname(os.path.abspath(__file__)) + "/../../"
-    kg2_openapi_yaml_path = f"{code_dir}/UI/OpenAPI/specifications/export/KG2/1.5.0/openapi.yaml"
-    with open(kg2_openapi_yaml_path) as kg2_api_file:
-        kg2_openapi_configuration = yaml.safe_load(kg2_api_file)
-        kg2_openapi_version = kg2_openapi_configuration["info"]["version"]
-    print(f"KG2 version from KG2 openapi.yaml file is: {kg2_openapi_version}")
-
-    assert kg2c_build_node_version == kg2_openapi_version
-
-
 def test_klat_attributes():
     actions_list = [
-        "add_qnode(key=n0, ids=DRUGBANK:DB00394)",
-        "add_qnode(key=n1, categories=biolink:Disease)",
-        "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:treats_or_applied_or_studied_to_treat)",
-        "expand(kp=infores:rtx-kg2)",
+        "add_qnode(key=n0, ids=CHEBI:15367)",
+        "add_qnode(key=n1, ids=MONDO:0015564)",
+        "add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:treats_or_applied_or_studied_to_treat)",
+        "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
@@ -1515,7 +1457,7 @@ def test_treats_patch_issue_2328_a():
                 "ids": ["MONDO:0015564"]
             },
             "chemical": {
-                "categories": ["biolink:ChemicalEntity"]
+                "ids": ["CHEBI:175901"]
             }
         },
         "edges": {
@@ -1537,9 +1479,10 @@ def test_treats_patch_issue_2328_a():
     }
     nodes_by_qg_id, edges_by_qg_id, message = _run_query_and_do_standard_testing(json_query=query, return_message=True)
     assert edges_by_qg_id["t_edge"]
+
     # Make sure the KG2 edges, which are higher-level treats edges, are in the KG (used as support edges)
     creative_expand_treats_edges = [edge for edge_key, edge in message.knowledge_graph.edges.items()
-                                    if edge_key.startswith("creative_expand")]
+                                    if edge_key.startswith("creative_DTD_")]
     support_edge_keys = set()
     for edge in creative_expand_treats_edges:
         aux_graph_keys = get_support_graphs_attribute(edge).value
@@ -1548,9 +1491,8 @@ def test_treats_patch_issue_2328_a():
             aux_graph = message.auxiliary_graphs[aux_graph_key]
             support_edge_keys.update(set(aux_graph.edges))
     support_edges = [message.knowledge_graph.edges[edge_key] for edge_key in support_edge_keys]
-
     assert any(source.resource_id == "infores:rtx-kg2" for edge in support_edges for source in edge.sources)
-    # assert not any(source.resource_id == "infores:semmeddb" for edge in support_edges for source in edge.sources)
+
 
 def test_treats_patch_issue_2328_b():
     # Verify that the edge editing doesn't happen outside of inferred mode
@@ -1560,33 +1502,24 @@ def test_treats_patch_issue_2328_b():
                 "ids": ["MONDO:0015564"]
             },
             "chemical": {
-                "categories": ["biolink:ChemicalEntity"]
+                "ids": ["CHEBI:15367"]
             }
         },
         "edges": {
             "t_edge": {
                 "object": "disease",
                 "subject": "chemical",
-                "predicates": ["biolink:treats_or_applied_or_studied_to_treat", "biolink:applied_to_treat"],
-                "attribute_constraints": [
-                    {
-                        "id": "knowledge_source",
-                        "name": "knowledge source",
-                        "value": ["infores:rtx-kg2"],
-                        "operator": "=="
-                    }
-                ]
+                "predicates": ["biolink:treats_or_applied_or_studied_to_treat"]
             }
         }
     }
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
     assert edges_by_qg_id["t_edge"]
     kg2_edges_treats_or = [edge for edge in edges_by_qg_id["t_edge"].values()
-                           if any(source.resource_id == "infores:rtx-kg2" for source in edge.sources)]
+                           if any(source.resource_id == "infores:retriever" for source in edge.sources)]
     print(f"Answer includes {len(kg2_edges_treats_or)} edges from KG2")
     assert kg2_edges_treats_or
     assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:treats_or_applied_or_studied_to_treat")
-    assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:applied_to_treat")
 
 
 @pytest.mark.external

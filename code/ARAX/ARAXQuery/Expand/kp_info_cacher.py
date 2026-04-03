@@ -142,7 +142,7 @@ class KPInfoCacher:
             log.error(f"Unable to load KP info caches: {e}")
 
         # The caches MUST be up to date at this point, so we just load them
-        log.debug("Loading cached Smart API amd meta map info")
+        log.debug("Loading cached Smart API and meta map info")
         with open(self.smart_api_and_meta_map_cache, "rb") as cache:
             cache = pickle.load(cache)
             smart_api_info = cache['smart_api_cache']
