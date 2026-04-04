@@ -699,7 +699,7 @@ def test09():
         "add_qnode(name=DOID:731, key=n00, categories=biolink:Disease, is_set=false)",
         "add_qnode(categories=biolink:PhenotypicFeature, is_set=false, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:retriever)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "filter_results(action=limit_number_of_results, max_results=100)",
         "return(message=true, store=false)"
@@ -722,7 +722,7 @@ def test_example1():
         "add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(key=qg1, categories=biolink:Protein)",
         "add_qedge(subject=qg1, object=qg0, key=qe0)",
-        "expand(edge_key=qe0, kp=infores:rtx-kg2)",
+        "expand(edge_key=qe0, kp=infores:retriever)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)"
     ]
@@ -846,7 +846,7 @@ def test_issue680():
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
+        "expand(edge_key=[e00,e01], kp=infores:retriever)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_keys=[n02])",
         "resultify(ignore_edge_direction=true, debug=true)",
