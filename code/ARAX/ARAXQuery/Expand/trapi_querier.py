@@ -280,17 +280,6 @@ class TRAPIQuerier:
                             kg_id = edge_binding.id
                             qedge_key_mappings[kg_id].add(qedge_key)
 
-        if not self.kp_infores_curie == "infores:rtx-kg2":
-            # Convert parent curie mappings back to canonical form (we send KPs synonyms sometimes..)
-            raw_parent_query_ids = {parent_curie for kg_id, query_ids in kg_id_to_parent_query_id_map.items()
-                                    for parent_curie in query_ids}
-            canonical_parent_query_ids = eu.get_canonical_curies_dict(list(raw_parent_query_ids), self.log)
-            for kg_id in set(kg_id_to_parent_query_id_map):
-                canonical_query_ids = {canonical_parent_query_ids[raw_parent_id]["preferred_curie"]
-                                       if canonical_parent_query_ids.get(raw_parent_id) else raw_parent_id
-                                       for raw_parent_id in kg_id_to_parent_query_id_map.get(kg_id, set())}
-                kg_id_to_parent_query_id_map[kg_id] = canonical_query_ids
-
         return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}, kg_id_to_parent_query_id_map
 
 
@@ -710,7 +699,24 @@ class TRAPIQuerier:
             all_parent_query_ids = {parent_id for node_key in nodes_with_non_empty_parent_query_ids
                                     for parent_id in answer_kg.nodes_by_qg_id[qnode_key][node_key].query_ids}
             parents_missing_from_kg = all_parent_query_ids.difference(set(answer_kg.nodes_by_qg_id[qnode_key]))
-            parent_node_info = eu.get_canonical_curies_dict(list(parents_missing_from_kg), self.log)
+
+            # Build a lookup of existing nodes for parents missing under this qnode_key.
+            # These nodes should already be in the answer KG — either as unbound nodes or
+            # bound under a different qnode_key — so we reuse them instead of calling
+            # NodeSynonymizer.
+            existing_parent_nodes = {}
+            for parent_curie in parents_missing_from_kg:
+                if parent_curie in answer_kg.unbound_nodes:
+                    existing_parent_nodes[parent_curie] = answer_kg.unbound_nodes[parent_curie].deepcopy()
+                else:
+                    for other_qnode_key, nodes_dict in answer_kg.nodes_by_qg_id.items():
+                        if other_qnode_key != qnode_key and parent_curie in nodes_dict:
+                            existing_parent_nodes[parent_curie] = nodes_dict[parent_curie].deepcopy()
+                            break
+                    if parent_curie not in existing_parent_nodes:
+                        self.log.warning(f"{self.kp_infores_curie}: Parent node {parent_curie} not found "
+                                         f"anywhere in the answer KG; creating an empty Node")
+                        existing_parent_nodes[parent_curie] = Node()
 
             # Add subclass_of edges to the answer KG for any nodes that the KP provided query ID mappings for
             for node_key in nodes_with_non_empty_parent_query_ids:
@@ -739,13 +745,7 @@ class TRAPIQuerier:
                     for edge in subclass_edges:
                         # Add the parent to the KG if it isn't in there already
                         if edge.object not in answer_kg.nodes_by_qg_id[qnode_key]:
-                            parent_info_dict = parent_node_info.get(edge.object)
-                            if parent_info_dict:
-                                parent_node = Node(name=parent_info_dict.get("preferred_name"),
-                                                   categories=[parent_info_dict.get("preferred_category")],
-                                                   attributes=[])
-                            else:
-                                parent_node = Node()
+                            parent_node = existing_parent_nodes[edge.object]
                             parent_node.query_ids = []   # Does not need a mapping since it appears in the QG
                             answer_kg.add_node(edge.object, parent_node, qnode_key)
                         edge_key = self._get_arax_edge_key(edge)

@@ -86,7 +86,7 @@ def test_option_group_id():
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, predicates=biolink:indicated_for, option_group_key=a, id=e00)",
             "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, option_group_key=1, id=e01)",
-            "expand(edge_key=[e00,e01], kp=infores:retriever)",
+            "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
         ]}}
     [response, message] = _do_arax_query(query)
     for key, edge in message.query_graph.edges.items():
@@ -102,7 +102,7 @@ def test_exclude():
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, predicates=biolink:treats, key=e00)",
             "add_qedge(subject=n00, object=n01, predicates=biolink:contraindicated_for, exclude=true, key=e01)",
-            "expand(edge_key=[e00,e01], kp=infores:retriever)",
+            "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
@@ -121,7 +121,7 @@ def test_example_2():
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=infores:retriever)",
+        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_keys=[n02])",
         "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=provided_by, value=Pharos)",
@@ -146,7 +146,7 @@ def test_example_3():
         "add_qnode(categories=biolink:Protein, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=[e00,e01], kp=infores:retriever)",
+        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_keys=[n01])",
         "filter_kg(action=remove_orphaned_nodes, node_category=biolink:Protein)",
@@ -165,22 +165,22 @@ def test_example_3():
 
 
 def test_FET_example_1():
-    # This a FET 3-hop example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
+    # This a FET 3-top example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
     query = {"operations": {"actions": [
         "add_qnode(ids=DOID:12889, key=n00, categories=biolink:Disease)",
-        "add_qnode(categories=biolink:Gene, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:retriever, prune_threshold=20)",
+        "expand(edge_key=e00, kp=infores:rtx-kg2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_keys=[n01])",
         "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n02)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:interacts_with)",
-        "expand(edge_key=e01, kp=infores:retriever, prune_threshold=20)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
+        "expand(edge_key=e01, kp=infores:rtx-kg2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_keys=[n02])",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n03)",
         "add_qedge(subject=n02, object=n03, key=e02)",
-        "expand(edge_key=e02, kp=infores:retriever, prune_threshold=20)",
+        "expand(edge_key=e02, kp=infores:rtx-kg2)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -200,17 +200,17 @@ def test_FET_example_1():
 
 
 def test_FET_example_2():
-    # This a FET 2-hop example: try to find the diseases that share the same protein with ibuprofen (CHEMBL.COMPOUND:CHEMBL521)
+    # This a FET 2-top example: try to find the diseases that share the same protein with ibuprofen (CHEMBL.COMPOUND:CHEMBL521)
     query = {"operations": {"actions": [
         "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL1472, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n01, categories=biolink:Protein)",
         "add_qedge(key=e00, subject=n00, object=n01)",
-        "expand(edge_key=e00, kp=infores:retriever, prune_threshold=20)",
+        "expand(edge_key=e00, kp=infores:rtx-kg2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_keys=[n01])",
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=e01, kp=infores:retriever)",
+        "expand(edge_key=e01, kp=infores:rtx-kg2)",
         "resultify()",
         "filter_results(action=limit_number_of_results, max_results=50)",
         "return(message=true, store=false)"
@@ -231,22 +231,22 @@ def test_FET_example_2():
 
 
 def test_FET_example_3():
-    # This a FET 3-hop example: try to find the genes connected to diseases that share the same phenotypes of a given disease
+    # This a FET 3-top example: try to find the proteins connected to diseases that share the same phenotypes of age-related macular degeneration（MONDO:0005150)
     query = {"operations": {"actions": [
-        "add_qnode(ids=MONDO:0005148, key=n00, categories=biolink:Disease)",
+        "add_qnode(ids=MONDO:0005150, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:retriever, prune_threshold=5)",
+        "expand(edge_key=e00, kp=infores:rtx-kg2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_keys=[n01])",
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(subject=n01,object=n02,key=e01)",
-        "expand(edge_key=e01, kp=infores:retriever, prune_threshold=5)",
+        "expand(edge_key=e01, kp=infores:rtx-kg2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.001, remove_connected_nodes=t, qnode_keys=[n02])",
-        "add_qnode(categories=biolink:Gene, key=n03)",
+        "add_qnode(categories=biolink:Protein, key=n03)",
         "add_qedge(subject=n02, object=n03, key=e02)",
-        "expand(edge_key=e02, kp=infores:retriever, prune_threshold=5)",
+        "expand(edge_key=e02, kp=infores:rtx-kg2)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -266,17 +266,17 @@ def test_FET_example_3():
 
 
 def test_FET_example_4():
-    # This a FET 2-hop example collecting nodes and edges from KG2: try to find the diseases that share the same protein with Parkinson disease（DOID:14330)
+    # This a FET 2-top example collecting nodes and edges from KG2: try to find the diseases that share the same protein with Parkinson disease（DOID:14330)
     query = {"operations": {"actions": [
         "add_qnode(ids=DOID:10718, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:retriever)",
+        "expand(edge_key=e00, kp=infores:rtx-kg2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, virtual_relation_label=FET1, object_qnode_key=n01,rel_edge_id=e00)",
         "filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute=fisher_exact_test_p-value,direction=above,threshold=0.001,remove_connected_nodes=t,qnode_keys=[n01])",
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=e01, kp=infores:retriever)",
+        "expand(edge_key=e01, kp=infores:rtx-kg2)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -301,7 +301,7 @@ def test_FET_ranking_1():
             "add_qnode(key=n00,ids=UniProtKB:P14136,categories=biolink:Protein)",
             "add_qnode(categories=biolink:BiologicalProcess, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00,kp=infores:retriever)",
+            "expand(edge_key=e00,kp=infores:rtx-kg2)",
             "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET)",
             "resultify()",
             "return(message=true, store=false)",
@@ -320,7 +320,7 @@ def test_example_2_kg2():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
-            "expand(edge_key=[e00,e01], kp=infores:retriever, prune_threshold=20)",
+            "expand(edge_key=[e00,e01], infores:rtx-kg2)",
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",  # seems to work just fine
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_keys=[n02])",
             "resultify(ignore_edge_direction=true)",
@@ -347,7 +347,7 @@ def test_clinical_overlay_example1():
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
-        "expand(edge_key=[e00,e01], infores:retriever)",
+        "expand(edge_key=[e00,e01], infores:rtx-kg2)",
         # overlay a bunch of clinical info
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
@@ -377,7 +377,7 @@ def test_clinical_overlay_example2():
         "add_qnode(name=DOID:11830, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, infores:retriever)",
+        "expand(edge_key=e00, infores:rtx-kg2)",
         # overlay a bunch of clinical info
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
@@ -412,9 +412,9 @@ def test_two_hop_based_on_types_1():
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
-            "expand(edge_key=e00, infores:retriever)",
+            "expand(edge_key=e00, infores:rtx-kg2)",
             #"expand(edge_key=e00, kp=infores:biothings-explorer)",
-            "expand(edge_key=e01, infores:retriever)",
+            "expand(edge_key=e01, infores:rtx-kg2)",
             "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
             "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C3)",
@@ -447,7 +447,7 @@ def test_one_hop_based_on_types_1():
             f"add_qnode(ids={doid}, key=n00, categories=biolink:Disease)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, infores:retriever)",
+            "expand(edge_key=e00, infores:rtx-kg2)",
             "expand(edge_key=e00, kp=infores:biothings-explorer)",
             "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
             # "overlay(action=predict_drug_treats_disease)",
@@ -472,7 +472,7 @@ def test_one_hop_kitchen_sink_BTE_1():
         "add_qnode(curie=DOID:11830, key=n0, categories=biolink:Disease)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e1)",
-        #"expand(edge_key=e00, infores:retriever)",
+        #"expand(edge_key=e00, infores:rtx-kg2)",
         "expand(edge_key=e1, kp=infores:biothings-explorer)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
@@ -501,7 +501,7 @@ def test_one_hop_kitchen_sink_BTE_2():
         "add_qnode(curie=DOID:11830, key=n0, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Gene, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e1)",
-        #"expand(edge_key=e00, infores:retriever)",
+        #"expand(edge_key=e00, infores:rtx-kg2)",
         "expand(edge_key=e1, kp=infores:biothings-explorer)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
@@ -525,7 +525,7 @@ def test_FET_ranking_2():
         "add_qnode(key=n00,ids=[UniProtKB:P14136,UniProtKB:P35579],is_set=true,categories=biolink:Protein)",
         "add_qnode(categories=biolink:BiologicalProcess, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00,kp=infores:retriever)",
+        "expand(edge_key=e00,kp=infores:rtx-kg2)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET)",
         "resultify()",
         "return(message=true, store=false)"
@@ -711,7 +711,7 @@ def test_issue_1848():
                 },
                 {
                     "id": "fill",
-                    "parameters": { "allowlist": ["infores:retriever"],
+                    "parameters": { "allowlist": ["infores:rtx-kg2"],
                         "qedge_keys": [
                             "e1",
                             "e2",
@@ -808,7 +808,7 @@ def test_issue_1848():
 #             "add_qnode(key=n02, categories=protein)",
 #             "add_qedge(key=e00, subject=n00, object=n01)",
 #             "add_qedge(key=e01, subject=n01, object=n02)",
-#             "expand(edge_key=[e00,e01], infores:retriever)",
+#             "expand(edge_key=[e00,e01], infores:rtx-kg2)",
 #             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
 #             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
 #             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_keys=[n01])",
