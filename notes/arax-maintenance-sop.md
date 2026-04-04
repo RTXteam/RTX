@@ -251,7 +251,7 @@ ARAX Flask server locally.
 Running the unit tests involves these steps:
 ```
 cd ARAX_DEV_DIR/issue-XXX/RTX
-../../../venv/bin/pytest --cache-clear --nodatabases -v code/ARAX/test/
+../../../venv/bin/pytest --cache-clear -v
 ```
 The procedure will take about 15 minutes to complete. All standard unit tests should pass, or your
 locally installed ARAX is not in a "known good" state (and you should work on troubleshooting
@@ -448,7 +448,7 @@ the local code repository is on `master`. Staying in the same `RTX` directory:
 7. `git fetch origin`
 8. `git checkout issue-XXX`
 9. `git pull origin issue-XXX`
-10. Run all the pytests, using your updated code: `cd RTX && pytest -v --cache-clear code/ARAX/test/`<br />
+10. Run all the pytests, using your updated code: `cd RTX && pytest -v --cache-clear`<br />
 All standard ARAX unit tests should pass, when run in the `arax.ncats.io/beta` devarea.
 11. Next is to run the example queries, using your updated code. You will need to restart ARAX. 
 Exit out of the shell session for user `rt`,

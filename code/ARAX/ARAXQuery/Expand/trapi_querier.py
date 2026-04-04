@@ -707,11 +707,11 @@ class TRAPIQuerier:
             existing_parent_nodes = {}
             for parent_curie in parents_missing_from_kg:
                 if parent_curie in answer_kg.unbound_nodes:
-                    existing_parent_nodes[parent_curie] = answer_kg.unbound_nodes[parent_curie]
+                    existing_parent_nodes[parent_curie] = answer_kg.unbound_nodes[parent_curie].deepcopy()
                 else:
                     for other_qnode_key, nodes_dict in answer_kg.nodes_by_qg_id.items():
                         if other_qnode_key != qnode_key and parent_curie in nodes_dict:
-                            existing_parent_nodes[parent_curie] = nodes_dict[parent_curie]
+                            existing_parent_nodes[parent_curie] = nodes_dict[parent_curie].deepcopy()
                             break
                     if parent_curie not in existing_parent_nodes:
                         self.log.warning(f"{self.kp_infores_curie}: Parent node {parent_curie} not found "

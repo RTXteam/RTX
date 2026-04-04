@@ -1570,12 +1570,6 @@ def test_creative_treats_predicate_alteration_2412():
 
 
 def test_issue_2662():
-    kpic = KPInfoCacher()
-    saved_trapi_version = kpic.forced_kp_version
-    kpic.forced_kp_version = "1.6.0"
-    kpic.refresh_kp_info_caches()
-    saved_arax_response_output = ARAXResponse.output
-    ARAXResponse.output = 'STDERR'
     query_graph_dict = {
         "edges": {
             "50efaa83": {
@@ -1606,9 +1600,6 @@ def test_issue_2662():
         }
     }
     message = ARAXQuery().query_return_message(envelope_dict).message
-    kpic.forced_kp_version = saved_trapi_version
-    kpic.refresh_kp_info_caches()
-    ARAXResponse.output = saved_arax_response_output
     aux_graphs = message.auxiliary_graphs
     assert aux_graphs is not None and len(aux_graphs) > 0
     kg = message.knowledge_graph
@@ -1617,11 +1608,6 @@ def test_issue_2662():
 
 
 def test_issue_2678():
-    kpic = KPInfoCacher()
-    saved_trapi_version = kpic.forced_kp_version
-    kpic.forced_kp_version = "1.6.0"
-    kpic.refresh_kp_info_caches()
-    saved_arax_response_output = ARAXResponse.output
     query_graph_dict = {
         "edges": {
             "50efaa83": {
@@ -1656,8 +1642,6 @@ def test_issue_2678():
     message = response.message
     messages_str = json.dumps(aq.response.messages)
     disease_node = message.knowledge_graph.nodes['MONDO:0016098']
-    kpic.forced_kp_version = saved_trapi_version
-    kpic.refresh_kp_info_caches()
     assert 'biolink:PhenotypicFeature' not in messages_str
 
 

@@ -18,7 +18,7 @@ class RemoveEdges:
         for key, node in self.message.query_graph.nodes.items():
             qids[key] = 0
         for key, node in self.message.knowledge_graph.nodes.items():
-            for qid in getattr(node, 'qnode_keys', []):
+            for qid in (getattr(node, 'qnode_keys', None) or []):
                 qids[qid] += 1
         for k, v in qids.items():
             if v == 0:
