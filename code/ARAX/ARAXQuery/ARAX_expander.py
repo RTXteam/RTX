@@ -1145,7 +1145,7 @@ class ARAXExpander:
             return answer_kg
 
         kp_querier = TRAPIQuerier(response_object=log,
-                                  kp_name=KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES,
+                                  kp_name=next(iter(KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES)),
                                   user_specified_kp=user_specified_kp,
                                   kp_timeout=kp_timeout)
         answer_kg = kp_querier.answer_single_node_query(single_node_qg)

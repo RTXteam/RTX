@@ -881,7 +881,7 @@ def test_issue686a():
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
         'add_qnode(key=qg1, ids=MONDO:0018958)',
-        'add_qedge(key=e0, subject=qg0, object=qg1, predicates=biolink:treats)'
+        'add_qedge(key=e0, subject=qg0, object=qg1, predicates=biolink:treats)',
         'expand(kp=infores:retriever)',
         'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)',
         "return(message=true, store=false)"
@@ -896,7 +896,7 @@ def test_issue686b():
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
         'add_qnode(key=qg1, ids=MONDO:0018958)',
-        'add_qedge(key=e0, subject=qg0, object=qg1, predicates=biolink:treats)'
+        'add_qedge(key=e0, subject=qg0, object=qg1, predicates=biolink:treats)',
         'expand(kp=infores:retriever)',
         'resultify()',
         "return(message=true, store=false)"
@@ -910,7 +910,7 @@ def test_issue686c():
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
         'add_qnode(key=qg1, ids=MONDO:0018958)',
-        'add_qedge(key=e0, subject=qg0, object=qg1, predicates=biolink:treats)'
+        'add_qedge(key=e0, subject=qg0, object=qg1, predicates=biolink:treats)',
         'expand(kp=infores:retriever)',
         'resultify(ignore_edge_direction=foo)',
         "return(message=true, store=false)"
