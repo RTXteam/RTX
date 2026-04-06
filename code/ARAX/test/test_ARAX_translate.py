@@ -91,8 +91,8 @@ def test_lookup():
             "query_graph": {
                 "nodes": {
                     "n0": {
-                        "categories": [
-                            "biolink:Gene"
+                        "ids": [
+                            "NCBIGene:1544"
                         ]
                     },
                     "n1": {

@@ -64,8 +64,8 @@ def test_n_results():
 def test_no_results():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:4337, key=n00)",
-            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
+            "add_qnode(ids=MONDO:0002967, key=n00)",
+            "add_qnode(ids=CHEBI:83766, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=infores:retriever)",
             "overlay(action=add_node_pmids, max_num=15)",

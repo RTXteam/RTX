@@ -233,7 +233,7 @@ def test_FET_example_2():
 def test_FET_example_3():
     # This a FET 3-hop example: try to find the genes connected to diseases that share the same phenotypes of a given disease
     query = {"operations": {"actions": [
-        "add_qnode(ids=MONDO:0005148, key=n00, categories=biolink:Disease)",
+        "add_qnode(ids=MONDO:0001475, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=infores:retriever, prune_threshold=5)",
