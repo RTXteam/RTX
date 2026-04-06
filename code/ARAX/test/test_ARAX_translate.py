@@ -10,7 +10,6 @@ import copy
 import json
 import ast
 from typing import List, Union
-import pprint
 
 import numpy as np
 
@@ -115,7 +114,6 @@ def test_lookup():
         }
     }
     [response, message] = _do_arax_query(query)
-    pprint.pprint(message.to_dict())
     assert response.status == 'OK'
     assert len(message.results) > 0
     for result in message.results:
