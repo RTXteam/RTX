@@ -1,4 +1,4 @@
-# Procedure for ARAX maintenance
+pl# Procedure for ARAX maintenance
 
 ##### Stephen Ramsey, March 23, 2026
 
@@ -379,10 +379,7 @@ to be removed or updated before you commit, make _sure_ you add a line comment
 leak through into the commit.
 2. Please use modern type hints (from python3.10 or newer), so no uppercase
 `Dict` or `List`, and make sure to use `| None` instead of `Optional`. 
-3. Please review your code with a modern code LLM (e.g., Anthropic Claude Opus
-or ChatGPT) to check for bugs before committing. It's a good idea to upload 
-both the original module and the updated module, and to ask the LLM to review 
-the diffs for issues (or, in some cases, to just upload the diffs to the LLM).
+3. Please review your code with a code LLM (e.g., Claude code or Copilot) to check for bugs before committing. Best results from LLM review seem to be when the LLM can see the code diffs in the context of the full ARAX code-base.
 4. Please visually inspect every line of your code diffs with `git diff` 
 before committing; this is the perfect opportunity to catch debug code 
 (which would be indicated with a `# :DEBUG:` line comment) before it gets 
@@ -480,12 +477,13 @@ pull request. In the `issue-XXX` issue in GitHub, under "Labels", select
 "Waiting for PR review".
 2. Check back 15 minutes after you opened the PR, to see if GitHub's static checks
 flagged an issue. If there is an issue, fix it before merging.
-3. Once the PR is approved, give a warning message on `#deployment` 
+3. In the PR page on GitHub, assign Copilot as a reviewer, and fix (or document why not fixing) any issues it raises. Sometimes Copilot raises "security issues" that are not relevant because, for example, they are related to debug messages in our unit tests. Nevertheless, Copilot does catch bugs and it is worth running.
+4. Once the PR is approved, give a warning message on `#deployment` 
 ("Merging PR XXY for issue XXX, to ARAX master branch"). If it is a large merge
 or with particular risk for impacts on ARAX in CI, consider also messaging
 the `#arax-alerts` channel in the `NCATSTranslator` Slack workspace, a message that
 there will be a restart of ARAX in CI, with new code.
-4. Merge the PR, by using the green "Merge pull request" button in GitHub. 
+5. Merge the PR, by using the green "Merge pull request" button in GitHub. 
 A warning about the GitHub tool for managing merge conflicts:
 it _only modifies the parent branch_, which is fine if you are merging `issue-XXX` into
 `master`, but in situations where you want to merge `master` into an issue branch,
