@@ -1,4 +1,4 @@
-pl# Procedure for ARAX maintenance
+# Procedure for ARAX maintenance
 
 ##### Stephen Ramsey, March 23, 2026
 
