@@ -70,9 +70,15 @@ class KPSelector:
         obj_categories = set(self.bh.get_descendants(qg.nodes[qedge.object].categories))
         predicates = set(self.bh.get_descendants(qedge_predicates))
 
+        kps_skip_metakg_checks_that_are_allowed = KPS_SKIP_METAKG_CHECKS - \
+            (self.kps_excluded_by_maturity | self.kps_excluded_by_version)
+
         # use metamap to check kp for predicate triple
+        self.log.debug("number of allowed KPs that can skip metakg checks: "
+                       f"{len(kps_skip_metakg_checks_that_are_allowed)}")
+
+        accepting_kps = kps_skip_metakg_checks_that_are_allowed
         self.log.debug(f"selecting from {len(self.valid_kps)} kps")
-        accepting_kps = set()
         for kp in self.meta_map:
             # kp should contain the infores CURIE of the knowledge provider
             if self._triple_is_in_meta_map(kp,
@@ -158,7 +164,7 @@ class KPSelector:
             # Convert each input curie to a preferred, supported prefix
             for input_curie, equivalent_curies in synonyms_dict.items():
                 input_curie_prefix = self._get_uppercase_prefix(input_curie)
-                supported_equiv_curies_by_prefix = defaultdict(list)
+                supported_equiv_curies_by_prefix: defaultdict[str, list[str]] = defaultdict(list)
                 for curie in equivalent_curies:
                     prefix = self._get_uppercase_prefix(curie)
                     if prefix in supported_prefixes:
@@ -187,35 +193,31 @@ class KPSelector:
     def make_qg_use_supported_prefixes(self, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
         for qnode_key, qnode in qg.nodes.items():
             if qnode.ids:
-                if kp_name == "infores:rtx-kg2":
-                    # Just convert them into canonical curies
-                    qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
-                else:
-                    if qnode.categories:
-                    # Otherwise figure out which kind of curies KPs want
-                        categories = eu.convert_to_list(qnode.categories)
-                        supported_prefixes = self._get_supported_prefixes(categories, kp_name)
-                        used_prefixes = {self._get_uppercase_prefix(curie) for curie in qnode.ids}
-                        # Only convert curie(s) if any use an unsupported prefix
-                        if used_prefixes.issubset(supported_prefixes):
-                            self.log.debug(f"{kp_name}: All {qnode_key} curies use prefix(es) {kp_name} supports; no "
-                                           f"conversion necessary")
-                        else:
-                            self.log.debug(f"{kp_name}: One or more {qnode_key} curies use a prefix {kp_name} doesn't "
-                                           f"support; will convert these")
-                            converted_curies = self.get_desirable_equivalent_curies(qnode.ids, qnode.categories, kp_name)
-                            if converted_curies:
-                                log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
-                                          f"{len(converted_curies)} curies tailored for {kp_name}")
-                                qnode.ids = converted_curies
-                            else:
-                                log.info(f"{kp_name} cannot answer the query because no equivalent curies were found "
-                                         f"with prefixes it supports for qnode {qnode_key}. Original curies were: "
-                                         f"{qnode.ids}")
-                                return None
+                if qnode.categories:
+                # Otherwise figure out which kind of curies KPs want
+                    categories = eu.convert_to_list(qnode.categories)
+                    supported_prefixes = self._get_supported_prefixes(categories, kp_name)
+                    used_prefixes = {self._get_uppercase_prefix(curie) for curie in qnode.ids}
+                    # Only convert curie(s) if any use an unsupported prefix
+                    if used_prefixes.issubset(supported_prefixes):
+                        self.log.debug(f"{kp_name}: All {qnode_key} curies use prefix(es) {kp_name} supports; no "
+                                       f"conversion necessary")
                     else:
-                        # the query graph has no categories; just ask NodeNorm what the preferred CURIE is and use that
-                        qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
+                        self.log.debug(f"{kp_name}: One or more {qnode_key} curies use a prefix {kp_name} doesn't "
+                                       f"support; will convert these")
+                        converted_curies = self.get_desirable_equivalent_curies(qnode.ids, qnode.categories, kp_name)
+                        if converted_curies:
+                            log.debug(f"{kp_name}: Converted {qnode_key}'s {len(qnode.ids)} curies to a list of "
+                                      f"{len(converted_curies)} curies tailored for {kp_name}")
+                            qnode.ids = converted_curies
+                        else:
+                            log.info(f"{kp_name} cannot answer the query because no equivalent curies were found "
+                                     f"with prefixes it supports for qnode {qnode_key}. Original curies were: "
+                                     f"{qnode.ids}")
+                            return None
+                else:
+                    # the query graph has no categories; just ask NodeNorm what the preferred CURIE is and use that
+                    qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
         return qg
 
     @staticmethod

@@ -250,10 +250,10 @@ ARAX Flask server locally.
 #### Running the ARAX unit tests
 Running the unit tests involves these steps:
 ```
-cd ARAX_DEV_DIR/issue-XXX/RTX/code/ARAX
-../../../venv/bin/pytest --cache-clear --nodatabases -v test/
+cd ARAX_DEV_DIR/issue-XXX/RTX
+../../../venv/bin/pytest --cache-clear -v
 ```
-The procedure will take about 15 minutes to complete. All 153 standard unit tests should pass, or your
+The procedure will take about 15 minutes to complete. All standard unit tests should pass, or your
 locally installed ARAX is not in a "known good" state (and you should work on troubleshooting
 the broken unit test before proceeding). 
 
@@ -448,8 +448,8 @@ the local code repository is on `master`. Staying in the same `RTX` directory:
 7. `git fetch origin`
 8. `git checkout issue-XXX`
 9. `git pull origin issue-XXX`
-10. Run all the pytests, using your updated code: `cd code/ARAX && pytest -v --cache-clear`<br />
-All 153 standard ARAX unit tests should pass, when run in the `arax.ncats.io/beta` devarea.
+10. Run all the pytests, using your updated code: `cd RTX && pytest -v --cache-clear`<br />
+All standard ARAX unit tests should pass, when run in the `arax.ncats.io/beta` devarea.
 11. Next is to run the example queries, using your updated code. You will need to restart ARAX. 
 Exit out of the shell session for user `rt`,
 by typing `exit`. You should see the root account prompt `#`:
@@ -516,9 +516,9 @@ tail -f /tmp/RTX_OpenAPI_beta.elog
 If you had to fix merge conflicts or if your issue
 branch was behind `master` when you merged, rerun all the pytests. 
 In any case, you will need to test the ARAX User Interface again with the
-Example 1 query. If everything
-is working, then proceed.
-2. Change your local `ARAX_DEV_DIR/issue-XXX/RTX` to `master`:
+Example 1 query. If everything is working, then proceed.
+2. Change your local `ARAX_DEV_DIR/issue-XXX/RTX` code branch to the
+`master` branch:
 ```
 cd ARAX_DEV_DIR/issue-XXX/RTX
 git fetch origin

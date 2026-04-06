@@ -575,13 +575,24 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         """
         message = self.message
         parameters = self.parameters
+        kg = message.knowledge_graph
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
             allowable_parameters = {'action': {'remove_edges_by_predicate'},
                                     'edge_predicate': set([x.predicate for x in self.message.knowledge_graph.edges.values()]),
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_keys': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
-                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
+                                    'qnode_keys': {
+                                        qnode_key
+                                        for node in kg.nodes.values()
+                                        for qnode_key in (getattr(node, "qnode_keys", None) or [])
+                                    },
+                                    'qedge_keys': {
+                                        qedge_key
+                                        for edge in kg.edges.values()
+                                        for qedge_key in (getattr(edge, "qedge_keys", None) or [])
+                                    }
+#                                    'qnode_keys': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
+#                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
                                 }
         else:
             allowable_parameters = {'action': {'remove_edges_by_predicate'},
@@ -849,6 +860,7 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         :return:
         """
         message = self.message
+        kg = message.knowledge_graph
         parameters = self.parameters
         # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
         if message and parameters and hasattr(message, 'knowledge_graph') and hasattr(message.knowledge_graph, 'edges'):
@@ -868,8 +880,16 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'threshold': {float()},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
-                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
+                                    'qnode_keys': {
+                                        qnode_key
+                                        for node in kg.nodes.values()
+                                        for qnode_key in (getattr(node, "qnode_keys", None) or [])
+                                    },
+                                    'qedge_keys': {
+                                        qedge_key
+                                        for edge in kg.edges.values()
+                                        for qedge_key in (getattr(edge, "qedge_keys", None) or [])
+                                    }
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_std_dev'},

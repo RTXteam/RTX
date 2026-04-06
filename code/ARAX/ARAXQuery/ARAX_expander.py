@@ -50,6 +50,9 @@ def trim_to_size(input_list, length):
     else:
         return input_list
 
+KPS_THAT_RETURN_PREFERRED_NODE_CURIES = {'infores:retriever'}
+KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES = {'infores:rtx-kg2'}
+
 class ARAXExpander:
 
     def __init__(self):
@@ -1101,22 +1104,9 @@ class ARAXExpander:
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)
         # KG2c and retriever are already deduplicated and uses canonical predicates
-        if kp_to_use != 'infores:rtx-kg2' and kp_to_use != 'infores:retriever':
-            qg_org_kg = eu.check_for_canonical_predicates(qg_org_kg, kp_to_use, log)
-            qg_org_kg,\
-                dropped_edge_counts = self._deduplicate_nodes(qg_org_kg,
-                                                              kp_to_use,
-                                                              log)
-            for qedge_key, count in dropped_edge_counts.items():
-                if count > 0:
-                    # update query plan here
-                    done_str = log.query_plan['qedge_keys'][qedge_key][kp_to_use]['description']
-                    log.update_query_plan(qedge_key,
-                                          kp_to_use,
-                                          "Warning",
-                                          done_str + "; "
-                                          f"{count} edges dropped due "
-                                          "to node reference failure")
+        if kp_to_use not in KPS_THAT_RETURN_PREFERRED_NODE_CURIES:
+            log.warning(f"{kp_to_use}: this KP may not return preferred CURIEs; please check, and if it does return only preferred CURIEs, add to the Expand whitelist")
+
         if any(edges for edges in qg_org_kg.edges_by_qg_id.values()):  # Make sure the KP actually returned something
             qg_org_kg = self._remove_self_edges(qg_org_kg, kp_to_use, log)
 
@@ -1136,6 +1126,8 @@ class ARAXExpander:
         # This function expands a single node using the specified knowledge provider (for now only KG2 is supported)
         log.debug(f"Expanding node {qnode_key} using {kps_to_use}")
         qnode = query_graph.nodes[qnode_key]
+        if qnode.ids:
+            qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
         single_node_qg = QueryGraph(nodes={qnode_key: qnode}, edges={})
         answer_kg = QGOrganizedKnowledgeGraph()
         if log.status != 'OK':
@@ -1145,17 +1137,20 @@ class ARAXExpander:
             return answer_kg
 
         # Answer the query using the proper KP (only our own KP answers single-node queries for now)
-        if kps_to_use == ["infores:rtx-kg2"]:
-            kp_querier = TRAPIQuerier(response_object=log,
-                                      kp_name=kps_to_use[0],
-                                      user_specified_kp=user_specified_kp,
-                                      kp_timeout=kp_timeout)
-            answer_kg = kp_querier.answer_single_node_query(single_node_qg)
-            log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+        kps_to_use_that_cannot_handle_single_node_queries = set(kps_to_use) - KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES
+        if kps_to_use_that_cannot_handle_single_node_queries:
+            log.error("these KPs cannot answer single-node queries: "
+                      f"{kps_to_use_that_cannot_handle_single_node_queries}",
+                      error_code="InvalidKP")
             return answer_kg
-        else:
-            log.error("Only infores:rtx-kg2 can answer single-node queries currently", error_code="InvalidKP")
-            return answer_kg
+
+        kp_querier = TRAPIQuerier(response_object=log,
+                                  kp_name=next(iter(KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES)),
+                                  user_specified_kp=user_specified_kp,
+                                  kp_timeout=kp_timeout)
+        answer_kg = kp_querier.answer_single_node_query(single_node_qg)
+        log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+        return answer_kg
 
     def _get_query_graph_for_edge(self, qedge_key: str, full_qg: QueryGraph, overarching_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
@@ -1204,79 +1199,6 @@ class ARAXExpander:
         log.debug(f"Modified QG for this qedge is ({input_qnode_key}:{input_qnode.categories}{input_curie_summary})-"
                   f"{qedge.predicates if qedge.predicates else ''}-({output_qnode_key}:{output_qnode.categories}{output_curie_summary})")
         return edge_qg
-
-    @staticmethod
-    def _deduplicate_nodes(
-            answer_kg: QGOrganizedKnowledgeGraph,
-            kp_name: str,
-            log: ARAXResponse
-    ) -> tuple[QGOrganizedKnowledgeGraph, dict[str, int]]:
-        log.debug(f"{kp_name}: Deduplicating nodes")
-        deduplicated_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: {} for qnode_key in answer_kg.nodes_by_qg_id},
-                                                    edges={qedge_key: {} for qedge_key in answer_kg.edges_by_qg_id})
-        deduplicated_kg.unbound_edges = answer_kg.unbound_edges
-        curie_mappings = {}
-
-        # First deduplicate the bound nodes
-        for qnode_key, nodes in {**answer_kg.nodes_by_qg_id, UNBOUND_NODES_KEY: answer_kg.unbound_nodes}.items():
-            # Load preferred curie info from NodeSynonymizer
-            log.debug(f"{kp_name}: Getting preferred curies for {qnode_key} nodes returned in this step")
-            canonicalized_nodes = eu.get_canonical_curies_dict(list(nodes), log) if nodes else {}
-            if log.status != 'OK':
-                return deduplicated_kg
-
-            for node_key in nodes:
-                # Figure out the preferred curie/name for this node
-                node = nodes.get(node_key)
-                canonicalized_node = canonicalized_nodes.get(node_key)
-                if canonicalized_node:
-                    preferred_curie = canonicalized_node.get('preferred_curie', node_key)
-                    preferred_name = canonicalized_node.get('preferred_name', node.name)
-                    preferred_type = canonicalized_node.get('preferred_type')
-                    preferred_categories = eu.convert_to_list(preferred_type) if preferred_type else node.categories
-                    curie_mappings[node_key] = preferred_curie
-                else:
-                    # Means the NodeSynonymizer didn't recognize this curie
-                    preferred_curie = node_key
-                    preferred_name = node.name
-                    preferred_categories = node.categories
-                    curie_mappings[node_key] = preferred_curie
-
-                # Add this node into our deduplicated KG as necessary
-                if qnode_key != UNBOUND_NODES_KEY:
-                    if preferred_curie not in deduplicated_kg.nodes_by_qg_id[qnode_key]:
-                        node_key = preferred_curie
-                        node.name = preferred_name
-                        node.categories = preferred_categories
-                        deduplicated_kg.add_node(node_key, node, qnode_key)
-                else:  # this is an unbound node
-                    if preferred_curie not in deduplicated_kg.unbound_nodes:
-                        node.name = preferred_name
-                        node.categories = preferred_categories
-                        deduplicated_kg.unbound_nodes[preferred_curie] = node
-
-        # Then update the edges to reflect changes made to the nodes
-        dropped_edge_count = {}
-        for qedge_key, edges in answer_kg.edges_by_qg_id.items():
-            dropped_edge_count[qedge_key] = 0
-            for edge_key, edge in edges.items():
-                drop_edge = False
-                if edge.subject not in curie_mappings:
-                    log.warning(f"{kp_name}: edge subject not in curie mappings; qedge key: {qedge_key}; subject ID: {edge.subject}")
-                    drop_edge = True
-                    dropped_edge_count[qedge_key] += 1
-                else:
-                    edge.subject = curie_mappings.get(edge.subject)
-                if edge.object not in curie_mappings:
-                    log.warning(f"{kp_name}: edge object not in curie mappings; qedge key: {qedge_key}; object ID: {edge.object}")
-                    drop_edge = True
-                    dropped_edge_count[qedge_key] += 1
-                else:
-                    edge.object = curie_mappings.get(edge.object)
-                if not drop_edge:
-                    deduplicated_kg.add_edge(edge_key, edge, qedge_key)
-        log.debug(f"{kp_name}: After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
-        return deduplicated_kg, dropped_edge_count
 
     @staticmethod
     def _extract_query_subgraph(qedge_keys_to_expand: list[str], query_graph: QueryGraph, log: ARAXResponse) -> QueryGraph:

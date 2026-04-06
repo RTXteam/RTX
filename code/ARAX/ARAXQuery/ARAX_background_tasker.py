@@ -135,7 +135,7 @@ class ARAXBackgroundTasker:
         eprint("INFO: End listing databases area contents")
 
         #### Set up the KP Cacher to be used for periodic refreshing
-        kp_cacher = KPQueryCacher()
+        kp_cacher = KPQueryCacher(mode='BackgroundTasker')
 
         # Loop forever doing various things
         my_pid = os.getpid()

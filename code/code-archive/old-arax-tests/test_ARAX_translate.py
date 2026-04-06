@@ -97,7 +97,10 @@ def test_lookup():
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:46195"
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:SmallMolecule"
                         ]
                     }
                 },
@@ -125,7 +128,7 @@ def test_fill_success():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["infores:retriever"],
+                    "allowlist": ["infores:rtx-kg2"],
                     "qedge_keys": ["e01"]
                 }
             }
@@ -140,7 +143,7 @@ def test_fill_success():
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:46195"
+                            "CHEBI:45783"
                         ],
                         "categories": [
                             "biolink:ChemicalSubstance"
@@ -170,7 +173,7 @@ def test_fill_error():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["infores:retriever"],
+                    "allowlist": ["infores:rtx-kg2"],
                     "qedge_keys": ["asdf"]
                 }
             }
@@ -230,7 +233,10 @@ def test_score():
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:46195"
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:SmallMolecule"
                         ]
                     }
                 },
@@ -258,7 +264,7 @@ def test_bind():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["infores:retriever"]
+                    "allowlist": ["infores:rtx-kg2"]
                 }
             },
             {
@@ -276,7 +282,10 @@ def test_bind():
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:46195"
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:ChemicalSubstance"
                         ]
                     }
                 },
@@ -302,7 +311,7 @@ def test_complete_results():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["infores:retriever"]
+                    "allowlist": ["infores:rtx-kg2"]
                 }
             },
             {
@@ -320,7 +329,7 @@ def test_complete_results():
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:46195"
+                            "CHEBI:45783"
                         ],
                         "categories": [
                             "biolink:ChemicalSubstance"
@@ -349,7 +358,7 @@ def test_filter_results_top_n():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["infores:retriever"]
+                    "allowlist": ["infores:rtx-kg2"]
                 }
             },
             {
@@ -382,7 +391,10 @@ def test_filter_results_top_n():
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:2948"
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:SmallMolecule"
                         ]
                     }
                 },
@@ -437,7 +449,10 @@ def test_overlay_after_lookup():
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:2948"
+                            "CHEBI:45783"
+                        ],
+                        "categories": [
+                            "biolink:SmallMolecule"
                         ]
                     }
                 },
