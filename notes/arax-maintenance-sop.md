@@ -258,7 +258,7 @@ locally installed ARAX is not in a "known good" state (and you should work on tr
 the broken unit test before proceeding). 
 
 #### Running the example queries in the ARAX flask server locally
-Start the flask server locally, _exactly_ as follows:
+1. Start the flask server locally, _exactly_ as follows:
 ```
 cd ARAX_DEV_DIR/issue-XXX/RTX/code/UI/OpenAPI/python-flask-server
 ../../../../../venv/bin/python -u -m openapi_server
@@ -278,18 +278,19 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://10.197.154.29:5001
 Press CTRL+C to quit
 ```
-Now, in a different window, run your web browser (Firefox or Chrome), and using the "File" menu, select
+2. In a different window, run your web browser (Firefox or Chrome), and using the "File" menu, select
 "Open File...", and in the dialog box, navigate to `ARAX_DEV_DIR/issue-XXX/RTX/code/UI/interactive` and
-select `index.html`. Now, in the ARAX User Interface page that renders in your browser, 
-on the navigation pane on the left-hand side, click on the `Settings`, 
+select `index.html`. Now, in the ARAX User Interface page that renders in your browser, you will see an orange banner message appear, saying "Call to /meta_knowledge_graph failed; could not load predicates and node categories."; do not worry about that banner message, that is expected when
+you first load `index.html` on your local development computer, because the base URL for querying
+the ARAX back-end is not (yet) configured via Settings (see Step 3).
+3. On the navigation pane on the left-hand side, click on the `Settings`, 
 and then change the "ARAX QUERY URL" textbox to contain _exactly_ this string:
 ```
 http://localhost:5001/api/arax/v1.4/query 
 ```
 and click "update" (you may well have to widen your browser window to see the
 blue "update" button, which is to the right of the text box).
-
-Now, in the navigation pane in the ARAX User Interface in your web browser, click on 
+4. In the navigation pane in the ARAX User Interface in your web browser, click on 
 `Query`, click on `JSON`, and click on `Example 1` (it's a tiny orange link just above 
 the large empty text-box). Then click on "Post to ARAX". Compare the results that
 are listed under the "Results" navigation tab, to what you would see if you ran the 
