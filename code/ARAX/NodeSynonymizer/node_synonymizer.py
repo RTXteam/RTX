@@ -1,3 +1,4 @@
+"""API-backed Node Synonymizer for CURIE/name normalization via SRI services."""
 import argparse
 import collections
 import json
@@ -12,291 +13,475 @@ import bmt  # type: ignore[import-not-found]
 import pandas as pd  # type: ignore[import-untyped]
 import requests  # type: ignore[import-untyped]
 
+# The ARAX repo doesn't use a standard Python package layout,
+# so we need sys.path.append to resolve cross-module imports.
+# This means pylint can't find these modules (import-error)
+# and the imports come after non-import code (wrong-import-position).
+# This pattern is standard across all ARAX source files.
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration  # type: ignore[import-not-found]  # noqa: E402
+from RTXConfiguration import RTXConfiguration  # type: ignore[import-not-found]  # noqa: E402  # pylint: disable=import-error,wrong-import-position
 
-sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
+sys.path.append(os.path.sep.join(
+    [*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
 
-sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
-from openapi_server.models.knowledge_graph import KnowledgeGraph  # type: ignore[import-not-found]  # noqa: E402
-from openapi_server.models.node import Node  # type: ignore[import-not-found]  # noqa: E402
-from openapi_server.models.attribute import Attribute  # type: ignore[import-not-found]  # noqa: E402
+sys.path.append(os.path.sep.join(
+    [*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI',
+     'python-flask-server']))
+from openapi_server.models.knowledge_graph import KnowledgeGraph  # type: ignore[import-not-found]  # noqa: E402  # pylint: disable=import-error,wrong-import-position
+from openapi_server.models.node import Node  # type: ignore[import-not-found]  # noqa: E402  # pylint: disable=import-error,wrong-import-position
+from openapi_server.models.attribute import Attribute  # type: ignore[import-not-found]  # noqa: E402  # pylint: disable=import-error,wrong-import-position
 
 
-class NodeSynonymizer:
+# 13 instance attrs (limit 7): API URLs, session, cache, config,
+# infores CURIEs, bmt toolkit, category levels. All needed for the
+# API-based lifecycle — the old SQLite version had similar state.
+class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
+    """CURIE/name normalization via SRI Node Normalizer and Name Resolver APIs.
 
-    def __init__(self, sqlite_file_name: Optional[str] = None):
-        # Kept for interface compatibility; implementation now reads from APIs.
+    Migration context (issue #2585):
+    The old implementation queried a local SQLite database built
+    from KG2 + SRI bulk downloads. This version replaces all
+    SQLite queries with live API calls to two SRI services:
+
+    SRI Node Normalizer (CURIE -> canonical info + equivalents):
+      Production: https://nodenorm.transltr.io/1.5
+      CI/Dev:     https://nodenorm.ci.transltr.io/1.5
+      Docs:       https://nodenorm.ci.transltr.io/1.5/docs
+      Main endpoint: POST /get_normalized_nodes
+
+    SRI Name Resolver (free-text name -> best CURIE match):
+      Production: https://name-lookup.transltr.io
+      CI/Dev:     https://name-lookup.ci.transltr.io
+      Docs:       https://name-lookup.ci.transltr.io/docs
+      Main endpoint: POST /bulk-lookup
+
+    Which URLs are used depends on the ARAX maturity setting:
+    production maturity uses production URLs, everything else
+    (dev, test, beta) uses CI URLs. This is handled in
+    _get_api_urls(). Both can be overridden via config_dbs.json
+    keys: node_normalizer_url_override, name_resolver_url_override.
+
+    The return contracts (get_canonical_curies, get_equivalent_nodes,
+    get_normalizer_results) are preserved so downstream ARAX callers
+    don't need changes.
+    """
+
+    def __init__(self, sqlite_file_name: Optional[str] = None,
+                 autocomplete: bool = True):
+        # sqlite_file_name: kept for interface compat so existing
+        # callers don't break. The new implementation ignores it
+        # entirely — no local database is used.
         _ = sqlite_file_name
+
+        # autocomplete controls the Name Resolver's behavior.
+        # True (default) = partial/fuzzy name matching, which
+        # is what ARAX needs for query resolution.
+        # False = exact phrase matching, used for NGD builds
+        # where we need precise name-to-curie mapping.
+        self._autocomplete = autocomplete
+
         self.rtx_config = RTXConfiguration()
-        self.api_base_url, self.name_resolver_url = self._get_api_urls()
+        self.api_base_url, self.name_resolver_url = (
+            self._get_api_urls())
         self.kg2_infores_curie = "infores:rtx-kg2"
         self.sri_nn_infores_curie = "infores:sri-node-normalizer"
         self.arax_infores_curie = "infores:arax"
         self.bmt_tk = bmt.Toolkit()
         self.category_levels = self._get_categories_and_levels()
 
-    # --------------------------------------- EXTERNAL MAIN METHODS ----------------------------------------------- #
+        # Since we now hit external APIs instead of a local DB,
+        # connection reuse and caching matter a lot more.
+        # requests.Session keeps TCP connections alive across
+        # calls to the same host, avoiding repeated TLS
+        # handshakes.
+        self._session = requests.Session()
+        self._session.headers.update({'accept': 'application/json'})
 
-    def get_canonical_curies(self,
-                             curies: Optional[Union[str, Set[str], List[str]]] = None,
-                             names: Optional[Union[str, Set[str], List[str]]] = None,
-                             return_all_categories: bool = False,
-                             debug: bool = False) -> dict:
+        # In-memory CURIE cache: the old SQLite was essentially
+        # an on-disk cache. With APIs, repeated lookups for the
+        # same CURIE (which happens often in get_normalizer_results)
+        # would be redundant network calls. This dict stores
+        # Node Normalizer responses so each CURIE is fetched once
+        # per NodeSynonymizer instance.
+        self._normalizer_cache: dict[str, dict | None] = {}
+        self._cache_hits = 0
+        self._cache_misses = 0
+
+    # ------------ EXTERNAL MAIN METHODS ------------- #
+
+    # Locals/branches are high because this method orchestrates
+    # a multi-step API workflow (curie lookup, name resolution,
+    # category aggregation). Splitting further would fragment
+    # the sequential flow and make it harder to follow.
+    def get_canonical_curies(  # pylint: disable=too-many-locals,too-many-branches
+            self,
+            curies: Optional[Union[str, Set[str], List[str]]] = None,
+            names: Optional[Union[str, Set[str], List[str]]] = None,
+            return_all_categories: bool = False,
+            debug: bool = False) -> dict:
+        """Return canonical CURIE info for input curies and/or names."""
         start = time.time()
 
-        # Convert any input values to Set format
         curies_set = self._convert_to_set_format(curies)
         names_set = self._convert_to_set_format(names)
         results_dict: dict[str, Optional[dict[str, Any]]] = {}
 
+        # CURIE branch: send directly to Node Normalizer.
+        # Response "type" is the cluster-level category list,
+        # and "id" holds the canonical identifier + label.
         if curies_set:
             api_results = self._call_normalizer_api(list(curies_set))
 
             for input_curie in curies_set:
-                if input_curie in api_results and api_results[input_curie] is not None:
-                    result = api_results[input_curie]
-                    preferred_id = result.get("id", {}).get("identifier")
-                    # New API returns categories in top-level "type", not under "id".
+                api_val = api_results.get(input_curie)
+                if api_val is not None:
+                    result = api_val
+                    preferred_id = (
+                        result.get("id", {}).get("identifier"))
+                    # Node Normalizer returns categories in
+                    # top-level "type", not inside "id".
                     types = result.get("type", [])
-                    preferred_category = types[0] if types else None
-                    preferred_name = result.get("id", {}).get("label")
+                    preferred_category = (
+                        types[0] if types else None)
+                    preferred_name = (
+                        result.get("id", {}).get("label"))
                     if preferred_category:
-                        preferred_category = preferred_category.replace("biolink:", "")
-                    results_dict[input_curie] = self._create_preferred_node_dict(
-                        preferred_id=preferred_id,
-                        preferred_category=preferred_category,
-                        preferred_name=preferred_name
-                    )
+                        preferred_category = (
+                            preferred_category.replace(
+                                "biolink:", ""))
+                    results_dict[input_curie] = (
+                        self._create_preferred_node_dict(
+                            preferred_id=preferred_id,
+                            preferred_category=preferred_category,
+                            preferred_name=preferred_name
+                        ))
 
+        # Name branch: two-step lookup required because the
+        # Node Normalizer only accepts CURIEs, not free text.
+        # Step 1: Name Resolver /bulk-lookup → best CURIE
+        # Step 2: Node Normalizer /get_normalized_nodes → metadata
+        # The old SQLite could resolve names directly from
+        # a `name_simplified` column. With APIs we need both.
         if names_set:
-            # Old SQLite implementation could query names directly from `nodes.name_simplified`.
-            # In API mode we must do a two-step lookup:
-            #   1) Name Resolver `/bulk-lookup` -> best CURIE candidate
-            #   2) Node Normalizer `/get_normalized_nodes` -> canonical metadata
-            name_to_curie = self._call_name_resolver_api(list(names_set))
-            resolved_curies = [c for c in name_to_curie.values() if c is not None]
+            name_to_curie = self._call_name_resolver_api(
+                list(names_set))
+            resolved_curies = [
+                c for c in name_to_curie.values()
+                if c is not None]
             if resolved_curies:
-                api_results = self._call_normalizer_api(resolved_curies)
+                api_results = self._call_normalizer_api(
+                    resolved_curies)
                 for name in names_set:
+                    # If curie branch already resolved this
+                    # string, skip to avoid overwriting.
+                    if name in results_dict:
+                        continue
                     curie = name_to_curie.get(name)
-                    if curie and curie in api_results and api_results[curie] is not None:
-                        result = api_results[curie]
+                    api_val = api_results.get(curie)
+                    if curie and api_val is not None:
+                        result = api_val
                         types = result.get("type", [])
                         if "id" not in result:
-                            raise ValueError(f"for name {name}, there is no field 'id' in the result")
+                            raise ValueError(
+                                f"for name {name}, there is "
+                                "no field 'id' in the result")
                         result_name_dict = result["id"]
                         if "label" not in result_name_dict:
-                            raise ValueError(f"for name {name}, there is no 'label' field in the 'id' dictionary in the result")
+                            raise ValueError(
+                                f"for name {name}, there is "
+                                "no 'label' field in the 'id'"
+                                " dictionary in the result")
                         result_name = result_name_dict['label']
-                        if result_name.lower() != name.lower():
+                        if not self._names_match(
+                                name, result_name):
                             results_dict[name] = None
                             continue
-                        preferred_category = types[0] if types else None
+                        preferred_category = (
+                            types[0] if types else None)
                         if preferred_category:
-                            preferred_category = preferred_category.replace("biolink:", "")
-                        results_dict[name] = self._create_preferred_node_dict(
-                            preferred_id=result.get("id", {}).get("identifier"),
-                            preferred_category=preferred_category,
-                            preferred_name=result.get("id", {}).get("label")
-                        )
+                            preferred_category = (
+                                preferred_category.replace(
+                                    "biolink:", ""))
+                        results_dict[name] = (
+                            self._create_preferred_node_dict(
+                                preferred_id=result.get(
+                                    "id", {}).get("identifier"),
+                                preferred_category=(
+                                    preferred_category),
+                                preferred_name=result.get(
+                                    "id", {}).get("label")
+                            ))
 
         if return_all_categories:
-            # Old DB flow counted member categories from per-node rows in `nodes.category`.
-            # New API flow exposes categories at cluster level (`result["type"]`) and does not
-            # annotate each equivalent identifier with its own category. We approximate prior
-            # semantics by weighting each returned category by cluster size.
-            cluster_ids = {canonical_info["preferred_curie"]
-                           for canonical_info in results_dict.values() if canonical_info}
-            if cluster_ids:
-                api_results = self._call_normalizer_api(list(cluster_ids))
+            self._populate_all_categories(results_dict)
 
-                clusters_by_category_counts: defaultdict[str, defaultdict[str, int]] = defaultdict(lambda: defaultdict(int))
-                for cluster_id, result in api_results.items():
-                    if result is not None:
-                        # Old DB counted member categories directly, API only provides cluster-level types.
-                        num_equivs = len(result.get("equivalent_identifiers", []))
-                        for category in result.get("type", []):
-                            category_with_prefix = self._add_biolink_prefix(category.replace("biolink:", ""))
-                            if category_with_prefix is None:
-                                continue
-                            clusters_by_category_counts[cluster_id][category_with_prefix] += max(num_equivs, 1)
-
-                for canonical_info in results_dict.values():
-                    if canonical_info:
-                        cluster_id = canonical_info["preferred_curie"]
-                        category_counts: dict[str, int] = dict(clusters_by_category_counts.get(cluster_id, {}))
-                        canonical_info["all_categories"] = dict(category_counts)
-
-        unrecognized_input_values = (curies_set.union(names_set)).difference(results_dict)
-        for unrecognized_value in unrecognized_input_values:
-            results_dict[unrecognized_value] = None
+        unrecognized = (
+            curies_set.union(names_set)).difference(results_dict)
+        for val in unrecognized:
+            results_dict[val] = None
 
         if debug:
-            print(f"Took {round(time.time() - start, 5)} seconds")
+            print(
+                f"Took {round(time.time() - start, 5)} seconds")
         return results_dict
 
-    def get_equivalent_nodes(self, curies: Optional[Union[str, Set[str], List[str]]] = None,
-                             names: Optional[Union[str, Set[str], List[str]]] = None,
-                             include_unrecognized_entities: bool = True,
-                             debug: bool = False) -> dict:
+    def _populate_all_categories(
+            self,
+            results_dict: dict[str, Optional[dict[str, Any]]]
+    ) -> None:
+        """Add all_categories counts to each entry in results_dict.
+
+        Note: this is an approximation. The old SQLite counted
+        categories per-node (each equivalent ID had its own
+        category). The Node Normalizer API only exposes
+        cluster-level categories in the "type" field, so we
+        weight each category by the total number of equivalent
+        identifiers. The counts are larger than old SQLite
+        values, but relative ordering is preserved and
+        downstream callers only check count > 0.
+        """
+        cluster_ids = {
+            info["preferred_curie"]
+            for info in results_dict.values() if info}
+        if not cluster_ids:
+            return
+        api_results = self._call_normalizer_api(
+            list(cluster_ids))
+
+        cat_counts: defaultdict[str, defaultdict[str, int]] = (
+            defaultdict(lambda: defaultdict(int)))
+        for cluster_id, result in api_results.items():
+            if result is None:
+                continue
+            num_equivs = len(
+                result.get("equivalent_identifiers", []))
+            for category in result.get("type", []):
+                cat_with_prefix = self._add_biolink_prefix(
+                    category.replace("biolink:", ""))
+                if cat_with_prefix is None:
+                    continue
+                cat_counts[cluster_id][cat_with_prefix] += (
+                    max(num_equivs, 1))
+
+        for canonical_info in results_dict.values():
+            if canonical_info:
+                cid = canonical_info["preferred_curie"]
+                canonical_info["all_categories"] = dict(
+                    cat_counts.get(cid, {}))
+
+    # Same rationale as get_canonical_curies — multi-step API
+    # workflow with curie + name resolution branches.
+    def get_equivalent_nodes(  # pylint: disable=too-many-locals
+            self,
+            curies: Optional[
+                Union[str, Set[str], List[str]]] = None,
+            names: Optional[
+                Union[str, Set[str], List[str]]] = None,
+            include_unrecognized_entities: bool = True,
+            debug: bool = False) -> dict:
+        """Return equivalent node CURIEs for input curies/names."""
         start = time.time()
 
-        # Convert any input values to Set format
         curies_set = self._convert_to_set_format(curies)
         names_set = self._convert_to_set_format(names)
         results_dict: dict[str, Optional[list[str]]] = {}
 
         if curies_set:
-            api_results = self._call_normalizer_api(list(curies_set))
-
+            api_results = self._call_normalizer_api(
+                list(curies_set))
             for input_curie in curies_set:
-                if input_curie in api_results and api_results[input_curie] is not None:
-                    result = api_results[input_curie]
-                    # Guardrail for API variance:
-                    # occasionally `equivalent_identifiers` may contain records without `identifier`.
-                    # The old SQLite path never produced such rows (ID column was NOT NULL), so we
-                    # drop them to preserve legacy behavior and avoid `None` in synonym lists.
-                    equivalent_ids = [equiv.get("identifier") for equiv in result.get("equivalent_identifiers", []) if equiv.get("identifier")]
-                    main_id = result.get("id", {}).get("identifier")
+                api_val = api_results.get(input_curie)
+                if api_val is not None:
+                    result = api_val
+                    equivalent_ids = [
+                        equiv.get("identifier")
+                        for equiv in result.get(
+                            "equivalent_identifiers", [])
+                        if equiv.get("identifier")]
+                    main_id = (
+                        result.get("id", {}).get("identifier"))
                     if main_id:
                         equivalent_ids.append(main_id)
-                    results_dict[input_curie] = self._dedupe_preserve_order(equivalent_ids)
+                    results_dict[input_curie] = (
+                        self._dedupe_preserve_order(
+                            equivalent_ids))
 
         if names_set:
-            name_to_curie = self._call_name_resolver_api(list(names_set))
-            resolved_curies = [c for c in name_to_curie.values() if c is not None]
+            name_to_curie = self._call_name_resolver_api(
+                list(names_set))
+            resolved_curies = [
+                c for c in name_to_curie.values()
+                if c is not None]
             if resolved_curies:
-                api_results = self._call_normalizer_api(resolved_curies)
+                api_results = self._call_normalizer_api(
+                    resolved_curies)
                 for name in names_set:
                     curie = name_to_curie.get(name)
-                    if curie and curie in api_results and api_results[curie] is not None:
-                        result = api_results[curie]
-                        equivalent_ids = [equiv.get("identifier") for equiv in result.get("equivalent_identifiers", []) if equiv.get("identifier")]
-                        main_id = result.get("id", {}).get("identifier")
+                    api_val = api_results.get(curie)
+                    if curie and api_val is not None:
+                        result = api_val
+                        equivalent_ids = [
+                            equiv.get("identifier")
+                            for equiv in result.get(
+                                "equivalent_identifiers", [])
+                            if equiv.get("identifier")]
+                        main_id = result.get(
+                            "id", {}).get("identifier")
                         if main_id:
                             equivalent_ids.append(main_id)
-                        results_dict[name] = self._dedupe_preserve_order(equivalent_ids)
+                        results_dict[name] = (
+                            self._dedupe_preserve_order(
+                                equivalent_ids))
 
         if include_unrecognized_entities:
-            unrecognized_curies = (curies_set.union(names_set)).difference(results_dict)
-            for unrecognized_curie in unrecognized_curies:
-                results_dict[unrecognized_curie] = None
+            unrecognized = (
+                curies_set.union(names_set)
+            ).difference(results_dict)
+            for curie in unrecognized:
+                results_dict[curie] = None
 
         if debug:
-            print(f"Took {round(time.time() - start, 5)} seconds")
+            print(
+                f"Took {round(time.time() - start, 5)} seconds")
         return results_dict
 
-    def get_preferred_names(self,
-                            curies: Union[str, Set[str], List[str]],
-                            debug: bool = False) -> dict:
-        """
-        Returns preferred names for input curies - i.e., the name of the curie's canonical identifier.
-        """
+    def get_preferred_names(
+            self,
+            curies: Union[str, Set[str], List[str]],
+            debug: bool = False) -> dict:
+        """Return preferred names for input curies."""
         start = time.time()
 
-        # Convert any input values to Set format
         curies_set = self._convert_to_set_format(curies)
         results_dict: dict[str, str] = {}
 
         if curies_set:
             curies_list = list(curies_set)
             api_results = self._call_normalizer_api(curies_list)
-            results_dict = {k: v['id']['label'] for k, v in api_results.items() if v is not None and v.get('id', {}).get('label')}
- 
+            results_dict = {
+                k: v['id']['label']
+                for k, v in api_results.items()
+                if v is not None
+                and v.get('id', {}).get('label')}
+
         if debug:
-            print(f"Took {round(time.time() - start, 5)} seconds")
+            print(
+                f"Took {round(time.time() - start, 5)} seconds")
         return results_dict
 
-    def get_curie_names(self,
-                        curies: Union[str, Set[str], List[str]],
-                        debug: bool = False) -> dict:
-        """
-        Returns NON-preferred names for input curies; i.e., the curie's direct name, not the name of its canonical
-        identifier.
+    def get_curie_names(
+            self,
+            curies: Union[str, Set[str], List[str]],
+            debug: bool = False) -> dict:
+        """Return NON-preferred names for input curies.
+
+        Returns the curie's direct name, not the name of its
+        canonical identifier.
         """
         start = time.time()
 
-        # Convert any input values to Set format
         curies_set = self._convert_to_set_format(curies)
         results_dict: dict[str, str] = {}
 
         if curies_set:
-            api_results = self._call_normalizer_api(list(curies_set))
+            api_results = self._call_normalizer_api(
+                list(curies_set))
             for input_curie in curies_set:
                 result = api_results.get(input_curie)
                 if not result:
                     continue
-                for equiv in result.get("equivalent_identifiers", []):
-                    if equiv.get("identifier") == input_curie and equiv.get("label"):
-                        results_dict[input_curie] = equiv["label"]
+                for equiv in result.get(
+                        "equivalent_identifiers", []):
+                    if (equiv.get("identifier") == input_curie
+                            and equiv.get("label")):
+                        results_dict[input_curie] = (
+                            equiv["label"])
                         break
 
         if debug:
-            print(f"Took {round(time.time() - start, 5)} seconds")
+            print(
+                f"Took {round(time.time() - start, 5)} seconds")
         return results_dict
 
-    def get_curie_category(self,
-                           curies: Union[str, Set[str], List[str]],
-                           debug: bool = False) -> dict:
-        """
-        Returns NON-preferred names for input curies; i.e., the curie's direct name, not the name of its canonical
-        identifier.
-        """
+    def get_curie_category(
+            self,
+            curies: Union[str, Set[str], List[str]],
+            debug: bool = False) -> dict:
+        """Return the most specific Biolink category for each input curie."""
         start = time.time()
 
         curies_set = self._convert_to_set_format(curies)
         best_by_parent: dict[str, str] = {}
 
         if curies_set:
-            api_results = self._call_normalizer_api(list(curies_set))
+            api_results = self._call_normalizer_api(
+                list(curies_set))
             levels_by_curie: dict[str, dict[str, int]] = {}
             for curie, result in api_results.items():
                 if result is None:
                     continue
                 category_levels: dict[str, int] = {}
                 for category in result.get("type", []):
-                    level = self.category_levels.get(category.replace("biolink:", ""))
+                    level = self.category_levels.get(
+                        category.replace("biolink:", ""))
                     if level is not None:
                         category_levels[category] = level
                 levels_by_curie[curie] = category_levels
-            # Old implementation returned one category from a single DB column.
-            # API returns a category list; choose the most specific one (deepest in Biolink hierarchy)
-            # so downstream consumers still receive one deterministic category per input CURIE.
             best_by_parent = {
-                parent_key: max(subdict.items(), key=lambda kv: kv[1])[0]
-                for parent_key, subdict in levels_by_curie.items() if subdict
+                parent_key: max(
+                    subdict.items(),
+                    key=lambda kv: kv[1])[0]
+                for parent_key, subdict
+                in levels_by_curie.items() if subdict
             }
         if debug:
-            print(f"Took {round(time.time() - start, 5)} seconds")
+            print(
+                f"Took {round(time.time() - start, 5)} seconds")
         return best_by_parent
 
-    def _get_categories_and_levels(self, debug: bool = False) -> dict[str, int]:
+    def _get_categories_and_levels(
+            self, debug: bool = False) -> dict[str, int]:
+        """Build Biolink category hierarchy with depth levels."""
         start = time.time()
         q = collections.deque(['biolink:NamedThing'])
         levels = {'biolink:NamedThing': 0}
         while q:
-            i = q.popleft()
-            for neighbor in self.bmt_tk.get_children(i, formatted=True):
+            item = q.popleft()
+            for neighbor in self.bmt_tk.get_children(
+                    item, formatted=True):
                 if neighbor not in levels:
-                    levels[neighbor] = levels[i] + 1
+                    levels[neighbor] = levels[item] + 1
                     q.append(neighbor)
         if debug:
-            print(f"Took {round(time.time() - start, 5)} seconds")
-        return {k.replace("biolink:", ""):v for k, v in levels.items()}
+            print(
+                f"Took {round(time.time() - start, 5)} seconds")
+        return {
+            k.replace("biolink:", ""): v
+            for k, v in levels.items()}
 
-    def get_distinct_category_list(self, debug: bool = False) -> list:
+    def get_distinct_category_list(
+            self, debug: bool = False) -> list:
+        """Return all known Biolink category names."""
         start = time.time()
-        curies = list(self.category_levels.keys())
+        result = list(self.category_levels.keys())
         if debug:
-            print(f"Took {round(time.time() - start, 5)} seconds")
-        return curies
+            print(
+                f"Took {round(time.time() - start, 5)} seconds")
+        return result
 
-    def get_normalizer_results(self, entities: Optional[Union[str, Set[str], List[str]]],
-                               max_synonyms: int = 1000000,
-                               debug: bool = False) -> dict:
+    # This is the most complex public method — it combines
+    # equivalent node lookup, category counting, node metadata
+    # assembly, trimming, and output formatting. Already split
+    # into 6 helper methods; remaining locals are inherent.
+    def get_normalizer_results(  # pylint: disable=too-many-locals
+            self,
+            entities: Optional[
+                Union[str, Set[str], List[str]]],
+            max_synonyms: int = 1000000,
+            debug: bool = False) -> dict:
+        """Return full normalizer info including equivalents and KG."""
         start = time.time()
 
         output_format = None
@@ -315,262 +500,461 @@ class NodeSynonymizer:
 
         entities_set = self._convert_to_set_format(entities)
 
-        equivalent_curies_raw = self.get_equivalent_nodes(curies=entities_set, include_unrecognized_entities=False)
-        equivalent_curies_dict = {entity: curies for entity, curies in equivalent_curies_raw.items() if curies}
-        unrecognized_entities = entities_set.difference(equivalent_curies_dict)
+        equiv_raw = self.get_equivalent_nodes(
+            curies=entities_set,
+            include_unrecognized_entities=False)
+        equiv_dict = {
+            entity: curies_list
+            for entity, curies_list in equiv_raw.items()
+            if curies_list}
+        unrecognized_entities = (
+            entities_set.difference(equiv_dict))
         if unrecognized_entities:
-            # Preserve old behavior: if direct CURIE lookup misses, retry as name-based lookup.
-            equivalent_curies_dict_names_raw = self.get_equivalent_nodes(names=unrecognized_entities, include_unrecognized_entities=False)
-            equivalent_curies_dict_names = {entity: curies
-                                           for entity, curies in equivalent_curies_dict_names_raw.items() if curies}
-            equivalent_curies_dict.update(equivalent_curies_dict_names)
+            equiv_names_raw = self.get_equivalent_nodes(
+                names=unrecognized_entities,
+                include_unrecognized_entities=False)
+            equiv_names = {
+                entity: curies_list
+                for entity, curies_list
+                in equiv_names_raw.items()
+                if curies_list}
+            equiv_dict.update(equiv_names)
 
-        equiv_curie_counts_untrimmed = {input_entity: len(equivalent_curies) if equivalent_curies else 0
-                                        for input_entity, equivalent_curies in equivalent_curies_dict.items()}
-        all_node_ids_untrimmed = set().union(*equivalent_curies_dict.values()) if equivalent_curies_dict else set()
-        categories_map_untrimmed = {}
-        if all_node_ids_untrimmed:
-            api_results_untrimmed = self._call_normalizer_api(list(all_node_ids_untrimmed))
-            for node_id, result in api_results_untrimmed.items():
-                if result is not None:
-                    types = result.get("type", [])
-                    if types:
-                        # API `type` is top-level and cluster-oriented; use first type as primary category
-                        # to mimic legacy single-category node records.
-                        categories_map_untrimmed[node_id] = types[0]
+        equiv_counts_untrimmed = {
+            ent: len(eq) if eq else 0
+            for ent, eq in equiv_dict.items()}
 
-        category_counts_untrimmed: dict[str, dict[str, int]] = {}
-        equivalent_curies_dict_trimmed: dict[str, list[str]] = {}
-        for input_entity, equivalent_curies in equivalent_curies_dict.items():
-            category_counts_untrimmed[input_entity] = dict(Counter([categories_map_untrimmed.get(equiv_curie, "biolink:NamedThing")
-                                                                    for equiv_curie in equivalent_curies]))
-            equivalent_curies_trimmed = equivalent_curies[:max_synonyms]
-            equivalent_curies_dict_trimmed[input_entity] = equivalent_curies_trimmed
-        equivalent_curies_dict = equivalent_curies_dict_trimmed
+        # Optimization: collect ALL equivalent CURIE IDs
+        # upfront and fetch them in ONE API call. The old
+        # code made separate calls for categories and node
+        # metadata. With network latency this matters, and
+        # the in-memory cache handles overlap with the
+        # get_equivalent_nodes calls above.
+        all_ids_untrimmed = (
+            set().union(*equiv_dict.values())
+            if equiv_dict else set())
+        all_api_results: dict[str, dict | None] = {}
+        if all_ids_untrimmed:
+            all_api_results = self._call_normalizer_api(
+                list(all_ids_untrimmed))
 
-        # Then get info for all of those equivalent nodes from API
-        all_node_ids = set().union(*equivalent_curies_dict.values()) if equivalent_curies_dict else set()
+        categories_map: dict[str, str] = {}
+        for node_id, result in all_api_results.items():
+            if result is not None:
+                types = result.get("type", [])
+                if types:
+                    categories_map[node_id] = types[0]
+
+        cat_counts_untrimmed: dict[str, dict[str, int]] = {}
+        equiv_dict_trimmed: dict[str, list[str]] = {}
+        for input_entity, eq_curies in equiv_dict.items():
+            cat_counts_untrimmed[input_entity] = dict(Counter(
+                [categories_map.get(ec, "biolink:NamedThing")
+                 for ec in eq_curies]))
+            equiv_dict_trimmed[input_entity] = (
+                eq_curies[:max_synonyms])
+        equiv_dict = equiv_dict_trimmed
+
+        all_node_ids = (
+            set().union(*equiv_dict.values())
+            if equiv_dict else set())
+        missing_ids = all_node_ids - set(all_api_results.keys())
+        if missing_ids:
+            extra = self._call_normalizer_api(list(missing_ids))
+            all_api_results.update(extra)
+
+        nodes_dict = self._build_nodes_dict(
+            all_node_ids, all_api_results)
+
+        results_dict = self._build_normalizer_results(
+            equiv_dict, nodes_dict,
+            equiv_counts_untrimmed, cat_counts_untrimmed)
+
+        self._clean_normalizer_nodes(results_dict)
+
+        unrecognized = entities_set.difference(results_dict)
+        for curie in unrecognized:
+            results_dict[curie] = None
+
+        self._apply_output_format(
+            results_dict, output_format)
+
+        self._sanitize_nan_attributes(results_dict)
+
+        if debug:
+            print(
+                f"Took {round(time.time() - start, 5)} seconds")
+        return results_dict
+
+    def _build_nodes_dict(
+            self,
+            all_node_ids: set,
+            all_api_results: dict[str, dict | None]
+    ) -> dict[str, dict[str, Any]]:
+        """Build per-node metadata dict from API results.
+
+        The output dict preserves the same field names that
+        the old SQLite version produced (in_sri, name_sri,
+        category_sri, in_kg2pre, name_kg2pre, category_kg2pre).
+        In API mode all data comes from the Node Normalizer,
+        so in_sri is always True when we have equivalent IDs,
+        and in_kg2pre is always False (KG2pre source info is
+        not available from the API).
+        """
         nodes_dict: dict[str, dict[str, Any]] = {}
-        if all_node_ids:
-            api_results = self._call_normalizer_api(list(all_node_ids))
-            for node_id, result in api_results.items():
-                if result is not None:
-                    main_id = result.get("id", {})
-                    cluster_id = main_id.get("identifier")
-                    cluster_name = main_id.get("label")
-                    types = result.get("type", [])
-                    category = types[0] if types else "biolink:NamedThing"
+        for node_id in all_node_ids:
+            result = all_api_results.get(node_id)
+            if result is None:
+                continue
+            main_id = result.get("id", {})
+            cluster_id = main_id.get("identifier")
+            cluster_name = main_id.get("label")
+            types = result.get("type", [])
+            category = (
+                types[0] if types else "biolink:NamedThing")
 
-                    equiv_ids = result.get("equivalent_identifiers", [])
-                    in_sri = False
-                    name_sri = None
-                    category_sri = None
-                    in_kg2pre = False
-                    name_kg2pre = None
-                    category_kg2pre = None
+            equiv_ids = result.get(
+                "equivalent_identifiers", [])
+            in_sri = bool(equiv_ids)
+            name_sri = (
+                equiv_ids[0].get("label") if equiv_ids
+                else None)
+            category_sri = (
+                types[0] if (types and equiv_ids)
+                else None)
 
-                    if equiv_ids:
-                        # In API mode all records come from Node Normalizer, so `in_sri=True`
-                        # when we have any equivalent identifiers. We keep legacy output fields
-                        # for compatibility even though some SQLite-era source distinctions are gone.
-                        in_sri = True
-                        name_sri = equiv_ids[0].get("label")
-                        category_sri = types[0] if types else None
-                    
-                    nodes_dict[node_id] = {
-                        "identifier": node_id,
-                        "category": category,
-                        "label": main_id.get("label", ""),
-                        "major_branch": None,  # Not available from API
-                        "in_sri": in_sri,
-                        "name_sri": name_sri,
-                        "category_sri": category_sri,
-                        "in_kg2pre": in_kg2pre,
-                        "name_kg2pre": name_kg2pre,
-                        "category_kg2pre": category_kg2pre,
-                        "cluster_id": cluster_id,
-                        "cluster_preferred_name": cluster_name
-                    }
+            nodes_dict[node_id] = {
+                "identifier": node_id,
+                "category": category,
+                "label": main_id.get("label", ""),
+                "major_branch": None,
+                "in_sri": in_sri,
+                "name_sri": name_sri,
+                "category_sri": category_sri,
+                "in_kg2pre": False,
+                "name_kg2pre": None,
+                "category_kg2pre": None,
+                "cluster_id": cluster_id,
+                "cluster_preferred_name": cluster_name
+            }
+        return nodes_dict
 
+    # Builds the nested result dict for each input entity.
+    # The local vars come from unpacking cluster metadata
+    # into the return contract fields.
+    def _build_normalizer_results(  # pylint: disable=too-many-locals
+            self,
+            equiv_dict: dict[str, list[str]],
+            nodes_dict: dict[str, dict[str, Any]],
+            equiv_counts: dict[str, int],
+            cat_counts: dict[str, dict[str, int]]
+    ) -> dict[str, Optional[dict[str, Any]]]:
+        """Assemble the normalizer result dict per input entity."""
         results_dict: dict[str, Optional[dict[str, Any]]] = {}
-        for input_entity, equivalent_curies in equivalent_curies_dict.items():
-            if equivalent_curies:
-                first_curie = next(iter(equivalent_curies))
-                if first_curie in nodes_dict:
-                    cluster_rep = nodes_dict[first_curie]
-                    cluster_id = cluster_rep["cluster_id"]
-                    if cluster_id in nodes_dict:
-                        cluster_rep = nodes_dict[cluster_id]
-                    results_dict[input_entity] = {"id": {"identifier": cluster_id,
-                                                         "name": cluster_rep.get("cluster_preferred_name", cluster_rep.get("label", "")),
-                                                         "category": cluster_rep.get("category", "biolink:NamedThing"),
-                                                         "SRI_normalizer_name": cluster_rep.get("name_sri"),
-                                                         "SRI_normalizer_category": cluster_rep.get("category_sri"),
-                                                         "SRI_normalizer_curie": cluster_id if cluster_rep.get("category_sri") else None},
-                                                  "total_synonyms": equiv_curie_counts_untrimmed[input_entity],
-                                                  "categories": category_counts_untrimmed[input_entity],
-                                                  "nodes": [nodes_dict.get(equivalent_curie, {
-                                                      "identifier": equivalent_curie,
-                                                      "category": "biolink:NamedThing",
-                                                      "label": equivalent_curie
-                                                  }) for equivalent_curie in equivalent_curies]}
+        for input_entity, eq_curies in equiv_dict.items():
+            if not eq_curies:
+                continue
+            first_curie = next(iter(eq_curies))
+            if first_curie not in nodes_dict:
+                continue
+            cluster_rep = nodes_dict[first_curie]
+            cluster_id = cluster_rep["cluster_id"]
+            cluster_rep = nodes_dict.get(
+                cluster_id, cluster_rep)
+            fallback_name = cluster_rep.get(
+                "cluster_preferred_name",
+                cluster_rep.get("label", ""))
+            fallback_cat = cluster_rep.get(
+                "category", "biolink:NamedThing")
+            sri_curie = (
+                cluster_id
+                if cluster_rep.get("category_sri")
+                else None)
+            node_list = [
+                nodes_dict.get(ec, {
+                    "identifier": ec,
+                    "category": "biolink:NamedThing",
+                    "label": ec
+                }) for ec in eq_curies]
+            results_dict[input_entity] = {
+                "id": {
+                    "identifier": cluster_id,
+                    "name": fallback_name,
+                    "category": fallback_cat,
+                    "SRI_normalizer_name": cluster_rep.get(
+                        "name_sri"),
+                    "SRI_normalizer_category": cluster_rep.get(
+                        "category_sri"),
+                    "SRI_normalizer_curie": sri_curie},
+                "total_synonyms": equiv_counts[input_entity],
+                "categories": cat_counts[input_entity],
+                "nodes": node_list}
+        return results_dict
 
+    @staticmethod
+    def _clean_normalizer_nodes(
+            results_dict: dict[str, Optional[dict[str, Any]]]
+    ) -> None:
+        """Remove internal fields and sort nodes."""
         for normalizer_info in results_dict.values():
             if normalizer_info is None:
                 continue
-            for equivalent_node in normalizer_info["nodes"]:
-                if "cluster_id" in equivalent_node:
-                    del equivalent_node["cluster_id"]
-                if "cluster_preferred_name" in equivalent_node:
-                    del equivalent_node["cluster_preferred_name"]
-            normalizer_info["nodes"].sort(key=lambda node: node["identifier"].upper())
+            for eq_node in normalizer_info["nodes"]:
+                eq_node.pop("cluster_id", None)
+                eq_node.pop("cluster_preferred_name", None)
+            normalizer_info["nodes"].sort(
+                key=lambda node: node["identifier"].upper())
 
-        unrecognized_curies = entities_set.difference(results_dict)
-        for unrecognized_curie in unrecognized_curies:
-            results_dict[unrecognized_curie] = None
-
+    def _apply_output_format(
+            self,
+            results_dict: dict[str, Optional[dict[str, Any]]],
+            output_format: Optional[str]
+    ) -> None:
+        """Apply minimal/slim/full formatting to results."""
         if output_format == "minimal":
-            for normalizer_info in results_dict.values():
-                if normalizer_info is None:
+            for info in results_dict.values():
+                if info is None:
                     continue
-                keys_to_delete = set(normalizer_info.keys()).difference({"id"})
-                for dict_key in keys_to_delete:
-                    del normalizer_info[dict_key]
+                to_delete = set(info.keys()).difference({"id"})
+                for key in to_delete:
+                    del info[key]
         elif output_format == "slim":
             pass
         else:
-            for normalizer_info in results_dict.values():
-                if normalizer_info:
-                    normalizer_info["knowledge_graph"] = self._get_cluster_graph(normalizer_info)
+            for info in results_dict.values():
+                if info:
+                    info["knowledge_graph"] = (
+                        self._get_cluster_graph(info))
 
-        for normalizer_info in results_dict.values():
-            if (normalizer_info is None or "knowledge_graph" not in normalizer_info or
-                    normalizer_info["knowledge_graph"] is None or
-                    "edges" not in normalizer_info["knowledge_graph"] or
-                    not isinstance(normalizer_info["knowledge_graph"]["edges"], dict)):
+    @staticmethod
+    def _sanitize_nan_attributes(
+            results_dict: dict[str, Optional[dict[str, Any]]]
+    ) -> None:
+        """Replace NaN attribute values with None."""
+        for info in results_dict.values():
+            if (info is None
+                    or "knowledge_graph" not in info
+                    or info["knowledge_graph"] is None):
                 continue
-            for _, edge_data in normalizer_info["knowledge_graph"]["edges"].items():
-                if 'attributes' in edge_data and isinstance(edge_data['attributes'], list):
-                    for attribute in edge_data['attributes']:
-                        try:
-                            if 'value' in attribute and math.isnan(attribute['value']):
-                                attribute['value'] = None
-                        except (TypeError, ValueError):
-                            pass
+            kg = info["knowledge_graph"]
+            edges = kg.get("edges")
+            if not isinstance(edges, dict):
+                continue
+            for edge_data in edges.values():
+                attrs = edge_data.get('attributes')
+                if not isinstance(attrs, list):
+                    continue
+                for attribute in attrs:
+                    try:
+                        if ('value' in attribute
+                                and math.isnan(
+                                    attribute['value'])):
+                            attribute['value'] = None
+                    except (TypeError, ValueError):
+                        pass
 
-        if debug:
-            print(f"Took {round(time.time() - start, 5)} seconds")
-        return results_dict
+    # ------------ EXTERNAL DEBUG METHODS ------------- #
 
-    # ---------------------------------------- EXTERNAL DEBUG METHODS --------------------------------------------- #
-
-    def print_cluster_table(self, curie_or_name: str, include_edges: bool = True):
-        # First figure out what cluster this concept belongs to
-        canonical_info = self.get_canonical_curies(curies=curie_or_name)
+    def print_cluster_table(
+            self, curie_or_name: str,
+            include_edges: bool = True) -> Optional[dict]:
+        """Print a tabular view of a concept's cluster."""
+        canonical_info = self.get_canonical_curies(
+            curies=curie_or_name)
         if not canonical_info.get(curie_or_name):
-            canonical_info = self.get_canonical_curies(names=curie_or_name)
+            canonical_info = self.get_canonical_curies(
+                names=curie_or_name)
 
-        if canonical_info.get(curie_or_name):
-            cluster_id = canonical_info[curie_or_name]["preferred_curie"]
+        if not canonical_info.get(curie_or_name):
+            print(f"Sorry, input concept {curie_or_name}"
+                  " is not recognized.")
+            return None
 
-            equivalent_nodes = self.get_equivalent_nodes(curies=cluster_id, include_unrecognized_entities=False)
-            if cluster_id in equivalent_nodes and equivalent_nodes[cluster_id]:
-                member_ids = equivalent_nodes[cluster_id]
+        cluster_id = (
+            canonical_info[curie_or_name]["preferred_curie"])
+        equivalent_nodes = self.get_equivalent_nodes(
+            curies=cluster_id,
+            include_unrecognized_entities=False)
+        if (cluster_id not in equivalent_nodes
+                or not equivalent_nodes[cluster_id]):
+            print("No cluster exists with a cluster_id"
+                  f" of {cluster_id}")
+            return {}
 
-                api_results = self._call_normalizer_api(member_ids)
+        member_ids = equivalent_nodes[cluster_id]
+        api_results = self._call_normalizer_api(member_ids)
 
-                nodes_data = []
-                for node_id in member_ids:
-                    if node_id in api_results and api_results[node_id] is not None:
-                        result = api_results[node_id]
-                        main_id = result.get("id", {})  # keep node label from canonical record
-                        types = result.get("type", [])
-                        category = types[0].replace("biolink:", "") if types else "NamedThing"
-                        name = main_id.get("label", node_id)
-                        nodes_data.append({"id": node_id, "category": category, "name": name})
-                
-                if nodes_data:
-                    nodes_df = pd.DataFrame(nodes_data)
+        nodes_data = []
+        for node_id in member_ids:
+            api_val = api_results.get(node_id)
+            if api_val is not None:
+                result = api_val
+                main_id = result.get("id", {})
+                types = result.get("type", [])
+                category = (
+                    types[0].replace("biolink:", "")
+                    if types else "NamedThing")
+                name = main_id.get("label", node_id)
+                nodes_data.append({
+                    "id": node_id,
+                    "category": category,
+                    "name": name})
 
-                    # Old SQLite output included intra-cluster edges; API does not expose them.
-                    if include_edges:
-                        print(f"\nCluster for {curie_or_name} has 0 edges (edge information not available from API):\n")
-                    print(f"\nCluster for {curie_or_name} has {nodes_df.shape[0]} nodes:\n")
-                    print(f"{nodes_df.to_markdown(index=False)}\n")
-                else:
-                    print(f"No nodes found for cluster_id {cluster_id}")
-            else:
-                print(f"No cluster exists with a cluster_id of {cluster_id}")
-                return dict()
-        else:
-            print(f"Sorry, input concept {curie_or_name} is not recognized.")
+        if not nodes_data:
+            print("No nodes found for cluster_id"
+                  f" {cluster_id}")
+            return None
 
-    # ---------------------------------------- INTERNAL HELPER METHODS -------------------------------------------- #
+        nodes_df = pd.DataFrame(nodes_data)
+        if include_edges:
+            print(f"\nCluster for {curie_or_name} has"
+                  " 0 edges (edge information not"
+                  " available from API):\n")
+        print(f"\nCluster for {curie_or_name} has"
+              f" {nodes_df.shape[0]} nodes:\n")
+        print(f"{nodes_df.to_markdown(index=False)}\n")
+        return None
 
-    def _call_normalizer_api(self, curies: List[str]) -> dict:
-        """
-        Call the Node Normalizer API with a list of curies.
-        Returns a dictionary mapping curie to API response (or None if not found).
+    # ------------ INTERNAL HELPER METHODS ------------ #
+
+    def _call_normalizer_api(
+            self, curies: List[str]) -> dict:
+        """Call Node Normalizer POST /get_normalized_nodes.
+
+        Uses in-memory cache and batching (2500 CURIEs per
+        request). The old SQLite was a local file, so lookups
+        were essentially free. With network calls, caching is
+        critical — get_normalizer_results calls this method
+        multiple times for overlapping CURIE sets, and without
+        caching that would mean redundant round-trips.
         """
         if not curies:
             return {}
-        
-        batch_size = 1000
-        all_results = {}
-        
-        for i in range(0, len(curies), batch_size):
-            batch = curies[i:i + batch_size]
-            try:
-                response = requests.post(
-                    f"{self.api_base_url}/get_normalized_nodes",
-                    json={"curies": batch},
-                    headers={'accept': 'application/json'},
-                    timeout=30
-                )
-                response.raise_for_status()
-                batch_results = response.json()
-                all_results.update(batch_results)
-            except requests.exceptions.RequestException as e:
-                for curie in batch:
-                    all_results[curie] = None
-                if len(curies) <= 10:
-                    print(f"Warning: API call failed for batch: {e}")
-        
+
+        all_results: dict[str, dict | None] = {}
+        uncached_curies: list[str] = []
+
+        # Check cache first to avoid network calls for
+        # CURIEs we already looked up in this session.
+        for curie in curies:
+            if curie in self._normalizer_cache:
+                all_results[curie] = (
+                    self._normalizer_cache[curie])
+                self._cache_hits += 1
+            else:
+                uncached_curies.append(curie)
+                self._cache_misses += 1
+
+        if uncached_curies:
+            batch_size = 2500
+            for i in range(0, len(uncached_curies),
+                           batch_size):
+                batch = uncached_curies[i:i + batch_size]
+                try:
+                    response = self._session.post(
+                        f"{self.api_base_url}"
+                        "/get_normalized_nodes",
+                        json={"curies": batch},
+                        timeout=30)
+                    response.raise_for_status()
+                    batch_results = response.json()
+                    for curie_key, value in (
+                            batch_results.items()):
+                        self._normalizer_cache[curie_key] = (
+                            value)
+                        all_results[curie_key] = value
+                except requests.exceptions.RequestException as e:
+                    for c in batch:
+                        self._normalizer_cache[c] = None
+                        all_results[c] = None
+                    if len(curies) <= 10:
+                        print("Warning: API call failed"
+                              f" for batch: {e}")
+
         return all_results
 
-    def _call_name_resolver_api(self, names: List[str]) -> dict:
-        # Name lookup is a required pre-step in API mode because Node Normalizer only accepts CURIEs.
-        # We ask for a single best hit (`limit=1`) with autocomplete enabled, which is closest to the
-        # old DB strategy of collapsing ambiguous names to one representative cluster.
+    def _call_name_resolver_api(
+            self, names: List[str]) -> dict:
+        """Resolve names to CURIEs via Name Resolver POST /bulk-lookup.
+
+        Name lookup is required because the Node Normalizer
+        only accepts CURIEs, not free-text names. We ask for
+        a single best hit (limit=1) with autocomplete enabled,
+        which is the closest equivalent to the old SQLite
+        strategy of collapsing ambiguous names to one cluster.
+
+        Batches at 1000 names per request to avoid timeouts
+        (important for NGD builds that can send ~8M names).
+        """
         if not names:
             return {}
 
-        results = {}
-        try:
-            response = requests.post(
-                f"{self.name_resolver_url}/bulk-lookup",
-                json={"strings": names, "autocomplete": True, "limit": 1},
-                headers={"accept": "application/json"},
-                timeout=30
-            )
-            response.raise_for_status()
-            data = response.json()
-            for name in names:
-                candidates = data.get(name, [])
-                results[name] = candidates[0]["curie"] if candidates else None
-        except requests.exceptions.RequestException as e:
-            for name in names:
-                results[name] = None
-            print(f"Warning: Name Resolver API call failed: {e}")
+        results: dict[str, str | None] = {}
+        batch_size = 1000
+        max_retries = 3
+
+        total = len(names)
+        for i in range(0, total, batch_size):
+            if (total > batch_size
+                    and i % 100_000 == 0 and i > 0):
+                print("Name Resolver progress:"
+                      f" {i}/{total} names processed")
+            batch = names[i:i + batch_size]
+            for attempt in range(1, max_retries + 1):
+                try:
+                    response = self._session.post(
+                        f"{self.name_resolver_url}"
+                        "/bulk-lookup",
+                        json={
+                            "strings": batch,
+                            "autocomplete": self._autocomplete,
+                            "limit": 1},
+                        timeout=60)
+                    response.raise_for_status()
+                    data = response.json()
+                    for name in batch:
+                        candidates = data.get(name, [])
+                        results[name] = (
+                            candidates[0]["curie"]
+                            if candidates else None)
+                    break
+                except requests.exceptions.RequestException as e:
+                    if attempt < max_retries:
+                        continue
+                    for name in batch:
+                        results[name] = None
+                    if len(names) <= 10:
+                        print("Warning: Name Resolver API"
+                              f" call failed: {e}")
 
         return results
 
+    def get_cache_stats(self) -> dict:
+        """Return cache performance statistics for debugging."""
+        total = self._cache_hits + self._cache_misses
+        hit_rate = (
+            (self._cache_hits / total * 100)
+            if total > 0 else 0)
+        return {
+            "cache_hits": self._cache_hits,
+            "cache_misses": self._cache_misses,
+            "hit_rate_pct": round(hit_rate, 1),
+            "cached_curies": len(self._normalizer_cache)
+        }
+
     @staticmethod
     def _convert_to_set_format(some_value: Any) -> set:
+        """Convert input to a set, filtering out None values.
+
+        None filtering is important because the Name Resolver
+        API returns a 422 for the entire batch if any element
+        is null. The old SQLite code handled None gracefully,
+        but the API does not.
+        """
         if isinstance(some_value, set):
             return some_value
         if isinstance(some_value, list):
-            return set(some_value)
+            return {v for v in some_value if v is not None}
         if isinstance(some_value, str):
             return {some_value}
         if some_value is None:
@@ -578,14 +962,14 @@ class NodeSynonymizer:
         try:
             return set(some_value)
         except TypeError as error:
-            raise ValueError("Input is not an allowable data type (list, set, or string)!") from error
+            raise ValueError(
+                "Input is not an allowable data type"
+                " (list, set, or string)!") from error
 
     @staticmethod
-    def _dedupe_preserve_order(values: List[str]) -> List[str]:
-        #
-        # Keep first seen order
-        # This is stable across runs
-        #
+    def _dedupe_preserve_order(
+            values: List[str]) -> List[str]:
+        """Keep first-seen order (stable across runs)."""
         seen: set[str] = set()
         ordered_values: List[str] = []
         for value in values:
@@ -595,141 +979,272 @@ class NodeSynonymizer:
         return ordered_values
 
     @staticmethod
-    def _add_biolink_prefix(category: Optional[str]) -> Optional[str]:
+    def _names_match(
+            input_name: str,
+            canonical_name: str) -> bool:
+        """Content-aware name comparison for name-based resolution.
+
+        Accepts minor punctuation/possessive differences
+        (e.g. "Parkinson's disease" vs "Parkinson disease")
+        but rejects unrelated strings
+        (e.g. "Big Bird" vs "BIG").
+
+        Why this exists: the old SQLite synonymizer resolved
+        names via exact lookup on a `name_simplified` column.
+        With the API-based approach, we ask the Name Resolver
+        for a best-match CURIE and then verify the match is
+        reasonable. Without this check, the Name Resolver
+        can return unrelated hits (e.g. "Big Bird" resolves
+        to NCBIGene:820398 — an Arabidopsis gene named "BIG").
+        """
+        # Step 1: strip all non-alphanumeric and compare.
+        # Catches case/punctuation differences like
+        # "ATRIAL FIBRILLATION" vs "atrial fibrillation".
+        norm_input = ''.join(
+            c for c in input_name.lower() if c.isalnum())
+        norm_canonical = ''.join(
+            c for c in canonical_name.lower() if c.isalnum())
+        if not norm_input or not norm_canonical:
+            return False
+        if norm_input == norm_canonical:
+            return True
+
+        # Step 2: substring check with length ratio guard.
+        # Handles suffix/prefix differences like
+        # "acetaminophens" vs "acetaminophen".
+        # The 0.6 ratio prevents short names from matching
+        # unrelated longer names (e.g. "big" in "bigbird"
+        # has ratio 3/7 = 0.43, which is below 0.6).
+        shorter, longer = sorted(
+            [norm_input, norm_canonical], key=len)
+        if (shorter in longer
+                and len(shorter) / len(longer) >= 0.6):
+            return True
+
+        # Step 3: token-level comparison with prefix matching.
+        # Handles possessive differences like "Parkinson's"
+        # vs "Parkinson" (after stripping punctuation:
+        # "parkinsons" starts with "parkinson").
+        # The > 0.5 threshold (strictly greater) means a
+        # single-token match out of 2 tokens is not enough.
+        # This is what rejects "Big Bird" vs "BIG": only
+        # 1 of 2 tokens overlap (ratio 0.5, not > 0.5).
+        norm_tok_in = {
+            ''.join(c for c in t.lower() if c.isalnum())
+            for t in input_name.split()} - {''}
+        norm_tok_can = {
+            ''.join(c for c in t.lower() if c.isalnum())
+            for t in canonical_name.split()} - {''}
+        if not norm_tok_in or not norm_tok_can:
+            return False
+        overlap = 0
+        for ti in norm_tok_in:
+            for tc in norm_tok_can:
+                if (ti == tc
+                        or ti.startswith(tc)
+                        or tc.startswith(ti)):
+                    overlap += 1
+                    break
+        max_tokens = max(len(norm_tok_in), len(norm_tok_can))
+        return overlap / max_tokens > 0.5
+
+    @staticmethod
+    def _add_biolink_prefix(
+            category: Optional[str]) -> Optional[str]:
+        """Prefix a category string with 'biolink:' if non-empty."""
         if category:
             return f"biolink:{category}"
-        else:
-            return category
+        return category
 
     def _get_api_urls(self) -> tuple[str, str]:
-        # Project convention: use RTXConfiguration/config-file overrides, not env vars.
-        node_normalizer_url = self.rtx_config.config_dbs.get("node_normalizer_url_override")
-        name_resolver_url = self.rtx_config.config_dbs.get("name_resolver_url_override")
-        if node_normalizer_url and name_resolver_url:
-            return node_normalizer_url.rstrip("/"), name_resolver_url.rstrip("/")
-        if node_normalizer_url or name_resolver_url:
-            raise ValueError("Both node_normalizer_url_override and name_resolver_url_override must be set together in config_dbs.json")
-
-        # Default to prod only on production maturity; use CI elsewhere.
+        """Determine Node Normalizer and Name Resolver URLs."""
+        nn_url = self.rtx_config.config_dbs.get(
+            "node_normalizer_url_override")
+        nr_url = self.rtx_config.config_dbs.get(
+            "name_resolver_url_override")
+        if nn_url and nr_url:
+            return nn_url.rstrip("/"), nr_url.rstrip("/")
+        if nn_url or nr_url:
+            raise ValueError(
+                "Both node_normalizer_url_override and"
+                " name_resolver_url_override must be set"
+                " together in config_dbs.json")
         if self.rtx_config.maturity == "production":
-            return "https://nodenorm.transltr.io/1.5", "https://name-lookup.transltr.io"
-        return "https://nodenorm.ci.transltr.io/1.5", "https://name-lookup.ci.transltr.io"
+            return (
+                "https://nodenorm.transltr.io/1.5",
+                "https://name-lookup.transltr.io")
+        return (
+            "https://nodenorm.ci.transltr.io/1.5",
+            "https://name-lookup.ci.transltr.io")
 
-    def _get_cluster_graph(self, normalizer_info: dict) -> dict:
+    def _get_cluster_graph(
+            self, normalizer_info: dict) -> dict:
+        """Build a TRAPI KnowledgeGraph for a cluster."""
         kg = KnowledgeGraph()
         cluster_id = normalizer_info["id"]["identifier"]
 
-        # Add TRAPI nodes for each cluster member
-        trapi_nodes = {node["identifier"]: self._convert_to_trapi_node(node)
-                       for node in normalizer_info["nodes"]}
-        # Indicate which one is the cluster representative (i.e., 'preferred' identifier
+        trapi_nodes = {
+            node["identifier"]:
+                self._convert_to_trapi_node(node)
+            for node in normalizer_info["nodes"]}
         if cluster_id in trapi_nodes:
-            trapi_nodes[cluster_id].attributes.append(Attribute(attribute_type_id="biolink:description",
-                                                                value_type_id="metatype:String",
-                                                                value="This node is the preferred/canonical identifier "
-                                                                      "for this concept cluster.",
-                                                                attribute_source="infores:arax"))
+            trapi_nodes[cluster_id].attributes.append(
+                Attribute(
+                    attribute_type_id="biolink:description",
+                    value_type_id="metatype:String",
+                    value=(
+                        "This node is the preferred/canonical"
+                        " identifier for this concept"
+                        " cluster."),
+                    attribute_source="infores:arax"))
         kg.nodes = trapi_nodes
-
-        # Old DB-backed synonymizer had intra-cluster edges, API-backed version has membership only.
         kg.edges = {}
 
         return kg.to_dict()
 
-    def _convert_to_trapi_node(self, normalizer_node: dict) -> Node:
-        node = Node(name=normalizer_node["label"],
-                    categories=[normalizer_node["category"]],
-                    attributes=[])
+    def _convert_to_trapi_node(
+            self, normalizer_node: dict) -> Node:
+        """Convert a normalizer node dict to a TRAPI Node."""
+        node = Node(
+            name=normalizer_node["label"],
+            categories=[normalizer_node["category"]],
+            attributes=[])
 
-        # Indicate which sources provided this node
         provided_bys = []
         if normalizer_node["in_sri"]:
             provided_bys.append(self.sri_nn_infores_curie)
         if normalizer_node["in_kg2pre"]:
             provided_bys.append(self.kg2_infores_curie)
-        node.attributes.append(Attribute(attribute_type_id="biolink:provided_by",
-                                         value=provided_bys,
-                                         value_type_id="biolink:Uriorcurie",
-                                         attribute_source=self.arax_infores_curie,
-                                         description="The sources the ARAX NodeSynonymizer extracted this node from"))
+        node.attributes.append(Attribute(
+            attribute_type_id="biolink:provided_by",
+            value=provided_bys,
+            value_type_id="biolink:Uriorcurie",
+            attribute_source=self.arax_infores_curie,
+            description=(
+                "The sources the ARAX NodeSynonymizer"
+                " extracted this node from")))
 
-        # Tack on the SRI NN's name and category for this node
         if normalizer_node["in_sri"]:
-            node.attributes.append(Attribute(attribute_type_id="biolink:name",
-                                             value=normalizer_node["name_sri"],
-                                             value_type_id="metatype:String",
-                                             attribute_source=self.sri_nn_infores_curie,
-                                             description="Name for this identifier in the SRI NodeNormalizer bulk download"))
-            node.attributes.append(Attribute(attribute_type_id="biolink:category",
-                                             value=normalizer_node["category_sri"],
-                                             value_type_id="metatype:Uriorcurie",
-                                             attribute_source=self.sri_nn_infores_curie,
-                                             description="Category for this identifier in the SRI NodeNormalizer bulk download"))
+            node.attributes.append(Attribute(
+                attribute_type_id="biolink:name",
+                value=normalizer_node["name_sri"],
+                value_type_id="metatype:String",
+                attribute_source=self.sri_nn_infores_curie,
+                description=(
+                    "Name for this identifier in the SRI"
+                    " NodeNormalizer bulk download")))
+            node.attributes.append(Attribute(
+                attribute_type_id="biolink:category",
+                value=normalizer_node["category_sri"],
+                value_type_id="metatype:Uriorcurie",
+                attribute_source=self.sri_nn_infores_curie,
+                description=(
+                    "Category for this identifier in the"
+                    " SRI NodeNormalizer bulk download")))
 
-        # Tack on KG2pre's name and category for this node
         if normalizer_node["in_kg2pre"]:
-            node.attributes.append(Attribute(attribute_type_id="biolink:name",
-                                             value=normalizer_node["name_kg2pre"],
-                                             value_type_id="metatype:String",
-                                             attribute_source=self.kg2_infores_curie,
-                                             description="Name for this identifier in RTX-KG2pre"))
-            node.attributes.append(Attribute(attribute_type_id="biolink:category",
-                                             value=normalizer_node["category_kg2pre"],
-                                             value_type_id="metatype:Uriorcurie",
-                                             attribute_source=self.kg2_infores_curie,
-                                             description="Category for this identifier in RTX-KG2pre"))
+            node.attributes.append(Attribute(
+                attribute_type_id="biolink:name",
+                value=normalizer_node["name_kg2pre"],
+                value_type_id="metatype:String",
+                attribute_source=self.kg2_infores_curie,
+                description=(
+                    "Name for this identifier in"
+                    " RTX-KG2pre")))
+            node.attributes.append(Attribute(
+                attribute_type_id="biolink:category",
+                value=normalizer_node["category_kg2pre"],
+                value_type_id="metatype:Uriorcurie",
+                attribute_source=self.kg2_infores_curie,
+                description=(
+                    "Category for this identifier in"
+                    " RTX-KG2pre")))
 
         return node
 
-    def _create_preferred_node_dict(self, preferred_id: Optional[str], preferred_category: Optional[str], preferred_name: Optional[str]) -> dict:
+    def _create_preferred_node_dict(
+            self,
+            preferred_id: Optional[str],
+            preferred_category: Optional[str],
+            preferred_name: Optional[str]) -> dict:
+        """Build the standard preferred-node return dict."""
         return {
             "preferred_curie": preferred_id,
             "preferred_name": preferred_name,
-            "preferred_category": self._add_biolink_prefix(preferred_category) if preferred_category else None
+            "preferred_category": (
+                self._add_biolink_prefix(preferred_category)
+                if preferred_category else None)
         }
 
 
 def main():
+    """CLI entry point for NodeSynonymizer lookups."""
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("curie_or_name")
-    # Add flags corresponding to each of the three main synonymizer methods
-    arg_parser.add_argument("-c", "--canonical", dest="canonical", action="store_true")
-    arg_parser.add_argument("-e", "--equivalent", dest="equivalent", action="store_true")
-    arg_parser.add_argument("-n", "--normalizer", dest="normalizer", action="store_true")
-    arg_parser.add_argument("-l", "--names", dest="names", action="store_true")
-    arg_parser.add_argument("-p", "--preferrednames", dest="preferred_names", action="store_true")
-    # Add a couple other data viewing options (tabular and TRAPI cluster graph format)
-    arg_parser.add_argument("-t", "--table", dest="table", action="store_true")
-    arg_parser.add_argument("-g", "--graph", dest="graph", action="store_true")
-    arg_parser.add_argument("-k", "--kategory", dest="kategory", action="store_true")
+    arg_parser.add_argument(
+        "-c", "--canonical",
+        dest="canonical", action="store_true")
+    arg_parser.add_argument(
+        "-e", "--equivalent",
+        dest="equivalent", action="store_true")
+    arg_parser.add_argument(
+        "-n", "--normalizer",
+        dest="normalizer", action="store_true")
+    arg_parser.add_argument(
+        "-l", "--names",
+        dest="names", action="store_true")
+    arg_parser.add_argument(
+        "-p", "--preferrednames",
+        dest="preferred_names", action="store_true")
+    arg_parser.add_argument(
+        "-t", "--table",
+        dest="table", action="store_true")
+    arg_parser.add_argument(
+        "-g", "--graph",
+        dest="graph", action="store_true")
+    arg_parser.add_argument(
+        "-k", "--kategory",
+        dest="kategory", action="store_true")
     args = arg_parser.parse_args()
 
     synonymizer = NodeSynonymizer()
+    curie_or_name = args.curie_or_name
     if args.canonical:
-        results = synonymizer.get_canonical_curies(curies=args.curie_or_name, debug=True)
-        if not results[args.curie_or_name]:
-            results = synonymizer.get_canonical_curies(names=args.curie_or_name)
+        results = synonymizer.get_canonical_curies(
+            curies=curie_or_name, debug=True)
+        if not results[curie_or_name]:
+            results = synonymizer.get_canonical_curies(
+                names=curie_or_name)
         print(json.dumps(results, indent=2))
     if args.equivalent:
-        results = synonymizer.get_equivalent_nodes(curies=args.curie_or_name, debug=True)
-        if not results[args.curie_or_name]:
-            results = synonymizer.get_equivalent_nodes(names=args.curie_or_name, debug=True)
+        results = synonymizer.get_equivalent_nodes(
+            curies=curie_or_name, debug=True)
+        if not results[curie_or_name]:
+            results = synonymizer.get_equivalent_nodes(
+                names=curie_or_name, debug=True)
         print(json.dumps(results, indent=2))
     if args.normalizer:
-        results = synonymizer.get_normalizer_results(entities=args.curie_or_name, debug=True)
+        results = synonymizer.get_normalizer_results(
+            entities=curie_or_name, debug=True)
         print(json.dumps(results, indent=2))
     if args.names:
-        results = synonymizer.get_curie_names(curies=args.curie_or_name, debug=True)
+        results = synonymizer.get_curie_names(
+            curies=curie_or_name, debug=True)
         print(json.dumps(results, indent=2))
     if args.preferred_names:
-        results = synonymizer.get_preferred_names(curies=args.curie_or_name, debug=True)
+        results = synonymizer.get_preferred_names(
+            curies=curie_or_name, debug=True)
         print(json.dumps(results, indent=2))
     if args.kategory:
-        results = synonymizer.get_curie_category(curies=args.curie_or_name, debug=True)
+        results = synonymizer.get_curie_category(
+            curies=curie_or_name, debug=True)
         print(json.dumps(results, indent=2))
-    # Default to printing the tabular view of the cluster if nothing else was specified
-    if args.table or not (args.canonical or args.equivalent or args.normalizer or args.names or args.preferred_names or args.graph):
-        synonymizer.print_cluster_table(args.curie_or_name)
+    no_specific_flag = not (
+        args.canonical or args.equivalent
+        or args.normalizer or args.names
+        or args.preferred_names or args.graph)
+    if args.table or no_specific_flag:
+        synonymizer.print_cluster_table(curie_or_name)
 
 if __name__ == "__main__":
     main()

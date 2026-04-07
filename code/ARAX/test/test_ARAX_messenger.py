@@ -44,7 +44,7 @@ def test_add_qnode_basic():
     assert response.status == 'OK'
     assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.nodes) == 1
-    assert message.query_graph.nodes['n00'].ids == None
+    assert message.query_graph.nodes['n00'].ids is None
 
 
 def test_add_qnode_curie_scalar():
@@ -116,7 +116,6 @@ def test_add_qnode_bad_name():
     response = ARAXResponse()
     messenger = ARAXMessenger()
     messenger.create_envelope(response)
-    messenger.add_qnode(response,{ 'name': 'Big Bird' })
     assert response.status == 'OK'
     message = response.envelope.message
     messenger.add_qnode(response,{ 'name': 'Big Bird' })
@@ -239,4 +238,5 @@ def test_add_qpath():
     assert response.error_code == 'QPathDuplicateKey'
     #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
 
-if __name__ == "__main__": pytest.main(['-v'])
+if __name__ == "__main__":
+    pytest.main(['-v'])
