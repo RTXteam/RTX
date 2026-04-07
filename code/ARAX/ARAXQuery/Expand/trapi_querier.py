@@ -19,6 +19,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuer
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
 from trapi_query_cacher import KPQueryCacher
+import util
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -61,21 +62,6 @@ def _remove_attributes_with_invalid_values(response_json: dict,
         log.warning(f"For response from KP {kp_curie}, "
                     f"total number of attributes dropped: {count_att_dropped}")
     return [r, count_att_dropped]
-
-
-def _summarize_set_elements(x: Iterable[str]) -> str:
-    """
-    Return a comma-delimited representation of the first 10 elements of Iterable[str].
-
-    - If the set has fewer than 11 elements, return all elements.
-    - Otherwise return the first 10 elements in lexicographic order followed by an ellipsis.
-    """
-    sorted_x = sorted(x)
-
-    if len(sorted_x) <= 10:
-        return "[" + ", ".join(sorted_x) + "]"
-
-    return "[" + ", ".join(sorted_x[:10]) + ", ... ]"
 
 
 class TRAPIQuerier:
@@ -633,7 +619,7 @@ class TRAPIQuerier:
         answer_kg.unbound_nodes = unbound_nodes_keep
 
         if unbound_nodes_not_kept:
-            curie_summary = _summarize_set_elements(unbound_nodes_not_kept.keys())
+            curie_summary = util._summarize_set_elements(unbound_nodes_not_kept.keys())
             self.log.warning(f"{kp_curie}: {len(unbound_nodes_not_kept)} "
                              "nodes in the KP's answer KG have no bindings to the QG "
                              "and are not referenced in any analysis or aux graphs: "
@@ -641,7 +627,7 @@ class TRAPIQuerier:
 
         unreferenced_unbound_edges = set(unbound_edges) - set(unbound_edges_keep)
         if unreferenced_unbound_edges:
-            edge_key_summary = _summarize_set_elements(unreferenced_unbound_edges)
+            edge_key_summary = util._summarize_set_elements(unreferenced_unbound_edges)
             self.log.warning(f"{kp_curie}: {len(unreferenced_unbound_edges)} "
                              "edges in the KP's answer KG have no bindings to the QG "
                              f"and are not referenced in aux graphs: {edge_key_summary}")

@@ -15,7 +15,6 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.message import Message
 from openapi_server.models.response import Response
-from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_resultify import ARAXResultify
@@ -30,6 +29,17 @@ from biolink_helper import get_biolink_helper
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
+
+
+def _inspect_kg_for_qg_keys(kg: KnowledgeGraph) -> dict[str, int]:
+    res_dict = {}
+    for node in kg.nodes.values():
+        node_qnode_keys = getattr(node, 'qnode_keys', [])
+        for qnode_key in node_qnode_keys:
+            if qnode_key not in res_dict:
+                res_dict[qnode_key] = 0
+            res_dict[qnode_key] += 1
+    return res_dict
 
 
 class QGOrganizedKnowledgeGraph:
@@ -650,13 +660,17 @@ def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool
     return basic_format_met and qnode_is_valid
 
 
+def _inspect_qgorgkg_for_qg_keys(kg: QGOrganizedKnowledgeGraph) -> dict[str, int]:
+    return {qnode_key: len(qnode_nodes) for qnode_key, qnode_nodes in kg.nodes_by_qg_id.items()}
+
+
 def create_results(
         qg: QueryGraph,
         kg: QGOrganizedKnowledgeGraph,
         log: ARAXResponse,
         overlay_fet: bool = False,
         rank_results: bool = False,
-        qnode_key_to_prune: str | None = None,
+        qnode_key_to_prune: str | None = None
 ) -> Response:
     regular_format_kg = convert_qg_organized_kg_to_standard_kg(kg)
     resultifier = ARAXResultify()
@@ -669,7 +683,7 @@ def create_results(
     if overlay_fet:
         log.debug("Determining whether we can use FET to assess quality of intermediate answers in Expand")
         # Figure out which qnodes to overlay FET edges between
-        connected_qedges = [qedge for qedge in qg.edges.values()
+        connected_qedges = [qedge for qedge_key, qedge in qg.edges.items()
                             if qedge.subject == qnode_key_to_prune or qedge.object == qnode_key_to_prune]
         qnode_pairs_to_overlay = set()
         for connected_qedge in connected_qedges:
@@ -701,6 +715,7 @@ def create_results(
                           "object_qnode_key": qnode_pair[1],
                           "virtual_relation_label": fet_qedge_key}
                 overlayer.apply(prune_response, params)
+                log.merge(prune_response)
             except Exception as error:
                 exception_type, exception_value, exception_traceback = sys.exc_info()
                 log.warning(f"An uncaught error occurred when overlaying with FET during Expand's pruning: {error}: "
@@ -717,7 +732,7 @@ def create_results(
                 if fet_qedge_key in qg.edges:
                     qg.edges[fet_qedge_key].option_group_id = f"FET_VIRTUAL_GROUP_{pair_string_id}"
                 else:
-                    log.warning("Attempted to overlay FET from Expand, but it didn't work. Pruning without it.")
+                    log.info(f"Attempted to overlay FET from Expand for pair {qnode_pair}, but it didn't work. Pruning without it.")
 
     # Create results and rank them as appropriate
     log.debug("Calling Resultify from Expand..")
@@ -935,3 +950,5 @@ def get_kp_command_definitions() -> dict:
             })
         }
     }
+
+

@@ -14,6 +14,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
+import util
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../Expander/")
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
@@ -37,14 +38,22 @@ class ComputeFTEST:
         self.message = message
         self.parameters = parameters
         self.nodesynonymizer = NodeSynonymizer()
+        ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
+        pathlist = os.path.realpath(__file__).split(os.path.sep)
+        RTXindex = pathlist.index("RTX")
+        filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+
+        ## check if there is kg2c.sqlite
+        sqlite_name = RTX_CONFIG.kg2c_sqlite_path.split("/")[-1]
+        sqlite_file_path = f"{filepath}{os.path.sep}{sqlite_name}"
+        self.sqlite_file_path = sqlite_file_path
+
 
     def fisher_exact_test(self):
         """
         Peform the fisher's exact test to expand or decorate the knowledge graph
         :return: response
         """
-
-        self.response.info("Performing Fisher's Exact Test to add p-value to edge attribute of virtual edge")
 
         # check the input parameters
         if 'subject_qnode_key' not in self.parameters:
@@ -66,19 +75,12 @@ class ComputeFTEST:
         top_n = int(self.parameters['top_n']) if 'top_n' in self.parameters else None
         cutoff = float(self.parameters['cutoff']) if 'cutoff' in self.parameters else None
 
-        ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
-        pathlist = os.path.realpath(__file__).split(os.path.sep)
-        RTXindex = pathlist.index("RTX")
-        filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
+        self.response.info(f"Performing Fisher's Exact Test to add p-value to edge attribute of virtual edge {virtual_relation_label}")
 
-        ## check if there is kg2c.sqlite
-        sqlite_name = RTX_CONFIG.kg2c_sqlite_path.split("/")[-1]
-        sqlite_file_path = f"{filepath}{os.path.sep}{sqlite_name}"
-        if os.path.exists(sqlite_file_path):
-            pass
-        else:
-            os.system(f"scp {RTX_CONFIG.db_username}@{RTX_CONFIG.db_host}:{RTX_CONFIG.kg2c_sqlite_path} {sqlite_file_path}")
-        self.sqlite_file_path = sqlite_file_path
+        sqlite_file_path = self.sqlite_file_path
+        if not os.path.exists(sqlite_file_path):
+            self.response.error(f"Unable to load KG2c sqlite file: {sqlite_file_path}")
+            return self.response
 
         if rel_edge_key is not None:
             self.response.warning(f"The 'rel_edge_key' option in FET is specified ({rel_edge_key}); it will cause slow for the calculation of the test.")
@@ -98,18 +100,22 @@ class ComputeFTEST:
         subject_node_ids = None
         object_node_ids = None
 
+        message = self.message
+        qg = message.query_graph
+        kg = message.knowledge_graph
+
         ## Check if subject_qnode_key and object_qnode_key are in the Query Graph
         try:
-            if len(self.message.query_graph.nodes) != 0:
-                for node_key in self.message.query_graph.nodes:
+            if len(qg.nodes) != 0:
+                for node_key in qg.nodes:
                     if node_key == subject_qnode_key:
                         subject_node_exist = True
-                        subject_node_category = self.message.query_graph.nodes[node_key].categories
-                        subject_node_ids = self.message.query_graph.nodes[node_key].ids
+                        subject_node_category = qg.nodes[node_key].categories
+                        subject_node_ids = qg.nodes[node_key].ids
                     elif node_key == object_qnode_key:
                         object_node_exist = True
-                        object_node_category = self.message.query_graph.nodes[node_key].categories
-                        object_node_ids = self.message.query_graph.nodes[node_key].ids
+                        object_node_category = qg.nodes[node_key].categories
+                        object_node_ids = qg.nodes[node_key].ids
                     else:
                         pass
             else:
@@ -134,14 +140,14 @@ class ComputeFTEST:
 
         ## Check if there is a query edge connected to both subject_qnode_key and object_qnode_key in the Query Graph
         try:
-            if len(self.message.query_graph.edges) != 0:
-                for edge_key in self.message.query_graph.edges:
+            if len(qg.edges) != 0:
+                for edge_key in qg.edges:
                     qedge_relation = None
-                    if hasattr(self.message.query_graph.edges[edge_key], "relation"):
-                        qedge_relation = self.message.query_graph.edges[edge_key].relation
-                    if self.message.query_graph.edges[edge_key].subject == subject_qnode_key and self.message.query_graph.edges[edge_key].object == object_qnode_key and qedge_relation is None:
+                    if hasattr(qg.edges[edge_key], "relation"):
+                        qedge_relation = qg.edges[edge_key].relation
+                    if qg.edges[edge_key].subject == subject_qnode_key and qg.edges[edge_key].object == object_qnode_key and qedge_relation is None:
                         query_edge_key.update([edge_key])  # only actual query edge is added
-                    elif self.message.query_graph.edges[edge_key].subject == object_qnode_key and self.message.query_graph.edges[edge_key].object == subject_qnode_key and qedge_relation is None:
+                    elif qg.edges[edge_key].subject == object_qnode_key and qg.edges[edge_key].object == subject_qnode_key and qedge_relation is None:
                         query_edge_key.update([edge_key])  # only actual query edge is added
                     else:
                         continue
@@ -171,8 +177,11 @@ class ComputeFTEST:
 
         ## loop over all nodes in KG and collect their node information
         try:
-            for node_key, node in self.message.knowledge_graph.nodes.items():
-                nodes_info[node_key] = {'qnode_keys': node.qnode_keys, 'category': self.message.knowledge_graph.nodes[node_key].categories[0]}
+            for node_key, node in kg.nodes.items():
+                node_qnode_keys = getattr(node, 'qnode_keys', [])
+                node_categories = node.categories
+                nodes_info[node_key] = {'qnode_keys': node_qnode_keys,
+                                        'category': next(iter(node_categories), None)}
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
@@ -182,57 +191,48 @@ class ComputeFTEST:
 
         ## loop over all edges in KG and create subject node list and target node dict based on subject_qnode_key, object_qnode_key as well as rel_edge_id (optional, otherwise all edges are considered)
         try:
-            for edge_key, edge in self.message.knowledge_graph.edges.items():
+            for edge_key, edge in kg.edges.items():
 
                 ## check if this edge is a compuated edge from ARAX, if so, skip it
-                edge_attributes = self.message.knowledge_graph.edges[edge_key].attributes
+                edge_attributes = kg.edges[edge_key].attributes
                 edge_attribute_list = [x.value for x in edge_attributes if x.attribute_type_id == 'EDAM-DATA:1772'] if edge_attributes else []
                 if len(edge_attribute_list) == 0:
-
-                    # ## Collect all knowldge source information for each edge between queried qnode_keys (eg. 'n01', 'n02')
-                    # temp_kp = []
-                    # for x in self.message.knowledge_graph.edges[edge_key].attributes:
-                    #     if x.attribute_type_id == 'aggregator_knowledge_source' or x.attribute_type_id == 'biolink:knowledge_source':
-                    #         temp_kp += self._change_kp_name(x.value)
-                    # if 'arax' in temp_kp:
-                    #     temp_kp.remove('arax')
-
                     if rel_edge_key:
                         if rel_edge_key in edge.qedge_keys:
-                            if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
+                            if subject_qnode_key in nodes_info[kg.edges[edge_key].subject]['qnode_keys']:
                                 # edge_expand_kp.extend(temp_kp)
-                                rel_edge_type.update([self.message.knowledge_graph.edges[edge_key].predicate])
-                                subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
-                                if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
-                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].object] = {self.message.knowledge_graph.edges[edge_key].subject}
+                                rel_edge_type.update([kg.edges[edge_key].predicate])
+                                subject_node_list.append(kg.edges[edge_key].subject)
+                                if kg.edges[edge_key].object not in object_node_dict.keys():
+                                    object_node_dict[kg.edges[edge_key].object] = {kg.edges[edge_key].subject}
                                 else:
-                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
+                                    object_node_dict[kg.edges[edge_key].object].update([kg.edges[edge_key].subject])
                             else:
                                 # edge_expand_kp.extend(temp_kp)
-                                rel_edge_type.update([self.message.knowledge_graph.edges[edge_key].predicate])
-                                subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
-                                if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
-                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].subject] = {self.message.knowledge_graph.edges[edge_key].object}
+                                rel_edge_type.update([kg.edges[edge_key].predicate])
+                                subject_node_list.append(kg.edges[edge_key].object)
+                                if kg.edges[edge_key].subject not in object_node_dict.keys():
+                                    object_node_dict[kg.edges[edge_key].subject] = {kg.edges[edge_key].object}
                                 else:
-                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].subject].update([self.message.knowledge_graph.edges[edge_key].object])
+                                    object_node_dict[kg.edges[edge_key].subject].update([kg.edges[edge_key].object])
                     else:
-                        if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
-                            if object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
+                        if subject_qnode_key in nodes_info[kg.edges[edge_key].subject]['qnode_keys']:
+                            if object_qnode_key in nodes_info[kg.edges[edge_key].object]['qnode_keys']:
                                 # edge_expand_kp.extend(temp_kp)
-                                subject_node_list.append(self.message.knowledge_graph.edges[edge_key].subject)
-                                if self.message.knowledge_graph.edges[edge_key].object not in object_node_dict.keys():
-                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].object] = {self.message.knowledge_graph.edges[edge_key].subject}
+                                subject_node_list.append(kg.edges[edge_key].subject)
+                                if kg.edges[edge_key].object not in object_node_dict.keys():
+                                    object_node_dict[kg.edges[edge_key].object] = {kg.edges[edge_key].subject}
                                 else:
-                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].object].update([self.message.knowledge_graph.edges[edge_key].subject])
+                                    object_node_dict[kg.edges[edge_key].object].update([kg.edges[edge_key].subject])
 
-                        elif object_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].subject]['qnode_keys']:
-                            if subject_qnode_key in nodes_info[self.message.knowledge_graph.edges[edge_key].object]['qnode_keys']:
+                        elif object_qnode_key in nodes_info[kg.edges[edge_key].subject]['qnode_keys']:
+                            if subject_qnode_key in nodes_info[kg.edges[edge_key].object]['qnode_keys']:
                                 # edge_expand_kp.extend(temp_kp)
-                                subject_node_list.append(self.message.knowledge_graph.edges[edge_key].object)
-                                if self.message.knowledge_graph.edges[edge_key].subject not in object_node_dict.keys():
-                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].subject] = {self.message.knowledge_graph.edges[edge_key].object}
+                                subject_node_list.append(kg.edges[edge_key].object)
+                                if kg.edges[edge_key].subject not in object_node_dict.keys():
+                                    object_node_dict[kg.edges[edge_key].subject] = {kg.edges[edge_key].object}
                                 else:
-                                    object_node_dict[self.message.knowledge_graph.edges[edge_key].subject].update([self.message.knowledge_graph.edges[edge_key].object])
+                                    object_node_dict[kg.edges[edge_key].subject].update([kg.edges[edge_key].object])
 
         except Exception:
             tb = traceback.format_exc()
@@ -260,11 +260,11 @@ class ComputeFTEST:
             else:
                 normalized_subject_node = self.nodesynonymizer.get_canonical_curies(subject_node_ids[0])[subject_node_ids[0]]
                 if normalized_subject_node is None:
-                    self.response.warning(f"No cateogry is specified for the subject node with qnode key {subject_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
+                    self.response.info(f"No cateogry is specified for the subject node with qnode key {subject_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
                     subject_node_category = ['biolink:NamedThing']
                 else:
                     subject_node_category = normalized_subject_node['preferred_category']
-                    self.response.warning(f"No cateogry is specified for the subject node with qnode key {subject_qnode_key} in Query Graph. We will automatically assign {subject_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
+                    self.response.info(f"No cateogry is specified for the subject node with qnode key {subject_qnode_key} in Query Graph. We will automatically assign {subject_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
         ## check if the object node type is None, if so, automatically set it to biolink:NamedThing
         if object_node_ids is None:
@@ -275,11 +275,11 @@ class ComputeFTEST:
         else:
             normalized_object_node = self.nodesynonymizer.get_canonical_curies(object_node_ids[0])[object_node_ids[0]]
             if normalized_object_node is None:
-                self.response.warning(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
+                self.response.info(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
                 object_node_category = ['biolink:NamedThing'] # for issue 1817
             else:                    
                 object_node_category = normalized_object_node['preferred_category']
-                self.response.warning(f"No cateogry is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
+                self.response.info(f"No cateogry is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
         ## always set 'infores:rtx-kg2' to kp because we only have statistics for kg2 to calcualte fisher exact test
         kp = 'infores:rtx-kg2'
@@ -322,7 +322,9 @@ class ComputeFTEST:
                 if len(removed_nodes) == 1:
                     self.response.warning(f"One object node which is {removed_nodes[0]} can't find its neighbors. This node will be ignored for FET calculation.")
                 else:
-                    self.response.warning(f"{len(removed_nodes)} object nodes which are {removed_nodes} can't find its neighbors. These nodes will be ignored for FET calculation.")
+                    self.response.warning(f"{len(removed_nodes)} object nodes which are "
+                                          f"{util._summarize_set_elements(removed_nodes)} "
+                                          "can't find its neighbors. These nodes will be ignored for FET calculation.")
                 for node in removed_nodes:
                     del object_node_dict[node]
                 size_of_object = res
@@ -408,7 +410,7 @@ class ComputeFTEST:
                             attributes=edge_attribute_list, sources=retrieval_source)
                 edge.qedge_keys = [value[0]]
 
-                self.message.knowledge_graph.edges[edge_id] = edge
+                kg.edges[edge_id] = edge
 
                 if self.message.results is not None and len(self.message.results) > 0:
                     ou.update_results_with_overlay_edge(subject_knode_key=value[2], object_knode_key=value[3], kedge_key=edge_id, message=self.message, log=self.response)
@@ -422,14 +424,14 @@ class ComputeFTEST:
                 self.response.debug("Adding virtual edge to message QG")
                 edge_type = ["biolink:has_fisher_exact_test_p_value_with"]
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
-                                                                          self.message.query_graph, self.response)
+                                                                          qg, self.response)
                 qedge_id = virtual_relation_label
                 q_edge = QEdge(predicates=edge_type,
                                subject=subject_qnode_key, object=object_qnode_key,
                                option_group_id=option_group_id)
                 q_edge.relation = virtual_relation_label
                 q_edge.filled = True
-                self.message.query_graph.edges[qedge_id] = q_edge
+                qg.edges[qedge_id] = q_edge
                 self.response.debug("One virtual edge was added to message QG")
 
         return self.response
