@@ -28,6 +28,7 @@ Lab maintains seem to work fine on both architectures). Your local development c
 Further, you will need:
 - write access to the ARAX GitHub project area (`RTXteam/RTX.git`)
 - ssh access to `arax-databases.rtx.ai` as user `ubuntu`
+- ssh access to `araxconfig.rtx.ai` as user `araxconfig`
 - ssh access to `arax.ncats.io`
 - ssh key installed on GitHub so you can clone and commit over `ssh`
 
@@ -118,6 +119,17 @@ maintenance.
     "query_fork_mode": false
 }
 ```
+
+4. Make sure you have ssh access to `araxconfig@araxconfig.rtx.ai`. You need
+to set up the ssh public key exchange and put your public key in the 
+file `/home/araxconfig/.ssh/authorized_keys` on `araxconfig.rtx.ai`,
+and you should do a test login to araxconfig.rtx.ai using this ssh key,
+```
+ssh araxconfig@araxconfig.rtx.ai
+```
+to ensure that the IP address for `araxconfig.rtx.ai` is in your
+`~/.ssh/known_hosts` file.
+
 Once you done with these steps, you are ready to work on a maintenance task for ARAX;
 continue with the procedure in the next section, which you should follow (from
 that section's beginning) for each ARAX maintenance task that you work on.
