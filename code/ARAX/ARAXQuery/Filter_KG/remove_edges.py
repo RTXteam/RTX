@@ -75,6 +75,7 @@ class RemoveEdges:
                                             nodes_to_remove.add(key)
                                         else:
                                             node_qnode_keys.remove(param_qnode_key)
+                                            node.qnode_keys = node_qnode_keys
                                     else:
                                         # del node_keys_to_remove[key]
                                         skipped_qnode_keys.add(key)
@@ -87,6 +88,7 @@ class RemoveEdges:
                             else:
                                 for node_key in node_keys_to_remove[key]:
                                     node_qnode_keys.remove(node_key)
+                                    node.qnode_keys = node_qnode_keys
                                 if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
@@ -219,6 +221,7 @@ class RemoveEdges:
                                             nodes_to_remove.add(key)
                                         else:
                                             node_qnode_keys.remove(param_qnode_key)
+                                            node.qnode_keys = node_qnode_keys
                                     else:
                                         skipped_qnode_keys.add(key)
                             else:
@@ -229,6 +232,7 @@ class RemoveEdges:
                             else:
                                 for node_key in node_keys_to_remove[key]:
                                     node_qnode_keys.remove(node_key)
+                                    node.qnode_keys = node_qnode_keys
                                 if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
@@ -323,6 +327,7 @@ class RemoveEdges:
                                             nodes_to_remove.add(key)
                                         else:
                                             node_qnode_keys.remove(param_qnode_key)
+                                            node.qnode_keys = node_qnode_keys
                                     else:
                                         skipped_qnode_keys.add(key)
                             else:
@@ -333,6 +338,7 @@ class RemoveEdges:
                             else:
                                 for node_key in node_keys_to_remove[key]:
                                     node_qnode_keys.remove(node_key)
+                                    node.qnode_keys = node_qnode_keys
                                 if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
@@ -465,6 +471,7 @@ class RemoveEdges:
                                             nodes_to_remove.add(key)
                                         else:
                                             node_qnode_keys.remove(param_qnode_key)
+                                            node.qnode_keys = node_qnode_keys
                                     else:
                                         # del node_keys_to_remove[key]
                                         skipped_qnode_keys.add(key)
@@ -477,6 +484,7 @@ class RemoveEdges:
                             else:
                                 for node_key in node_keys_to_remove[key]:
                                     node_qnode_keys.remove(node_key)
+                                    node.qnode_keys = node_qnode_keys
                                 if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:

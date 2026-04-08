@@ -143,7 +143,7 @@ class ComputeJaccard:
             q_edge.filled = True
             # Need to fix this for TRAPI 1.0
             self.message.query_graph.edges[relation] = q_edge
-
             return self.response
         except (KeyError, AttributeError, ZeroDivisionError, TypeError) as e:
             self.response.error(f"Something went wrong when computing the Jaccard index: {type(e).__name__}: {e}")
+        return self.response

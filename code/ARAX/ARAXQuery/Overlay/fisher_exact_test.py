@@ -11,21 +11,17 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.append(str(SCRIPT_DIR / "../../.."))
+sys.path.append(str(SCRIPT_DIR / "../../.."))  # RTX/code directory
 from RTXConfiguration import RTXConfiguration
-sys.path.append(str(SCRIPT_DIR / ".."))
-import util
-sys.path.append(str(SCRIPT_DIR / "../Expander"))  # needed to import KPSelector
+import ARAX.ARAXQuery.util as util
+import ARAX.ARAXQuery.Overlay.overlay_utilities as ou
 sys.path.append(str(SCRIPT_DIR / "../../UI/OpenAPI/python-flask-server"))
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.retrieval_source import RetrievalSource
-sys.path.append(str(SCRIPT_DIR / "../../NodeSynonymizer"))
-from node_synonymizer import NodeSynonymizer
-sys.path.append(str(SCRIPT_DIR))
-import overlay_utilities as ou
+from ARAX.NodeSynonymizer.node_synonymizer import NodeSynonymizer
 
 RTX_CONFIG = RTXConfiguration()
 
@@ -40,7 +36,9 @@ class ComputeFTEST:
         self.nodesynonymizer = NodeSynonymizer()
 
         ## construct the path to the kg2c sqlite file
-        rtx_root = Path(__file__).resolve().parents[4]
+        rtx_root = Path(__file__).resolve()
+        while rtx_root.name != "RTX":
+            rtx_root = rtx_root.parent
         sqlite_name = Path(RTX_CONFIG.kg2c_sqlite_path).name
         sqlite_file_path = rtx_root / "code" / "ARAX" / "KnowledgeSources" / "KG2c" / sqlite_name
         self.sqlite_file_path = sqlite_file_path
@@ -253,19 +251,19 @@ class ComputeFTEST:
         ## check if the subject node type is None, if so, automatically set it to biolink:NamedThing
         if subject_node_category is None:
             if subject_node_ids is None:
-                self.response.error(f"The subject node with qnode key {subject_qnode_key} in Query Graph has no assigned cateogry and ids.")
+                self.response.error(f"The subject node with qnode key {subject_qnode_key} in Query Graph has no assigned category and ids.")
             else:
                 normalized_subject_node = self.nodesynonymizer.get_canonical_curies(subject_node_ids[0])[subject_node_ids[0]]
                 if normalized_subject_node is None:
-                    self.response.info(f"No cateogry is specified for the subject node with qnode key {subject_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
+                    self.response.info(f"No category is specified for the subject node with qnode key {subject_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
                     subject_node_category = ['biolink:NamedThing']
                 else:
                     subject_node_category = normalized_subject_node['preferred_category']
-                    self.response.info(f"No cateogry is specified for the subject node with qnode key {subject_qnode_key} in Query Graph. We will automatically assign {subject_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
+                    self.response.info(f"No category is specified for the subject node with qnode key {subject_qnode_key} in Query Graph. We will automatically assign {subject_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
         ## check if the object node type is None, if so, automatically set it to biolink:NamedThing
         if object_node_ids is None:
-            # self.response.error(f"The object node with qnode key {object_node_ids} in Query Graph has no assigned cateogry and ids.")
+            # self.response.error(f"The object node with qnode key {object_node_ids} in Query Graph has no assigned category and ids.")
             # return self.response
             if object_node_category is None:
                 object_node_category = ['biolink:NamedThing'] # for issue 1817
@@ -276,7 +274,7 @@ class ComputeFTEST:
                 object_node_category = ['biolink:NamedThing'] # for issue 1817
             else:                    
                 object_node_category = normalized_object_node['preferred_category']
-                self.response.info(f"No cateogry is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
+                self.response.info(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
         ## always set 'infores:rtx-kg2' to kp because we only have statistics for kg2 to calcualte fisher exact test
         kp = 'infores:rtx-kg2'
@@ -321,7 +319,7 @@ class ComputeFTEST:
                 else:
                     self.response.warning(f"{len(removed_nodes)} object nodes which are "
                                           f"{util.summarize_set_elements(removed_nodes)} "
-                                          "can't find its neighbors. These nodes will be ignored for FET calculation.")
+                                          "can't find their neighbors. These nodes will be ignored for FET calculation.")
                 for node in removed_nodes:
                     del object_node_dict[node]
                 size_of_object = res
@@ -487,7 +485,7 @@ class ComputeFTEST:
 
         else:
             infores_key = "infores:rtx-kg2"
-            from ARAX_expander import ARAXExpander
+            from ARAX.ARAXQuery.ARAX_expander import ARAXExpander
             expander = ARAXExpander()
             query_graph_builtin = {'nodes':
                                    {'FET_n00':
@@ -503,7 +501,7 @@ class ComputeFTEST:
                                      'predicates': [rel_type]}
                                     }}
             query_graph = QueryGraph.from_dict(query_graph_builtin)
-            from kp_selector import KPSelector
+            from ARAX.ARAXQuery.Expand.kp_selector import KPSelector
             kp_selector = KPSelector(kg2_mode=True,
                                      log=self.response)
             kp_selector.kp_urls = {infores_key: RTX_CONFIG.plover_url}
