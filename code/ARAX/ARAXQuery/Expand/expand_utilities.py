@@ -34,7 +34,7 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 def _inspect_kg_for_qg_keys(kg: KnowledgeGraph) -> dict[str, int]:
     res_dict = {}
     for node in kg.nodes.values():
-        node_qnode_keys = getattr(node, 'qnode_keys', [])
+        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
         for qnode_key in node_qnode_keys:
             if qnode_key not in res_dict:
                 res_dict[qnode_key] = 0
@@ -259,13 +259,13 @@ def convert_standard_kg_to_qg_organized_kg(standard_kg: KnowledgeGraph) -> QGOrg
     organized_kg = QGOrganizedKnowledgeGraph()
     if standard_kg.nodes:
         for node_key, node in standard_kg.nodes.items():
-            for qnode_key in getattr(node, 'qnode_keys', []):
+            for qnode_key in getattr(node, 'qnode_keys', None) or []:
                 if qnode_key not in organized_kg.nodes_by_qg_id:
                     organized_kg.nodes_by_qg_id[qnode_key] = dict()
                 organized_kg.nodes_by_qg_id[qnode_key][node_key] = node
     if standard_kg.edges:
         for edge_key, edge in standard_kg.edges.items():
-            for qedge_key in getattr(edge, 'qedge_keys', []):
+            for qedge_key in getattr(edge, 'qedge_keys', None) or []:
                 if qedge_key not in organized_kg.edges_by_qg_id:
                     organized_kg.edges_by_qg_id[qedge_key] = dict()
                 organized_kg.edges_by_qg_id[qedge_key][edge_key] = edge

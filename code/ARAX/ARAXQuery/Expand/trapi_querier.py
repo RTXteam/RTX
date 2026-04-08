@@ -7,7 +7,7 @@ from collections import defaultdict
 import math
 
 import requests
-from typing import cast, Any, Iterable, Optional, Union
+from typing import cast, Any, Optional, Union
 
 import requests_cache
 
@@ -619,7 +619,7 @@ class TRAPIQuerier:
         answer_kg.unbound_nodes = unbound_nodes_keep
 
         if unbound_nodes_not_kept:
-            curie_summary = util._summarize_set_elements(unbound_nodes_not_kept.keys())
+            curie_summary = util.summarize_set_elements(unbound_nodes_not_kept.keys())
             self.log.warning(f"{kp_curie}: {len(unbound_nodes_not_kept)} "
                              "nodes in the KP's answer KG have no bindings to the QG "
                              "and are not referenced in any analysis or aux graphs: "
@@ -627,7 +627,7 @@ class TRAPIQuerier:
 
         unreferenced_unbound_edges = set(unbound_edges) - set(unbound_edges_keep)
         if unreferenced_unbound_edges:
-            edge_key_summary = util._summarize_set_elements(unreferenced_unbound_edges)
+            edge_key_summary = util.summarize_set_elements(unreferenced_unbound_edges)
             self.log.warning(f"{kp_curie}: {len(unreferenced_unbound_edges)} "
                              "edges in the KP's answer KG have no bindings to the QG "
                              f"and are not referenced in aux graphs: {edge_key_summary}")
