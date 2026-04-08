@@ -282,7 +282,7 @@ Press CTRL+C to quit
 "Open File...", and in the dialog box, navigate to `ARAX_DEV_DIR/issue-XXX/RTX/code/UI/interactive` and
 select `index.html`. Now, in the ARAX User Interface page that renders in your browser, you will see an orange banner message appear, saying "Call to /meta_knowledge_graph failed; could not load predicates and node categories."; do not worry about that banner message, that is expected when
 you first load `index.html` on your local development computer, because the base URL for querying
-the ARAX back-end is not (yet) configured via Settings (see Step 3).
+the ARAX back-end is not (yet) configured via Settings (see Step 3). Just click the "x" to delete the orange banner message.
 3. On the navigation pane on the left-hand side, click on the `Settings`, 
 and then change the "ARAX QUERY URL" textbox to contain _exactly_ this string:
 ```
