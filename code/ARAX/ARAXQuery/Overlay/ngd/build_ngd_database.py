@@ -1,36 +1,46 @@
 #!/usr/bin/env python3
 """
-This class builds a sqlite database that maps (canonicalized) curies to PubMed articles they appear in. It creates these
-mappings using data from a PubMed XML download and from KG2.
+Builds a SQLite database that maps canonicalized curies to PubMed articles they appear in. It creates
+these mappings using data from a PubMed XML download and from the Tier-0 Dogpark graph.
+
 There are two halves to the (full) build process:
-1. Create an intermediary artifact called "conceptname_to_pmids.db"
+
+1. Create an intermediary artifact called "conceptname_to_pmids.sqlite"
      - Contains mappings from "concept names" to the list of articles (PMIDs) they appear in (where "concept names"
        include MESH Descriptor/Qualifier names, Keywords, and Chemical names)
      - These mappings are obtained by scraping all of the PubMed XML files (which are automatically downloaded)
      - This file needs updating very infrequently (i.e., only with new PubMed releases)
+
 2. Create the final file called "curie_to_pmids.sqlite"
-     - Contains mappings from canonicalized curies to their list of PMIDs based on the data scraped from Pubmed AND
-       from KG2 data (node.publications and edge.publications)
-     - The NodeSynonymizer is used to link curies to concept names from step 1
-Usage: python build_ngd_database.py [--test] [--full]
+     - Contains mappings from canonicalized curies to their list of PMIDs based on the data scraped from PubMed AND
+       from Tier-0 data (nodes.jsonl and edges.jsonl publications)
+     - The NodeSynonymizer resolves concept names from step 1 to canonical curies via external APIs
+       (Name Resolver + Node Normalizer), using concurrent workers for throughput
+
+Usage: python build_ngd_database.py [--test] [--full] [--skip-download]
        By default, only step 2 above will be performed. To do a "full" build, use the --full flag.
+       Use --skip-download with --full to reuse previously downloaded PubMed XML files.
 """
 import argparse
+import concurrent.futures
 import gzip
 import json
 import logging
+import multiprocessing
 import os
 import pathlib
 import sqlite3
 import subprocess
 import sys
 import time
-import traceback
-from typing import List, Dict, Set, Union
+from typing import List
+
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
 
 from lxml import etree
-import pickledb
-from neo4j import GraphDatabase
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -39,25 +49,58 @@ NGD_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))  # code directory
-from RTXConfiguration import RTXConfiguration
+
+
+def _parse_one_pubmed_file(file_path):
+    """Worker function: parses a single PubMed XML file and returns
+    a list of (concept_name, pmid_curie) tuples."""
+    rows = []
+    try:
+        with gzip.open(file_path, "rb") as gz_file:
+            context = etree.iterparse(gz_file, events=("end",), tag="PubmedArticle")
+            for _, article in context:
+                pmid_elements = article.xpath(".//MedlineCitation/PMID/text()")
+                if not pmid_elements:
+                    article.clear()
+                    continue
+                pmid_curie = f"PMID:{pmid_elements[0]}"
+                mc = ".//MedlineCitation"
+                all_concept_names = (
+                    article.xpath(f"{mc}/MeshHeadingList/MeshHeading/DescriptorName/text()") +
+                    article.xpath(f"{mc}/MeshHeadingList/MeshHeading/QualifierName/text()") +
+                    article.xpath(f"{mc}/ChemicalList/Chemical/NameOfSubstance/text()") +
+                    article.xpath(f"{mc}/GeneSymbolList/GeneSymbol/text()") +
+                    article.xpath(f"{mc}/KeywordList/Keyword/text()")
+                )
+                for concept_name in {cn for cn in all_concept_names if cn}:
+                    rows.append((concept_name, pmid_curie))
+                article.clear()
+                while article.getprevious() is not None:
+                    del article.getparent()[0]
+            del context
+    except Exception as e:
+        return file_path, rows, str(e)
+    return file_path, rows, None
 
 
 class NGDDatabaseBuilder:
-    def __init__(self, is_test):
+    def __init__(self, is_test, skip_download=False):
         logging.basicConfig(level=logging.INFO,
                             format='%(asctime)s %(levelname)s: %(message)s',
                             handlers=[logging.FileHandler("ngdbuild.log"),
                                       logging.StreamHandler()])
         self.pubmed_directory_path = f"{NGD_DIR}/pubmed_xml_files"
-        self.conceptname_to_pmids_db_name = "conceptname_to_pmids.db"
+        self.conceptname_to_pmids_db_name = "conceptname_to_pmids.sqlite"
         self.conceptname_to_pmids_db_path = f"{NGD_DIR}/{self.conceptname_to_pmids_db_name}"
         self.curie_to_pmids_db_name = "curie_to_pmids.sqlite"
         self.curie_to_pmids_db_path = f"{NGD_DIR}/{self.curie_to_pmids_db_name}"
         self.status = 'OK'
-        self.synonymizer = NodeSynonymizer()
+        self.synonymizer = NodeSynonymizer(autocomplete=False)
         self.is_test = is_test
+        self.skip_download = skip_download
 
     def build_ngd_database(self, do_full_build: bool):
+        """Entry point: runs full or partial build depending on flag."""
         if do_full_build:
             self.build_conceptname_to_pmids_db()
         else:
@@ -65,21 +108,38 @@ class NGDDatabaseBuilder:
             if not conceptname_to_pmids_db.exists():
                 logging.error(f"You did not specify to do a full build, but the artifact necessary for a partial "
                               f"build ({self.conceptname_to_pmids_db_name}) does not yet exist. Either use --full "
-                              f"to do a full build or put your {self.conceptname_to_pmids_db_name} into the right"
+                              f"to do a full build or put your {self.conceptname_to_pmids_db_name} into the right "
                               f"place ({self.conceptname_to_pmids_db_path}).")
                 self.status = "ERROR"
         if self.status == 'OK':
             self.build_curie_to_pmids_db()
 
     def build_conceptname_to_pmids_db(self):
-        # This function extracts curie -> PMIDs mappings from the latest Pubmed XML files (saves data in a pickle DB)
+        """Downloads and parses PubMed XML files, saving concept name
+        to PMID mappings in a SQLite database, flushing after each file
+        to keep memory usage bounded."""
         logging.info(f"Starting to build {self.conceptname_to_pmids_db_name} from pubmed files..")
-        conceptname_to_pmids_map = dict()
         start = time.time()
-        logging.info(f" Deleting any pre-existing Pubmed files..")
-        subprocess.call(["rm", "-rf", self.pubmed_directory_path])
-        logging.info(f" Downloading latest Pubmed XML files (baseline and update files)..")
-        subprocess.check_call(["wget", "-r", "ftp://ftp.ncbi.nlm.nih.gov/pubmed", "-P", self.pubmed_directory_path])
+        if not self.skip_download:
+            logging.info(f" Deleting any pre-existing Pubmed files..")
+            subprocess.call(["rm", "-rf", self.pubmed_directory_path])
+            logging.info(f" Downloading latest Pubmed XML files (baseline and update files)..")
+            subprocess.check_call(["wget", "-r", "ftp://ftp.ncbi.nlm.nih.gov/pubmed", "-P", self.pubmed_directory_path])
+        else:
+            logging.info(f" Skipping download, using existing files in {self.pubmed_directory_path}")
+
+        # Set up the intermediary SQLite database with append-only staging table
+        if os.path.exists(self.conceptname_to_pmids_db_path):
+            os.remove(self.conceptname_to_pmids_db_path)
+        cn_conn = sqlite3.connect(self.conceptname_to_pmids_db_path)
+        cn_cursor = cn_conn.cursor()
+        cn_cursor.execute("PRAGMA journal_mode=WAL")
+        cn_cursor.execute("PRAGMA synchronous=NORMAL")
+        cn_cursor.execute("CREATE TABLE staging (concept_name TEXT, pmid TEXT)")
+        cn_conn.commit()
+
+        num_workers = min(8, multiprocessing.cpu_count() - 1) or 1
+
         for sub_dir_name in ["baseline", "updatefiles"]:
             xml_file_sub_dir = f"{self.pubmed_directory_path}/ftp.ncbi.nlm.nih.gov/pubmed/{sub_dir_name}"
             all_file_names = [os.fsdecode(file) for file in os.listdir(xml_file_sub_dir)]
@@ -92,264 +152,369 @@ class NGDDatabaseBuilder:
                     logging.error("Couldn't find any PubMed baseline XML files to scrape. Something must've gone wrong "
                                   "downloading them.")
                     self.status = 'ERROR'
+                    cn_conn.close()
                     return
                 else:
                     logging.warning(f"No Pubmed 'update' files detected. This might be ok (it's possible none exist), "
                                     f"but it's a little weird.")
 
-            logging.info(f" Starting to process {sub_dir_name} PubMed files..")
-            
-            # Go through each downloaded pubmed file and build our dictionary of mappings
             pubmed_file_names_to_process = pubmed_file_names if not self.is_test else pubmed_file_names[:1]
+            file_paths = [f"{xml_file_sub_dir}/{fn}" for fn in pubmed_file_names_to_process]
+            total_files = len(file_paths)
+            logging.info(f" Starting to process {total_files} {sub_dir_name} PubMed files with {num_workers} workers..")
+
             num_skipped_files = 0
-            for file_name in pubmed_file_names_to_process:
-                logging.info(f"  Starting to process file '{file_name}'.. ({pubmed_file_names_to_process.index(file_name) + 1}"
-                             f" of {len(pubmed_file_names_to_process)})")
-                file_start_time = time.time()
-                try:
-                    file_contents_tree = etree.parse(f"{xml_file_sub_dir}/{file_name}")
-                except Exception:
-                    logging.warning(f"File {file_name} threw an exception when trying to do etree.parse() on it!")
-                    num_skipped_files += 1
-                else:
-                    pubmed_articles = file_contents_tree.xpath("//PubmedArticle")
+            files_done = 0
+            with multiprocessing.Pool(num_workers, maxtasksperchild=1) as pool:
+                for file_path, rows, error in pool.imap_unordered(_parse_one_pubmed_file, file_paths):
+                    files_done += 1
+                    if error:
+                        logging.warning(f"  File {os.path.basename(file_path)} threw an exception: {error}")
+                        num_skipped_files += 1
+                    if rows:
+                        cn_cursor.executemany("INSERT INTO staging (concept_name, pmid) VALUES (?, ?)", rows)
+                    del rows
+                    if files_done % 50 == 0:
+                        cn_conn.commit()
+                        logging.info(f"  Processed {files_done}/{total_files} {sub_dir_name} files")
+                cn_conn.commit()
 
-                    for article in pubmed_articles:
-                        # Link each concept name to the PMID of this article
-                        current_pmid = article.xpath(".//MedlineCitation/PMID/text()")[0]
-                        descriptor_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/DescriptorName/text()")
-                        qualifier_names = article.xpath(".//MedlineCitation/MeshHeadingList/MeshHeading/QualifierName/text()")
-                        chemical_names = article.xpath(".//MedlineCitation/ChemicalList/Chemical/NameOfSubstance/text()")
-                        gene_symbols = article.xpath(".//MedlineCitation/GeneSymbolList/GeneSymbol/text()")
-                        keywords = article.xpath(".//MedlineCitation/KeywordList/Keyword/text()")
-                        all_concept_names = descriptor_names + qualifier_names + chemical_names + gene_symbols + keywords
-                        unique_concept_names = {concept_name for concept_name in all_concept_names if concept_name}
-                        for concept_name in unique_concept_names:
-                            self._add_pmids_mapping(concept_name, current_pmid, conceptname_to_pmids_map)
-
-                    self._destroy_etree(file_contents_tree)  # Hack around lxml memory leak
-                logging.info(f"    took {round((time.time() - file_start_time) / 60, 2)} minutes")
             if num_skipped_files:
-                logging.warning(f"Was unable to process {num_skipped_files} of {len(pubmed_file_names_to_process)} "
+                logging.warning(f"Was unable to process {num_skipped_files} of {total_files} "
                                 f"{sub_dir_name} files because they threw an exception on etree.parse()")
 
-        # Save the data to the PickleDB after we're done
-        logging.info("  Loading data into PickleDB..")
-        conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_path, False)
-        for concept_name, pmid_list in conceptname_to_pmids_map.items():
-            conceptname_to_pmids_db.set(concept_name, list({self._create_pmid_curie_from_local_id(pmid) for pmid in pmid_list}))
-        logging.info("  Saving PickleDB file..")
-        conceptname_to_pmids_db.dump()
-        logging.info(f"Done! Building {self.conceptname_to_pmids_db_name} took {round(((time.time() - start) / 60) / 60, 3)} hours")
+        # Merge pass: aggregate staging rows into final deduplicated table
+        logging.info("  Creating index on staging table for merge..")
+        cn_cursor.execute("CREATE INDEX idx_staging_concept ON staging (concept_name)")
+        cn_conn.commit()
+        logging.info("  Merging staging rows into final conceptname_to_pmids table..")
+        cn_cursor.execute("""
+            CREATE TABLE conceptname_to_pmids (
+                concept_name TEXT PRIMARY KEY,
+                pmids TEXT
+            )
+        """)
+        cn_cursor.execute("""
+            INSERT INTO conceptname_to_pmids (concept_name, pmids)
+            SELECT concept_name,
+                   '[' || GROUP_CONCAT(DISTINCT '"' || pmid || '"') || ']'
+            FROM staging
+            GROUP BY concept_name
+        """)
+        cn_conn.commit()
+        logging.info("  Dropping staging table..")
+        cn_cursor.execute("DROP TABLE staging")
+        cn_conn.commit()
+
+        cn_cursor.execute("SELECT COUNT(*) FROM conceptname_to_pmids")
+        count = cn_cursor.fetchone()[0]
+        cn_conn.close()
+        elapsed_hours = round(((time.time() - start) / 60) / 60, 3)
+        logging.info(f"Done! Building {self.conceptname_to_pmids_db_name} "
+                     f"took {elapsed_hours} hours ({count} concept names)")
 
     def build_curie_to_pmids_db(self):
-        # This function creates a final sqlite database of curie->PMIDs mappings using data scraped from Pubmed AND KG2
+        """Creates a sqlite database of curie->PMIDs mappings from
+        PubMed scrape data and Tier-0 graph publications.
+        Uses an append-only staging table, then a single merge pass."""
         logging.info(f"Starting to build {self.curie_to_pmids_db_name}..")
         start = time.time()
-        curie_to_pmids_map = dict()
-        self._add_pmids_from_pubmed_scrape(curie_to_pmids_map)
+
+        # Set up the output database with append-only staging
+        if os.path.exists(self.curie_to_pmids_db_path):
+            os.remove(self.curie_to_pmids_db_path)
+        out_conn = sqlite3.connect(self.curie_to_pmids_db_path)
+        out_cursor = out_conn.cursor()
+        out_cursor.execute("PRAGMA journal_mode=WAL")
+        out_cursor.execute("PRAGMA synchronous=NORMAL")
+        out_cursor.execute("CREATE TABLE staging (curie TEXT, pmid INTEGER)")
+        out_conn.commit()
+
+        self._add_pmids_from_pubmed_scrape(out_cursor, out_conn)
         if self.status != 'OK':
+            out_conn.close()
             return
-        self._add_pmids_from_kg2_edges(curie_to_pmids_map)
-        self._add_pmids_from_kg2_nodes(curie_to_pmids_map)
-        logging.info(f"  In the end, found PMID lists for {len(curie_to_pmids_map)} (canonical) curies")
-        self._save_data_in_sqlite_db(curie_to_pmids_map)
+        self._add_pmids_from_tier0_edges(out_cursor, out_conn)
+        self._add_pmids_from_tier0_nodes(out_cursor, out_conn)
+
+        # Merge pass: aggregate staging into final table in Python to avoid
+        # slow GROUP_CONCAT on hundreds of millions of rows
+        logging.info("  Creating index on staging table for merge..")
+        out_cursor.execute("CREATE INDEX idx_staging_curie ON staging (curie)")
+        out_conn.commit()
+        logging.info("  Merging staging rows into final curie_to_pmids table (Python merge)..")
+        out_cursor.execute("CREATE TABLE curie_to_pmids (curie TEXT PRIMARY KEY, pmids TEXT)")
+        out_conn.commit()
+
+        curie_pmids = {}
+        out_cursor.execute("SELECT curie, pmid FROM staging ORDER BY curie")
+        batch_count = 0
+        while True:
+            rows = out_cursor.fetchmany(500000)
+            if not rows:
+                break
+            for curie, pmid in rows:
+                if curie not in curie_pmids:
+                    curie_pmids[curie] = set()
+                curie_pmids[curie].add(pmid)
+            batch_count += len(rows)
+            if batch_count % 5000000 == 0:
+                logging.info(f"    Read {batch_count} staging rows..")
+
+        logging.info(f"  Writing {len(curie_pmids)} curies to final table..")
+        insert_batch = []
+        for curie, pmid_set in curie_pmids.items():
+            insert_batch.append((curie, json.dumps(list(pmid_set))))
+            if len(insert_batch) >= 50000:
+                out_cursor.executemany("INSERT INTO curie_to_pmids VALUES (?, ?)", insert_batch)
+                insert_batch.clear()
+        if insert_batch:
+            out_cursor.executemany("INSERT INTO curie_to_pmids VALUES (?, ?)", insert_batch)
+        out_conn.commit()
+
+        logging.info("  Dropping staging table..")
+        out_cursor.execute("DROP TABLE staging")
+        out_conn.commit()
+
+        count = len(curie_pmids)
+        del curie_pmids
+        logging.info(f"  In the end, found PMID lists for {count} (canonical) curies")
+        out_conn.close()
         logging.info(f"Done! Building {self.curie_to_pmids_db_name} took {round((time.time() - start) / 60)} minutes.")
 
     # Helper methods
 
-    def _add_pmids_from_kg2_edges(self, curie_to_pmids_map):
-        logging.info(f"  Getting PMIDs from edges in KG2 neo4j..")
-        edge_query = f"match (n)-[e]->(m) where e.publications is not null " \
-                     f"return distinct n.id, m.id, e.publications{' limit 100' if self.is_test else ''}"
-        edge_results = self._run_cypher_query(edge_query)
-        logging.info(f"  Processing results..")
-        node_ids = {result['n.id'] for result in edge_results}.union(result['m.id'] for result in edge_results)
-        canonicalized_curies_dict = self._get_canonicalized_curies_dict(list(node_ids))
-        for result in edge_results:
-            canonicalized_node_ids = {canonicalized_curies_dict[result['n.id']],
-                                      canonicalized_curies_dict[result['m.id']]}
-            pmids = self._extract_and_format_pmids(result['e.publications'])
-            if pmids:  # Sometimes publications list includes only non-PMID identifiers (like ISBN)
-                for canonical_curie in canonicalized_node_ids:
-                    self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
+    def _append_curie_pmids(self, cursor, connection, rows):
+        """Appends (curie, pmid_int) rows to the staging table."""
+        if rows:
+            cursor.executemany("INSERT INTO staging (curie, pmid) VALUES (?, ?)", rows)
+            connection.commit()
 
-    def _add_pmids_from_kg2_nodes(self, curie_to_pmids_map):
-        logging.info(f"  Getting PMIDs from nodes in KG2 neo4j..")
-        node_query = f"match (n) where n.publications is not null " \
-                     f"return distinct n.id, n.publications{' limit 100' if self.is_test else ''}"
-        node_results = self._run_cypher_query(node_query)
-        logging.info(f"  Processing results..")
-        node_ids = {result['n.id'] for result in node_results}
-        canonicalized_curies_dict = self._get_canonicalized_curies_dict(list(node_ids))
-        for result in node_results:
-            canonical_curie = canonicalized_curies_dict[result['n.id']]
-            pmids = self._extract_and_format_pmids(result['n.publications'])
-            if pmids:  # Sometimes publications list includes only non-PMID identifiers (like ISBN)
-                self._add_pmids_mapping(canonical_curie, pmids, curie_to_pmids_map)
+    def _add_pmids_from_tier0_edges(self, out_cursor, out_conn):
+        """Reads edges.jsonl and appends curie/pmid rows to staging."""
+        logging.info("  Getting PMIDs from edges in Tier-0 graph..")
+        edges_file = f"{NGD_DIR}/edges.jsonl"
+        rows = []
+        flush_size = 50000
+        count = 0
 
-    def _add_pmids_from_pubmed_scrape(self, curie_to_pmids_map):
-        # Load the data from the first half of the build process (scraping pubmed)
-        logging.info(f"  Loading pickle DB containing pubmed scrapings ({self.conceptname_to_pmids_db_name})..")
-        conceptname_to_pmids_db = pickledb.load(self.conceptname_to_pmids_db_path, False)
-        if not conceptname_to_pmids_db.getall():
+        with open(edges_file, "r") as f:
+            for line in f:
+                edge = json.loads(line)
+                publications = edge.get("publications")
+                if not publications:
+                    continue
+
+                subj = edge.get("subject")
+                obj = edge.get("object")
+                if not subj or not obj:
+                    continue
+
+                pmids = self._extract_and_format_pmids(publications)
+                if not pmids:
+                    continue
+
+                for curie in (subj, obj):
+                    for pmid in pmids:
+                        pmid_int = self._get_local_id_as_int(pmid)
+                        if pmid_int is not None:
+                            rows.append((curie, pmid_int))
+
+                count += 1
+                if len(rows) >= flush_size:
+                    self._append_curie_pmids(out_cursor, out_conn, rows)
+                    rows.clear()
+
+                if self.is_test and count >= 100:
+                    break
+
+        self._append_curie_pmids(out_cursor, out_conn, rows)
+        logging.info(f"  Processed {count} edges with publications.")
+
+    def _add_pmids_from_tier0_nodes(self, out_cursor, out_conn):
+        """Reads nodes.jsonl and appends curie/pmid rows to staging."""
+        logging.info("  Getting PMIDs from nodes in Tier-0 graph..")
+        nodes_file = f"{NGD_DIR}/nodes.jsonl"
+        rows = []
+        flush_size = 50000
+        count = 0
+
+        with open(nodes_file, "r") as f:
+            for line in f:
+                node = json.loads(line)
+                publications = node.get("publications")
+                if not publications:
+                    continue
+
+                node_id = node.get("id")
+                if not node_id:
+                    continue
+
+                pmids = self._extract_and_format_pmids(publications)
+                if not pmids:
+                    continue
+
+                for pmid in pmids:
+                    pmid_int = self._get_local_id_as_int(pmid)
+                    if pmid_int is not None:
+                        rows.append((node_id, pmid_int))
+
+                count += 1
+                if len(rows) >= flush_size:
+                    self._append_curie_pmids(out_cursor, out_conn, rows)
+                    rows.clear()
+
+                if self.is_test and count >= 100:
+                    break
+
+        self._append_curie_pmids(out_cursor, out_conn, rows)
+        logging.info(f"  Processed {count} nodes with publications.")
+
+    def _add_pmids_from_pubmed_scrape(self, out_cursor, out_conn):
+        """Loads PubMed concept-name-to-PMID mappings from SQLite,
+        resolves via NodeSynonymizer using parallel threads, and appends
+        curie/pmid rows to the staging table."""
+        logging.info(f"  Loading concept-to-pmids DB ({self.conceptname_to_pmids_db_name})..")
+        if not os.path.exists(self.conceptname_to_pmids_db_path):
             logging.error(f"{self.conceptname_to_pmids_db_name} must exist in order to do a partial build. Use "
                           f"--full to do a full build or put your {self.conceptname_to_pmids_db_name} into the right"
                           f" place ({self.conceptname_to_pmids_db_path}).")
             self.status = 'ERROR'
             return
-
-        # Get canonical curies for all of the concept names in our big pubmed pickleDB using the NodeSynonymizer
-        concept_names = list(conceptname_to_pmids_db.getall())
-        logging.info(f"  Sending NodeSynonymizer.get_canonical_curies() a list of {len(concept_names)} concept names..")
-        canonical_curies_dict = self.synonymizer.get_canonical_curies(names=concept_names)
-        logging.info(f"  Got results back from NodeSynonymizer. (Returned dict contains {len(canonical_curies_dict)} keys.)")
-
-        # Map all of the concept names scraped from pubmed to curies
-        if canonical_curies_dict:
-            recognized_concepts = {concept for concept in canonical_curies_dict if canonical_curies_dict.get(concept)}
-            logging.info(f"  NodeSynonymizer recognized {round((len(recognized_concepts) / len(concept_names)) * 100)}%"
-                         f" of concept names scraped from pubmed.")
-            # Store which concept names the NodeSynonymizer didn't know about, for learning purposes
-            unrecognized_concepts = set(canonical_curies_dict).difference(recognized_concepts)
-            with open(f"{NGD_DIR}/unrecognized_pubmed_concept_names.txt", "w+") as unrecognized_concepts_file:
-                unrecognized_concepts_file.write(f"{unrecognized_concepts}")
-            logging.info(f"  Unrecognized concept names were written to unrecognized_pubmed_concept_names.txt.")
-
-            # Map the canonical curie for each recognized concept to the concept's PMID list
-            logging.info(f"  Mapping canonical curies to PMIDs..")
-            for concept_name in recognized_concepts:
-                canonical_curie = canonical_curies_dict[concept_name].get('preferred_curie')
-                pmids_for_this_concept = conceptname_to_pmids_db.get(concept_name)
-                self._add_pmids_mapping(canonical_curie, pmids_for_this_concept, curie_to_pmids_map)
-            logging.info(f"  Mapped {len(curie_to_pmids_map)} canonical curies to PMIDs based on pubmed scrapings.")
-        else:
-            logging.error(f"NodeSynonymizer didn't return anything!")
+        cn_conn = sqlite3.connect(self.conceptname_to_pmids_db_path)
+        cn_cursor = cn_conn.cursor()
+        cn_cursor.execute("SELECT COUNT(*) FROM conceptname_to_pmids")
+        total_rows = cn_cursor.fetchone()[0]
+        if total_rows == 0:
+            logging.error(f"{self.conceptname_to_pmids_db_name} exists but is empty.")
             self.status = 'ERROR'
+            cn_conn.close()
+            return
 
-    def _save_data_in_sqlite_db(self, curie_to_pmids_map):
-        logging.info("  Loading data into sqlite database..")
-        # Remove any preexisting version of this database
-        if os.path.exists(self.curie_to_pmids_db_path):
-            os.remove(self.curie_to_pmids_db_path)
-        connection = sqlite3.connect(self.curie_to_pmids_db_path)
-        cursor = connection.cursor()
-        cursor.execute("CREATE TABLE curie_to_pmids (curie TEXT, pmids TEXT)")
-        cursor.execute("CREATE UNIQUE INDEX unique_curie ON curie_to_pmids (curie)")
-        logging.info(f"  Gathering row data..")
-        rows = [[curie, json.dumps(list(filter(None, {self._get_local_id_as_int(pmid) for pmid in pmids})))]
-                for curie, pmids in curie_to_pmids_map.items()]
-        rows_in_chunks = self._divide_list_into_chunks(rows, 5000)
-        logging.info(f"  Inserting row data into database..")
-        for chunk in rows_in_chunks:
-            cursor.executemany(f"INSERT INTO curie_to_pmids (curie, pmids) VALUES (?, ?)", chunk)
-            connection.commit()
-        # Log how many rows we've added in the end (for debugging purposes)
-        cursor.execute(f"SELECT COUNT(*) FROM curie_to_pmids")
-        count = cursor.fetchone()[0]
-        logging.info(f"  Done saving data in sqlite; database contains {count} rows.")
-        cursor.close()
+        # Load all concept names and their PMID lists
+        logging.info(f"  Loading all {total_rows} concept names from DB..")
+        cn_cursor.execute("SELECT concept_name, pmids FROM conceptname_to_pmids")
+        all_rows = cn_cursor.fetchall()
+        cn_conn.close()
 
-    def _get_canonicalized_curies_dict(self, curies: List[str]) -> Dict[str, str]:
-        logging.info(f"  Sending a batch of {len(curies)} curies to NodeSynonymizer.get_canonical_curies()")
-        canonicalized_nodes_info = self.synonymizer.get_canonical_curies(curies)
-        canonicalized_curies_dict = dict()
-        for input_curie, preferred_info_dict in canonicalized_nodes_info.items():
-            if preferred_info_dict:
-                canonicalized_curies_dict[input_curie] = preferred_info_dict.get('preferred_curie', input_curie)
-            else:
-                canonicalized_curies_dict[input_curie] = input_curie
-        logging.info(f"  Got results back from synonymizer")
-        return canonicalized_curies_dict
+        concept_names = [row[0] for row in all_rows]
+        pmids_map = {row[0]: json.loads(row[1]) for row in all_rows}
+        del all_rows
+
+        # Resolve concept names to canonical curies using 10 concurrent workers,
+        # each processing batches of 1000 names via the NodeSynonymizer API.
+        batch_size = 1000
+        num_workers = 10
+        name_batches = [concept_names[i:i + batch_size]
+                        for i in range(0, len(concept_names), batch_size)]
+        total_batches = len(name_batches)
+        logging.info(f"  Resolving {len(concept_names)} concept names in {total_batches} batches "
+                     f"({num_workers} concurrent workers, {batch_size} names/batch)..")
+
+        canonical_curies_dict = {}
+        batches_done = 0
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+            future_to_batch = {
+                executor.submit(self.synonymizer.get_canonical_curies, names=batch): batch
+                for batch in name_batches
+            }
+            for future in concurrent.futures.as_completed(future_to_batch):
+                result = future.result()
+                if result:
+                    canonical_curies_dict.update(result)
+                batches_done += 1
+                if batches_done % 500 == 0:
+                    logging.info(f"    Resolved {batches_done}/{total_batches} batches..")
+
+        logging.info(f"  Got results back from NodeSynonymizer ({len(canonical_curies_dict)} entries).")
+
+        if not canonical_curies_dict:
+            logging.error("NodeSynonymizer didn't return anything!")
+            self.status = 'ERROR'
+            return
+
+        # Map canonical curies to PMIDs
+        logging.info(f"  Mapping canonical curies to PMIDs..")
+        total_recognized = 0
+        total_unrecognized = 0
+        staging_rows = []
+        unrecognized_names = []
+
+        for concept_name in concept_names:
+            canonical_info = canonical_curies_dict.get(concept_name)
+            if not canonical_info or not canonical_info.get('preferred_curie'):
+                total_unrecognized += 1
+                unrecognized_names.append(concept_name)
+                continue
+
+            total_recognized += 1
+            canonical_curie = canonical_info['preferred_curie']
+            for pub_id in pmids_map[concept_name]:
+                if pub_id.upper().startswith('PMID'):
+                    local_id = pub_id.split(":")[-1] if ":" in pub_id else pub_id[4:]
+                    stripped = "".join(c for c in local_id if c.isdigit())
+                    if stripped:
+                        staging_rows.append((canonical_curie, int(stripped)))
+
+            # Flush staging rows periodically
+            if len(staging_rows) >= 500000:
+                out_cursor.executemany("INSERT INTO staging (curie, pmid) VALUES (?, ?)", staging_rows)
+                out_conn.commit()
+                staging_rows.clear()
+
+        if staging_rows:
+            out_cursor.executemany("INSERT INTO staging (curie, pmid) VALUES (?, ?)", staging_rows)
+            out_conn.commit()
+
+        with open(f"{NGD_DIR}/unrecognized_pubmed_concept_names.txt", "w") as unrecognized_file:
+            for name in unrecognized_names:
+                unrecognized_file.write(f"{name}\n")
+
+        total_concepts = total_recognized + total_unrecognized
+        if total_concepts > 0:
+            logging.info(f"  NodeSynonymizer recognized {round((total_recognized / total_concepts) * 100)}%"
+                         f" of concept names scraped from pubmed.")
+        logging.info(f"  Unrecognized concept names were written to unrecognized_pubmed_concept_names.txt.")
 
     def _extract_and_format_pmids(self, publications: List[str]) -> List[str]:
-        pmids = {publication_id for publication_id in publications if publication_id.upper().startswith('PMID')}
-        # Make sure all PMIDs are given in same format (e.g., PMID:18299583 rather than PMID18299583)
-        formatted_pmids = [self._create_pmid_curie_from_local_id(pmid.replace('PMID', '').replace(':', '')) for pmid in pmids]
+        """Filters publications to PMIDs and normalizes to PMID:12345 format."""
+        pmids = {pub_id for pub_id in publications
+                 if pub_id.upper().startswith('PMID')}
+        formatted_pmids = [
+            self._create_pmid_curie_from_local_id(
+                pmid.replace('PMID', '').replace(':', ''))
+            for pmid in pmids
+        ]
         return formatted_pmids
 
     @staticmethod
-    def _add_pmids_mapping(key: str, value_to_append: Union[str, List[str]], mappings_dict: Dict[str, List[str]]):
-        if key not in mappings_dict:
-            mappings_dict[key] = []
-        if isinstance(value_to_append, list):
-            mappings_dict[key] += value_to_append
-        else:
-            mappings_dict[key].append(value_to_append)
-
-    @staticmethod
     def _create_pmid_curie_from_local_id(pmid):
+        """Formats a bare PMID number as 'PMID:12345'."""
         return f"PMID:{pmid}"
 
     @staticmethod
     def _get_local_id_as_int(curie):
-        # Converts "PMID:1234" to 1234
+        """Converts 'PMID:1234' to integer 1234, stripping non-digit chars."""
         curie_pieces = curie.split(":")
         local_id_str = curie_pieces[-1]
         # Remove any strange characters (like in "PMID:_19960544")
         stripped_id_str = "".join([character for character in local_id_str if character.isdigit()])
         return int(stripped_id_str) if stripped_id_str else None
 
-    @staticmethod
-    def _destroy_etree(file_contents_tree):
-        # Thank you to https://stackoverflow.com/a/49139904 for this method; important to prevent memory blow-up
-        root = file_contents_tree.getroot()
-        element_tracker = {root: [0, None]}
-        for element in root.iterdescendants():
-            parent = element.getparent()
-            element_tracker[element] = [element_tracker[parent][0] + 1, parent]
-        element_tracker = sorted([(depth, parent, child) for child, (depth, parent)
-                                  in element_tracker.items()], key=lambda x: x[0], reverse=True)
-        for _, parent, child in element_tracker:
-            if parent is None:
-                break
-            parent.remove(child)
-        del file_contents_tree
-
-    @staticmethod
-    def _run_cypher_query(cypher_query: str) -> List[Dict[str, any]]:
-        rtxc = RTXConfiguration()
-        kg2_neo4j_info = rtxc.get_neo4j_info("KG2pre")
-        try:
-            driver = GraphDatabase.driver(kg2_neo4j_info['bolt'],
-                                          auth=(kg2_neo4j_info['username'],
-                                                kg2_neo4j_info['password']))
-            with driver.session() as session:
-                query_results = session.run(cypher_query).data()
-            driver.close()
-        except Exception:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            logging.error(f"Encountered an error interacting with KG2 neo4j. {tb}")
-            return []
-        else:
-            return query_results
-
-    @staticmethod
-    def _divide_list_into_chunks(input_list: List[any], chunk_size: int) -> List[List[any]]:
-        num_chunks = len(input_list) // chunk_size if len(input_list) % chunk_size == 0 else (len(input_list) // chunk_size) + 1
-        start_index = 0
-        stop_index = chunk_size
-        all_chunks = []
-        for num in range(num_chunks):
-            chunk = input_list[start_index:stop_index] if stop_index <= len(input_list) else input_list[start_index:]
-            all_chunks.append(chunk)
-            start_index += chunk_size
-            stop_index += chunk_size
-        return all_chunks
-
 
 def main():
     # Load command-line arguments
     arg_parser = argparse.ArgumentParser(description="Builds database of curie->PMID mappings needed for NGD")
     arg_parser.add_argument("--full", dest="full", action="store_true", default=False)
+    arg_parser.add_argument("--skip-download", dest="skip_download", action="store_true", default=False)
     arg_parser.add_argument("--test", dest="test", action="store_true", default=False)
     args = arg_parser.parse_args()
 
     # Build the database(s)
-    database_builder = NGDDatabaseBuilder(args.test)
+    database_builder = NGDDatabaseBuilder(args.test, skip_download=args.skip_download)
     database_builder.build_ngd_database(args.full)
 
 
 if __name__ == '__main__':
     main()
+
