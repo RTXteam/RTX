@@ -220,21 +220,20 @@ successfully, should produce this final line of output:
 The process with process ID 61928 has FINISHED refreshing the KP info caches
 ```
 
-### Special setup procedure if you are working on Shepherd-ARAX
-If (and _only if_) you will be working on an issue with "Shepherd-ARAX", you will want to configure
-ARAX to query `infores:retriever`; you do that by editing
-`RTX/code/ARAX/ARAXQuery/Expand/kp_info_cacher.py` and changing the line of code
-```
-self.forced_kp_version = '1.5.0'
-```
-to
+### Special setup procedure if you are working on Legacy-ARAX
+If (and _only if_) you will be working on an issue with "Legacy-ARAX" (TRAPI 1.5.0), 
+you will want to configure ARAX to query legacy KP endpoints. You do that by editing
+the module `RTX/code/ARAX/ARAXQuery/Expand/kp_info_cacher.py` and changing the line of code
 ```
 self.forced_kp_version = '1.6.0'
 ```
+to
+```
+self.forced_kp_version = '1.5.0'
+```
 Make _sure_ you do not accidentally commit this code change in `kp_info_cacher.py` to the ARAX
-branch; it is just used as a local configuration change for development work (yes, it should
-eventually be made a proper configuration option). Note, if you are working Shepherd-ARAX,
-please read the section "Note on testing if you are working on Shepherd-ARAX".
+branch; it is just used as a local configuration change for development work (yes, it could
+eventually be made a proper configuration option).
 
 ## Running ARAX locally on your development computer
 Assuming you have completed all the steps in the seciton "Per-task procedure for
@@ -295,10 +294,11 @@ blue "update" button, which is to the right of the text box).
 the large empty text-box). Then click on "Post to ARAX". Compare the results that
 are listed under the "Results" navigation tab, to what you would see if you ran the 
 `Example 1` JSON query on `arax.ncats.io/test` or `arax.ci.transltr.io`. Repeat this
-procedure for `Example 2`, `Example 3`, and `Pathfinder`. The results don't have to
-be _exactly_ the same, but if you see any major differences, please report an issue
-(e.g., via the `#deployment` channel in the `CATRAX` Slack workspace) 
-before proceeding; the reason for this
+procedure for `Example 2`, `Example 3`, and `Pathfinder`. 
+5. Click on the "Results" tab (on the left) and scroll down to look at the results. The results don't have to
+be _exactly_ the same as what you see with the `master` branch code, but if you see any _major_ 
+unexpected differences, please report an issue (e.g., via the `#deployment` channel in the 
+`CATRAX` Slack workspace) before proceeding; the reason for this
 is that if you aren't starting with a "known good" ARAX, it doesn't make sense to
 try to do new development. The exception to this guidance is if one of the standard
 KPs has suddenly broken one of the example queries in ARAX; in that case, we wouldn't
@@ -306,7 +306,17 @@ expect the above tests to yield a successful result (and, in fact, it is essenti
 to observe the _failing_ example query before proceeding so we know we have
 reproduced the problem). But the case of a KP breaking one of our example queries
 is quite rare, so we will not address that scenario further in the procedure
-that follows.
+that follows. 
+5. Click on the "Messages" tab (on the left) and scroll down to look at the TRAPI message
+log. If you are running ARAX locally on a development system, you will see one TRAPI
+warning for sure:
+```
+WARNING:    Not saving response to S3 because I don't know the S3BucketMigrationDatetime
+```
+That is expected when you are testing ARAX on your local computer; don't worry about it.
+But any other TRAPI warning or error messages are a reason to compare the TRAPI message 
+log from your branch, with the TRAPI message log that results when you run with the ARAX
+code from the `master` branch.
 
 #### Note on testing if you are working on Shepherd-ARAX
 If you are doing work on "Shepherd-ARAX", then you should
