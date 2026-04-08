@@ -1,8 +1,6 @@
-#!/bin/env python3
+# ruff: noqa: E402
 # This class will perform fisher's exact test to evalutate the significance of connection between
 # a list of source nodes with certain qnode_id in KG and each of the target nodes with specified type.
-
-# relative imports
 import asyncio
 import os
 import re
@@ -11,20 +9,22 @@ import sqlite3
 import sys
 import traceback
 from datetime import datetime
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
+from pathlib import Path
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.append(str(SCRIPT_DIR / "../../.."))
 from RTXConfiguration import RTXConfiguration
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
+sys.path.append(str(SCRIPT_DIR / ".."))
 import util
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../Expander/")
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(str(SCRIPT_DIR / "../Expander"))  # needed to import KPSelector
+sys.path.append(str(SCRIPT_DIR / "../../UI/OpenAPI/python-flask-server"))
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.retrieval_source import RetrievalSource
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../NodeSynonymizer/")
+sys.path.append(str(SCRIPT_DIR / "../../NodeSynonymizer"))
 from node_synonymizer import NodeSynonymizer
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(str(SCRIPT_DIR))
 import overlay_utilities as ou
 
 RTX_CONFIG = RTXConfiguration()
@@ -38,14 +38,11 @@ class ComputeFTEST:
         self.message = message
         self.parameters = parameters
         self.nodesynonymizer = NodeSynonymizer()
-        ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
-        pathlist = os.path.realpath(__file__).split(os.path.sep)
-        RTXindex = pathlist.index("RTX")
-        filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
 
-        ## check if there is kg2c.sqlite
-        sqlite_name = RTX_CONFIG.kg2c_sqlite_path.split("/")[-1]
-        sqlite_file_path = f"{filepath}{os.path.sep}{sqlite_name}"
+        ## construct the path to the kg2c sqlite file
+        rtx_root = Path(__file__).resolve().parents[4]
+        sqlite_name = Path(RTX_CONFIG.kg2c_sqlite_path).name
+        sqlite_file_path = rtx_root / "code" / "ARAX" / "KnowledgeSources" / "KG2c" / sqlite_name
         self.sqlite_file_path = sqlite_file_path
 
 
@@ -178,7 +175,7 @@ class ComputeFTEST:
         ## loop over all nodes in KG and collect their node information
         try:
             for node_key, node in kg.nodes.items():
-                node_qnode_keys = getattr(node, 'qnode_keys', [])
+                node_qnode_keys = getattr(node, 'qnode_keys', None) or []
                 node_categories = node.categories
                 nodes_info[node_key] = {'qnode_keys': node_qnode_keys,
                                         'category': next(iter(node_categories), None)}
@@ -323,7 +320,7 @@ class ComputeFTEST:
                     self.response.warning(f"One object node which is {removed_nodes[0]} can't find its neighbors. This node will be ignored for FET calculation.")
                 else:
                     self.response.warning(f"{len(removed_nodes)} object nodes which are "
-                                          f"{util._summarize_set_elements(removed_nodes)} "
+                                          f"{util.summarize_set_elements(removed_nodes)} "
                                           "can't find its neighbors. These nodes will be ignored for FET calculation.")
                 for node in removed_nodes:
                     del object_node_dict[node]

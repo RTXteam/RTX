@@ -511,7 +511,8 @@ This information is included in edge attributes with the name 'icees_p-value'.
         self.parameters = parameters
 
         response.debug(
-            f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
+            # TODO: re-write this to be more specific about the actual action
+            f"Applying Overlay to Message with parameters {parameters}")
 
         # Don't try to overlay anything if the KG is empty
         if not kg or not kg.nodes:
@@ -528,9 +529,11 @@ This information is included in edge attributes with the name 'icees_p-value'.
         response.debug(f"Checking for KG fulfillment for qnode keys: {qnode_keys_to_check}")
         qnode_keys_not_fulfilled = {qnode_key
                                     for qnode_key in qnode_keys_to_check
-                                    if not any(node for node in kg.nodes.values() if qnode_key in getattr(node, 'qnode_keys', []))}
+                                    if not any(node for node in kg.nodes.values()
+                                               if qnode_key in (getattr(node, 'qnode_keys', None) or []))}
         if qnode_keys_not_fulfilled:
-            response.debug(f"Nothing to overlay (one or more of the specified qnodes is not fulfilled in the KG): {qnode_keys_not_fulfilled}")
+            response.debug("Nothing to overlay (one or more of the specified qnodes is not "
+                           f"fulfilled in the KG): {qnode_keys_not_fulfilled}")
             return response
 
         # convert the action string to a function call (so I don't need a ton of if statements

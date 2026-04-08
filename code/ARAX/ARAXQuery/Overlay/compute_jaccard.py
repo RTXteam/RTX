@@ -1,4 +1,3 @@
-#!/bin/env python3
 # This class will add a virtual edge to the KG decorated with the Jaccard index value on it.
 # relevant issue is #611
 # will need to figure out DSL syntax to ensure that such edges will be added to the correct subject object nodes
@@ -6,21 +5,20 @@
 # for now, just do the computation on the local KG
 import sys
 import os
-import traceback
-import numpy as np
 from datetime import datetime
 import random
 import time
-random.seed(time.time())
 
 # relative imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.retrieval_source import RetrievalSource
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
+
+random.seed(time.time())
 
 class ComputeJaccard:
 
@@ -33,8 +31,8 @@ class ComputeJaccard:
     def compute_jaccard(self):
         message = self.message
         parameters = self.parameters
-        self.response.debug(f"Computing Jaccard distance and adding this information as virtual edges")
-        self.response.info(f"Computing Jaccard distance and adding this information as virtual edges")
+        self.response.debug("Computing Jaccard distance and adding this information as virtual edges")
+        self.response.info("Computing Jaccard distance and adding this information as virtual edges")
 
         self.response.info("Getting all relevant nodes")
         # TODO: should I check that they're connected to the start node, or just assume that they are?
@@ -45,7 +43,7 @@ class ComputeJaccard:
             subject_node_key = dict()
             # keys will be end node curies, values will be tuples the (intermediate curie ids, edge_type)
             for key, node in message.knowledge_graph.nodes.items():
-                node_qnode_keys = getattr(node, 'qnode_keys', [])
+                node_qnode_keys = getattr(node, 'qnode_keys', None) or []
                 if parameters['intermediate_node_key'] in node_qnode_keys:
                     intermediate_nodes.add(key)  # add the intermediate node by it's identifier
                 # also look for the subject node id
@@ -90,22 +88,9 @@ class ComputeJaccard:
             edge_type = 'biolink:has_jaccard_index_with'
             qedge_keys = [parameters['virtual_relation_label']]
             relation = parameters['virtual_relation_label']
-            is_defined_by = "ARAX"
             defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
-            provided_by = "infores:arax"
-            confidence = None
-            weight = None  # TODO: could make the jaccard index the weight
-            try:
-                subject_key = subject_node_key
-            except:
-                tb = traceback.format_exc()
-                error_type, error, _ = sys.exc_info()
-                self.response.warning(
-                    f"subject node id: {parameters['start_node_key']} not found in the KG. Perhaps the KG is empty?")
-                #self.response.error(tb, error_code=error_type.__name__)
 
             # edge attribute properties
-            description = f"Jaccard index based on intermediate query nodes {parameters['intermediate_node_key']}"
             attribute_type = 'EDAM-DATA:1772'
             name = "jaccard_index"
             url = None
@@ -138,10 +123,6 @@ class ComputeJaccard:
                         # EdgeAttribute(original_attribute_name=None, value=provided_by, attribute_type_id="aggregator_knowledge_source", attribute_source=provided_by, value_type_id="biolink:InformationResource"),
                         EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                     ]
-
-                    # edge = Edge(id=id, type=edge_type, relation=relation, subject_key=subject_key, object_key=object_key,
-                    #             is_defined_by=is_defined_by, defined_datetime=defined_datetime, provided_by=provided_by,
-                    #             confidence=confidence, weight=weight, attributes=[edge_attribute], qedge_ids=qedge_ids)
                     edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
                                 attributes=edge_attribute_list, sources=retrieval_source)
                     edge.qedge_keys = qedge_keys
@@ -164,8 +145,5 @@ class ComputeJaccard:
             self.message.query_graph.edges[relation] = q_edge
 
             return self.response
-        except:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            self.response.error(f"Something went wrong when computing the Jaccard index")
-            self.response.error(tb, error_code=error_type.__name__)
+        except (KeyError, AttributeError, ZeroDivisionError, TypeError) as e:
+            self.response.error(f"Something went wrong when computing the Jaccard index: {type(e).__name__}: {e}")

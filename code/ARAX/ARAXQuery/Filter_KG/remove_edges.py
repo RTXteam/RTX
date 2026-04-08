@@ -66,14 +66,15 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in kg.nodes.items():
                     if key in node_keys_to_remove:
+                        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
                         if 'qnode_keys' in edge_params:
-                            if node.qnode_keys is not None:
+                            if node_qnode_keys:
                                 for param_qnode_key in edge_params['qnode_keys']:
-                                    if param_qnode_key in node.qnode_keys:
-                                        if len(node.qnode_keys) == 1:
+                                    if param_qnode_key in node_qnode_keys:
+                                        if len(node_qnode_keys) == 1:
                                             nodes_to_remove.add(key)
                                         else:
-                                            node.qnode_keys.remove(param_qnode_key)
+                                            node_qnode_keys.remove(param_qnode_key)
                                     else:
                                         # del node_keys_to_remove[key]
                                         skipped_qnode_keys.add(key)
@@ -81,12 +82,12 @@ class RemoveEdges:
                                 # del node_keys_to_remove[key]
                                 skipped_qnode_keys.add(key)
                         else:
-                            if len(node.qnode_keys) == 1:
+                            if len(node_qnode_keys) == 1:
                                 nodes_to_remove.add(key)
                             else:
                                 for node_key in node_keys_to_remove[key]:
-                                    node.qnode_keys.remove(node_key)
-                                if len(node.qnode_keys) == 0:
+                                    node_qnode_keys.remove(node_key)
+                                if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
                     del node_keys_to_remove[key]
@@ -209,25 +210,26 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in kg.nodes.items():
                     if key in node_keys_to_remove:
+                        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
                         if 'qnode_keys' in edge_params:
-                            if node.qnode_keys is not None:
+                            if node_qnode_keys:
                                 for param_qnode_key in edge_params['qnode_keys']:
-                                    if param_qnode_key in node.qnode_keys:
-                                        if len(node.qnode_keys) == 1:
+                                    if param_qnode_key in node_qnode_keys:
+                                        if len(node_qnode_keys) == 1:
                                             nodes_to_remove.add(key)
                                         else:
-                                            node.qnode_keys.remove(param_qnode_key)
+                                            node_qnode_keys.remove(param_qnode_key)
                                     else:
                                         skipped_qnode_keys.add(key)
                             else:
                                 skipped_qnode_keys.add(key)
                         else:
-                            if len(node.qnode_keys) == 1:
+                            if len(node_qnode_keys) == 1:
                                 nodes_to_remove.add(key)
                             else:
                                 for node_key in node_keys_to_remove[key]:
-                                    node.qnode_keys.remove(node_key)
-                                if len(node.qnode_keys) == 0:
+                                    node_qnode_keys.remove(node_key)
+                                if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
                     del node_keys_to_remove[key]
@@ -312,25 +314,26 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in kg.nodes.items():
                     if key in node_keys_to_remove:
+                        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
                         if 'qnode_keys' in edge_params:
-                            if node.qnode_keys is not None:
+                            if node_qnode_keys:
                                 for param_qnode_key in edge_params['qnode_keys']:
-                                    if param_qnode_key in node.qnode_keys:
-                                        if len(node.qnode_keys) == 1:
+                                    if param_qnode_key in node_qnode_keys:
+                                        if len(node_qnode_keys) == 1:
                                             nodes_to_remove.add(key)
                                         else:
-                                            node.qnode_keys.remove(param_qnode_key)
+                                            node_qnode_keys.remove(param_qnode_key)
                                     else:
                                         skipped_qnode_keys.add(key)
                             else:
                                 skipped_qnode_keys.add(key)
                         else:
-                            if len(node.qnode_keys) == 1:
+                            if len(node_qnode_keys) == 1:
                                 nodes_to_remove.add(key)
                             else:
                                 for node_key in node_keys_to_remove[key]:
-                                    node.qnode_keys.remove(node_key)
-                                if len(node.qnode_keys) == 0:
+                                    node_qnode_keys.remove(node_key)
+                                if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
                     del node_keys_to_remove[key]
@@ -453,14 +456,15 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in kg.nodes.items():
                     if key in node_keys_to_remove:
+                        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
                         if 'qnode_keys' in edge_params:
-                            if node.qnode_keys is not None:
+                            if node_qnode_keys:
                                 for param_qnode_key in edge_params['qnode_keys']:
-                                    if param_qnode_key in node.qnode_keys:
-                                        if len(node.qnode_keys) == 1:
+                                    if param_qnode_key in node_qnode_keys:
+                                        if len(node_qnode_keys) == 1:
                                             nodes_to_remove.add(key)
                                         else:
-                                            node.qnode_keys.remove(param_qnode_key)
+                                            node_qnode_keys.remove(param_qnode_key)
                                     else:
                                         # del node_keys_to_remove[key]
                                         skipped_qnode_keys.add(key)
@@ -468,12 +472,12 @@ class RemoveEdges:
                                 # del node_keys_to_remove[key]
                                 skipped_qnode_keys.add(key)
                         else:
-                            if len(node.qnode_keys) == 1:
+                            if len(node_qnode_keys) == 1:
                                 nodes_to_remove.add(key)
                             else:
                                 for node_key in node_keys_to_remove[key]:
-                                    node.qnode_keys.remove(node_key)
-                                if len(node.qnode_keys) == 0:
+                                    node_qnode_keys.remove(node_key)
+                                if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
                     del node_keys_to_remove[key]
