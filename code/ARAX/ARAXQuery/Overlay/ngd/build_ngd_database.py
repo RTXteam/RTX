@@ -89,7 +89,7 @@ class NGDDatabaseBuilder:
                             format='%(asctime)s %(levelname)s: %(message)s',
                             handlers=[logging.FileHandler("ngdbuild.log"),
                                       logging.StreamHandler()])
-        self.pubmed_directory_path = f"{NGD_DIR}/pubmed_xml_files"
+        self.pubmed_directory_path = "/home/ubuntu/data/pubmed_xml_files"
         self.conceptname_to_pmids_db_name = "conceptname_to_pmids.sqlite"
         self.conceptname_to_pmids_db_path = f"{NGD_DIR}/{self.conceptname_to_pmids_db_name}"
         self.curie_to_pmids_db_name = "curie_to_pmids.sqlite"
@@ -293,7 +293,7 @@ class NGDDatabaseBuilder:
     def _add_pmids_from_tier0_edges(self, out_cursor, out_conn):
         """Reads edges.jsonl and appends curie/pmid rows to staging."""
         logging.info("  Getting PMIDs from edges in Tier-0 graph..")
-        edges_file = f"{NGD_DIR}/edges.jsonl"
+        edges_file = "/home/ubuntu/data/graph/edges.jsonl"
         rows = []
         flush_size = 50000
         count = 0
@@ -334,7 +334,7 @@ class NGDDatabaseBuilder:
     def _add_pmids_from_tier0_nodes(self, out_cursor, out_conn):
         """Reads nodes.jsonl and appends curie/pmid rows to staging."""
         logging.info("  Getting PMIDs from nodes in Tier-0 graph..")
-        nodes_file = f"{NGD_DIR}/nodes.jsonl"
+        nodes_file = "/home/ubuntu/data/graph/nodes.jsonl"
         rows = []
         flush_size = 50000
         count = 0
