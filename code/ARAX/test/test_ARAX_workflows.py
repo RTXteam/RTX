@@ -6,20 +6,13 @@ import sys
 import os
 import pytest
 from collections import Counter
-import copy
-import json
-import ast
 from typing import List, Union
 
-import numpy as np
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
 
-PACKAGE_PARENT = '../../UI/OpenAPI/openapi_server'
-sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/openapi_server/models")
 from openapi_server.models.message import Message
 
 
