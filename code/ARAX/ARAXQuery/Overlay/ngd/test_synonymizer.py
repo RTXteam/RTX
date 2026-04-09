@@ -70,10 +70,10 @@ for batch_size, num_workers, total_names in test_configs:
         autocomplete=False,
         thread_safe=(num_workers > 1),
         log_api_failures=True,
-        max_api_retries=5,
+        max_api_retries=3,
         retry_backoff=True,
         name_resolver_batch_size=200,
-        name_resolver_timeout=120,
+        name_resolver_timeout=60,
     )
 
     label = f"batch={batch_size}, workers={num_workers}"
