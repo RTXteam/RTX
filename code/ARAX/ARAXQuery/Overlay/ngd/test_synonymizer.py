@@ -74,6 +74,8 @@ for batch_size, num_workers, total_names in test_configs:
         retry_backoff=True,
         name_resolver_batch_size=200,
         name_resolver_timeout=60,
+        node_normalizer_url="https://nodenorm.transltr.io/1.5",
+        name_resolver_url="https://name-lookup.transltr.io",
     )
 
     label = f"batch={batch_size}, workers={num_workers}"

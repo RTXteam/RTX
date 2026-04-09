@@ -76,7 +76,9 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                  max_api_retries: int = 3,
                  retry_backoff: bool = False,
                  name_resolver_batch_size: int = 1000,
-                 name_resolver_timeout: int = 60):
+                 name_resolver_timeout: int = 60,
+                 node_normalizer_url: Optional[str] = None,
+                 name_resolver_url: Optional[str] = None):
         # sqlite_file_name: kept for interface compat so existing
         # callers don't break. The new implementation ignores it
         # entirely — no local database is used.
@@ -114,8 +116,17 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         self._cache_lock = threading.Lock() if thread_safe else None
 
         self.rtx_config = RTXConfiguration()
-        self.api_base_url, self.name_resolver_url = (
-            self._get_api_urls())
+        default_nn, default_nr = self._get_api_urls()
+        # Constructor URL overrides take precedence over
+        # config-based selection. Useful for overriding the
+        # CI endpoints when running benchmarks or large
+        # batch jobs from dev environments.
+        self.api_base_url = (
+            node_normalizer_url.rstrip("/")
+            if node_normalizer_url else default_nn)
+        self.name_resolver_url = (
+            name_resolver_url.rstrip("/")
+            if name_resolver_url else default_nr)
         self.kg2_infores_curie = "infores:rtx-kg2"
         self.sri_nn_infores_curie = "infores:sri-node-normalizer"
         self.arax_infores_curie = "infores:arax"
