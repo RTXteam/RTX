@@ -21,21 +21,20 @@ NGD_DIR = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQue
 db_path = os.path.join(NGD_DIR, 'conceptname_to_pmids.sqlite')
 
 # Test configs: (batch_size, num_workers, total_names)
-# Focus on the realistic batch=1000 case with a worker sweep
-# to find the best concurrency for the NGD build script.
-# batch=100 with workers is included as a comparison point.
+# Focus on small batch sizes (~25 names per call) which matches
+# what the synonymizer team's own tests use to verify the API
+# works. Sweep workers to find the best concurrency level.
 test_configs = [
-    # batch_size 100 reference points
-    (100,  1,  10000),
-    (100,  5,  10000),
-    (100,  10, 10000),
-    # batch_size 1000 worker sweep
-    (1000, 1,  10000),
-    (1000, 5,  10000),
-    (1000, 6,  10000),
-    (1000, 7,  10000),
-    (1000, 8,  10000),
-    (1000, 10, 10000),
+    # batch_size 25 worker sweep (matches the size their tests use)
+    (25, 1,  10000),
+    (25, 3,  10000),
+    (25, 5,  10000),
+    (25, 7,  10000),
+    (25, 10, 10000),
+    # batch_size 50 for comparison
+    (50, 1,  10000),
+    (50, 5,  10000),
+    (50, 10, 10000),
 ]
 
 # Pull enough names so each test gets a unique slice (avoid server-side caching)
