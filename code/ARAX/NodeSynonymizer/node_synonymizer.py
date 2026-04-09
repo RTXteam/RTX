@@ -5,7 +5,6 @@ import json
 import math
 import os
 import sys
-import threading
 import time
 from collections import Counter, defaultdict
 from typing import Any, Optional, Union, List, Set
@@ -70,15 +69,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
     """
 
     def __init__(self, sqlite_file_name: Optional[str] = None,
-                 autocomplete: bool = True,
-                 thread_safe: bool = False,
-                 log_api_failures: bool = False,
-                 max_api_retries: int = 3,
-                 retry_backoff: bool = False,
-                 name_resolver_batch_size: int = 1000,
-                 name_resolver_timeout: int = 60,
-                 node_normalizer_url: Optional[str] = None,
-                 name_resolver_url: Optional[str] = None):
+                 autocomplete: bool = True):
         # sqlite_file_name: kept for interface compat so existing
         # callers don't break. The new implementation ignores it
         # entirely — no local database is used.
@@ -91,42 +82,9 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         # where we need precise name-to-curie mapping.
         self._autocomplete = autocomplete
 
-        # Opt-in flags for callers that need extra robustness
-        # (NGD build, large concurrent workloads). Defaults
-        # preserve original behavior so existing ARAX callers
-        # are unaffected.
-        # thread_safe: lock around _normalizer_cache mutations
-        #   so multiple threads sharing one instance don't
-        #   double-fetch CURIEs.
-        # log_api_failures: always log API failures regardless
-        #   of batch size (default behavior only logs for
-        #   tiny batches with len(names) <= 10).
-        # max_api_retries: number of retry attempts for failed
-        #   API calls. Applied to both Name Resolver and
-        #   Node Normalizer.
-        # retry_backoff: use exponential backoff (1s, 2s, 4s)
-        #   between retry attempts instead of retrying
-        #   immediately.
-        self._thread_safe = thread_safe
-        self._log_api_failures = log_api_failures
-        self._max_api_retries = max_api_retries
-        self._retry_backoff = retry_backoff
-        self._name_resolver_batch_size = name_resolver_batch_size
-        self._name_resolver_timeout = name_resolver_timeout
-        self._cache_lock = threading.Lock() if thread_safe else None
-
         self.rtx_config = RTXConfiguration()
-        default_nn, default_nr = self._get_api_urls()
-        # Constructor URL overrides take precedence over
-        # config-based selection. Useful for overriding the
-        # CI endpoints when running benchmarks or large
-        # batch jobs from dev environments.
-        self.api_base_url = (
-            node_normalizer_url.rstrip("/")
-            if node_normalizer_url else default_nn)
-        self.name_resolver_url = (
-            name_resolver_url.rstrip("/")
-            if name_resolver_url else default_nr)
+        self.api_base_url, self.name_resolver_url = (
+            self._get_api_urls())
         self.kg2_infores_curie = "infores:rtx-kg2"
         self.sri_nn_infores_curie = "infores:sri-node-normalizer"
         self.arax_infores_curie = "infores:arax"
@@ -162,16 +120,8 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
             curies: Optional[Union[str, Set[str], List[str]]] = None,
             names: Optional[Union[str, Set[str], List[str]]] = None,
             return_all_categories: bool = False,
-            debug: bool = False,
-            skip_malformed: bool = False) -> dict:
-        """Return canonical CURIE info for input curies and/or names.
-
-        skip_malformed: when True, names with malformed API
-        responses (missing 'id' or 'label' fields) are
-        silently set to None instead of raising ValueError.
-        Useful for batch jobs that don't want one bad name
-        to abort an entire 1000-name batch.
-        """
+            debug: bool = False) -> dict:
+        """Return canonical CURIE info for input curies and/or names."""
         start = time.time()
 
         curies_set = self._convert_to_set_format(curies)
@@ -234,17 +184,11 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                         result = api_val
                         types = result.get("type", [])
                         if "id" not in result:
-                            if skip_malformed:
-                                results_dict[name] = None
-                                continue
                             raise ValueError(
                                 f"for name {name}, there is "
                                 "no field 'id' in the result")
                         result_name_dict = result["id"]
                         if "label" not in result_name_dict:
-                            if skip_malformed:
-                                results_dict[name] = None
-                                continue
                             raise ValueError(
                                 f"for name {name}, there is "
                                 "no 'label' field in the 'id'"
@@ -883,10 +827,6 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         critical — get_normalizer_results calls this method
         multiple times for overlapping CURIE sets, and without
         caching that would mean redundant round-trips.
-
-        Retry/logging behavior is controlled by the
-        max_api_retries, retry_backoff, and log_api_failures
-        flags set on the instance.
         """
         if not curies:
             return {}
@@ -896,83 +836,40 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
 
         # Check cache first to avoid network calls for
         # CURIEs we already looked up in this session.
-        # Lock if thread_safe to avoid races on the
-        # check-then-insert pattern.
-        if self._cache_lock is not None:
-            with self._cache_lock:
-                for curie in curies:
-                    if curie in self._normalizer_cache:
-                        all_results[curie] = (
-                            self._normalizer_cache[curie])
-                        self._cache_hits += 1
-                    else:
-                        uncached_curies.append(curie)
-                        self._cache_misses += 1
-        else:
-            for curie in curies:
-                if curie in self._normalizer_cache:
-                    all_results[curie] = (
-                        self._normalizer_cache[curie])
-                    self._cache_hits += 1
-                else:
-                    uncached_curies.append(curie)
-                    self._cache_misses += 1
+        for curie in curies:
+            if curie in self._normalizer_cache:
+                all_results[curie] = (
+                    self._normalizer_cache[curie])
+                self._cache_hits += 1
+            else:
+                uncached_curies.append(curie)
+                self._cache_misses += 1
 
         if uncached_curies:
             batch_size = 2500
-            max_retries = max(self._max_api_retries, 1)
             for i in range(0, len(uncached_curies),
                            batch_size):
                 batch = uncached_curies[i:i + batch_size]
-                last_error = None
-                for attempt in range(1, max_retries + 1):
-                    try:
-                        response = self._session.post(
-                            f"{self.api_base_url}"
-                            "/get_normalized_nodes",
-                            json={"curies": batch},
-                            timeout=30)
-                        response.raise_for_status()
-                        batch_results = response.json()
-                        if self._cache_lock is not None:
-                            with self._cache_lock:
-                                for curie_key, value in (
-                                        batch_results.items()):
-                                    self._normalizer_cache[
-                                        curie_key] = value
-                                    all_results[
-                                        curie_key] = value
-                        else:
-                            for curie_key, value in (
-                                    batch_results.items()):
-                                self._normalizer_cache[
-                                    curie_key] = value
-                                all_results[curie_key] = value
-                        last_error = None
-                        break
-                    except requests.exceptions.RequestException as e:
-                        last_error = e
-                        if attempt < max_retries:
-                            if self._retry_backoff:
-                                time.sleep(2 ** (attempt - 1))
-                            continue
-                if last_error is not None:
-                    if self._cache_lock is not None:
-                        with self._cache_lock:
-                            for c in batch:
-                                self._normalizer_cache[c] = None
-                                all_results[c] = None
-                    else:
-                        for c in batch:
-                            self._normalizer_cache[c] = None
-                            all_results[c] = None
-                    if (self._log_api_failures
-                            or len(curies) <= 10):
-                        print("Warning: Node Normalizer API"
-                              " call failed for batch of"
-                              f" {len(batch)} curies after"
-                              f" {max_retries} attempts:"
-                              f" {last_error}")
+                try:
+                    response = self._session.post(
+                        f"{self.api_base_url}"
+                        "/get_normalized_nodes",
+                        json={"curies": batch},
+                        timeout=30)
+                    response.raise_for_status()
+                    batch_results = response.json()
+                    for curie_key, value in (
+                            batch_results.items()):
+                        self._normalizer_cache[curie_key] = (
+                            value)
+                        all_results[curie_key] = value
+                except requests.exceptions.RequestException as e:
+                    for c in batch:
+                        self._normalizer_cache[c] = None
+                        all_results[c] = None
+                    if len(curies) <= 10:
+                        print("Warning: API call failed"
+                              f" for batch: {e}")
 
         return all_results
 
@@ -993,8 +890,8 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
             return {}
 
         results: dict[str, str | None] = {}
-        batch_size = self._name_resolver_batch_size
-        max_retries = max(self._max_api_retries, 1)
+        batch_size = 1000
+        max_retries = 3
 
         total = len(names)
         for i in range(0, total, batch_size):
@@ -1012,7 +909,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                             "strings": batch,
                             "autocomplete": self._autocomplete,
                             "limit": 1},
-                        timeout=self._name_resolver_timeout)
+                        timeout=60)
                     response.raise_for_status()
                     data = response.json()
                     for name in batch:
@@ -1023,18 +920,12 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                     break
                 except requests.exceptions.RequestException as e:
                     if attempt < max_retries:
-                        if self._retry_backoff:
-                            time.sleep(2 ** (attempt - 1))
                         continue
                     for name in batch:
                         results[name] = None
-                    if (self._log_api_failures
-                            or len(names) <= 10):
+                    if len(names) <= 10:
                         print("Warning: Name Resolver API"
-                              " call failed for batch of"
-                              f" {len(batch)} names after"
-                              f" {max_retries} attempts:"
-                              f" {e}")
+                              f" call failed: {e}")
 
         return results
 
