@@ -590,9 +590,14 @@ just leave them in your issue work folder on your development computer).
 steps are completed. If you are not yet done, indicate how far you got
 on the checklist, as a comment in the issue, so you will know where to resume.
 
+# Troubleshooting tips
 
-
-
-
-
+1. If you are getting inconsistent results from the pytest suite, like a test that
+is stubbornly failing on your development machine but working elsewhere, try 
+deleting the TRAPI query cacher database like this:
+```
+rm ARAX_DEV_DIR/issue-XXX/RTX/code/ARAX/ARAXQuery/Expand/trapi_query_cacher_database.sqlite
+rm -r -f ARAX_DEV_DIR/issue-XXX/RTX/code/ARAX/ARAXQuery/Expand/trapi_query_cacher_responses/
+```
+and then rerunning the pytest suite.
 
