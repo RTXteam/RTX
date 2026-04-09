@@ -21,17 +21,11 @@ NGD_DIR = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQue
 db_path = os.path.join(NGD_DIR, 'conceptname_to_pmids.sqlite')
 
 # Test configs: (batch_size, num_workers, total_names)
-# Sweep all batch sizes across worker counts, plus a worker sweep at batch=1000
+# Focus on the realistic batch=1000 case with a worker sweep
+# to find the best concurrency for the NGD build script.
+# batch=100 with workers is included as a comparison point.
 test_configs = [
-    # batch_size 1
-    (1,    1,  1000),
-    (1,    5,  1000),
-    (1,    10, 1000),
-    # batch_size 10
-    (10,   1,  1000),
-    (10,   5,  1000),
-    (10,   10, 1000),
-    # batch_size 100
+    # batch_size 100 reference points
     (100,  1,  10000),
     (100,  5,  10000),
     (100,  10, 10000),
