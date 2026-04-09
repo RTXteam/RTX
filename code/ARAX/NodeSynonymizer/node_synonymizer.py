@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 from typing import Any, Optional, Union, List, Set
 
 import bmt  # type: ignore[import-not-found]
+import httpx  # type: ignore[import-untyped]
 import pandas as pd  # type: ignore[import-untyped]
 import requests  # type: ignore[import-untyped]
 
@@ -52,10 +53,18 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
       Main endpoint: POST /get_normalized_nodes
 
     SRI Name Resolver (free-text name -> best CURIE match):
-      Production: https://name-lookup.transltr.io
       CI/Dev:     https://name-lookup.ci.transltr.io
+      Production: https://name-lookup.transltr.io  (NO /bulk-lookup)
       Docs:       https://name-lookup.ci.transltr.io/docs
       Main endpoint: POST /bulk-lookup
+      WARNING: The production Name Resolver deployment does NOT
+      expose /bulk-lookup -- only /lookup, /reverse_lookup, /status.
+      This implementation relies on /bulk-lookup, so it currently
+      only works against the CI endpoint. Selecting the production
+      URL in _get_api_urls() will cause every name-based call to
+      fail with HTTP 404 until either:
+        (a) the production deployment adds /bulk-lookup, or
+        (b) this code falls back to the single-string /lookup.
 
     Which URLs are used depends on the ARAX maturity setting:
     production maturity uses production URLs, everything else
@@ -94,10 +103,21 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         # Since we now hit external APIs instead of a local DB,
         # connection reuse and caching matter a lot more.
         # requests.Session keeps TCP connections alive across
-        # calls to the same host, avoiding repeated TLS
-        # handshakes.
+        # calls to the same host for the Node Normalizer.
         self._session = requests.Session()
         self._session.headers.update({'accept': 'application/json'})
+
+        # The Name Resolver uses httpx instead of requests because
+        # urllib3 falls over after ~7 sustained POSTs to
+        # /bulk-lookup on the CI endpoint (connection pool state
+        # corruption; requests hang indefinitely afterwards).
+        # httpx with its own httpcore pool does not exhibit this.
+        # Verified by a curl vs requests vs httpx comparison on
+        
+        self._httpx_client = httpx.Client(
+            timeout=httpx.Timeout(60.0, connect=10.0),
+            headers={"accept": "application/json"},
+        )
 
         # In-memory CURIE cache: the old SQLite was essentially
         # an on-disk cache. With APIs, repeated lookups for the
@@ -883,33 +903,80 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         which is the closest equivalent to the old SQLite
         strategy of collapsing ambiguous names to one cluster.
 
-        Batches at 1000 names per request to avoid timeouts
-        (important for NGD builds that can send ~8M names).
+        Uses httpx rather than requests. urllib3 hangs
+        indefinitely after ~7 sustained POSTs to /bulk-lookup
+        on the CI endpoint, while httpx works reliably with
+        the same payload. See constructor comment for details.
+
+        Batch size is 50 names per request. This was chosen
+        after empirical benchmarking on 2026-04 against
+        name-lookup.ci.transltr.io:
+          - batch=10   completes in ~1s   (sweet spot but slow)
+          - batch=50   completes in ~4s   (best throughput)
+          - batch=75   inconsistent, occasional hangs
+          - batch=100+ hits server 60s read timeout
+        50 gives us the most names per request that still
+        comes back in well under the 15s client timeout, which
+        keeps retries cheap and avoids upstream gateway drops.
+
+        Retry strategy: up to 3 attempts with 3s, 6s, 10s
+        backoff between them. If all 3 attempts fail, the
+        httpx client is closed and rebuilt (new TCP connection
+        and connection pool) and a brief cooldown is applied
+        before continuing with the next batch. This recovers
+        from any lingering connection pool state.
         """
         if not names:
             return {}
 
         results: dict[str, str | None] = {}
-        batch_size = 1000
-        max_retries = 3
+        batch_size = 50
+        # Per-request timeout. We intentionally keep this
+        # shorter than the ~60s server-side ceiling so that
+        # the retry+cooldown path engages quickly instead of
+        # blocking on a hung connection.
+        request_timeout = 15.0
+        # Progressive delays between retry attempts for a
+        # single failing batch: 3s → 6s → 10s.
+        retry_delays = [3.0, 6.0, 10.0]
+        # Longer cooldown after all retries exhaust + a fresh
+        # httpx client is built, before moving on.
+        full_failure_cooldown = 15.0
 
         total = len(names)
+        failed_batches = 0
+        last_error: Optional[str] = None
+
         for i in range(0, total, batch_size):
             if (total > batch_size
                     and i % 100_000 == 0 and i > 0):
                 print("Name Resolver progress:"
                       f" {i}/{total} names processed")
             batch = names[i:i + batch_size]
-            for attempt in range(1, max_retries + 1):
+
+            batch_succeeded = False
+            for attempt_idx, delay in enumerate(retry_delays):
                 try:
-                    response = self._session.post(
+                    # Send the full documented payload. Optional
+                    # fields must be present explicitly; the
+                    # server behaves inconsistently when they
+                    # are omitted.
+                    response = self._httpx_client.post(
                         f"{self.name_resolver_url}"
                         "/bulk-lookup",
                         json={
                             "strings": batch,
                             "autocomplete": self._autocomplete,
-                            "limit": 1},
-                        timeout=60)
+                            "highlighting": False,
+                            "offset": 0,
+                            "limit": 1,
+                            "biolink_types": [],
+                            "only_prefixes": "",
+                            "exclude_prefixes": "",
+                            "only_taxa": "",
+                        },
+                        timeout=request_timeout,
+                    )
                     response.raise_for_status()
                     data = response.json()
                     for name in batch:
@@ -917,15 +984,44 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                         results[name] = (
                             candidates[0]["curie"]
                             if candidates else None)
+                    batch_succeeded = True
                     break
-                except requests.exceptions.RequestException as e:
-                    if attempt < max_retries:
+                except httpx.HTTPError as e:
+                    last_error = str(e)
+                    # If there are more retry slots left,
+                    # wait the progressive delay and retry.
+                    # On the last slot we fall through to the
+                    # full-failure recovery path below.
+                    if attempt_idx < len(retry_delays) - 1:
+                        time.sleep(delay)
                         continue
-                    for name in batch:
-                        results[name] = None
-                    if len(names) <= 10:
-                        print("Warning: Name Resolver API"
-                              f" call failed: {e}")
+
+            if not batch_succeeded:
+                # All retries exhausted for this batch. Mark
+                # every name in the batch as unresolved, tear
+                # down the current httpx client (new TCP
+                # connection pool), wait for a cooldown, and
+                # move on so the next batch has a clean slate.
+                for name in batch:
+                    results[name] = None
+                failed_batches += 1
+                try:
+                    self._httpx_client.close()
+                except Exception:  # pylint: disable=broad-except
+                    pass
+                self._httpx_client = httpx.Client(
+                    timeout=httpx.Timeout(
+                        request_timeout, connect=10.0),
+                    headers={"accept": "application/json"},
+                )
+                time.sleep(full_failure_cooldown)
+
+        if failed_batches > 0:
+            failed_names = failed_batches * batch_size
+            print(
+                f"Warning: Name Resolver API had {failed_batches}"
+                f" failed batches (~{failed_names} names set to"
+                f" None). Last error: {last_error}")
 
         return results
 
