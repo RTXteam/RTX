@@ -74,7 +74,9 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                  thread_safe: bool = False,
                  log_api_failures: bool = False,
                  max_api_retries: int = 3,
-                 retry_backoff: bool = False):
+                 retry_backoff: bool = False,
+                 name_resolver_batch_size: int = 1000,
+                 name_resolver_timeout: int = 60):
         # sqlite_file_name: kept for interface compat so existing
         # callers don't break. The new implementation ignores it
         # entirely — no local database is used.
@@ -107,6 +109,8 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         self._log_api_failures = log_api_failures
         self._max_api_retries = max_api_retries
         self._retry_backoff = retry_backoff
+        self._name_resolver_batch_size = name_resolver_batch_size
+        self._name_resolver_timeout = name_resolver_timeout
         self._cache_lock = threading.Lock() if thread_safe else None
 
         self.rtx_config = RTXConfiguration()
@@ -978,7 +982,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
             return {}
 
         results: dict[str, str | None] = {}
-        batch_size = 1000
+        batch_size = self._name_resolver_batch_size
         max_retries = max(self._max_api_retries, 1)
 
         total = len(names)
@@ -997,7 +1001,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                             "strings": batch,
                             "autocomplete": self._autocomplete,
                             "limit": 1},
-                        timeout=60)
+                        timeout=self._name_resolver_timeout)
                     response.raise_for_status()
                     data = response.json()
                     for name in batch:
