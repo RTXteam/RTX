@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
-"""Benchmark NodeSynonymizer at different batch sizes and concurrency levels."""
-import concurrent.futures
+"""Benchmark resolving 1000 names through NodeSynonymizer in small batches."""
 import os
 import sqlite3
 import sys
-import threading
 import time
 
 from tqdm import tqdm
@@ -16,120 +14,49 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'N
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from node_synonymizer import NodeSynonymizer
 
-# Grab concept names from the staging table
+# Grab 1000 names from the staging table
 NGD_DIR = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'ngd'])
 db_path = os.path.join(NGD_DIR, 'conceptname_to_pmids.sqlite')
 
-# Test configs: (batch_size, num_workers, total_names)
-# Focus on small batch sizes (~25 names per call) which matches
-# what the synonymizer team's own tests use to verify the API
-# works. Sweep workers to find the best concurrency level.
-test_configs = [
-    # batch_size 25 worker sweep (matches the size their tests use)
-    (25, 1,  10000),
-    (25, 3,  10000),
-    (25, 5,  10000),
-    (25, 7,  10000),
-    (25, 10, 10000),
-    # batch_size 50 for comparison
-    (50, 1,  10000),
-    (50, 5,  10000),
-    (50, 10, 10000),
-]
-
-# Pull enough names so each test gets a unique slice (avoid server-side caching)
-total_needed = sum(cfg[2] for cfg in test_configs)
-print(f"Need {total_needed} unique names across {len(test_configs)} tests")
+TOTAL_NAMES = 1000
 
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
-cursor.execute("SELECT concept_name FROM staging LIMIT ?", (total_needed,))
-names = [row[0] for row in cursor.fetchall()]
+cursor.execute("SELECT concept_name FROM staging LIMIT ?", (TOTAL_NAMES,))
+# Strip whitespace in case the staging table still has dirty data
+names = [row[0].strip() for row in cursor.fetchall() if row[0] and row[0].strip()]
 conn.close()
-print(f"Sampled {len(names)} concept names\n")
+print(f"Pulled {len(names)} clean names from staging\n")
 
-if len(names) < total_needed:
-    print(f"ERROR: Only got {len(names)} names but need {total_needed}")
-    sys.exit(1)
+synonymizer = NodeSynonymizer(autocomplete=False)
+print(f"Name resolver URL: {synonymizer.name_resolver_url}")
+print(f"Node normalizer URL: {synonymizer.api_base_url}\n")
 
-bench_results = []
-name_offset = 0
-
-for batch_size, num_workers, total_names in test_configs:
-    test_names = names[name_offset:name_offset + total_names]
-    name_offset += total_names
-    name_batches = [test_names[i:i + batch_size]
-                    for i in range(0, total_names, batch_size)]
+# Test multiple small batch sizes since the API works fine at small sizes
+for batch_size in [1, 5, 10, 25, 50]:
+    name_batches = [names[i:i + batch_size]
+                    for i in range(0, len(names), batch_size)]
     num_batches = len(name_batches)
 
-    # Fresh synonymizer each time so cache doesn't help.
-    synonymizer = NodeSynonymizer(autocomplete=False)
-
-    label = f"batch={batch_size}, workers={num_workers}"
-    print(f"--- {label} ({num_batches} API calls for {total_names} names) ---")
-
+    print(f"--- batch_size={batch_size} ({num_batches} sequential calls) ---")
     results = {}
-    results_lock = threading.Lock()
     errors = 0
     start = time.time()
 
-    def resolve_batch(batch):
+    for batch in tqdm(name_batches, desc=f"  batch={batch_size}", unit="call"):
         try:
-            return synonymizer.get_canonical_curies(names=batch)
-        except Exception:
-            return "ERROR"
-
-    if num_workers == 1:
-        # Sequential
-        for batch in tqdm(name_batches, desc=f"  {label}", unit="call"):
-            result = resolve_batch(batch)
-            if result == "ERROR":
-                errors += 1
-            elif result:
+            result = synonymizer.get_canonical_curies(names=batch)
+            if result:
                 results.update(result)
-    else:
-        # Concurrent
-        pbar = tqdm(total=num_batches, desc=f"  {label}", unit="call")
-        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-            futures = {executor.submit(resolve_batch, batch): batch
-                       for batch in name_batches}
-            for future in concurrent.futures.as_completed(futures):
-                result = future.result()
-                if result == "ERROR":
-                    errors += 1
-                elif result:
-                    with results_lock:
-                        results.update(result)
-                pbar.update(1)
-        pbar.close()
+        except Exception as e:
+            errors += 1
+            print(f"  error: {e}")
 
     elapsed = time.time() - start
     recognized = sum(1 for v in results.values() if v and v.get('preferred_curie'))
-    none_values = sum(1 for v in results.values() if v is None)
+    nulls = sum(1 for v in results.values() if v is None)
 
-    bench_results.append({
-        "batch_size": batch_size,
-        "workers": num_workers,
-        "total_names": total_names,
-        "num_calls": num_batches,
-        "total_time": elapsed,
-        "names_per_sec": total_names / elapsed,
-        "avg_time_per_name": elapsed / total_names,
-        "recognized": recognized,
-        "none_values": none_values,
-        "errors": errors,
-    })
-    print(f"  -> {recognized} recognized, {none_values} None values, {errors} errors\n")
-
-# Summary report
-print("=" * 120)
-print("BENCHMARK SUMMARY")
-print("=" * 120)
-print(f"{'Batch':>6} {'Workers':>8} {'Names':>8} {'Calls':>8} {'Total (s)':>10} "
-      f"{'Names/sec':>10} {'ms/name':>10} {'Recognized':>14} {'NullVals':>10} {'Errors':>8}")
-print("-" * 120)
-for r in bench_results:
-    print(f"{r['batch_size']:>6} {r['workers']:>8} {r['total_names']:>8} {r['num_calls']:>8} "
-          f"{r['total_time']:>10.1f} {r['names_per_sec']:>10.1f} {r['avg_time_per_name']*1000:>10.2f} "
-          f"{r['recognized']}/{r['total_names']:<6} {r['none_values']:>10} {r['errors']:>8}")
-print("=" * 120)
+    print(f"  Total: {elapsed:.1f}s | {len(names)/elapsed:.0f} names/sec | "
+          f"{elapsed/len(names)*1000:.1f}ms/name")
+    print(f"  Recognized: {recognized}/{len(names)} ({recognized/len(names)*100:.1f}%)")
+    print(f"  Nulls: {nulls} | Errors: {errors}\n")

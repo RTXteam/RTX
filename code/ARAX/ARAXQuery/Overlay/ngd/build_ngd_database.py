@@ -72,7 +72,10 @@ def _parse_one_pubmed_file(file_path):
                     article.xpath(f"{mc}/GeneSymbolList/GeneSymbol/text()") +
                     article.xpath(f"{mc}/KeywordList/Keyword/text()")
                 )
-                for concept_name in {cn for cn in all_concept_names if cn}:
+                # Strip leading/trailing whitespace (PubMed XML
+                # often has tabs/newlines) so the synonymizer
+                # gets clean strings to resolve.
+                for concept_name in {cn.strip() for cn in all_concept_names if cn and cn.strip()}:
                     rows.append((concept_name, pmid_curie))
                 article.clear()
                 while article.getprevious() is not None:
