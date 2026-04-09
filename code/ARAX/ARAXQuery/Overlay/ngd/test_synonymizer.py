@@ -4,8 +4,8 @@ import concurrent.futures
 import os
 import sqlite3
 import sys
-import time
 import threading
+import time
 
 from tqdm import tqdm
 
@@ -16,7 +16,7 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'N
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from node_synonymizer import NodeSynonymizer
 
-# Grab 100,000 concept names from the staging table
+# Grab concept names from the staging table
 NGD_DIR = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'ngd'])
 db_path = os.path.join(NGD_DIR, 'conceptname_to_pmids.sqlite')
 
@@ -64,19 +64,7 @@ for batch_size, num_workers, total_names in test_configs:
     num_batches = len(name_batches)
 
     # Fresh synonymizer each time so cache doesn't help.
-    # Opt into all the new robustness flags so failures
-    # are visible and concurrent calls don't double-fetch.
-    synonymizer = NodeSynonymizer(
-        autocomplete=False,
-        thread_safe=(num_workers > 1),
-        log_api_failures=True,
-        max_api_retries=3,
-        retry_backoff=True,
-        name_resolver_batch_size=200,
-        name_resolver_timeout=60,
-        node_normalizer_url="https://nodenorm.transltr.io/1.5",
-        name_resolver_url="https://name-resolution-sri.renci.org",
-    )
+    synonymizer = NodeSynonymizer(autocomplete=False)
 
     label = f"batch={batch_size}, workers={num_workers}"
     print(f"--- {label} ({num_batches} API calls for {total_names} names) ---")
@@ -84,13 +72,11 @@ for batch_size, num_workers, total_names in test_configs:
     results = {}
     results_lock = threading.Lock()
     errors = 0
-    empty_results = 0  # diagnostic: API returned but with nothing useful
     start = time.time()
 
     def resolve_batch(batch):
         try:
-            return synonymizer.get_canonical_curies(
-                names=batch, skip_malformed=True)
+            return synonymizer.get_canonical_curies(names=batch)
         except Exception:
             return "ERROR"
 
@@ -100,9 +86,7 @@ for batch_size, num_workers, total_names in test_configs:
             result = resolve_batch(batch)
             if result == "ERROR":
                 errors += 1
-            elif not result:
-                empty_results += 1
-            else:
+            elif result:
                 results.update(result)
     else:
         # Concurrent
@@ -114,9 +98,7 @@ for batch_size, num_workers, total_names in test_configs:
                 result = future.result()
                 if result == "ERROR":
                     errors += 1
-                elif not result:
-                    empty_results += 1
-                else:
+                elif result:
                     with results_lock:
                         results.update(result)
                 pbar.update(1)
@@ -124,8 +106,7 @@ for batch_size, num_workers, total_names in test_configs:
 
     elapsed = time.time() - start
     recognized = sum(1 for v in results.values() if v and v.get('preferred_curie'))
-    returned_no_curie = sum(1 for v in results.values() if v and not v.get('preferred_curie'))
-    none_values = sum(1 for v in results.values() if v is None)  # silent API failures
+    none_values = sum(1 for v in results.values() if v is None)
 
     bench_results.append({
         "batch_size": batch_size,
@@ -136,24 +117,20 @@ for batch_size, num_workers, total_names in test_configs:
         "names_per_sec": total_names / elapsed,
         "avg_time_per_name": elapsed / total_names,
         "recognized": recognized,
-        "no_curie": returned_no_curie,
         "none_values": none_values,
         "errors": errors,
-        "empty": empty_results,
     })
-    print(f"  -> {recognized} recognized, {returned_no_curie} returned-no-curie, "
-          f"{none_values} None values (silent API failures), "
-          f"{errors} errors, {empty_results} empty responses\n")
+    print(f"  -> {recognized} recognized, {none_values} None values, {errors} errors\n")
 
 # Summary report
-print("=" * 130)
+print("=" * 120)
 print("BENCHMARK SUMMARY")
-print("=" * 130)
+print("=" * 120)
 print(f"{'Batch':>6} {'Workers':>8} {'Names':>8} {'Calls':>8} {'Total (s)':>10} "
-      f"{'Names/sec':>10} {'ms/name':>10} {'Recognized':>14} {'NoCurie':>10} {'NullVals':>10} {'Errors':>8}")
-print("-" * 130)
+      f"{'Names/sec':>10} {'ms/name':>10} {'Recognized':>14} {'NullVals':>10} {'Errors':>8}")
+print("-" * 120)
 for r in bench_results:
     print(f"{r['batch_size']:>6} {r['workers']:>8} {r['total_names']:>8} {r['num_calls']:>8} "
           f"{r['total_time']:>10.1f} {r['names_per_sec']:>10.1f} {r['avg_time_per_name']*1000:>10.2f} "
-          f"{r['recognized']}/{r['total_names']:<6} {r['no_curie']:>10} {r['none_values']:>10} {r['errors']:>8}")
-print("=" * 130)
+          f"{r['recognized']}/{r['total_names']:<6} {r['none_values']:>10} {r['errors']:>8}")
+print("=" * 120)
