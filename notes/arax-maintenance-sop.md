@@ -266,7 +266,9 @@ cd ARAX_DEV_DIR/issue-XXX/RTX
 ```
 The procedure will take about 15 minutes to complete. All standard unit tests should pass, or your
 locally installed ARAX is not in a "known good" state (and you should work on troubleshooting
-the broken unit test before proceeding). 
+the broken unit test before proceeding). Note, you should not run this test suite using
+`pytest --cache-clear -v`from within the `RTX/code` directory, as pytest will get confused
+and try to run the test files in `UI/OpenAPI/python-flask-server/openapi_server/test`.
 
 #### Running the example queries in the ARAX flask server locally
 1. Start the flask server locally, _exactly_ as follows:
