@@ -12,7 +12,6 @@ without hitting API errors or timeouts, so we can configure build_ngd_database.p
 for the full 8.6M name workload.
 
 Usage: python test_synonymizer.py [--names N] [--workers W1,W2,...] [--batches B1,B2,...]
-       python test_synonymizer.py --diagnose [--names N]
 """
 import argparse
 import concurrent.futures
@@ -33,6 +32,9 @@ from node_synonymizer import NodeSynonymizer
 
 NGD_DIR = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Overlay', 'ngd'])
 DB_PATH = os.path.join(NGD_DIR, 'conceptname_to_pmids.sqlite')
+
+# How many sample names to print per category in each run
+SAMPLE_SIZE = 5
 
 
 def load_names(n):
@@ -99,32 +101,11 @@ def run_concurrent(synonymizer, names, batch_size, num_workers):
     return results, errors
 
 
-def print_stats(label, results, errors, elapsed, total_names):
-    """Print a formatted stats line."""
-    recognized = sum(1 for v in results.values() if v and v.get('preferred_curie'))
-    nulls = sum(1 for v in results.values() if v is None)
-    nps = total_names / elapsed if elapsed > 0 else 0
-    ms_per = elapsed / total_names * 1000 if total_names > 0 else 0
-    pct = recognized / total_names * 100 if total_names > 0 else 0
-
-    print(f"  {label}")
-    print(f"    Time: {elapsed:.1f}s | {nps:.0f} names/sec | {ms_per:.1f}ms/name")
-    print(f"    Recognized: {recognized}/{total_names} ({pct:.1f}%)")
-    print(f"    Nulls: {nulls} | Errors: {errors}")
-
-
-def run_diagnose(synonymizer, names):
-    """Run all names through get_canonical_curies and write detailed results
-    so you can inspect exactly what was sent and what came back."""
-    print("Running diagnostic pass (all names in one call)...\n")
-
-    start = time.time()
-    results = synonymizer.get_canonical_curies(names=names)
-    elapsed = time.time() - start
-
+def classify_results(names, results):
+    """Classify each name into recognized/null/empty/missing."""
     recognized = []
     nulls = []
-    empty = []  # returned a dict but no preferred_curie
+    empty = []
 
     for name in names:
         val = results.get(name)
@@ -140,51 +121,48 @@ def run_diagnose(synonymizer, names):
         else:
             empty.append({'input_name': name, 'result': val})
 
-    # Names that were sent but aren't even in the results dict
     missing = [n for n in names if n not in results]
+    return recognized, nulls, empty, missing
 
-    print(f"Time: {elapsed:.1f}s")
-    print(f"Recognized: {len(recognized)}/{len(names)} ({len(recognized)/len(names)*100:.1f}%)")
-    print(f"Null (name resolver found nothing): {len(nulls)}")
-    print(f"Empty (resolved but no preferred_curie): {len(empty)}")
-    print(f"Missing from results entirely: {len(missing)}")
 
-    # Print samples to terminal
-    print(f"\n--- Sample RECOGNIZED names (first 10) ---")
-    for r in recognized[:10]:
-        print(f"  '{r['input_name']}' -> {r['preferred_curie']} ({r['preferred_name']})")
+def print_stats(label, names, results, errors, elapsed):
+    """Print performance stats and sample inputs/outputs for a single run."""
+    total_names = len(names)
+    recognized, nulls, empty, missing = classify_results(names, results)
 
-    print(f"\n--- Sample NULL names (first 20) ---")
-    for name in nulls[:20]:
-        print(f"  '{name}'")
+    nps = total_names / elapsed if elapsed > 0 else 0
+    ms_per = elapsed / total_names * 1000 if total_names > 0 else 0
+    pct = len(recognized) / total_names * 100 if total_names > 0 else 0
 
+    print(f"  {label}")
+    print(f"    Time: {elapsed:.1f}s | {nps:.0f} names/sec | {ms_per:.1f}ms/name")
+    print(f"    Recognized: {len(recognized)}/{total_names} ({pct:.1f}%)")
+    print(f"    Nulls: {len(nulls)} | Empty: {len(empty)} | Missing: {len(missing)} | Errors: {errors}")
+
+    # Sample recognized
+    if recognized:
+        print(f"    Sample recognized ({min(SAMPLE_SIZE, len(recognized))} of {len(recognized)}):")
+        for r in recognized[:SAMPLE_SIZE]:
+            print(f"      '{r['input_name']}' -> {r['preferred_curie']} ({r['preferred_name']})")
+
+    # Sample nulls
+    if nulls:
+        print(f"    Sample nulls ({min(SAMPLE_SIZE, len(nulls))} of {len(nulls)}):")
+        for name in nulls[:SAMPLE_SIZE]:
+            print(f"      '{name}' -> None")
+
+    # Sample empty (resolved but no preferred_curie)
     if empty:
-        print(f"\n--- Sample EMPTY names (first 10) ---")
-        for e in empty[:10]:
-            print(f"  '{e['input_name']}' -> {e['result']}")
+        print(f"    Sample empty ({min(SAMPLE_SIZE, len(empty))} of {len(empty)}):")
+        for e in empty[:SAMPLE_SIZE]:
+            print(f"      '{e['input_name']}' -> {e['result']}")
 
-    if missing:
-        print(f"\n--- Sample MISSING names (first 10) ---")
-        for name in missing[:10]:
-            print(f"  '{name}'")
-
-    # Write full details to JSON for deeper inspection
-    output_path = os.path.join(NGD_DIR, 'diagnose_results.json')
-    diag = {
-        'total_names': len(names),
-        'elapsed_seconds': round(elapsed, 2),
-        'recognized_count': len(recognized),
-        'null_count': len(nulls),
-        'empty_count': len(empty),
-        'missing_count': len(missing),
+    return {
         'recognized': recognized,
         'null_names': nulls,
         'empty_results': empty,
         'missing_names': missing,
     }
-    with open(output_path, 'w') as f:
-        json.dump(diag, f, indent=2)
-    print(f"\nFull diagnostics written to {output_path}")
 
 
 def main():
@@ -196,9 +174,10 @@ def main():
                         help="Comma-separated list of worker counts to test (default: 1,5,10,15)")
     parser.add_argument("--batches", type=str, default="50,250,500,1000",
                         help="Comma-separated list of batch sizes to test (default: 50,250,500,1000)")
-    parser.add_argument("--diagnose", action="store_true", default=False,
-                        help="Run a single batch and write detailed diagnostics to diagnose_results.json")
     args = parser.parse_args()
+
+    worker_counts = [int(x) for x in args.workers.split(",")]
+    batch_sizes = [int(x) for x in args.batches.split(",")]
 
     names = load_names(args.names)
     total_names = len(names)
@@ -208,16 +187,9 @@ def main():
     print(f"Node normalizer URL: {synonymizer.api_base_url}")
     print(f"Testing with {total_names} names\n")
 
-    # ── Diagnose mode ──
-    if args.diagnose:
-        run_diagnose(synonymizer, names)
-        return
-
-    worker_counts = [int(x) for x in args.workers.split(",")]
-    batch_sizes = [int(x) for x in args.batches.split(",")]
-
-    # Collect results for summary table
+    # Collect results for summary table and diagnostics file
     summary = []
+    all_diagnostics = []
 
     # ── Phase 1: Sequential baseline ──
     print("=" * 70)
@@ -232,13 +204,20 @@ def main():
         results, errors = run_sequential(synonymizer, names, batch_size)
         elapsed = time.time() - start
 
-        print_stats(label, results, errors, elapsed, total_names)
+        details = print_stats(label, names, results, errors, elapsed)
         nps = total_names / elapsed if elapsed > 0 else 0
-        recognized = sum(1 for v in results.values() if v and v.get('preferred_curie'))
+        recognized = len(details['recognized'])
         summary.append({
             'workers': 1, 'batch_size': batch_size,
             'elapsed': elapsed, 'nps': nps,
             'recognized': recognized, 'errors': errors
+        })
+        all_diagnostics.append({
+            'config': {'workers': 1, 'batch_size': batch_size},
+            'elapsed': round(elapsed, 2),
+            'names_per_sec': round(nps, 1),
+            'errors': errors,
+            **details,
         })
 
     # ── Phase 2: Concurrent (ThreadPoolExecutor) ──
@@ -259,13 +238,20 @@ def main():
             results, errors = run_concurrent(syn, names, batch_size, num_workers)
             elapsed = time.time() - start
 
-            print_stats(label, results, errors, elapsed, total_names)
+            details = print_stats(label, names, results, errors, elapsed)
             nps = total_names / elapsed if elapsed > 0 else 0
-            recognized = sum(1 for v in results.values() if v and v.get('preferred_curie'))
+            recognized = len(details['recognized'])
             summary.append({
                 'workers': num_workers, 'batch_size': batch_size,
                 'elapsed': elapsed, 'nps': nps,
                 'recognized': recognized, 'errors': errors
+            })
+            all_diagnostics.append({
+                'config': {'workers': num_workers, 'batch_size': batch_size},
+                'elapsed': round(elapsed, 2),
+                'names_per_sec': round(nps, 1),
+                'errors': errors,
+                **details,
             })
 
     # ── Summary table ──
@@ -289,6 +275,12 @@ def main():
     print(f"  num_workers = {best['workers']}")
     print(f"  batch_size  = {best['batch_size']}")
     print(f"  ({best['nps']:.0f} names/sec → ~{8_600_000 / best['nps'] / 60:.0f} min for 8.6M names)")
+
+    # ── Write full diagnostics to file ──
+    output_path = os.path.join(NGD_DIR, 'diagnose_results.json')
+    with open(output_path, 'w') as f:
+        json.dump(all_diagnostics, f, indent=2)
+    print(f"\nFull diagnostics for all runs written to {output_path}")
 
 
 if __name__ == '__main__':
