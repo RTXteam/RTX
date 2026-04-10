@@ -12,9 +12,11 @@ without hitting API errors or timeouts, so we can configure build_ngd_database.p
 for the full 8.6M name workload.
 
 Usage: python test_synonymizer.py [--names N] [--workers W1,W2,...] [--batches B1,B2,...]
+       python test_synonymizer.py --diagnose [--names N]
 """
 import argparse
 import concurrent.futures
+import json
 import os
 import sqlite3
 import sys
@@ -111,6 +113,80 @@ def print_stats(label, results, errors, elapsed, total_names):
     print(f"    Nulls: {nulls} | Errors: {errors}")
 
 
+def run_diagnose(synonymizer, names):
+    """Run all names through get_canonical_curies and write detailed results
+    so you can inspect exactly what was sent and what came back."""
+    print("Running diagnostic pass (all names in one call)...\n")
+
+    start = time.time()
+    results = synonymizer.get_canonical_curies(names=names)
+    elapsed = time.time() - start
+
+    recognized = []
+    nulls = []
+    empty = []  # returned a dict but no preferred_curie
+
+    for name in names:
+        val = results.get(name)
+        if val is None:
+            nulls.append(name)
+        elif val.get('preferred_curie'):
+            recognized.append({
+                'input_name': name,
+                'preferred_curie': val['preferred_curie'],
+                'preferred_name': val.get('preferred_name'),
+                'preferred_category': val.get('preferred_category'),
+            })
+        else:
+            empty.append({'input_name': name, 'result': val})
+
+    # Names that were sent but aren't even in the results dict
+    missing = [n for n in names if n not in results]
+
+    print(f"Time: {elapsed:.1f}s")
+    print(f"Recognized: {len(recognized)}/{len(names)} ({len(recognized)/len(names)*100:.1f}%)")
+    print(f"Null (name resolver found nothing): {len(nulls)}")
+    print(f"Empty (resolved but no preferred_curie): {len(empty)}")
+    print(f"Missing from results entirely: {len(missing)}")
+
+    # Print samples to terminal
+    print(f"\n--- Sample RECOGNIZED names (first 10) ---")
+    for r in recognized[:10]:
+        print(f"  '{r['input_name']}' -> {r['preferred_curie']} ({r['preferred_name']})")
+
+    print(f"\n--- Sample NULL names (first 20) ---")
+    for name in nulls[:20]:
+        print(f"  '{name}'")
+
+    if empty:
+        print(f"\n--- Sample EMPTY names (first 10) ---")
+        for e in empty[:10]:
+            print(f"  '{e['input_name']}' -> {e['result']}")
+
+    if missing:
+        print(f"\n--- Sample MISSING names (first 10) ---")
+        for name in missing[:10]:
+            print(f"  '{name}'")
+
+    # Write full details to JSON for deeper inspection
+    output_path = os.path.join(NGD_DIR, 'diagnose_results.json')
+    diag = {
+        'total_names': len(names),
+        'elapsed_seconds': round(elapsed, 2),
+        'recognized_count': len(recognized),
+        'null_count': len(nulls),
+        'empty_count': len(empty),
+        'missing_count': len(missing),
+        'recognized': recognized,
+        'null_names': nulls,
+        'empty_results': empty,
+        'missing_names': missing,
+    }
+    with open(output_path, 'w') as f:
+        json.dump(diag, f, indent=2)
+    print(f"\nFull diagnostics written to {output_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Benchmark NodeSynonymizer for build_ngd_database.py tuning")
@@ -120,10 +196,9 @@ def main():
                         help="Comma-separated list of worker counts to test (default: 1,5,10,15)")
     parser.add_argument("--batches", type=str, default="50,250,500,1000",
                         help="Comma-separated list of batch sizes to test (default: 50,250,500,1000)")
+    parser.add_argument("--diagnose", action="store_true", default=False,
+                        help="Run a single batch and write detailed diagnostics to diagnose_results.json")
     args = parser.parse_args()
-
-    worker_counts = [int(x) for x in args.workers.split(",")]
-    batch_sizes = [int(x) for x in args.batches.split(",")]
 
     names = load_names(args.names)
     total_names = len(names)
@@ -132,6 +207,14 @@ def main():
     print(f"\nName resolver URL: {synonymizer.name_resolver_url}")
     print(f"Node normalizer URL: {synonymizer.api_base_url}")
     print(f"Testing with {total_names} names\n")
+
+    # ── Diagnose mode ──
+    if args.diagnose:
+        run_diagnose(synonymizer, names)
+        return
+
+    worker_counts = [int(x) for x in args.workers.split(",")]
+    batch_sizes = [int(x) for x in args.batches.split(",")]
 
     # Collect results for summary table
     summary = []
