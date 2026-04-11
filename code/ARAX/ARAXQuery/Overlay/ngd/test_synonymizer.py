@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-Read concept names from a text file (one per line), send each one-by-one
-to _call_name_resolver_api (skipping the redundant Node Normalizer step),
-and report success/null rates with full results for visual inspection.
+Performance test for batched concurrent name resolution
+(ThreadPoolExecutor, 50 names/batch, 10 workers).
 
 Generate the input file first:
     python extract_sample_names.py
 
 Usage:
-    python test_synonymizer_sample.py [--names-file PATH]
+    python test_synonymizer.py [--names-file PATH]
 """
 import argparse
-import csv
+import concurrent.futures
 import os
 import sys
 import time
@@ -38,7 +37,7 @@ def load_names(names_file: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="One-by-one name resolver test")
+    parser = argparse.ArgumentParser(description="Name resolver performance test")
     parser.add_argument(
         "--names-file", type=str,
         default=os.path.join(NGD_DIR, "sample_names.txt"),
@@ -48,96 +47,47 @@ def main():
     names = load_names(args.names_file)
     synonymizer = NodeSynonymizer(autocomplete=False)
 
-    results = []
-    recognized = 0
-    unrecognized = 0
-    errors = 0
-    start_all = time.time()
+    batch_size = 50
+    num_workers = 10
+    batches = [names[i:i + batch_size]
+               for i in range(0, len(names), batch_size)]
 
-    print(f"{'#':<6} {'Status':<8} {'Time':>6}  {'Input Name':<40} {'Resolved CURIE'}")
-    print("-" * 110)
+    print(f"Running batched concurrent: {len(batches)} batches x {batch_size} names, {num_workers} workers...")
+    name_to_curie = {}
+    start = time.time()
 
-    for i, name in enumerate(names):
-        t0 = time.time()
-        try:
-            resp = synonymizer._call_name_resolver_api([name])
-            elapsed = time.time() - t0
-            curie = resp.get(name)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+        future_to_batch = {
+            executor.submit(synonymizer._call_name_resolver_api, batch): batch
+            for batch in batches
+        }
+        for future in concurrent.futures.as_completed(future_to_batch):
+            result = future.result()
+            if result:
+                name_to_curie.update(result)
 
-            if curie:
-                status = "OK"
-                recognized += 1
-            else:
-                status = "NULL"
-                unrecognized += 1
-                curie = None
+    elapsed = time.time() - start
+    resolved = sum(1 for v in name_to_curie.values() if v)
 
-        except Exception as e:
-            elapsed = time.time() - t0
-            status = "ERROR"
-            errors += 1
-            curie = None
+    print(f"\n{'='*50}")
+    print(f"  Total names:   {len(names)}")
+    print(f"  Resolved:      {resolved}/{len(names)} ({resolved/len(names)*100:.1f}%)")
+    print(f"  Wall time:     {elapsed:.2f}s")
+    print(f"  Throughput:    {len(names)/elapsed:.1f} names/sec")
 
-        results.append({
-            "index": i + 1,
-            "name": name,
-            "status": status,
-            "resolved_curie": curie,
-            "elapsed": elapsed,
-        })
+    # Show sample results
+    ok = [(n, c) for n, c in name_to_curie.items() if c]
+    null = [n for n, c in name_to_curie.items() if not c]
 
-        display_input = name[:38] + ".." if len(name) > 40 else name
-        display_curie = (curie or "")[:50]
-        print(f"{i+1:<6} {status:<8} {elapsed:>5.1f}s  {display_input:<40} {display_curie}")
+    if ok:
+        print(f"\n--- Sample resolved (first 10) ---")
+        for name, curie in ok[:10]:
+            print(f"  \"{name}\" -> {curie}")
 
-        if (i + 1) % 100 == 0:
-            elapsed_total = time.time() - start_all
-            rate = (i + 1) / elapsed_total
-            eta = (len(names) - i - 1) / rate if rate > 0 else 0
-            print(f"  --- {i+1}/{len(names)} done, {rate:.1f} names/sec, ETA {eta:.0f}s ---")
-
-    total_time = time.time() - start_all
-    total = len(results)
-
-    print("\n" + "=" * 70)
-    print("SUMMARY")
-    print("=" * 70)
-    print(f"  Total names:       {total}")
-    print(f"  Recognized (OK):   {recognized}  ({recognized/total*100:.1f}%)")
-    print(f"  Unrecognized:      {unrecognized}  ({unrecognized/total*100:.1f}%)")
-    print(f"  Errors:            {errors}  ({errors/total*100:.1f}%)")
-    print(f"  Total wall time:   {total_time:.1f}s")
-    print(f"  Avg time/name:     {total_time/total:.2f}s")
-    print(f"  Throughput:        {total/total_time:.1f} names/sec")
-
-    csv_path = os.path.join(NGD_DIR, "synonymizer_sample_results.csv")
-    with open(csv_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            "index", "name", "status",
-            "resolved_curie", "elapsed",
-        ])
-        writer.writeheader()
-        writer.writerows(results)
-    print(f"\n  Full results written to: {csv_path}")
-
-    ok_rows = [r for r in results if r["status"] == "OK"]
-    null_rows = [r for r in results if r["status"] == "NULL"]
-    error_rows = [r for r in results if r["status"] == "ERROR"]
-
-    if ok_rows:
-        print(f"\n--- Sample RECOGNIZED names (first 10) ---")
-        for r in ok_rows[:10]:
-            print(f"  \"{r['name']}\" -> {r['resolved_curie']}")
-
-    if null_rows:
-        print(f"\n--- Sample UNRECOGNIZED names (first 10) ---")
-        for r in null_rows[:10]:
-            print(f"  \"{r['name']}\"")
-
-    if error_rows:
-        print(f"\n--- Sample ERROR names (first 10) ---")
-        for r in error_rows[:10]:
-            print(f"  \"{r['name']}\"")
+    if null:
+        print(f"\n--- Sample unresolved (first 10) ---")
+        for name in null[:10]:
+            print(f"  \"{name}\"")
 
 
 if __name__ == "__main__":

@@ -375,8 +375,14 @@ class NGDDatabaseBuilder:
 
     def _add_pmids_from_pubmed_scrape(self, out_cursor, out_conn):
         """Loads PubMed concept-name-to-PMID mappings from SQLite,
-        resolves via NodeSynonymizer using parallel threads, and appends
-        curie/pmid rows to the staging table."""
+        resolves names to canonical curies via the Name Resolver API
+        using parallel threads, and appends curie/pmid rows to the
+        staging table.
+
+        Optimization: calls _call_name_resolver_api directly instead of
+        get_canonical_curies, because the Name Resolver already returns
+        canonical curies — the extra Node Normalizer round-trip is
+        unnecessary."""
         logging.info(f"  Loading concept-to-pmids DB ({self.conceptname_to_pmids_db_name})..")
         if not os.path.exists(self.conceptname_to_pmids_db_path):
             logging.error(f"{self.conceptname_to_pmids_db_name} must exist in order to do a partial build. Use "
@@ -404,9 +410,11 @@ class NGDDatabaseBuilder:
         pmids_map = {row[0]: json.loads(row[1]) for row in all_rows}
         del all_rows
 
-        # Resolve concept names to canonical curies using 10 concurrent workers,
-        # each processing batches of 1000 names via the NodeSynonymizer API.
-        batch_size = 1000
+        # Resolve concept names to canonical curies using concurrent workers.
+        # Each batch of 50 names maps to one HTTP request inside
+        # _call_name_resolver_api, so we size batches to match and let the
+        # thread pool handle concurrency.
+        batch_size = 50
         num_workers = 10
         name_batches = [concept_names[i:i + batch_size]
                         for i in range(0, len(concept_names), batch_size)]
@@ -414,25 +422,25 @@ class NGDDatabaseBuilder:
         logging.info(f"  Resolving {len(concept_names)} concept names in {total_batches} batches "
                      f"({num_workers} concurrent workers, {batch_size} names/batch)..")
 
-        canonical_curies_dict = {}
+        name_to_curie = {}
         batches_done = 0
         with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
             future_to_batch = {
-                executor.submit(self.synonymizer.get_canonical_curies, names=batch): batch
+                executor.submit(self.synonymizer._call_name_resolver_api, batch): batch
                 for batch in name_batches
             }
             for future in concurrent.futures.as_completed(future_to_batch):
                 result = future.result()
                 if result:
-                    canonical_curies_dict.update(result)
+                    name_to_curie.update(result)
                 batches_done += 1
                 if batches_done % 500 == 0:
                     logging.info(f"    Resolved {batches_done}/{total_batches} batches..")
 
-        logging.info(f"  Got results back from NodeSynonymizer ({len(canonical_curies_dict)} entries).")
+        logging.info(f"  Got results back from Name Resolver ({len(name_to_curie)} entries).")
 
-        if not canonical_curies_dict:
-            logging.error("NodeSynonymizer didn't return anything!")
+        if not name_to_curie:
+            logging.error("Name Resolver didn't return anything!")
             self.status = 'ERROR'
             return
 
@@ -444,20 +452,19 @@ class NGDDatabaseBuilder:
         unrecognized_names = []
 
         for concept_name in concept_names:
-            canonical_info = canonical_curies_dict.get(concept_name)
-            if not canonical_info or not canonical_info.get('preferred_curie'):
+            curie = name_to_curie.get(concept_name)
+            if not curie:
                 total_unrecognized += 1
                 unrecognized_names.append(concept_name)
                 continue
 
             total_recognized += 1
-            canonical_curie = canonical_info['preferred_curie']
             for pub_id in pmids_map[concept_name]:
                 if pub_id.upper().startswith('PMID'):
                     local_id = pub_id.split(":")[-1] if ":" in pub_id else pub_id[4:]
                     stripped = "".join(c for c in local_id if c.isdigit())
                     if stripped:
-                        staging_rows.append((canonical_curie, int(stripped)))
+                        staging_rows.append((curie, int(stripped)))
 
             # Flush staging rows periodically
             if len(staging_rows) >= 500000:
