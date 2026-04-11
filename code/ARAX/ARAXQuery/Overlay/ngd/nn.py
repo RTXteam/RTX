@@ -37,13 +37,27 @@ print()
 # SYNC via NodeSynonymizer
 start = time.time()
 sync_resolved = 0
+sync_nones = 0
 for i, batch in enumerate(names_batches, 1):
-    print(f'Sending batch #{i}! Here is the sample: {batch}')
+    print(f'Sending #{i} now!')
     result = syn._call_name_resolver_api(batch)
-    print(f'Got back batch #{i}! Here it is: {result}')
-    sync_resolved += sum(1 for v in result.values() if v)
+    t = len(result)
+    x = sum(1 for v in result.values() if v is None)
+    resolved = t - x
+    sync_resolved += resolved
+    sync_nones += x
+    print(f'Got #{i} back! None: {x}, Resolved: {resolved}')
 sync_elapsed = time.time() - start
-print(f'SYNC (sequential):  {sync_elapsed:.2f}s  resolved {sync_resolved}/{len(all_names)}')
+print()
+print(f'{"="*50}')
+print(f'SYNC SUMMARY')
+print(f'{"="*50}')
+print(f'  Total names:    {len(all_names)}')
+print(f'  Resolved:       {sync_resolved}')
+print(f'  Unresolved:     {sync_nones}')
+print(f'  Success rate:   {sync_resolved/len(all_names)*100:.1f}%')
+print(f'  Wall time:      {sync_elapsed:.2f}s')
+print(f'  Throughput:     {len(all_names)/sync_elapsed:.1f} names/sec')
 
 # ASYNC via aiohttp with semaphore (max 5 at a time)
 async def run_async():
