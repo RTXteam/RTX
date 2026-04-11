@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Performance test for batched concurrent name resolution
-(ThreadPoolExecutor, 50 names/batch, 10 workers).
+Performance test for sequential batched name resolution via
+_call_name_resolver_api (50 names per batch, sequential calls).
 
 Generate the input file first:
     python extract_sample_names.py
@@ -10,7 +10,6 @@ Usage:
     python test_synonymizer.py [--names-file PATH]
 """
 import argparse
-import concurrent.futures
 import os
 import sys
 import time
@@ -18,7 +17,7 @@ import time
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
-from node_synonymizer import NodeSynonymizer
+from node_synonymizer import NodeSynonymizer  # type: ignore
 
 NGD_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -48,32 +47,25 @@ def main():
     synonymizer = NodeSynonymizer(autocomplete=False)
 
     batch_size = 50
-    num_workers = 10
     batches = [names[i:i + batch_size]
                for i in range(0, len(names), batch_size)]
 
-    print(f"Running batched concurrent: {len(batches)} batches x {batch_size} names, {num_workers} workers...")
+    print(f"{len(batches)} batches x {batch_size} names = {len(names)} names total")
+    print()
+
     name_to_curie = {}
     start = time.time()
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
-        future_to_batch = {
-            executor.submit(synonymizer._call_name_resolver_api, batch): batch
-            for batch in batches
-        }
-        for future in concurrent.futures.as_completed(future_to_batch):
-            result = future.result()
-            if result:
-                name_to_curie.update(result)
+    for batch in batches:
+        result = synonymizer._call_name_resolver_api(batch)
+        if result:
+            name_to_curie.update(result)
 
     elapsed = time.time() - start
     resolved = sum(1 for v in name_to_curie.values() if v)
 
-    print(f"\n{'='*50}")
-    print(f"  Total names:   {len(names)}")
-    print(f"  Resolved:      {resolved}/{len(names)} ({resolved/len(names)*100:.1f}%)")
-    print(f"  Wall time:     {elapsed:.2f}s")
-    print(f"  Throughput:    {len(names)/elapsed:.1f} names/sec")
+    print(f"SYNC (sequential):  {elapsed:.2f}s  resolved {resolved}/{len(names)}")
+    print(f"Throughput:         {len(names)/elapsed:.1f} names/sec")
 
     # Show sample results
     ok = [(n, c) for n, c in name_to_curie.items() if c]

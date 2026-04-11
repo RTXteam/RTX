@@ -78,7 +78,8 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
     """
 
     def __init__(self, sqlite_file_name: Optional[str] = None,
-                 autocomplete: bool = True):
+                 autocomplete: bool = True,
+                 retry: bool = True):
         # sqlite_file_name: kept for interface compat so existing
         # callers don't break. The new implementation ignores it
         # entirely — no local database is used.
@@ -90,6 +91,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         # False = exact phrase matching, used for NGD builds
         # where we need precise name-to-curie mapping.
         self._autocomplete = autocomplete
+        self._retry = retry
 
         self.rtx_config = RTXConfiguration()
         self.api_base_url, self.name_resolver_url = (
@@ -938,10 +940,11 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         request_timeout = 15.0
         # Progressive delays between retry attempts for a
         # single failing batch: 3s → 6s → 10s.
-        retry_delays = [3.0, 6.0, 10.0]
+        # When retry is disabled, only one attempt is made.
+        retry_delays = [3.0, 6.0, 10.0] if self._retry else [0.0]
         # Longer cooldown after all retries exhaust + a fresh
         # httpx client is built, before moving on.
-        full_failure_cooldown = 15.0
+        full_failure_cooldown = 15.0 if self._retry else 0.0
 
         total = len(names)
         failed_batches = 0
