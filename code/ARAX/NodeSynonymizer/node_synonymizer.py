@@ -987,12 +987,12 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                     nulls = sum(
                         1 for v in batch_curies.values()
                         if not v)
-                    logger.debug(
-                        "batch %d/%d  %.2fs  HTTP %d  "
-                        "resolved %d/%d  null %d",
-                        batch_num, num_batches, elapsed,
-                        response.status_code,
-                        resolved, len(batch), nulls)
+                    logger.info(
+                        "batch %d/%d: resolved %d/%d  "
+                        "%.2fs  HTTP %d",
+                        batch_num, num_batches,
+                        resolved, len(batch),
+                        elapsed, response.status_code)
                     batch_succeeded = True
                     break
                 except requests.exceptions.RequestException as e:
@@ -1064,6 +1064,9 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
             sem = asyncio.Semaphore(self._NR_MAX_CONCURRENT)
             results: dict[str, str | None] = {}
             failed_batches = 0
+            completed_batches = 0
+            total_resolved = 0
+            total_null = 0
             last_error: Optional[str] = None
 
             async with aiohttp.ClientSession(
@@ -1074,6 +1077,8 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                     batch: list[str],
                 ) -> dict[str, str | None]:
                     nonlocal failed_batches, last_error
+                    nonlocal completed_batches
+                    nonlocal total_resolved, total_null
                     async with sem:
                         for attempt in range(
                                 1, self._NR_MAX_RETRIES + 1):
@@ -1102,14 +1107,19 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                                         1 for v in
                                         batch_curies.values()
                                         if not v)
-                                    logger.debug(
-                                        "batch %d/%d  %.2fs  "
-                                        "HTTP %d  resolved "
-                                        "%d/%d  null %d",
-                                        batch_num, num_batches,
-                                        elapsed, resp.status,
-                                        resolved, len(batch),
-                                        nulls)
+                                    completed_batches += 1
+                                    total_resolved += resolved
+                                    total_null += nulls
+                                    logger.info(
+                                        "batch %d/%d: "
+                                        "resolved %d/%d  "
+                                        "%.2fs  HTTP %d",
+                                        batch_num,
+                                        num_batches,
+                                        resolved,
+                                        len(batch),
+                                        elapsed,
+                                        resp.status)
                                     return batch_curies
                             except Exception as e:
                                 elapsed = (
