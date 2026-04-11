@@ -34,55 +34,48 @@ PAYLOAD_BASE = {
 print(f'{len(names_batches)} batches x 50 names = {len(all_names)} names total')
 print()
 
-# SYNC via NodeSynonymizer
-start = time.time()
-sync_resolved = 0
-sync_nones = 0
-for i, batch in enumerate(names_batches, 1):
-    print(f'Sending #{i} now!')
-    result = syn._call_name_resolver_api(batch)
-    t = len(result)
-    x = sum(1 for v in result.values() if v is None)
-    resolved = t - x
-    sync_resolved += resolved
-    sync_nones += x
-    print(f'Got #{i} back! None: {x}, Resolved: {resolved}')
-sync_elapsed = time.time() - start
-print()
-print(f'{"="*50}')
-print(f'SYNC SUMMARY')
-print(f'{"="*50}')
-print(f'  Total names:    {len(all_names)}')
-print(f'  Resolved:       {sync_resolved}')
-print(f'  Unresolved:     {sync_nones}')
-print(f'  Success rate:   {sync_resolved/len(all_names)*100:.1f}%')
-print(f'  Wall time:      {sync_elapsed:.2f}s')
-print(f'  Throughput:     {len(all_names)/sync_elapsed:.1f} names/sec')
-
 # ASYNC via aiohttp with semaphore (max 5 at a time)
 async def run_async():
     sem = asyncio.Semaphore(5)
     total_resolved = 0
+    total_nones = 0
 
     async with aiohttp.ClientSession(headers={'accept': 'application/json'}) as session:
-        async def fetch_batch(batch):
+        async def fetch_batch(batch_num, batch):
             async with sem:
+                print(f'Sending #{batch_num} now!')
                 payload = {**PAYLOAD_BASE, 'strings': batch}
-                async with session.post(URL, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                    data = await resp.json()
-                    return sum(1 for v in data.values() if v)
+                try:
+                    async with session.post(URL, json=payload, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+                        data = await resp.json()
+                        t = len(data)
+                        x = sum(1 for v in data.values() if not v)
+                        resolved = t - x
+                        print(f'Got #{batch_num} back! None: {x}, Resolved: {resolved}')
+                        return resolved, x
+                except Exception as e:
+                    print(f'Got #{batch_num} back! FAILED: {e}')
+                    return 0, len(batch)
 
-        tasks = [fetch_batch(batch) for batch in names_batches]
+        tasks = [fetch_batch(i, batch) for i, batch in enumerate(names_batches, 1)]
         results = await asyncio.gather(*tasks)
-        total_resolved = sum(results)
+        total_resolved = sum(r for r, _ in results)
+        total_nones = sum(n for _, n in results)
 
-    return total_resolved
+    return total_resolved, total_nones
 
 
 start = time.time()
-async_resolved = asyncio.run(run_async())
+async_resolved, async_nones = asyncio.run(run_async())
 async_elapsed = time.time() - start
-print(f'ASYNC (concurrent): {async_elapsed:.2f}s  resolved {async_resolved}/{len(all_names)}')
 
 print()
-print(f'Speedup: {sync_elapsed / async_elapsed:.1f}x')
+print(f'{"="*50}')
+print(f'ASYNC SUMMARY')
+print(f'{"="*50}')
+print(f'  Total names:    {len(all_names)}')
+print(f'  Resolved:       {async_resolved}')
+print(f'  Unresolved:     {async_nones}')
+print(f'  Success rate:   {async_resolved/len(all_names)*100:.1f}%')
+print(f'  Wall time:      {async_elapsed:.2f}s')
+print(f'  Throughput:     {len(all_names)/async_elapsed:.1f} names/sec')
