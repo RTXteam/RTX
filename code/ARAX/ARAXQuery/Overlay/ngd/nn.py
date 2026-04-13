@@ -17,7 +17,9 @@ def load_names(names_file: str):
         return [line.rstrip("\n") for line in f if line.strip()]
 
 
-names_batches = load_names("sample_names.txt")
+_flat = load_names("sample_names.txt")
+BATCH_SIZE = 50
+names_batches = [_flat[i:i + BATCH_SIZE] for i in range(0, len(_flat), BATCH_SIZE)]
 
 PAYLOAD_BASE = {
     'autocomplete': False,
