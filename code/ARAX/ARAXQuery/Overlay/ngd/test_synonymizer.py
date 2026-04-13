@@ -45,6 +45,7 @@ def print_header(title: str) -> None:
     print("=" * 60)
 
 
+
 def print_start(mode: str, syn: NodeSynonymizer, num_names: int) -> None:
     batch_size = syn._NR_BATCH_SIZE
     num_batches = (num_names + batch_size - 1) // batch_size
@@ -84,6 +85,9 @@ def run_mode(
     syn = NodeSynonymizer(autocomplete=False, use_async=use_async)
     if url:
         syn.name_resolver_url = url
+    syn._NR_MAX_RETRIES = 1
+    syn._NR_REQUEST_TIMEOUT = 60
+    syn._NR_MAX_CONCURRENT = 5
 
     print_start(mode, syn, len(names))
 
