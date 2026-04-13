@@ -25,12 +25,21 @@ def load_names(names_file: str):
 
 names = load_names("sample_names.txt")
 
-syn = NodeSynonymizer(autocomplete=False)
+syn = NodeSynonymizer(autocomplete=False, use_async=True)
 syn._NR_MAX_RETRIES = 1
-syn.name_resolver_url = "https://name-resolution-sri.renci.org"
 
-for i, name in enumerate(names):
-    print(f"Sending: {name!r}")
-    r = syn._call_name_resolver_api([name])
-    curie = r.get(name) if r else None
-    print(f"Got back: {curie}")
+start = time.time()
+results = syn._call_name_resolver_api(names)
+elapsed = time.time() - start
+
+resolved = sum(1 for v in results.values() if v)
+print()
+print("=" * 50)
+print("ASYNC SUMMARY")
+print("=" * 50)
+print(f"  Total names:    {len(names)}")
+print(f"  Resolved:       {resolved}")
+print(f"  Unresolved:     {len(names) - resolved}")
+print(f"  Success rate:   {resolved / len(names) * 100:.1f}%")
+print(f"  Wall time:      {elapsed:.2f}s")
+print(f"  Throughput:     {len(names) / elapsed:.1f} names/sec")
