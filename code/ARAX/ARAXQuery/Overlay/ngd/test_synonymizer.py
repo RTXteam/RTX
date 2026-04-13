@@ -28,6 +28,19 @@ names = load_names("sample_names.txt")
 syn = NodeSynonymizer(autocomplete=False, use_async=True)
 syn._NR_MAX_RETRIES = 1
 
+batch_size = syn._NR_BATCH_SIZE
+num_batches = (len(names) + batch_size - 1) // batch_size
+print()
+print("=" * 50)
+print("STARTING")
+print("=" * 50)
+print(f"  Total names:    {len(names)}")
+print(f"  Batch size:     {batch_size}")
+print(f"  Num batches:    {num_batches}")
+print(f"  Mode:           {'async' if syn._use_async else 'sync'}")
+print(f"  Endpoint:       {syn.name_resolver_url}")
+print()
+
 start = time.time()
 results = syn._call_name_resolver_api(names)
 elapsed = time.time() - start
