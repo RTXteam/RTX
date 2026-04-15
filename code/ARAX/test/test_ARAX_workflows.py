@@ -6,20 +6,13 @@ import sys
 import os
 import pytest
 from collections import Counter
-import copy
-import json
-import ast
 from typing import List, Union
 
-import numpy as np
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
 
-PACKAGE_PARENT = '../../UI/OpenAPI/openapi_server'
-sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/openapi_server/models")
 from openapi_server.models.message import Message
 
 
@@ -167,20 +160,20 @@ def test_example_3():
 def test_FET_example_1():
     # This a FET 3-hop example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
     query = {"operations": {"actions": [
-        "add_qnode(ids=DOID:12889, key=n00, categories=biolink:Disease)",
+        "add_qnode(ids=MONDO:0005851, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Gene, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:retriever, prune_threshold=20)",
+        "expand(edge_key=e00, kp=infores:retriever, prune_threshold=5)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_keys=[n01])",
         "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:interacts_with)",
-        "expand(edge_key=e01, kp=infores:retriever, prune_threshold=20)",
+        "expand(edge_key=e01, kp=infores:retriever, prune_threshold=5)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, rel_edge_key=e01)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_keys=[n02])",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n03)",
         "add_qedge(subject=n02, object=n03, key=e02)",
-        "expand(edge_key=e02, kp=infores:retriever, prune_threshold=20)",
+        "expand(edge_key=e02, kp=infores:retriever, prune_threshold=5)",
         "resultify()",
         "return(message=true, store=false)"
     ]}}
@@ -205,12 +198,12 @@ def test_FET_example_2():
         "add_qnode(key=n00, ids=CHEMBL.COMPOUND:CHEMBL1472, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n01, categories=biolink:Protein)",
         "add_qedge(key=e00, subject=n00, object=n01)",
-        "expand(edge_key=e00, kp=infores:retriever, prune_threshold=20)",
+        "expand(edge_key=e00, kp=infores:retriever, prune_threshold=5)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.01, remove_connected_nodes=t, qnode_keys=[n01])",
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(edge_key=e01, kp=infores:retriever)",
+        "expand(edge_key=e01, kp=infores:retriever, prune_threshold=5)",
         "resultify()",
         "filter_results(action=limit_number_of_results, max_results=50)",
         "return(message=true, store=false)"
@@ -233,7 +226,7 @@ def test_FET_example_2():
 def test_FET_example_3():
     # This a FET 3-hop example: try to find the genes connected to diseases that share the same phenotypes of a given disease
     query = {"operations": {"actions": [
-        "add_qnode(ids=MONDO:0005148, key=n00, categories=biolink:Disease)",
+        "add_qnode(ids=MONDO:0001475, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=infores:retriever, prune_threshold=5)",

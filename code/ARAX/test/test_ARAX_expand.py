@@ -670,7 +670,7 @@ def test_issue_1236_b():
 
 def test_kg2_predicate_hierarchy_reasoning():
     actions_list = [
-        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, categories=biolink:ChemicalEntity, key=n00)",
+        "add_qnode(ids=CHEBI:83766, categories=biolink:ChemicalEntity, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:affects)",
         "expand(kp=infores:retriever)",
@@ -1640,8 +1640,8 @@ def test_issue_2678():
     aq = ARAXQuery()
     response = aq.query_return_message(envelope_dict)
     message = response.message
+    assert 'MONDO:0016098' in message.knowledge_graph.nodes
     messages_str = json.dumps(aq.response.messages)
-    disease_node = message.knowledge_graph.nodes['MONDO:0016098']
     assert 'biolink:PhenotypicFeature' not in messages_str
 
 

@@ -141,8 +141,8 @@ def test_jaccard():
 def test_add_node_pmids():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=MONDO:0018077, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n01)",
+        "add_qnode(ids=MONDO:0018077, key=n00)",
+        "add_qnode(ids=CHEBI:17076, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=infores:retriever)",
         "overlay(action=add_node_pmids, max_num=15)",

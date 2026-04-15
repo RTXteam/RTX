@@ -3,10 +3,7 @@
 import sys
 import os
 import pytest
-
 import copy
-import json
-import ast
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_messenger import ARAXMessenger
@@ -134,7 +131,6 @@ def test_add_qnode_duplicate_key():
     messenger.add_qnode(response, { 'key': 'n00', 'ids': [ 'CHEMBL.COMPOUND:CHEMBL112' ] } )
     assert response.status == 'OK'
     messenger.add_qnode(response, { 'key': 'n00', 'ids': [ 'CHEBI:46195' ] } )
-    print(json.dumps(ast.literal_eval(repr(message.query_graph.nodes)), sort_keys=True, indent=2))
     assert response.status == 'ERROR'
     assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.nodes) == 1
@@ -152,7 +148,6 @@ def test_add_qedge_duplicate_key():
     messenger.add_qedge(response, { 'key': 'e00', 'subject': 'n00', 'object': 'n01' } )
     assert response.status == 'OK'
     messenger.add_qedge(response, { 'key': 'e00', 'subject': 'n00', 'object': 'n01', 'predicates': [ 'biolink:treats' ] } )
-    print(json.dumps(ast.literal_eval(repr(message.query_graph.edges)), sort_keys=True, indent=2))
     assert response.status == 'ERROR'
     assert isinstance(message.query_graph.nodes, dict)
     assert len(message.query_graph.edges) == 1
@@ -173,7 +168,6 @@ def test_add_qnode_bad_parameters():
     for bad_parameters in bad_parameters_list:
         response = copy.deepcopy(template_response)
         message = response.envelope.message
-        print(bad_parameters)
         messenger.add_qnode(response, bad_parameters['parameters'])
         assert response.status == 'ERROR'
         assert len(message.query_graph.nodes) == 0
@@ -210,7 +204,6 @@ def test_add_qedge_multitest():
     for parameters in parameters_list:
         response = copy.deepcopy(template_response)
         message = response.envelope.message
-        print(parameters)
         messenger.add_qedge(response, parameters['parameters'])
         assert response.status == parameters['status']
         if parameters['status'] == 'OK':
@@ -236,7 +229,7 @@ def test_add_qpath():
     messenger.add_qpath(response, { 'key': 'p01', 'subject': 'n00', 'object': 'n02' } )
     assert response.status == 'ERROR'
     assert response.error_code == 'QPathDuplicateKey'
-    #print(json.dumps(ast.literal_eval(repr(message.query_graph)), sort_keys=True, indent=2))
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])

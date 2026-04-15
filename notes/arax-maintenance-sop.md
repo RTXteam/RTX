@@ -28,6 +28,7 @@ Lab maintains seem to work fine on both architectures). Your local development c
 Further, you will need:
 - write access to the ARAX GitHub project area (`RTXteam/RTX.git`)
 - ssh access to `arax-databases.rtx.ai` as user `ubuntu`
+- ssh access to `araxconfig.rtx.ai` as user `araxconfig`
 - ssh access to `arax.ncats.io`
 - ssh key installed on GitHub so you can clone and commit over `ssh`
 
@@ -118,6 +119,17 @@ maintenance.
     "query_fork_mode": false
 }
 ```
+
+4. Make sure you have ssh access to `araxconfig@araxconfig.rtx.ai`. You need
+to set up the ssh public key exchange and put your public key in the 
+file `/home/araxconfig/.ssh/authorized_keys` on `araxconfig.rtx.ai`,
+and you should do a test login to araxconfig.rtx.ai using this ssh key,
+```
+ssh araxconfig@araxconfig.rtx.ai
+```
+to ensure that the IP address for `araxconfig.rtx.ai` is in your
+`~/.ssh/known_hosts` file.
+
 Once you done with these steps, you are ready to work on a maintenance task for ARAX;
 continue with the procedure in the next section, which you should follow (from
 that section's beginning) for each ARAX maintenance task that you work on.
@@ -220,21 +232,20 @@ successfully, should produce this final line of output:
 The process with process ID 61928 has FINISHED refreshing the KP info caches
 ```
 
-### Special setup procedure if you are working on Shepherd-ARAX
-If (and _only if_) you will be working on an issue with "Shepherd-ARAX", you will want to configure
-ARAX to query `infores:retriever`; you do that by editing
-`RTX/code/ARAX/ARAXQuery/Expand/kp_info_cacher.py` and changing the line of code
-```
-self.forced_kp_version = '1.5.0'
-```
-to
+### Special setup procedure if you are working on Legacy-ARAX
+If (and _only if_) you will be working on an issue with "Legacy-ARAX" (TRAPI 1.5.0), 
+you will want to configure ARAX to query legacy KP endpoints. You do that by editing
+the module `RTX/code/ARAX/ARAXQuery/Expand/kp_info_cacher.py` and changing the line of code
 ```
 self.forced_kp_version = '1.6.0'
 ```
+to
+```
+self.forced_kp_version = '1.5.0'
+```
 Make _sure_ you do not accidentally commit this code change in `kp_info_cacher.py` to the ARAX
-branch; it is just used as a local configuration change for development work (yes, it should
-eventually be made a proper configuration option). Note, if you are working Shepherd-ARAX,
-please read the section "Note on testing if you are working on Shepherd-ARAX".
+branch; it is just used as a local configuration change for development work (yes, it could
+eventually be made a proper configuration option).
 
 ## Running ARAX locally on your development computer
 Assuming you have completed all the steps in the seciton "Per-task procedure for
@@ -255,10 +266,12 @@ cd ARAX_DEV_DIR/issue-XXX/RTX
 ```
 The procedure will take about 15 minutes to complete. All standard unit tests should pass, or your
 locally installed ARAX is not in a "known good" state (and you should work on troubleshooting
-the broken unit test before proceeding). 
+the broken unit test before proceeding). Note, you should not run this test suite using
+`pytest --cache-clear -v`from within the `RTX/code` directory, as pytest will get confused
+and try to run the test files in `UI/OpenAPI/python-flask-server/openapi_server/test`.
 
 #### Running the example queries in the ARAX flask server locally
-Start the flask server locally, _exactly_ as follows:
+1. Start the flask server locally, _exactly_ as follows:
 ```
 cd ARAX_DEV_DIR/issue-XXX/RTX/code/UI/OpenAPI/python-flask-server
 ../../../../../venv/bin/python -u -m openapi_server
@@ -278,26 +291,29 @@ WARNING: This is a development server. Do not use it in a production deployment.
  * Running on http://10.197.154.29:5001
 Press CTRL+C to quit
 ```
-Now, in a different window, run your web browser (Firefox or Chrome), and using the "File" menu, select
+2. In a different window, run your web browser (Firefox or Chrome), and using the "File" menu, select
 "Open File...", and in the dialog box, navigate to `ARAX_DEV_DIR/issue-XXX/RTX/code/UI/interactive` and
-select `index.html`. Now, in the ARAX User Interface page that renders in your browser, 
-on the navigation pane on the left-hand side, click on the `Settings`, 
+select `index.html`. Now, in the ARAX User Interface page that renders in your browser, you will see an orange banner message appear, saying "Call to /meta_knowledge_graph failed; could not load predicates and node categories."; do not worry about that banner message, that is expected when
+you first load `index.html` on your local development computer, because the base URL for querying
+the ARAX back-end is not (yet) configured via Settings (see Step 3). Just click the "x" to 
+delete the orange banner message.
+3. On the navigation pane on the left-hand side, click on the `Settings`, 
 and then change the "ARAX QUERY URL" textbox to contain _exactly_ this string:
 ```
 http://localhost:5001/api/arax/v1.4/query 
 ```
 and click "update" (you may well have to widen your browser window to see the
 blue "update" button, which is to the right of the text box).
-
-Now, in the navigation pane in the ARAX User Interface in your web browser, click on 
+4. In the navigation pane in the ARAX User Interface in your web browser, click on 
 `Query`, click on `JSON`, and click on `Example 1` (it's a tiny orange link just above 
 the large empty text-box). Then click on "Post to ARAX". Compare the results that
 are listed under the "Results" navigation tab, to what you would see if you ran the 
 `Example 1` JSON query on `arax.ncats.io/test` or `arax.ci.transltr.io`. Repeat this
-procedure for `Example 2`, `Example 3`, and `Pathfinder`. The results don't have to
-be _exactly_ the same, but if you see any major differences, please report an issue
-(e.g., via the `#deployment` channel in the `CATRAX` Slack workspace) 
-before proceeding; the reason for this
+procedure for `Example 2`, `Example 3`, and `Pathfinder`. 
+5. Click on the "Results" tab (on the left) and scroll down to look at the results. The results don't have to
+be _exactly_ the same as what you see with the `master` branch code, but if you see any _major_ 
+unexpected differences, please report an issue (e.g., via the `#deployment` channel in the 
+`CATRAX` Slack workspace) before proceeding; the reason for this
 is that if you aren't starting with a "known good" ARAX, it doesn't make sense to
 try to do new development. The exception to this guidance is if one of the standard
 KPs has suddenly broken one of the example queries in ARAX; in that case, we wouldn't
@@ -305,7 +321,17 @@ expect the above tests to yield a successful result (and, in fact, it is essenti
 to observe the _failing_ example query before proceeding so we know we have
 reproduced the problem). But the case of a KP breaking one of our example queries
 is quite rare, so we will not address that scenario further in the procedure
-that follows.
+that follows. 
+5. Click on the "Messages" tab (on the left) and scroll down to look at the TRAPI message
+log. If you are running ARAX locally on a development system, you will see one TRAPI
+warning for sure:
+```
+WARNING:    Not saving response to S3 because I don't know the S3BucketMigrationDatetime
+```
+That is expected when you are testing ARAX on your local computer; don't worry about it.
+But any other TRAPI warning or error messages are a reason to compare the TRAPI message 
+log from your branch, with the TRAPI message log that results when you run with the ARAX
+code from the `master` branch.
 
 #### Note on testing if you are working on Shepherd-ARAX
 If you are doing work on "Shepherd-ARAX", then you should
@@ -379,10 +405,7 @@ to be removed or updated before you commit, make _sure_ you add a line comment
 leak through into the commit.
 2. Please use modern type hints (from python3.10 or newer), so no uppercase
 `Dict` or `List`, and make sure to use `| None` instead of `Optional`. 
-3. Please review your code with a modern code LLM (e.g., Anthropic Claude Opus
-or ChatGPT) to check for bugs before committing. It's a good idea to upload 
-both the original module and the updated module, and to ask the LLM to review 
-the diffs for issues (or, in some cases, to just upload the diffs to the LLM).
+3. Please review your code with a code LLM (e.g., Claude code or Copilot) to check for bugs before committing. Best results from LLM review seem to be when the LLM can see the code diffs in the context of the full ARAX code-base.
 4. Please visually inspect every line of your code diffs with `git diff` 
 before committing; this is the perfect opportunity to catch debug code 
 (which would be indicated with a `# :DEBUG:` line comment) before it gets 
@@ -480,12 +503,13 @@ pull request. In the `issue-XXX` issue in GitHub, under "Labels", select
 "Waiting for PR review".
 2. Check back 15 minutes after you opened the PR, to see if GitHub's static checks
 flagged an issue. If there is an issue, fix it before merging.
-3. Once the PR is approved, give a warning message on `#deployment` 
+3. In the PR page on GitHub, assign Copilot as a reviewer, and fix (or document why not fixing) any issues it raises. Sometimes Copilot raises "security issues" that are not relevant because, for example, they are related to debug messages in our unit tests. Nevertheless, Copilot does catch bugs and it is worth running.
+4. Once the PR is approved, give a warning message on `#deployment` 
 ("Merging PR XXY for issue XXX, to ARAX master branch"). If it is a large merge
 or with particular risk for impacts on ARAX in CI, consider also messaging
 the `#arax-alerts` channel in the `NCATSTranslator` Slack workspace, a message that
 there will be a restart of ARAX in CI, with new code.
-4. Merge the PR, by using the green "Merge pull request" button in GitHub. 
+5. Merge the PR, by using the green "Merge pull request" button in GitHub. 
 A warning about the GitHub tool for managing merge conflicts:
 it _only modifies the parent branch_, which is fine if you are merging `issue-XXX` into
 `master`, but in situations where you want to merge `master` into an issue branch,
@@ -536,7 +560,9 @@ merged your PR for your issue.
 
 ## Final clean-up
 1. In GitHub, delete the `issue-XXX` branch and add a comment in the issue
-indicating "Branch `issue-XXX` deleted."
+indicating "Branch `issue-XXX` deleted." Note, do not delete the branch
+so early that it causes the "Test Build" to fail. Make sure you verify
+that the Test Build has completed before you delete the issue branch.
 2. Update the [ARAX ChangeLog issue](https://github.com/RTXteam/RTX/issues/2515) 
 (by editing the top comment in the issue) giving a succinct description of
 your "fix" for `issue-XXX` and tagging the issue with `#XXX`.
@@ -566,9 +592,14 @@ just leave them in your issue work folder on your development computer).
 steps are completed. If you are not yet done, indicate how far you got
 on the checklist, as a comment in the issue, so you will know where to resume.
 
+# Troubleshooting tips
 
-
-
-
-
+1. If you are getting inconsistent results from the pytest suite, like a test that
+is stubbornly failing on your development machine but working elsewhere, try 
+deleting the TRAPI query cacher database like this:
+```
+rm ARAX_DEV_DIR/issue-XXX/RTX/code/ARAX/ARAXQuery/Expand/trapi_query_cacher_database.sqlite
+rm -r -f ARAX_DEV_DIR/issue-XXX/RTX/code/ARAX/ARAXQuery/Expand/trapi_query_cacher_responses/
+```
+and then rerunning the pytest suite.
 

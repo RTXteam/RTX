@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!/usr/bin/env python3
 import asyncio
 import copy
 import pickle
@@ -356,7 +356,7 @@ class ARAXExpander:
 
             # Expand the query graph edge-by-edge (in regular 'lookup' fashion)
             for qedge_key in ordered_qedge_keys_to_expand:
-                log.debug(f"Expanding qedge {qedge_key}")
+                log.info(f"Expanding qedge {qedge_key} in lookup fashion")
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Expanding')
                 for kp in kp_selector.valid_kps:
                     response.update_query_plan(qedge_key, kp, 'Waiting', 'Prepping query to send to KP')
@@ -1392,6 +1392,7 @@ class ARAXExpander:
             if not organized_kg.edges_by_qg_id[qedge_key]:
                 log.warning(f"All {qedge_key} edges have been deleted!")
 
+
     @staticmethod
     def _prune_kg(
             qnode_key_to_prune: str,
@@ -1400,7 +1401,7 @@ class ARAXExpander:
             qg: QueryGraph,
             log: ARAXResponse
     ) -> QGOrganizedKnowledgeGraph:
-        log.info(f"Pruning back {qnode_key_to_prune} nodes because there are more than {prune_threshold}")
+        log.info(f"Pruning some {qnode_key_to_prune} nodes because there are more than {prune_threshold}")
         kg_copy = copy.deepcopy(kg)
         qg_for_resultify = copy.deepcopy(qg)
         # Necessary for assessment of answer quality:

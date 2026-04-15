@@ -477,8 +477,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
         if response is None:
             response = ARAXResponse()
         self.response = response
-        self.message = response.envelope.message
-
+        message = response.envelope.message
+        self.message = message
+        kg = message.knowledge_graph
         #### Basic checks on arguments
         if not isinstance(input_parameters, dict):
             response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
@@ -510,21 +511,29 @@ This information is included in edge attributes with the name 'icees_p-value'.
         self.parameters = parameters
 
         response.debug(
-            f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
+            # TODO: re-write this to be more specific about the actual action
+            f"Applying Overlay to Message with parameters {parameters}")
 
         # Don't try to overlay anything if the KG is empty
-        message = response.envelope.message
-        if not message.knowledge_graph or not message.knowledge_graph.nodes:
+        if not kg or not kg.nodes:
             response.debug("Nothing to overlay (KG is empty)")
             return response
         # Don't try to overlay anything if any of the specified qnodes aren't fulfilled in the KG
-        possible_node_params = {"subject_qnode_key", "object_qnode_key", "start_node_key", "intermediate_node_key",
+        possible_node_params = {"subject_qnode_key",
+                                "object_qnode_key",
+                                "start_node_key",
+                                "intermediate_node_key",
                                 "end_node_key"}
         node_params_to_check = set(self.parameters).intersection(possible_node_params)
         qnode_keys_to_check = {self.parameters[node_param] for node_param in node_params_to_check}
-        if not all(any(node for node in message.knowledge_graph.nodes.values() if qnode_key in getattr(node, 'qnode_keys', []))
-                   for qnode_key in qnode_keys_to_check):
-            response.debug("Nothing to overlay (one or more of the specified qnodes is not fulfilled in the KG)")
+        response.debug(f"Checking for KG fulfillment for qnode keys: {qnode_keys_to_check}")
+        qnode_keys_not_fulfilled = {qnode_key
+                                    for qnode_key in qnode_keys_to_check
+                                    if not any(node for node in kg.nodes.values()
+                                               if qnode_key in (getattr(node, 'qnode_keys', None) or []))}
+        if qnode_keys_not_fulfilled:
+            response.debug("Nothing to overlay (one or more of the specified qnodes is not "
+                           f"fulfilled in the KG): {qnode_keys_not_fulfilled}")
             return response
 
         # convert the action string to a function call (so I don't need a ton of if statements
