@@ -61,4 +61,6 @@ venv
 *.sqlite*
 sample_names.txt
 *.log
-
+audit_ngd_db.py
+curie_to_pmids_v1.0_tier0-20260408.sqlite
+unrecognized_pubmed_concept_names.txt
