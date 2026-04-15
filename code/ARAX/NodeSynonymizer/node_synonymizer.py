@@ -207,17 +207,26 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                     if curie and api_val is not None:
                         result = api_val
                         types = result.get("type", [])
-                        if "id" not in result:
-                            raise ValueError(
-                                f"for name {name}, there is "
-                                "no field 'id' in the result")
-                        result_name_dict = result["id"]
-                        if "label" not in result_name_dict:
-                            raise ValueError(
-                                f"for name {name}, there is "
-                                "no 'label' field in the 'id'"
-                                " dictionary in the result")
-                        result_name = result_name_dict['label']
+                        # Degrade to "unresolved" on malformed
+                        # Node Normalizer responses instead of
+                        # raising — an exception here would kill
+                        # the entire TRAPI query over one bad row.
+                        result_name_dict = result.get("id")
+                        if not result_name_dict:
+                            logger.warning(
+                                "Node Normalizer response for "
+                                "name %r has no 'id' field; "
+                                "treating as unresolved", name)
+                            results_dict[name] = None
+                            continue
+                        result_name = result_name_dict.get("label")
+                        if not result_name:
+                            logger.warning(
+                                "Node Normalizer response for "
+                                "name %r has no 'label' in 'id';"
+                                " treating as unresolved", name)
+                            results_dict[name] = None
+                            continue
                         if not self._names_match(
                                 name, result_name):
                             results_dict[name] = None
@@ -984,9 +993,6 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                     results.update(batch_curies)
                     resolved = sum(
                         1 for v in batch_curies.values() if v)
-                    nulls = sum(
-                        1 for v in batch_curies.values()
-                        if not v)
                     logger.info(
                         "batch %d/%d: resolved %d/%d  "
                         "%.2fs  HTTP %d",
