@@ -4,7 +4,6 @@ import sys
 import os
 import time
 import psutil
-import subprocess
 import datetime
 import traceback
 import pkgutil
@@ -71,68 +70,9 @@ class ARAXBackgroundTasker:
                 else:
                     pass
 
-        # Check in on the NodeSynonymizer database, which sometimes gets
-        # corrupted
-        node_synonymizer_path = os.path.dirname(os.path.abspath(__file__)) + \
-            "/../NodeSynonymizer"
-        files = os.listdir(node_synonymizer_path)
-        already_printed_header = False
-        link_counter = 0
-        file_counter = 0
-        for file in files:
-            if file.startswith('node_syn') and file.endswith('.sqlite'):
-                file_counter += 1
-                filepath = node_synonymizer_path + "/" + file
-                fileinfo = '??'
-                if os.path.islink(filepath):
-                    fileinfo = '(symlink)'
-                    link_counter += 1
-                else:
-                    fileinfo = os.path.getsize(filepath)
-                if file_counter != 1 or link_counter != 1:
-                    if not already_printed_header:
-                        eprint("Strange files in NodeSynonymizer directory:")
-                        already_printed_header = True
-                    eprint(f"    {fileinfo}   {file}")
-                    rtxc = RTXConfiguration()
-                    eprint(f"rtxc.domain: {rtxc.domain}")
-                    # if we are running in ITRB ARAX, delete the file to try to heal ARAX:
-                    if rtxc.domain.endswith(".transltr.io"):
-                        eprint(f"    Deleting file {filepath}")
-                        try:
-                            os.unlink(filepath)
-                        except Exception as error:
-                            eprint("ERROR: Unable to delete file with error "
-                                   f"{error}")
-                            
-        if file_counter != 1 or link_counter != 1:
-            eprint("ERROR: NodeSynonymizer state is weird. "
-                   f"file_counter: {file_counter} "
-                   f"link_counter: {link_counter} "
-                   "Recommend restarting, which will rerun the database "
-                   "manager")
-
-        # Check in on the databases directory
-        node_synonymizer_path = os.path.dirname(os.path.abspath(__file__)) + \
-            "/../NodeSynonymizer"
-        files = os.listdir(node_synonymizer_path)
-        eprint("INFO: Current contents of the databases area:")
-        for file in files:
-            if file.startswith('node_syn') and file.endswith('.sqlite'):
-                filepath = node_synonymizer_path + "/" + file
-                eprint(f"  {filepath}")
-                if os.path.islink(filepath):
-                    resolved_path = os.path.dirname(os.readlink(filepath))
-                    eprint(f"--- Directory listing of {resolved_path}")
-                    result = subprocess.run(['ls', '-l', resolved_path],
-                                            stdout=subprocess.PIPE)
-                    eprint(result.stdout.decode('utf-8'))
-                    if 'KG2.10.2' in resolved_path:
-                        resolved_path = resolved_path.replace('KG2.10.2', 'KG2.10.0')
-                        eprint(f"--- Directory listing of {resolved_path}")
-                        result = subprocess.run(['ls', '-l', resolved_path], stdout=subprocess.PIPE)
-                        eprint(result.stdout.decode('utf-8'))
-        eprint("INFO: End listing databases area contents")
+        # #2585: Removed SQLite corruption check and database directory
+        # listing -- NodeSynonymizer now uses SRI APIs instead of a
+        # local SQLite file.
 
         #### Set up the KP Cacher to be used for periodic refreshing
         kp_cacher = KPQueryCacher(mode='BackgroundTasker')

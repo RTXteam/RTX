@@ -81,10 +81,16 @@ def test_error():
     assert response.status == 'ERROR'
     assert response.error_code == "RemovedQueryNode"
 
+# Changed from DOID:11086 to DOID:0060680 (#2585):
+# DOID:11086 is not recognized by the SRI Node Normalizer API
+# (neither CI nor production). The old SQLite-backed synonymizer
+# had broader DOID coverage, but the API does not include this
+# CURIE. DOID:0060680 is already used in other tests in this
+# file and resolves correctly via the API.
 def test_edge_key_removal():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:11086, key=n00)",
+            "add_qnode(name=DOID:0060680, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qnode(categories=biolink:Disease, key=n02)",
             "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:treats)",
