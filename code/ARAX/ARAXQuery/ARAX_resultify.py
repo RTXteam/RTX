@@ -1466,7 +1466,7 @@ def _get_subclass_clusters(kg_edge_keys_by_qg_key: dict[str, set[str]], kg_node_
             child_to_parents_map[subclass_qnode_key][parent_id].add(parent_id)  # It's handy to list parents as parent of themselves
     # Also list any parents that may not have subclass self-edges as parents of themselves
     for subclass_qnode_key in subclass_self_qnodes:
-        node_keys_for_qnode = kg_node_keys_by_qg_key[subclass_qnode_key]
+        node_keys_for_qnode = kg_node_keys_by_qg_key.get(subclass_qnode_key, set())
         node_keys_with_subclass_edge = set(child_to_parents_map[subclass_qnode_key])
         node_keys_with_no_subclass_edge = node_keys_for_qnode.difference(node_keys_with_subclass_edge)
         for node_key in node_keys_with_no_subclass_edge:

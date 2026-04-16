@@ -1640,8 +1640,8 @@ def test_issue_2678():
     aq = ARAXQuery()
     response = aq.query_return_message(envelope_dict)
     message = response.message
+    assert 'MONDO:0016098' in message.knowledge_graph.nodes
     messages_str = json.dumps(aq.response.messages)
-    disease_node = message.knowledge_graph.nodes['MONDO:0016098']
     assert 'biolink:PhenotypicFeature' not in messages_str
 
 
