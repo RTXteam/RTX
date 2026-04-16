@@ -136,6 +136,30 @@ All output is written to this directory:
   Reused by subsequent resolve-only builds.
 - **`ngdbuild.log`** — full run log, including per-stage timings, parse
   errors, and resolver progress.
+- **`unrecognized_pubmed_concept_names.txt`** — every concept name from
+  stage 1 that Babel could not resolve to a CURIE, sorted alphabetically.
+  Useful for diagnosing coverage gaps. Regenerated on each resolve run.
+
+## Verifying the build
+
+`audit_ngd_db.py` runs structural, distributional, and sanity checks
+against the final database. Run it after every build:
+
+```
+python3 audit_ngd_db.py
+```
+
+Pass `--babel-db` to also run live name-resolution spot checks (confirms
+that well-known entities like TP53, aspirin, and Alzheimer Disease made it
+through the pipeline):
+
+```
+python3 audit_ngd_db.py --babel-db /path/to/babel.sqlite
+```
+
+The script exits non-zero if any hard-failure check fails. See
+`python3 audit_ngd_db.py --help` for additional options (sampling,
+accountability tracing, etc.).
 
 ## Concept normalization
 
