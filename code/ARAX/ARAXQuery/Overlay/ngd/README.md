@@ -80,14 +80,44 @@ expected layout is:
 Point the builder at this directory with `--pubmed-dir` or
 `NGD_PUBMED_DIR`.
 
+## Checking your setup
+
+Before running a build, use `--test` to verify that all paths and
+dependencies are correct. **Always do this before a real build** — a real
+run will overwrite output databases.
+
+```
+# Resolve-only check:
+python3 build_ngd_database.py --test \
+    --babel-db /path/to/babel.sqlite
+
+# Full build check:
+python3 build_ngd_database.py --test --full \
+    --babel-db /path/to/babel.sqlite \
+    --pubmed-dir /path/to/pubmed
+
+# Full build (skip download) check:
+python3 build_ngd_database.py --test --full --skip-download \
+    --babel-db /path/to/babel.sqlite \
+    --pubmed-dir /path/to/pubmed
+```
+
+This checks that paths exist, dependencies are importable, and the
+environment is ready. No data is read or written.
+
 ## Running the build
 
-From this directory:
+All paths must be passed explicitly via flags or env vars — there are no
+hardcoded defaults.
 
 ```
-python3 build_ngd_database.py [--full] [--skip-download] \
-    [--pubmed-dir PATH] [--babel-db PATH]
+python3 build_ngd_database.py --babel-db /path/to/babel.sqlite \
+    --pubmed-dir /path/to/pubmed [--output-dir /path/to/output] \
+    [--full] [--skip-download]
 ```
+
+`--output-dir` controls where the databases and logs are written. It
+defaults to the script's own directory.
 
 ### Full build
 
@@ -96,7 +126,9 @@ PubMed has new content, when the extraction rules have changed, or on a
 machine that has never built before.
 
 ```
-python3 build_ngd_database.py --full
+python3 build_ngd_database.py --full \
+    --babel-db /path/to/babel.sqlite \
+    --pubmed-dir /path/to/pubmed
 ```
 
 This will incrementally sync the PubMed mirror with `wget -r -N` (only
@@ -108,7 +140,9 @@ If your PubMed mirror is already up to date and you want to skip the
 network sync:
 
 ```
-python3 build_ngd_database.py --full --skip-download
+python3 build_ngd_database.py --full --skip-download \
+    --babel-db /path/to/babel.sqlite \
+    --pubmed-dir /path/to/pubmed
 ```
 
 ### Resolve-only build
@@ -118,14 +152,14 @@ you can re-run just the resolver — for example, after upgrading the Babel
 snapshot:
 
 ```
-python3 build_ngd_database.py
+python3 build_ngd_database.py --babel-db /path/to/babel.sqlite
 ```
 
 This skips XML parsing entirely and finishes in roughly an hour.
 
 ## Outputs
 
-All output is written to this directory:
+All output is written to `--output-dir` (defaults to this directory):
 
 - **`curie_to_pmids.sqlite`** — the final artifact. Single table
   `curie_to_pmids(curie TEXT PRIMARY KEY, pmids TEXT)` where `pmids` is a
@@ -146,7 +180,13 @@ All output is written to this directory:
 against the final database. Run it after every build:
 
 ```
-python3 audit_ngd_db.py
+python3 audit_ngd_db.py --db /path/to/curie_to_pmids.sqlite
+```
+
+Check your setup first with `--test`:
+
+```
+python3 audit_ngd_db.py --db /path/to/curie_to_pmids.sqlite --test
 ```
 
 Pass `--babel-db` to also run live name-resolution spot checks (confirms
@@ -154,12 +194,21 @@ that well-known entities like TP53, aspirin, and Alzheimer Disease made it
 through the pipeline):
 
 ```
-python3 audit_ngd_db.py --babel-db /path/to/babel.sqlite
+python3 audit_ngd_db.py --db /path/to/curie_to_pmids.sqlite \
+    --babel-db /path/to/babel.sqlite
+```
+
+Pass `--concept-db` for stage-1 vs stage-2 consistency checks and
+accountability tracing:
+
+```
+python3 audit_ngd_db.py --db /path/to/curie_to_pmids.sqlite \
+    --concept-db /path/to/conceptname_to_pmids.sqlite \
+    --babel-db /path/to/babel.sqlite --trace-top 10
 ```
 
 The script exits non-zero if any hard-failure check fails. See
-`python3 audit_ngd_db.py --help` for additional options (sampling,
-accountability tracing, etc.).
+`python3 audit_ngd_db.py --help` for additional options.
 
 ## Concept normalization
 
@@ -172,11 +221,9 @@ concept names. Tune cleaning rules there rather than in the builder.
 
 | Option | Flag | Env var | Default |
 |---|---|---|---|
-| PubMed mirror root | `--pubmed-dir` | `NGD_PUBMED_DIR` | `/home/hodgesf/Desktop/code/data/pubmed_xml_files` |
-| Babel sqlite path | `--babel-db` | `NGD_BABEL_DB` | `/home/hodgesf/Desktop/code/data/babel-20250901-p1.sqlite` |
+| PubMed mirror root | `--pubmed-dir` | `NGD_PUBMED_DIR` | *(required for `--full`)* |
+| Babel sqlite path | `--babel-db` | `NGD_BABEL_DB` | *(required)* |
+| Output directory | `--output-dir` | `NGD_OUTPUT_DIR` | script directory |
 | Full build | `--full` | — | off |
 | Skip PubMed sync | `--skip-download` | — | off |
-
-The defaults are placeholders for the current development host. Always set
-`--pubmed-dir` and `--babel-db` (or the equivalent env vars) on a new
-machine.
+| Dry-run check | `--test` | — | off |

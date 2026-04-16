@@ -14,22 +14,34 @@ import os
 import pathlib
 import sqlite3
 import subprocess
+import sys
 import time
 
-from lxml import etree
+# Lazy imports — these are checked by --test and loaded at build time.
+etree = None
+process_names = None
+connect_to_db_read_only = None
+map_name_to_curie = None
 
-from extraction_script import process_names
-from stitch_proj.local_babel import connect_to_db_read_only, map_name_to_curie
 
-NGD_DIR = os.path.dirname(os.path.abspath(__file__))
+def _load_dependencies():
+    global etree, process_names, connect_to_db_read_only, map_name_to_curie
+    from lxml import etree as _etree
+    from extraction_script import process_names as _process_names
+    from stitch_proj.local_babel import (
+        connect_to_db_read_only as _connect,
+        map_name_to_curie as _map,
+    )
+    etree = _etree
+    process_names = _process_names
+    connect_to_db_read_only = _connect
+    map_name_to_curie = _map
 
-DEFAULT_PUBMED_DIR = os.environ.get(
-    "NGD_PUBMED_DIR",
-    "/home/hodgesf/Desktop/code/data/pubmed_xml_files",
-)
-DEFAULT_BABEL_DB = os.environ.get(
-    "NGD_BABEL_DB",
-    "/home/hodgesf/Desktop/code/data/babel-20250901-p1.sqlite",
+DEFAULT_PUBMED_DIR = os.environ.get("NGD_PUBMED_DIR")
+DEFAULT_BABEL_DB = os.environ.get("NGD_BABEL_DB")
+DEFAULT_OUTPUT_DIR = os.environ.get(
+    "NGD_OUTPUT_DIR",
+    os.path.dirname(os.path.abspath(__file__)),
 )
 
 
@@ -136,22 +148,24 @@ def _resolve_one(item):
 # Builder
 # ---------------------------------------------------------------------------
 class NGDDatabaseBuilder:
-    def __init__(self, pubmed_dir, babel_db_path, skip_download=False):
+    def __init__(self, pubmed_dir, babel_db_path, output_dir, skip_download=False):
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s %(levelname)s: %(message)s',
-            handlers=[logging.FileHandler("ngdbuild.log"),
+            handlers=[logging.FileHandler(os.path.join(output_dir, "ngdbuild.log")),
                       logging.StreamHandler()],
         )
 
         self.pubmed_directory_path = pubmed_dir
         self.babel_db_path = babel_db_path
+        self.output_dir = output_dir
 
-        self.conceptname_to_pmids_db_name = "conceptname_to_pmids.sqlite"
-        self.conceptname_to_pmids_db_path = f"{NGD_DIR}/{self.conceptname_to_pmids_db_name}"
-
-        self.curie_to_pmids_db_name = "curie_to_pmids.sqlite"
-        self.curie_to_pmids_db_path = f"{NGD_DIR}/{self.curie_to_pmids_db_name}"
+        self.conceptname_to_pmids_db_path = os.path.join(
+            output_dir, "conceptname_to_pmids.sqlite"
+        )
+        self.curie_to_pmids_db_path = os.path.join(
+            output_dir, "curie_to_pmids.sqlite"
+        )
 
         self.status = 'OK'
         self.skip_download = skip_download
@@ -432,7 +446,10 @@ class NGDDatabaseBuilder:
             out_conn.commit()
             staging_rows.clear()
 
-        with open(f"{NGD_DIR}/unrecognized_pubmed_concept_names.txt", "w") as f:
+        unrecognized_path = os.path.join(
+            self.output_dir, "unrecognized_pubmed_concept_names.txt"
+        )
+        with open(unrecognized_path, "w") as f:
             for name in sorted(unrecognized):
                 f.write(name + "\n")
 
@@ -440,6 +457,111 @@ class NGDDatabaseBuilder:
                      total_recognized, total_unrecognized,
                      len(unrecognized), total_errors)
         in_conn.close()
+
+
+def _check_environment(args):
+    """Verify that all required paths exist and dependencies are importable."""
+    ok = True
+    p = print
+
+    # Describe the build mode
+    p("")
+    p("=" * 60)
+    if args.test:
+        p("  NGD BUILD — DRY RUN (--test)")
+        p("  Validating paths and dependencies only.")
+        p("  No data will be read or written.")
+    elif args.full:
+        if args.skip_download:
+            p("  NGD BUILD — FULL (--skip-download)")
+            p("  Will parse local PubMed XML and resolve to CURIEs.")
+        else:
+            p("  NGD BUILD — FULL")
+            p("  Will sync PubMed mirror, parse XML, and resolve to CURIEs.")
+    else:
+        p("  NGD BUILD — RESOLVE ONLY")
+        p("  Will re-resolve existing concept names to CURIEs.")
+        p("  (Skipping XML parsing — use --full to re-parse.)")
+    p("=" * 60)
+
+    # Paths
+    p("")
+    p("Paths:")
+
+    # Babel DB — always required
+    if not args.babel_db:
+        p("  [FAIL] --babel-db: not set (required, or set NGD_BABEL_DB)")
+        ok = False
+    elif not os.path.isfile(args.babel_db):
+        p(f"  [FAIL] --babel-db: {args.babel_db} (not found)")
+        ok = False
+    else:
+        p(f"  [ OK ] --babel-db: {args.babel_db}")
+
+    # PubMed dir — validate whenever provided, required for --full
+    if args.pubmed_dir:
+        if not os.path.isdir(args.pubmed_dir):
+            p(f"  [FAIL] --pubmed-dir: {args.pubmed_dir} (not found)")
+            ok = False
+        else:
+            p(f"  [ OK ] --pubmed-dir: {args.pubmed_dir}")
+            baseline = os.path.join(
+                args.pubmed_dir, "ftp.ncbi.nlm.nih.gov", "pubmed", "baseline"
+            )
+            if not os.path.isdir(baseline):
+                p(f"  [WARN] Expected baseline/ not found: {baseline}")
+    elif args.full:
+        p("  [FAIL] --pubmed-dir: not set (required for --full, or set NGD_PUBMED_DIR)")
+        ok = False
+    else:
+        p("  [ -- ] --pubmed-dir: not set (not needed for resolve-only)")
+
+    # Output dir
+    if not os.path.isdir(args.output_dir):
+        p(f"  [FAIL] --output-dir: {args.output_dir} (not found)")
+        ok = False
+    else:
+        p(f"  [ OK ] --output-dir: {args.output_dir}")
+
+    # Resolve-only prereq
+    if not args.full:
+        concept_db = os.path.join(args.output_dir, "conceptname_to_pmids.sqlite")
+        if not os.path.isfile(concept_db):
+            p(f"  [FAIL] conceptname_to_pmids.sqlite not found in --output-dir")
+            p(f"         (required for resolve-only — use --full to build from scratch)")
+            ok = False
+        else:
+            p(f"  [ OK ] conceptname_to_pmids.sqlite found in --output-dir")
+
+    # Dependencies
+    p("")
+    p("Dependencies:")
+
+    try:
+        from lxml import etree  # noqa: F401
+        p("  [ OK ] lxml")
+    except ImportError:
+        p("  [FAIL] lxml — not installed (pip install lxml)")
+        ok = False
+
+    try:
+        from stitch_proj.local_babel import connect_to_db_read_only, map_name_to_curie  # noqa: F401
+        p("  [ OK ] stitch_proj.local_babel")
+    except ImportError:
+        p("  [FAIL] stitch_proj — not installed (pip install stitch_proj)")
+        ok = False
+
+    # Summary
+    p("")
+    p("-" * 60)
+    if ok:
+        p("  PASSED — environment is ready.")
+    else:
+        p("  FAILED — fix the errors above before building.")
+    p("-" * 60)
+    p("")
+
+    return ok
 
 
 def main():
@@ -451,15 +573,39 @@ def main():
     parser.add_argument("--skip-download", action="store_true",
                         help="With --full, skip mirroring PubMed and use what's on disk.")
     parser.add_argument("--pubmed-dir", default=DEFAULT_PUBMED_DIR,
-                        help=f"Local PubMed mirror root (default: {DEFAULT_PUBMED_DIR}).")
+                        help="Local PubMed mirror root. "
+                             "Also settable via NGD_PUBMED_DIR env var.")
     parser.add_argument("--babel-db", default=DEFAULT_BABEL_DB,
-                        help=f"Babel sqlite path (default: {DEFAULT_BABEL_DB}).")
+                        help="Babel sqlite path. "
+                             "Also settable via NGD_BABEL_DB env var.")
+    parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR,
+                        help="Directory for output databases and logs. "
+                             "Also settable via NGD_OUTPUT_DIR env var. "
+                             "Defaults to the script's directory.")
+    parser.add_argument("--test", action="store_true",
+                        help="Verify paths and environment without running the build.")
 
     args = parser.parse_args()
+
+    env_ok = _check_environment(args)
+
+    if args.test:
+        sys.exit(0 if env_ok else 1)
+
+    if not env_ok:
+        sys.exit(1)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s: %(message)s',
+    )
+
+    _load_dependencies()
 
     builder = NGDDatabaseBuilder(
         pubmed_dir=args.pubmed_dir,
         babel_db_path=args.babel_db,
+        output_dir=args.output_dir,
         skip_download=args.skip_download,
     )
     builder.build_ngd_database(args.full)

@@ -23,9 +23,6 @@ import sys
 import time
 from collections import Counter, defaultdict
 
-NGD_DIR = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_CURIE_DB = os.path.join(NGD_DIR, "curie_to_pmids.sqlite")
-DEFAULT_CONCEPT_DB = os.path.join(NGD_DIR, "conceptname_to_pmids.sqlite")
 
 
 # ---------------------------------------------------------------------------
@@ -763,12 +760,99 @@ def check_curie_format(report, conn, sample=20000):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+def _check_environment(args):
+    """Verify that all required paths exist and dependencies are importable."""
+    ok = True
+    p = print
+
+    # Describe the audit mode
+    p("")
+    p("=" * 60)
+    if args.test:
+        p("  NGD AUDIT — DRY RUN (--test)")
+        p("  Validating paths and dependencies only.")
+        p("  No audit checks will be executed.")
+    else:
+        features = ["structural checks", "distribution stats"]
+        if args.babel_db:
+            features.append("live spot checks via Babel")
+        if args.concept_db:
+            features.append("stage-1 vs stage-2 comparison")
+        if args.trace_top > 0 or args.trace_curie:
+            features.append("accountability tracing")
+        p("  NGD AUDIT")
+        p(f"  Will run: {', '.join(features)}.")
+    p("=" * 60)
+
+    # Paths
+    p("")
+    p("Paths:")
+
+    if not os.path.isfile(args.db):
+        p(f"  [FAIL] --db: {args.db} (not found)")
+        ok = False
+    else:
+        p(f"  [ OK ] --db: {args.db}")
+
+    if args.concept_db:
+        if not os.path.isfile(args.concept_db):
+            p(f"  [FAIL] --concept-db: {args.concept_db} (not found)")
+            ok = False
+        else:
+            p(f"  [ OK ] --concept-db: {args.concept_db}")
+    else:
+        p("  [ -- ] --concept-db: not set (stage-1 comparison and tracing disabled)")
+
+    if args.babel_db:
+        if not os.path.isfile(args.babel_db):
+            p(f"  [FAIL] --babel-db: {args.babel_db} (not found)")
+            ok = False
+        else:
+            p(f"  [ OK ] --babel-db: {args.babel_db}")
+    else:
+        p("  [ -- ] --babel-db: not set (live spot checks disabled)")
+
+    if (args.trace_top > 0 or args.trace_curie) and not args.babel_db:
+        p("  [FAIL] --trace-top/--trace-curie requires --babel-db")
+        ok = False
+    if (args.trace_top > 0 or args.trace_curie) and not args.concept_db:
+        p("  [FAIL] --trace-top/--trace-curie requires --concept-db")
+        ok = False
+
+    # Dependencies
+    p("")
+    p("Dependencies:")
+
+    try:
+        from stitch_proj.local_babel import connect_to_db_read_only  # noqa: F401
+        p("  [ OK ] stitch_proj.local_babel")
+    except ImportError:
+        if args.babel_db:
+            p("  [FAIL] stitch_proj — not installed (required for --babel-db)")
+            ok = False
+        else:
+            p("  [ -- ] stitch_proj — not installed (not needed without --babel-db)")
+
+    # Summary
+    p("")
+    p("-" * 60)
+    if ok:
+        p("  PASSED — environment is ready.")
+    else:
+        p("  FAILED — fix the errors above.")
+    p("-" * 60)
+    p("")
+
+    return ok
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db", default=DEFAULT_CURIE_DB,
-                        help=f"curie_to_pmids sqlite (default: {DEFAULT_CURIE_DB})")
-    parser.add_argument("--concept-db", default=DEFAULT_CONCEPT_DB,
-                        help="conceptname_to_pmids sqlite for stage-1 comparison")
+    parser.add_argument("--db", required=True,
+                        help="Path to curie_to_pmids sqlite database.")
+    parser.add_argument("--concept-db", default=None,
+                        help="Path to conceptname_to_pmids sqlite for "
+                             "stage-1 comparison and accountability tracing.")
     parser.add_argument("--sample", type=int, default=None,
                         help="Only scan the first N rows (faster partial audit)")
     parser.add_argument("--count-unique-pmids", action="store_true",
@@ -778,12 +862,22 @@ def main():
                              "spot checks and label enrichment for top curies.")
     parser.add_argument("--trace-top", type=int, default=0, metavar="N",
                         help="Trace which raw concept names feed the top N "
-                             "curies (requires --babel-db). Takes a few minutes.")
+                             "curies (requires --babel-db and --concept-db).")
     parser.add_argument("--trace-curie", action="append", default=[],
                         metavar="CURIE",
                         help="Trace contributors for a specific CURIE. "
-                             "Can be repeated. Requires --babel-db.")
+                             "Can be repeated. Requires --babel-db and --concept-db.")
+    parser.add_argument("--test", action="store_true",
+                        help="Verify paths and environment without running the audit.")
     args = parser.parse_args()
+
+    env_ok = _check_environment(args)
+
+    if args.test:
+        sys.exit(0 if env_ok else 1)
+
+    if not env_ok:
+        sys.exit(1)
 
     report = Report()
 
@@ -806,7 +900,9 @@ def main():
         report_top_curies(report, conn)
         report_bottom_curies(report, conn)
         spot_check_known(report, conn)
-        compare_with_concept_db(report, conn, args.concept_db)
+
+        if args.concept_db:
+            compare_with_concept_db(report, conn, args.concept_db)
 
         if args.babel_db:
             if not os.path.exists(args.babel_db):
@@ -826,15 +922,21 @@ def main():
 
                 # Accountability trace uses its own pool / connections.
                 if args.trace_curie:
-                    trace_accountability(
-                        report, conn, args.babel_db, args.concept_db,
-                        top_n=0, target_curies=args.trace_curie,
-                    )
+                    if not args.concept_db:
+                        report.fail("--trace-curie requires --concept-db")
+                    else:
+                        trace_accountability(
+                            report, conn, args.babel_db, args.concept_db,
+                            top_n=0, target_curies=args.trace_curie,
+                        )
                 elif args.trace_top > 0:
-                    trace_accountability(
-                        report, conn, args.babel_db, args.concept_db,
-                        top_n=args.trace_top,
-                    )
+                    if not args.concept_db:
+                        report.fail("--trace-top requires --concept-db")
+                    else:
+                        trace_accountability(
+                            report, conn, args.babel_db, args.concept_db,
+                            top_n=args.trace_top,
+                        )
         elif args.trace_top > 0 or args.trace_curie:
             report.fail("--trace-top/--trace-curie requires --babel-db")
     finally:
