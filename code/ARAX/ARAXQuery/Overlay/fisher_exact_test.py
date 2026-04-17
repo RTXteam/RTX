@@ -484,7 +484,8 @@ class ComputeFTEST:
                 return (res_dict, [])
 
         else:
-            infores_key = "infores:rtx-kg2"
+            # Route FET queries through Gandalf (Tier0). See #2714 for the transition from KG2/PloverDB.
+            infores_key = "infores:gandalf"
             from ARAX.ARAXQuery.ARAX_expander import ARAXExpander
             expander = ARAXExpander()
             query_graph_builtin = {'nodes':
@@ -502,9 +503,8 @@ class ComputeFTEST:
                                     }}
             query_graph = QueryGraph.from_dict(query_graph_builtin)
             from ARAX.ARAXQuery.Expand.kp_selector import KPSelector
-            kp_selector = KPSelector(kg2_mode=True,
+            kp_selector = KPSelector(kg2_mode=False,
                                      log=self.response)
-            kp_selector.kp_urls = {infores_key: RTX_CONFIG.plover_url}
 
             try:
 
@@ -535,7 +535,7 @@ class ComputeFTEST:
                 for node in node_iter:
                     tmplist = set(edge_id for edge_id, edge in answer_kg.edges_by_qg_id.get('FET_e00', {}).items() if edge.subject == node or edge.object == node)
                     if len(tmplist) == 0:
-                        self.response.warning(f"Failed to query adjacent nodes from {kp} for {node} in FET, probably because expander ignores node type. For more details, please see RTXteam/RTX issue 897.")
+                        self.response.warning(f"Failed to query adjacent nodes from {infores_key} for {node} in FET.")
                         failure_nodes.append(node)
                         check_empty = True
                         continue

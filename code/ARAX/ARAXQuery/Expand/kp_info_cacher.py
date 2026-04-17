@@ -61,6 +61,8 @@ class KPInfoCacher:
                 # Transform the info into the format we want
                 allowed_kp_urls = {kp_registration["infores_name"]: self._get_kp_url_from_smartapi_registration(kp_registration)
                                    for kp_registration in smart_api_kp_registrations}
+                # Gandalf (Tier0) is not yet registered in SmartAPI, so inject it manually. See #2714.
+                allowed_kp_urls["infores:gandalf"] = "https://automat.renci.org/translatorkg-gandalf"
 
                 smart_api_cache_contents = {"allowed_kp_urls": allowed_kp_urls,
                                             "kps_excluded_by_version": smart_api_helper.kps_excluded_by_version,
