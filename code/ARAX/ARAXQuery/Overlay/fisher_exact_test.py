@@ -193,7 +193,7 @@ class ComputeFTEST:
                 edge_attribute_list = [x.value for x in edge_attributes if x.attribute_type_id == 'EDAM-DATA:1772'] if edge_attributes else []
                 if len(edge_attribute_list) == 0:
                     if rel_edge_key:
-                        if rel_edge_key in edge.qedge_keys:
+                        if rel_edge_key in (getattr(edge, "qedge_keys", None) or {}):
                             if subject_qnode_key in nodes_info[kg.edges[edge_key].subject]['qnode_keys']:
                                 # edge_expand_kp.extend(temp_kp)
                                 rel_edge_type.update([kg.edges[edge_key].predicate])
