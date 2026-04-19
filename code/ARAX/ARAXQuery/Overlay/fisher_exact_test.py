@@ -449,107 +449,73 @@ class ComputeFTEST:
         adjacent_type = ComputeFTEST.convert_string_to_snake_case(adjacent_type.replace('biolink:',''))
         adjacent_type = ComputeFTEST.convert_string_biolinkformat(adjacent_type)
 
-        if rel_type is None:
-            normalized_nodes = self.nodesynonymizer.get_canonical_curies(node_curie)
+        # Always route adjacent-node queries through Gandalf (Tier0). The previous
+        # `if rel_type is None` branch read neighbor counts from the local KG2c
+        # sqlite file; #2714 retires that path so fisher no longer depends on
+        # KG2c sqlite at runtime.
+        infores_key = "infores:gandalf"
+        from ARAX.ARAXQuery.ARAX_expander import ARAXExpander
+        expander = ARAXExpander()
+        fet_e00 = {'subject': 'FET_n00', 'object': 'FET_n01'}
+        if rel_type is not None:
+            fet_e00['predicates'] = [rel_type]
+        query_graph_builtin = {'nodes':
+                               {'FET_n00':
+                                {'ids': node_curie,
+                                 'is_set': False},
+                                'FET_n01':
+                                {'categories': [adjacent_type],
+                                 'is_set': False}},
+                               'edges':
+                               {'FET_e00': fet_e00}}
+        query_graph = QueryGraph.from_dict(query_graph_builtin)
+        from ARAX.ARAXQuery.Expand.kp_selector import KPSelector
+        kp_selector = KPSelector(kg2_mode=False, log=self.response)
+        self.response.debug(f"FET querying {infores_key} at URL: "
+                            f"{kp_selector.kp_urls.get(infores_key)}")
+
+        try:
+
+            async def run_expand():
+                return await expander.expand_edge_async(
+                    query_graph,
+                    kp_to_use=infores_key,
+                    user_specified_kp=False,
+                    kp_timeout=30,
+                    kp_selector=kp_selector,
+                    log=self.response,
+                    multiple_kps=False,
+                    be_creative_treats=False
+                )
+
+            answer_kg, _, log = asyncio.run(run_expand())
+
+            if log.status != 'OK':
+                self.response.error(f"Failed to query adjacent nodes from {infores_key} for {node_curie}")
+                return res
+
+            res_dict = dict()
             failure_nodes = list()
-            mapping = {node:normalized_nodes[node]['preferred_curie'] for node in normalized_nodes if normalized_nodes[node] is not None}
-            failure_nodes += list(normalized_nodes.keys() - mapping.keys())
-            query_nodes = list(set(mapping.values()))
-            query_nodes = [curie_id.replace("'", "''") if "'" in curie_id else curie_id for curie_id in query_nodes]
-            # special_curie_ids = [curie_id for curie_id in query_nodes if "'" in curie_id]
-
-            # Get connected to kg2c sqlite
-            connection = sqlite3.connect(self.sqlite_file_path)
-            cursor = connection.cursor()
-
-            # Extract the neighbor count data
-            node_keys_str = "','".join(query_nodes)  # SQL wants ('node1', 'node2') format for string lists
-            sql_query = f"SELECT N.id, N.neighbor_counts " \
-                        f"FROM neighbors AS N " \
-                        f"WHERE N.id IN ('{node_keys_str}')"
-            cursor.execute(sql_query)
-            rows = cursor.fetchall()
-            rows = [curie_id.replace("\'","'").replace("''", "'") if "'" in curie_id else curie_id for curie_id in rows]
-            connection.close()
-
-            # Load the counts into a dictionary
-            neighbor_counts_dict = {row[0]:eval(row[1]) for row in rows}
-
-            res_dict = {node:neighbor_counts_dict[mapping[node]].get(adjacent_type) for node in mapping if mapping[node] in neighbor_counts_dict and neighbor_counts_dict[mapping[node]].get(adjacent_type) is not None}
-            failure_nodes += list(mapping.keys() - res_dict.keys())
-
-            if len(failure_nodes) != 0:
+            node_iter = node_curie if isinstance(node_curie, list) else (node_curie,)
+            check_empty = False
+            for node in node_iter:
+                tmplist = set(edge_id for edge_id, edge in answer_kg.edges_by_qg_id.get('FET_e00', {}).items() if edge.subject == node or edge.object == node)
+                if len(tmplist) == 0:
+                    self.response.warning(f"Failed to query adjacent nodes from {infores_key} for {node} in FET.")
+                    failure_nodes.append(node)
+                    check_empty = True
+                    continue
+                res_dict[node] = len(tmplist)
+            if check_empty:
                 return (res_dict, failure_nodes)
             else:
                 return (res_dict, [])
-
-        else:
-            # Route FET queries through Gandalf (Tier0). See #2714 for the transition from KG2/PloverDB.
-            infores_key = "infores:gandalf"
-            from ARAX.ARAXQuery.ARAX_expander import ARAXExpander
-            expander = ARAXExpander()
-            query_graph_builtin = {'nodes':
-                                   {'FET_n00':
-                                    {'ids': node_curie,
-                                     'is_set': False},
-                                    'FET_n01':
-                                    {'categories': [adjacent_type],
-                                     'is_set': False}},
-                                   'edges':
-                                   {'FET_e00':
-                                    {'subject': 'FET_n00',
-                                     'object': 'FET_n01',
-                                     'predicates': [rel_type]}
-                                    }}
-            query_graph = QueryGraph.from_dict(query_graph_builtin)
-            from ARAX.ARAXQuery.Expand.kp_selector import KPSelector
-            kp_selector = KPSelector(kg2_mode=False,
-                                     log=self.response)
-
-            try:
-
-                # your async call wrapped inside an async def
-                async def run_expand():
-                    return await expander.expand_edge_async(
-                        query_graph,
-                        kp_to_use=infores_key,
-                        user_specified_kp=False,
-                        kp_timeout=30,
-                        kp_selector=kp_selector,
-                        log=self.response,
-                        multiple_kps=False,
-                        be_creative_treats=False
-                    )
-
-                # then run it from your sync code
-                answer_kg, _, log = asyncio.run(run_expand())
-                
-                if log.status != 'OK':
-                    self.response.error(f"Fail to query adjacent nodes from infores:rtx-kg2 for {node_curie}")
-                    return res
-
-                res_dict = dict()
-                failure_nodes = list()
-                node_iter = node_curie if isinstance(node_curie, list) else (node_curie,)
-                check_empty = False
-                for node in node_iter:
-                    tmplist = set(edge_id for edge_id, edge in answer_kg.edges_by_qg_id.get('FET_e00', {}).items() if edge.subject == node or edge.object == node)
-                    if len(tmplist) == 0:
-                        self.response.warning(f"Failed to query adjacent nodes from {infores_key} for {node} in FET.")
-                        failure_nodes.append(node)
-                        check_empty = True
-                        continue
-                    res_dict[node] = len(tmplist)
-                if check_empty:
-                    return (res_dict, failure_nodes)
-                else:
-                    return (res_dict, [])
-            except Exception:
-                tb = traceback.format_exc()
-                error_type, error, _ = sys.exc_info()
-                self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"Something went wrong with querying adjacent nodes from {kp} for {node_curie}")
-                return res
+        except Exception:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
+            self.response.error(f"Something went wrong with querying adjacent nodes from {infores_key} for {node_curie}")
+            return res
 
 
     def size_of_given_type_in_KP(self, node_type):
