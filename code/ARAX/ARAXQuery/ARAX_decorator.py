@@ -10,6 +10,7 @@ import ujson
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
+from util import get_arax_edge_key
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -248,7 +249,7 @@ class ARAXDecorator:
             tier0_edge_ids_to_kg_keys_map: DefaultDict = defaultdict(set)
             for edge_key in edge_keys_to_decorate:
                 edge = kg.edges[edge_key]
-                tier0_edge_id = self._get_tier0_edge_key(edge)
+                tier0_edge_id = get_arax_edge_key(edge)
                 if tier0_edge_id in tier0_edge_ids_to_kg_keys_map:
                     response.error(f"Encountered more than one edge in the KG that corresponds to the same "
                                    f"tier0 edge ({tier0_edge_id}); duplicate edges are: {edge_key} and "
@@ -391,19 +392,6 @@ class ARAXDecorator:
         if attribute_source:
             attribute.attribute_source = attribute_source
         return attribute
-
-    def _get_tier0_edge_key(self, edge: Edge) -> str:
-        # Must stay in lockstep with generate_sqlite.py::_get_edge_key so the
-        # WHERE triple IN (...) lookup actually hits the row we want.
-        qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
-        qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate", "")
-        object_direction_qualifier = qualifiers_dict.get("biolink:object_direction_qualifier", "")
-        object_aspect_qualifier = qualifiers_dict.get("biolink:object_aspect_qualifier", "")
-        primary_knowledge_source = self._get_primary_knowledge_source(edge)
-
-        qualified_portion = f"{qualified_predicate}--{object_direction_qualifier}--{object_aspect_qualifier}"
-        edge_key = f"{edge.subject}--{edge.predicate}--{qualified_portion}--{edge.object}--{primary_knowledge_source}"
-        return edge_key
 
     @staticmethod
     def _get_primary_knowledge_source(edge: Edge) -> str:

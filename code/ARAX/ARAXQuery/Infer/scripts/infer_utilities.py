@@ -13,7 +13,7 @@ from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
 from ARAX_expander import ARAXExpander
 from ARAX_resultify import ARAXResultify
-from ARAX_decorator import ARAXDecorator
+from util import get_arax_edge_key
 from biolink_helper import get_biolink_helper
 import traceback
 from collections import Counter
@@ -117,7 +117,6 @@ class InferUtilities:
                 raise Exception("qedge_id is None but QG is not empty")
 
         messenger = ARAXMessenger()
-        decorator = ARAXDecorator()
         xdtdmapping = xDTDMappingDB(None, None, RTXConfig.explainable_dtd_db_path.split('/')[-1], mode='run', db_loc=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction']))
 
         kp = 'infores:rtx-kg2'
@@ -469,12 +468,11 @@ class InferUtilities:
             else:
                 self.response.warning(f"Something went wrong when adding the subgraph for the drug-disease pair ({drug},{disease}) to the knowledge graph. Skipping this result....")
 
-        self.response = decorator.decorate_nodes(self.response)
-        if self.response.status != 'OK':
-            return self.response
-        self.response = decorator.decorate_edges(self.response)
-        if self.response.status != 'OK':
-            return self.response
+        # TODO(#2731): node/edge EPC backfill via the legacy decorator was removed
+        # when the Tier0 sqlite was thinned to publications/neighbors/category_counts.
+        # If XDTD subgraphs need full EPC, the right source is a Retriever lookup
+        # for the manually-constructed nodes/edges; that is a separate Infer-team
+        # follow-up and is intentionally not done here.
 
         #FIXME: this might cause a problem since it doesn't add optional groups for 1 and 2 hops
         # This might also cause issues when infer is on an intermediate edge
@@ -510,7 +508,6 @@ class InferUtilities:
 
         messenger = ARAXMessenger()
         synonymizer = NodeSynonymizer()
-        decorator = ARAXDecorator()
         #TBD
         # node_ids = set([y for paths in top_paths.values() for x in paths for y in list(x.values())[::2] if y and y != ''])
         node_ids = set([y for paths in top_paths.values() for x in paths for y in x[::2] if y and y != ''])
@@ -821,7 +818,7 @@ class InferUtilities:
                         message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
                     new_edge = edge_tuples[i][1]
                     for key in new_edge:
-                        edge_name = 'infores:rtx-kg2:' + decorator._get_kg2c_edge_key(new_edge[key])
+                        edge_name = 'infores:dogpark-tier0:' + get_arax_edge_key(new_edge[key])
                         message.knowledge_graph.edges[edge_name] = new_edge[key]
                         message.knowledge_graph.edges[edge_name].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
 
@@ -866,12 +863,9 @@ class InferUtilities:
                 self.kedge_global_iter += 1
             else:
                 self.response.warning(f"Something went wrong when adding the subgraph for the chemical-gene pair ({chemical_curie},{gene_curie}) to the knowledge graph. Skipping this result....")
-        self.response = decorator.decorate_nodes(self.response)
-        if self.response.status != 'OK':
-            return self.response
-        self.response = decorator.decorate_edges(self.response)
-        if self.response.status != 'OK':
-            return self.response
+        # TODO(#2731): see genrete_treat_subgraphs above. Node/edge EPC backfill
+        # via the legacy decorator was removed; a Retriever-based replacement is
+        # a separate Infer-team follow-up.
         #FIXME: this might cause a problem since it doesn't add optional groups for 1 and 2 hops
         # This might also cause issues when infer is on an intermediate edge
         self.resultify_and_sort(essence_scores)

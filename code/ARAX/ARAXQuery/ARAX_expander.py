@@ -11,7 +11,6 @@ from typing import Union, Optional, Any
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
-from ARAX_decorator import ARAXDecorator
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
@@ -658,10 +657,22 @@ class ARAXExpander:
 
         message.auxiliary_graphs = aux_graphs_combined
 
-        # Decorate all nodes with additional attributes info from KG2c if requested (iri, description, etc.)
+        # Per #2731: ARAX no longer back-fills missing node descriptions from
+        # an OSU-built sqlite. Surface the count of bare nodes once, as a
+        # single TRAPI informational message, so downstream tooling can
+        # notice without us flooding the log.
         if not parameters.get("return_minimal_metadata"):
-            decorator = ARAXDecorator()
-            decorator.decorate_nodes(response, only_decorate_bare=True)
+            bare_node_count = sum(
+                1 for node in kg.nodes.values()
+                if not node.attributes or not any(
+                    a.attribute_type_id == "biolink:description" for a in node.attributes
+                )
+            )
+            if bare_node_count:
+                log.info(
+                    f"{bare_node_count} node(s) in the knowledge graph are missing a "
+                    f"biolink:description attribute."
+                )
 
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)

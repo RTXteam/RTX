@@ -1,25 +1,24 @@
 #!/usr/bin/env python3
 
 """
-Build the tier0 decoration SQLite database from conflated tier0 JSONL files.
+Build the tier0-info-for-overlay SQLite database from conflated tier0 JSONL files.
 
-This database is the rapid-lookup cache that ARAX_decorator.py reads at
-query time to attach node/edge metadata (descriptions, publications,
-supporting_text, knowledge_level, etc.) onto TRAPI results without
-touching Neo4j or rescanning the full JSONL.
+This database is intentionally minimal. It is *not* a full ingest of the
+Tier0 graph. It only contains what the ARAX Overlay modules need:
 
-Preserves the structural features the decorator relies on:
+    * edge_publications  - per-edge PMID lists, keyed by canonical ARAX edge
+                           key. Used by Overlay/NGD-style decoration paths.
+    * neighbors          - per-node neighbor counts by expanded biolink
+                           category. Used by Overlay/fisher_exact_test.py.
+    * category_counts    - node count per expanded biolink category. Also
+                           used by Overlay/fisher_exact_test.py.
 
-    * Delimiter-encoded list fields
-    * Deterministic triple key keyed on
-        subject, predicate, qualifier tuple, object, primary_knowledge_source
-    * node_pair column for NGD-style by-pair lookup
-    * Unique triple index and node_id index
+There are no `nodes` or `edges` tables. Anything that needs full node/edge
+properties should query Tier0/Gandalf directly.
 
-Primary knowledge source is derived from tier0's `sources` list (the
-entry whose resource_role == "primary_knowledge_source"). This logic
-must stay in lockstep with ARAXDecorator._get_tier0_edge_key or the
-unique triple index won't match at lookup time.
+The canonical ARAX edge key produced here MUST match
+`ARAXQuery/util.get_arax_edge_key(edge)`, otherwise downstream lookups
+will silently miss.
 """
 
 from __future__ import annotations
@@ -27,73 +26,27 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sqlite3
+import sys
+from collections import defaultdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
+
+sys.path.append(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "BiolinkHelper")
+)
+from biolink_helper import get_biolink_helper  # noqa: E402
 
 
 TIER0_ARRAY_DELIMITER = "ǂ"
 
 
 # ---------------------------------------------------------------------
-# Serialization helpers
+# Canonical ARAX edge key (mirror of util.get_arax_edge_key)
 # ---------------------------------------------------------------------
 
-def _convert_list_to_string_encoded_format(
-    value: Optional[Iterable[str]]
-) -> str:
-    if not value:
-        return ""
-
-    cleaned: list[str] = []
-    for item in value:
-        if not item:
-            continue
-        if isinstance(item, str):
-            cleaned.append(item)
-        else:
-            logging.warning("List contains non-str items; excluding them")
-
-    return TIER0_ARRAY_DELIMITER.join(cleaned)
-
-
-def _prep_for_sqlite(value: Any) -> str:
-    if value is None:
-        return ""
-
-    if isinstance(value, str):
-        return value
-
-    if isinstance(value, bool):
-        return "true" if value else "false"
-
-    if isinstance(value, (int, float)):
-        return str(value)
-
-    if isinstance(value, dict):
-        return json.dumps(value)
-
-    if isinstance(value, Iterable) and not isinstance(value, bytes):
-        items = list(value)
-        if not items:
-            return ""
-        if all(isinstance(item, str) for item in items):
-            cleaned = [item for item in items if item]
-            return TIER0_ARRAY_DELIMITER.join(cleaned) if cleaned else ""
-        return json.dumps(items)
-
-    return str(value)
-
-
 def _extract_primary_knowledge_source(sources: Any) -> str:
-    """Pull the primary_knowledge_source resource_id from tier0's `sources` list.
-
-    Tier0 edges carry a structured `sources` field (list of dicts with
-    `resource_id` and `resource_role`) rather than a flat
-    `primary_knowledge_source` string. Return an empty string when no
-    entry is marked as the primary source so the triple key stays
-    deterministic.
-    """
     if not sources or not isinstance(sources, list):
         return ""
     for source in sources:
@@ -102,243 +55,96 @@ def _extract_primary_knowledge_source(sources: Any) -> str:
     return ""
 
 
-def _get_edge_key(
+def _get_arax_edge_key(
     subject: str,
-    object: str,
     predicate: str,
+    object: str,
     primary_knowledge_source: str,
     qualified_predicate: Optional[str],
     object_direction_qualifier: Optional[str],
     object_aspect_qualifier: Optional[str],
 ) -> str:
-
-    qualified_portion = "--".join(
-        [
-            qualified_predicate or "",
-            object_direction_qualifier or "",
-            object_aspect_qualifier or "",
-        ]
-    )
-
-    return "--".join(
-        [
-            subject,
-            predicate,
-            qualified_portion,
-            object,
-            primary_knowledge_source,
-        ]
-    )
+    qualified_portion = "--".join([
+        qualified_predicate or "",
+        object_direction_qualifier or "",
+        object_aspect_qualifier or "",
+    ])
+    return "--".join([
+        subject,
+        predicate,
+        qualified_portion,
+        object,
+        primary_knowledge_source,
+    ])
 
 
-# ---------------------------------------------------------------------
-# Explicit property schema (tier0)
-# ---------------------------------------------------------------------
-
-NODE_PROPERTIES: Set[str] = {
-    # Shared with KG2
-    "id",
-    "category",
-    "description",
-    "name",
-    "synonym",
-    "taxon",
-    "in_taxon",
-    # Tier0-only, surfaced for decoration
-    "equivalent_identifiers",
-    "information_content",
-    "xref",
-    "symbol",
-    "full_name",
-    "in_taxon_label",
-    "inheritance",
-    "chembl_availability_type",
-    "chembl_black_box_warning",
-    "chembl_natural_product",
-    "chembl_prodrug",
-}
-
-EDGE_PROPERTIES: Set[str] = {
-    # Shared with KG2
-    "subject",
-    "object",
-    "id",
-    "predicate",
-    "agent_type",
-    "knowledge_level",
-    "qualified_predicate",
-    "object_direction_qualifier",
-    "object_aspect_qualifier",
-    "publications",
-    # Tier0-only: provenance and content
-    "sources",
-    "description",
-    "supporting_text",
-    "update_date",
-    "negated",
-    "original_subject",
-    "original_predicate",
-    "original_object",
-    # Tier0-only: evidence / statistics worth surfacing
-    "p_value",
-    "adjusted_p_value",
-    "evidence_count",
-    # Tier0-only: clinical / regulatory
-    "clinical_approval_status",
-    "FDA_regulatory_approvals",
-    # Tier0-only: qualifier family
-    "qualifier",
-    "anatomical_context_qualifier",
-    "causal_mechanism_qualifier",
-    "disease_context_qualifier",
-    "frequency_qualifier",
-    "onset_qualifier",
-    "object_form_or_variant_qualifier",
-    "sex_qualifier",
-    "species_context_qualifier",
-    "stage_qualifier",
-    "subject_aspect_qualifier",
-    "subject_direction_qualifier",
-    "subject_form_or_variant_qualifier",
-}
+def _encode_publications(value: Any) -> str:
+    if not value:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, Iterable):
+        cleaned = [str(item) for item in value if item]
+        return TIER0_ARRAY_DELIMITER.join(cleaned)
+    return str(value)
 
 
 # ---------------------------------------------------------------------
-# Core builder
+# Streaming edge pass: drives both edge_publications inserts and
+# neighbor accumulation.
 # ---------------------------------------------------------------------
 
-def _iter_edge_rows(
+def _iter_edge_publication_rows(
     edges_path: Path,
-    sqlite_edge_properties: list[str],
+    expanded_labels_by_node: Dict[str, List[str]],
+    neighbors_by_label: Dict[str, Dict[str, Set[str]]],
     progress_every: int = 1_000_000,
-) -> Iterable[list[str]]:
-    """Yield one sqlite row per edge, streaming from JSONL.
-
-    The edges JSONL is tens of GB — materializing it into a dict or list
-    pushes memory past what the machine has. This generator keeps memory
-    O(1) per edge and lets `executemany` pull rows as it writes.
+) -> Iterable[tuple]:
+    """
+    Yield `(arax_edge_key, publications_str)` rows for edges that have at
+    least one publication. As a side effect, populate `neighbors_by_label`
+    with `[node_id][expanded_label] -> set(neighbor_ids)` so the caller
+    can collapse it into the `neighbors` table after this pass finishes.
     """
     with edges_path.open() as f:
         for index, line in enumerate(f, start=1):
             edge = json.loads(line)
 
-            primary_knowledge_source = _extract_primary_knowledge_source(edge.get("sources"))
+            subject_id = edge["subject"]
+            object_id = edge["object"]
 
-            triple = _get_edge_key(
-                subject=edge["subject"],
-                object=edge["object"],
+            for label in expanded_labels_by_node.get(object_id, ()):
+                neighbors_by_label[subject_id][label].add(object_id)
+            for label in expanded_labels_by_node.get(subject_id, ()):
+                neighbors_by_label[object_id][label].add(subject_id)
+
+            publications = _encode_publications(edge.get("publications"))
+            if not publications:
+                if index % progress_every == 0:
+                    logging.info(f"  ... streamed {index:,} edges")
+                continue
+
+            arax_edge_key = _get_arax_edge_key(
+                subject=subject_id,
                 predicate=edge["predicate"],
-                primary_knowledge_source=primary_knowledge_source,
+                object=object_id,
+                primary_knowledge_source=_extract_primary_knowledge_source(edge.get("sources")),
                 qualified_predicate=edge.get("qualified_predicate"),
                 object_direction_qualifier=edge.get("object_direction_qualifier"),
                 object_aspect_qualifier=edge.get("object_aspect_qualifier"),
             )
 
-            node_pair = f"{edge['subject']}--{edge['object']}"
-
-            serialized_props = [
-                _prep_for_sqlite(edge.get(prop))
-                for prop in sqlite_edge_properties
-            ]
-
-            yield [triple, node_pair] + serialized_props
+            yield (arax_edge_key, publications)
 
             if index % progress_every == 0:
                 logging.info(f"  ... streamed {index:,} edges")
 
 
-def create_tier0_sqlite_db(
-    nodes_path: Path,
-    edges_path: Path,
-    output_db: Path,
-) -> None:
-
-    if output_db.exists():
-        output_db.unlink()
-
-    connection = sqlite3.connect(output_db)
-
-    # -------------------------
-    # Nodes (~1.7M rows: fits in memory fine)
-    # -------------------------
-
-    logging.info("Loading nodes into memory...")
-    nodes_dict = load_jsonl_as_dict(nodes_path, "id")
-
-    sqlite_node_properties = sorted(NODE_PROPERTIES)
-
-    cols_with_types = ", ".join(f"{col} TEXT" for col in sqlite_node_properties)
-    connection.execute(f"CREATE TABLE nodes ({cols_with_types})")
-
-    question_marks = ", ".join("?" for _ in sqlite_node_properties)
-
-    node_rows = (
-        [
-            _prep_for_sqlite(node.get(prop))
-            for prop in sqlite_node_properties
-        ]
-        for node in nodes_dict.values()
-    )
-
-    logging.info(f"Inserting {len(nodes_dict):,} node rows...")
-    connection.executemany(
-        f"INSERT INTO nodes VALUES ({question_marks})",
-        node_rows,
-    )
-
-    connection.execute("CREATE UNIQUE INDEX node_id_index ON nodes (id)")
-    connection.commit()
-
-    # Free the node dict before starting on edges so the full RAM budget
-    # is available for the sqlite insert pipeline.
-    del nodes_dict
-
-    # -------------------------
-    # Edges (~29M rows on tier0: streamed from disk)
-    # -------------------------
-
-    sqlite_edge_properties = sorted(EDGE_PROPERTIES)
-
-    cols_with_types = ", ".join(f"{col} TEXT" for col in sqlite_edge_properties)
-
-    connection.execute(
-        f"CREATE TABLE edges (triple TEXT, node_pair TEXT, {cols_with_types})"
-    )
-    # Create the unique triple index up front so INSERT OR IGNORE has a
-    # constraint to check against. Tier0 data contains a small number of
-    # edges that serialize to the same triple key (same subject, predicate,
-    # qualifiers, object, primary_knowledge_source); these would fail a
-    # post-hoc CREATE UNIQUE INDEX. First-wins matches the 1:1 triple
-    # lookup assumption on the decorator side.
-    connection.execute("CREATE UNIQUE INDEX triple_index ON edges (triple)")
-
-    question_marks = ", ".join("?" for _ in sqlite_edge_properties)
-
-    logging.info("Streaming edges from JSONL into sqlite...")
-    changes_before = connection.total_changes
-    connection.executemany(
-        f"INSERT OR IGNORE INTO edges (triple, node_pair, {', '.join(sqlite_edge_properties)}) "
-        f"VALUES (?, ?, {question_marks})",
-        _iter_edge_rows(edges_path, sqlite_edge_properties),
-    )
-    inserted = connection.total_changes - changes_before
-
-    edge_count_row = connection.execute("SELECT COUNT(*) FROM edges").fetchone()
-    final_count = edge_count_row[0] if edge_count_row else 0
-    logging.info(f"Inserted {inserted:,} edges; final table size {final_count:,} rows")
-
-    logging.info("Building node_pair_index...")
-    connection.execute("CREATE INDEX node_pair_index ON edges (node_pair)")
-    connection.commit()
-
-    connection.close()
-
-
 # ---------------------------------------------------------------------
-# JSONL loader
+# JSONL loader (nodes only — kept in memory for category expansion)
 # ---------------------------------------------------------------------
 
-def load_jsonl_as_dict(path: Path, key_field: str) -> Dict[str, Dict[str, Any]]:
+def _load_jsonl_as_dict(path: Path, key_field: str) -> Dict[str, Dict[str, Any]]:
     result: Dict[str, Dict[str, Any]] = {}
     with path.open() as f:
         for line in f:
@@ -348,22 +154,153 @@ def load_jsonl_as_dict(path: Path, key_field: str) -> Dict[str, Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------
+# Builder
+# ---------------------------------------------------------------------
+
+def create_tier0_overlay_sqlite_db(
+    nodes_path: Path,
+    edges_path: Path,
+    output_db: Path,
+    biolink_version: Optional[str] = None,
+) -> None:
+
+    if output_db.exists():
+        output_db.unlink()
+
+    connection = sqlite3.connect(output_db)
+
+    # -------------------------
+    # Expanded biolink labels per node — drives `neighbors` and
+    # `category_counts`. Tier0 nodes carry only a singular `category`;
+    # we expand to ancestors + mixins so Fisher Exact Test queries by a
+    # parent category like biolink:ChemicalEntity still resolve.
+    # -------------------------
+
+    logging.info("Loading nodes into memory...")
+    nodes_dict = _load_jsonl_as_dict(nodes_path, "id")
+    logging.info(f"Loaded {len(nodes_dict):,} nodes")
+
+    logging.info("Expanding biolink category ancestors for each node...")
+    bh = get_biolink_helper(biolink_version)
+    expanded_labels_by_node: Dict[str, List[str]] = {}
+    for node_id, node in nodes_dict.items():
+        category = node.get("category")
+        if not category:
+            expanded_labels_by_node[node_id] = []
+            continue
+        categories = category if isinstance(category, list) else [category]
+        expanded_labels_by_node[node_id] = list(
+            bh.get_ancestors(categories, include_mixins=True)
+        )
+
+    # -------------------------
+    # edge_publications: streamed from the edges JSONL, only rows with
+    # at least one publication. Same pass populates the neighbor
+    # accumulator (consumed below).
+    # -------------------------
+
+    connection.execute(
+        "CREATE TABLE edge_publications ("
+        "arax_edge_key TEXT PRIMARY KEY, "
+        "publications  TEXT"
+        ")"
+    )
+
+    neighbors_by_label: Dict[str, Dict[str, Set[str]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
+
+    logging.info("Streaming edges and writing edge_publications rows...")
+    changes_before = connection.total_changes
+    connection.executemany(
+        "INSERT OR IGNORE INTO edge_publications (arax_edge_key, publications) VALUES (?, ?)",
+        _iter_edge_publication_rows(edges_path, expanded_labels_by_node, neighbors_by_label),
+    )
+    inserted = connection.total_changes - changes_before
+    logging.info(f"Inserted {inserted:,} edge_publications rows")
+    connection.commit()
+
+    # -------------------------
+    # neighbors
+    # -------------------------
+
+    logging.info(f"Writing neighbors table ({len(neighbors_by_label):,} nodes)...")
+    connection.execute(
+        "CREATE TABLE neighbors (id TEXT PRIMARY KEY, neighbor_counts TEXT)"
+    )
+    neighbor_rows = (
+        (node_id, json.dumps({label: len(ids) for label, ids in labels.items()}))
+        for node_id, labels in neighbors_by_label.items()
+    )
+    connection.executemany(
+        "INSERT INTO neighbors (id, neighbor_counts) VALUES (?, ?)",
+        neighbor_rows,
+    )
+    connection.commit()
+    del neighbors_by_label
+
+    # -------------------------
+    # category_counts
+    # -------------------------
+
+    logging.info("Writing category_counts table...")
+    connection.execute(
+        "CREATE TABLE category_counts (category TEXT PRIMARY KEY, count INTEGER)"
+    )
+    nodes_by_label: Dict[str, int] = defaultdict(int)
+    for node_id in nodes_dict:
+        for label in expanded_labels_by_node.get(node_id, ()):
+            nodes_by_label[label] += 1
+    connection.executemany(
+        "INSERT INTO category_counts (category, count) VALUES (?, ?)",
+        nodes_by_label.items(),
+    )
+    connection.commit()
+
+    del nodes_dict
+    del expanded_labels_by_node
+
+    connection.close()
+
+
+# ---------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------
 
+def _build_output_filename(output_dir: Path, tier0_build_date: str, schema_version: str) -> Path:
+    return output_dir / f"tier0-info-for-overlay_v{schema_version}_tier0-{tier0_build_date}.sqlite"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build the tier0 decoration SQLite database from conflated JSONL files."
+        description="Build the minimal tier0-info-for-overlay SQLite database "
+                    "(edge_publications, neighbors, category_counts) from Tier0 JSONL files."
     )
-    parser.add_argument("--nodes", type=Path, required=True)
-    parser.add_argument("--edges", type=Path, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--nodes", type=Path, required=True,
+                        help="Path to the conflated Tier0 nodes JSONL file.")
+    parser.add_argument("--edges", type=Path, required=True,
+                        help="Path to the conflated Tier0 edges JSONL file.")
+    parser.add_argument("--output-dir", type=Path, required=True,
+                        help="Directory to write the resulting sqlite file into.")
+    parser.add_argument("--tier0-build-date", required=True,
+                        help="Tier0 build date stamp in YYYYMMDD form (used in the filename).")
+    parser.add_argument("--schema-version", default="1.0",
+                        help="Schema version stamp embedded in the filename. Default: 1.0")
+    parser.add_argument(
+        "--biolink-version",
+        default=None,
+        help="Biolink version for category-ancestor expansion. "
+             "Defaults to the version ARAX is currently pinned to.",
+    )
 
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-    create_tier0_sqlite_db(args.nodes, args.edges, args.output)
+    output_db = _build_output_filename(args.output_dir, args.tier0_build_date, args.schema_version)
+    logging.info(f"Output: {output_db}")
+
+    create_tier0_overlay_sqlite_db(args.nodes, args.edges, output_db, args.biolink_version)
 
     logging.info("Done.")
 
