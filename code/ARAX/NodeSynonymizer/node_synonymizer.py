@@ -24,7 +24,6 @@ import requests  # type: ignore[import-untyped]
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration  # type: ignore[import-not-found]  # noqa: E402  # pylint: disable=import-error,wrong-import-position
 
 sys.path.append(os.path.sep.join(
     [*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
@@ -51,35 +50,52 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
     SQLite queries with live API calls to two SRI services:
 
     SRI Node Normalizer (CURIE -> canonical info + equivalents):
-      Production: https://nodenorm.transltr.io/1.5
-      CI/Dev:     https://nodenorm.ci.transltr.io/1.5
-      Docs:       https://nodenorm.ci.transltr.io/1.5/docs
+      RENCI (used by this module): https://nodenormalization-sri.renci.org/1.5
+      Translator Production:       https://nodenorm.transltr.io/1.5
+      Translator CI/Dev:           https://nodenorm.ci.transltr.io/1.5
+      Docs:                        https://nodenorm.ci.transltr.io/1.5/docs
       Main endpoint: POST /get_normalized_nodes
 
     SRI Name Resolver (free-text name -> best CURIE match):
-      CI/Dev:     https://name-lookup.ci.transltr.io
-      Production: https://name-lookup.transltr.io  (NO /bulk-lookup)
-      Docs:       https://name-lookup.ci.transltr.io/docs
+      RENCI (used by this module): https://name-resolution-sri.renci.org
+      Translator CI/Dev:           https://name-lookup.ci.transltr.io
+      Translator Production:       https://name-lookup.transltr.io  (NO /bulk-lookup)
+      Docs:                        https://name-lookup.ci.transltr.io/docs
       Main endpoint: POST /bulk-lookup
-      WARNING: The production Name Resolver deployment does NOT
-      expose /bulk-lookup -- only /lookup, /reverse_lookup, /status.
-      This implementation relies on /bulk-lookup, so it currently
-      only works against the CI endpoint. Selecting the production
-      URL in _get_api_urls() will cause every name-based call to
-      fail with HTTP 404 until either:
-        (a) the production deployment adds /bulk-lookup, or
-        (b) this code falls back to the single-string /lookup.
+      WARNING: The `transltr.io` production Name Resolver deployment
+      does NOT expose /bulk-lookup -- only /lookup, /reverse_lookup,
+      /status. This implementation relies on /bulk-lookup. The RENCI
+      endpoint (https://name-resolution-sri.renci.org) does expose
+      /bulk-lookup, which is another reason we pin to RENCI here.
 
-    Which URLs are used depends on the ARAX maturity setting:
-    production maturity uses production URLs, everything else
-    (dev, test, beta) uses CI URLs. This is handled in
-    _get_api_urls(). Both can be overridden via config_dbs.json
-    keys: node_normalizer_url_override, name_resolver_url_override.
+    The Node Normalizer and Name Resolver URLs are hardcoded to the
+    SRI endpoints hosted at RENCI:
+      - NodeNorm:     https://nodenormalization-sri.renci.org/1.5
+      - NameResolver: https://name-resolution-sri.renci.org
+
+    Why hardcode (no env vars, no constructor overrides, no RTXConfiguration):
+      1. The SRI services at RENCI are the canonical upstream. The
+         `transltr.io` mirrors proxy them and can drift or lag. Pinning
+         to RENCI removes that ambiguity.
+      2. `transltr.io` production does not expose /bulk-lookup for
+         Name Resolver, which this module requires. RENCI does.
+      3. One URL per service keeps this module dependency-free:
+         no RTXConfiguration, no config_dbs.json, no maturity-based
+         branching. That is a prerequisite for extracting this file
+         as a standalone PyPI package that Pathfinder, DrugBankNER,
+         and other repos can import directly.
+      4. If we ever need to point at a different endpoint (test
+         environment, private mirror), subclassing and overriding
+         `NODE_NORMALIZER_URL` / `NAME_RESOLVER_URL` is trivial and
+         explicit, without hiding the behavior in env vars or configs.
 
     The return contracts (get_canonical_curies, get_equivalent_nodes,
     get_normalizer_results) are preserved so downstream ARAX callers
     don't need changes.
     """
+
+    NODE_NORMALIZER_URL = "https://nodenormalization-sri.renci.org/1.5"
+    NAME_RESOLVER_URL = "https://name-resolution-sri.renci.org"
 
     def __init__(self, sqlite_file_name: Optional[str] = None,
                  autocomplete: bool = True,
@@ -106,9 +122,8 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         # of an event loop isn't worth it.
         self._use_async = use_async
 
-        self.rtx_config = RTXConfiguration()
-        self.api_base_url, self.name_resolver_url = (
-            self._get_api_urls())
+        self.api_base_url = self.NODE_NORMALIZER_URL.rstrip("/")
+        self.name_resolver_url = self.NAME_RESOLVER_URL.rstrip("/")
         self.kg2_infores_curie = "infores:rtx-kg2"
         self.sri_nn_infores_curie = "infores:sri-node-normalizer"
         self.arax_infores_curie = "infores:arax"
@@ -1305,27 +1320,6 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         if category:
             return f"biolink:{category}"
         return category
-
-    def _get_api_urls(self) -> tuple[str, str]:
-        """Determine Node Normalizer and Name Resolver URLs."""
-        nn_url = self.rtx_config.config_dbs.get(
-            "node_normalizer_url_override")
-        nr_url = self.rtx_config.config_dbs.get(
-            "name_resolver_url_override")
-        if nn_url and nr_url:
-            return nn_url.rstrip("/"), nr_url.rstrip("/")
-        if nn_url or nr_url:
-            raise ValueError(
-                "Both node_normalizer_url_override and"
-                " name_resolver_url_override must be set"
-                " together in config_dbs.json")
-        if self.rtx_config.maturity == "production":
-            return (
-                "https://nodenorm.transltr.io/1.5",
-                "https://name-lookup.transltr.io")
-        return (
-            "https://nodenorm.ci.transltr.io/1.5",
-            "https://name-lookup.ci.transltr.io")
 
     def _get_cluster_graph(
             self, normalizer_info: dict) -> dict:
