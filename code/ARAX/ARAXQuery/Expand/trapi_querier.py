@@ -3,6 +3,7 @@ import json
 import sys
 import os
 import time
+import uuid
 from collections import defaultdict
 import math
 
@@ -20,6 +21,10 @@ from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
 from trapi_query_cacher import KPQueryCacher
 import util
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelper/")
+from biolink_helper import get_biolink_helper
+
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -33,6 +38,14 @@ from openapi_server.models.attribute import Attribute  # noqa: E402
 from openapi_server.models.retrieval_source import RetrievalSource  # noqa: E402
 from openapi_server.models.auxiliary_graph import AuxiliaryGraph  # noqa: E402
 
+# All Biolink predicates considered "treats-like" (descendants of
+#  biolink:treats_or_applied_or_studied_to_treat); precomputed for O(1)
+#  membership tests.
+_TREATS_DESCENDANTS = frozenset(
+    get_biolink_helper().get_descendants("biolink:treats_or_applied_or_studied_to_treat")
+)
+
+UUID_NAMESPACE = uuid.UUID('31a17f10-c100-45ad-a3bb-2cccc37a8924')
 
 def _remove_attributes_with_invalid_values(response_json: dict,
                                            kp_curie: str,
@@ -86,7 +99,8 @@ class TRAPIQuerier:
                                                      upstream_resource_ids=[self.kp_infores_curie])
 
     async def answer_one_hop_query_async(
-            self, query_graph: QueryGraph,
+            self,
+            query_graph: QueryGraph,
             be_creative_treats: bool = False
     ) -> tuple[QGOrganizedKnowledgeGraph,
                dict[str, AuxiliaryGraph] | None]:
@@ -127,55 +141,97 @@ class TRAPIQuerier:
             log.update_query_plan(qedge_key, self.kp_infores_curie, "Skipped", skipped_message)
             return final_kg, None
 
-        # Treat this as a creative 'treats' query
+        # If the query graph has "knowledge_type: inferred" and this query edge
+        # has predicate 'biolink:treats', we want ARAX to be able to obtain from
+        # Retriever *lookup* type results using a broader set of predicates,
+        # which might include predicates such as
+        # `biolink:in_clinical_trials_for` or `biolink:applied_to_treat`, so
+        # that we can "predict" (not in the xDTD predication model, but rather,
+        # a heuristic ARAX-Expand prediction of a `biolink:treats` edge. To do
+        # this, we expand the set of predicates for this query edge to include
+        # the ancestral predicate
+        # `biolink:treats_or_applied_or_studied_to_treat`:
         if be_creative_treats:
-            for qedge in qg_copy.edges.values():  # Note there's only ever one qedge per QG here
-                qedge.predicates = list(set(qedge.predicates).union({"biolink:treats_or_applied_or_studied_to_treat",
-                                                                     "biolink:applied_to_treat"}))  # Just to be safe
-                log.info(f"For querying {self.kp_infores_curie}, edited {qedge_key} to use higher treats-type "
-                         f"predicates: {qedge.predicates}")
+            qedge = qg_copy.edges[qedge_key]
+            qedge.predicates = list(set(qedge.predicates).union(
+                {"biolink:treats_or_applied_or_studied_to_treat",
+                 "biolink:applied_to_treat"}))  # Just to be safe
+            log.info(f"For querying {self.kp_infores_curie}, "
+                     f"edited {qedge_key} to use higher treats-type "
+                     f"predicates: {qedge.predicates}")
 
         # Answer the query using the KP and load its answers into our object model
-        return await self._answer_query_using_kp_async(qg_copy)
+        result_kg, result_aux_graphs = await self._answer_query_using_kp_async(qg_copy)
 
-    def answer_one_hop_query(
-            self, query_graph: QueryGraph
-    ) -> tuple[QGOrganizedKnowledgeGraph,
-               dict[str, AuxiliaryGraph] | None]:
-        """
-        This function answers a one-hop (single-edge) query using the specified KP.
-        :param query_graph: A TRAPI query graph.
-        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
-                results for the query. (Organized by QG IDs.)
-        """
-        # TODO: Delete this method once we're ready to let go of the multiprocessing (vs. asyncio) option
-        log = self.log
-        final_kg = QGOrganizedKnowledgeGraph()
-        qg_copy = copy.deepcopy(query_graph)  # Create a copy so we don't modify the original
-        qedge_key = next(qedge_key for qedge_key in qg_copy.edges)
+        # If we are in `be_creative_treats` mode (see the long comment above),
+        # there might now be edges in the KG that are bound to this qedge, that
+        # do not have a predicate `biolink:treats`, but instead have some
+        # sibling predicate like `biolink:in_clinical_trials_for` or
+        # `biolink:applied_to_treat`, or an ancestral predicate like
+        # `biolink:treats_or_applied_or_studied_to_treat`. Per the ARAX team
+        # decision explained in ARAX issue 2736, for each such edge, we need to
+        # (1) move the edge to the "unbound edges" data structure in result_kg;
+        # (2) add a qedge-bound edge with the predicate `biolink:treats`; and
+        # (3) add an aux_graph that is referenced (as a "support graph") by the
+        # qedge-bound edge that we just added in item 2 (for information on what
+        # a support graph is, please see the Translator Reasoners Standard API
+        # at github.com/NCATSTranslator/ReasonerAPI):
+        if be_creative_treats:
+            if result_aux_graphs is None:
+                result_aux_graphs = {}
+            add_bound_edges = {}
+            delete_bound_edges = set()
+            kg_edges_for_qedge = result_kg.edges_by_qg_id[qedge_key]
+            ## iterate over all the edges in the KG that are bound to the query
+            ## graph edge whose key matches the variable `qedge_key`:
+            for edge_id, edge in kg_edges_for_qedge.items():
+                if edge.predicate != "biolink:treats" and \
+                   edge.predicate in _TREATS_DESCENDANTS:
+                    # if the edge came from xDTD, it should always have predicate
+                    # "biolink:treats"; so if we get here, we can safely assume
+                    # that this edge is a "lookup type" edge and not an xDTD edge
 
+                    # construct a UUID that is deterministically based on the subject/object
+                    # pair in the KG
+                    node_pair_uuid = uuid.uuid5(UUID_NAMESPACE, f"{edge.subject}-{edge.object}")
+                    heuristic_edge_id = f"ARAX-prediction-edge-{node_pair_uuid}"
 
-        self._verify_is_one_hop_query_graph(qg_copy)
-        if log.status != 'OK':
-            return final_kg, None
-
-        # Verify that the KP accepts these predicates/categories/prefixes
-        if self.kp_infores_curie != "infores:rtx-kg2":
-            if self.user_specified_kp:  # This is already done if expand chose the KP itself
-                if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_infores_curie):
-                    log.error(f"{self.kp_infores_curie} cannot answer queries with the specified categories/predicates",
-                              error_code="UnsupportedQG")
-                    return final_kg, None
-
-        # Convert the QG so that it uses curies with prefixes the KP likes
-        qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_infores_curie, log)
-        if not qg_copy:  # Means no equivalent curies with supported prefixes were found
-            skipped_message = "No equivalent curies with supported prefixes found"
-            log.update_query_plan(qedge_key, self.kp_infores_curie, "Skipped", skipped_message)
-            return final_kg, None
-
-        # Answer the query using the KP and load its answers into our object model
-        return self._answer_query_using_kp(qg_copy)
+                    edge_uuid = uuid.uuid5(UUID_NAMESPACE, edge_id)
+                    # no matter what, we are going to need to create an aux graph
+                    # for this edge (even if a heuristic predicted edge already exists):
+                    aux_graph_id = f"ARAX-prediction-auxgraph-{edge_uuid}"
+                    # have we already constructed a heuristic predicted edge for this pair?
+                    if heuristic_edge_id not in add_bound_edges:
+                        # no we have not, so make one
+                        heuristic_predicted_edge = Edge(predicate="biolink:treats",
+                                                        subject=edge.subject,
+                                                        object=edge.object,
+                                                        attributes=[],
+                                                        sources=[self.arax_retrieval_source])
+                        add_bound_edges[heuristic_edge_id] = heuristic_predicted_edge
+                    edge_attribute = Attribute(
+                        attribute_type_id = 'biolink:support_graphs',
+                        attribute_source = self.arax_infores_curie,
+                        value = [aux_graph_id]
+                    )
+                    add_bound_edges[heuristic_edge_id].attributes.append(edge_attribute)
+                    delete_bound_edges.add(edge_id)
+                    assert not edge_id.startswith('creative_DTD_prediction_')
+                    assert all(
+                        'creative_DTD_option_group' not in attribute.attribute_type_id
+                        for attribute in (getattr(edge, 'attributes', None) or [])
+                    )
+                    ## One has to specify an empty list for attributes in the initializer
+                    ## for AuxiliaryGraph, or one will get a ValueError later when the response
+                    ## gets serialized to JSON; I conjecture this represents a bug in the
+                    ## OpenAPI-generated model class, but anyhow, the workaround is easy here:
+                    aux_graph = AuxiliaryGraph(edges=[edge_id], attributes=[])
+                    result_aux_graphs[aux_graph_id] = aux_graph
+                    result_kg.unbound_edges[edge_id] = edge
+            for del_edge_id in delete_bound_edges:
+                del kg_edges_for_qedge[del_edge_id]
+            kg_edges_for_qedge.update(add_bound_edges)
+        return result_kg, result_aux_graphs
 
     def answer_single_node_query(
             self, single_node_qg: QueryGraph
