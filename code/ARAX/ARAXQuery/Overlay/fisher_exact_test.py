@@ -258,7 +258,7 @@ class ComputeFTEST:
                     self.response.info(f"No category is specified for the subject node with qnode key {subject_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
                     subject_node_category = ['biolink:NamedThing']
                 else:
-                    subject_node_category = normalized_subject_node['preferred_category']
+                    subject_node_category = [normalized_subject_node['preferred_category']]
                     self.response.info(f"No category is specified for the subject node with qnode key {subject_qnode_key} in Query Graph. We will automatically assign {subject_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
         ## check if the object node type is None, if so, automatically set it to biolink:NamedThing
@@ -273,7 +273,7 @@ class ComputeFTEST:
                 self.response.info(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
                 object_node_category = ['biolink:NamedThing'] # for issue 1817
             else:                    
-                object_node_category = normalized_object_node['preferred_category']
+                object_node_category = [normalized_object_node['preferred_category']]
                 self.response.info(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
         ## always set 'infores:rtx-kg2' to kp because we only have statistics for kg2 to calcualte fisher exact test

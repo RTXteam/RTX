@@ -255,7 +255,21 @@ class xDTDMappingDB:
         else:
             return None
         result = cursor.fetchone()
-        return NodeInfo._make(result) if result else None
+        if not result:
+            return None
+        # `category` is stored as a JSON-encoded list string by _insert_nodes;
+        # decode it back to a list so callers (Node.categories expects a list)
+        # don't have to handle the encoding themselves. Other JSON-encoded
+        # fields (equivalent_identifiers/synonym/xref) currently have no live
+        # consumers; leaving them as-is to avoid scope creep (#2671).
+        values = list(result)
+        cat_idx = NodeInfo._fields.index('category')
+        if values[cat_idx]:
+            try:
+                values[cat_idx] = json.loads(values[cat_idx])
+            except json.JSONDecodeError:
+                pass
+        return NodeInfo._make(values)
 
     def get_edge_info(self, subject: Optional[str] = None, predicate: Optional[str] = None,
                       object_id: Optional[str] = None, triple_id: Optional[tuple] = None) -> List[EdgeInfo]:
