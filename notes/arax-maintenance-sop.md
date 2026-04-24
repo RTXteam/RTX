@@ -221,7 +221,7 @@ venv/bin/pip install -r RTX/requirements.txt
 venv/bin/pip install -r RTX/dev-requirements.txt
 ../generate-db-symlinks.sh
 cp ../flask_config.json RTX/code/UI/OpenAPI/python-flask-server/openapi_server/
-venv/bin/python -u -m RTX.code.ARAX.ARAXQuery.Expand.kp_info_cacher
+cd RTX/code && ../../venv/bin/python -u -m ARAX.ARAXQuery.Expand.kp_info_cacher
 ```
 After each command (_especially_ the `pip install` commands), make sure you look for
 successful completion before issuing the next command in the above list.
