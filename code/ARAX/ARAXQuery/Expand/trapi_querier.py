@@ -181,7 +181,7 @@ class TRAPIQuerier:
                 result_aux_graphs = {}
             add_bound_edges = {}
             delete_bound_edges = set()
-            kg_edges_for_qedge = result_kg.edges_by_qg_id[qedge_key]
+            kg_edges_for_qedge = result_kg.edges_by_qg_id.get(qedge_key, {})
             ## iterate over all the edges in the KG that are bound to the query
             ## graph edge whose key matches the variable `qedge_key`:
             for edge_id, edge in kg_edges_for_qedge.items():
