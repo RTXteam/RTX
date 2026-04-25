@@ -19,7 +19,7 @@ from openapi_server.models.node import Node
 from openapi_server.models.attribute import Attribute
 
 def _run_query_and_do_standard_testing(actions: list[str] | None = None,
-                                       json_query: dict | None  = None,
+                                       json_query: dict | None = None,
                                        kg_should_be_incomplete=False,
                                        debug=False,
                                        should_throw_error=False,
