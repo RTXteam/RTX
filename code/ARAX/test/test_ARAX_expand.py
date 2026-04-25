@@ -228,8 +228,8 @@ def test_774_continue_if_no_results_query():
 
 def test_curie_list_query():
     actions_list = [
-        "add_qnode(ids=[MONDO:0700217, MONDO:0005027, MONDO:0005036], key=n00)",
-        "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
+        "add_qnode(ids=[MONDO:0008760, MONDO:0018755, MONDO:0010026], key=n00)",
+        "add_qnode(ids=[HP:0003074], key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:has_phenotype, key=e00)",
         "expand(kp=infores:retriever)",
         "return(message=true, store=false)"

@@ -190,44 +190,71 @@ class TRAPIQuerier:
                     # if the edge came from xDTD, it should always have predicate
                     # "biolink:treats"; so if we get here, we can safely assume
                     # that this edge is a "lookup type" edge and not an xDTD edge
-
-                    # construct a UUID that is deterministically based on the subject/object
-                    # pair in the KG
-                    node_pair_uuid = uuid.uuid5(UUID_NAMESPACE, f"{edge.subject}-{edge.object}")
-                    heuristic_edge_id = f"ARAX-prediction-edge-{node_pair_uuid}"
-
-                    edge_uuid = uuid.uuid5(UUID_NAMESPACE, edge_id)
-                    # no matter what, we are going to need to create an aux graph
-                    # for this edge (even if a heuristic predicted edge already exists):
-                    aux_graph_id = f"ARAX-prediction-auxgraph-{edge_uuid}"
-                    # have we already constructed a heuristic predicted edge for this pair?
-                    if heuristic_edge_id not in add_bound_edges:
-                        # no we have not, so make one
-                        heuristic_predicted_edge = Edge(predicate="biolink:treats",
-                                                        subject=edge.subject,
-                                                        object=edge.object,
-                                                        attributes=[],
-                                                        sources=[self.arax_retrieval_source])
-                        add_bound_edges[heuristic_edge_id] = heuristic_predicted_edge
-                    edge_attribute = Attribute(
-                        attribute_type_id = 'biolink:support_graphs',
-                        attribute_source = self.arax_infores_curie,
-                        value = [aux_graph_id]
-                    )
-                    add_bound_edges[heuristic_edge_id].attributes.append(edge_attribute)
-                    delete_bound_edges.add(edge_id)
                     assert not edge_id.startswith('creative_DTD_prediction_')
                     assert all(
                         'creative_DTD_option_group' not in attribute.attribute_type_id
                         for attribute in (getattr(edge, 'attributes', None) or [])
                     )
-                    ## One has to specify an empty list for attributes in the initializer
-                    ## for AuxiliaryGraph, or one will get a ValueError later when the response
-                    ## gets serialized to JSON; I conjecture this represents a bug in the
-                    ## OpenAPI-generated model class, but anyhow, the workaround is easy here:
-                    aux_graph = AuxiliaryGraph(edges=[edge_id], attributes=[])
-                    result_aux_graphs[aux_graph_id] = aux_graph
+
+                    # General strategy for handling this case:
+                    # 1. Create an auxiliary graph and under the `edges` attribute
+                    #    of that auxiliary graph; add any bound edges for this qedge
+                    #    that do *not* have the "biolink:treats" predicate to the
+                    #    `.edges` attribute list on this auxiliary graph; add this
+                    #    auxiliary graph to the return auxiliary graphs object under
+                    #    a new UUID key
+                    # 2. Once for this qedge, make a new edge in the KG whose
+                    #    predicate is "biolink:treats" and whose subject and object
+                    #    nodes match those of `edge`; add a "support graph" attribute
+                    #    to that edge that references the aux graph created in step 1.
+
+                    # Construct a UUID that is deterministically based on the subject/object
+                    # pair in the KG:
+                    node_pair_uuid = uuid.uuid5(UUID_NAMESPACE, f"{edge.subject}-{edge.object}")
+
+                    # Make an edge ID for the heuristic prediction edge, based on
+                    # node_pair_uuid:
+                    heuristic_edge_id = f"ARAX-prediction-edge-{node_pair_uuid}"
+
+                    # Create an aux graph id based on the node pair:
+                    aux_graph_id = f"ARAX-prediction-auxgraph-{node_pair_uuid}"
+
+                    # Is there already an aux graph for this aux_graph_id? 
+                    if aux_graph_id not in result_aux_graphs:
+                        # => no, we have to make a new aux graph object and store it
+
+                        ## [One has to specify an empty list for attributes in
+                        ## the initializer for AuxiliaryGraph, or one will get a
+                        ## ValueError later when the response gets serialized to
+                        ## JSON; I conjecture this represents a bug in the
+                        ## OpenAPI-generated model class, but anyhow, the
+                        ## workaround is easy here:]
+                        aux_graph = AuxiliaryGraph(edges=[], attributes=[])
+                        result_aux_graphs[aux_graph_id] = aux_graph
+                    else:
+                        # => yes, so just get a reference to the stored aux graph
+                        aux_graph = result_aux_graphs[aux_graph_id]
+
+                    # Add the edge_id for this edge to the aux graph
+                    aux_graph.edges.append(edge_id)
+
+                    # Add the edge to the unbounded_edges object
                     result_kg.unbound_edges[edge_id] = edge
+                    # Have we already constructed a heuristic predicted edge for this pair?
+                    if heuristic_edge_id not in add_bound_edges:
+                        # no we have not, so make one
+                        edge_attribute = Attribute(
+                            attribute_type_id = 'biolink:support_graphs',
+                            attribute_source = self.arax_infores_curie,
+                            value = [aux_graph_id])
+                        heuristic_predicted_edge = Edge(predicate="biolink:treats",
+                                                        subject=edge.subject,
+                                                        object=edge.object,
+                                                        attributes=[edge_attribute],
+                                                        sources=[self.arax_retrieval_source])
+                        add_bound_edges[heuristic_edge_id] = heuristic_predicted_edge
+                    delete_bound_edges.add(edge_id)
+
             for del_edge_id in delete_bound_edges:
                 del kg_edges_for_qedge[del_edge_id]
             kg_edges_for_qedge.update(add_bound_edges)
