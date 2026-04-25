@@ -24,15 +24,14 @@ import numpy as np
 from tqdm import tqdm
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # ARAXQuery directory
-from ARAX_response import ARAXResponse
 
 # import internal modules
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration
+from RTXConfiguration import RTXConfiguration #noqa: E402
 RTXConfig = RTXConfiguration()
-from ARAX_database_manager import ARAXDatabaseManager
+from ARAX_database_manager import ARAXDatabaseManager #noqa: E402
 
 # Default output directory for the database
 _DEFAULT_OUTDIR = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
@@ -111,6 +110,12 @@ class ExplainableDTD:
     #  Connection management
     # ──────────────────────────────────────────────────────────────────────
 
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return the active connection, raising RuntimeError if not connected."""
+        if self.conn is None:
+            raise RuntimeError("Not connected to the database. Call connect() first.")
+        return self.conn
+
     def connect(self) -> bool:
         """Open a connection to the SQLite database. Downloads via ARAXDatabaseManager if needed.
 
@@ -153,8 +158,9 @@ class ExplainableDTD:
     def create_tables(self):
         """Drop and recreate the PREDICTION_SCORE_TABLE and PATH_RESULT_TABLE."""
         print(f"INFO: Creating tables in {self.database_name}", flush=True)
-        self.conn.execute("DROP TABLE IF EXISTS PREDICTION_SCORE_TABLE")
-        self.conn.execute("""
+        conn = self._get_conn()
+        conn.execute("DROP TABLE IF EXISTS PREDICTION_SCORE_TABLE")
+        conn.execute("""
             CREATE TABLE PREDICTION_SCORE_TABLE (
                 drug_id      VARCHAR(255),
                 drug_name    VARCHAR(255),
@@ -165,8 +171,8 @@ class ExplainableDTD:
                 unknown_score FLOAT
             )
         """)
-        self.conn.execute("DROP TABLE IF EXISTS PATH_RESULT_TABLE")
-        self.conn.execute("""
+        conn.execute("DROP TABLE IF EXISTS PATH_RESULT_TABLE")
+        conn.execute("""
             CREATE TABLE PATH_RESULT_TABLE (
                 drug_id      VARCHAR(255),
                 drug_name    VARCHAR(255),
@@ -176,7 +182,7 @@ class ExplainableDTD:
                 path_score   FLOAT
             )
         """)
-        self.conn.commit()
+        conn.commit()
         print("INFO: Tables created successfully", flush=True)
 
     def populate_table(self):
@@ -189,16 +195,17 @@ class ExplainableDTD:
         SCORE_INSERT = f"INSERT INTO PREDICTION_SCORE_TABLE({', '.join(_SCORE_COLUMNS)}) VALUES ({','.join('?' * len(_SCORE_COLUMNS))})"
         PATH_INSERT = f"INSERT INTO PATH_RESULT_TABLE({', '.join(_PATH_COLUMNS)}) VALUES ({','.join('?' * len(_PATH_COLUMNS))})"
 
+        conn = self._get_conn()
         # Optimize for bulk loading
-        self.conn.execute("PRAGMA journal_mode = WAL")
-        self.conn.execute("PRAGMA synchronous = OFF")
-        self.conn.execute("PRAGMA cache_size = -2000000")
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA synchronous = OFF")
+        conn.execute("PRAGMA cache_size = -2000000")
 
         self._bulk_insert(self.path_to_score_results, SCORE_INSERT, BATCH_SIZE, desc="score_results")
         self._bulk_insert(self.path_to_path_results, PATH_INSERT, BATCH_SIZE, desc="path_results")
 
         # Restore safe synchronous mode after bulk load
-        self.conn.execute("PRAGMA synchronous = NORMAL")
+        conn.execute("PRAGMA synchronous = NORMAL")
         print("INFO: Table population completed", flush=True)
 
     def _bulk_insert(self, directory: str, insert_sql: str, batch_size: int, desc: str = ""):
@@ -210,6 +217,7 @@ class ExplainableDTD:
             batch_size: Number of rows per executemany() call.
             desc: Label for the tqdm progress bar.
         """
+        conn = self._get_conn()
         files = os.listdir(directory)
         batch: list = []
         for file_name in tqdm(files, desc=desc):
@@ -219,20 +227,21 @@ class ExplainableDTD:
                 for line in f:
                     batch.append(tuple(line.strip().split("\t")))
                     if len(batch) >= batch_size:
-                        self.conn.executemany(insert_sql, batch)
-                        self.conn.commit()
+                        conn.executemany(insert_sql, batch)
+                        conn.commit()
                         batch = []
         if batch:
-            self.conn.executemany(insert_sql, batch)
-            self.conn.commit()
+            conn.executemany(insert_sql, batch)
+            conn.commit()
 
     def create_indexes(self):
         """Create B-tree indexes on drug_id, drug_name, disease_id, disease_name for both tables."""
         print("INFO: Creating indexes", flush=True)
+        conn = self._get_conn()
         for table in ("PREDICTION_SCORE_TABLE", "PATH_RESULT_TABLE"):
             for col in ("drug_id", "drug_name", "disease_id", "disease_name"):
-                self.conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_{col} ON {table}({col})")
-        self.conn.commit()
+                conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_{col} ON {table}({col})")
+        conn.commit()
         print("INFO: Index creation completed", flush=True)
 
     # ──────────────────────────────────────────────────────────────────────
@@ -299,7 +308,7 @@ class ExplainableDTD:
         where_sql, params = self._build_where_clause(drug_ids, disease_ids)
         query = f"SELECT {', '.join(_SCORE_COLUMNS)} FROM PREDICTION_SCORE_TABLE{where_sql}"
 
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         cursor.execute(query, params)
         return pd.DataFrame(cursor.fetchall(), columns=_SCORE_COLUMNS)
 
@@ -328,7 +337,7 @@ class ExplainableDTD:
         where_sql, params = self._build_where_clause(drug_ids, disease_ids)
         query = f"SELECT drug_id, disease_id, path, path_score FROM PATH_RESULT_TABLE{where_sql}"
 
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         cursor.execute(query, params)
 
         top_paths: Dict[Tuple[str, str], List[list]] = {}
