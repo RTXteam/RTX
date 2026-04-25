@@ -39,6 +39,7 @@ def _load_dependencies():
 
 DEFAULT_PUBMED_DIR = os.environ.get("NGD_PUBMED_DIR")
 DEFAULT_BABEL_DB = os.environ.get("NGD_BABEL_DB")
+DEFAULT_TIER0_EDGES = os.environ.get("NGD_TIER0_EDGES")
 DEFAULT_OUTPUT_DIR = os.environ.get(
     "NGD_OUTPUT_DIR",
     os.path.dirname(os.path.abspath(__file__)),
@@ -148,7 +149,8 @@ def _resolve_one(item):
 # Builder
 # ---------------------------------------------------------------------------
 class NGDDatabaseBuilder:
-    def __init__(self, pubmed_dir, babel_db_path, output_dir, skip_download=False):
+    def __init__(self, pubmed_dir, babel_db_path, output_dir,
+                 skip_download=False, tier0_edges_path=None):
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s %(levelname)s: %(message)s',
@@ -169,6 +171,7 @@ class NGDDatabaseBuilder:
 
         self.status = 'OK'
         self.skip_download = skip_download
+        self.tier0_edges_path = tier0_edges_path
 
     def build_ngd_database(self, do_full_build: bool):
         if do_full_build:
@@ -322,6 +325,14 @@ class NGDDatabaseBuilder:
         if self.status != 'OK':
             return
 
+        if self.tier0_edges_path:
+            self._add_pmids_from_tier0_edges(out_cursor, out_conn)
+        else:
+            logging.warning(
+                "No --tier0-edges provided; skipping tier 0 publication harvest. "
+                "Output will only contain PubMed-scrape-derived curies."
+            )
+
         logging.info("Indexing staging table...")
         out_cursor.execute("CREATE INDEX idx_staging_curie ON staging(curie)")
         out_conn.commit()
@@ -368,6 +379,86 @@ class NGDDatabaseBuilder:
 
         logging.info("Done curie DB in %.2f min (%d curies)",
                      (time.time() - start) / 60, n_written)
+
+    def _add_pmids_from_tier0_edges(self, out_cursor, out_conn):
+        # Harvests PMIDs from edges.publications in the tier 0 KGX JSONL graph
+        # and attaches them to both endpoint curies. Tier 0 nodes do not carry
+        # a publications field, so only edges are scanned. Curies are written
+        # as-is (already canonical for tier 0), restoring the overlap that the
+        # old KG2 harvest used to provide.
+        logging.info("Harvesting PMIDs from tier 0 edges: %s",
+                     self.tier0_edges_path)
+        start = time.perf_counter()
+
+        opener = gzip.open if self.tier0_edges_path.endswith(".gz") else open
+        BATCH_FLUSH = 500_000
+        LOG_EVERY = 1_000_000
+        staging_rows = []
+        total_lines = 0
+        edges_with_pubs = 0
+        rows_added = 0
+
+        with opener(self.tier0_edges_path, "rt") as f:
+            for line in f:
+                total_lines += 1
+                if '"publications"' not in line:
+                    continue
+                try:
+                    edge = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                pubs = edge.get("publications")
+                if not pubs:
+                    continue
+
+                pmid_nums = []
+                for p in pubs:
+                    if isinstance(p, str) and p.upper().startswith("PMID:"):
+                        local = p.split(":", 1)[1]
+                        digits = "".join(c for c in local if c.isdigit())
+                        if digits:
+                            pmid_nums.append(int(digits))
+                if not pmid_nums:
+                    continue
+
+                edges_with_pubs += 1
+                subj = edge.get("subject")
+                obj = edge.get("object")
+                for curie in (subj, obj):
+                    if not curie:
+                        continue
+                    for n in pmid_nums:
+                        staging_rows.append((curie, n))
+                        rows_added += 1
+
+                if len(staging_rows) >= BATCH_FLUSH:
+                    out_cursor.executemany(
+                        "INSERT INTO staging VALUES (?, ?)", staging_rows
+                    )
+                    out_conn.commit()
+                    staging_rows.clear()
+
+                if total_lines % LOG_EVERY == 0:
+                    elapsed = time.perf_counter() - start
+                    rate = total_lines / elapsed if elapsed > 0 else 0
+                    logging.info(
+                        "  scanned %d edges (%d with pubs, %d rows added) | %.0f edges/sec",
+                        total_lines, edges_with_pubs, rows_added, rate,
+                    )
+
+        if staging_rows:
+            out_cursor.executemany(
+                "INSERT INTO staging VALUES (?, ?)", staging_rows
+            )
+            out_conn.commit()
+            staging_rows.clear()
+
+        logging.info(
+            "Tier 0 harvest: scanned %d edges, %d had PMIDs, %d (curie, pmid) rows added in %.2f min",
+            total_lines, edges_with_pubs, rows_added,
+            (time.perf_counter() - start) / 60,
+        )
 
     def _add_pmids_from_pubmed_scrape(self, out_cursor, out_conn):
         logging.info("Resolving concept names using local_babel (parallel)...")
@@ -516,6 +607,16 @@ def _check_environment(args):
     else:
         p("  [ -- ] --pubmed-dir: not set (not needed for resolve-only)")
 
+    # Tier 0 edges — optional, but validate when provided
+    if args.tier0_edges:
+        if not os.path.isfile(args.tier0_edges):
+            p(f"  [FAIL] --tier0-edges: {args.tier0_edges} (not found)")
+            ok = False
+        else:
+            p(f"  [ OK ] --tier0-edges: {args.tier0_edges}")
+    else:
+        p("  [WARN] --tier0-edges: not set (output will lack tier 0 graph coverage)")
+
     # Output dir
     if not os.path.isdir(args.output_dir):
         p(f"  [FAIL] --output-dir: {args.output_dir} (not found)")
@@ -578,6 +679,11 @@ def main():
     parser.add_argument("--babel-db", default=DEFAULT_BABEL_DB,
                         help="Babel sqlite path. "
                              "Also settable via NGD_BABEL_DB env var.")
+    parser.add_argument("--tier0-edges", default=DEFAULT_TIER0_EDGES,
+                        help="Path to tier 0 KGX edges.jsonl (or .jsonl.gz). "
+                             "When provided, edge.publications PMIDs are attached "
+                             "to both endpoint curies and merged with the PubMed "
+                             "scrape output. Also settable via NGD_TIER0_EDGES env var.")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR,
                         help="Directory for output databases and logs. "
                              "Also settable via NGD_OUTPUT_DIR env var. "
@@ -607,6 +713,7 @@ def main():
         babel_db_path=args.babel_db,
         output_dir=args.output_dir,
         skip_download=args.skip_download,
+        tier0_edges_path=args.tier0_edges,
     )
     builder.build_ngd_database(args.full)
 
