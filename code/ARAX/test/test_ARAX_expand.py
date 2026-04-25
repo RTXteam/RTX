@@ -135,7 +135,7 @@ def _check_attribute(attribute: Attribute):
 def get_primary_knowledge_source(edge: Edge) -> str:
     return next(source.resource_id for source in edge.sources if source.resource_role == "primary_knowledge_source")
 
-def get_support_graphs_attribute(edge: Edge) -> Any:
+def get_support_graphs_attribute(edge: Edge) -> Attribute | None:
     sg_attrs = [attribute for attribute in edge.attributes if attribute.attribute_type_id == "biolink:support_graphs"]
     assert len(sg_attrs) <= 1
     return sg_attrs[0] if sg_attrs else None
