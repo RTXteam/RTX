@@ -1,4 +1,4 @@
-#!/bin/env python3
+llllll#!/bin/env python3
 """
 InferUtilities: Builds TRAPI-compliant knowledge graph subgraphs from xDTD/xCRG prediction results.
 
@@ -20,6 +20,7 @@ import os
 import json
 import math
 import copy
+import uuid
 from typing import List, Dict, Optional
 from datetime import datetime
 
@@ -410,11 +411,11 @@ class InferUtilities:
                     edge_subject = edge_subject_func(canonical_id)
                     edge_object = edge_object_func(canonical_id)
                     new_edge = Edge(subject=edge_subject, object=edge_object, predicate='biolink:treats', attributes=edge_attribute_list, sources=retrieval_source)
-                    new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source=self.kp, kp=self.kp)
-                    if new_edge_key not in message.knowledge_graph.edges:
-                        message.knowledge_graph.edges[new_edge_key] = new_edge
-                        message.knowledge_graph.edges[new_edge_key].filled = True
-                        message.knowledge_graph.edges[new_edge_key].qedge_keys = [qedge_id]
+                    new_edge_key = f"creative_DTD_prediction_{self.kedge_global_iter}"
+                    message.knowledge_graph.edges[new_edge_key] = new_edge
+                    message.knowledge_graph.edges[new_edge_key].filled = True
+                    message.knowledge_graph.edges[new_edge_key].qedge_keys = [qedge_id]
+                    self.kedge_global_iter += 1
                 self.resultify_and_sort(essence_scores)
                 return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
 
@@ -549,7 +550,7 @@ class InferUtilities:
                         retrieval_source = self._build_retrieval_sources(edge_info, kp=self.kp)
                         new_edge.attributes += edge_attribute_list
                         new_edge.sources += retrieval_source
-                        new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source=primary_knowledge_source, kp=self.kp)
+                        new_edge_key = edge_info.id if edge_info.id else f"urn:uuid:{uuid.uuid4()}"
                         message.knowledge_graph.edges[new_edge_key] = new_edge
                         message.knowledge_graph.edges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
                     if break_flag:
@@ -584,7 +585,7 @@ class InferUtilities:
                     Attribute(attribute_source=self.kp, attribute_type_id="biolink:knowledge_level", value="prediction"),
                 ]
                 retrieval_source = [
-                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
+                        RetrievalSource(resource_id="infores:arax-xdtd", resource_role="primary_knowledge_source")
                     ]
                 #edge_predicate = qedge_id
                 edge_predicate = "biolink:treats"
