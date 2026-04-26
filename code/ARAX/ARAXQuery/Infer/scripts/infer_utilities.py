@@ -1,4 +1,4 @@
-llllll#!/bin/env python3
+#!/bin/env python3
 """
 InferUtilities: Builds TRAPI-compliant knowledge graph subgraphs from xDTD/xCRG prediction results.
 
