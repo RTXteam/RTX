@@ -1,4 +1,3 @@
-#!/bin/env python3
 """
 Usage:
     Run all expand tests: pytest -v test_ARAX_expand.py
@@ -7,37 +6,31 @@ Usage:
 import json
 import os
 import sys
-from typing import List, Dict, Optional
 import pytest
-import yaml
+from typing import Any
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/")
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
-from ARAX_expander import ARAXExpander
-from ARAX_messenger import ARAXMessenger
-from ARAX_resultify import ARAXResultify
-from kp_info_cacher import KPInfoCacher
 import Expand.expand_utilities as eu
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.attribute import Attribute
-from openapi_server.models.query_graph import QueryGraph
 
-
-def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None,
-                                       json_query: Optional[dict] = None,
+def _run_query_and_do_standard_testing(actions: list[str] | None = None,
+                                       json_query: dict | None = None,
                                        kg_should_be_incomplete=False,
                                        debug=False,
                                        should_throw_error=False,
-                                       error_code: Optional[str] = None,
-                                       timeout: Optional[int] = None,
+                                       error_code: str | None = None,
+                                       timeout: int | None = None,
                                        return_message: bool = False) -> tuple:
     # Run the query
     araxq = ARAXQuery()
     assert actions or json_query  # Must provide some sort of query to run
-    query_object = {"operations": {"actions": actions}} if actions else {"message": {"query_graph": json_query}}
+    query_object: dict[str, Any] = \
+        {"operations": {"actions": actions}} if actions else {"message": {"query_graph": json_query}}
     if timeout:
         query_object["query_options"] = {"kp_timeout": timeout}
     response = araxq.query(query_object)
@@ -68,8 +61,8 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None,
     return (nodes_by_qg_id, edges_by_qg_id, message) if return_message else (nodes_by_qg_id, edges_by_qg_id)
 
 
-def print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
-    print(f"KG counts:")
+def print_counts_by_qgid(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_qg_id: dict[str, dict[str, Edge]]):
+    print("KG counts:")
     if nodes_by_qg_id or edges_by_qg_id:
         for qnode_key, corresponding_nodes in sorted(nodes_by_qg_id.items()):
             print(f"  {qnode_key}: {len(corresponding_nodes)}")
@@ -79,20 +72,20 @@ def print_counts_by_qgid(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg
         print("  KG is empty")
 
 
-def print_nodes(nodes_by_qg_id: Dict[str, Dict[str, Node]]):
+def print_nodes(nodes_by_qg_id: dict[str, dict[str, Node]]):
     for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
             print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node.qnode_keys}, "
                   f"{node.query_ids if hasattr(node, 'query_ids') else ''}")
 
 
-def print_edges(edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def print_edges(edges_by_qg_id: dict[str, dict[str, Edge]]):
     for qedge_key, edges in sorted(edges_by_qg_id.items()):
         for edge_key, edge in sorted(edges.items()):
             print(f"{qedge_key}: {edge_key}, {edge.subject}--{edge.predicate}->{edge.object}, {edge.qedge_keys}")
 
 
-def check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def check_for_orphans(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_qg_id: dict[str, dict[str, Edge]]):
     node_keys = set()
     node_keys_used_by_edges = set()
     for qnode_key, nodes in nodes_by_qg_id.items():
@@ -105,7 +98,7 @@ def check_for_orphans(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id
     assert node_keys == node_keys_used_by_edges or len(node_keys_used_by_edges) == 0
 
 
-def check_property_format(nodes_by_qg_id: Dict[str, Dict[str, Node]], edges_by_qg_id: Dict[str, Dict[str, Edge]]):
+def check_property_format(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_qg_id: dict[str, dict[str, Edge]]):
     for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             assert node_key and isinstance(node_key, str)
@@ -142,7 +135,7 @@ def _check_attribute(attribute: Attribute):
 def get_primary_knowledge_source(edge: Edge) -> str:
     return next(source.resource_id for source in edge.sources if source.resource_role == "primary_knowledge_source")
 
-def get_support_graphs_attribute(edge: Edge) -> any:
+def get_support_graphs_attribute(edge: Edge) -> Attribute | None:
     sg_attrs = [attribute for attribute in edge.attributes if attribute.attribute_type_id == "biolink:support_graphs"]
     assert len(sg_attrs) <= 1
     return sg_attrs[0] if sg_attrs else None
@@ -235,8 +228,8 @@ def test_774_continue_if_no_results_query():
 
 def test_curie_list_query():
     actions_list = [
-        "add_qnode(ids=[MONDO:0008542, MONDO:0005027, MONDO:0005036], key=n00)",
-        "add_qnode(categories=biolink:PhenotypicFeature, key=n01)",
+        "add_qnode(ids=[MONDO:0008760, MONDO:0018755, MONDO:0010026], key=n00)",
+        "add_qnode(ids=[HP:0003074], key=n01)",
         "add_qedge(subject=n00, object=n01, predicates=biolink:has_phenotype, key=e00)",
         "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
@@ -480,7 +473,7 @@ def test_exclude_edge_perpendicular():
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
-        f"add_qnode(categories=biolink:ChemicalEntity, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:affects)",
         # 'Exclude' portion (just optional for now to get a baseline)
@@ -499,7 +492,7 @@ def test_exclude_edge_perpendicular():
     actions_list = [
         "add_qnode(ids=DOID:3312, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01, is_set=true)",
-        f"add_qnode(categories=biolink:ChemicalEntity, key=n02)",
+        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:affects)",
         # 'Exclude' portion
@@ -1645,5 +1638,65 @@ def test_issue_2678():
     assert 'biolink:PhenotypicFeature' not in messages_str
 
 
+def test_issue_2736():
+    query_graph_dict = {
+        "edges": {
+            "q0": {
+                "attribute_constraints": [],
+                "knowledge_type": "inferred",
+                "object": "on",
+                "predicates": [
+                    "biolink:treats"
+                ],
+                "qualifier_constraints": [],
+                "subject": "sn"
+            }
+        },
+        "nodes": {
+            "on": {
+                "categories": [
+                    "biolink:Disease"
+                ],
+                "constraints": [],
+                "ids": [
+                    "MONDO:0016063"
+                ],
+                "is_set": False
+            },
+            "sn": {
+                "ids": [
+                    "CHEBI:9168"
+                ],
+                "categories": [
+                    "biolink:ChemicalEntity"
+                ],
+                "constraints": [],
+                "is_set": False
+            }
+        }
+    }
+    
+    envelope_dict = {
+        "message": {
+            "query_graph": query_graph_dict
+        }
+    }
+    aq = ARAXQuery()
+    response = aq.query_return_message(envelope_dict)
+    message = response.message
+    kg = message.knowledge_graph
+    results = message.results
+    edges = kg.edges
+    qedge_predicates = []
+    for result in results:
+        for analysis in result.analyses:
+            edge_bindings = analysis.edge_bindings['q0']
+            for edge_binding in edge_bindings:
+                edge_key = edge_binding.id
+                edge = edges[edge_key]
+                qedge_predicates.append(edge.predicate)
+    assert all(p == 'biolink:treats' for p in qedge_predicates)
+
+    
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_expand.py'])
