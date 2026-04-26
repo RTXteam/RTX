@@ -2,6 +2,14 @@
 
 ##### Stephen Ramsey, March 23, 2026
 
+## Quick reference checklist before closing an issue
+
+-[] Merge PR
+-[] Delete issue branch
+-[] Note in ARAX changelog
+-[] Note in CATRAX Y2 milestones
+-[] Add to ARAX AHM agenda
+
 ## Who is this document for?
 This procedure is _primarily_ intended for use by Ramsey Lab team members working
 on maintenance of the ARAX system; it is specialized for the parts of the ARAX
