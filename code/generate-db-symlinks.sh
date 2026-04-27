@@ -56,6 +56,5 @@ link "${DB_DIR}/${LATEST_TIER0_VER}/ExplainableDTD_${LATEST_TIER0_VER}.db" "RTX/
 link "${DB_DIR}/${LATEST_TIER0_VER}/curie_to_pmids_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/ARAX/KnowledgeSources/NormalizedGoogleDistance/curie_to_pmids_v1.0_${LATEST_TIER0_VER}.sqlite"
 link "${DB_DIR}/${LATEST_TIER0_VER}/fda_approved_drugs_v1.0.pickle" "RTX/code/ARAX/KnowledgeSources/fda_approved_drugs_v1.0.pickle"
 link "${DB_DIR}/${LATEST_TIER0_VER}/tier0-info-for-overlay_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/ARAX/KnowledgeSources/KG2c/tier0-info-for-overlay_v1.0_${LATEST_TIER0_VER}.sqlite"
-link "${DB_DIR}/${LATEST_TIER0_VER}/node_synonymizer_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/ARAX/NodeSynonymizer/node_synonymizer_v1.0_${LATEST_TIER0_VER}.sqlite"
 link "${DB_DIR}/${LATEST_TIER0_VER}/autocomplete_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/autocomplete/autocomplete_v1.0_${LATEST_TIER0_VER}.sqlite"
 
