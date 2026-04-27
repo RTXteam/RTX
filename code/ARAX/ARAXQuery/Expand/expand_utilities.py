@@ -573,7 +573,7 @@ def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
     edge_keys = set(kg.edges)
     for edge_key in edge_keys:
         edge = kg.edges[edge_key]
-        if qedge_key in edge.qedge_keys:
+        if qedge_key in (getattr(edge, 'qedge_keys', None) or []):
             del kg.edges[edge_key]
 
 
