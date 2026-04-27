@@ -9,7 +9,7 @@ import json
 import time
 import timeit
 import re
-from typing import Optional
+from typing import Any, Optional
 
 import yaml
 from pygit2 import Repository, discover_repository
@@ -240,7 +240,7 @@ class RTXConfiguration:
                     'password': config_secrets["neo4j"][kg2_type]["password"]}
 
     @staticmethod
-    def load_openapi_json(yaml_path: str, t0: any) -> dict:
+    def load_openapi_json(yaml_path: str, t0: Any) -> dict:
         # YAML is super slow to ready, so refresh a JSON if necessary or read the JSON, which is much faster
         json_path = yaml_path.replace(".yaml", ".json")
         if not os.path.exists(json_path) or os.path.getmtime(yaml_path) > os.path.getmtime(json_path):
