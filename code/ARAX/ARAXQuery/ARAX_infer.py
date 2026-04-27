@@ -1,58 +1,57 @@
 #!/bin/env python3
-import sys
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+"""
+ARAX Infer Module -- Inference engine for drug-disease treatment and chemical-gene regulation prediction.
 
+This module provides two main inference actions:
+  1. drug_treatment_graph_expansion: Predicts drug-disease treatment relationships using the xDTD model.
+     Given a drug and/or disease CURIE, returns predicted treatment pairs with explanation paths.
+  2. chemical_gene_regulation_graph_expansion: Predicts chemical-gene regulation relationships using the xCRG model.
+     Given a chemical or gene CURIE, returns predicted regulation pairs with explanation paths.
+
+Notes:
+  - The drug_treatment_graph_expansion action queries the precomputed xDTD prediction results that are stored in the ExplainableDTD database.
+  - The chemical_gene_regulation_graph_expansion action executes the xCRG model on the fly to predict the regulation relationship between chemicals and genes.
+
+"""
+
+import sys
 import os
-import json
-import ast
-import re
-import numpy as np
-import math
-from ARAX_response import ARAXResponse
-from ARAX_messenger import ARAXMessenger
-from ARAX_expander import ARAXExpander
-from ARAX_resultify import ARAXResultify
-from ARAX_decorator import ARAXDecorator
-import traceback
 from collections import Counter
-from collections.abc import Hashable
-from itertools import combinations
-import copy
+
+from ARAX_response import ARAXResponse
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
-from openapi_server.models.q_edge import QEdge
-from openapi_server.models.q_node import QNode
-from openapi_server.models.edge import Edge
-from openapi_server.models.attribute import Attribute as EdgeAttribute
-from openapi_server.models.node import Node
 from openapi_server.models.qualifier import Qualifier
 from openapi_server.models.qualifier_constraint import QualifierConstraint as QConstraint
-
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'scripts']))
 from infer_utilities import InferUtilities
-# from creativeDTD import creativeDTD
 from creativeCRG import creativeCRG
 from ExplianableDTD_db import ExplainableDTD
 
-# from ExplianableCRG import ExplianableCRG
 
-# sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
-# from RTXConfiguration import RTXConfiguration
-# RTXConfig = RTXConfiguration()
-
-import pickle
-import pandas as pd
+# --- Limits for results returned to keep API response times reasonable ---
+MAX_DRUGS = 50
+MAX_DISEASES = 50
+MAX_PATHS = 25
 
 
 class ARAXInfer:
+    """
+    ARAXInfer implements the ARAX 'infer' DSL command.
 
-    #### Constructor
+    It supports two actions:
+      - drug_treatment_graph_expansion: xDTD-based drug-disease treatment prediction
+      - chemical_gene_regulation_graph_expansion: xCRG-based chemical-gene regulation prediction
+
+    Usage: ARAXInfer().apply(response, input_parameters)
+    """
+
     def __init__(self):
         self.kedge_global_iter = 0
         self.qedge_global_iter = 0
@@ -65,48 +64,50 @@ class ARAXInfer:
             'drug_treatment_graph_expansion',
             'chemical_gene_regulation_graph_expansion'
         }
-        self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
+        self.report_stats = False
 
-        #parameter descriptions
+        # --- xDTD parameter descriptors ---
         self.xdtd_drug_curie_info = {
             "is_required": True,
-            "examples": ["CHEMBL.COMPOUND:CHEMBL55643","CHEBI:8378","RXNORM:1011"],
+            "examples": ["CHEMBL.COMPOUND:CHEMBL55643", "CHEBI:8378", "RXNORM:1011"],
             "type": "string",
-            "description": "The CURIE for a drug node (should be a subject node) used to predict what potential diseases it may treat."
+            "description": "The CURIE for a drug node (subject) used to predict potential treatable diseases."
         }
         self.xdtd_disease_curie_info = {
             "is_required": True,
-            "examples": ["DOID:9352","MONDO:0005306","HP:0001945"],
+            "examples": ["DOID:9352", "MONDO:0005306", "HP:0001945"],
             "type": "string",
-            "description": "The CURIE for a disease node (should be a object node) used to predict what potential drugs can potentially treat it."
+            "description": "The CURIE for a disease node (object) used to predict potential treating drugs."
         }
         self.xdtd_qedge_id_info = {
             "is_required": False,
-            "examples": ["qedge_id_1","qedge_id_2","qedge_id_3"],
+            "examples": ["qedge_id_1", "qedge_id_2", "qedge_id_3"],
             "type": "string",
             "description": "The id of the qedge you wish to perform the drug-disease treatment inference expansion."
         }
         self.xdtd_n_drugs_info = {
             "is_required": False,
-            "examples": [5,15,25],
-            "default": 50,
+            "examples": [5, 15, 25],
+            "default": MAX_DRUGS,
             "type": "integer",
-            "description": "Given an interested disease CURIE, the number of drug nodes to return. If not provided defaults to 50. Considering the response speed, the maximum number of drugs returned is only allowed to be 50."
+            "description": f"Number of drug nodes to return for a disease query. Default {MAX_DRUGS}, max {MAX_DRUGS}."
         }
         self.xdtd_n_diseases_info = {
             "is_required": False,
-            "examples": [5,15,25],
-            "default": 50,
+            "examples": [5, 15, 25],
+            "default": MAX_DISEASES,
             "type": "integer",
-            "description": "Given an interested drug CURIE, The number of disease nodes to return. If not provided defaults to 50. Considering the response speed, the maximum number of diseases returned is only allowed to be 50."
+            "description": f"Number of disease nodes to return for a drug query. Default {MAX_DISEASES}, max {MAX_DISEASES}."
         }
         self.xdtd_n_paths_info = {
             "is_required": False,
-            "examples": [5,15,25],
-            "default": 25,
+            "examples": [5, 15, 25],
+            "default": MAX_PATHS,
             "type": "integer",
-            "description": "The number of paths connecting to each returned node. If not provided defaults to 25. Considering the response speed, the maximum number of paths (if available) returned is only allowed to be 25."
+            "description": f"Number of explanation paths per result node. Default {MAX_PATHS}, max {MAX_PATHS}."
         }
+
+        # --- xCRG parameter descriptors ---
         self.xcrg_subject_curie_info = {
             "is_required": True,
             "examples": ["UMLS:C1440117", "MESH:D007053", "CHEMBL.COMPOUND:CHEMBL33884"],
@@ -184,29 +185,24 @@ class ARAXInfer:
             "description": "The number of paths connecting to each returned node. If not provided defaults to 10."
         }
 
-        #command descriptions
+        # --- Command definitions for DSL help/describe ---
         self.command_definitions = {
             "drug_treatment_graph_expansion": {
                 "dsl_command": "infer(action=drug_treatment_graph_expansion)",
                 "description": """
-`drug_treatment_graph_expansion` predicts drug-disease treatment relationship including:
+`drug_treatment_graph_expansion` predicts drug-disease treatment relationships using the xDTD model:
 
-- Given an interested 'drug' CURIE, it predicts what potential 'disease' this drug can treat (currently disable).
-- Given an interested 'disease' CURIE, it predicts what potential 'drug' can treat this disease. 
-- Given both an interested 'drug' CURIE and a 'disease' CURIE, it predicts whether they have a treatment relationship.
-    
-It returns the top n results along with predicted graph explanations. You can limit the the maximum number of disease (via `n_diseases=<n>`)/drug (via `n_drugs=<n>`) nodes to return.
-            
-This function is invalid for non drug nodes (nodes that do not belong to either of 'biolink:biolink:Drug', 'biolink:ChemicalEntity', or 'biolink:SmallMolecule'), and non disease/phenotypic feature nodes (nodes that do not belong to either of 'biolink:biolink:Disease', 'biolink:PhenotypicFeature', or 'biolink:DiseaseOrPhenotypicFeature').
+- Given a 'disease' CURIE, predicts what 'drugs' can treat this disease.
+- Given a 'drug' CURIE, predicts what 'diseases' this drug can treat.
+- Given both, predicts whether they have a treatment relationship.
 
-**Notes:**
+Returns top-n results with predicted paths. Use `n_drugs`, `n_diseases`, `n_paths` to control limits.
 
-**- The `infer` and `expand` modules are not recommended to be used together in a query because it may cause some errors due to the different qnodes generated from both the `infer` and `expand` modules for the same query node.**
+Valid drug categories: biolink:Drug, biolink:ChemicalEntity, biolink:SmallMolecule.
+Valid disease categories: biolink:Disease, biolink:PhenotypicFeature.
 
-                    """,
-                'brief_description': """
-drug_treatment_graph_expansion predicts drug treatments for a given node curie and provides along with an explination graph for each prediction.
-                    """,
+**Note:** The `infer` and `expand` modules should not be used together in the same query.
+                """,'brief_description': "Predicts drug/disease treatment relationships for a given disease/drug CURIE with predicted paths.",
                 "parameters": {
                     "drug_curie": self.xdtd_drug_curie_info,
                     "disease_curie": self.xdtd_disease_curie_info,
@@ -246,374 +242,348 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                     "regulation_type": self.xcrg_regulation_type,
                     "n_result_curies": self.xcrg_n_result_curies_info,
                     "n_paths": self.xcrg_n_paths_info
-                }                
+                }
             }
         }
 
-    # def __get_formated_edge_key(self, edge: Edge, kp: str = 'infores:rtx-kg2') -> str:
-    #     return f"{kp}:{edge.subject}-{edge.predicate}-{edge.object}"
+    # ──────────────────────────────────────────────────────────────────────────
+    #  Helper methods
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _normalize_curie(self, curie):
+        """Resolve a curie to its preferred canonical form via the NodeSynonymizer.
+        Returns (preferred_curie, was_normalized) tuple."""
+        result = self.synonymizer.get_canonical_curies(curie)[curie]
+        if result:
+            return result['preferred_curie'], True
+        return curie, False
+
+    def _validate_int_param(self, param_name, default, max_val=None):
+        """Validate and coerce an integer parameter with optional ceiling.
+        Sets self.parameters[param_name] to the validated value or default."""
+        params = self.parameters
+        if param_name in params and params[param_name]:
+            try:
+                params[param_name] = int(params[param_name])
+            except (ValueError, TypeError):
+                self.response.error(
+                    f"`{param_name}` must be a positive integer. Got: {params[param_name]}.",
+                    error_code="ValueError")
+                return
+            if params[param_name] <= 0:
+                self.response.error(
+                    f"`{param_name}` must be > 0. Got: {params[param_name]}.",
+                    error_code="ValueError")
+                return
+            if max_val and params[param_name] > max_val:
+                self.response.warning(
+                    f"`{param_name}` was {params[param_name]}, clamped to max {max_val}.")
+                params[param_name] = max_val
+        else:
+            params[param_name] = default
+
+    def _validate_float_param(self, param_name, default, min_val=0, max_val=1):
+        """Validate and coerce a float parameter within [min_val, max_val]."""
+        params = self.parameters
+        if param_name in params:
+            if isinstance(params[param_name], str):
+                try:
+                    params[param_name] = float(params[param_name])
+                except ValueError:
+                    self.response.error(
+                        f"`{param_name}` must be a float. Got: {params[param_name]}.",
+                        error_code="ValueError")
+                    return
+            if isinstance(params[param_name], int):
+                params[param_name] = float(params[param_name])
+            if not isinstance(params[param_name], float) or params[param_name] > max_val or params[param_name] < min_val:
+                self.response.error(
+                    f"`{param_name}` must be a float between {min_val} and {max_val}. Got: {params[param_name]}.",
+                    error_code="ValueError")
+        else:
+            params[param_name] = default
 
     def report_response_stats(self, response):
-        """
-        Little helper function that will report the KG, QG, and results stats to the debug in the process of executing actions. Basically to help diagnose problems
-        """
+        """Log KG/QG statistics to the debug stream for diagnostics."""
         message = self.message
-        if self.report_stats:
-            # report number of nodes and edges, and their type in the QG
-            if hasattr(message, 'query_graph') and message.query_graph:
-                response.debug(f"Query graph is {message.query_graph}")
-            if hasattr(message, 'knowledge_graph') and message.knowledge_graph and hasattr(message.knowledge_graph, 'nodes') and message.knowledge_graph.nodes and hasattr(message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
-                response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
-                response.debug(f"Number of nodes in KG by type is {Counter([x.categories[0] for x in message.knowledge_graph.nodes.values()])}")  # type is a list, just get the first one
-                #response.debug(f"Number of nodes in KG by with attributes are {Counter([x.category for x in message.knowledge_graph.nodes.values()])}")  # don't really need to worry about this now
-                response.debug(f"Number of edges in KG is {len(message.knowledge_graph.edges)}")
-                response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in message.knowledge_graph.edges.values()])}")
-                response.debug(f"Number of edges in KG with attributes is {len([x for x in message.knowledge_graph.edges.values() if x.attributes])}")
-                # Collect attribute names, could do this with list comprehension, but this is so much more readable
-                attribute_names = []
-                for x in message.knowledge_graph.edges.values():
-                    if x.attributes:
-                        for attr in x.attributes:
-                            if hasattr(attr, "original_attribute_name"):
-                                attribute_names.append(attr.original_attribute_name)
-                            if hasattr(attr, "attribute_type_id"):
-                                attribute_names.append(attr.attribute_type_id)      
-                response.debug(f"Number of edges in KG by attribute {Counter(attribute_names)}")
+        if not self.report_stats:
+            return response
+        if hasattr(message, 'query_graph') and message.query_graph:
+            response.debug(f"Query graph is {message.query_graph}")
+        kg = getattr(message, 'knowledge_graph', None)
+        if kg and getattr(kg, 'nodes', None) and getattr(kg, 'edges', None):
+            response.debug(f"Number of nodes in KG is {len(kg.nodes)}")
+            response.debug(f"Number of nodes in KG by type is {Counter([x.categories[0] for x in kg.nodes.values()])}")
+            response.debug(f"Number of edges in KG is {len(kg.edges)}")
+            response.debug(f"Number of edges in KG by type is {Counter([x.predicate for x in kg.edges.values()])}")
+            response.debug(f"Number of edges in KG with attributes is {len([x for x in kg.edges.values() if x.attributes])}")
+            attribute_names = []
+            for x in kg.edges.values():
+                if x.attributes:
+                    for attr in x.attributes:
+                        if hasattr(attr, "original_attribute_name"):
+                            attribute_names.append(attr.original_attribute_name)
+                        if hasattr(attr, "attribute_type_id"):
+                            attribute_names.append(attr.attribute_type_id)
+            response.debug(f"Number of edges in KG by attribute {Counter(attribute_names)}")
         return response
 
     def describe_me(self):
-        """
-        Little helper function for internal use that describes the actions and what they can do
-        :return:
-        """
-        #description_list = []
-        #for action in self.allowable_actions:
-        #    description_list.append(getattr(self, '_' + self.__class__.__name__ + '__' + action)(describe=True))
-        #return description_list
+        """Return command definitions for all supported infer actions."""
         return list(self.command_definitions.values())
 
-    # Write a little helper function to test parameters
     def check_params(self, allowable_parameters):
-        """
-        Checks to see if the input parameters are allowed
-        :param input_parameters: input parameters supplied to ARAXOverlay.apply()
-        :param allowable_parameters: the allowable parameters
-        :return: None
-        """
+        """Validate that all supplied parameters are within the allowable set.
+        Returns -1 on error, None on success."""
         for key, item in self.parameters.items():
             if key not in allowable_parameters:
                 self.response.error(
-                    f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
+                    f"Supplied parameter {key} is not permitted. Allowable: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
                 return -1
-            elif type(item) == list or type(item) == set:
-                    for item_val in item:
-                        if item_val not in allowable_parameters[key]:
-                            self.response.error(
-                                f"Supplied value {item_val} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
-                            return -1
+            elif isinstance(item, (list, set)):
+                for item_val in item:
+                    if item_val not in allowable_parameters[key]:
+                        self.response.error(
+                            f"Supplied value {item_val} is not permitted for {key}. "
+                            f"Allowable: {list(allowable_parameters[key])}")
+                        return -1
             elif item not in allowable_parameters[key]:
-                if any([type(x) == float for x in allowable_parameters[key]]):  # if it's a float, just accept it as it is
+                # Accept numeric types, None, and free-form curie/kp strings
+                if any(isinstance(x, float) for x in allowable_parameters[key]):
                     continue
-                elif any([type(x) == int for x in allowable_parameters[key]]):
+                elif any(isinstance(x, int) for x in allowable_parameters[key]):
                     continue
-                elif any([x is None for x in allowable_parameters[key]]):
+                elif any(x is None for x in allowable_parameters[key]):
                     continue
-                elif key == "drug_curie":  #FIXME: For now, if it's a node curie, just accept it as it is
+                elif key in ("drug_curie", "disease_curie", "subject_curie",
+                             "object_curie", "subject_qnode_id", "object_qnode_id", "kp"):
                     continue
-                elif key == "disease_curie":  #FIXME: same as above
-                    continue
-                elif key == "subject_curie": #FIXME: same as above
-                    continue
-                elif key == "object_curie": #FIXME: same as above
-                    continue
-                elif key == "subject_qnode_id": #FIXME: same as above
-                    continue
-                elif key == "object_qnode_id": #FIXME: same as above
-                    continue
-                elif key == "kp": #FIXME: same as above
-                    continue
-                else:  # otherwise, it's really not an allowable parameter
+                else:
                     self.response.error(
-                        f"This Supplied value {item} is not permitted. In action {allowable_parameters['action']}, allowable values to {key} are: {list(allowable_parameters[key])}")
+                        f"Supplied value {item} is not permitted for {key}. "
+                        f"Allowable: {list(allowable_parameters[key])}")
                     return -1
 
-    #### Top level decision maker for applying filters
-    def apply(self, response, input_parameters):
+    # ──────────────────────────────────────────────────────────────────────────
+    #  Top-level dispatch
+    # ──────────────────────────────────────────────────────────────────────────
 
+    def apply(self, response, input_parameters):
+        """
+        Main entry point. Validates input_parameters and dispatches to the appropriate action handler.
+
+        Args:
+            response: ARAXResponse object carrying the TRAPI message.
+            input_parameters: dict with 'action' key and action-specific parameters.
+        Returns:
+            Updated ARAXResponse.
+        """
         if response is None:
             response = ARAXResponse()
         self.response = response
         self.message = response.envelope.message
-
-        # initialize creative mode objects and node synonymizer
         self.synonymizer = NodeSynonymizer()
 
-        #### Basic checks on arguments
         if not isinstance(input_parameters, dict):
             self.response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
             return self.response
 
-        # list of actions that have so far been created for ARAX_overlay
         allowable_actions = self.allowable_actions
-
-        # check to see if an action is actually provided
         if 'action' not in input_parameters:
-            self.response.error(f"Must supply an action. Allowable actions are: action={allowable_actions}", error_code="MissingAction")
+            self.response.error(f"Must supply an action. Allowable: {allowable_actions}", error_code="MissingAction")
         elif input_parameters['action'] not in allowable_actions:
-            self.response.error(f"Supplied action {input_parameters['action']} is not permitted. Allowable actions are: {allowable_actions}", error_code="UnknownAction")
+            self.response.error(f"Action {input_parameters['action']} is not permitted. Allowable: {allowable_actions}", error_code="UnknownAction")
 
-        #### Return if any of the parameters generated an error (showing not just the first one)
         if self.response.status != 'OK':
             return self.response
 
-        # populate the parameters dict
-        parameters = dict()
-        for key, value in input_parameters.items():
-            parameters[key] = value
-
-        #### Store these final parameters for convenience
+        parameters = dict(input_parameters)
         self.response.data['parameters'] = parameters
         self.parameters = parameters
 
-        # convert the action string to a function call (so I don't need a ton of if statements
-        getattr(self, '_' + self.__class__.__name__ + '__' + parameters['action'])()  # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string
+        # Dynamically dispatch to __drug_treatment_graph_expansion or __chemical_gene_regulation_graph_expansion
+        getattr(self, '_' + self.__class__.__name__ + '__' + parameters['action'])() # thank you https://stackoverflow.com/questions/11649848/call-methods-by-string
 
-        self.response.debug(f"Applying Infer to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
+        self.response.debug(f"Applying Infer to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action being performed
 
-        #### Return the response and done
-        if self.report_stats:  # helper to report information in debug if class self.report_stats = True
+        if self.report_stats:
             self.response = self.report_response_stats(self.response)
         return self.response
 
+    # ──────────────────────────────────────────────────────────────────────────
+    #  Action: drug_treatment_graph_expansion (xDTD)
+    # ──────────────────────────────────────────────────────────────────────────
+
     def __drug_treatment_graph_expansion(self, describe=False):
         """
-        Run "drug_treatment_graph_expansion" action.
-        Allowable parameters: {'drug_curie': str,
-                                'disease_curie': str,
-                                'qedge_id': str,
-                                'n_drugs': int,
-                                'n_diseases': int,
-                                'n_paths': int}
-        :return:
+        Predict drug-disease treatment relationships using the xDTD model.
+
+        Workflow:
+          1. Validate and normalize drug/disease CURIEs via NodeSynonymizer.
+          2. Query ExplainableDTD database for prediction scores and explanation paths.
+          3. Delegate to InferUtilities.genrete_treat_subgraphs to build TRAPI subgraph.
         """
         message = self.message
         parameters = self.parameters
         XDTD = ExplainableDTD()
-        iu = InferUtilities()
-        # make a list of the allowable parameters (keys), and their possible values (values). Note that the action and corresponding name will always be in the allowable parameters
+
+        # Build allowable parameters based on whether a query graph exists
         if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes'):
-            allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
-                                    'drug_curie': {str()},
-                                    'disease_curie': {str()},
-                                    'qedge_id': set([key for key in self.message.query_graph.edges.keys()]),
-                                    'n_drugs': {int()},
-                                    'n_diseases': {int()},
-                                    'n_paths': {int()}
-                                }
+            allowable_parameters = {
+                'action': {'drug_treatment_graph_expansion'},
+                'drug_curie': {str()},
+                'disease_curie': {str()},
+                'qedge_id': set(self.message.query_graph.edges.keys()),
+                'n_drugs': {int()},
+                'n_diseases': {int()},
+                'n_paths': {int()}
+            }
         else:
-            allowable_parameters = {'action': {'drug_treatment_graph_expansion'},
-                                    'drug_curie': {'The drug CURIE used to predict what potential diseases it may treat.'},
-                                    'disease_curie': {'The disease CURIE used to predict what potential drugs can potentially treat it.'},
-                                    'qedge_id': {'The edge to place the predicted mechanism of action on. If none is provided, the query graph must be empty and a new one will be inserted.'},
-                                    'n_drugs': {'The number of drugs to return. Defaults to 50. Maxiumum is only allowable to be 50.'},
-                                    'n_diseases': {'The number of diseases to return. Defaults to 50. Maxiumum is only allowable to be 50.'},
-                                    'n_paths': {'The number of paths connecting each drug to return. Defaults to 25.  Maxiumum is only allowable to be 25.'}
-                                }
+            allowable_parameters = {
+                'action': {'drug_treatment_graph_expansion'},
+                'drug_curie': {'Drug CURIE for treatment prediction.'},
+                'disease_curie': {'Disease CURIE for treatment prediction.'},
+                'qedge_id': {'Query edge id for inference.'},
+                'n_drugs': {f'Number of drugs to return. Default {MAX_DRUGS}, max {MAX_DRUGS}.'},
+                'n_diseases': {f'Number of diseases to return. Default {MAX_DISEASES}, max {MAX_DISEASES}.'},
+                'n_paths': {f'Number of paths per result. Default {MAX_PATHS}, max {MAX_PATHS}.'}
+            }
 
-        # A little function to describe what this thing does
         if describe:
-            allowable_parameters['brief_description'] = self.command_definitions['connect_nodes']
+            allowable_parameters['brief_description'] = self.command_definitions['drug_treatment_graph_expansion']
             return allowable_parameters
-        
-        # Make sure only allowable parameters and values have been passed
+
         resp = self.check_params(allowable_parameters)
-        
-        # Set defaults and check parameters:
-        if 'n_drugs' in parameters and parameters['n_drugs']:
-            try:
-                parameters['n_drugs'] = int(parameters['n_drugs'])
-            except ValueError:
-                self.response.error(f"The `n_drugs` value must be a positive integer. The provided value was {parameters['n_drugs']}.", error_code="ValueError")
-            if parameters['n_drugs'] <= 0:
-                self.response.error(f"The `n_drugs` value should be larger than 0. The provided value was {parameters['n_drugs']}.", error_code="ValueError")
-            if parameters['n_drugs'] > 50:
-                self.response.warning(f"The `n_drugs` value was set to {parameters['n_drugs']}, but the maximum allowable value is 50. Setting `n_drugs` to 50.")
-                parameters['n_drugs'] = 50
-        else:
-            parameters['n_drugs'] = 50
 
-        if 'n_diseases' in parameters and parameters['n_diseases']:
-            try:
-                parameters['n_diseases'] = int(parameters['n_diseases'])
-            except ValueError:
-                self.response.error(f"The `n_diseases` value must be a positive integer. The provided value was {parameters['n_diseases']}.", error_code="ValueError")
-            if parameters['n_diseases'] <= 0:
-                self.response.error(f"The `n_diseases` value should be larger than 0. The provided value was {parameters['n_diseases']}.", error_code="ValueError")
-            if parameters['n_diseases'] > 50:
-                self.response.warning(f"The `n_diseases` value was set to {parameters['n_diseases']}, but the maximum allowable value is 50. Setting `n_diseases` to 50.")
-                parameters['n_diseases'] = 50
-        else:
-            parameters['n_diseases'] = 50
-
-        if 'n_paths' in parameters and parameters['n_paths']:
-            try:
-                parameters['n_paths'] = int(parameters['n_paths'])
-            except ValueError:
-                self.response.error(f"The `n_paths` value must be a positive integer. The provided value was {parameters['n_paths']}.", error_code="ValueError")
-            if parameters['n_paths'] <= 0:
-                self.response.error(f"The `n_paths` value should be larger than 0. The provided value was {parameters['n_paths']}.", error_code="ValueError")
-            if parameters['n_paths'] > 25:
-                self.response.warning(f"The `n_paths` value was set to {parameters['n_paths']}, but the maximum allowable value is 25. Setting `n_paths` to 25.")
-                parameters['n_paths'] = 25
-        else:
-            parameters['n_paths'] = 25
+        # Validate numeric parameters with ceiling enforcement
+        self._validate_int_param('n_drugs', default=MAX_DRUGS, max_val=MAX_DRUGS)
+        self._validate_int_param('n_diseases', default=MAX_DISEASES, max_val=MAX_DISEASES)
+        self._validate_int_param('n_paths', default=MAX_PATHS, max_val=MAX_PATHS)
 
         if self.response.status != 'OK':
             return self.response
 
-        # Make sure that if at least either drug_curie or disease_curie is provided. If provided, check if it/they also exist(s) in the query graph        
+        # --- Resolve preferred CURIEs ---
+        # Two paths: (A) query_graph exists => CURIEs must be in the QG; (B) no QG => CURIEs supplied directly
+        preferred_drug_curie = None
+        preferred_disease_curie = None
+        
         if hasattr(message, 'query_graph') and hasattr(message.query_graph, 'nodes') and message.query_graph.nodes:
+            # Path A: Query graph exists -- validate CURIEs against QG nodes
             qnodes = message.query_graph.nodes
-            all_qnode_curie_ids = []
-            for qnode_id in qnodes:
-                if qnodes[qnode_id].ids:
-                    all_qnode_curie_ids += [curie_id for curie_id in qnodes[qnode_id].ids]
+            all_qnode_curie_ids = [cid for qn in qnodes.values() if qn.ids for cid in qn.ids]
 
-            if 'drug_curie' in parameters or 'disease_curie' in parameters:
-                if 'drug_curie' in parameters and parameters['drug_curie']:
-                    if parameters['drug_curie'] in all_qnode_curie_ids:
-                        drug_curie = parameters['drug_curie']
-                        normalized_drug_curie = self.synonymizer.get_canonical_curies(drug_curie)[drug_curie]
-                        if normalized_drug_curie:
-                            preferred_drug_curie = normalized_drug_curie['preferred_curie']
-                        else:
-                            preferred_drug_curie = drug_curie
-                    else:
-                        self.response.error(f"Could not find drug_curie '{parameters['drug_curie']}' in the query graph")
-                        return self.response
-                else:
-                    preferred_drug_curie = None
+            if 'drug_curie' not in parameters and 'disease_curie' not in parameters:
+                self.response.error("query_graph detected; specify at least 'drug_curie' or 'disease_curie'.")
+                return self.response
 
-                if 'disease_curie' in parameters and parameters['disease_curie']:
-                    if parameters['disease_curie'] in all_qnode_curie_ids:
-                        disease_curie = parameters['disease_curie']
-                        normalized_disease_curie = self.synonymizer.get_canonical_curies(disease_curie)[disease_curie]
-                        if normalized_disease_curie:
-                            preferred_disease_curie = normalized_disease_curie['preferred_curie']
-                        else:
-                            preferred_disease_curie = disease_curie
-                    else:
-                        self.response.error(f"Could not find disease_curie '{parameters['disease_curie']}' in the query graph")
-                        return self.response
-                else:
-                    preferred_disease_curie = None
-
-                if not preferred_drug_curie and not preferred_disease_curie:
-                    self.response.error(f"Both parameters 'drug_curie' and 'disease_curie' are not provided. Please provide the curie for either one of them")
+            if 'drug_curie' in parameters and parameters['drug_curie']:
+                if parameters['drug_curie'] not in all_qnode_curie_ids:
+                    self.response.error(f"drug_curie '{parameters['drug_curie']}' not found in query graph")
                     return self.response
-                qedges = message.query_graph.edges
-                
+                preferred_drug_curie, _ = self._normalize_curie(parameters['drug_curie'])
 
-            else:
-                self.response.error(f"The 'query_graph' is detected. One of 'drug_curie' or 'disease_curie' should be specified.")
-                
-            for qedge in qedges:
-                edge = message.query_graph.edges[qedge]
-                edge.knowledge_type = "inferred"
-                edge.predicates = ["biolink:treats"]
+            if 'disease_curie' in parameters and parameters['disease_curie']:
+                if parameters['disease_curie'] not in all_qnode_curie_ids:
+                    self.response.error(f"disease_curie '{parameters['disease_curie']}' not found in query graph")
+                    return self.response
+                preferred_disease_curie, _ = self._normalize_curie(parameters['disease_curie'])
+
+            if not preferred_drug_curie and not preferred_disease_curie:
+                self.response.error("At least one of 'drug_curie' or 'disease_curie' must have a non-empty value")
+                return self.response
+
+            # Mark all query edges as inferred treats
+            for qedge in message.query_graph.edges.values():
+                qedge.knowledge_type = "inferred"
+                qedge.predicates = ["biolink:treats"]
 
         else:
-            if 'drug_curie' in parameters or 'disease_curie' in parameters:
-                if 'drug_curie' in parameters:
-                    parameters['drug_curie'] = eval(parameters['drug_curie']) if parameters['drug_curie'] == 'None' else parameters['drug_curie']
-                    if parameters['drug_curie']:
-                        ## if 'drug_curie' passes, return its normalized curie
-                        normalized_drug_curie = self.synonymizer.get_canonical_curies(parameters['drug_curie'])[parameters['drug_curie']]
-                        if normalized_drug_curie:
-                            preferred_drug_curie = normalized_drug_curie['preferred_curie']
-                            self.response.debug(f"Get a preferred sysnonym {preferred_drug_curie} from Node Synonymizer for drug curie {parameters['drug_curie']}")
-                        else:
-                            preferred_drug_curie = parameters['drug_curie']
-                            self.response.warning(f"Could not get a preferred sysnonym for the queried drug {parameters['drug_curie']} and thus keep it as it")
+            # Path B: No query graph -- CURIEs supplied directly as parameters
+            if 'drug_curie' not in parameters and 'disease_curie' not in parameters:
+                self.response.error("No query_graph found; specify 'drug_curie' or 'disease_curie'.")
+                return self.response
+
+            if 'drug_curie' in parameters:
+                raw = parameters['drug_curie']
+                parameters['drug_curie'] = None if raw == 'None' else raw
+                if parameters['drug_curie']:
+                    preferred_drug_curie, normalized = self._normalize_curie(parameters['drug_curie'])
+                    if normalized:
+                        self.response.debug(f"Normalized drug curie {parameters['drug_curie']} -> {preferred_drug_curie}")
                     else:
-                        preferred_drug_curie = None
-                else:
-                    preferred_drug_curie = None
+                        self.response.warning(f"Could not normalize drug curie {parameters['drug_curie']}, using as-is")
 
-                if 'disease_curie' in parameters:
-                    parameters['disease_curie'] = eval(parameters['disease_curie']) if parameters['disease_curie'] == 'None' else parameters['disease_curie']
-                    if parameters['disease_curie']:
-                        ## if 'disease_curie' passes, return its normalized curie
-                        normalized_disease_curie = self.synonymizer.get_canonical_curies(parameters['disease_curie'])[parameters['disease_curie']]
-                        if normalized_disease_curie:
-                            preferred_disease_curie = normalized_disease_curie['preferred_curie']
-                            self.response.debug(f"Get a preferred sysnonym {preferred_disease_curie} from Node Synonymizer for disease curie {parameters['disease_curie']}")
-                        else:
-                            preferred_disease_curie = parameters['disease_curie']
-                            self.response.warning(f"Could not get a preferred sysnonym for the queried disease {parameters['disease_curie']}")
+            if 'disease_curie' in parameters:
+                raw = parameters['disease_curie']
+                parameters['disease_curie'] = None if raw == 'None' else raw
+                if parameters['disease_curie']:
+                    preferred_disease_curie, normalized = self._normalize_curie(parameters['disease_curie'])
+                    if normalized:
+                        self.response.debug(f"Normalized disease curie {parameters['disease_curie']} -> {preferred_disease_curie}")
                     else:
-                        preferred_disease_curie = None
-                else:
-                    preferred_disease_curie = None
+                        self.response.warning(f"Could not normalize disease curie {parameters['disease_curie']}, using as-is")
 
-                if not preferred_drug_curie and not preferred_disease_curie:
-                    self.response.error(f"Both parameters 'drug_curie' and 'disease_curie' are not provided. Please provide the curie for either one of them")
-                    return self.response
-            else:
-                self.response.error(f"No 'query_graph' is found and thus either 'drug_curie' or 'disease_curie' should be specified.")
+            if not preferred_drug_curie and not preferred_disease_curie:
+                self.response.error("At least one of 'drug_curie' or 'disease_curie' must have a non-empty value")
+                return self.response
 
-        # return if bad parameters have been passed
         if self.response.status != 'OK' or resp == -1:
             return self.response
 
-        # # disable 'given a drug, predict what potential diseases it may treat'
-        # if preferred_drug_curie and not preferred_disease_curie:
-        #     self.response.warning(f"Given a drug, predict what potential diseases it may treat is currently disabled.")
-        #     return self.response
-
-
+        # --- Query the ExplainableDTD database ---
         try:
             top_scores = XDTD.get_score_table(drug_curie_ids=preferred_drug_curie, disease_curie_ids=preferred_disease_curie)
             top_paths = XDTD.get_top_path(drug_curie_ids=preferred_drug_curie, disease_curie_ids=preferred_disease_curie)
         except Exception as e:
-            self.response.warning(f"Could not get top drugs and paths for drug {preferred_drug_curie} and disease {preferred_disease_curie}")
+            self.response.warning(f"Database query failed for drug={preferred_drug_curie}, disease={preferred_disease_curie}: {e}")
             return self.response
-        
+
+        # Validate results and apply N limits
         if preferred_drug_curie and preferred_disease_curie:
             if len(top_scores) == 0:
-                self.response.warning(f"Could not get predicted scores for drug {preferred_drug_curie} and disease {preferred_disease_curie}. Likely the model was not trained with this drug-disease pair. Or No predicted score >=0.3 for this drug-disease pair.")
+                self.response.warning(f"No predicted scores for drug={preferred_drug_curie}, disease={preferred_disease_curie}. "
+                                      "Likely the model was not trained with this drug-disease pair, or score < 0.3.")
                 return self.response
             if len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for drug {preferred_drug_curie} and disease {preferred_disease_curie}. Likely the model considers there is no reasonable path for this drug-disease pair.")
+                self.response.warning(f"No predicted paths for drug={preferred_drug_curie}, disease={preferred_disease_curie}. "
+                                      "Likely the model considers there is no reasonable path for this drug-disease pair.")
         elif preferred_drug_curie:
             if len(top_scores) == 0:
-                self.response.warning(f"Could not get top diseases for drug {preferred_drug_curie}. Likely the model was not trained with this drug. Or No predicted diseses for this drug with score >= 0.3.")
+                self.response.warning(f"No predicted diseases for drug={preferred_drug_curie}." 
+                                      "Likely the model was not trained with this drug, or score < 0.3.")
                 return self.response
             if len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for drug {preferred_drug_curie}. Likely the model considers there is no reasonable path for this drug.")
-            
-            # Limit the number of diseases to the top n
-            top_scores = top_scores.iloc[:parameters['n_diseases'],:].reset_index(drop=True)
+                self.response.warning(f"No predicted paths for drug={preferred_drug_curie}." 
+                                      "Likely the model considers there is no reasonable path for this drug.")
+            top_scores = top_scores.iloc[:parameters['n_diseases'], :].reset_index(drop=True)
         elif preferred_disease_curie:
             if len(top_scores) == 0:
-                self.response.warning(f"Could not get top drugs for disease {preferred_disease_curie}. Likely the model was not trained with this disease. Or No predicted drugs for this disease with score >= 0.3.")
+                self.response.warning(f"No predicted drugs for disease={preferred_disease_curie}.")
                 return self.response
             if len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for disease {preferred_disease_curie}. Likely the model considers there is no reasonable path for this disease.")
-        
-            # Limit the number of drugs to the top n
-            top_scores = top_scores.iloc[:parameters['n_drugs'],:].reset_index(drop=True)
-        
-        # Limit the number of paths to the top n
-        top_paths = {(row[0], row[2]):top_paths[(row[0], row[2])][:parameters['n_paths']] for row in top_scores.to_numpy() if (row[0], row[2]) in top_paths}
-    
+                self.response.warning(f"No predicted paths for disease={preferred_disease_curie}.")
+            top_scores = top_scores.iloc[:parameters['n_drugs'], :].reset_index(drop=True)
+
+        # Limit paths per drug-disease pair to n_paths
+        top_paths = {
+            (row[0], row[2]): top_paths[(row[0], row[2])][:parameters['n_paths']]
+            for row in top_scores.to_numpy()
+            if (row[0], row[2]) in top_paths
+        }
+
+        # --- Build TRAPI subgraph ---
         iu = InferUtilities()
         qedge_id = parameters.get('qedge_id')
-        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_treat_subgraphs(self.response, top_scores, top_paths, preferred_drug_curie, preferred_disease_curie, qedge_id)
+        self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = \
+            iu.genrete_treat_subgraphs(self.response, top_scores, top_paths, preferred_drug_curie, preferred_disease_curie, qedge_id)
 
         return self.response
 
+    # ──────────────────────────────────────────────────────────────────────────
+    #  Action: chemical_gene_regulation_graph_expansion (xCRG)
+    # ──────────────────────────────────────────────────────────────────────────
 
     def __chemical_gene_regulation_graph_expansion(self, describe=False):
         """

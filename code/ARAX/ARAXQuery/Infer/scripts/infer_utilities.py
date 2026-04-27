@@ -1,27 +1,36 @@
 #!/bin/env python3
-import sys
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+"""
+InferUtilities: Builds TRAPI-compliant knowledge graph subgraphs from xDTD/xCRG prediction results.
 
+This module is the bridge between prediction databases and the ARAX TRAPI response.
+It takes prediction scores + explanation paths from ExplainableDTD and builds proper
+knowledge graph nodes, edges, query graph extensions, and result objects following the TRAPI specification.
+
+Main responsibilities:
+  - genrete_treat_subgraphs(): Converts xDTD drug-disease prediction results into TRAPI KG.
+  - genrete_regulate_subgraphs(): Converts xCRG chemical-gene prediction results into TRAPI KG.
+  - Looks up node/edge metadata from the xDTD mapping database (Translator KG JSONL-based).
+  - Handles variable-length explanation paths (1-hop, 2-hop, 3-hop).
+  - Creates proper TRAPI attributes, retrieval sources, and qualifiers.
+
+"""
+
+import sys
 import os
 import json
-import ast
-import re
+import math
+import copy
+import uuid
+from typing import List, Dict, Optional
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
-import math
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
-from ARAX_expander import ARAXExpander
 from ARAX_resultify import ARAXResultify
-from ARAX_decorator import ARAXDecorator
+from util import get_arax_edge_key
 from biolink_helper import get_biolink_helper
-import traceback
-from collections import Counter
-from collections.abc import Hashable
-from itertools import combinations
-import copy
-from typing import List, Dict, Set, Union, Optional
-from datetime import datetime
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -48,8 +57,13 @@ RTXConfig = RTXConfiguration()
 
 
 class InferUtilities:
+    """Utility class for building TRAPI-compliant subgraphs from inference results.
 
-    #### Constructor
+    The two main entry points are:
+      - genrete_treat_subgraphs(): for drug-disease treatment predictions (xDTD).
+      - genrete_regulate_subgraphs(): for chemical-gene regulation predictions (xCRG).
+    """
+
     def __init__(self):
         self.response = None
         self.message = None
@@ -57,7 +71,85 @@ class InferUtilities:
         self.report_stats = True
         self.bh = get_biolink_helper()
 
-    def __get_formated_edge_key(self, edge: Edge, primary_knowledge_source: str, kp: str = 'infores:rtx-kg2') -> str:
+    @staticmethod
+    def _get_primary_knowledge_source(edge_info):
+        """Extract the primary_knowledge_source from the Translator KG edge schema.
+
+        Uses the pipe-delimited resource_id/resource_role fields for fast lookup,
+        falling back to parsing the full JSON sources array.
+
+        Returns 'infores:arax-xdtd' if no primary knowledge source is found.
+        """
+        resource_ids = edge_info.resource_id
+        resource_roles = edge_info.resource_role
+        if resource_ids and resource_roles:
+            ids = resource_ids.split('|')
+            roles = resource_roles.split('|')
+            for rid, role in zip(ids, roles):
+                if role == 'primary_knowledge_source':
+                    return rid
+        if edge_info.sources:
+            try:
+                sources = json.loads(edge_info.sources)
+                for s in sources:
+                    if s.get('resource_role') == 'primary_knowledge_source':
+                        return s.get('resource_id', 'infores:arax-xdtd')
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return "infores:arax-xdtd"
+
+    @staticmethod
+    def _build_retrieval_sources(edge_info, kp='infores:arax-xdtd'):
+        """Build TRAPI RetrievalSource objects from the Translator KG edge sources JSON.
+
+        The sources form an ordered chain: the first entry is the primary_knowledge_source
+        (no upstream), and each subsequent entry is an aggregator whose upstream_resource_ids
+        points to the previous entry. This method preserves that chain and appends kp as
+        the final aggregator.
+
+        Example chain from edge_info.sources:
+          [infores:mgi (primary)] -> [infores:agrkb (aggregator, upstream=[infores:mgi])]
+        becomes:
+          [infores:mgi (primary)] -> [infores:agrkb (aggregator)] -> [infores:arax-xdtd (aggregator)]
+        """
+        fallback = [RetrievalSource(resource_id=kp, resource_role="primary_knowledge_source")]
+        if not edge_info.sources:
+            return fallback
+        try:
+            sources = json.loads(edge_info.sources)
+        except (json.JSONDecodeError, TypeError):
+            return fallback
+        if not sources:
+            return fallback
+
+        retrieval_sources = []
+        for s in sources:
+            retrieval_sources.append(RetrievalSource(
+                resource_id=s['resource_id'],
+                resource_role=s['resource_role'],
+                upstream_resource_ids=s.get('upstream_resource_ids') or None
+            ))
+
+        retrieval_sources.append(RetrievalSource(
+            resource_id=kp,
+            resource_role='aggregator_knowledge_source',
+            upstream_resource_ids=[sources[-1]['resource_id']]
+        ))
+        return retrieval_sources
+
+    def __get_formated_edge_key(self, edge: Edge, primary_knowledge_source: str, kp: str = 'infores:arax-xdtd') -> str:
+        """Build an edge key for a knowledge graph edge.
+
+        The edge key is a unique identifier for a knowledge graph edge.
+        It is constructed from the subject, predicate, object, qualifier details, and provenancen
+
+        Args:
+            edge: The Edge object to build the key for.
+            primary_knowledge_source: The primary knowledge source for the edge.
+            kp: The knowledge provider for the edge.
+        Returns:
+            The edge key.
+        """
         qualifiers_dict = {qualifier.qualifier_type_id: qualifier.qualifier_value for qualifier in edge.qualifiers} if edge.qualifiers else dict()
         qualified_predicate = qualifiers_dict.get("biolink:qualified_predicate")
         qualified_object_direction = qualifiers_dict.get("biolink:object_direction_qualifier")
@@ -68,12 +160,22 @@ class InferUtilities:
         return edge_key
 
     def __none_to_zero(self, val):
+        """Coerce None to 0 for safe numeric sorting."""
         if val is None:
             return 0
         else: 
             return val
 
     def resultify_and_sort(self, essence_scores):
+        """Run ARAXResultify to group KG edges into TRAPI Results, then rank by prediction score.
+
+        ARAXResultify matches knowledge graph edges to query graph patterns, producing TRAPI Result
+        objects. After resultification, each result's score is set based on ARAX's ranking algorithm
+        (which considers the probability_treats attribute), then sorted descending.
+
+        Args:
+            essence_scores: Dict mapping result essence (node name) -> prediction probability score.
+        """
         message = self.response.envelope.message
         resultifier = ARAXResultify()
         resultify_params = {
@@ -86,19 +188,35 @@ class InferUtilities:
                 result.score = essence_scores[result.essence]
             else:
                 result.score = None
-                # result.analyses[0].score = essence_scores[result.essence]
                 self.response.warning(
                     f"Error retrieving score for result essence {result.essence}. Setting result score to None.")
         message.results.sort(key=lambda x: self.__none_to_zero(x.score), reverse=True)
 
     def genrete_treat_subgraphs(self, response: ARAXResponse, top_scores: pd.DataFrame, top_paths: dict, drug_curie: Optional[str], disease_curie: Optional[str], qedge_id=None):
         """
-        top_scores and top_paths returned by Chunyu's creativeDTD.py code (get_score_table and get_top_path respectively).
-        Ammends the response effectively TRAPI-ifying the paths returned by Chunyu's code.
-        May not work on partially filled out response (as it assumes fresh QG and KG, i.e. not stuff partially filled out).
-        The *_global_iter vars are to keep count of qedge and kedge if this is run multiple times. But see previous line for proviso.
-        Returns the response and all the *_global_iters
+        Convert xDTD prediction results into a TRAPI-compliant knowledge graph subgraph.
+
+        This is the core method that processes the xDTD model's prediction scores and
+        explanation paths, inserting them into the ARAX response message as proper nodes, edges,
+        query graph extensions, and results.
+
+        The method handles three scenarios:
+          1. Both drug_curie and disease_curie given: single pair prediction.
+          2. Only drug_curie given: predict diseases treatable by this drug.
+          3. Only disease_curie given: predict drugs that can treat this disease.
+
+        Args:
+            response: ARAXResponse object to amend.
+            top_scores: DataFrame with columns [drug_id, drug_name, disease_id, disease_name, tn_score, tp_score, unknown_score].
+            top_paths: Dict mapping (drug_id, disease_id) -> list of [path_string, path_score].
+            drug_curie: Preferred drug CURIE (None if querying by disease only).
+            disease_curie: Preferred disease CURIE (None if querying by drug only).
+            qedge_id: Query edge ID to attach results to (None if QG is empty).
+
+        Returns:
+            Tuple of (response, kedge_global_iter, qedge_global_iter, qnode_global_iter, option_global_iter).
         """
+        # --- Initialization ---
         self.response = response
         self.kedge_global_iter = 0
         self.qedge_global_iter = 0
@@ -106,7 +224,9 @@ class InferUtilities:
         self.option_global_iter = 0
         self.qedge_id = qedge_id
         message = self.response.envelope.message
-        # check to make sure that the qedge_id either exists and is in the QG, or else does not exist and the QG is empty
+        self.kp = 'infores:arax-xdtd'
+
+        # Check to make sure that the qedge_id either exists and is in the QG, or else does not exist and the QG is empty
         if qedge_id is not None:
             if not hasattr(message, 'query_graph') or qedge_id not in message.query_graph.edges:
                 self.response.error(f"qedge_id {qedge_id} not in QG, QG is {message.query_graph}")
@@ -117,17 +237,22 @@ class InferUtilities:
                 raise Exception("qedge_id is None but QG is not empty")
 
         messenger = ARAXMessenger()
-        decorator = ARAXDecorator()
-        xdtdmapping = xDTDMappingDB(None, None, RTXConfig.explainable_dtd_db_path.split('/')[-1], mode='run', db_loc=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction']))
 
-        kp = 'infores:rtx-kg2'
+        # Connect to the xDTD mapping database for node/edge metadata lookups.
+        # The mapping DB maps xDTD internal node/edge IDs to Translator KG metadata.
+        xdtdmapping = xDTDMappingDB(database_name=RTXConfig.explainable_dtd_db_path.split('/')[-1], mode='run', db_loc=os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction']))
 
+        
+        # Determine the set of distinct path lengths across all drug-disease pairs.
+        # Path strings look like "A->pred1->B->pred2->C", so n_elements = 2*n_hops + 1;
+        # floor(n_elements/2) gives the number of hops.
         path_lengths = set([math.floor(len(x[0].split("->"))/2.) for paths in top_paths.values() for x in paths])
         try:
             max_path_len = max(path_lengths)
         except ValueError:
             max_path_len = 0
 
+        # Preserve the original query graph before we modify it with inferred edges/nodes
         if len(message.query_graph.edges) !=0 and not hasattr(self.response, 'original_query_graph'):
             self.response.original_query_graph = copy.deepcopy(message.query_graph)
 
@@ -136,15 +261,17 @@ class InferUtilities:
             query_drug_name = top_scores['drug_name'].tolist()[0]
             query_drug_info = xdtdmapping.get_node_info(node_id=query_drug_curie)
             if query_drug_info is None:
-                self.response.warning(f"Could not find {drug_curie} in NODE_MAPPING table due to using refreshed xDTD database")
+                self.response.warning(f"Could not find {drug_curie} in NODE_MAPPING table")
                 return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+            query_drug_categories = query_drug_info.category
             
             query_disease_curie = top_scores['disease_id'].tolist()[0]
             query_disease_name = top_scores['disease_name'].tolist()[0]
             query_disease_info = xdtdmapping.get_node_info(node_id=query_disease_curie)
             if query_disease_info is None:
-                self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table due to using refreshed xDTD database")
+                self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table")
                 return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+            query_disease_categories = query_disease_info.category
             
             
         elif drug_curie:
@@ -154,6 +281,7 @@ class InferUtilities:
             if query_drug_info is None:
                 self.response.warning(f"Could not find {drug_curie} in NODE_MAPPING table due to using refreshed xDTD database")
                 return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+            query_drug_categories = query_drug_info.category
             
         elif disease_curie:
             query_disease_curie = top_scores['disease_id'].tolist()[0]
@@ -162,8 +290,10 @@ class InferUtilities:
             if query_disease_info is None:
                 self.response.warning(f"Could not find {disease_curie} in NODE_MAPPING table due to using refreshed xDTD database")
                 return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
+            query_disease_categories = query_disease_info.category
 
-        if not message.knowledge_graph or not hasattr(message, 'knowledge_graph'):  # if the knowledge graph is empty, create it
+        # if the knowledge graph is empty, create it
+        if not message.knowledge_graph or not hasattr(message, 'knowledge_graph'):
             message.knowledge_graph = KnowledgeGraph()
             message.knowledge_graph.nodes = {}
             message.knowledge_graph.edges = {}
@@ -176,8 +306,7 @@ class InferUtilities:
         if len(message.query_graph.edges) == 0:
             qedge_id = "treats"
             
-            # Simplified and deduplicated code for adding qnodes and qedges
-
+            # Helper function to add a qnode and a kg node
             def _add_qnode_and_kg_node(qnode_key, name=None, categories=None, curie=None, info=None):
                 params = {'key': qnode_key}
                 if name is not None:
@@ -186,9 +315,10 @@ class InferUtilities:
                     params['categories'] = categories
                 self.response = messenger.add_qnode(self.response, params)
                 if curie and info:
+                    resolved_categories = categories if categories else info.category
                     message.knowledge_graph.nodes[curie] = Node(
                         name=name if name else info.name,
-                        categories=categories if categories else [info.category],
+                        categories=resolved_categories,
                         attributes=[]
                     )
                     message.knowledge_graph.nodes[curie].qnode_keys = [qnode_key]
@@ -198,24 +328,24 @@ class InferUtilities:
 
             if drug_curie and disease_curie:
                 _add_qnode_and_kg_node(
-                    drug_qnode_key, query_drug_name, [query_drug_info.category], query_drug_curie, query_drug_info
+                    drug_qnode_key, query_drug_name, query_drug_categories, query_drug_curie, query_drug_info
                 )
                 _add_qnode_and_kg_node(
-                    disease_qnode_key, query_disease_name, [query_disease_info.category], query_disease_curie, query_disease_info
+                    disease_qnode_key, query_disease_name, query_disease_categories, query_disease_curie, query_disease_info
                 )
             elif drug_curie:
                 _add_qnode_and_kg_node(
-                    drug_qnode_key, query_drug_name, [query_drug_info.category], query_drug_curie, query_drug_info
+                    drug_qnode_key, query_drug_name, query_drug_categories, query_drug_curie, query_drug_info
                 )
                 _add_qnode_and_kg_node(
-                    disease_qnode_key, categories=['biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
+                    disease_qnode_key, categories=['biolink:Disease', 'biolink:PhenotypicFeature']
                 )
             elif disease_curie:
                 _add_qnode_and_kg_node(
-                    disease_qnode_key, query_disease_name, [query_disease_info.category], query_disease_curie, query_disease_info
+                    disease_qnode_key, query_disease_name, query_disease_categories, query_disease_curie, query_disease_info
                 )
                 _add_qnode_and_kg_node(
-                    drug_qnode_key, categories=['biolink:Drug', 'biolink:SmallMolecule']
+                    drug_qnode_key, categories=['biolink:Drug', 'biolink:SmallMolecule', 'biolink:ChemicalEntity']
                 )
 
             add_qedge_params = {
@@ -233,18 +363,18 @@ class InferUtilities:
             drug_qnode_key = response.envelope.message.query_graph.edges[qedge_id].subject
             disease_qnode_key = response.envelope.message.query_graph.edges[qedge_id].object
             if drug_curie and disease_curie:
-                message.knowledge_graph.nodes[query_drug_curie] = Node(name=query_drug_name, categories=[query_drug_info.category], attributes=[])
+                message.knowledge_graph.nodes[query_drug_curie] = Node(name=query_drug_name, categories=query_drug_categories, attributes=[])
                 message.knowledge_graph.nodes[query_drug_curie].qnode_keys = [drug_qnode_key]
-                message.knowledge_graph.nodes[query_disease_curie] = Node(name=query_disease_name, categories=[query_disease_info.category], attributes=[])
+                message.knowledge_graph.nodes[query_disease_curie] = Node(name=query_disease_name, categories=query_disease_categories, attributes=[])
                 message.knowledge_graph.nodes[query_disease_curie].qnode_keys = [disease_qnode_key]
             elif drug_curie:
-                message.knowledge_graph.nodes[query_drug_curie] = Node(name=query_drug_name, categories=[query_drug_info.category], attributes=[])
+                message.knowledge_graph.nodes[query_drug_curie] = Node(name=query_drug_name, categories=query_drug_categories, attributes=[])
                 message.knowledge_graph.nodes[query_drug_curie].qnode_keys = [drug_qnode_key]
-                message.query_graph.nodes[disease_qnode_key].categories = ['biolink:Disease', 'biolink:PhenotypicFeature', 'biolink:DiseaseOrPhenotypicFeature']
+                message.query_graph.nodes[disease_qnode_key].categories = ['biolink:Disease', 'biolink:PhenotypicFeature']
             elif disease_curie:
-                message.knowledge_graph.nodes[query_disease_curie] = Node(name=query_disease_name, categories=[query_disease_info.category], attributes=[])
+                message.knowledge_graph.nodes[query_disease_curie] = Node(name=query_disease_name, categories=query_disease_categories, attributes=[])
                 message.knowledge_graph.nodes[query_disease_curie].qnode_keys = [disease_qnode_key]
-                message.query_graph.nodes[drug_qnode_key].categories = ['biolink:Drug', 'biolink:SmallMolecule']
+                message.query_graph.nodes[drug_qnode_key].categories = ['biolink:Drug', 'biolink:SmallMolecule', 'biolink:ChemicalEntity']
 
 
         # If the max path len is 0, that means there are no paths found, so just insert the drugs with the probability_treats on them
@@ -259,7 +389,7 @@ class InferUtilities:
                         continue
                     if not node_info:
                         continue
-                    categories = [node_info.category]
+                    categories = node_info.category
                     name = node_info.name
                     essence_scores[name] = node_id_to_score[canonical_id]
                     if canonical_id not in message.knowledge_graph.nodes:
@@ -269,23 +399,23 @@ class InferUtilities:
                     treat_score = node_id_to_score[canonical_id]
                     edge_attribute_list = [
                         Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                        Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                        Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source=self.kp, value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                         Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score)),
-                        Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
-                        Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
+                        Attribute(attribute_source=self.kp, attribute_type_id="biolink:agent_type", value="computational_model"),
+                        Attribute(attribute_source=self.kp, attribute_type_id="biolink:knowledge_level", value="prediction"),
                     ]
                     retrieval_source = [
-                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
+                        RetrievalSource(resource_id=self.kp, resource_role="primary_knowledge_source")
                     ]
                     # Use the functions to determine subject and object based on current canonical_id
                     edge_subject = edge_subject_func(canonical_id)
                     edge_object = edge_object_func(canonical_id)
                     new_edge = Edge(subject=edge_subject, object=edge_object, predicate='biolink:treats', attributes=edge_attribute_list, sources=retrieval_source)
-                    new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source="infores:arax", kp=kp)
-                    if new_edge_key not in message.knowledge_graph.edges:
-                        message.knowledge_graph.edges[new_edge_key] = new_edge
-                        message.knowledge_graph.edges[new_edge_key].filled = True
-                        message.knowledge_graph.edges[new_edge_key].qedge_keys = [qedge_id]
+                    new_edge_key = f"creative_DTD_prediction_{self.kedge_global_iter}"
+                    message.knowledge_graph.edges[new_edge_key] = new_edge
+                    message.knowledge_graph.edges[new_edge_key].filled = True
+                    message.knowledge_graph.edges[new_edge_key].qedge_keys = [qedge_id]
+                    self.kedge_global_iter += 1
                 self.resultify_and_sort(essence_scores)
                 return self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter
 
@@ -299,7 +429,12 @@ class InferUtilities:
                 return _add_node_and_edge(node_ids, node_id_to_score, drug_qnode_key, lambda cid: cid, lambda cid: disease_curie)
                 
     
-        # Otherwise we do have paths and we need to handle them
+        # ── Build query graph template for variable-length explanation paths ──
+        # Each distinct path length (1-hop, 2-hop, 3-hop) gets its own "option group" in the QG.
+        # For a 2-hop path: drug -> intermediate_node -> disease, we create:
+        #   - 1 intermediate qnode (creative_DTD_qnode_X)
+        #   - 2 qedges (drug->intermediate, intermediate->disease)
+        # path_keys[i] stores the qnode_pairs and qedge_keys for paths of length (i+1).
         path_keys = [{} for i in range(max_path_len)]
         for i in range(max_path_len+1):
             if (i+1) in path_lengths:
@@ -332,30 +467,34 @@ class InferUtilities:
                 path_keys[i]["qedge_keys"] = qedge_key_list
                 self.option_global_iter += 1
 
-        # FW: code that will add resulting paths to the query graph and knowledge graph goes here
+        # ── Insert explanation path nodes and edges into the knowledge graph ──
+        # Each path string is "node1->predicate1->node2->predicate2->node3".
+        # We split it, look up each node/edge in the mapping DB, and insert TRAPI objects.
         essence_scores = {}
         for (drug, disease), paths in top_paths.items():
             path_added = False
-            # Splits the paths which are encodes as strings into a list of nodes names and edge predicates
-            # The x[0] is here since each element consists of the string path and a score we are currently ignoring the score
+            # x[0] is the path string; x[1] is the path score generated by xDTD model 
             split_paths = [x[0].split("->") for x in paths]
             for path in split_paths:
                 path_drug_curie = path[0]
-                path_disease_curie = path[-1]  # Last element in the path is the disease
+                path_disease_curie = path[-1]  # Last element in the path is disease
                 n_elements = len(path)
 
+                # Look up each (subject, predicate, object) triple from the mapping DB.
+                # Each triple may return multiple edges (e.g., from different knowledge sources).
                 edges_info = []
-                flag = False
+                break_flag = False
                 for i in range(0,n_elements-2,2):
                     edge_info = xdtdmapping.get_edge_info(triple_id=(path[i],path[i+1],path[i+2]))
                     if len(edge_info) == 0:
-                        flag = True
+                        break_flag = True
                     else:
                         edges_info.append(edge_info)
                     
-                if flag:
+                if break_flag:
                     continue
                 
+                # path_idx is 0-based index into path_keys for the correct QG template
                 path_idx = len(edges_info)-1
 
                 for i in range(path_idx+1):
@@ -363,12 +502,16 @@ class InferUtilities:
                     subject_curie = edges_info[i][0].subject
                     try:
                         subject_node_info = xdtdmapping.get_node_info(node_id=subject_curie)
-                    except:
+                    except Exception:
                         break_flag = True
+                        break
+                    if subject_node_info is None:
+                        break_flag = True
+                        break
                     subject_name = subject_node_info.name
-                    subject_category = subject_node_info.category
+                    subject_categories = subject_node_info.category
                     if subject_curie not in message.knowledge_graph.nodes:
-                        message.knowledge_graph.nodes[subject_curie] = Node(name=subject_name, categories=[subject_category], attributes=[])
+                        message.knowledge_graph.nodes[subject_curie] = Node(name=subject_name, categories=subject_categories, attributes=[])
                         message.knowledge_graph.nodes[subject_curie].qnode_keys = [subject_qnode_key]
                     elif subject_qnode_key not in message.knowledge_graph.nodes[subject_curie].qnode_keys:
                         message.knowledge_graph.nodes[subject_curie].qnode_keys.append(subject_qnode_key)
@@ -376,64 +519,54 @@ class InferUtilities:
                     object_curie = edges_info[i][0].object
                     try:
                         object_node_info = xdtdmapping.get_node_info(node_id=object_curie)
-                    except:
+                    except Exception:
                         break_flag = True
+                        break
+                    if object_node_info is None:
+                        break_flag = True
+                        break
                     object_name = object_node_info.name
-                    object_category = object_node_info.category
+                    object_categories = object_node_info.category
                     if object_curie not in message.knowledge_graph.nodes:
-                        message.knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=[object_category], attributes=[])
+                        message.knowledge_graph.nodes[object_curie] = Node(name=object_name, categories=object_categories, attributes=[])
                         message.knowledge_graph.nodes[object_curie].qnode_keys = [object_qnode_key]
                     elif object_qnode_key not in message.knowledge_graph.nodes[object_curie].qnode_keys:
                         message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
                     predicate = edges_info[i][0].predicate
-                    break_flag = False 
+
+                    if predicate == "SELF_LOOP_RELATION":
+                        break_flag = True
+                        break
+
                     for edge_info in edges_info[i]:
-                        primary_knowledge_source = edge_info.primary_knowledge_source if edge_info.primary_knowledge_source is not None else "infores:arax"
-                        
-                        # Handle the self-loop relation
-                        if predicate == "SELF_LOOP_RELATION":
-                            ## remove self-loop relation requested by issue #2081
-                            break_flag = True
-                            break
-                            # self.response.warning(f"Self-loop relation detected: {subject_name}--{predicate}--{object_name}, replacing with placeholder 'biolink:self_loop_relation'")
-                            # predicate = "biolink:self_loop_relation"
+                        primary_knowledge_source = self._get_primary_knowledge_source(edge_info)
                         new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[], sources=[])
-                        ## add attributes to the path-based edge
                         edge_attribute_list = [
                             Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                            Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
-                            Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
+                            Attribute(attribute_source=self.kp, attribute_type_id="biolink:agent_type", value=edge_info.agent_type),
+                            Attribute(attribute_source=self.kp, attribute_type_id="biolink:knowledge_level", value=edge_info.knowledge_level),
+                            Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax-xdtd", value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from Translator KG by ARAXInfer."),
                         ]
-                        if predicate == "biolink:self_loop_relation":
-                            edge_attribute_list += [
-                                Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This self-loop edge was added by ARAXInfer in the inferene process for flexible path length.")
-                            ]
-                            retrieval_source = [
-                                                RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
-                            ]
-                        else:
-                            edge_attribute_list += [
-                                Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from RTX-KG2.10.0c by ARAXInfer."),
-                            ]
-                            retrieval_source = [
-                                RetrievalSource(resource_id=primary_knowledge_source, resource_role="primary_knowledge_source"),
-                                RetrievalSource(resource_id="infores:rtx-kg2", resource_role="aggregator_knowledge_source", upstream_resource_ids=[primary_knowledge_source]),
-                                RetrievalSource(resource_id="infores:arax", resource_role="aggregator_knowledge_source", upstream_resource_ids=['infores:rtx-kg2'])
-                            ]
+                        retrieval_source = self._build_retrieval_sources(edge_info, kp=self.kp)
                         new_edge.attributes += edge_attribute_list
                         new_edge.sources += retrieval_source
-                        new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source=primary_knowledge_source, kp=kp)
+                        new_edge_key = edge_info.id if edge_info.id else f"urn:uuid:{uuid.uuid4()}"
                         message.knowledge_graph.edges[new_edge_key] = new_edge
                         message.knowledge_graph.edges[new_edge_key].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
                     if break_flag:
                         break
                 path_added = True
             if path_added:
-                treat_score = top_scores.loc[top_scores['drug_id'] == drug]["tp_score"].iloc[0]
+                # ── Create the primary "treats" prediction edge ──
+                # This is the top-level inferred edge connecting the drug to the disease,
+                # carrying the xDTD model's probability_treats score as an attribute.
+                # The explanation path edges above provide supporting evidence for this prediction.
+                treat_score = top_scores.loc[(top_scores['drug_id'] == drug) & (top_scores['disease_id'] == disease)]["tp_score"].iloc[0]
                 path_drug_node_info = xdtdmapping.get_node_info(node_id=path_drug_curie)
                 path_disease_node_info = xdtdmapping.get_node_info(node_id=path_disease_curie)
                 
-                # Determine which node gets the score based on the scenario
+                # essence_scores maps the "varying" node name to its score for result ranking.
+                # The "varying" node is the one predicted by the model (not the query input).
                 if drug_curie and disease_curie:
                     # Both are fixed, use drug name for scoring
                     essence_scores[path_drug_node_info.name] = treat_score
@@ -446,13 +579,13 @@ class InferUtilities:
                 
                 edge_attribute_list = [
                     Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                    Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                    Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source=self.kp, value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
                     Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score)),
-                    Attribute(attribute_source="infores:arax", attribute_type_id="biolink:agent_type", value="computational_model"),
-                    Attribute(attribute_source="infores:arax", attribute_type_id="biolink:knowledge_level", value="prediction"),
+                    Attribute(attribute_source=self.kp, attribute_type_id="biolink:agent_type", value="computational_model"),
+                    Attribute(attribute_source=self.kp, attribute_type_id="biolink:knowledge_level", value="prediction"),
                 ]
                 retrieval_source = [
-                        RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
+                        RetrievalSource(resource_id="infores:arax-xdtd", resource_role="primary_knowledge_source")
                     ]
                 #edge_predicate = qedge_id
                 edge_predicate = "biolink:treats"
@@ -469,12 +602,11 @@ class InferUtilities:
             else:
                 self.response.warning(f"Something went wrong when adding the subgraph for the drug-disease pair ({drug},{disease}) to the knowledge graph. Skipping this result....")
 
-        self.response = decorator.decorate_nodes(self.response)
-        if self.response.status != 'OK':
-            return self.response
-        self.response = decorator.decorate_edges(self.response)
-        if self.response.status != 'OK':
-            return self.response
+        # TODO(#2731): node/edge EPC backfill via the legacy decorator was removed
+        # when the Tier0 sqlite was thinned to publications/neighbors/category_counts.
+        # If XDTD subgraphs need full EPC, the right source is a Retriever lookup
+        # for the manually-constructed nodes/edges; that is a separate Infer-team
+        # follow-up and is intentionally not done here.
 
         #FIXME: this might cause a problem since it doesn't add optional groups for 1 and 2 hops
         # This might also cause issues when infer is on an intermediate edge
@@ -510,7 +642,6 @@ class InferUtilities:
 
         messenger = ARAXMessenger()
         synonymizer = NodeSynonymizer()
-        decorator = ARAXDecorator()
         #TBD
         # node_ids = set([y for paths in top_paths.values() for x in paths for y in list(x.values())[::2] if y and y != ''])
         node_ids = set([y for paths in top_paths.values() for x in paths for y in x[::2] if y and y != ''])
@@ -821,7 +952,7 @@ class InferUtilities:
                         message.knowledge_graph.nodes[object_curie].qnode_keys.append(object_qnode_key)
                     new_edge = edge_tuples[i][1]
                     for key in new_edge:
-                        edge_name = 'infores:rtx-kg2:' + decorator._get_kg2c_edge_key(new_edge[key])
+                        edge_name = 'infores:dogpark-tier0:' + get_arax_edge_key(new_edge[key])
                         message.knowledge_graph.edges[edge_name] = new_edge[key]
                         message.knowledge_graph.edges[edge_name].qedge_keys = [path_keys[path_idx]["qedge_keys"][i]]
 
@@ -866,12 +997,9 @@ class InferUtilities:
                 self.kedge_global_iter += 1
             else:
                 self.response.warning(f"Something went wrong when adding the subgraph for the chemical-gene pair ({chemical_curie},{gene_curie}) to the knowledge graph. Skipping this result....")
-        self.response = decorator.decorate_nodes(self.response)
-        if self.response.status != 'OK':
-            return self.response
-        self.response = decorator.decorate_edges(self.response)
-        if self.response.status != 'OK':
-            return self.response
+        # TODO(#2731): see genrete_treat_subgraphs above. Node/edge EPC backfill
+        # via the legacy decorator was removed; a Retriever-based replacement is
+        # a separate Infer-team follow-up.
         #FIXME: this might cause a problem since it doesn't add optional groups for 1 and 2 hops
         # This might also cause issues when infer is on an intermediate edge
         self.resultify_and_sort(essence_scores)
