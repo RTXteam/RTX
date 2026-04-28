@@ -15,7 +15,7 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration
+from RTXConfiguration import RTXConfiguration  # noqa: E402
 
 knowledge_sources_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
 versions_path = os.path.sep.join([knowledge_sources_filepath, 'db_versions.json'])
@@ -40,10 +40,6 @@ class ARAXDatabaseManager:
         if not  os.path.exists(cohd_filepath):
             os.system(f"mkdir -p {cohd_filepath}")
         
-        synonymizer_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer'])
-        if not  os.path.exists(synonymizer_filepath):
-            os.system(f"mkdir -p {synonymizer_filepath}")
-
         kg2c_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
         if not os.path.exists(kg2c_filepath):
             os.system(f"mkdir -p {kg2c_filepath}")
@@ -76,7 +72,6 @@ class ARAXDatabaseManager:
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'curie_ngd': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_ngd_path.split('/')[-1]}",
-            'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
             'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}",
@@ -93,7 +88,6 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_database_subpath(self.RTXConfig.cohd_database_path),
             'curie_to_pmids': self.get_database_subpath(self.RTXConfig.curie_to_pmids_path),
             'curie_ngd': self.get_database_subpath(self.RTXConfig.curie_ngd_path),
-            'node_synonymizer': self.get_database_subpath(self.RTXConfig.node_synonymizer_path),
             'kg2c_sqlite': self.get_database_subpath(self.RTXConfig.kg2c_sqlite_path),
             'fda_approved_drugs': self.get_database_subpath(self.RTXConfig.fda_approved_drugs_path),
             'autocomplete': self.get_database_subpath(self.RTXConfig.autocomplete_path),
@@ -108,7 +102,6 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_remote_location('cohd_database'),
             'curie_to_pmids': self.get_remote_location('curie_to_pmids'),
             'curie_ngd': self.get_remote_location('curie_ngd'),
-            'node_synonymizer': self.get_remote_location('node_synonymizer'),
             'kg2c_sqlite': self.get_remote_location('kg2c_sqlite'),
             'fda_approved_drugs': self.get_remote_location('fda_approved_drugs'),
             'autocomplete': self.get_remote_location('autocomplete'),
@@ -123,7 +116,6 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_docker_path('cohd_database'),
             'curie_to_pmids': self.get_docker_path('curie_to_pmids'),
             'curie_ngd': self.get_docker_path('curie_ngd'),
-            'node_synonymizer': self.get_docker_path('node_synonymizer'),
             'kg2c_sqlite': self.get_docker_path('kg2c_sqlite'),
             'fda_approved_drugs': self.get_docker_path('fda_approved_drugs'),
             'autocomplete': self.get_docker_path('autocomplete'),
@@ -146,10 +138,6 @@ class ARAXDatabaseManager:
             'curie_ngd': {
                 'path': self.local_paths['curie_ngd'],
                 'version': self.RTXConfig.curie_ngd_version
-            },
-            'node_synonymizer': {
-                'path': self.local_paths['node_synonymizer'],
-                'version': self.RTXConfig.node_synonymizer_version
             },
             'kg2c_sqlite': {
                 'path': self.local_paths['kg2c_sqlite'],
@@ -248,7 +236,7 @@ class ARAXDatabaseManager:
             if debug:
                 eprint("No local verson json file present. Downloading all databases...")
             if response is not None:
-                response.debug(f"No local verson json file present. Downloading all databases...")
+                response.debug("No local verson json file present. Downloading all databases...")
             self._force_download_all(debug=debug)
             self._write_db_versions_file()
         return response
@@ -348,7 +336,7 @@ class ARAXDatabaseManager:
                                         local_symlink_target_path=None,
                                         debug=debug)
             else:
-                print(f"  Database already exists, no need to download") if debug else None
+                print("  Database already exists, no need to download") if debug else None
        
     def _force_download_all(self, debug=False):
         for database_name in self.remote_locations.keys():
@@ -416,13 +404,13 @@ def main():
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager(allow_downloads=True)
 
-    print(f"Local paths:")
+    print("Local paths:")
     for db_name, path in DBManager.local_paths.items():
         print(f"  {db_name}: {path}")
-    print(f"Remote locations:")
+    print("Remote locations:")
     for db_name, path in DBManager.remote_locations.items():
         print(f"  {db_name}: {path}")
-    print(f"Docker paths:")
+    print("Docker paths:")
     for db_name, path in DBManager.docker_central_paths.items():
         print(f"  {db_name}: {path}")
 
