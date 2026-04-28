@@ -12,7 +12,7 @@
 - [ ] Note in ARAX changelog
 - [ ] Note in CATRAX Y2 milestones
 - [ ] Add to ARAX AHM agenda
-- [ ] Comment in parent issue (e.g., on NCATSTranslator/Feedback), if applicable
+- [ ] Note in parent issue (e.g., on NCATSTranslator/Feedback, or ARAX parent issue), if applicable
 
 ## Who is this document for?
 This procedure is _primarily_ intended for use by Ramsey Lab team members working
