@@ -12,7 +12,7 @@ set -euo pipefail
 # Stephen Ramsey, Oregon State University
 
 LATEST_TIER0_VER="tier0-20260408"
-DB_DIR="/Users/sramsey/Work/big-files/arax-dbs"
+DB_DIR="/mnt/data/orangeboard/databases"
 
 if [[ ! -d "RTX" ]]; then
   echo "ERROR: Expected to find directory 'RTX' in the current working directory: $(pwd)" >&2
