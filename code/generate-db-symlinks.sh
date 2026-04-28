@@ -49,10 +49,7 @@ link "${DB_DIR}/${LATEST_TIER0_VER}/COHDdatabase_v1.0_${LATEST_TIER0_VER}.db" "R
 #link "${DB_DIR}/${LATEST_TIER0_VER}/chemical_gene_embeddings_v1.0.KG2.10.0_refreshedTo_${LATEST_TIER0_VER}.npz" "RTX/code/ARAX/ARAXQuery/Infer/data/xCRG_data/chemical_gene_embeddings_v1.0.KG2.10.0_refreshedTo_${LATEST_TIER0_VER}.npz"
 
 link "${DB_DIR}/${LATEST_TIER0_VER}/ExplainableDTD_${LATEST_TIER0_VER}.db" "RTX/code/ARAX/KnowledgeSources/Prediction/ExplainableDTD_${LATEST_TIER0_VER}.db"
-
-# commented out pending resolution of ARAX issue 2732
-#link "${DB_DIR}/${LATEST_TIER0_VER}/curie_ngd_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/ARAX/KnowledgeSources/NormalizedGoogleDistance/curie_ngd_v1.0_${LATEST_TIER0_VER}.sqlite"
-
+link "${DB_DIR}/${LATEST_TIER0_VER}/curie_ngd_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/ARAX/KnowledgeSources/NormalizedGoogleDistance/curie_ngd_v1.0_${LATEST_TIER0_VER}.sqlite"
 link "${DB_DIR}/${LATEST_TIER0_VER}/curie_to_pmids_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/ARAX/KnowledgeSources/NormalizedGoogleDistance/curie_to_pmids_v1.0_${LATEST_TIER0_VER}.sqlite"
 link "${DB_DIR}/${LATEST_TIER0_VER}/fda_approved_drugs_v1.0.pickle" "RTX/code/ARAX/KnowledgeSources/fda_approved_drugs_v1.0.pickle"
 link "${DB_DIR}/${LATEST_TIER0_VER}/tier0-info-for-overlay_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/ARAX/KnowledgeSources/KG2c/tier0-info-for-overlay_v1.0_${LATEST_TIER0_VER}.sqlite"
