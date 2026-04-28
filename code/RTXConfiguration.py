@@ -167,8 +167,6 @@ class RTXConfiguration:
         self.curie_to_pmids_version = self.curie_to_pmids_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.curie_ngd_path = database_downloads["curie_ngd"]
         self.curie_ngd_version = self.curie_ngd_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.node_synonymizer_path = database_downloads["node_synonymizer"]
-        self.node_synonymizer_version = self.node_synonymizer_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.kg2c_sqlite_path = database_downloads["kg2c_sqlite"]
         self.kg2c_sqlite_version = self.kg2c_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.tier0_sqlite_path = database_downloads["tier0_sqlite"]
