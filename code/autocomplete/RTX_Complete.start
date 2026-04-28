@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export DEVAREA=test
+export DEVAREA=production
 
 LOGFILE=/tmp/RTX_Complete.log
 ELOGFILE=/tmp/RTX_Complete.elog
