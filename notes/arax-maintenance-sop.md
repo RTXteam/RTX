@@ -4,9 +4,9 @@
 
 ## Quick reference checklist before closing an issue
 
-- [ ] Run ARAX pytest suite
+- [ ] Run ARAX pytest suite, using the code in the issue branch
 - [ ] `arax.ncats.io` integration test of the code in the issue branch
-- [ ] Switch `arax.ncats.io` devarea back to the issue branch
+- [ ] Switch `arax.ncats.io` devarea back to the branch it was previously on (often `master`)
 - [ ] Merge the PR
 - [ ] Delete issue branch
 - [ ] Note in ARAX changelog
