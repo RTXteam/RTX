@@ -274,12 +274,12 @@ ARAX Flask server locally.
 Running the unit tests involves these steps:
 ```
 cd ARAX_DEV_DIR/issue-XXX/RTX
-../../../venv/bin/pytest --cache-clear -v
+../../../venv/bin/pytest -v
 ```
 The procedure will take about 15 minutes to complete. All standard unit tests should pass, or your
 locally installed ARAX is not in a "known good" state (and you should work on troubleshooting
 the broken unit test before proceeding). Note, you should not run this test suite using
-`pytest --cache-clear -v`from within the `RTX/code` directory, as pytest will get confused
+`pytest -v`from within the `RTX/code` directory, as pytest will get confused
 and try to run the test files in `UI/OpenAPI/python-flask-server/openapi_server/test`.
 
 #### Running the example queries in the ARAX flask server locally
@@ -483,17 +483,21 @@ the local code repository is on `master`. Staying in the same `RTX` directory:
 7. `git fetch origin`
 8. `git checkout issue-XXX`
 9. `git pull origin issue-XXX`
-10. Run all the pytests, using your updated code: `cd RTX && pytest -v --cache-clear`<br />
+10. Run all the pytests, using your updated code: `cd RTX && pytest -v `<br />
 All standard ARAX unit tests should pass, when run in the `arax.ncats.io/beta` devarea.
-11. Next is to run the example queries, using your updated code. You will need to restart ARAX. 
+It is generally not a good idea to run `pytest --lf` (which reruns only the tests that
+previously failed), unless you _really know what you are doing_; with a complex legacy
+code-base like ARAX, it is easy for a well-intended bugfix to break other tests that
+were previously passing before the bugfix was introduced.
+12. Next is to run the example queries, using your updated code. You will need to restart ARAX. 
 Exit out of the shell session for user `rt`,
 by typing `exit`. You should see the root account prompt `#`:
-12. Stop ARAX:  `service RTX_OpenAPI_beta stop`
-13. Verify that ARAX is stopped: `ps axwf | grep 5003`<br />
+13. Stop ARAX:  `service RTX_OpenAPI_beta stop`
+14. Verify that ARAX is stopped: `ps axwf | grep 5003`<br />
 If you see any processes with the substring "5003" in the process title (which identifies
 them as coming from the `/beta` devarea), you should kill them with `kill -9 PID`.
-14. Start ARAX: `service RTX_OpenAPI_beta start`
-15. Follow ARAX start-up: `tail -f /tmp/RTX_OpenAPI_beta.elog`
+15. Start ARAX: `service RTX_OpenAPI_beta start`
+16. Follow ARAX start-up: `tail -f /tmp/RTX_OpenAPI_beta.elog`
 You will know that ARAX is ready when you see this in the `.elog` file:
 ```
 2026-03-24T02:02:06.369294: INFO: ARAXBackgroundTasker: Completed meta KG refresh successfully
