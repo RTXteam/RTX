@@ -18,7 +18,11 @@ import time
 
 from lxml import etree
 from extraction_script import process_names
-from stitch_proj.local_babel import connect_to_db_read_only, map_name_to_curie
+from stitch_proj.local_babel import (
+    connect_to_db_read_only,
+    map_curie_to_preferred_curies,
+    map_name_to_curie,
+)
 
 DEFAULT_PUBMED_DIR = os.environ.get("NGD_PUBMED_DIR")
 DEFAULT_BABEL_DB = os.environ.get("NGD_BABEL_DB")
@@ -111,7 +115,20 @@ def _resolve_one(item):
         if not result:
             return None, concept_name, None, None
 
-        curie = result[0]
+        # map_name_to_curie does a label-prefix LIKE with LIMIT 1 / no
+        # ORDER BY -- it returns *some* identifier in the right clique,
+        # not necessarily the clique's preferred (primary) curie. Walk
+        # to the preferred curie so PMIDs land where runtime NGD lookups
+        # actually look.
+        raw_curie = result[0]
+        try:
+            preferred = map_curie_to_preferred_curies(
+                _worker_babel_conn, raw_curie
+            )
+        except Exception as e:
+            return None, concept_name, None, str(e)
+
+        curie = preferred[0][0] if preferred else raw_curie
 
     try:
         pmids = json.loads(pmids_json)
