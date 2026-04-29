@@ -14,28 +14,11 @@ import os
 import pathlib
 import sqlite3
 import subprocess
-import sys
 import time
 
-# Lazy imports — these are checked by --test and loaded at build time.
-etree = None
-process_names = None
-connect_to_db_read_only = None
-map_name_to_curie = None
-
-
-def _load_dependencies():
-    global etree, process_names, connect_to_db_read_only, map_name_to_curie
-    from lxml import etree as _etree
-    from extraction_script import process_names as _process_names
-    from stitch_proj.local_babel import (
-        connect_to_db_read_only as _connect,
-        map_name_to_curie as _map,
-    )
-    etree = _etree
-    process_names = _process_names
-    connect_to_db_read_only = _connect
-    map_name_to_curie = _map
+from lxml import etree
+from extraction_script import process_names
+from stitch_proj.local_babel import connect_to_db_read_only, map_name_to_curie
 
 DEFAULT_PUBMED_DIR = os.environ.get("NGD_PUBMED_DIR")
 DEFAULT_BABEL_DB = os.environ.get("NGD_BABEL_DB")
@@ -149,6 +132,8 @@ def _resolve_one(item):
 # Builder
 # ---------------------------------------------------------------------------
 class NGDDatabaseBuilder:
+    """Builds the conceptname_to_pmids and curie_to_pmids SQLite databases."""
+
     def __init__(self, pubmed_dir, babel_db_path, output_dir,
                  skip_download=False, tier0_edges_path=None):
         logging.basicConfig(
@@ -174,6 +159,8 @@ class NGDDatabaseBuilder:
         self.tier0_edges_path = tier0_edges_path
 
     def build_ngd_database(self, do_full_build: bool):
+        """Run stage 1 (PubMed → conceptname_to_pmids) when do_full_build is true,
+        then stage 2 (conceptname → curie via Babel)."""
         if do_full_build:
             self.build_conceptname_to_pmids_db()
         else:
@@ -188,6 +175,8 @@ class NGDDatabaseBuilder:
 
     # ----- stage 1: conceptname_to_pmids -----
     def build_conceptname_to_pmids_db(self):
+        """Stage 1: parse the local PubMed XML mirror and write a SQLite map
+        from concept name to PMID list."""
         logging.info("Building conceptname_to_pmids...")
         start = time.time()
 
@@ -307,6 +296,8 @@ class NGDDatabaseBuilder:
 
     # ----- stage 2: curie_to_pmids -----
     def build_curie_to_pmids_db(self):
+        """Stage 2: resolve concept names to CURIEs via Babel and write the
+        final curie_to_pmids SQLite database, merging in tier 0 edges if set."""
         logging.info("Building curie_to_pmids...")
         start = time.time()
 
@@ -455,7 +446,8 @@ class NGDDatabaseBuilder:
             staging_rows.clear()
 
         logging.info(
-            "Tier 0 harvest: scanned %d edges, %d had PMIDs, %d (curie, pmid) rows added in %.2f min",
+            "Tier 0 harvest: scanned %d edges, %d had PMIDs, "
+            "%d (curie, pmid) rows added in %.2f min",
             total_lines, edges_with_pubs, rows_added,
             (time.perf_counter() - start) / 60,
         )
@@ -485,10 +477,9 @@ class NGDDatabaseBuilder:
         start = time.perf_counter()
 
         def row_iter():
-            for row in in_cursor.execute(
+            yield from in_cursor.execute(
                 "SELECT concept_name, pmids FROM conceptname_to_pmids"
-            ):
-                yield row
+            )
 
         with multiprocessing.Pool(
             num_workers,
@@ -540,7 +531,7 @@ class NGDDatabaseBuilder:
         unrecognized_path = os.path.join(
             self.output_dir, "unrecognized_pubmed_concept_names.txt"
         )
-        with open(unrecognized_path, "w") as f:
+        with open(unrecognized_path, "w", encoding="utf-8") as f:
             for name in sorted(unrecognized):
                 f.write(name + "\n")
 
@@ -550,122 +541,8 @@ class NGDDatabaseBuilder:
         in_conn.close()
 
 
-def _check_environment(args):
-    """Verify that all required paths exist and dependencies are importable."""
-    ok = True
-    p = print
-
-    # Describe the build mode
-    p("")
-    p("=" * 60)
-    if args.test:
-        p("  NGD BUILD — DRY RUN (--test)")
-        p("  Validating paths and dependencies only.")
-        p("  No data will be read or written.")
-    elif args.full:
-        if args.skip_download:
-            p("  NGD BUILD — FULL (--skip-download)")
-            p("  Will parse local PubMed XML and resolve to CURIEs.")
-        else:
-            p("  NGD BUILD — FULL")
-            p("  Will sync PubMed mirror, parse XML, and resolve to CURIEs.")
-    else:
-        p("  NGD BUILD — RESOLVE ONLY")
-        p("  Will re-resolve existing concept names to CURIEs.")
-        p("  (Skipping XML parsing — use --full to re-parse.)")
-    p("=" * 60)
-
-    # Paths
-    p("")
-    p("Paths:")
-
-    # Babel DB — always required
-    if not args.babel_db:
-        p("  [FAIL] --babel-db: not set (required, or set NGD_BABEL_DB)")
-        ok = False
-    elif not os.path.isfile(args.babel_db):
-        p(f"  [FAIL] --babel-db: {args.babel_db} (not found)")
-        ok = False
-    else:
-        p(f"  [ OK ] --babel-db: {args.babel_db}")
-
-    # PubMed dir — validate whenever provided, required for --full
-    if args.pubmed_dir:
-        if not os.path.isdir(args.pubmed_dir):
-            p(f"  [FAIL] --pubmed-dir: {args.pubmed_dir} (not found)")
-            ok = False
-        else:
-            p(f"  [ OK ] --pubmed-dir: {args.pubmed_dir}")
-            baseline = os.path.join(
-                args.pubmed_dir, "ftp.ncbi.nlm.nih.gov", "pubmed", "baseline"
-            )
-            if not os.path.isdir(baseline):
-                p(f"  [WARN] Expected baseline/ not found: {baseline}")
-    elif args.full:
-        p("  [FAIL] --pubmed-dir: not set (required for --full, or set NGD_PUBMED_DIR)")
-        ok = False
-    else:
-        p("  [ -- ] --pubmed-dir: not set (not needed for resolve-only)")
-
-    # Tier 0 edges — optional, but validate when provided
-    if args.tier0_edges:
-        if not os.path.isfile(args.tier0_edges):
-            p(f"  [FAIL] --tier0-edges: {args.tier0_edges} (not found)")
-            ok = False
-        else:
-            p(f"  [ OK ] --tier0-edges: {args.tier0_edges}")
-    else:
-        p("  [WARN] --tier0-edges: not set (output will lack tier 0 graph coverage)")
-
-    # Output dir
-    if not os.path.isdir(args.output_dir):
-        p(f"  [FAIL] --output-dir: {args.output_dir} (not found)")
-        ok = False
-    else:
-        p(f"  [ OK ] --output-dir: {args.output_dir}")
-
-    # Resolve-only prereq
-    if not args.full:
-        concept_db = os.path.join(args.output_dir, "conceptname_to_pmids.sqlite")
-        if not os.path.isfile(concept_db):
-            p(f"  [FAIL] conceptname_to_pmids.sqlite not found in --output-dir")
-            p(f"         (required for resolve-only — use --full to build from scratch)")
-            ok = False
-        else:
-            p(f"  [ OK ] conceptname_to_pmids.sqlite found in --output-dir")
-
-    # Dependencies
-    p("")
-    p("Dependencies:")
-
-    try:
-        from lxml import etree  # noqa: F401
-        p("  [ OK ] lxml")
-    except ImportError:
-        p("  [FAIL] lxml — not installed (pip install lxml)")
-        ok = False
-
-    try:
-        from stitch_proj.local_babel import connect_to_db_read_only, map_name_to_curie  # noqa: F401
-        p("  [ OK ] stitch_proj.local_babel")
-    except ImportError:
-        p("  [FAIL] stitch_proj — not installed (pip install stitch_proj)")
-        ok = False
-
-    # Summary
-    p("")
-    p("-" * 60)
-    if ok:
-        p("  PASSED — environment is ready.")
-    else:
-        p("  FAILED — fix the errors above before building.")
-    p("-" * 60)
-    p("")
-
-    return ok
-
-
 def main():
+    """CLI entry point: parse arguments and run the NGD database build."""
     parser = argparse.ArgumentParser(
         description="Build the NGD curie_to_pmids SQLite database."
     )
@@ -688,25 +565,12 @@ def main():
                         help="Directory for output databases and logs. "
                              "Also settable via NGD_OUTPUT_DIR env var. "
                              "Defaults to the script's directory.")
-    parser.add_argument("--test", action="store_true",
-                        help="Verify paths and environment without running the build.")
-
     args = parser.parse_args()
-
-    env_ok = _check_environment(args)
-
-    if args.test:
-        sys.exit(0 if env_ok else 1)
-
-    if not env_ok:
-        sys.exit(1)
 
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s %(levelname)s: %(message)s',
     )
-
-    _load_dependencies()
 
     builder = NGDDatabaseBuilder(
         pubmed_dir=args.pubmed_dir,

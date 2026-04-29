@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Create the autocomplete SQLite database from a TSV of names and IDs."""
 
 import os
 import sqlite3

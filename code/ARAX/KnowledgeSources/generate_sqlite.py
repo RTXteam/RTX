@@ -36,7 +36,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set
 sys.path.append(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "BiolinkHelper")
 )
-from biolink_helper import get_biolink_helper  # noqa: E402
+from biolink_helper import get_biolink_helper  # noqa: E402  pylint: disable=wrong-import-position,import-error
 
 
 TIER0_ARRAY_DELIMITER = "ǂ"
@@ -58,7 +58,7 @@ def _extract_primary_knowledge_source(sources: Any) -> str:
 def _get_arax_edge_key(
     subject: str,
     predicate: str,
-    object: str,
+    obj: str,
     primary_knowledge_source: str,
     qualified_predicate: Optional[str],
     object_direction_qualifier: Optional[str],
@@ -73,7 +73,7 @@ def _get_arax_edge_key(
         subject,
         predicate,
         qualified_portion,
-        object,
+        obj,
         primary_knowledge_source,
     ])
 
@@ -121,13 +121,13 @@ def _iter_edge_publication_rows(
             publications = _encode_publications(edge.get("publications"))
             if not publications:
                 if index % progress_every == 0:
-                    logging.info(f"  ... streamed {index:,} edges")
+                    logging.info("  ... streamed %s edges", f"{index:,}")
                 continue
 
             arax_edge_key = _get_arax_edge_key(
                 subject=subject_id,
                 predicate=edge["predicate"],
-                object=object_id,
+                obj=object_id,
                 primary_knowledge_source=_extract_primary_knowledge_source(edge.get("sources")),
                 qualified_predicate=edge.get("qualified_predicate"),
                 object_direction_qualifier=edge.get("object_direction_qualifier"),
@@ -137,7 +137,7 @@ def _iter_edge_publication_rows(
             yield (arax_edge_key, publications)
 
             if index % progress_every == 0:
-                logging.info(f"  ... streamed {index:,} edges")
+                logging.info("  ... streamed %s edges", f"{index:,}")
 
 
 # ---------------------------------------------------------------------
@@ -163,7 +163,8 @@ def create_tier0_overlay_sqlite_db(
     output_db: Path,
     biolink_version: Optional[str] = None,
 ) -> None:
-
+    """Build the tier0-info-for-overlay SQLite database (edge_publications,
+    neighbors, category_counts) from Tier0 nodes and edges JSONL files."""
     if output_db.exists():
         output_db.unlink()
 
@@ -178,7 +179,7 @@ def create_tier0_overlay_sqlite_db(
 
     logging.info("Loading nodes into memory...")
     nodes_dict = _load_jsonl_as_dict(nodes_path, "id")
-    logging.info(f"Loaded {len(nodes_dict):,} nodes")
+    logging.info("Loaded %s nodes", f"{len(nodes_dict):,}")
 
     logging.info("Expanding biolink category ancestors for each node...")
     bh = get_biolink_helper(biolink_version)
@@ -217,14 +218,14 @@ def create_tier0_overlay_sqlite_db(
         _iter_edge_publication_rows(edges_path, expanded_labels_by_node, neighbors_by_label),
     )
     inserted = connection.total_changes - changes_before
-    logging.info(f"Inserted {inserted:,} edge_publications rows")
+    logging.info("Inserted %s edge_publications rows", f"{inserted:,}")
     connection.commit()
 
     # -------------------------
     # neighbors
     # -------------------------
 
-    logging.info(f"Writing neighbors table ({len(neighbors_by_label):,} nodes)...")
+    logging.info("Writing neighbors table (%s nodes)...", f"{len(neighbors_by_label):,}")
     connection.execute(
         "CREATE TABLE neighbors (id TEXT PRIMARY KEY, neighbor_counts TEXT)"
     )
@@ -272,6 +273,7 @@ def _build_output_filename(output_dir: Path, tier0_build_date: str, schema_versi
 
 
 def main() -> None:
+    """CLI entry point: parse args and build the overlay sqlite database."""
     parser = argparse.ArgumentParser(
         description="Build the minimal tier0-info-for-overlay SQLite database "
                     "(edge_publications, neighbors, category_counts) from Tier0 JSONL files."
@@ -298,7 +300,7 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     output_db = _build_output_filename(args.output_dir, args.tier0_build_date, args.schema_version)
-    logging.info(f"Output: {output_db}")
+    logging.info("Output: %s", output_db)
 
     create_tier0_overlay_sqlite_db(args.nodes, args.edges, output_db, args.biolink_version)
 

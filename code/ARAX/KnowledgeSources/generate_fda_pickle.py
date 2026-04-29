@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
+"""Generate the FDA-approved-drugs pickle from DrugBank XML, with CURIEs
+canonicalized via the local Babel sqlite database."""
 
-import xml.etree.ElementTree as ET
-import stitch_proj.local_babel as lb
-import pickle
 import argparse
+import pickle
+import xml.etree.ElementTree as ET
+
+import stitch_proj.local_babel as lb
 
 __author__ = 'Frankie Hodges'
 __copyright__ = 'Oregon State University'
@@ -16,6 +19,7 @@ __status__ = 'Prototype'
 
 
 def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
         description="Generate fda_approved_drugs_v1.0_KG2.10.3c.pickle "
                     "from DrugBank XML and local Babel DB"
@@ -48,6 +52,8 @@ def parse_args():
 
 
 def extract_approved_drugbank_ids(xml_path):
+    """Return a list of DRUGBANK: CURIEs for drugs marked 'approved' in the
+    DrugBank XML at xml_path."""
     ns = {"db": "http://www.drugbank.ca"}
 
     tree = ET.parse(xml_path)
@@ -76,6 +82,8 @@ def extract_approved_drugbank_ids(xml_path):
 
 
 def canonicalize_ids(curie_ids, babel_db_path):
+    """Resolve each input CURIE to its canonical clique identifier using the
+    local Babel sqlite DB and return the unique set."""
     canonical_ids = set()
 
     with lb.connect_to_db_read_only(babel_db_path) as conn:
@@ -91,6 +99,7 @@ def canonicalize_ids(curie_ids, babel_db_path):
 
 
 def main():
+    """CLI entry point: extract approved drugs, canonicalize, and pickle."""
     args = parse_args()
 
     print("Extracting approved DrugBank IDs...")
