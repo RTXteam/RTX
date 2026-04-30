@@ -17,3 +17,8 @@ def get_curie_ngd_path():
     sqlite_name = RTXConfiguration().curie_ngd_path.split("/")[-1]
     return f"sqlite:{filepath}{os.path.sep}{sqlite_name}"
 
+def get_gandalf_mmap_path():
+    pathlist = os.path.realpath(__file__).split(os.path.sep)
+    RTXindex = pathlist.index("RTX")
+    path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Gandalf', 'gandalf_mmap'])
+    return f"gandalf:{path}"
