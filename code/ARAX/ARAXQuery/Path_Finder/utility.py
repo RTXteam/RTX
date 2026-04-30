@@ -20,5 +20,7 @@ def get_curie_ngd_path():
 def get_gandalf_mmap_path():
     pathlist = os.path.realpath(__file__).split(os.path.sep)
     RTXindex = pathlist.index("RTX")
-    path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Gandalf', 'gandalf_mmap'])
+    fileName = RTXConfiguration().gandalf_mmap_path.split("/")[-1]
+    gandalf_dir = fileName.split("_tier0")[0]
+    path = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Gandalf', gandalf_dir])
     return f"gandalf:{path}"
