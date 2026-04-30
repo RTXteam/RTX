@@ -35,6 +35,10 @@ class ARAXDatabaseManager:
         ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
         if not  os.path.exists(ngd_filepath):
             os.system(f"mkdir -p {ngd_filepath}")
+
+        gandalf_mmap_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Gandalf'])
+        if not  os.path.exists(gandalf_mmap_filepath):
+            os.system(f"mkdir -p {gandalf_mmap_filepath}")
         
         cohd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         if not  os.path.exists(cohd_filepath):
@@ -72,6 +76,7 @@ class ARAXDatabaseManager:
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'curie_ngd': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_ngd_path.split('/')[-1]}",
+            'gandalf_mmap': f"{gandalf_mmap_filepath}{os.path.sep}{self.RTXConfig.gandalf_mmap_path.split('/')[-1]}",
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
             'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}",
@@ -88,6 +93,7 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_database_subpath(self.RTXConfig.cohd_database_path),
             'curie_to_pmids': self.get_database_subpath(self.RTXConfig.curie_to_pmids_path),
             'curie_ngd': self.get_database_subpath(self.RTXConfig.curie_ngd_path),
+            'gandalf_mmap': self.get_database_subpath(self.RTXConfig.gandalf_mmap_path),
             'kg2c_sqlite': self.get_database_subpath(self.RTXConfig.kg2c_sqlite_path),
             'fda_approved_drugs': self.get_database_subpath(self.RTXConfig.fda_approved_drugs_path),
             'autocomplete': self.get_database_subpath(self.RTXConfig.autocomplete_path),
@@ -102,6 +108,7 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_remote_location('cohd_database'),
             'curie_to_pmids': self.get_remote_location('curie_to_pmids'),
             'curie_ngd': self.get_remote_location('curie_ngd'),
+            'gandalf_mmap': self.get_remote_location('gandalf_mmap'),
             'kg2c_sqlite': self.get_remote_location('kg2c_sqlite'),
             'fda_approved_drugs': self.get_remote_location('fda_approved_drugs'),
             'autocomplete': self.get_remote_location('autocomplete'),
@@ -116,6 +123,7 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_docker_path('cohd_database'),
             'curie_to_pmids': self.get_docker_path('curie_to_pmids'),
             'curie_ngd': self.get_docker_path('curie_ngd'),
+            'gandalf_mmap': self.get_docker_path('gandalf_mmap'),
             'kg2c_sqlite': self.get_docker_path('kg2c_sqlite'),
             'fda_approved_drugs': self.get_docker_path('fda_approved_drugs'),
             'autocomplete': self.get_docker_path('autocomplete'),
@@ -138,6 +146,10 @@ class ARAXDatabaseManager:
             'curie_ngd': {
                 'path': self.local_paths['curie_ngd'],
                 'version': self.RTXConfig.curie_ngd_version
+            },
+            'gandalf_mmap': {
+                'path': self.local_paths['gandalf_mmap'],
+                'version': self.RTXConfig.gandalf_mmap_version
             },
             'kg2c_sqlite': {
                 'path': self.local_paths['kg2c_sqlite'],
@@ -301,6 +313,16 @@ class ARAXDatabaseManager:
             self.symlink_database(symlink_path=local_destination_path, target_path=local_symlink_target_path)
         else:
             self.rsync_database(remote_location=remote_location, local_path=local_destination_path, debug=debug)
+
+        if local_destination_path.endswith('.tar.gz') and os.path.exists(local_destination_path):
+            extraction_dir = os.path.dirname(local_destination_path)
+
+            if debug:
+                eprint(f"Extracting {local_destination_path} into {extraction_dir}...")
+
+            os.system(f"tar -xzf {local_destination_path} -C {extraction_dir}")
+            # os.system(f"rm {local_destination_path}")
+
 
     def symlink_database(self, symlink_path, target_path):
         os.system(f"ln -s {target_path} {symlink_path}")
