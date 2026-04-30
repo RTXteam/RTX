@@ -152,8 +152,8 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
 
 def test_TRAPI_unconstrained_query():
     query = {"operations": {"actions": [
-        "add_qnode(ids=CHEBI:31690, key=n0)",
-        "add_qnode(ids=MONDO:0004979, key=n1)",
+        "add_qnode(ids=MONDO:0005011, key=n0)",
+        "add_qnode(ids=MONDO:0005180, key=n1)",
         "add_qpath(subject=n0, object=n1)",
         "connect(action=connect_nodes, max_path_length=2)"
     ]}}
