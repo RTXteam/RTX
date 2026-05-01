@@ -209,8 +209,11 @@ class ResultTransformer:
                     
             # Report how many results were eliminated due to the “infinite NGD edge score” filter.
             num_removed_results = len(message.results) - len(new_results)
-            response.debug(f"Number of results eliminated due to the “infinite NGD edge score” filter: {num_removed_results}")
+            ngd_message = f"Number of results eliminated due to the “infinite NGD edge score” filter: {num_removed_results}"
+            response.debug(ngd_message)
             message.results = new_results
+            if not message.results:
+                response.warning("After removal of results due to infinite NGD edge score, no results remain")
 
             # Update response's `total_results_count` field
             response.total_results_count = len(message.results)
