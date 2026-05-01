@@ -16,7 +16,9 @@
 code/ARAX/ARAXQuery/Expand/trapi_query_cacher_responses/*
 **/.claude
 **/.github
-**/.pytest_cache 
+**/.pytest_cache
+*_cache/
+__pycache__/
 
 # config.json
 **/config.json
