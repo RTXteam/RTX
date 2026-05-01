@@ -25,11 +25,11 @@ class ResultTransformer:
             ):
                 return #This would need to be changed if you wanted to mix connect with other DSL commands (like overlaying NGD and the like)
             if not hasattr(response, "original_query_graph") or not response.original_query_graph.nodes:
-                response.error(f"The original QG was never saved before ARAX edited it! So we can't transform results "
-                               f"to TRAPI 1.4 format (i.e., support_graphs).", error_code="NoOriginalQG")
+                response.error("The original QG was never saved before ARAX edited it! So we can't transform results "
+                               "to TRAPI 1.4 format (i.e., support_graphs).", error_code="NoOriginalQG")
                 return
 
-            response.info(f"Transforming results to TRAPI 1.5 format (moving 'virtual' nodes/edges to support graphs)")
+            response.info("Transforming results to TRAPI 1.5 format (moving 'virtual' nodes/edges to support graphs)")
 
             original_qedge_keys = {qedge_key for qedge_key, qedge in response.original_query_graph.edges.items()
                                    if not qedge.exclude}  # 'Exclude'/'kryptonite' edges shouldn't appear in results
@@ -90,8 +90,8 @@ class ResultTransformer:
                                            f"inferred qedge! {result}", error_code="InvalidResult")
                             return
                         elif len(inferred_qedge_keys) > 1:
-                            response.error(f"Query graph contains multiple 'inferred' qedges; don't know how to "
-                                           f"properly form support graphs!", error_code="UnsupportedQG")
+                            response.error("Query graph contains multiple 'inferred' qedges; don't know how to "
+                                           "properly form support graphs!", error_code="UnsupportedQG")
                             return
                         else:
                             inferred_qedge_key = inferred_qedge_keys[0]
@@ -219,10 +219,10 @@ class ResultTransformer:
             response.total_results_count = len(message.results)
 
             # Return the original query graph in the response, rather than our edited version
-            response.debug(f"Replacing ARAX's internal edited QG with the original input QG..")
+            response.debug("Replacing ARAX's internal edited QG with the original input QG..")
             message.query_graph = response.original_query_graph
 
             # Log some final stats about result transformation
             response.debug(f"Virtual qedge keys moved to support_graphs were: {all_virtual_qedge_keys}")
             response.debug(f"There are a total of {len(message.auxiliary_graphs) if message.auxiliary_graphs else 0} AuxiliaryGraphs.")
-            response.info(f"Done transforming results to TRAPI 1.5 format (i.e., using support_graphs)")
+            response.info("Done transforming results to TRAPI 1.5 format (i.e., using support_graphs)")
