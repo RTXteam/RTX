@@ -65,8 +65,10 @@ RUN cd /var/www && /usr/sbin/apachectl configtest
 # install python 3.12 and packages
 RUN apt-get update
 RUN apt-get install -y python3 python3-pip
-RUN apt-get install -y software-properties-common
-RUN add-apt-repository -y ppa:deadsnakes/ppa
+# Disabled for local AWS build reliability: this Launchpad-dependent PPA step times out
+# in some environments, and Ubuntu 24.04 already provides Python 3.12 in default repos.
+# RUN apt-get install -y software-properties-common
+# RUN add-apt-repository -y ppa:deadsnakes/ppa
 RUN apt-get update && apt-get install -y python3.12 python3.12-dev python3.12-venv
 
 # make python3 point to python3.12 (used by RTX_OpenAPI.start and various scripts)
