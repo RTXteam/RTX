@@ -596,15 +596,6 @@ class TRAPIQuerier:
                                  f"subject: '{edge.subject}', object: '{edge.object}'")
                 continue
 
-            # Put in a placeholder for missing required attribute fields, for TRAPI-compliance
-            if edge.attributes:
-                for attribute in edge.attributes:
-                    if not attribute.attribute_source:
-                        attribute.attribute_source = kp_curie
-                    if not attribute.attribute_type_id:
-                        attribute.attribute_type_id = \
-                            f"not provided (this attribute came from {kp_curie})"
-
             # Indicate that this edge passed through ARAX
             if edge.sources:
                 edge.sources.append(self.arax_retrieval_source)
