@@ -596,25 +596,6 @@ class TRAPIQuerier:
                                  f"subject: '{edge.subject}', object: '{edge.object}'")
                 continue
 
-            # Put in a placeholder for missing required attribute fields, for TRAPI-compliance
-            if edge.attributes:
-                edge_source = 'unknown'
-                retrieval_sources: list[RetrievalSource] = getattr(edge, 'sources', None) or []
-                for retrieval_source in retrieval_sources:
-                    resource_id = getattr(retrieval_source, 'resource_id', None)
-                    resource_role = getattr(retrieval_source, 'resource_role', None)
-                    if resource_role and resource_id:
-                        if resource_role == 'primary_knowledge_source':
-                            edge_source = resource_id
-                            break
-                for attribute in edge.attributes:
-                    attribute_type_id = getattr(attribute, 'attribute_type_id', None)
-                    attribute_source = getattr(attribute, 'attribute_source', None)
-                    if not attribute_type_id:
-                        attribute.attribute_type_id = "not_provided"
-                        if not attribute_source:
-                            attribute.attribute_source = edge_source
-
             # Indicate that this edge passed through ARAX
             if edge.sources:
                 edge.sources.append(self.arax_retrieval_source)
