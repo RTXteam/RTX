@@ -51,6 +51,139 @@ from openapi_server.models.attribute import Attribute
 
 # SAR: defining this without leading underscore since we may
 # want to start using this function in ARAX_expander.py
+
+
+def _extract_edge_support_graph_keys(
+        edge: Edge,
+        edge_id: str,
+        log: ARAXResponse,
+) -> set[str]:
+    """Return the set of aux-graph IDs referenced from a KG edge's
+    `biolink:support_graphs` attributes (TRAPI path 1)."""
+    sg_keys: set[str] = set()
+    edge_attrs = getattr(edge, 'attributes', [])
+    if edge_attrs is None:
+        edge_attrs = []
+    if not isinstance(edge_attrs, list):
+        log.warning(f"KG edge {edge_id} "
+                    "attribute \'attributes\' is not a list; skipping")
+        return sg_keys
+    for edge_attr_index, edge_attr in enumerate(edge_attrs):
+        if not isinstance(edge_attr, Attribute):
+            log.warning(f"KG edge {edge_id} "
+                        f"attribute {edge_attr_index} "
+                        "is not an Attribute; skipping")
+            continue
+        if not hasattr(edge_attr, 'attribute_type_id') \
+           or edge_attr.attribute_type_id is None:
+            log.warning(f"KG edge {edge_id} "
+                        f"attribute {edge_attr_index} "
+                        "has no attribute_type_id; skipping")
+            continue
+        if edge_attr.attribute_type_id != "biolink:support_graphs":
+            continue
+        if not hasattr(edge_attr, 'value') or edge_attr.value is None:
+            log.warning(f"KG edge {edge_id} "
+                        f"attribute {edge_attr_index} "
+                        "has no value attribute; skipping")
+            continue
+        edge_attr_values = edge_attr.value
+        if not isinstance(edge_attr_values, list):
+            log.warning(f"KG edge {edge_id} "
+                        f"attribute {edge_attr_index} "
+                        "value attribute is not a list; skipping")
+            continue
+        for edge_attr_value_index, edge_attr_value in enumerate(edge_attr_values):
+            if edge_attr_value is None:
+                log.warning(f"KG edge {edge_id} "
+                            f"attribute {edge_attr_index} "
+                            f"attribute value {edge_attr_value_index} "
+                            "value is None; skipping")
+                # keep looking at other values for this attribute, if there are any
+                # (the TRAPI spec seems to allow for multiple support_graphs for
+                # an edge in a KnowledgeGraph)
+                continue
+            sg_keys.add(str(edge_attr_value))
+    return sg_keys
+
+
+def _extract_aux_graph_contents(
+        aux_graph_id: str,
+        source_description: str,
+        kg: KnowledgeGraph,
+        aux_graphs: dict[str, AuxiliaryGraph],
+        log: ARAXResponse,
+) -> tuple[set[str], set[str], bool]:
+    """Validate one aux graph and return (nodes, edges, ok). On any structural
+    problem, returns (empty, empty, False) and logs a warning so the caller can
+    skip this aux graph entirely. `source_description` is prepended to log
+    messages for context (e.g. "KG edge X attribute Y" or "Analysis Z")."""
+    if aux_graph_id not in aux_graphs:
+        log.warning(f"{source_description} "
+                    f"references aux graph ID {aux_graph_id} "
+                    "which is not in the aux graphs object; skipping")
+        return set(), set(), False
+    aux_graph = aux_graphs[aux_graph_id]
+    if not isinstance(aux_graph, AuxiliaryGraph):
+        log.warning(f"{source_description} "
+                    f"references aux graph {aux_graph_id} "
+                    "which is not an AuxiliaryGraph; skipping")
+        return set(), set(), False
+    if not hasattr(aux_graph, 'edges'):
+        log.warning(f"{source_description} "
+                    f"references aux graph {aux_graph_id} "
+                    "that does not have an edges attribute; skipping")
+        return set(), set(), False
+    edges = aux_graph.edges
+    if not isinstance(edges, list):
+        log.warning(f"{source_description} "
+                    f"references aux graph {aux_graph_id} "
+                    "whose edges attribute is not a list; skipping")
+        return set(), set(), False
+    aux_graph_nodes: set[str] = set()
+    aux_graph_edges: set[str] = set()
+    for aux_edge_id in edges:
+        if aux_edge_id not in kg.edges:
+            log.warning(f"{source_description} "
+                        f"references aux graph {aux_graph_id} "
+                        f"containing edge {aux_edge_id} "
+                        "which is not in the KG; skipping")
+            return set(), set(), False
+        aux_edge = kg.edges[aux_edge_id]
+        if not hasattr(aux_edge, 'subject') or aux_edge.subject is None:
+            log.warning(f"{source_description} "
+                        f"references aux graph {aux_graph_id} "
+                        f"containing edge {aux_edge_id} "
+                        "which has no subject; skipping")
+            return set(), set(), False
+        aux_edge_subject = aux_edge.subject
+        if aux_edge_subject not in kg.nodes:
+            log.warning(f"{source_description} "
+                        f"references aux graph {aux_graph_id} "
+                        f"containing edge {aux_edge_id} "
+                        f"with subject node ID {aux_edge_subject} "
+                        "which is not in the KG; skipping")
+            return set(), set(), False
+        if not hasattr(aux_edge, 'object') or aux_edge.object is None:
+            log.warning(f"{source_description} "
+                        f"references aux graph {aux_graph_id} "
+                        f"containing edge {aux_edge_id} "
+                        "which has no object; skipping")
+            return set(), set(), False
+        aux_edge_object = aux_edge.object
+        if aux_edge_object not in kg.nodes:
+            log.warning(f"{source_description} "
+                        f"references aux graph {aux_graph_id} "
+                        f"containing edge {aux_edge_id} "
+                        f"with object node ID {aux_edge_object} "
+                        "which is not in the KG; skipping")
+            return set(), set(), False
+        aux_graph_nodes.add(aux_edge_subject)
+        aux_graph_nodes.add(aux_edge_object)
+        aux_graph_edges.add(aux_edge_id)
+    return aux_graph_nodes, aux_graph_edges, True
+
+
 def analyze_message_get_referenced_IDs(
         message: Message,
         log: ARAXResponse
@@ -67,12 +200,32 @@ def analyze_message_get_referenced_IDs(
     if results is None:
         log.error("Message has no results list; returning")
         return set(), set(), set(), set()
-    referenced_nodes = set()
-    referenced_edges = set()
-    referenced_results = set()
+    referenced_nodes: set[str] = set()
+    referenced_edges: set[str] = set()
+    referenced_results: set[int] = set()
+    referenced_aux_graphs: set[str] = set()
+    # Worklist of aux-graph IDs still to expand. Seeded from two TRAPI 1.4+
+    # paths: (1) `biolink:support_graphs` attributes on KG edges, picked up
+    # in pass 2 below; (2) the `support_graphs` field on Analysis objects,
+    # collected during pass 1 here.
+    aux_graph_worklist: set[str] = set()
+    # Aux-graph IDs we have ever attempted to expand (whether successfully or
+    # not). The fixed-point pass below revisits the KG-edge scan on each outer
+    # iteration; without this set, a dangling aux-graph reference (one whose
+    # ID is not in `message.auxiliary_graphs`) would be re-seeded into the
+    # worklist on every iteration and produce one warning per iteration.
+    seen_aux_graphs: set[str] = set()
+    # Track first known origin per aux-graph ID so worklist log messages
+    # carry useful context back to wherever the reference came from.
+    aux_graph_source: dict[str, str] = {}
+
+    # Pass 1: walk Results to collect (a) bound nodes (via NodeBinding) and
+    # (b) bound edges (via Analysis.edge_bindings); also seed the aux-graph
+    # worklist from each Analysis.support_graphs (TRAPI path 2).
     for result_index, result in enumerate(results):
-        result_nodes = set()
-        result_edges = set()
+        result_nodes: set[str] = set()
+        result_edges: set[str] = set()
+        result_aux_graph_seeds: dict[str, str] = {}
         skip_result = False
         if not hasattr(result, 'node_bindings') or result.node_bindings is None:
             log.warning(f"Result {result_index} has no node_bindings attribute; skipping")
@@ -122,6 +275,32 @@ def analyze_message_get_referenced_IDs(
                 skip_result = True
                 break
             resource_id = analysis.resource_id
+
+            # TRAPI path 2: collect aux-graph IDs from Analysis.support_graphs.
+            # Field is optional, so missing/None is fine; only a wrong type warns.
+            sg_keys_on_analysis = getattr(analysis, 'support_graphs', None)
+            if sg_keys_on_analysis is not None:
+                if not isinstance(sg_keys_on_analysis, list):
+                    log.warning(f"Result {result_index} "
+                                f"analysis {analysis_index} "
+                                f"(from {resource_id}) "
+                                "support_graphs is not a list, skipping")
+                    skip_result = True
+                    break
+                for sg_index, sg_key in enumerate(sg_keys_on_analysis):
+                    if sg_key is None:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"support_graphs index {sg_index} "
+                                    "is None; skipping this entry")
+                        continue
+                    sg_key_str = str(sg_key)
+                    result_aux_graph_seeds.setdefault(
+                        sg_key_str,
+                        f"Result {result_index} analysis {analysis_index} "
+                        f"(from {resource_id}) support_graphs[{sg_index}]")
+
             if not hasattr(analysis, 'edge_bindings') or analysis.edge_bindings is None:
                 log.warning(f"Result {result_index} "
                             f"analysis {analysis_index} "
@@ -231,161 +410,75 @@ def analyze_message_get_referenced_IDs(
             referenced_results.add(result_index)
             referenced_nodes.update(result_nodes)
             referenced_edges.update(result_edges)
-    # so far, we have iterated over Result objects to discover:
-    # - nodes that are bound via a NodeBinding object in a Result
-    # - edges that are bound via an Analysis object in a Result
-    # but there may well be edges that are referenced in an Aux Graph;
-    # need to traverse all bound edges in the KG to discover any that
-    # reference an AuxiliaryGraph via an Edge attribute of type
-    # `biolink:support_graph`; then discover the edges referenced
-    # by that AuxiliaryGraph, and then what nodes those edges (in the KG)
-    # are referenced via `subject` or `object` attributes:
-    referenced_aux_graphs = set()
-    for edge_id, edge in kg.edges.items():
-        if not hasattr(edge, 'subject') or edge.subject is None:
-            log.warning(f"KG edge {edge_id} has no subject; skipping")
-            continue
-        edge_subject_node_id = edge.subject
-        if not hasattr(edge, 'object') or edge.object is None:
-            log.warning(f"KG edge {edge_id} has no object; skipping")
-            continue
-        edge_object_node_id = edge.object
-        if edge_subject_node_id in referenced_nodes and edge_object_node_id in referenced_nodes:
-            referenced_edges.add(edge_id)
-        if edge_id not in referenced_edges:
-            continue
-        edge_attrs = getattr(edge, 'attributes', [])
-        if edge_attrs is None:
-            edge_attrs = []
-        if not isinstance(edge_attrs, list):
-            log.warning(f"KG edge {edge_id} "
-                        "attribute \'attributes\' is not a list; skipping")
-            continue
-        for edge_attr_index, edge_attr in enumerate(edge_attrs):
-            if not isinstance(edge_attr, Attribute):
-                log.warning(f"KG edge {edge_id} "
-                            f"attribute {edge_attr_index} "
-                            "is not an Attribute; skipping")
-                continue
-            if not hasattr(edge_attr, 'attribute_type_id') \
-               or edge_attr.attribute_type_id is None:
-                log.warning(f"KG edge {edge_id} "
-                            f"attribute {edge_attr_index} "
-                            "has no attribute_type_id; skipping")
-                continue
-            attribute_type_id = edge_attr.attribute_type_id
-            if attribute_type_id != "biolink:support_graphs":
-                continue
-            if not hasattr(edge_attr, 'value') \
-               or edge_attr.value is None:
-                log.warning(f"KG edge {edge_id} "
-                            f"attribute {edge_attr_index} "
-                            "has no value attribute; skipping")
-                continue
-            edge_attr_values = edge_attr.value
-            if not isinstance(edge_attr_values, list):
-                log.warning(f"KG edge {edge_id} "
-                            f"attribute {edge_attr_index} "
-                            "value attribute is not a list; skipping")
-                continue
-            for edge_attr_value_index, edge_attr_value \
-                    in enumerate(edge_attr_values):
-                if edge_attr_value is None:
-                    log.warning(f"KG edge {edge_id} "
-                                f"attribute {edge_attr_index} "
-                                f"attribute value {edge_attr_value_index} "
-                                "value is None; skipping")
-                    # keep looking at other values for this attribute, if there are any
-                    # (the TRAPI spec seems to allow for multiple support_graphs for
-                    # an edge in a KnowledgeGraph)
+            for sg_key_str, src in result_aux_graph_seeds.items():
+                if sg_key_str in seen_aux_graphs:
                     continue
-                aux_graph_id = str(edge_attr_value)
-                if aux_graph_id not in aux_graphs:
-                    log.warning(f"KG edge {edge_id} "
-                                f"attribute {edge_attr_index} "
-                                f"attribute value {edge_attr_value_index} "
-                                f"references aux graph ID {aux_graph_id} "
-                                "which is not in the aux graphs object; skipping")
+                aux_graph_worklist.add(sg_key_str)
+                seen_aux_graphs.add(sg_key_str)
+                aux_graph_source.setdefault(sg_key_str, src)
+
+    # Pass 2: fixed-point expansion of the reference closure. Two rules can
+    # grow the reference sets and they interact, so we iterate until neither
+    # fires:
+    #   (a) "Both-endpoints rule": any KG edge whose subject AND object are
+    #       both already in `referenced_nodes` is itself referenced (and gets
+    #       its `biolink:support_graphs` attributes followed via the worklist).
+    #       This preserves drive-by KG edges that connect referenced nodes.
+    #   (b) Aux-graph expansion: each aux graph in the worklist contributes
+    #       its edges (and their subject/object nodes) to the reference sets.
+    #       Aux-graph edges may themselves carry `biolink:support_graphs`
+    #       attributes pointing at further aux graphs (nested support).
+    # Because (b) can add nodes that newly satisfy (a), and (a) can add edges
+    # whose attributes feed (b), a single pass is not enough.
+    while True:
+        added_this_round = False
+
+        # Rule (a): both-endpoints scan, plus seeding the worklist from the
+        # `biolink:support_graphs` attributes of every referenced KG edge.
+        for edge_id, edge in kg.edges.items():
+            if not hasattr(edge, 'subject') or edge.subject is None:
+                log.warning(f"KG edge {edge_id} has no subject; skipping")
+                continue
+            if not hasattr(edge, 'object') or edge.object is None:
+                log.warning(f"KG edge {edge_id} has no object; skipping")
+                continue
+            if edge.subject in referenced_nodes and edge.object in referenced_nodes \
+               and edge_id not in referenced_edges:
+                referenced_edges.add(edge_id)
+                added_this_round = True
+            if edge_id not in referenced_edges:
+                continue
+            for sg_key in _extract_edge_support_graph_keys(edge, edge_id, log):
+                if sg_key in seen_aux_graphs:
                     continue
-                aux_graph = aux_graphs[aux_graph_id]
-                if not isinstance(aux_graph, AuxiliaryGraph):
-                    log.warning(f"KG edge {edge_id} "
-                                f"attribute {edge_attr_index} "
-                                f"references aux graph {aux_graph_id} "
-                                "which is not an AuxiliaryGraph; skipping")
-                    continue
-                if not hasattr(aux_graph, 'edges'):
-                    log.warning(f"KG edge {edge_id} "
-                                f"attribute {edge_attr_index} "
-                                f"references aux graph {aux_graph_id} "
-                                "that does not have an edges attribute; skipping")
-                    continue
-                edges = aux_graph.edges
-                if not isinstance(edges, list):
-                    log.warning(f"KG edge {edge_id} "
-                                f"attribute {edge_attr_index} "
-                                f"references aux graph {aux_graph_id} "
-                                "whose edges attribute is not a list; skipping")
-                    continue
-                skip_aux_graph = False
-                aux_graph_edges = set()
-                aux_graph_nodes = set()
-                for aux_edge_id in edges:
-                    if skip_aux_graph:
-                        break
-                    if aux_edge_id not in kg.edges:
-                        log.warning(f"KG edge {edge_id} "
-                                    f"attribute {edge_attr_index} "
-                                    f"references aux graph {aux_graph_id} "
-                                    f"containing edge {aux_edge_id} "
-                                    "which is not in the KG; skipping")
-                        skip_aux_graph = True
-                        break
-                    aux_edge = kg.edges[aux_edge_id]
-                    if not hasattr(aux_edge, 'subject') \
-                       or aux_edge.subject is None:
-                        log.warning(f"KG edge {edge_id} "
-                                    f"attribute {edge_attr_index} "
-                                    f"references aux graph {aux_graph_id} "
-                                    f"containing edge {aux_edge_id} "
-                                    "which has no subject; skipping")
-                        skip_aux_graph = True
-                        break
-                    aux_edge_subject = aux_edge.subject
-                    if aux_edge_subject not in kg.nodes:
-                        log.warning(f"KG edge {edge_id} "
-                                    f"attribute {edge_attr_index} "
-                                    f"references aux graph {aux_graph_id} "
-                                    f"containing edge {aux_edge_id} "
-                                    f"with subject node ID {aux_edge_subject} "
-                                    "which is not in the KG; skipping")
-                        skip_aux_graph = True
-                        break
-                    if not hasattr(aux_edge, 'object') or aux_edge.object is None:
-                        log.warning(f"KG edge {edge_id} "
-                                    f"attribute {edge_attr_index} "
-                                    f"references aux graph {aux_graph_id} "
-                                    f"containing edge {aux_edge_id} "
-                                    "which has no object; skipping")
-                        skip_aux_graph = True
-                        break
-                    aux_edge_object = aux_edge.object
-                    if aux_edge_object not in kg.nodes:
-                        log.warning(f"KG edge {edge_id} "
-                                    f"attribute {edge_attr_index} "
-                                    f"references aux graph {aux_graph_id} "
-                                    f"containing edge {aux_edge_id} "
-                                    f"with object node ID {aux_edge_object} "
-                                    "which is not in the KG; skipping")
-                        skip_aux_graph = True
-                        break
-                    aux_graph_nodes.add(aux_edge_subject)
-                    aux_graph_nodes.add(aux_edge_object)
-                    aux_graph_edges.add(aux_edge_id)
-                if not skip_aux_graph:
-                    referenced_aux_graphs.add(aux_graph_id)
-                    referenced_nodes.update(aux_graph_nodes)
-                    referenced_edges.update(aux_graph_edges)
+                aux_graph_worklist.add(sg_key)
+                seen_aux_graphs.add(sg_key)
+                aux_graph_source.setdefault(sg_key, f"KG edge {edge_id}")
+                added_this_round = True
+
+        # Rule (b): drain the aux-graph worklist. New aux-graph edges added
+        # here are picked up by rule (a) on the next outer iteration (their
+        # nested `biolink:support_graphs` attributes get seeded then).
+        while aux_graph_worklist:
+            aux_graph_id = aux_graph_worklist.pop()
+            if aux_graph_id in referenced_aux_graphs:
+                continue
+            aux_nodes, aux_edges, ok = _extract_aux_graph_contents(
+                aux_graph_id,
+                aux_graph_source.get(aux_graph_id, "(unknown source)"),
+                kg, aux_graphs, log)
+            if not ok:
+                continue
+            referenced_aux_graphs.add(aux_graph_id)
+            new_nodes = aux_nodes - referenced_nodes
+            new_edges = aux_edges - referenced_edges
+            if new_nodes or new_edges:
+                added_this_round = True
+            referenced_nodes.update(new_nodes)
+            referenced_edges.update(new_edges)
+
+        if not added_this_round:
+            break
 
     return referenced_nodes, referenced_edges, referenced_aux_graphs, referenced_results
 

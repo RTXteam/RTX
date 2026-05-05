@@ -59,7 +59,8 @@ def test_issue_2735():
     }
     response = ARAXQuery().query({"message":
                                  {"query_graph": qg}}).envelope
-    assert any('no results remain' in log_entry['message'] \
-               for log_entry in response.logs)
+    message = response.message
+    results = message.results
+    assert results
 
     
