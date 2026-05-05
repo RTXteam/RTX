@@ -240,6 +240,17 @@ class ARAXDatabaseManager:
                                             local_destination_path=self.local_paths[database_name],
                                             local_symlink_target_path=self.docker_central_paths[database_name],
                                             debug=debug)
+                # tarball symlink is present but the unpacked dir next to it is
+                # missing; re-extract in place without re-running rsync (avoids
+                # re-downloading large tarballs like gandalf_mmap on every restart)
+                elif local_path.endswith('.tar.gz') and not os.path.isdir(
+                        os.path.join(os.path.dirname(local_path), database_name)):
+                    if debug:
+                        eprint(f"{database_name}: tarball symlink present at {local_path} "
+                               f"but unpacked dir is missing, re-extracting...")
+                    if response is not None:
+                        response.debug(f"Re-extracting tarball for {database_name}...")
+                    self._extract_tarball(local_path, debug=debug)
                 else:
                     if debug:
                         eprint(f"Local version of {database_name} ({local_path}) matches the remote version, skipping...")
@@ -309,20 +320,23 @@ class ARAXDatabaseManager:
             return True
 
     def _download_database(self, remote_location, local_destination_path, local_symlink_target_path, debug=False):
-        if local_symlink_target_path is not None and os.path.exists(local_symlink_target_path): # if on the server symlink instead of downloading
+        # on the docker host symlink to the central copy; otherwise rsync from arax-databases.rtx.ai
+        if local_symlink_target_path is not None and os.path.exists(local_symlink_target_path):
             self.symlink_database(symlink_path=local_destination_path, target_path=local_symlink_target_path)
         else:
             self.rsync_database(remote_location=remote_location, local_path=local_destination_path, debug=debug)
 
+        # for tar.gz entries, also unpack so the database dir is present next to the archive
         if local_destination_path.endswith('.tar.gz') and os.path.exists(local_destination_path):
-            extraction_dir = os.path.dirname(local_destination_path)
+            self._extract_tarball(local_destination_path, debug=debug)
 
-            if debug:
-                eprint(f"Extracting {local_destination_path} into {extraction_dir}...")
-
-            os.system(f"tar -xzf {local_destination_path} -C {extraction_dir}")
-            # os.system(f"rm {local_destination_path}")
-
+    def _extract_tarball(self, tarball_path, debug=False):
+        # extract into the tarball's parent dir; archives are expected to contain a single
+        # top-level directory matching the config_dbs key (e.g. gandalf_mmap/ for gandalf_mmap.tar.gz)
+        extraction_dir = os.path.dirname(tarball_path)
+        if debug:
+            eprint(f"Extracting {tarball_path} into {extraction_dir}...")
+        os.system(f"tar -xzf {tarball_path} -C {extraction_dir}")
 
     def symlink_database(self, symlink_path, target_path):
         os.system(f"ln -s {target_path} {symlink_path}")
