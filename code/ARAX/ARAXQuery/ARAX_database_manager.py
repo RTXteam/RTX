@@ -386,7 +386,7 @@ class ARAXDatabaseManager:
     def check_all(self, max_days=31, debug=False):
         update_flag = False
         for database_name, file_path in self.local_paths.items():
-            if os.path.exitss(file_path):
+            if os.path.exists(file_path):
                 if debug:
                     now_time = datetime.datetime.now()
                     modified_time = time.localtime(os.stat(file_path).st_mtime)
