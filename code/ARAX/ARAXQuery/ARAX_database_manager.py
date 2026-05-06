@@ -240,11 +240,13 @@ class ARAXDatabaseManager:
                                             local_destination_path=self.local_paths[database_name],
                                             local_symlink_target_path=self.docker_central_paths[database_name],
                                             debug=debug)
-                # tarball symlink is present but the unpacked dir next to it is
-                # missing; re-extract in place without re-running rsync (avoids
-                # re-downloading large tarballs like gandalf_mmap on every restart)
+                # tarball is present but the unpacked dir next to the real archive
+                # is missing; re-extract in place without re-running rsync (avoids
+                # re-downloading large tarballs like gandalf_mmap on every restart).
+                # realpath follows the symlink to the docker-central side so the
+                # check matches where _extract_tarball actually puts the unpacked dir.
                 elif local_path.endswith('.tar.gz') and not os.path.isdir(
-                        os.path.join(os.path.dirname(local_path), database_name)):
+                        os.path.join(os.path.dirname(os.path.realpath(local_path)), database_name)):
                     if debug:
                         eprint(f"{database_name}: tarball symlink present at {local_path} "
                                f"but unpacked dir is missing, re-extracting...")
@@ -331,12 +333,15 @@ class ARAXDatabaseManager:
             self._extract_tarball(local_destination_path, debug=debug)
 
     def _extract_tarball(self, tarball_path, debug=False):
-        # extract into the tarball's parent dir; archives are expected to contain a single
-        # top-level directory matching the config_dbs key (e.g. gandalf_mmap/ for gandalf_mmap.tar.gz)
-        extraction_dir = os.path.dirname(tarball_path)
+        # follow the symlink to the real archive so extraction lands next to the
+        # docker-central tarball (where Pathfinder reads it via get_gandalf_mmap_path),
+        # not next to the RTX-side symlink. realpath is a no-op on dev machines
+        # where the path is already a real file.
+        resolved = os.path.realpath(tarball_path)
+        extraction_dir = os.path.dirname(resolved)
         if debug:
-            eprint(f"Extracting {tarball_path} into {extraction_dir}...")
-        os.system(f"tar -xzf {tarball_path} -C {extraction_dir}")
+            eprint(f"Extracting {resolved} into {extraction_dir}...")
+        os.system(f"tar -xzf {resolved} -C {extraction_dir}")
 
     def symlink_database(self, symlink_path, target_path):
         os.system(f"ln -s {target_path} {symlink_path}")
