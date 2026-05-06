@@ -240,6 +240,19 @@ class ARAXDatabaseManager:
                                             local_destination_path=self.local_paths[database_name],
                                             local_symlink_target_path=self.docker_central_paths[database_name],
                                             debug=debug)
+                # tarball is present but the unpacked dir next to the real archive
+                # is missing; re-extract in place without re-running rsync (avoids
+                # re-downloading large tarballs like gandalf_mmap on every restart).
+                # realpath follows the symlink to the docker-central side so the
+                # check matches where _extract_tarball actually puts the unpacked dir.
+                elif local_path.endswith('.tar.gz') and not os.path.isdir(
+                        os.path.join(os.path.dirname(os.path.realpath(local_path)), database_name)):
+                    if debug:
+                        eprint(f"{database_name}: tarball symlink present at {local_path} "
+                               f"but unpacked dir is missing, re-extracting...")
+                    if response is not None:
+                        response.debug(f"Re-extracting tarball for {database_name}...")
+                    self._extract_tarball(local_path, debug=debug)
                 else:
                     if debug:
                         eprint(f"Local version of {database_name} ({local_path}) matches the remote version, skipping...")
@@ -309,20 +322,26 @@ class ARAXDatabaseManager:
             return True
 
     def _download_database(self, remote_location, local_destination_path, local_symlink_target_path, debug=False):
-        if local_symlink_target_path is not None and os.path.exists(local_symlink_target_path): # if on the server symlink instead of downloading
+        # on the docker host symlink to the central copy; otherwise rsync from arax-databases.rtx.ai
+        if local_symlink_target_path is not None and os.path.exists(local_symlink_target_path):
             self.symlink_database(symlink_path=local_destination_path, target_path=local_symlink_target_path)
         else:
             self.rsync_database(remote_location=remote_location, local_path=local_destination_path, debug=debug)
 
+        # for tar.gz entries, also unpack so the database dir is present next to the archive
         if local_destination_path.endswith('.tar.gz') and os.path.exists(local_destination_path):
-            extraction_dir = os.path.dirname(local_destination_path)
+            self._extract_tarball(local_destination_path, debug=debug)
 
-            if debug:
-                eprint(f"Extracting {local_destination_path} into {extraction_dir}...")
-
-            os.system(f"tar -xzf {local_destination_path} -C {extraction_dir}")
-            # os.system(f"rm {local_destination_path}")
-
+    def _extract_tarball(self, tarball_path, debug=False):
+        # follow the symlink to the real archive so extraction lands next to the
+        # docker-central tarball (where Pathfinder reads it via get_gandalf_mmap_path),
+        # not next to the RTX-side symlink. realpath is a no-op on dev machines
+        # where the path is already a real file.
+        resolved = os.path.realpath(tarball_path)
+        extraction_dir = os.path.dirname(resolved)
+        if debug:
+            eprint(f"Extracting {resolved} into {extraction_dir}...")
+        os.system(f"tar -xzf {resolved} -C {extraction_dir}")
 
     def symlink_database(self, symlink_path, target_path):
         os.system(f"ln -s {target_path} {symlink_path}")
@@ -372,7 +391,7 @@ class ARAXDatabaseManager:
     def check_all(self, max_days=31, debug=False):
         update_flag = False
         for database_name, file_path in self.local_paths.items():
-            if os.path.exitss(file_path):
+            if os.path.exists(file_path):
                 if debug:
                     now_time = datetime.datetime.now()
                     modified_time = time.localtime(os.stat(file_path).st_mtime)
