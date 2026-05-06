@@ -41,7 +41,7 @@ link() {
   ln -sfn "$src" "$dest"
 }
 
-link "${DB_DIR}/${LATEST_TIER0_VER}/COHDdatabase_v1.0_${LATEST_TIER0_VER}.db" "RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v1.0_${LATEST_TIER0_VER}.db"
+link "${DB_DIR}/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db" "RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v1.0_KG2.8.0.db"
 
 # commented out pending readiness of new xCRG code in: https://github.com/Translator-CATRAX/shepherd/issues
 #link "${DB_DIR}/KG2.10.0/xcrg_decrease_model_v1.0.KG2.10.0_new_version.pt" "RTX/code/ARAX/ARAXQuery/Infer/data/xCRG_data/xcrg_decrease_model_v1.0.KG2.10.0_new_version.pt"
