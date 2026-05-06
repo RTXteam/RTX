@@ -66,7 +66,7 @@ class RTXConfiguration:
             with open(f"{file_dir}/config.domain") as infile:
                 for line in infile:
                     self.domain = line.strip()
-        except:
+        except OSError:
             self.domain = '??'
         if DEBUG:
             t1 = timeit.default_timer()

@@ -121,7 +121,10 @@ function main() {
 	statusdiv.append("You have requested response id = " + response_id);
 	statusdiv.append(document.createElement("br"));
 
-	document.getElementById("devdiv").innerHTML =  "Requested response id = " + response_id + "<br>";
+        var devdiv = document.getElementById("devdiv");
+	devdiv.append("Requested response id = " + response_id);
+        devdiv.append(document.createElement("br"));
+
 	var meh_id = isNaN(response_id) ? "X"+response_id : response_id;
 	retrieve_response(providers['ARAX'].url+'/response/'+meh_id,response_id,"all");
         pasteId(response_id);
@@ -312,13 +315,24 @@ function viewResponse() {
     catch(e) {
         var statusdiv = document.getElementById("statusdiv");
 	statusdiv.append(document.createElement("br"));
+
+	var span = document.createElement("strong");
+	span.append("Error");
+	statusdiv.append(span);
+
 	if (e.name == "SyntaxError")
-	    statusdiv.innerHTML += "<b>Error</b> parsing JSON response input. Please correct errors and resubmit: ";
+	    statusdiv.append(" parsing JSON response input.");
 	else
-	    statusdiv.innerHTML += "<b>Error</b> processing response input. Please correct errors and resubmit: ";
+	    statusdiv.append(" processing response input.");
+	statusdiv.append(" Please correct errors and resubmit: ");
 	statusdiv.append(document.createElement("br"));
-	statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
-        add_user_msg("Error processing input","ERROR",false);
+
+	span = document.createElement("span");
+	span.className = "error";
+	span.append(e);
+        statusdiv.append(span);
+
+	add_user_msg("Error processing input","ERROR",false);
 	return;
     }
 
@@ -351,23 +365,48 @@ async function postPathfinder(agent) {
 	else if (pf_subject == pf_object)
 	    throw new Error("Subject and Object cannot be the same; please edit and resubmit.");
 
-	statusdiv.innerHTML = 'Pre-validating nodes...';
+	statusdiv.innerHTML = '';
+	statusdiv.append('Pre-validating nodes...');
 
 	var bestthing = await check_entity(pf_subject,false);
-	document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
+	document.getElementById("devdiv").innerHTML += "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
 	if (bestthing.found) {
-            statusdiv.innerHTML += "<p>Found entity with name <b>"+bestthing.name+"</b> ("+bestthing.curie+") that best matches <i>"+pf_subject+"</i> in our knowledge graph.</p>";
-            sesame('openmax',statusdiv);
+	    var para = document.createElement("p");
+	    var word = document.createElement("strong");
+	    para.append("Found entity with name ");
+	    word.append(bestthing.name);
+	    para.append(word);
+	    para.append(" ("+bestthing.curie+") that best matches ");
+	    word = document.createElement("i");
+	    word.append(pf_subject);
+            para.append(word);
+	    para.append(" in our knowledge graph.");
+	    statusdiv.append(para);
+	    sesame('openmax',statusdiv);
 	    pf_query_graph.nodes['n0'].ids.push(bestthing.curie);
 	}
+	else
+	    throw new Error("Subject was not found in our knowledge graph; please revise.");
 
 	bestthing = await check_entity(pf_object,false);
-        document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
+        document.getElementById("devdiv").innerHTML += "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
         if (bestthing.found) {
-            statusdiv.innerHTML += "<p>Found entity with name <b>"+bestthing.name+"</b> ("+bestthing.curie+") that best matches <i>"+pf_object+"</i> in our knowledge graph.</p>";
-            sesame('openmax',statusdiv);
+            var para = document.createElement("p");
+            var word = document.createElement("strong");
+            para.append("Found entity with name ");
+            word.append(bestthing.name);
+            para.append(word);
+            para.append(" ("+bestthing.curie+") that best matches ");
+            word = document.createElement("i");
+            word.append(pf_object);
+            para.append(word);
+            para.append(" in our knowledge graph.");
+            statusdiv.append(para);
+	    sesame('openmax',statusdiv);
             pf_query_graph.nodes['n1'].ids.push(bestthing.curie);
         }
+        else
+            throw new Error("Object was not found in our knowledge graph; please revise.");
 
         if (pf_inter) {
             if (!pf_inter.startsWith("biolink:"))
@@ -382,9 +421,16 @@ async function postPathfinder(agent) {
     }
     catch(e) {
 	console.error(e);
+
         statusdiv.append(document.createElement("br"));
-        statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
-        add_user_msg("Error processing Pathfinder input","ERROR",false);
+	var span = document.createElement("span");
+	span.className = "error";
+	span.append(e);
+        statusdiv.append(span);
+        statusdiv.append(document.createElement("br"));
+        statusdiv.append(document.createElement("br"));
+        sesame('openmax',statusdiv);
+	add_user_msg("Error processing Pathfinder input","ERROR",false);
     }
 }
 
@@ -394,10 +440,11 @@ function postQuery(qtype,agent) {
 
     reset_vars();
     var statusdiv = document.getElementById("statusdiv");
+    statusdiv.innerHTML = '';
 
     // assemble QueryObject
     if (qtype == "DSL") {
-	statusdiv.innerHTML = "Posting DSL.  Looking for answer...";
+	statusdiv.append("Posting DSL.  Looking for answer...");
 	statusdiv.append(document.createElement("br"));
 
 	var dslArrayOfLines = document.getElementById("dslText").value.split("\n");
@@ -405,13 +452,13 @@ function postQuery(qtype,agent) {
 	queryObj["operations"] = { "actions": dslArrayOfLines};
     }
     else if (qtype == "WorkFlow") {
-        statusdiv.innerHTML = "Posting Workflow JSON.  Awaiting response...";
+        statusdiv.append("Posting Workflow JSON.  Awaiting response...");
 	statusdiv.append(document.createElement("br"));
 	update_wfjson();
 	queryObj = workflow;
     }
     else if (qtype == "JSON") {
-	statusdiv.innerHTML = "Posting JSON.  Looking for answer...";
+	statusdiv.append("Posting JSON.  Looking for answer...");
 	statusdiv.append(document.createElement("br"));
 
         var jsonInput;
@@ -421,11 +468,16 @@ function postQuery(qtype,agent) {
 	catch(e) {
             statusdiv.append(document.createElement("br"));
 	    if (e.name == "SyntaxError")
-		statusdiv.innerHTML += "<b>Error</b> parsing JSON input. Please correct errors and resubmit: ";
+		statusdiv.append("Error parsing JSON input. Please correct errors and resubmit: ");
 	    else
-		statusdiv.innerHTML += "<b>Error</b> processing input. Please correct errors and resubmit: ";
+		statusdiv.append("Error processing input. Please correct errors and resubmit: ");
+
             statusdiv.append(document.createElement("br"));
-	    statusdiv.innerHTML += "<span class='error'>"+e+"</span>";
+	    var span = document.createElement("span");
+	    span.className = 'error';
+	    span.append(e);
+	    statusdiv.append(span);
+
             add_user_msg("Error parsing input","ERROR",false);
 	    return;
 	}
@@ -440,7 +492,7 @@ function postQuery(qtype,agent) {
 	qg_new(false,false);
     }
     else {  // qGraph
-	statusdiv.innerHTML = "Posting graph.  Looking for answer...";
+	statusdiv.append("Posting graph.  Looking for answer...");
         statusdiv.append(document.createElement("br"));
 
 	qg_clean_up(true);
@@ -885,8 +937,8 @@ async function sendSyn() {
     text.style.float = "right";
     text.target = '_blank';
     text.title = 'link to this synonym entry';
-    text.href = "http://"+ window.location.hostname + window.location.pathname + "?term=" + word;
-    text.innerHTML = "[ Direct link to this entry ]";
+    text.href = "http://"+ window.location.hostname + window.location.pathname + "?term=" + encodeURIComponent(word);
+    text.append("[ Direct link to this entry ]");
     div.append(text);
     syndiv.append(div);
 
@@ -1616,7 +1668,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 		var valink = document.createElement("a");
 		valink.target = '_validator';
 		valink.href = "https://ncatstranslator.github.io/reasoner-validator/validation_codes_dictionary.html";
-		valink.innerHTML = 'Validation Codes Dictionary';
+		valink.append('Validation Codes Dictionary');
 		var showthis = jsonObj2.validation_result.validation_messages_text ? jsonObj2.validation_result.validation_messages_text : jsonObj2.validation_result.validation_messages;
                 html_node.onclick = function () { showJSONpopup("Validation results for: "+jsonObj2.araxui_response, showthis, valink); };
 	    }
@@ -1793,10 +1845,23 @@ function retrieve_response(resp_url, resp_id, type) {
 		msg = jsonResp.detail;
 	    }
 	    catch(e) {
-		if (resp_id.startsWith("URL:"))
-		    statusdiv.innerHTML += "<br>No response found at <span class='error'>"+resp_url+"</span> (404).";
-		else
-		    statusdiv.innerHTML += "<br>Response with id=<span class='error'>"+resp_id+"</span> was not found (404).";
+                var span = document.createElement("span");
+                span.className = 'error';
+
+		statusdiv.append(document.createElement("br"));
+
+		if (resp_id.startsWith("URL:")) {
+		    statusdiv.append("No response found at ");
+		    span.append(resp_url);
+		    statusdiv.append(span);
+		    statusdiv.append(" (404).");
+		}
+		else {
+                    statusdiv.append("Response with id=");
+                    span.append(resp_id);
+                    statusdiv.append(span);
+                    statusdiv.append(" was not found (404).");
+		}
 
 	    }
 	    sesame('openmax',statusdiv);
@@ -1804,8 +1869,18 @@ function retrieve_response(resp_url, resp_id, type) {
 	}
 	else {
             update_response_stats_on_error(resp_id,'Error',true);
-	    statusdiv.innerHTML += "<br><span class='error'>An error was encountered while contacting the server ("+xhr.status+")</span>";
-	    document.getElementById("devdiv").innerHTML += "------------------------------------ error with RESPONSE:<br>"+xhr.responseText;
+
+	    statusdiv.append(document.createElement("br"));
+            var span = document.createElement("span");
+            span.className = 'error';
+	    span.append("An error was encountered while contacting the server ("+xhr.status+")");
+            statusdiv.append(span);
+
+            var devdiv = document.getElementById("devdiv");
+	    devdiv.append("------------------------------------ error with RESPONSE:");
+            devdiv.append(document.createElement("br"));
+	    devdiv.append(xhr.responseText);
+
 	    sesame('openmax',statusdiv);
             there_was_an_error("An error was encountered while contacting the server");
 	}
@@ -2864,7 +2939,7 @@ function add_status_divs() {
 
     for (var status of ["Error","Warning","Info","Debug"]) {
 	span = document.createElement("span");
-	span.id =  'count_'+status.toUpperCase();
+	span.id = 'count_'+status.toUpperCase();
 	span.style.marginLeft = "20px";
 	span.style.cursor = "pointer";
 	span.className = 'qprob msg'+status.toUpperCase();
@@ -4347,7 +4422,7 @@ function add_cyto(i,dataid, layout='breadthfirst') {
                     a.title = 'view ARAX synonyms';
                     a.href = "javascript:lookup_synonym('"+val+"',true)";
                 }
-                a.innerHTML = val;
+                a.append(val);
                 cell.append(sep);
 		cell.append(a);
                 sep = ', ';
@@ -4784,7 +4859,7 @@ function display_attribute(num, tab, orig_att, semmeddb, mainvalue, divider=true
                     a.target = '_blank';
                     a.href = "https://pubmed.ncbi.nlm.nih.gov/" + val.split(":")[1] + '/';
 		    a.title = 'View in PubMed';
-                    a.innerHTML = val;
+                    a.append(val);
                     a.addEventListener("click", function(e) { e.stopPropagation(); });
                     cell.append(a);
 
@@ -4809,7 +4884,7 @@ function display_attribute(num, tab, orig_att, semmeddb, mainvalue, divider=true
 		    a.target = '_blank';
 		    a.href = "https://doi.org/" + val.split(":")[1];
 		    a.title = 'View in doi.org';
-		    a.innerHTML = val;
+		    a.append(val);
                     a.addEventListener("click", function(e) { e.stopPropagation(); });
 		    cell.append(a);
 		}
@@ -4818,7 +4893,7 @@ function display_attribute(num, tab, orig_att, semmeddb, mainvalue, divider=true
 		    a.className = 'attvalue';
 		    a.target = '_blank';
 		    a.href = val;
-		    a.innerHTML = val;
+		    a.append(val);
                     a.addEventListener("click", function(e) { e.stopPropagation(); });
 		    cell.append(a);
 		}
@@ -4869,7 +4944,7 @@ function display_attribute(num, tab, orig_att, semmeddb, mainvalue, divider=true
             var a = document.createElement("a");
 	    a.target = '_blank';
 	    a.href = value;
-	    a.innerHTML = value;
+	    a.append(value);
             a.addEventListener("click", function(e) { e.stopPropagation(); });
 	    cell.append(a);
 	}
@@ -5309,16 +5384,30 @@ async function qg_add_curie_to_qnode() {
     var thing = document.getElementById("newquerynode").value.trim();
     document.getElementById("newquerynode").value = '';
 
+    statusdiv.innerHTML = '';
+    var para = document.createElement("p");
+
     if (thing == '') {
-        statusdiv.innerHTML = "<p class='error'>Please enter a node value</p>";
+	para.className = 'error';
+        para.append("Please enter a node value");
+        statusdiv.append(para);
 	return;
     }
 
     var bestthing = await check_entity(thing,false);
-    document.getElementById("devdiv").innerHTML +=  "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
+    document.getElementById("devdiv").innerHTML += "-- best node = " + JSON.stringify(bestthing,null,2) + "<br>";
 
     if (bestthing.found) {
-        statusdiv.innerHTML = "<p>Found entity with name <b>"+bestthing.name+"</b> that best matches <i>"+thing+"</i> in our knowledge graph.</p>";
+        var word = document.createElement("strong");
+        para.append("Found entity with name ");
+        word.append(bestthing.name);
+        para.append(word);
+        para.append(" ("+bestthing.curie+") that best matches ");
+        word = document.createElement("i");
+        word.append(thing);
+        para.append(word);
+        para.append(" in our knowledge graph.");
+        statusdiv.append(para);
 	sesame('openmax',statusdiv);
 
 	if (!input_qg.nodes[id]['ids'].includes(bestthing.curie)) {
@@ -5330,13 +5419,18 @@ async function qg_add_curie_to_qnode() {
 
 	qg_add_category_to_qnode(bestthing.type);
 
-	document.getElementById("devdiv").innerHTML +=  "-- found a curie = " + bestthing.curie + "<br>";
+	document.getElementById("devdiv").innerHTML += "-- found a curie = " + bestthing.curie + "<br>";
 
 	cyobj[99999].reset();
 	cylayout(99999,"breadthfirst");
     }
     else {
-        statusdiv.innerHTML = "<p><span class='error'>" + thing + "</span> is not in our knowledge graph.</p>";
+        var word = document.createElement("span");
+	word.className = 'error';
+        word.append(thing);
+        para.append(word);
+        para.append(" is not in our knowledge graph.");
+        statusdiv.append(para);
 	sesame('openmax',statusdiv);
     }
 
@@ -5372,7 +5466,23 @@ function qg_add_curielist_to_qnode(list) {
 	}
     }
 
-    document.getElementById("statusdiv").innerHTML = "<p>Added <b>"+added+"</b> curies to node <b>"+id+"</b> from list <i>"+listId+"</i></p>";
+    var statusdiv = document.getElementById("statusdiv");
+    statusdiv.innerHTML = '';
+
+    var para = document.createElement("p");
+    var word = document.createElement("strong");
+    para.append("Added ");
+    word.append(added);
+    para.append(word);
+    para.append(" curies to node ");
+    word = document.createElement("strong");
+    word.append(id);
+    para.append(word);
+    para.append(" from list ");
+    word = document.createElement("i");
+    word.append(listId);
+    para.append(word);
+    statusdiv.append(para);
 
     cyobj[99999].reset();
     cylayout(99999,"breadthfirst");
@@ -5825,7 +5935,7 @@ function qg_edit(msg) {
     else
 	document.getElementById("showQGjson").checked = false;
 
-    document.getElementById("devdiv").innerHTML +=  "Copied query_graph to edit window<br>";
+    document.getElementById("devdiv").innerHTML += "Copied query_graph to edit window<br>";
 }
 
 function show_qgjson() {
@@ -6117,7 +6227,7 @@ function show_dsl_command_options(command) {
 
     var h2 = document.createElement('h2');
     h2.style.marginBottom = 0;
-    h2.innerHTML = command;
+    h2.append(command);
     com_node.append(h2);
 
     if (araxi_commands[command].description) {
@@ -6289,7 +6399,14 @@ function clearWF() {
     populate_wfjson();
     populate_wflist();
     abort_wf();
-    document.getElementById("statusdiv").innerHTML = '<br>A blank workflow has been created<br><br>';
+
+    var statusdiv = document.getElementById("statusdiv");
+    statusdiv.innerHTML = '';
+    statusdiv.append(document.createElement("br"));
+    statusdiv.append('A blank workflow has been created.');
+    statusdiv.append(document.createElement("br"));
+    statusdiv.append(document.createElement("br"));
+
     add_user_msg("A blank workflow has been created", "INFO");
 }
 
@@ -6331,7 +6448,7 @@ function populate_wflist() {
 	item.draggable = true;
 	item.title = "CLICK to view/edit operation details; DRAG to reorder list";
 	item.dataset.sequence = count;
-	item.innerHTML = com.id;
+	item.append(com.id);
 	list_node.append(item);
 
 	var items = list_node.getElementsByTagName("li"), current = null;
@@ -6433,7 +6550,7 @@ function show_wf_operation_options(operation, index) {
 
     var h2 = document.createElement('h2');
     h2.style.marginBottom = 0;
-    h2.innerHTML = operation;
+    h2.append(operation);
     com_node.append(h2);
 
     if (!wf_operations[operation]) {
@@ -6454,7 +6571,7 @@ function show_wf_operation_options(operation, index) {
     }
 
     if (!wf_operations[operation]['in_arax']) {
-        h2.innerHTML += " *";
+        h2.append(" *");
 	com_node.append('* Please note that this workflow operation is not supported in ARAX, though it may be in other actors');
         com_node.append(document.createElement('br'));
     }
@@ -6792,7 +6909,7 @@ function retrieveRecentResps() {
 
     var srcpks = document.getElementById("wherefromlatest").value;
 
-    var apiurl = providers["ARAX"].url + "/status?mode=recent_pks&last_n_hours="+numpks+"&authorization="+srcpks;
+    var apiurl = providers["ARAX"].url + "/status?mode=recent_pks&last_n_hours="+numpks+"&authorization="+encodeURIComponent(srcpks);
 
     fetch(apiurl)
         .then(response => {
@@ -6812,8 +6929,8 @@ function retrieveRecentResps() {
 	    link.style.float = 'right';
 	    link.target = '_blank';
 	    link.title = 'link to this view';
-	    link.href = "http://"+ window.location.hostname + window.location.pathname + "?latest=" + numpks + "&from=" + srcpks;
-	    link.innerHTML = "[ Direct link to this view ]";
+	    link.href = "http://"+ window.location.hostname + window.location.pathname + "?latest=" + numpks + "&from=" + encodeURIComponent(srcpks);
+	    link.append("[ Direct link to this view ]");
 	    div.append(link);
 
 	    recentresps_node.append(div);
@@ -6932,7 +7049,11 @@ function retrieveRecentResps() {
 	})
         .catch(error => {
 	    recentresps_node.className = "error";
-	    recentresps_node.innerHTML = "<br>" + error + "<br><br>";
+	    recentresps_node.innerHTML = "";
+	    recentresps_node.append(document.createElement("br"));
+	    recentresps_node.append(error);
+	    recentresps_node.append(document.createElement("br"));
+	    recentresps_node.append(document.createElement("br"));
 	});
 }
 
@@ -6997,7 +7118,7 @@ function retrieveRecentQs(active) {
 		link.target = '_blank';
 		link.title = 'link to this view';
 		link.href = "http://"+ window.location.hostname + window.location.pathname + "?recent=" + hours;
-		link.innerHTML = "[ Direct link to this view ]";
+		link.append("[ Direct link to this view ]");
 		document.getElementById("recentqsLink").append(link);
 	    }
 
@@ -7304,7 +7425,11 @@ function retrieveRecentQs(active) {
         .catch(error => {
 	    qfspan.innerHTML = '';
             recents_node.className = "error";
-	    recents_node.innerHTML = "<br>" + error + "<br><br>";
+	    recents_node.innerHTML = "";
+            recents_node.append(document.createElement("br"));
+            recents_node.append(error);
+            recents_node.append(document.createElement("br"));
+            recents_node.append(document.createElement("br"));
         });
 }
 
@@ -7445,7 +7570,11 @@ function retrieveKPInfo() {
 
 	    if (Object.keys(components).length < 1) {
 		kpinfo_node.className = "error";
-		kpinfo_node.innerHTML =  "<br>No <b>components</b> found in API response!<br><br>";
+		kpinfo_node.innerHTML = "";
+		kpinfo_node.append(document.createElement("br"));
+		kpinfo_node.append("No [components] found in API response!");
+		kpinfo_node.append(document.createElement("br"));
+		kpinfo_node.append(document.createElement("br"));
 		return;
 	    }
 
@@ -7515,7 +7644,7 @@ function retrieveKPInfo() {
 			text.href = item["smartapi_url"];
 			text.target = 'smartapi_reg';
 			text.title = 'View SmartAPI registration for this '+component;
-			text.innerHTML = item["title"];
+			text.append(item["title"]);
 			td.append(text);
 			td.append(document.createElement("br"));
 
@@ -7663,7 +7792,11 @@ function retrieveKPInfo() {
         .catch(error => {
 	    wspan.innerHTML = '';
 	    kpinfo_node.className = "error";
-	    kpinfo_node.innerHTML =  "<br>" + error + "<br><br>";
+            kpinfo_node.innerHTML = "";
+            kpinfo_node.append(document.createElement("br"));
+            kpinfo_node.append(error);
+            kpinfo_node.append(document.createElement("br"));
+            kpinfo_node.append(document.createElement("br"));
 	    console.error(error);
 	});
 
@@ -8170,7 +8303,12 @@ function retrieveSysTestResults(testid=null) {
 	})
         .then(data => {
 	    document.getElementById("systest_link").href = "?systest="+test_pk.replace("ARSARS_","");
-            wspan.innerHTML = '<b>Report source:</b> '+apiurl;
+
+	    wspan.innerHTML = '';
+            var span = document.createElement("strong");
+            span.append("Report source: ");
+	    wspan.append(span);
+	    wspan.append(apiurl);
 	    systest_node.innerHTML = '';
 
 	    if (test_pk.startsWith("ARSARS_")) {
@@ -8212,7 +8350,10 @@ function retrieveSysTestResults(testid=null) {
         .catch(error => {
             wspan.innerHTML = '';
 	    systest_node.className = "error";
-	    systest_node.innerHTML = "<br>" + error + "<br><br>";
+            systest_node.append(document.createElement("br"));
+            systest_node.append(error);
+            systest_node.append(document.createElement("br"));
+            systest_node.append(document.createElement("br"));
             console.error(error);
 	});
 
@@ -8921,7 +9062,7 @@ function add_user_msg(what,code="WARNING",remove=true) {
     var div = document.createElement("div");
     div.className = 'msg'+code;
     div.style.color = "#eee";
-    div.innerHTML = what;
+    div.append(what);
 
     var span = document.createElement("span");
     span.className = 'bigx';
@@ -9397,7 +9538,7 @@ async function check_entity(term,wantall,maxsyn=0,getgraph=false) {
 	add_to_dev_info("ENTITY:"+term,fulldata);
 	if (wantall)
 	    return fulldata;
-	else if (!fulldata[term].id)
+	else if (!fulldata[term] || !fulldata[term].id)
 	    return ent; // contains found=false
 
 	data.curie = fulldata[term].id.identifier;
