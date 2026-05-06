@@ -1054,7 +1054,7 @@ def test_xdtd_expand():
                     "ids": ["MONDO:0015564"]
                 },
                 "chemical": {
-                    "categories": ["biolink:ChemicalEntity"]
+                    "ids": ["CHEBI:2659"]
                 }
             },
             "edges": {
