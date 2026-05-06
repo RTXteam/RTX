@@ -1515,11 +1515,20 @@ def test_treats_patch_issue_2328_b():
     }
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(json_query=query)
     assert edges_by_qg_id["t_edge"]
-    kg2_edges_treats_or = [edge for edge in edges_by_qg_id["t_edge"].values()
-                           if any(source.resource_id == "infores:retriever" for source in edge.sources)]
-    print(f"Answer includes {len(kg2_edges_treats_or)} edges from KG2")
-    assert kg2_edges_treats_or
-    assert any(edge for edge in kg2_edges_treats_or if edge.predicate == "biolink:treats_or_applied_or_studied_to_treat")
+    retriever_edges = [edge \
+                          for edge in edges_by_qg_id["t_edge"].values() \
+                          for edge_source in edge.sources \
+                          for upstream_resource_id in \
+                          (getattr(edge_source, 'upstream_resource_ids', None) or []) \
+                          if upstream_resource_id == "infores:retriever"]
+    upstream_resource_ids = set(upstream_resource_id \
+                                for edge in edges_by_qg_id["t_edge"].values() \
+                                for edge_source in edge.sources \
+                                for upstream_resource_id in \
+                                (getattr(edge_source, 'upstream_resource_ids', None) or []))
+    assert "infores:retriever" in upstream_resource_ids
+    assert any(edge for edge in retriever_edges \
+               if edge.predicate == "biolink:treats_or_applied_or_studied_to_treat")
 
 
 @pytest.mark.external
