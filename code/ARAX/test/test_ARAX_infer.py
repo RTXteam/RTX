@@ -463,7 +463,7 @@ def test_xcrg_with_only_qg():
                         },
                         {
                         "qualifier_type_id": "biolink:object_direction_qualifier",
-                        "qualifier_value": "decreased"
+                        "qualifier_value": "increased"
                         }
                     ]
                     }
@@ -474,11 +474,10 @@ def test_xcrg_with_only_qg():
             "nodes": {
                 "ON": {
                 "categories": [
-                    "biolink:Gene",
-                    "biolink:Protein"
+                    "biolink:Gene"
                 ],
                 "ids": [
-                    "NCBIGene:3043"
+                    "NCBIGene:1576"
                 ]
                 },
                 "SN": {
