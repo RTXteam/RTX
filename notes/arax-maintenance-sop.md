@@ -5,10 +5,10 @@
 ## Quick reference checklist before closing an issue
 
 - [ ] Run ARAX pytest suite, using the code in the issue branch
-- [ ] `arax.ncats.io` integration test of the code in the issue branch
+- [ ] `arax.ncats.io` integration test of the code in the `issue-XXX` branch
 - [ ] Switch `arax.ncats.io` devarea back to the branch it was previously on (often `master`)
-- [ ] Merge the PR
-- [ ] Delete issue branch
+- [ ] Merge the feature branch into `master` (if using a PR, "squash and merge", or if not using a PR, `git merge --squash issue-XXX`
+- [ ] Delete `issue-XXX` branch
 - [ ] Note in ARAX changelog
 - [ ] Note in CATRAX Y2 milestones
 - [ ] Add to ARAX AHM agenda
@@ -528,12 +528,28 @@ flagged an issue. If there is an issue, fix it before merging.
 or with particular risk for impacts on ARAX in CI, consider also messaging
 the `#arax-alerts` channel in the `NCATSTranslator` Slack workspace, a message that
 there will be a restart of ARAX in CI, with new code.
-5. Merge the PR, by using the green "Merge pull request" button in GitHub. 
+5. Merge the PR, by using the green "Merge pull request" button in GitHub, and selecting
+"squash and merge". 
 A warning about the GitHub tool for managing merge conflicts:
 it _only modifies the parent branch_, which is fine if you are merging `issue-XXX` into
 `master`, but in situations where you want to merge `master` into an issue branch,
 this can have bad unintended consequences. DO NOT EVER USE THE GITHUB MERGE TOOL FOR
 FIXING CONFLICTS FOR A MERGE FROM MASTER INTO AN ISSUE BRANCH!
+
+## If you can't use a pull request
+If for some reason a pull request is not feasible or if you need to merge
+your feature branch into the `master` branch using the git command-line,
+you can just cd into a local fresh checkout of the `master` branch code and
+run
+```
+git fetch origin
+git merge --squash origin/issue-XXX
+```
+The `--squash` combines all the commits from your `issue-XXX` branch into
+a single commit, which is what you want, for all but the most complex
+branch development efforts (for major efforts with multiple sub-issues,
+it may sometimes be appropriate to omit the `--squash` when you merge
+to `master`).
 
 ## Post-merge testing
 1. Message the `#deployment` channel in the `CATRAX` Slack workspace that you
