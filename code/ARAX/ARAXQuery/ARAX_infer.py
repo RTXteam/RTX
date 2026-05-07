@@ -832,6 +832,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
 
 
         if preferred_subject_curie and not preferred_object_curie:
+            self.response.debug("pinned subject CURIE code branch")
             try:
                 top_predictions = XCRG.predict_top_N_genes(query_chemical=preferred_subject_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
                 top_paths = XCRG.predict_top_M_paths(query_chemical=preferred_subject_curie, query_gene=None, model_type=self.parameters['regulation_type'], N=self.parameters['n_result_curies'], M=self.parameters['n_paths'], threshold=self.parameters['threshold'], kp=self.parameters['kp'], path_len=self.parameters['path_len'], interm_ids=None, interm_names= None, interm_categories=None)
@@ -844,7 +845,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 self.response.warning(f"Could not get predicted genes for chemical {preferred_subject_curie}. Likely the model was not trained with this chemical.")
                 return self.response
             if top_paths is None or len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for chemical {preferred_subject_curie}. Either Plover is not reachable or no paths found")
+                self.response.warning(f"Could not get any predicted paths for chemical {preferred_subject_curie}. Either KP is not reachable or no paths found,")
 
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
@@ -852,6 +853,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             
             self.response, self.kedge_global_iter, self.qedge_global_iter, self.qnode_global_iter, self.option_global_iter = iu.genrete_regulate_subgraphs(self.response, preferred_subject_curie, top_predictions, top_paths, qedge_id, self.parameters['regulation_type'])
         elif not preferred_subject_curie and preferred_object_curie:
+            self.response.debug("pinned object CURIE code branch")
             try:
                 top_predictions = XCRG.predict_top_N_chemicals(query_gene=preferred_object_curie, N=self.parameters['n_result_curies'], threshold=self.parameters['threshold'], model_type=self.parameters['regulation_type'])
                 top_paths = XCRG.predict_top_M_paths(query_chemical=None, query_gene=preferred_object_curie, model_type=self.parameters['regulation_type'], N=self.parameters['n_result_curies'], M=self.parameters['n_paths'], threshold=self.parameters['threshold'], kp=self.parameters['kp'], path_len=self.parameters['path_len'], interm_ids=None, interm_names= None, interm_categories=None)
@@ -864,7 +866,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 self.response.warning(f"Could not get predicted chemicals for gene {preferred_object_curie}. Likely the model was not trained with this gene.")
                 return self.response
             if top_paths is None or len(top_paths) == 0:
-                self.response.warning(f"Could not get any predicted paths for gene {preferred_object_curie}. Either Plover is not reachable or no paths found")
+                self.response.warning(f"Could not get any predicted paths for gene {preferred_object_curie}. Either KP is not reachable or no paths found")
                 return self.response
             iu = InferUtilities()
             qedge_id = self.parameters.get('qedge_id')
