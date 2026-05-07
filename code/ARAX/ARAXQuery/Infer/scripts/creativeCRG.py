@@ -70,22 +70,25 @@ def call_plover(curies: List, respect_predicate_symmetry: bool=False):
         status_code = 500
         endpoint = "/query"
         body = {
-                "edges": {
-                    "e00": {
-                        "subject": "n00",
-                        "object": "n01"
-                    }
+                "message": {
+                        "query_graph": {
+                                "edges": {
+                                        "e00": {
+                                                "subject": "n00",
+                                                "object": "n01"
+                                        }
+                                },
+                                "nodes": {
+                                        "n00": {
+                                                "ids": curies
+                                        },
+                                        "n01": {
+                                                "categories": ["biolink:NamedThing"]
+                                        }
+                                }
+                        },
                 },
-                "nodes": {
-                    "n00": {
-                        "ids": curies
-                    },
-                    "n01": {
-                        "categories": ["biolink:NamedThing"]
-                    }
-                },
-                "include_metadata": True,
-                "respect_predicate_symmetry": respect_predicate_symmetry
+                "submitter": "infores:arax"
             }
         try:
             response = requests.post(plover_url + endpoint, headers={'accept': 'application/json'}, json=body)
@@ -517,7 +520,7 @@ class creativeCRG:
             top_paths = dict()
             status_code, chemical_neighbors = call_plover([query_chemical])
             if status_code != 200:
-                self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 1")
                 return None
             answers = res['gene_id'].tolist()
             self.preferred_curies = self.get_preferred_curies(answers)
@@ -525,11 +528,11 @@ class creativeCRG:
             valid_genes = [item for item in self.preferred_curies.values() if item]
             status_code, gene_neighbors = call_plover(valid_genes)
             if status_code != 200:
-                self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 2")
                 return None
             status_code, query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
             if status_code != 200:
-                self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 3")
                 return None
             
             
@@ -551,10 +554,11 @@ class creativeCRG:
                 else:
 
                     top_paths = dict()
-                    
+
+                    self.response.debug(f"Querying KP at URL: {RTXConfig.plover_url}/query")
                     status_code, gene_neighbors = call_plover([preferred_query_gene])
                     if status_code != 200:
-                        self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                        self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 4")
                         return None
                     answers = res['chemical_id'].tolist()
                     self.preferred_curies = self.get_preferred_curies(answers)
@@ -562,11 +566,11 @@ class creativeCRG:
                     valid_chemicals = [item for item in self.preferred_curies.values() if item]
                     status_code, chemical_neighbors = call_plover(valid_chemicals)
                     if status_code != 200:
-                        self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                        self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 5")
                         return None
                     status_code, query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
                     if status_code != 200:
-                        self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                        self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 6")
                         return None
                     
                     paths = self.get_paths(preferred_query_gene, res['chemical_id'].tolist(), gene_neighbors, chemical_neighbors,  query_tf_neighbors, answer_tf_neigbors,self.tf_list, M)
