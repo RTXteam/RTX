@@ -551,6 +551,19 @@ branch development efforts (for major efforts with multiple sub-issues,
 it may sometimes be appropriate to omit the `--squash` when you merge
 to `master`).
 
+## If you need to bring your feature branch up-to-date with `master`
+For a long-running feature branch (typically complex projects),
+your feature branch (i.e., `issue-XXX` branch) may get well behind
+the head of the `master` branch. To bring your `issue-XXX` branch
+up-to-date with the head of `master`, do the following:
+```
+git checkout issue-XXX
+git fetch origin
+git rebase origin/master
+```
+This avoids introducing additional commit messages from `master` into
+your `issue-XXX` branch.
+
 ## Post-merge testing
 1. Message the `#deployment` channel in the `CATRAX` Slack workspace that you
 are doing work on `arax.ncats.io/beta`; on the `arax.ncats.io` system, inside the `rtx2` container, in
