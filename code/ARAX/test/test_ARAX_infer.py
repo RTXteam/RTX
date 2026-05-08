@@ -95,7 +95,7 @@ def test_xdtd_infer_castleman_disease_2():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    # assert message.auxiliary_graphs (Temporaily disabled until new xDTD database with "top scoring and also having paths" approach is implemented is available)
+    assert message.auxiliary_graphs
     assert len(message.results) > 0
 
 def test_xdtd_infer_rituximab_1():
@@ -119,7 +119,7 @@ def test_xdtd_infer_rituximab_2():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    # assert message.auxiliary_graphs (Temporaily disabled until new xDTD database with "top scoring and also having paths" approach is implemented is available)
+    assert message.auxiliary_graphs
     assert len(message.results) > 0
 
 
@@ -261,7 +261,7 @@ def test_xdtd_with_qg3():
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
-    # assert message.auxiliary_graphs (Temporaily disabled until new xDTD database with "top scoring and also having paths" approach is implemented is available)
+    assert message.auxiliary_graphs
     assert len(message.results) > 0
 
 
