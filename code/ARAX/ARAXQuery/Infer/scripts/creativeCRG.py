@@ -74,7 +74,7 @@ def query_kp(curies: List, respect_predicate_symmetry: bool=False):
         # CURIEs are split into fixed-size batches; each batch is sent in a
         # single call to TRAPIQuerier and the resulting knowledge graphs
         # are merged. If any batch fails, abort and return an empty kg.
-        BATCH_SIZE = 100
+        BATCH_SIZE = 50
 
         curies = list(curies)
         merged_kg: Dict = {'edges': {}, 'nodes': {}}
@@ -574,7 +574,10 @@ class creativeCRG:
             top_paths = dict()
             status_code, chemical_neighbors = query_kp([query_chemical])
             if status_code != 200:
-                self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 1")
+                self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 1")
+                return None
+            if "e00" not in chemical_neighbors.get("edges", {}):
+                self.response.warning(f"KP returned no edges for chemical neighbors of {query_chemical}; cannot compute creative-mode paths")
                 return None
             answers = res['gene_id'].tolist()
             self.preferred_curies = self.get_preferred_curies(answers)
@@ -582,11 +585,14 @@ class creativeCRG:
             valid_genes = [item for item in self.preferred_curies.values() if item]
             status_code, gene_neighbors = query_kp(valid_genes)
             if status_code != 200:
-                self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 2")
+                self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 2")
+                return None
+            if "e00" not in gene_neighbors.get("edges", {}):
+                self.response.warning(f"KP returned no edges for gene neighbors; cannot compute creative-mode paths")
                 return None
             status_code, query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
             if status_code != 200:
-                self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 3")
+                self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 3")
                 return None
             
             
@@ -612,7 +618,10 @@ class creativeCRG:
                     self.response.debug(f"Querying KP for CURIE {preferred_query_gene}")
                     status_code, gene_neighbors = query_kp([preferred_query_gene])
                     if status_code != 200:
-                        self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 4")
+                        self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 4")
+                        return None
+                    if "e00" not in gene_neighbors.get("edges", {}):
+                        self.response.warning(f"KP returned no edges for gene neighbors of {preferred_query_gene}; cannot compute creative-mode paths")
                         return None
                     answers = res['chemical_id'].tolist()
                     self.preferred_curies = self.get_preferred_curies(answers)
@@ -621,11 +630,14 @@ class creativeCRG:
                     self.response.debug(f"Querying KP for {len(valid_chemicals)} CURIEs")
                     status_code, chemical_neighbors = query_kp(valid_chemicals)
                     if status_code != 200:
-                        self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 5")
+                        self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 5")
+                        return None
+                    if "e00" not in chemical_neighbors.get("edges", {}):
+                        self.response.warning(f"KP returned no edges for chemical neighbors; cannot compute creative-mode paths")
                         return None
                     status_code, query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
                     if status_code != 200:
-                        self.response.warning(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 6")
+                        self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 6")
                         return None
                     
                     paths = self.get_paths(preferred_query_gene, res['chemical_id'].tolist(), gene_neighbors, chemical_neighbors,  query_tf_neighbors, answer_tf_neigbors,self.tf_list, M)
