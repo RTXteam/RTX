@@ -45,7 +45,8 @@ Further, you will need:
 - ssh key installed on GitHub so you can clone and commit over `ssh`
 
 If you are going to be deploying a new (or updated) database to ITRB CI, you will need
-ssh access to the ITRB sftp staging server: `sftp team-expander-USERNAME@sftp.transltr.io`
+ssh access to the ITRB sftp staging server: `sftp team-expander-USERNAME@sftp.transltr.io` and
+to the CATRAX team's CI/CD server, `ubuntu@cicd.rtx.ai`.
 
 It's also helpful to have basic network troubleshooting utilities like
 `netstat`, `nc`, etc., installed.
