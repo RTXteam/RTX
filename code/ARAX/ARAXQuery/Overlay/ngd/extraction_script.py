@@ -55,9 +55,14 @@ CAMEL_RE = re.compile(r'[a-z]{3,}[A-Z]{2,}')
 SHORT_GENE_RE = re.compile(r'^[a-zA-Z]{1,3}\d{1,4}$')
 SOCIAL_RE = re.compile(r'(twitter|instagram|challenge|mask|pets|ivory|foam|hashtag)', re.IGNORECASE)
 
+# Matches a single trailing parenthesized metadata block. The caller strips
+# multiple blocks by re-applying this in a bounded loop. The outer `+` was
+# removed because both branches could match the same content under
+# IGNORECASE, which produced exponential backtracking on inputs with many
+# repeating `(cas:)(...)` style blocks (CodeQL js/redos).
 TRAILING_META_RE = re.compile(
-    r'(?:\s*\((?:[A-Za-z][A-Za-z0-9 /._-]*:\s*[^()]*'
-    r'|(?:PubChem\s*CID|CAS|CID|InChIKey|SMILES|DrugBank|ChEBI|KEGG|HMDB)[^()]*)\))+\s*$',
+    r'\s*\((?:[A-Za-z][A-Za-z0-9 /._-]*:\s*[^()]*'
+    r'|(?:PubChem\s*CID|CAS|CID|InChIKey|SMILES|DrugBank|ChEBI|KEGG|HMDB)[^()]*)\)\s*$',
     re.IGNORECASE,
 )
 
@@ -116,7 +121,7 @@ def clean_name(s):
 
     s = INLINE_META_RE.sub('', s)
 
-    for _ in range(2):
+    for _ in range(10):
         new_s = TRAILING_META_RE.sub('', s).rstrip()
         if new_s == s:
             break
