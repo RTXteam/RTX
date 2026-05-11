@@ -28,6 +28,9 @@ RUN chmod -R 700 /home/rt/.ssh
 # clone RTX repo
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt:rt /mnt/data/orangeboard/production
+# Temporary: clone the issue-2730 branch so CI exercises the Tier0/NodeNorm
+# code under test in this PR. Revert back to a plain `git clone` (default
+# branch) after issue-2730 is merged into master.
 RUN su - rt -c "cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git"
 RUN chown -R rt:rt /mnt/data/orangeboard/production/RTX
 

@@ -14,7 +14,7 @@ import copy
 import time
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from Path_Finder.utility import get_curie_ngd_path, get_kg2c_db_path
+from Path_Finder.utility import get_curie_ngd_path, get_kg2c_db_path, get_gandalf_mmap_path
 from Expand.trapi_query_cacher import KPQueryCacher
 from ARAX_messenger import ARAXMessenger
 
@@ -364,7 +364,7 @@ class ARAXConnect:
 
         pathfinder = Pathfinder(
             "MLRepo",
-            RTXConfiguration().plover_url,
+            get_gandalf_mmap_path(),
             get_curie_ngd_path(),
             get_kg2c_db_path(),
             blocked_curies,
@@ -384,7 +384,7 @@ class ARAXConnect:
                 max_hops_to_explore=self.parameters['max_path_length'],
                 limit=max_pathfinder_paths,
                 prune_top_k=200,
-                degree_threshold=10000000,
+                degree_threshold=20000,
                 category_constraints=descendants,
             )
         except Exception as e:

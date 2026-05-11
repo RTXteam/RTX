@@ -10,7 +10,6 @@ from ARAX_response import ARAXResponse
 from collections import Counter
 import traceback
 
-from ARAX_decorator import ARAXDecorator
 from Overlay.fisher_exact_test import ComputeFTEST
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -33,7 +32,6 @@ class ARAXOverlay:
             'overlay_exposures_data'
         }
         self.report_stats = True
-        self.decorator = ARAXDecorator()
 
         # parameter descriptions
         self.default_value_info = {
@@ -613,7 +611,11 @@ This information is included in edge attributes with the name 'icees_p-value'.
         from Overlay.compute_ngd import ComputeNGD
         NGD = ComputeNGD(self.response, self.message, parameters)
         response = NGD.compute_ngd()
-        self.decorator.decorate_edges(response, kind="NGD")
+        # NGD edges already carry biolink:publications natively (the PMID
+        # intersection is added in compute_ngd.py). The previous call to
+        # decorator.decorate_edges(kind="NGD") was borrowing supporting_text
+        # from any other Tier0 edge between the same node pair; that data
+        # is no longer in the slim tier0-info-for-overlay sqlite (per #2731).
         return response
 
     def __overlay_clinical_info(self, describe=False):  # TODO: put the default paramas and all that other goodness in

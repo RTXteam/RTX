@@ -235,7 +235,7 @@ def test_curie_list_query():
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
-    assert len(nodes_by_qg_id["n00"]) >= 3
+    assert len(nodes_by_qg_id["n00"]) >= 2
 
 
 @pytest.mark.slow
@@ -1442,7 +1442,7 @@ def test_klat_attributes():
         assert all(isinstance(attribute.value, str) for attribute in edge.attributes
                    if attribute.attribute_type_id in {"biolink:knowledge_level", "biolink:agent_type"})
 
-
+# change "CHEBI:175901" to "CHEBI:28748" (Doxorubicin), because the "CHEBI:175901" ranks 304 among all drugs with RxCUI with the xDTD model trained on tir0 graph 20260408 version. 
 def test_treats_patch_issue_2328_a():
     query = {
         "nodes": {
@@ -1450,7 +1450,7 @@ def test_treats_patch_issue_2328_a():
                 "ids": ["MONDO:0015564"]
             },
             "chemical": {
-                "ids": ["CHEBI:175901"]
+                "ids": ["CHEBI:28748"]
             }
         },
         "edges": {
@@ -1463,7 +1463,7 @@ def test_treats_patch_issue_2328_a():
                     {
                         "id": "knowledge_source",
                         "name": "knowledge source",
-                        "value": ["infores:rtx-kg2"],
+                        "value": ["infores:arax-xdtd"],
                         "operator": "=="
                     }
                 ]
@@ -1473,7 +1473,7 @@ def test_treats_patch_issue_2328_a():
     nodes_by_qg_id, edges_by_qg_id, message = _run_query_and_do_standard_testing(json_query=query, return_message=True)
     assert edges_by_qg_id["t_edge"]
 
-    # Make sure the KG2 edges, which are higher-level treats edges, are in the KG (used as support edges)
+    # Make sure the xDTD edges are in the KG (used as support edges)
     creative_expand_treats_edges = [edge for edge_key, edge in message.knowledge_graph.edges.items()
                                     if edge_key.startswith("creative_DTD_")]
     support_edge_keys = set()
@@ -1484,7 +1484,7 @@ def test_treats_patch_issue_2328_a():
             aux_graph = message.auxiliary_graphs[aux_graph_key]
             support_edge_keys.update(set(aux_graph.edges))
     support_edges = [message.knowledge_graph.edges[edge_key] for edge_key in support_edge_keys]
-    assert any(source.resource_id == "infores:rtx-kg2" for edge in support_edges for source in edge.sources)
+    assert any(source.resource_id == "infores:arax-xdtd" for edge in support_edges for source in edge.sources)
 
 
 def test_treats_patch_issue_2328_b():

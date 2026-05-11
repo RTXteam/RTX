@@ -46,7 +46,7 @@ def load():
 
 def get_nodes_like(word,requested_limit):
 
-    debug = True
+    debug = False
 
     t0 = timeit.default_timer()
     requested_limit = int(requested_limit)

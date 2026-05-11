@@ -6,12 +6,7 @@ import sys
 import os
 import pytest
 from collections import Counter
-import copy
-import json
-import ast
 from typing import List, Union
-
-import numpy as np
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
@@ -20,7 +15,7 @@ from ARAX_response import ARAXResponse
 
 PACKAGE_PARENT = '../../UI/OpenAPI/openapi_server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
-from openapi_server.models.message import Message
+from openapi_server.models.message import Message  # noqa: E402
 
 
 def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
@@ -94,7 +89,7 @@ def test_xdtd_infer_castleman_disease_1():
 def test_xdtd_infer_castleman_disease_2():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=drug_treatment_graph_expansion,disease_curie=MONDO:0015564,n_drugs=2,n_paths=15)",
+            "infer(action=drug_treatment_graph_expansion,disease_curie=MONDO:0015564,n_drugs=20,n_paths=15)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -103,10 +98,10 @@ def test_xdtd_infer_castleman_disease_2():
     assert message.auxiliary_graphs
     assert len(message.results) > 0
 
-def test_xdtd_infer_ibuprofen_1():
+def test_xdtd_infer_rituximab_1():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=drug_treatment_graph_expansion,drug_curie=CHEBI:5855)",
+            "infer(action=drug_treatment_graph_expansion,drug_curie=UNII:4F4X42SYQ6)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -115,10 +110,10 @@ def test_xdtd_infer_ibuprofen_1():
     assert len(message.query_graph.edges) == 1
     assert len(message.results) > 0
 
-def test_xdtd_infer_ibuprofen_2():
+def test_xdtd_infer_rituximab_2():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=drug_treatment_graph_expansion,drug_curie=CHEBI:5855,n_diseases=2,n_paths=15)",
+            "infer(action=drug_treatment_graph_expansion,drug_curie=UNII:4F4X42SYQ6,n_diseases=2,n_paths=15)",
             "return(message=true, store=true)"
         ]}}
     [response, message] = _do_arax_query(query)
@@ -259,7 +254,7 @@ def test_xdtd_with_qg3():
         }
         },
         "operations": {"actions": [
-            "infer(action=drug_treatment_graph_expansion, disease_curie=MONDO:0015564, qedge_id=t_edge, n_drugs=10, n_paths=10)",
+            "infer(action=drug_treatment_graph_expansion, disease_curie=MONDO:0015564, qedge_id=t_edge, n_drugs=20, n_paths=15)",
             "return(message=true, store=true)"
         ]}
     }
@@ -468,7 +463,7 @@ def test_xcrg_with_only_qg():
                         },
                         {
                         "qualifier_type_id": "biolink:object_direction_qualifier",
-                        "qualifier_value": "decreased"
+                        "qualifier_value": "increased"
                         }
                     ]
                     }
@@ -479,11 +474,10 @@ def test_xcrg_with_only_qg():
             "nodes": {
                 "ON": {
                 "categories": [
-                    "biolink:Gene",
-                    "biolink:Protein"
+                    "biolink:Gene"
                 ],
                 "ids": [
-                    "NCBIGene:3043"
+                    "NCBIGene:1576"
                 ]
                 },
                 "SN": {

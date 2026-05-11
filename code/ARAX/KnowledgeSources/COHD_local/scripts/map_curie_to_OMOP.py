@@ -89,7 +89,13 @@ class MapCurieToOMOP:
                 for curie in self.kpdata_dict:
                     if curie_type in self.kpdata_dict[curie]['type']:
                         res = self.synonymizer.get_normalizer_results(curie)
-                        synonym_list = list(set([row['identifier'] for row in res[curie]['equivalent_identifiers']]))
+                        # get_normalizer_results returns synonym members under `nodes`.
+                        # Each item has an `identifier`.
+                        # `equivalent_identifiers` is a raw Node Normalizer field and not used here.
+                        if res.get(curie):
+                            synonym_list = list(set([row['identifier'] for row in res[curie]['nodes']]))
+                        else:
+                            synonym_list = []
                         self.synonyms_dict[curie] = {'name': self.kpdata_dict[curie]['name'], 'type': self.kpdata_dict[curie]['type'], 'synonyms': synonym_list}
 
         else:
@@ -105,7 +111,11 @@ class MapCurieToOMOP:
             for curie in self.kpdata_dict:
                 if len(self.kpdata_dict[curie]['type'].intersection(set(curie_type))) > 0:
                     res = self.synonymizer.get_normalizer_results(curie)
-                    synonym_list = list(set([row['identifier'] for row in res[curie]['equivalent_identifiers']]))
+                    # Same reason as above. Use `nodes` from get_normalizer_results.
+                    if res.get(curie):
+                        synonym_list = list(set([row['identifier'] for row in res[curie]['nodes']]))
+                    else:
+                        synonym_list = []
                     self.synonyms_dict[curie] = {'name': self.kpdata_dict[curie]['name'], 'type': self.kpdata_dict[curie]['type'], 'synonyms': synonym_list}
 
         self.get_synonyms_done = True

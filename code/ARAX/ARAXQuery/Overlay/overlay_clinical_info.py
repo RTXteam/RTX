@@ -269,13 +269,12 @@ class OverlayClinicalInfo:
         curies_to_names = dict()  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         # identify the nodes that we should be adding virtual edges for
         for key, node in self.message.knowledge_graph.nodes.items():
-            if hasattr(node, 'qnode_keys'):
-                if parameters['subject_qnode_key'] in node.qnode_keys:
-                    subject_curies_to_decorate.add(key)
-                    curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
-                if parameters['object_qnode_key'] in node.qnode_keys:
-                    object_curies_to_decorate.add(key)
-                    curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+            if parameters['subject_qnode_key'] in (getattr(node, 'qnode_keys', None) or []):
+                subject_curies_to_decorate.add(key)
+                curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+            if parameters['object_qnode_key'] in (getattr(node, 'qnode_keys', None) or []):
+                object_curies_to_decorate.add(key)
+                curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         added_flag = False  # check to see if any edges where added
         # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
 

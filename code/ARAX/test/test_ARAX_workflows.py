@@ -160,7 +160,7 @@ def test_example_3():
 def test_FET_example_1():
     # This a FET 3-hop example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
     query = {"operations": {"actions": [
-        "add_qnode(ids=MONDO:0005851, key=n00, categories=biolink:Disease)",
+        "add_qnode(ids=MONDO:0005233, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Gene, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "expand(edge_key=e00, kp=infores:retriever, prune_threshold=5)",

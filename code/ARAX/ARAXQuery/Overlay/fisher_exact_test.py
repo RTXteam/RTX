@@ -2,6 +2,7 @@
 # This class will perform fisher's exact test to evalutate the significance of connection between
 # a list of source nodes with certain qnode_id in KG and each of the target nodes with specified type.
 import asyncio
+import json
 import os
 import re
 import scipy.stats as stats
@@ -193,7 +194,7 @@ class ComputeFTEST:
                 edge_attribute_list = [x.value for x in edge_attributes if x.attribute_type_id == 'EDAM-DATA:1772'] if edge_attributes else []
                 if len(edge_attribute_list) == 0:
                     if rel_edge_key:
-                        if rel_edge_key in edge.qedge_keys:
+                        if rel_edge_key in (getattr(edge, "qedge_keys", None) or []):
                             if subject_qnode_key in nodes_info[kg.edges[edge_key].subject]['qnode_keys']:
                                 # edge_expand_kp.extend(temp_kp)
                                 rel_edge_type.update([kg.edges[edge_key].predicate])
@@ -258,7 +259,7 @@ class ComputeFTEST:
                     self.response.info(f"No category is specified for the subject node with qnode key {subject_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
                     subject_node_category = ['biolink:NamedThing']
                 else:
-                    subject_node_category = normalized_subject_node['preferred_category']
+                    subject_node_category = [normalized_subject_node['preferred_category']]
                     self.response.info(f"No category is specified for the subject node with qnode key {subject_qnode_key} in Query Graph. We will automatically assign {subject_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
         ## check if the object node type is None, if so, automatically set it to biolink:NamedThing
@@ -273,7 +274,7 @@ class ComputeFTEST:
                 self.response.info(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph and no preferred category found for this query node. We will automatically assign it to 'biolink:NamedThing', otherwise please specify its node type.")
                 object_node_category = ['biolink:NamedThing'] # for issue 1817
             else:                    
-                object_node_category = normalized_object_node['preferred_category']
+                object_node_category = [normalized_object_node['preferred_category']]
                 self.response.info(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
         ## always set 'infores:rtx-kg2' to kp because we only have statistics for kg2 to calcualte fisher exact test
@@ -448,32 +449,36 @@ class ComputeFTEST:
         source_type = ComputeFTEST.convert_string_biolinkformat(source_type)
         adjacent_type = ComputeFTEST.convert_string_to_snake_case(adjacent_type.replace('biolink:',''))
         adjacent_type = ComputeFTEST.convert_string_biolinkformat(adjacent_type)
-
+ 
         if rel_type is None:
             normalized_nodes = self.nodesynonymizer.get_canonical_curies(node_curie)
+            if not normalized_nodes:
+                self.response.warning(f"NodeSynonymizer returned no canonical curies for {node_curie} in FET.")
+                failed = list(node_curie) if isinstance(node_curie, list) else [node_curie]
+                return (dict(), failed)
             failure_nodes = list()
-            mapping = {node:normalized_nodes[node]['preferred_curie'] for node in normalized_nodes if normalized_nodes[node] is not None}
+            mapping = {node: normalized_nodes[node]['preferred_curie']
+                       for node in normalized_nodes
+                       if normalized_nodes[node] is not None}
             failure_nodes += list(normalized_nodes.keys() - mapping.keys())
-            query_nodes = list(set(mapping.values()))
-            query_nodes = [curie_id.replace("'", "''") if "'" in curie_id else curie_id for curie_id in query_nodes]
-            # special_curie_ids = [curie_id for curie_id in query_nodes if "'" in curie_id]
 
+            query_nodes = list(set(mapping.values()))
             # Get connected to kg2c sqlite
             connection = sqlite3.connect(self.sqlite_file_path)
             cursor = connection.cursor()
-
             # Extract the neighbor count data
-            node_keys_str = "','".join(query_nodes)  # SQL wants ('node1', 'node2') format for string lists
-            sql_query = f"SELECT N.id, N.neighbor_counts " \
-                        f"FROM neighbors AS N " \
-                        f"WHERE N.id IN ('{node_keys_str}')"
-            cursor.execute(sql_query)
+            placeholders = ",".join("?" for _ in query_nodes)
+            sql_query = (
+                "SELECT N.id, N.neighbor_counts "
+                "FROM neighbors AS N "
+                f"WHERE N.id IN ({placeholders})"
+            )
+            cursor.execute(sql_query, query_nodes)
             rows = cursor.fetchall()
-            rows = [curie_id.replace("\'","'").replace("''", "'") if "'" in curie_id else curie_id for curie_id in rows]
             connection.close()
 
             # Load the counts into a dictionary
-            neighbor_counts_dict = {row[0]:eval(row[1]) for row in rows}
+            neighbor_counts_dict = {row[0]: json.loads(row[1]) for row in rows}
 
             res_dict = {node:neighbor_counts_dict[mapping[node]].get(adjacent_type) for node in mapping if mapping[node] in neighbor_counts_dict and neighbor_counts_dict[mapping[node]].get(adjacent_type) is not None}
             failure_nodes += list(mapping.keys() - res_dict.keys())
@@ -482,11 +487,13 @@ class ComputeFTEST:
                 return (res_dict, failure_nodes)
             else:
                 return (res_dict, [])
-
         else:
-            infores_key = "infores:rtx-kg2"
+            infores_key = "infores:gandalf"
             from ARAX.ARAXQuery.ARAX_expander import ARAXExpander
             expander = ARAXExpander()
+            fet_e00 = {'subject': 'FET_n00', 'object': 'FET_n01'}
+            if rel_type is not None:
+                fet_e00['predicates'] = [rel_type]
             query_graph_builtin = {'nodes':
                                    {'FET_n00':
                                     {'ids': node_curie,
@@ -495,20 +502,15 @@ class ComputeFTEST:
                                     {'categories': [adjacent_type],
                                      'is_set': False}},
                                    'edges':
-                                   {'FET_e00':
-                                    {'subject': 'FET_n00',
-                                     'object': 'FET_n01',
-                                     'predicates': [rel_type]}
-                                    }}
+                                   {'FET_e00': fet_e00}}
             query_graph = QueryGraph.from_dict(query_graph_builtin)
             from ARAX.ARAXQuery.Expand.kp_selector import KPSelector
-            kp_selector = KPSelector(kg2_mode=True,
-                                     log=self.response)
-            kp_selector.kp_urls = {infores_key: RTX_CONFIG.plover_url}
+            kp_selector = KPSelector(kg2_mode=False, log=self.response)
+            self.response.debug(f"FET querying {infores_key} at URL: "
+                                f"{kp_selector.kp_urls.get(infores_key)}")
 
             try:
 
-                # your async call wrapped inside an async def
                 async def run_expand():
                     return await expander.expand_edge_async(
                         query_graph,
@@ -521,11 +523,10 @@ class ComputeFTEST:
                         be_creative_treats=False
                     )
 
-                # then run it from your sync code
                 answer_kg, _, log = asyncio.run(run_expand())
-                
+
                 if log.status != 'OK':
-                    self.response.error(f"Fail to query adjacent nodes from infores:rtx-kg2 for {node_curie}")
+                    self.response.error(f"Failed to query adjacent nodes from {infores_key} for {node_curie}")
                     return res
 
                 res_dict = dict()
@@ -535,7 +536,7 @@ class ComputeFTEST:
                 for node in node_iter:
                     tmplist = set(edge_id for edge_id, edge in answer_kg.edges_by_qg_id.get('FET_e00', {}).items() if edge.subject == node or edge.object == node)
                     if len(tmplist) == 0:
-                        self.response.warning(f"Failed to query adjacent nodes from {kp} for {node} in FET, probably because expander ignores node type. For more details, please see RTXteam/RTX issue 897.")
+                        self.response.warning(f"Failed to query adjacent nodes from {infores_key} for {node} in FET.")
                         failure_nodes.append(node)
                         check_empty = True
                         continue
@@ -548,7 +549,7 @@ class ComputeFTEST:
                 tb = traceback.format_exc()
                 error_type, error, _ = sys.exc_info()
                 self.response.error(tb, error_code=error_type.__name__)
-                self.response.error(f"Something went wrong with querying adjacent nodes from {kp} for {node_curie}")
+                self.response.error(f"Something went wrong with querying adjacent nodes from {infores_key} for {node_curie}")
                 return res
 
 

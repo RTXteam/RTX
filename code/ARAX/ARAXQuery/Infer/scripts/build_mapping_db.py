@@ -1,318 +1,358 @@
 """
-This script is used to build a database for mapping the nodes and edges in the predicted paths generated from KGML-xDTD model to the original KG2 graph.
+xDTD (Explainable Drug-Treat-Disease) Node/Edge Mapping Database Interface
+================================
+
+SQLite interface for mapping nodes and edges from Translator KG JSONL files
+(nodes.jsonl, edges.jsonl) used by the xDTD prediction model.
+
+Tables:
+  NODE_MAPPING_TABLE:
+    id, name, category (JSON list), equivalent_identifiers, description,
+    synonym, xref, chembl_natural_product, chembl_availability_type, chembl_black_box_warning
+  EDGE_MAPPING_TABLE:
+    subject, predicate, object, id, category, qualifier, publications, sources,
+    resource_id (pipe-delimited), resource_role (pipe-delimited), knowledge_level,
+    agent_type, stage_qualifier, original_subject, original_object
+
 Author: Chunyu Ma
 """
 
-import os, sys
-import pandas as pd
-import numpy as np
+import os
+import sys
+import json
 import argparse
-from tqdm import tqdm
-import sqlite3
-import csv
-csv.field_size_limit(sys.maxsize)
 import collections
+import sqlite3
+from typing import Optional, List
+from tqdm import tqdm
 
-class xDTDMappingDB():
-    
-    # Constructor
-    def __init__(self, kgml_xdtd_data_path=None, tsv_path=None, database_name='xdtd_mapping.db', outdir=None, mode='build', db_loc=None):
+
+# Named tuples returned by get_node_info / get_edge_info
+NodeInfo = collections.namedtuple('NodeInfo', [
+    'id', 'name', 'category', 'equivalent_identifiers', 'description',
+    'synonym', 'xref', 'chembl_natural_product', 'chembl_availability_type',
+    'chembl_black_box_warning'
+])
+
+EdgeInfo = collections.namedtuple('EdgeInfo', [
+    'subject', 'predicate', 'object', 'id', 'category', 'qualifier',
+    'publications', 'sources', 'resource_id', 'resource_role',
+    'knowledge_level', 'agent_type', 'stage_qualifier',
+    'original_subject', 'original_object'
+])
+
+
+class xDTDMappingDB:
+    """SQLite interface for the xDTD node/edge mapping database.
+
+    Attributes:
+        database_name: Filename of the SQLite database.
+        conn: Active sqlite3.Connection (set after construction).
+    """
+
+    def __init__(self, database_name: str = 'ExplainableDTD.db', outdir: Optional[str] = None,
+                 mode: str = 'build', db_loc: Optional[str] = None):
         """
         Args:
-            kgml_xdtd_data_path (str): path to a folder containing data to generate KGML-xDTD model
-            tsv_path (str): path to a folder containing KG2 TSV files
-            database_name (str, optional): database name (Defaults: xdtd_mapping.db).
-            outdir (str, optional): path to a folder where the database is generated (Defaults: ./).
-            mode (str, optional): mode to build the database (Defaults: build).
+            database_name: Database filename (default: ExplainableDTD.db).
+            outdir: Output directory for build mode (default: ./).
+            mode: 'build' to create from scratch, 'run' to open existing.
+            db_loc: Directory of an existing database (required for mode='run').
         """
+        self.database_name = database_name
 
         if mode == 'build':
-            if not os.path.exists(kgml_xdtd_data_path):
-                print(f"Error: The given path '{kgml_xdtd_data_path}' doesn't exist.", flush=True)
-                raise
-            else:
-                self.kgml_xdtd_data_path = kgml_xdtd_data_path
-            if not os.path.exists(tsv_path):
-                print(f"Error: The given path '{tsv_path}' doesn't exist.", flush=True)
-                raise
-            else:
-                self.tsv_path = tsv_path
-
-            self.database_name = database_name
-            
-            # Create output directory if it doesn't exist
-            if outdir is None:
-                self.database_name = './'
-            else:
-                if not os.path.exists(outdir):
-                    os.makedirs(outdir)
-
-            # Create a database connection
+            outdir = outdir or './'
+            os.makedirs(outdir, exist_ok=True)
             db_path = os.path.join(outdir, self.database_name)
-            self.success_con = self._connect(db_path)
         elif mode == 'run':
             if db_loc is None:
-                print(f"Error: The given path '{db_loc}' doesn't exist.", flush=True)
-                raise
-            else:
-                db_path = os.path.join(db_loc, database_name)
-                self.success_con = self._connect(db_path)
-            
-        
+                raise ValueError("db_loc is required for mode='run'")
+            db_path = os.path.join(db_loc, database_name)
+        else:
+            raise ValueError(f"Unknown mode '{mode}'. Use 'build' or 'run'.")
+
+        self.conn = sqlite3.connect(db_path)
+        print(f"INFO: Connected to database: {db_path}", flush=True)
+
     def __del__(self):
-        self._disconnect()
+        if hasattr(self, 'conn') and self.conn:
+            try:
+                self.conn.commit()
+                self.conn.close()
+                print("INFO: Disconnected from database", flush=True)
+            except Exception:
+                pass
 
-    # Create and store a database connection
-    def _connect(self, db_path):
+    # ──────────────────────────────────────────────────────────────────────
+    #  Build mode: table creation, population, and indexing
+    # ──────────────────────────────────────────────────────────────────────
 
-        if os.path.exists(db_path):
-            self.connection = sqlite3.connect(db_path)
-            print("Connecting to database", flush=True)
-            return True
-        else:
-            self.connection = sqlite3.connect(db_path)
-            print("INFO: Connecting to database", flush=True)
-            return True
-        
-    # Destroy the database connection
-    def _disconnect(self):
-
-        if self.success_con is True:
-            self.connection.commit()
-            self.connection.close()
-            print("Disconnecting from database", flush=True)
-            self.success_con = False
-        else:
-            print("No database was connected! So skip disconnecting from database.", flush=True)
-            return
-        
-    # Delete and create the tables
     def create_tables(self):
+        """Drop and recreate the NODE_MAPPING_TABLE and EDGE_MAPPING_TABLE."""
+        print(f"INFO: Creating tables in {self.database_name}", flush=True)
 
-        if self.success_con is True:
-            print(f"Creating database {self.database_name}", flush=True)
-            self.connection.execute(f"DROP TABLE IF EXISTS NODE_MAPPING_TABLE")
-            self.connection.execute(f"CREATE TABLE NODE_MAPPING_TABLE( id VARCHAR(255), name VARCHAR, category VARCHAR(255), iri VARCHAR(255), description VARCHAR, all_categories VARCHAR, all_names VARCHAR, equivalent_curies VARCHAR, publications VARCHAR)")
-            self.connection.execute(f"DROP TABLE IF EXISTS EDGE_MAPPING_TABLE")
-            self.connection.execute(f"CREATE TABLE EDGE_MAPPING_TABLE( triple VARCHAR(255), subject VARCHAR(255), object VARCHAR(255), predicate VARCHAR(255), primary_knowledge_source VARCHAR, publications VARCHAR, publications_info VARCHAR, kg2_ids VARCHAR(255))")
-            print(f"Creating tables is completed", flush=True)
-            
-    ## Populate the tables
-    def populate_table(self):
+        self.conn.execute("DROP TABLE IF EXISTS NODE_MAPPING_TABLE")
+        self.conn.execute("""
+            CREATE TABLE NODE_MAPPING_TABLE (
+                id TEXT NOT NULL,
+                name TEXT,
+                category TEXT,
+                equivalent_identifiers TEXT,
+                description TEXT,
+                synonym TEXT,
+                xref TEXT,
+                chembl_natural_product TEXT,
+                chembl_availability_type TEXT,
+                chembl_black_box_warning TEXT
+            )
+        """)
 
-        if self.success_con is True:
-            
-            ## load kgml_xdtd data
-            print("Loading KGML-xDTD data...", flush=True)
-            kgml_xdtd_graph_nodes = pd.read_csv(os.path.join(self.kgml_xdtd_data_path, 'entity2freq.txt'), sep='\t', header=None).drop(columns=[1])
-            # kgml_xdtd_graph_edges = pd.read_csv(os.path.join(self.kgml_xdtd_data_path, 'graph_edges.txt'), sep='\t', header=0)
-            # kgml_xdtd_graph_edges_dict = {(row[0],row[2],row[1]):1 for row in kgml_xdtd_graph_edges.to_numpy()}
-            # kgml_xdtd_graph_edges_dict = {}
-            # for row in tqdm(kgml_xdtd_graph_edges.to_numpy()):
-            #     if row[2] == 'biolink:entity_regulates_entity':
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], row[2], row[1]):1})
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], 'biolink:regulates', row[1]):1})
-            #     if row[2] == 'biolink:entity_positively_regulates_entity':
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], row[2], row[1]):1})
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], 'biolink:positively_regulates', row[1]):1})
-            #     if row[2] == 'biolink:entity_negatively_regulates_entity':
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], row[2], row[1]):1})
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], 'biolink:negatively_regulates', row[1]):1})
-            #     if row[2] == 'biolink:related_to':
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], row[2], row[1]):1})
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], 'biolink:has_count', row[1]):1})
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], 'biolink:has_quantitative_value', row[1]):1})
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], 'biolink:has_unit', row[1]):1})
-            #         kgml_xdtd_graph_edges_dict.update({(row[0], 'biolink:quantifier_qualifier', row[1]):1})
-            
-            ## load kg2 tsv data
-            # Read node header file
-            print("Reading node header file...", flush=True)
-            header_file = os.path.join(self.tsv_path, 'nodes_c_header.tsv')
-            with open(header_file, 'r', encoding='utf-8') as header_tsv:
-                header_reader = csv.reader(header_tsv, delimiter='\t')
-                headers = next(header_reader)
-                headers = [x.replace(':string[]','').replace(':ID','') for x in headers]
-                
-            # Read node file
-            print("Reading node file...", flush=True)
-            data_file = os.path.join(self.tsv_path, 'nodes_c.tsv')
-            with open(data_file, 'r', encoding='utf-8') as data_tsv:
-                data_reader = csv.reader(data_tsv, delimiter='\t')
-                tsv_node_df = pd.DataFrame([row for row in data_reader])
-                tsv_node_df.columns = headers
-                tsv_node_df = tsv_node_df[['id','name','category','iri','description','all_categories','all_names','equivalent_curies','publications']]
-                tsv_node_df = tsv_node_df.loc[tsv_node_df['id'].isin(list(kgml_xdtd_graph_nodes[0])),:].reset_index(drop=True)
-    
-            # Read edge header file
-            print("Reading edge header file...", flush=True)
-            header_file = os.path.join(self.tsv_path, 'edges_c_header.tsv')
-            with open(header_file, 'r', encoding='utf-8') as header_tsv:
-                header_reader = csv.reader(header_tsv, delimiter='\t')
-                headers = next(header_reader)
-                headers = [x.replace(':string[]','').replace(':ID','') for x in headers]
-                
-            # Read edge file
-            print("Reading edge file...", flush=True)
-            data_file = os.path.join(self.tsv_path, 'edges_c.tsv')
-            with open(data_file, 'r', encoding='utf-8') as data_tsv:
-                data_reader = csv.reader(data_tsv, delimiter='\t')
-                tsv_edge_df = pd.DataFrame([row for row in data_reader])
-                tsv_edge_df.columns = headers
-                ## filter out the 'domain_range_exclusion==True' edge
-                tsv_edge_df = tsv_edge_df.loc[tsv_edge_df['domain_range_exclusion'] != 'True',:].reset_index(drop=True)
-                tsv_edge_df = tsv_edge_df[['subject','object','predicate','primary_knowledge_source','publications','publications_info','kg2_ids']]
-                # Split 'knowledge_sources' on 'ǂ' and then explode it
-                # tsv_edge_df['knowledge_source'] = tsv_edge_df['knowledge_source'].str.split('ǂ')
-                # tsv_edge_df = tsv_edge_df.explode('knowledge_source')
-    
-            ## Insert node information into database
-            print("Inserting into NODE_MAPPING_TABLE...", flush=True)
-            for row in tqdm(tsv_node_df.to_numpy()):
-                ## insert into database
-                insert_command = f"INSERT INTO NODE_MAPPING_TABLE values (?,?,?,?,?,?,?,?,?)"    
-                self.connection.execute(insert_command, tuple(row))
-            print(f"Inserting into NODE_MAPPING_TABLE is completed")
-            self.connection.commit()
-            
-            ## Intert edge information into database
-            print("Inserting into EDGE_MAPPING_TABLE...", flush=True)
-            for row in tqdm(tsv_edge_df.to_numpy()):
-                # if (row[0], row[2], row[1]) in kgml_xdtd_graph_edges_dict:
-                    ## intsert into database
-                row = [f"{row[0]}--{row[2]}--{row[1]}"] + list(row)
-                insert_command = f"INSERT INTO EDGE_MAPPING_TABLE values (?,?,?,?,?,?,?,?)"
-                self.connection.execute(insert_command, tuple(row))
-            print(f"Inserting into EDGE_MAPPING_TABLE is completed", flush=True)
-            self.connection.commit()
+        self.conn.execute("DROP TABLE IF EXISTS EDGE_MAPPING_TABLE")
+        self.conn.execute("""
+            CREATE TABLE EDGE_MAPPING_TABLE (
+                subject TEXT NOT NULL,
+                predicate TEXT NOT NULL,
+                object TEXT NOT NULL,
+                id TEXT,
+                category TEXT,
+                qualifier TEXT,
+                publications TEXT,
+                sources TEXT,
+                resource_id TEXT,
+                resource_role TEXT,
+                knowledge_level TEXT,
+                agent_type TEXT,
+                stage_qualifier TEXT,
+                original_subject TEXT,
+                original_object TEXT
+            )
+        """)
+        self.conn.commit()
+        print("INFO: Tables created successfully", flush=True)
 
-            print(f"Populating tables is completed", flush=True)
+    def populate_tables(self, nodes_jsonl_path: str, edges_jsonl_path: str):
+        """Read JSONL node/edge files and batch-insert into the database.
 
+        Uses WAL journal mode and disabled synchronous writes for bulk-load performance.
+        """
+        BATCH_SIZE = 50000
+        NODE_INSERT = "INSERT INTO NODE_MAPPING_TABLE VALUES (?,?,?,?,?,?,?,?,?,?)"
+        EDGE_INSERT = "INSERT INTO EDGE_MAPPING_TABLE VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+
+        self.conn.execute("PRAGMA journal_mode = WAL")
+        self.conn.execute("PRAGMA synchronous = OFF")
+        self.conn.execute("PRAGMA cache_size = -2000000")
+
+        self._insert_nodes(nodes_jsonl_path, NODE_INSERT, BATCH_SIZE)
+        self._insert_edges(edges_jsonl_path, EDGE_INSERT, BATCH_SIZE)
+
+        self.conn.execute("PRAGMA synchronous = NORMAL")
+        print("INFO: Table population completed", flush=True)
+
+    def _insert_nodes(self, jsonl_path: str, insert_sql: str, batch_size: int):
+        """Parse nodes.jsonl and batch-insert rows."""
+        batch: list = []
+        count = 0
+        with open(jsonl_path, 'r', encoding='utf-8') as f:
+            for line in tqdm(f, desc="Inserting nodes"):
+                d = json.loads(line)
+                row = (
+                    d['id'],
+                    d.get('name'),
+                    json.dumps(d['category']) if 'category' in d else None,
+                    json.dumps(d['equivalent_identifiers']) if 'equivalent_identifiers' in d else None,
+                    d.get('description'),
+                    json.dumps(d['synonym']) if 'synonym' in d else None,
+                    json.dumps(d['xref']) if 'xref' in d else None,
+                    str(d['chembl_natural_product']) if 'chembl_natural_product' in d else None,
+                    d.get('chembl_availability_type'),
+                    d.get('chembl_black_box_warning'),
+                )
+                batch.append(row)
+                count += 1
+                if len(batch) >= batch_size:
+                    self.conn.executemany(insert_sql, batch)
+                    self.conn.commit()
+                    batch = []
+        if batch:
+            self.conn.executemany(insert_sql, batch)
+            self.conn.commit()
+        print(f"INFO: Inserted {count} rows into NODE_MAPPING_TABLE", flush=True)
+
+    def _insert_edges(self, jsonl_path: str, insert_sql: str, batch_size: int):
+        """Parse edges.jsonl and batch-insert rows.
+
+        Flattens the 'sources' array into pipe-delimited resource_id and resource_role strings
+        for efficient querying of primary knowledge sources.
+        """
+        batch: list = []
+        count = 0
+        with open(jsonl_path, 'r', encoding='utf-8') as f:
+            for line in tqdm(f, desc="Inserting edges"):
+                d = json.loads(line)
+                sources = d.get('sources', [])
+                resource_ids = '|'.join(s.get('resource_id', '') for s in sources)
+                resource_roles = '|'.join(s.get('resource_role', '') for s in sources)
+                row = (
+                    d['subject'],
+                    d['predicate'],
+                    d['object'],
+                    d.get('id'),
+                    json.dumps(d['category']) if 'category' in d else None,
+                    d.get('qualifier'),
+                    json.dumps(d['publications']) if 'publications' in d else None,
+                    json.dumps(sources) if sources else None,
+                    resource_ids or None,
+                    resource_roles or None,
+                    d.get('knowledge_level'),
+                    d.get('agent_type'),
+                    d.get('stage_qualifier'),
+                    d.get('original_subject'),
+                    d.get('original_object'),
+                )
+                batch.append(row)
+                count += 1
+                if len(batch) >= batch_size:
+                    self.conn.executemany(insert_sql, batch)
+                    self.conn.commit()
+                    batch = []
+        if batch:
+            self.conn.executemany(insert_sql, batch)
+            self.conn.commit()
+        print(f"INFO: Inserted {count} rows into EDGE_MAPPING_TABLE", flush=True)
 
     def create_indexes(self):
+        """Create indexes for efficient node/edge lookups."""
+        print("INFO: Creating indexes", flush=True)
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_NODE_MAPPING_TABLE_id ON NODE_MAPPING_TABLE(id)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_NODE_MAPPING_TABLE_name ON NODE_MAPPING_TABLE(name)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_EDGE_MAPPING_TABLE_triple ON EDGE_MAPPING_TABLE(subject, predicate, object)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_EDGE_MAPPING_TABLE_subject ON EDGE_MAPPING_TABLE(subject)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_EDGE_MAPPING_TABLE_object ON EDGE_MAPPING_TABLE(object)")
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_EDGE_MAPPING_TABLE_predicate ON EDGE_MAPPING_TABLE(predicate)")
+        self.conn.commit()
+        print("INFO: Index creation completed", flush=True)
 
-        if self.success_con is True:
-            print(f"Creating INDEXes on NODE_MAPPING_TABLE", flush=True)
-            self.connection.execute(f"CREATE INDEX idx_NODE_MAPPING_TABLE_id ON NODE_MAPPING_TABLE(id)")
-            self.connection.execute(f"CREATE INDEX idx_NODE_MAPPING_TABLE_name ON NODE_MAPPING_TABLE(name)")
+    # ──────────────────────────────────────────────────────────────────────
+    #  Run mode: query methods
+    # ──────────────────────────────────────────────────────────────────────
 
-            print(f"Creating INDEXes on EDGE_MAPPING_TABLE", flush=True)
-            self.connection.execute(f"CREATE INDEX idx_EDGE_MAPPING_TABLE_triple ON EDGE_MAPPING_TABLE(triple)")
-            self.connection.execute(f"CREATE INDEX idx_EDGE_MAPPING_TABLE_subject ON EDGE_MAPPING_TABLE(subject)")
-            self.connection.execute(f"CREATE INDEX idx_EDGE_MAPPING_TABLE_object ON EDGE_MAPPING_TABLE(object)")
-            self.connection.execute(f"CREATE INDEX idx_EDGE_MAPPING_TABLE_predicate ON EDGE_MAPPING_TABLE(predicate)")
+    def get_node_info(self, node_id: Optional[str] = None, node_name: Optional[str] = None) -> Optional[NodeInfo]:
+        """Look up a node by ID or name.
 
-            print(f"INFO: Creating INDEXes is completed", flush=True)
-            
-    def get_node_info(self, node_id = None, node_name = None):
-        
-        res = collections.namedtuple('res', ['id', 'name', 'category', 'iri', 'description', 'all_categories', 'all_names', 'equivalent_curies', 'publications'])
-        
-        ## connect to database
-        cursor = self.connection.cursor()
-        if node_id is not None and type(node_id) == str:
-            query = f"SELECT * FROM NODE_MAPPING_TABLE WHERE id = '{node_id}'"
-            cursor.execute(query)
-            ## create a named tuple
-            temp_result = cursor.fetchone()
-            if temp_result is None:
-                return None
-            res = res._make(temp_result)
-            return res
-        elif node_name is not None and type(node_name) == str:
-            query = f"SELECT * FROM NODE_MAPPING_TABLE WHERE name = '{node_name}'"
-            cursor.execute(query)
-            ## create a named tuple
-            temp_result = cursor.fetchone()
-            if temp_result is None:
-                return None
-            res = res._make(temp_result)
-            return res
+        Args:
+            node_id: Exact node CURIE, e.g. "CHEBI:10".
+            node_name: Case-insensitive name match, e.g. "Nalidixic acid".
+        Returns:
+            NodeInfo namedtuple, or None if not found.
+        """
+        cursor = self.conn.cursor()
+        if node_id is not None:
+            cursor.execute("SELECT * FROM NODE_MAPPING_TABLE WHERE id = ?", (node_id,))
+        elif node_name is not None:
+            cursor.execute("SELECT * FROM NODE_MAPPING_TABLE WHERE name = ? COLLATE NOCASE", (node_name,))
         else:
             return None
-        
-    def get_edge_info(self, triple_id = None, triple_name = None):
+        result = cursor.fetchone()
+        if not result:
+            return None
+        # `category` is stored as a JSON-encoded list string by _insert_nodes;
+        # decode it back to a list so callers (Node.categories expects a list)
+        # don't have to handle the encoding themselves. Other JSON-encoded
+        # fields (equivalent_identifiers/synonym/xref) currently have no live
+        # consumers; leaving them as-is to avoid scope creep (#2671).
+        values = list(result)
+        cat_idx = NodeInfo._fields.index('category')
+        if values[cat_idx]:
+            try:
+                values[cat_idx] = json.loads(values[cat_idx])
+            except json.JSONDecodeError:
+                pass
+        return NodeInfo._make(values)
 
-        res = collections.namedtuple('res', ['triple', 'subject', 'object', 'predicate', 'primary_knowledge_source', 'publications', 'publications_info', 'kg2_ids'])
-        
-        ## connect to database
-        cursor = self.connection.cursor()
-        if triple_id is not None and type(triple_id) == tuple:
-            subject_id, predicate, object_id = triple_id
-            if predicate != 'SELF_LOOP_RELATION':
-                query = f"SELECT * FROM EDGE_MAPPING_TABLE WHERE triple = '{subject_id}--{predicate}--{object_id}'"
-                cursor.execute(query)
-                ## create named tuples
-                res = [res._make(record) for record in cursor.fetchall()]
-            else:
-                res = [res._make((f'{subject_id}--{predicate}--{object_id}', subject_id, object_id, predicate, None, None, None, None))]
-            return res
-        elif triple_name is not None and type(triple_name) == tuple:
-            subject_name, predicate, object_name = triple_name
-            subject_info = self.get_node_info(node_name=subject_name)
-            if not subject_info:
-                return []
-            subject_id = subject_info.id
-            object_info = self.get_node_info(node_name=object_name)
-            if not object_info:
-                return []
-            object_id = object_info.id
-            if predicate != 'SELF_LOOP_RELATION':
-                query = f"SELECT * FROM EDGE_MAPPING_TABLE WHERE triple = '{subject_id}--{predicate}--{object_id}'"
-                cursor.execute(query)
-                ## create named tuples
-                res = [res._make(record) for record in cursor.fetchall()]
-            else:
-                res = [res._make((f'{subject_id}--{predicate}--{object_id}', subject_id, object_id, predicate, None, None, None, None))]
-            return res
-        else:
+    def get_edge_info(self, subject: Optional[str] = None, predicate: Optional[str] = None,
+                      object_id: Optional[str] = None, triple_id: Optional[tuple] = None) -> List[EdgeInfo]:
+        """Look up edges by (subject, predicate, object) triple.
+
+        Supports both explicit arguments and a legacy triple_id=(s, p, o) tuple
+        for backward compatibility with infer_utilities.py.
+
+        Args:
+            subject: Subject node CURIE.
+            predicate: Biolink predicate string.
+            object_id: Object node CURIE.
+            triple_id: Legacy (subject, predicate, object) tuple.
+        Returns:
+            List of EdgeInfo namedtuples. Empty list if not found.
+        """
+        cursor = self.conn.cursor()
+
+        if triple_id is not None and isinstance(triple_id, tuple):
+            subject, predicate, object_id = triple_id
+
+        if subject is None or predicate is None or object_id is None:
             return []
-            
 
-####################################################################################################
+        # SELF_LOOP_RELATION is a synthetic edge used by the xDTD model for flexible path lengths
+        if predicate == 'SELF_LOOP_RELATION':
+            return [EdgeInfo._make((
+                subject, predicate, object_id,
+                None, None, None, None, None, None, None, None, None, None, None, None
+            ))]
+
+        cursor.execute(
+            "SELECT * FROM EDGE_MAPPING_TABLE WHERE subject = ? AND predicate = ? AND object = ?",
+            (subject, predicate, object_id)
+        )
+        return [EdgeInfo._make(record) for record in cursor.fetchall()]
+
+
+# ══════════════════════════════════════════════════════════════════════════
+#  CLI entry point
+# ══════════════════════════════════════════════════════════════════════════
 
 def main():
-    parser = argparse.ArgumentParser(description="Tests or builds the KGML-xDTD model Mapping Database", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--build', action="store_true", required=False, help="If set, (re)build the index from scratch", default=False)
-    parser.add_argument('--test', action="store_true", required=False, help="If set, run a test of database by doing several lookups", default=False)
-    parser.add_argument('--tsv_path', type=str, required=True, help="Path to a folder containing the KG2 graph TSV files")
-    parser.add_argument('--kgml_xdtd_data_path', type=str, required=True, help="Path to a folder containing the KGML-xDTD data files")
-    parser.add_argument('--database_name', type=str, required=False, help="Name of the database file", default="ExplainableDTD_v1.0_KG2.8.0.1.db")
-    parser.add_argument('--outdir', type=str, required=False, help="Path to the output directory", default=".")
-    args = parser.parse_args()        
+    parser = argparse.ArgumentParser(
+        description="Build or query the xDTD Mapping Database",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument('--build', action="store_true", default=False,
+                        help="Build the database from JSONL files")
+    parser.add_argument('--test', action="store_true", default=False,
+                        help="Run a quick test of the database")
+    parser.add_argument('--nodes_jsonl', type=str, default=None,
+                        help="Path to nodes.jsonl file (required for --build)")
+    parser.add_argument('--edges_jsonl', type=str, default=None,
+                        help="Path to edges.jsonl file (required for --build)")
+    parser.add_argument('--database_name', type=str, default="xdtd_mapping.db",
+                        help="Name of the database file")
+    parser.add_argument('--outdir', type=str, default=".",
+                        help="Path to the output directory")
+    args = parser.parse_args()
 
     if not args.build and not args.test:
         parser.print_help()
         sys.exit(2)
 
-    # To (re)build
     if args.build:
-        db = xDTDMappingDB(args.kgml_xdtd_data_path, args.tsv_path, args.database_name, args.outdir, mode='build', db_loc=None)
-        print("==== Creating tables ====", flush=True)
+        if not args.nodes_jsonl or not args.edges_jsonl:
+            parser.error("--nodes_jsonl and --edges_jsonl are required for --build")
+        db = xDTDMappingDB(database_name=args.database_name, outdir=args.outdir, mode='build')
         db.create_tables()
-        print("==== Populating tables ====", flush=True)
-        db.populate_table()
-        print("==== Creating indexes ====", flush=True)
+        db.populate_tables(args.nodes_jsonl, args.edges_jsonl)
         db.create_indexes()
-        exit(0)
 
-    # To test
     if args.test:
-        db = xDTDMappingDB(args.kgml_xdtd_data_path, args.tsv_path, args.database_name, args.outdir, mode='run', db_loc=args.outdir)
+        db = xDTDMappingDB(database_name=args.database_name, mode='run', db_loc=args.outdir)
+        print("==== Testing node lookup ====", flush=True)
+        print(db.get_node_info(node_id='CHEBI:10'), flush=True)
+        print(db.get_node_info(node_name='Nalidixic acid'), flush=True)
+        print("==== Testing edge lookup (new API) ====", flush=True)
+        print(db.get_edge_info(subject='NCBIGene:18993', predicate='biolink:expressed_in', object_id='UBERON:0001016'), flush=True)
+        print("==== Testing edge lookup (legacy triple_id) ====", flush=True)
+        print(db.get_edge_info(triple_id=('NCBIGene:18993', 'biolink:expressed_in', 'UBERON:0001016')), flush=True)
 
-    print("==== Testing for search for node by name ====", flush=True)
-    print(db.get_node_info(node_id='KEGG.ENZYME:6.2.1.73'), flush=True)
-    # res(id='KEGG.ENZYME:6.2.1.73', name='L-tryptophan---[L-tryptophyl-carrier protein] ligase', category='biolink:MolecularEntity', iri='https://identifiers.org/kegg.enzyme:6.2.1.73', description='', all_categories='biolink:MolecularEntity', all_names='L-tryptophan---[L-tryptophyl-carrier protein] ligase', equivalent_curies='KEGG.ENZYME:6.2.1.73', publications='PMID:23437232')
-    print(db.get_node_info(node_name='Accessory carpal bones'), flush=True)
-    # res(id='UMLS:C0265609', name='Accessory carpal bones', category='biolink:Disease', iri='https://identifiers.org/umls:C0265609', description='The presence of more than the normal number of carpal bones. [HPO:curators]; The presence of more than the normal number of carpal bones.; UMLS Semantic Type: UMLSSC:T019', all_categories='biolink:Diseaseǂbiolink:PhenotypicFeature', all_names='Accessory carpal bones', equivalent_curies='HP:0004232ǂICD9:755.56ǂUMLS:C0265609', publications='')
-
-    print("==== Testing for search for edge ====", flush=True)
-    print(db.get_edge_info(triple_id=('KEGG.ENZYME:6.2.1.73', 'biolink:catalyzes', 'KEGG.REACTION:R12784')), flush=True)
-    # res(triple='KEGG.ENZYME:6.2.1.73--biolink:catalyzes--KEGG.REACTION:R12784', subject='KEGG.ENZYME:6.2.1.73', object='KEGG.REACTION:R12784', predicate='biolink:catalyzes', primary_knowledge_source='infores:kegg', publications='', publications_info='{}', kg2_ids='KEGG.REACTION:R12784---KEGG:reaction_to_enzyme---KEGG.ENZYME:6.2.1.73---KEGG_source:')
-    print(db.get_edge_info(triple_name=('NITISINONE', 'biolink:entity_negatively_regulates_entity', 'HPD')), flush=True)
-    # res(triple='CHEMBL.COMPOUND:CHEMBL1337--biolink:entity_negatively_regulates_entity--UniProtKB:P32754', subject='CHEMBL.COMPOUND:CHEMBL1337', object='UniProtKB:P32754', predicate='biolink:entity_negatively_regulates_entity', primary_knowledge_source='infores:drugcentralǂinfores:chemblǂinfores:semmeddbǂinfores:drugbank', publications='PMID:10370811ǂPMID:14668946ǂPMID:12142814ǂPMID:15931605ǂPMID:25628464ǂPMID:15931360ǂhttp://www.accessdata.fda.gov/drugsatfda_docs/label/2014/021232s013lbl.pdfǂPMID:18422479ǂPMID:31611405ǂPMID:11752352ǂPMID:27305933ǂPMID:9728331', publications_info="{'PMID:9728331': {'publication date': '1998 Aug', 'sentence': 'NTBC is a potent inhibitor of 4-hydroxyphenylpyruvate dioxygenase and has been shown to efficiently prevent tyrosine degradation, and production of succinylacetone, in patients with tyrosinaemia.', 'subject score': 1000, 'object score': 1000}, 'PMID:15931360': {'publication date': '2004 Nov', 'sentence': 'Nitisinone, a potent inhibitor of 4-hydroxyphenylpyruvate dioxygenase, dramatically reduces production and urinary excretion of homogentisic acid; however, the long-term efficacy and side effects of such therapy are unknown.', 'subject score': 1000, 'object score': 1000}, 'PMID:27305933': {'publication date': '2017 09 01', 'sentence': 'Nitisinone or 2-(2-nitro-4-trifluoromethylbenzoyl)cyclohexane-1,3-dione is a reversible inhibitor of 4-hydroxyphenylpyruvate dioxygenase (HPPD), an enzyme important in tyrosine catabolism.', 'subject score': 1000, 'object score': 1000}, 'PMID:10370811': {'publication date': '1999 May', 'sentence': 'NTBC, which acts as an inhibitor of the 4-hydroxyphenylpyruvate dioxygenase, prevents the formation of toxic metabolites involved in hepatic, renal and neurologic lesions.', 'subject score': 1000, 'object score': 1000}, 'PMID:25628464': {'publication date': '2015 Sep', 'sentence': 'Treatment with the orphan drug, nitisinone, an inhibitor of 4-hydroxyphenylpyruvate dioxygenase has been shown to reduce urinary excretion of homogentisic acid.', 'subject score': 1000, 'object score': 1000}, 'PMID:31611405': {'publication date': '2019 Oct 29', 'sentence': 'Interestingly, these behavioral phenotypes became milder as the mice grew older and were completely rescued by the administration of NTBC [2-(2-nitro-4-trifluoromethylbenzoyl)-1,3-cyclohexanedione], an inhibitor of 4-hydroxyphenylpyruvate dioxygenase, which is upstream of FAH.', 'subject score': 1000, 'object score': 1000}}", kg2_ids='UMLS:C0173083---SEMMEDDB:inhibits---UMLS:C0000507---SEMMEDDB:ǂCHEMBL.COMPOUND:CHEMBL1337---CHEMBL.MECHANISM:inhibitor---CHEMBL.TARGET:CHEMBL1861---identifiers_org_registry:chembl.compoundǂDRUGBANK:DB00348---DRUGBANK:inhibitor---UniProtKB:P32754---identifiers_org_registry:drugbankǂDrugCentral:1944---DrugCentral:inhibitor---UniProtKB:P32754---DrugCentral:')
-
-####################################################################################################
 
 if __name__ == "__main__":
     main()

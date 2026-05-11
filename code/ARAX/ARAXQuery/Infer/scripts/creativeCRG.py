@@ -1,17 +1,18 @@
 from typing import List, Dict, Set, Union, Optional
+import asyncio
 import os, sys
 import joblib
 import json
 import numpy as np
 import pandas as pd
 import sqlite3
-import requests
 # import graph_tool.all as gt
 from tqdm import tqdm, trange
 pathlist = os.getcwd().split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery']))
 from ARAX_response import ARAXResponse
+from Expand.trapi_querier import TRAPIQuerier
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
 import openapi_server
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
@@ -25,6 +26,9 @@ from biolink_helper import get_biolink_helper
 from openapi_server.models.edge import Edge
 from openapi_server.models.qualifier import Qualifier
 from openapi_server.models.retrieval_source import RetrievalSource
+from openapi_server.models.q_node import QNode
+from openapi_server.models.q_edge import QEdge
+from openapi_server.models.query_graph import QueryGraph
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 def _convert_kg2c_plover_edge_to_trapi_edge(edge_tuple: list) -> Edge:
@@ -40,7 +44,7 @@ def _convert_kg2c_plover_edge_to_trapi_edge(edge_tuple: list) -> Edge:
                                        resource_role="primary_knowledge_source"))
 
         # Indicate that this edge came from the KG2 KP
-        sources.append(RetrievalSource(resource_id="infores:rtx-kg2",
+        sources.append(RetrievalSource(resource_id="infores:retriever",
                                        resource_role="aggregator_knowledge_source",
                                        upstream_resource_ids=[primary_knowledge_source]))
         edge.sources = sources
@@ -64,36 +68,81 @@ def _convert_kg2c_plover_edge_to_trapi_edge(edge_tuple: list) -> Edge:
 
         return edge
 
-def call_plover(curies: List, respect_predicate_symmetry: bool=False):
-        json = {}
-        plover_url = RTXConfig.plover_url
-        status_code = 500
-        endpoint = "/query"
-        body = {
-                "edges": {
-                    "e00": {
-                        "subject": "n00",
-                        "object": "n01"
-                    }
+def query_kp(curies: List, respect_predicate_symmetry: bool=False):
+        # Issue the one-hop query through TRAPIQuerier (against
+        # infores:retriever) instead of POSTing directly to plover/gandalf.
+        # CURIEs are split into fixed-size batches; each batch is sent in a
+        # single call to TRAPIQuerier and the resulting knowledge graphs
+        # are merged. If any batch fails, abort and return an empty kg.
+        BATCH_SIZE = 50
+
+        curies = list(curies)
+        merged_kg: Dict = {'edges': {}, 'nodes': {}}
+        if not curies:
+            return 200, merged_kg
+
+        for start in range(0, len(curies), BATCH_SIZE):
+            batch = curies[start:(start + BATCH_SIZE)]
+            qg = QueryGraph(
+                nodes={
+                    "n00": QNode(ids=batch),
+                    "n01": QNode(categories=["biolink:NamedThing"]),
                 },
-                "nodes": {
-                    "n00": {
-                        "ids": curies
-                    },
-                    "n01": {
-                        "categories": ["biolink:NamedThing"]
-                    }
-                },
-                "include_metadata": True,
-                "respect_predicate_symmetry": respect_predicate_symmetry
-            }
-        try:
-            response = requests.post(plover_url + endpoint, headers={'accept': 'application/json'}, json=body)
-            status_code = response.status_code
-            json = response.json()
-        except Exception as e:
-            pass
-        return status_code, json
+                edges={"e00": QEdge(subject="n00", object="n01")},
+            )
+
+            log = ARAXResponse()
+            kp_querier = TRAPIQuerier(
+                response_object=log,
+                kp_name="infores:retriever",
+                user_specified_kp=False,
+                kp_timeout=None,
+            )
+
+            try:
+                result_kg, _ = asyncio.run(kp_querier.answer_one_hop_query_async(qg))
+            except Exception:
+                return 500, {}
+            if log.status != 'OK':
+                return 500, {}
+
+            # Convert this batch's QGOrganizedKnowledgeGraph into the
+            # plover-shaped dict that the rest of creativeCRG (get_paths,
+            # add_node_ids_to_path, _convert_kg2c_plover_edge_to_trapi_edge)
+            # expects: edges become {edge_id: [subject, object, predicate,
+            # primary_knowledge_source, qualified_predicate,
+            # qualified_object_direction, qualified_object_aspect]} and
+            # nodes become {curie: [name, category]}; merge into merged_kg.
+            for qedge_key, edge_dict in result_kg.edges_by_qg_id.items():
+                converted_edges = merged_kg['edges'].setdefault(qedge_key, {})
+                for edge_id, edge in edge_dict.items():
+                    primary_ks = None
+                    for src in (edge.sources or []):
+                        if src.resource_role == "primary_knowledge_source":
+                            primary_ks = src.resource_id
+                            break
+                    qualified_predicate = None
+                    qualified_object_direction = None
+                    qualified_object_aspect = None
+                    for q in (edge.qualifiers or []):
+                        if q.qualifier_type_id == "biolink:qualified_predicate":
+                            qualified_predicate = q.qualifier_value
+                        elif q.qualifier_type_id == "biolink:object_direction_qualifier":
+                            qualified_object_direction = q.qualifier_value
+                        elif q.qualifier_type_id == "biolink:object_aspect_qualifier":
+                            qualified_object_aspect = q.qualifier_value
+                    converted_edges[edge_id] = [
+                        edge.subject, edge.object, edge.predicate,
+                        primary_ks, qualified_predicate,
+                        qualified_object_direction, qualified_object_aspect,
+                    ]
+            for qnode_key, node_dict in result_kg.nodes_by_qg_id.items():
+                converted_nodes = merged_kg['nodes'].setdefault(qnode_key, {})
+                for node_id, node in node_dict.items():
+                    primary_category = node.categories[0] if node.categories else None
+                    converted_nodes[node_id] = [node.name, primary_category]
+
+        return 200, merged_kg
 
 
 def load_ML_CRGmodel(response: ARAXResponse, model_path: str, model_type: str):
@@ -119,7 +168,14 @@ def load_ML_CRGmodel(response: ARAXResponse, model_path: str, model_type: str):
     else:
         return None
 
-def build_DSL_command(start_n: str, end_n: str, interm_len: int, M: int = 10, kp: Optional[str] = 'infores:rtx-kg2', interm_ids: Optional[List[Optional[str]]] = None, interm_names: Optional[List[Optional[str]]] = None, interm_categories: Optional[List[Optional[str]]] =None):
+def build_DSL_command(start_n: str,
+                      end_n: str,
+                      interm_len: int,
+                      M: int = 10,
+                      kp: Optional[str] = 'infores:retriever',
+                      interm_ids: Optional[List[Optional[str]]] = None,
+                      interm_names: Optional[List[Optional[str]]] = None,
+                      interm_categories: Optional[List[Optional[str]]] =None):
 
     action_list = []
     temp_action_list = []
@@ -154,9 +210,9 @@ def build_DSL_command(start_n: str, end_n: str, interm_len: int, M: int = 10, kp
 def extract_path(path_result: openapi_server.models.result.Result, mapping: Dict[str, str]):
     res = dict()
     node_bindings = sorted(path_result.node_bindings.items(), key=lambda x: x[0])
-    # FIXME: fina a better to figure out the parents in subclass reasoning
+    # FIXME: find a better to figure out the parents in subclass reasoning
     path_result_analyses = path_result.analyses[0]
-    sublcass_edge_keys = [x for x in list(path_result_analyses.edge_bindings.keys()) if 'subclass' in x]
+    # sublcass_edge_keys = [x for x in list(path_result_analyses.edge_bindings.keys()) if 'subclass' in x]
     find_parent = dict()
     # for key in sublcass_edge_keys:
     #     qnode_key = key.split('--')[-1]
@@ -234,9 +290,10 @@ class creativeCRG:
         with open(tf_list_file_path) as fp:
                 self.tf_list = json.loads(fp.read())['tf']
 
-    def get_tf_neighbors(self):        
-        status_code, response = call_plover(self.tf_list,respect_predicate_symmetry=False)
-        edges = response.get("edges",{}).get("e00",{})
+    def get_tf_neighbors(self):
+        self.response.debug("Calling creativeCRG.py::query_kp to look for transcription factor neighbors")
+        status_code, response = query_kp(self.tf_list, respect_predicate_symmetry=False)
+        edges = response.get("edges", {}).get("e00", {})
         query_tf_neighbor_data = []
         answer_tf_neigbor_data = []
         for edge in edges.keys():
@@ -255,7 +312,7 @@ class creativeCRG:
                 curie = c1
                 tf = c2
                 query_tf_neighbor_data.append({"edge_id": edge, "transcription_factor":tf, "neighbour": curie, "depth": depth})
-        return status_code, query_tf_neighbor_data,answer_tf_neigbor_data, edges
+        return status_code, query_tf_neighbor_data, answer_tf_neigbor_data, edges
     
     def add_node_ids_to_path(self, paths, tf_edges,chemical_edges, gene_edges):
         tf_edges.update(chemical_edges['edges']['e00'])
@@ -364,7 +421,7 @@ class creativeCRG:
 
                 return res.iloc[:N,:]
         else:
-            self.response.warning(f"The parameter 'query_gene' is not provided. Please give a gene curie to the parameter 'query_gene'.")
+            self.response.warning("The parameter 'query_gene' is not provided. Please give a gene curie to the parameter 'query_gene'.")
             return None
 
     def predict_top_N_genes(self, query_chemical: str, N: int = 10, threshold: float = 0.5, model_type: str = 'increase'):
@@ -444,7 +501,7 @@ class creativeCRG:
             self.response.warning(f"The parameter 'query_chemical' is not provided. Please assign a chemical curie to the parameter 'query_chemical'.")
             return None
 
-    def predict_top_M_paths(self, query_chemical: Optional[str], query_gene: Optional[str], model_type: str = 'increase', N: int = 10, M: int = 10, threshold: float = 0.5, kp: Optional[str] = 'infores:rtx-kg2', path_len: int = 2, interm_ids: Optional[List[Optional[str]]] = None, interm_names: Optional[List[Optional[str]]] = None, interm_categories: Optional[List[Optional[str]]] =None):
+    def predict_top_M_paths(self, query_chemical: Optional[str], query_gene: Optional[str], model_type: str = 'increase', N: int = 10, M: int = 10, threshold: float = 0.5, kp: Optional[str] = 'infores:retriever', path_len: int = 2, interm_ids: Optional[List[Optional[str]]] = None, interm_names: Optional[List[Optional[str]]] = None, interm_categories: Optional[List[Optional[str]]] =None):
 
         def _check_params(query_chemical: Optional[str], query_gene: Optional[str], model_type: str = 'increase', N: int = 10, M: int = 10, threshold: float = 0.5, path_len: int = 2, kp: Optional[str] = None, interm_ids: Optional[List[Optional[str]]] = None, interm_names: Optional[List[Optional[str]]] = None, interm_categories: Optional[List[Optional[str]]] =None): 
 
@@ -515,21 +572,27 @@ class creativeCRG:
                 self.response.warning(f"There is no chemical-gene pair satisfying the requirement of top {N} with threshold >={threshold}. Perhaps try using more loose threshold.")
                 return None
             top_paths = dict()
-            status_code, chemical_neighbors = call_plover([query_chemical])
+            status_code, chemical_neighbors = query_kp([query_chemical])
             if status_code != 200:
-                self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 1")
+                return None
+            if "e00" not in chemical_neighbors.get("edges", {}):
+                self.response.warning(f"KP returned no edges for chemical neighbors of {query_chemical}; cannot compute creative-mode paths")
                 return None
             answers = res['gene_id'].tolist()
             self.preferred_curies = self.get_preferred_curies(answers)
             self.preferred_to_original_curie = {value: key for key, value in self.preferred_curies.items() if value}
             valid_genes = [item for item in self.preferred_curies.values() if item]
-            status_code, gene_neighbors = call_plover(valid_genes)
+            status_code, gene_neighbors = query_kp(valid_genes)
             if status_code != 200:
-                self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 2")
+                return None
+            if "e00" not in gene_neighbors.get("edges", {}):
+                self.response.warning(f"KP returned no edges for gene neighbors; cannot compute creative-mode paths")
                 return None
             status_code, query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
             if status_code != 200:
-                self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 3")
                 return None
             
             
@@ -551,22 +614,30 @@ class creativeCRG:
                 else:
 
                     top_paths = dict()
-                    
-                    status_code, gene_neighbors = call_plover([preferred_query_gene])
+
+                    self.response.debug(f"Querying KP for CURIE {preferred_query_gene}")
+                    status_code, gene_neighbors = query_kp([preferred_query_gene])
                     if status_code != 200:
-                        self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                        self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 4")
+                        return None
+                    if "e00" not in gene_neighbors.get("edges", {}):
+                        self.response.warning(f"KP returned no edges for gene neighbors of {preferred_query_gene}; cannot compute creative-mode paths")
                         return None
                     answers = res['chemical_id'].tolist()
                     self.preferred_curies = self.get_preferred_curies(answers)
                     self.preferred_to_original_curie = {value: key for key, value in self.preferred_curies.items() if value}
                     valid_chemicals = [item for item in self.preferred_curies.values() if item]
-                    status_code, chemical_neighbors = call_plover(valid_chemicals)
+                    self.response.debug(f"Querying KP for {len(valid_chemicals)} CURIEs")
+                    status_code, chemical_neighbors = query_kp(valid_chemicals)
                     if status_code != 200:
-                        self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                        self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 5")
+                        return None
+                    if "e00" not in chemical_neighbors.get("edges", {}):
+                        self.response.warning(f"KP returned no edges for chemical neighbors; cannot compute creative-mode paths")
                         return None
                     status_code, query_tf_neighbors, answer_tf_neigbors, tf_edges = self.get_tf_neighbors()
                     if status_code != 200:
-                        self.response.warning(f"Could not get answers from Plover. Plover responded with status code: {status_code}")
+                        self.response.error(f"Could not get answers from KP. KP responded with status code: {status_code}; code point 6")
                         return None
                     
                     paths = self.get_paths(preferred_query_gene, res['chemical_id'].tolist(), gene_neighbors, chemical_neighbors,  query_tf_neighbors, answer_tf_neigbors,self.tf_list, M)
