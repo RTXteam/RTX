@@ -31,7 +31,7 @@ RUN chown -R rt:rt /mnt/data/orangeboard/production
 # Temporary: clone the issue-2730 branch so CI exercises the Tier0/NodeNorm
 # code under test in this PR. Revert back to a plain `git clone` (default
 # branch) after issue-2730 is merged into master.
-RUN su - rt -c "cd /mnt/data/orangeboard/production && git clone -b issue-2730 https://github.com/RTXteam/RTX.git"
+RUN su - rt -c "cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git"
 RUN chown -R rt:rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
