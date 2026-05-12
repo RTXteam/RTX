@@ -33,13 +33,13 @@ echo "
       ################################################################################"
 
 # build db_arr which includes all needed db files in config_dbs.json
-echo "Reading ${confgi_file} and building new db_arr specified in ${config_file}....."
+echo "Reading ${config_file} and building new db_arr specified in ${config_file}....."
 printf "\n"
 for db in $(jq -r '.database_downloads | keys[]' ${config_file})
 do
   db_path=$(jq -r '.database_downloads.'${db} ${config_file})
   echo $db_path
-  if [ ${db_path} != "null" ]
+  if [ "${db_path}" != "null" ]
   then
     db_path_pvc="${db_path/'/translator/data/orangeboard'}"
     echo $db_path_pvc
@@ -59,7 +59,9 @@ done
 # this is useful when a new db (or a new version of existing db) rolls out
 # and we only want to keep what is specificed in config_dbs.json file
 echo "Removing outdated db files......"
-for existing_db in $(find $db_folder -type f)
+for existing_db in $(find "$db_folder" \
+    -path "$db_folder/gandalf_mmap" -prune -o \
+    -type f -print)
 do 
   # check if filename ends with .md5, which is NOT db file
   if [[ ! "${existing_db}" == *.md5 ]]
