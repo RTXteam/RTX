@@ -47,11 +47,27 @@ spec:
             - name: http
               containerPort: 80
               protocol: TCP
+          # Startup probe gives slow first-time startup (gandalf tarball
+          # extraction + Flask boot) up to 20 minutes to come up before the
+          # liveness probe takes over. Without this the default liveness probe
+          # (10s period, 3 failures = ~30s budget) kills the container during
+          # extraction, the unpacked indicator never gets written, and we loop.
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 10
+            failureThreshold: 120
           livenessProbe:
             httpGet:
               path: /
               port: http
-            periodSeconds: 60    
+            periodSeconds: 60
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 30
           volumeMounts:
             - name: {{ include "arax.fullname" . }}-pvc
               mountPath: /mnt/data/orangeboard/databases/
@@ -59,14 +75,6 @@ spec:
               mountPath: /configs
             - name: {{ include "arax.fullname" . }}-scripts-volume
               mountPath: /scripts
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
       {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
