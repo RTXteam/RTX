@@ -10,6 +10,8 @@ import datetime
 import json
 import time
 import argparse
+import shlex
+import subprocess
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
@@ -19,6 +21,23 @@ from RTXConfiguration import RTXConfiguration  # noqa: E402
 
 knowledge_sources_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
 versions_path = os.path.sep.join([knowledge_sources_filepath, 'db_versions.json'])
+
+# this will raise CalledProcessError if shell command `cmd` fails
+def _run_cmd_in_shell_chk_status(cmd: str) -> None:
+    try:
+        subprocess.run(cmd,
+                       shell=True,
+                       check=True,
+                       text=True,
+                       capture_output=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error running shell command: {cmd}", file=sys.stderr)
+        print(f"code: {e.returncode}", file=sys.stderr)
+        if e.stdout:
+            print(f"stdout:\n{e.stdout}", file=sys.stderr)
+        if e.stderr:
+            print(f"stderr:\n{e.stderr}", file=sys.stderr)
+        raise
 
 
 class ARAXDatabaseManager:
@@ -30,47 +49,47 @@ class ARAXDatabaseManager:
 
         pred_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
         if not  os.path.exists(pred_filepath):
-            os.system(f"mkdir -p {pred_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(pred_filepath)}")
         
         ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
         if not  os.path.exists(ngd_filepath):
-            os.system(f"mkdir -p {ngd_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(ngd_filepath)}")
 
         gandalf_mmap_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Gandalf'])
         if not  os.path.exists(gandalf_mmap_filepath):
-            os.system(f"mkdir -p {gandalf_mmap_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(gandalf_mmap_filepath)}")
         
         cohd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         if not  os.path.exists(cohd_filepath):
-            os.system(f"mkdir -p {cohd_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(cohd_filepath)}")
         
         kg2c_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
         if not os.path.exists(kg2c_filepath):
-            os.system(f"mkdir -p {kg2c_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(kg2c_filepath)}")
 
         fda_approved_drugs_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
         if not os.path.exists(fda_approved_drugs_filepath):
-            os.system(f"mkdir -p {fda_approved_drugs_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(fda_approved_drugs_filepath)}")
 
         autocomplete_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'autocomplete'])
         if not os.path.exists(autocomplete_filepath):
-            os.system(f"mkdir -p {autocomplete_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(autocomplete_filepath)}")
 
         explainable_dtd_db_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
         if not os.path.exists(explainable_dtd_db_filepath):
-            os.system(f"mkdir -p {explainable_dtd_db_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(explainable_dtd_db_filepath)}")
 
         xcrg_embeddings_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
         if not os.path.exists(xcrg_embeddings_filepath):
-            os.system(f"mkdir -p {xcrg_embeddings_filepath}")        
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(xcrg_embeddings_filepath)}")
 
         xcrg_increase_model_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
         if not os.path.exists(xcrg_increase_model_filepath):
-            os.system(f"mkdir -p {xcrg_increase_model_filepath}")       
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(xcrg_increase_model_filepath)}")       
 
         xcrg_decrease_model_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
         if not os.path.exists(xcrg_decrease_model_filepath):
-            os.system(f"mkdir -p {xcrg_decrease_model_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(xcrg_decrease_model_filepath)}")
 
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
@@ -224,7 +243,7 @@ class ARAXDatabaseManager:
                         if debug:
                             eprint("Download successful. Removing local version...")
                         if os.path.exists(local_versions[database_name]['path']):
-                            os.system(f"rm {local_versions[database_name]['path']}") 
+                            _run_cmd_in_shell_chk_status(f"rm {shlex.quote(local_versions[database_name]['path'])}") 
                     else:
                         if debug:
                             eprint(f"Error downloading {database_name} leaving local copy.")
@@ -338,19 +357,24 @@ class ARAXDatabaseManager:
         # not next to the RTX-side symlink. realpath is a no-op on dev machines
         # where the path is already a real file.
         resolved = os.path.realpath(tarball_path)
+        tarball_extracted_indicator_file = f"{resolved}-unpacked"
         extraction_dir = os.path.dirname(resolved)
-        if debug:
-            eprint(f"Extracting {resolved} into {extraction_dir}...")
-        os.system(f"tar -xzf {resolved} -C {extraction_dir}")
+        if not os.path.exists(tarball_extracted_indicator_file):
+            if debug:
+                eprint(f"Extracting {resolved} into {extraction_dir}...")
+            _run_cmd_in_shell_chk_status(f"tar -xzf {shlex.quote(resolved)} -C {shlex.quote(extraction_dir)}")
+            _run_cmd_in_shell_chk_status(f"touch {shlex.quote(tarball_extracted_indicator_file)}")
+        else:
+            eprint(f"Looks like we have previously extracted: {resolved}")
 
     def symlink_database(self, symlink_path, target_path):
-        os.system(f"ln -s {target_path} {symlink_path}")
+        _run_cmd_in_shell_chk_status(f"ln -s {shlex.quote(target_path)} {shlex.quote(symlink_path)}")
 
     def rsync_database(self, remote_location, local_path, debug=False):
         verbose = ""
         if debug:
             verbose = "vv"
-        os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
+        _run_cmd_in_shell_chk_status(f"rsync -Lhzc{verbose} --progress {shlex.quote(remote_location)} {shlex.quote(local_path)}")
 
     def _download_to_mnt(self, debug=False, skip_if_exists=False, remove_unused=False):
         """
@@ -365,7 +389,7 @@ class ARAXDatabaseManager:
             if not os.path.exists(database_dir):
                 if debug:
                     print(f"Creating directory {database_dir}...")
-                os.system(f"mkdir -p {database_dir}")
+                _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(database_dir)}")
             docker_host_local_path = self.docker_central_paths[database_name]
             if not skip_if_exists or not os.path.exists(docker_host_local_path):
                 remote_location = self.remote_locations[database_name]
@@ -430,7 +454,7 @@ class ARAXDatabaseManager:
                     db_file_path = f"{kg2_dir_path}/{db_file_name}"
                     if os.path.isfile(db_file_path) and db_file_name not in db_names:
                         print(f"Removing unused db file {db_file_path}")
-                        os.system(f"rm -f {db_file_path}")
+                        _run_cmd_in_shell_chk_status(f"rm -f {shlex.quote(db_file_path)}")
 
 
 def main():
