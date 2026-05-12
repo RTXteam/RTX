@@ -12,7 +12,7 @@
 # variables
 config_file="/configs/config_dbs.json"
 # associative array serves as dict
-# here we build db_arr with db_path_pvc as its key and 1 as its value, which equivilent to "set"
+# here we build db_arr with db_path_pvc as its key and 1 as its value, which equivalent to "set"
 # db_arr:     most updated db file path on PVC (in this case, /databases)
 # db_MD5_arr: most updated MD5 file path of elements in db_arr
 declare -A db_arr new_db_MD5_arr
@@ -62,7 +62,7 @@ echo "Removing outdated db files......"
 for existing_db in $(find "$db_folder" \
                           \( -path "${db_folder}/tier0-*/gandalf_mmap" \
                              -o -path "${db_folder}/tier0-*/*.tar.gz-unpacked" \) \
-                             -prune -o                          
+                             -prune -o \
                      -type f -print)
 do
   # check if filename ends with .md5, which is NOT db file

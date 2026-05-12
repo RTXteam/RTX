@@ -2,7 +2,6 @@
    "database_downloads": {
       "tier0_sqlite": "/translator/data/orangeboard/databases/tier0-20260408/tier0-info-for-overlay_v1.0_tier0-20260408.sqlite",
       "kg2c_sqlite": "/translator/data/orangeboard/databases/tier0-20260408/tier0-info-for-overlay_v1.0_tier0-20260408.sqlite",
-      "kg2c_meta_kg": "/translator/data/orangeboard/databases/KG2.10.2/meta_kg_v1.0_KG2.10.2c.json",
       "fda_approved_drugs": "/translator/data/orangeboard/databases/tier0-20260408/fda_approved_drugs_v1.0.pickle",
       "autocomplete": "/translator/data/orangeboard/databases/tier0-20260408/autocomplete_v1.0_tier0-20260408.sqlite",
       "curie_to_pmids": "/translator/data/orangeboard/databases/tier0-20260408/curie_to_pmids_v1.0_tier0-20260408.sqlite",
