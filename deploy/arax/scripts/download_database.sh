@@ -60,9 +60,11 @@ done
 # and we only want to keep what is specificed in config_dbs.json file
 echo "Removing outdated db files......"
 for existing_db in $(find "$db_folder" \
-    -path "${db_folder}/tier0-*/gandalf_mmap" -prune -o \
-    -type f -print)
-do 
+                          \( -path "${db_folder}/tier0-*/gandalf_mmap" \
+                             -o -path "${db_folder}/tier0-*/*.tar.gz-unpacked" \) \
+                             -prune -o                          
+                     -type f -print)
+do
   # check if filename ends with .md5, which is NOT db file
   if [[ ! "${existing_db}" == *.md5 ]]
   then
