@@ -29,6 +29,8 @@ sudo service RTX_OpenAPI_production start
 warn "Starting ARAX-autocomplete"
 sudo service RTX_Complete start
 
-# this line is added to stop container completes with exit code 0
-tail -f /tmp/RTX_OpenAPI_production.elog
-
+# Keep PID 1 alive by tailing the Flask elog. Use `tail -F` (follow by name,
+# retry if missing) so we don't die under `set -e` if the file isn't created
+# yet by the time we reach this line. The Flask service is started above via
+# `start-stop-daemon --background`, which can return before the elog exists.
+tail -F /tmp/RTX_OpenAPI_production.elog
