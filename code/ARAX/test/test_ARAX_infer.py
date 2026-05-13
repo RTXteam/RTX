@@ -78,7 +78,7 @@ def test_xdtd_infer_castleman_disease_1():
     query = {"operations": {"actions": [
             "create_message",
             "infer(action=drug_treatment_graph_expansion,disease_curie=MONDO:0015564)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
@@ -90,7 +90,7 @@ def test_xdtd_infer_castleman_disease_2():
     query = {"operations": {"actions": [
             "create_message",
             "infer(action=drug_treatment_graph_expansion,disease_curie=MONDO:0015564,n_drugs=20,n_paths=15)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
@@ -102,7 +102,7 @@ def test_xdtd_infer_rituximab_1():
     query = {"operations": {"actions": [
             "create_message",
             "infer(action=drug_treatment_graph_expansion,drug_curie=UNII:4F4X42SYQ6)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
@@ -114,7 +114,7 @@ def test_xdtd_infer_rituximab_2():
     query = {"operations": {"actions": [
             "create_message",
             "infer(action=drug_treatment_graph_expansion,drug_curie=UNII:4F4X42SYQ6,n_diseases=2,n_paths=15)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
@@ -189,7 +189,7 @@ def test_xdtd_with_qg():
         },
         "operations": {"actions": [
             "infer(action=drug_treatment_graph_expansion, disease_curie=test_xdtd_with_qg, qedge_id=t_edge)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -222,7 +222,7 @@ def test_xdtd_with_qg2():
         },
         "operations": {"actions": [
             "infer(action=drug_treatment_graph_expansion, disease_curie=MONDO:0015564, qedge_id=t_edge)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -255,7 +255,7 @@ def test_xdtd_with_qg3():
         },
         "operations": {"actions": [
             "infer(action=drug_treatment_graph_expansion, disease_curie=MONDO:0015564, qedge_id=t_edge, n_drugs=20, n_paths=15)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -289,7 +289,7 @@ def test_xdtd_with_qg4():
         },
         "operations": {"actions": [
             "infer(action=drug_treatment_graph_expansion, drug_curie=UNII:4F4X42SYQ6, qedge_id=t_edge)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -332,7 +332,7 @@ def test_xcrg_infer_bomeol():
     query = {"operations": {"actions": [
             "create_message",
             "infer(action=chemical_gene_regulation_graph_expansion, subject_curie=CHEMBL.COMPOUND:CHEMBL1097205, regulation_type=increase, threshold=0.6, path_len=2, n_result_curies=1, n_paths=1)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
@@ -379,7 +379,7 @@ def test_xcrg_with_qg1():
         },
         "operations": {"actions": [
             "infer(action=chemical_gene_regulation_graph_expansion,object_qnode_id=gene,qedge_id=r_edge,n_result_curies=1, n_paths=1)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -429,7 +429,7 @@ def test_xcrg_with_qg2():
         },
         "operations": {"actions": [
             "infer(action=chemical_gene_regulation_graph_expansion,subject_qnode_id=chemical,qedge_id=r_edge,n_result_curies=1, n_paths=1)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -511,7 +511,7 @@ def test_xcrg_infer_dsl():
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
             "resultify()",
             "filter_results(action=limit_number_of_results, max_results=30)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
