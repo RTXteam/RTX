@@ -301,7 +301,8 @@ Copy the file directly to the servers listed in [Phase 5](#phase-5--stage-artifa
 <a id="xdtd-refresh"></a>
 ### xDTD refresh (PSU team)
 
-**Purpose.** The xDTD (Explainable Drug-Target Discovery) model and its `_with_paths` database power ARAX's drug-treats-disease inference. Refresh against the new Tier0 graph at every rollout so the model and its supporting paths reflect the current edges.
+**Purpose.** 
+The xDTD (Explainable Drug-treats-Disease) model and its _with_paths database pre-computes ARAX's drug-treats-disease inference. Rebuild against the new Tier0 graph at every rollout so the model and its supporting paths reflect the current edges. The xDTD rebuild pipeline can refer to https://github.com/RTXteam/xDTD_training_pipeline
 
 **Owner.** PSU team (typically @chunyuma). Track this work as a subissue under the kickoff issue.
 
