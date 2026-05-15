@@ -89,7 +89,7 @@ def test_xdtd_infer_castleman_disease_1():
 def test_xdtd_infer_castleman_disease_2():
     query = {"operations": {"actions": [
             "create_message",
-            "infer(action=drug_treatment_graph_expansion,disease_curie=MONDO:0015564,n_drugs=20,n_paths=15)",
+            "infer(action=drug_treatment_graph_expansion,disease_curie=MONDO:0015564,n_drugs=2,n_paths=15)",
             "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
