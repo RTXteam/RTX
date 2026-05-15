@@ -10,12 +10,12 @@
   - [Slack workspaces](#slack-workspaces)
 - [Phase 1 ; Set up (issue + branch)](#phase-1--kick-off-issue--branch)
 - [Phase 2 ; Build artifacts](#phase-2--build-artifacts)
-  - [`curie_to_pmids_v1.0_tier0-MMDDYYYY.sqlite`](#curie_to_pmids)
-  - [`autocomplete_v1.0_tier0-MMDDYYYY.sqlite`](#autocomplete)
-  - [`tier0-info-for-overlay_v1.0_tier0-MMDDYYYY.sqlite`](#tier0-info-for-overlay)
-  - [`curie_ngd_v1.0_tier0-MMDDYYYY.sqlite`](#curie_ngd)
-  - [xDTD refresh (PSU team)](#xdtd-refresh)
-  - [gandalf_mmap tarball refresh (PSU team)](#gandalf_mmap-refresh)
+  - [`curie_to_pmids_v1.0_tier0-MMDDYYYY.sqlite`](#curie_to_pmids) (OSU, typically Frankie)
+  - [`autocomplete_v1.0_tier0-MMDDYYYY.sqlite`](#autocomplete) (OSU, typically Frankie)
+  - [`tier0-info-for-overlay_v1.0_tier0-MMDDYYYY.sqlite`](#tier0-info-for-overlay) (OSU, typically Frankie)
+  - [`curie_ngd_v1.0_tier0-MMDDYYYY.sqlite`](#curie_ngd) (PSU, typically Mohsen)
+  - [xDTD refresh](#xdtd-refresh) (PSU, typically Chunyu)
+  - [gandalf_mmap tarball refresh](#gandalf_mmap-refresh) (PSU, typically Mohsen)
   - [Artifacts reused as-is (version invariant)](#artifacts-reused-as-is)
 - [Phase 3 ; Integration](#phase-3--integration)
 - [Phase 4 ; Test on dev + CI](#phase-4--test-on-dev--ci)
@@ -32,12 +32,12 @@
 
 ### SSH access
 To complete this workflow, you will need `ssh` access to:
-- [ ] `arax-databases.rtx.ai` (Contact Oregon State team for access)
-- [ ] `arax.ncats.io` (Contact ITRB, via `#devops-teamexpanderagent` on Slack for access)
+- [ ] `ubuntu@arax-databases.rtx.ai` (Contact Oregon State team for access)
+- [ ] `USERNAME@arax.ncats.io` (Contact ITRB, via `#devops-teamexpanderagent` on Slack for access)
 - [ ] `team-expander-USERNAME@sftp.ncats.io` (Contact ITRB, via `#devops-teamexpanderagent` on Slack for access)
-- [ ] `cicd.rtx.ai` (Contact Oregon State team for access)
-- [ ] `ngdbuild2.rtx.ai` (Contact Oregon State team for access)
-- [ ] `arax.rtx.ai` (Contact Oregon State team for access)
+- [ ] `ubuntu@cicd.rtx.ai` (Contact Oregon State team for access)
+- [ ] `ubuntu@ngdbuild2.rtx.ai` (Contact Oregon State team for access)
+- [ ] `ubuntu@arax.rtx.ai` (Contact Oregon State team for access)
 
 ### GitHub access
 - [ ] write access to the `RTXteam/RTX` project area
