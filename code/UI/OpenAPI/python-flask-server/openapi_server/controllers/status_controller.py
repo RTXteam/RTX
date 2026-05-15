@@ -7,6 +7,7 @@ from ARAX_query_tracker import ARAXQueryTracker
 from Expand.smartapi import SmartAPI
 from Expand.trapi_query_cacher import KPQueryCacher
 from recent_uuid_manager import RecentUUIDManager
+from RTXConfiguration import RTXConfiguration
 
 
 def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=None, mode=None):  # noqa: E501
@@ -28,13 +29,19 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
     :rtype: object
     """
 
-    if mode is not None and mode == 'kp_cache':
-        cacher = KPQueryCacher()
-        return cacher.list_cached_queries()
+    if mode is not None:
+        if mode == 'kp_cache':
+            cacher = KPQueryCacher()
+            return cacher.list_cached_queries()
 
-    if mode is not None and mode == 'recent_pks':
-        manager = RecentUUIDManager()
-        return manager.get_recent_uuids( ars_host=authorization, top_n_pks=last_n_hours )
+        if mode == 'recent_pks':
+            manager = RecentUUIDManager()
+            return manager.get_recent_uuids( ars_host=authorization, top_n_pks=last_n_hours )
+
+        if mode == 'site_config':
+            config = RTXConfiguration()
+            return config.get_config_settings()
+
 
     if authorization is not None and authorization == 'smartapi':
         smartapi = SmartAPI()

@@ -241,7 +241,7 @@ class RTXConfiguration:
 
     @staticmethod
     def load_openapi_json(yaml_path: str, t0: Any) -> dict:
-        # YAML is super slow to ready, so refresh a JSON if necessary or read the JSON, which is much faster
+        # YAML is super slow to read, so refresh a JSON if necessary or read the JSON, which is much faster
         json_path = yaml_path.replace(".yaml", ".json")
         if not os.path.exists(json_path) or os.path.getmtime(yaml_path) > os.path.getmtime(json_path):
             if DEBUG:
@@ -265,6 +265,13 @@ class RTXConfiguration:
                 print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Read OpenAPI JSON file")
         return openapi_configuration
 
+
+    def get_config_settings(self) -> dict:
+        config = { "config": {} }
+        for v in vars(self):
+            if v.endswith(('version','_name')) or v in ['maturity','domain','is_itrb_instance','is_production_server']:
+                config['config'][v] = getattr(self, v)
+        return config
 
 
 def main():

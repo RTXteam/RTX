@@ -2150,7 +2150,7 @@ function render_response(respObj,dispjson) {
             tr.append(td);
             table.append(tr);
 
-	    var tr = document.createElement("tr");
+	    tr = document.createElement("tr");
 	    for (var s in summary_score_histogram) {
 		td = document.createElement("td");
 		td.className = 'hoverable';
@@ -2531,6 +2531,7 @@ function render_queryplan_table(qp) {
 	tr.append(td);
 
 	var is_first = true;
+	var trskipped = 0;
 	for (let kp in qp.qedge_keys[edge]) {
             if (!is_first)
 		tr = document.createElement("tr");
@@ -2551,7 +2552,7 @@ function render_queryplan_table(qp) {
 	    td = document.createElement("td");
 	    if (qp.qedge_keys[edge][kp]["status"] == "Skipped")
 		td.className = "DEBUG";
-            td.append(qp.qedge_keys[edge][kp]["description"]);
+	    td.append(qp.qedge_keys[edge][kp]["description"]);
 	    tr.append(td);
 
 	    td = document.createElement("td");
@@ -2565,8 +2566,35 @@ function render_queryplan_table(qp) {
 	    }
             tr.append(td);
 
-	    table.append(tr);
+	    if (qp.qedge_keys[edge][kp]["description"].includes("KP does not have a TRAPI ") && !is_first)
+		trskipped++;
+	    else
+		table.append(tr);
 	    is_first = false;
+	}
+
+	if (trskipped>0) {
+            tr = document.createElement("tr");
+	    td = document.createElement("td");
+            td.append("[ "+trskipped+" KPs ]");
+            tr.append(td);
+
+            td = document.createElement("td");
+            var span = document.createElement("span");
+            span.className = "explevel " + status_map["Skipped"];
+            span.append('\u00A0');
+            span.append('\u00A0');
+            td.append(span);
+            td.append('\u00A0');
+            td.append("Skipped");
+            tr.append(td);
+
+	    td = document.createElement("td");
+	    td.colSpan = '2';
+	    td.className = "DEBUG";
+            td.append("No endpoint with a matching TRAPI version");
+            tr.append(td);
+	    table.append(tr);
 	}
 
 	tr = table.deleteRow(0);
@@ -9653,6 +9681,30 @@ function delete_cache(item) {
     response_cache = {};
     display_cache();
 }
+
+
+function get_api_info(api_key, ele) {
+    var api_url = document.getElementById(api_key).value.trim();
+    if (!api_url)
+	return;
+
+    fetch(api_url+"/status?mode=site_config")
+        .then(response => {
+            if (response.ok) return response.json();
+            else throw new Error('Unable to fetch site configuration settings from '+api_url);
+        })
+        .then(data => {
+	    if (!('config'in data))
+		throw new Error('Site configuration settings not available from: '+api_url);
+
+	    showJSONpopup("Site configuration settings for: "+api_url, data.config);
+	})
+        .catch(error => {
+            add_user_msg(error,"ERROR",false);
+            console.log(error);
+        });
+}
+
 
 function enter_url(ele, urlkey) {
     if (event.key === 'Enter')
