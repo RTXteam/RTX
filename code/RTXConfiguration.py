@@ -180,6 +180,21 @@ class RTXConfiguration:
         self.explainable_dtd_db_path = database_downloads["explainable_dtd_db"]
         self.explainable_dtd_db_version = self.explainable_dtd_db_path.split('/')[-1].split('_v')[-1].replace('.db', '')
 
+        # Legacy model-based xCRG paths are retained for old creativeCRG code
+        # compatibility only. These files are no longer managed by
+        # ARAXDatabaseManager or config_dbs.json; the new package-backed
+        # connect(action=xcrg) path is model-free and does not use them.
+        legacy_xcrg_data_dir = f"{file_dir}/ARAX/ARAXQuery/Infer/data/xCRG_data"
+        self.xcrg_embeddings_path = (
+            f"{legacy_xcrg_data_dir}/chemical_gene_embeddings_v1.0.KG2.10.0_refreshedTo_KG2.10.2.npz"
+        )
+        self.xcrg_increase_model_path = (
+            f"{legacy_xcrg_data_dir}/xcrg_increase_model_v1.0.KG2.10.0_new_version.pt"
+        )
+        self.xcrg_decrease_model_path = (
+            f"{legacy_xcrg_data_dir}/xcrg_decrease_model_v1.0.KG2.10.0_new_version.pt"
+        )
+
         # Set up mysql feedback
         self.mysql_feedback_host = self.config_secrets["mysql_feedback"]["host"]
         self.mysql_feedback_port = self.config_secrets["mysql_feedback"]["port"]
