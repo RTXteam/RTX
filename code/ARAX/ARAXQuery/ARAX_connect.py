@@ -37,7 +37,12 @@ from biolink_helper import get_biolink_helper, get_current_arax_biolink_version
 XCRG_RETRIEVER_URL_ENV = "ARAX_XCRG_RETRIEVER_URL"
 XCRG_TIMEOUT_ENV = "ARAX_XCRG_TIMEOUT"
 XCRG_TF_BATCH_SIZE_ENV = "ARAX_XCRG_TF_BATCH_SIZE"
-DEFAULT_XCRG_RETRIEVER_URL = "https://retriever.ci.transltr.io/query"
+XCRG_RETRIEVER_URL_BY_MATURITY = {
+    "staging": "https://retriever.ci.transltr.io/query",
+    "testing": "https://retriever.test.transltr.io/query",
+    "production": "https://retriever.transltr.io/query",
+    "development": "https://retriever.ci.transltr.io/query",
+}
 DEFAULT_XCRG_TIMEOUT = 210
 DEFAULT_XCRG_TF_BATCH_SIZE = 200
 
@@ -80,6 +85,17 @@ def get_xcrg_env_int(name, default):
     except ValueError:
         return default
     return value if value > 0 else default
+
+
+def get_xcrg_retriever_url(rtx_config):
+    """Return the Retriever URL for the current ARAX deployment."""
+    override = os.environ.get(XCRG_RETRIEVER_URL_ENV)
+    if override:
+        return override
+    return XCRG_RETRIEVER_URL_BY_MATURITY.get(
+        rtx_config.maturity,
+        XCRG_RETRIEVER_URL_BY_MATURITY["development"],
+    )
 
 
 class ARAXConnect:
@@ -494,11 +510,11 @@ class ARAXConnect:
         query = {
             "message": self.response.envelope.to_dict()["message"],
         }
-        retriever_url = os.environ.get(XCRG_RETRIEVER_URL_ENV, DEFAULT_XCRG_RETRIEVER_URL)
+        rtx_config = RTXConfiguration()
+        retriever_url = get_xcrg_retriever_url(rtx_config)
         timeout = get_xcrg_env_int(XCRG_TIMEOUT_ENV, DEFAULT_XCRG_TIMEOUT)
         tf_batch_size = get_xcrg_env_int(XCRG_TF_BATCH_SIZE_ENV, DEFAULT_XCRG_TF_BATCH_SIZE)
         ngd_db_path = get_curie_ngd_path().removeprefix("sqlite:")
-        rtx_config = RTXConfiguration()
         config = XCRGConfig(
             retriever_url=retriever_url,
             ngd_db_path=ngd_db_path,
