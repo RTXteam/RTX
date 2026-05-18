@@ -67,6 +67,8 @@ class ResultTransformer:
                 and len(message.query_graph.paths) > 0
         ):
             return #This would need to be changed if you wanted to mix connect with other DSL commands (like overlaying NGD and the like)
+        if response.data.get("xcrg_connect"):
+            return  # xCRG package output is already final TRAPI with support graphs.
 
         if not hasattr(response, "original_query_graph") or not response.original_query_graph.nodes:
             response.error("The original QG was never saved before ARAX edited it! So we can't transform results "
