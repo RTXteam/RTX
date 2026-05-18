@@ -545,8 +545,16 @@ class InferUtilities:
                             Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
                             Attribute(attribute_source=self.kp, attribute_type_id="biolink:agent_type", value=edge_info.agent_type),
                             Attribute(attribute_source=self.kp, attribute_type_id="biolink:knowledge_level", value=edge_info.knowledge_level),
-                            Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax-xdtd", value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from Translator KG by ARAXInfer."),
+                            Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source=primary_knowledge_source, value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from Translator KG by ARAXInfer."),
                         ]
+                        if edge_info.publications:
+                            pubs = edge_info.publications
+                            if isinstance(pubs, str):
+                                pubs = json.loads(pubs)
+                            if pubs:
+                                edge_attribute_list.append(
+                                    Attribute(attribute_source=self.kp, attribute_type_id="biolink:publications", original_attribute_name="publications", value=pubs)
+                                )
                         retrieval_source = self._build_retrieval_sources(edge_info, kp=self.kp)
                         new_edge.attributes += edge_attribute_list
                         new_edge.sources += retrieval_source
