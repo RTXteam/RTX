@@ -6,11 +6,11 @@ import time
 import pytest
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 sys.path.append(os.path.sep.join([*pathlist[:(pathlist.index("RTX") + 1)], "code", "ARAX", "ARAXQuery"]))
-from ARAX_database_manager import ARAXDatabaseManager
+from ARAX_database_manager import ARAXDatabaseManager  # noqa: E402
 sys.path.append(os.path.sep.join([*pathlist[:(pathlist.index("RTX") + 1)], "code", "ARAX", "ARAXQuery", "Expand"]))
-from kp_info_cacher import KPInfoCacher
+from kp_info_cacher import KPInfoCacher  # noqa: E402
 
-from Filter_KG.remove_nodes import RemoveNodes
+from Filter_KG.remove_nodes import RemoveNodes  # noqa: E402
 RemoveNodes.load_block_list_file()
 
 def pytest_addoption(parser):
@@ -26,12 +26,6 @@ def pytest_addoption(parser):
     parser.addoption(
         "--runonlyexternal", action="store_true", default=False, help="run only external tests"
     )
-    parser.addoption(
-        "--nodatabases", action="store_true", default=False, help="(deprecated, now the default) do not download databases"
-    )
-    parser.addoption(
-        "--withdatabases", action="store_true", default=False, help="download/update databases before running tests"
-    )
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "slow: mark test as slow to run")
@@ -43,13 +37,9 @@ def pytest_sessionstart(session):
     Pytest runs these steps at the beginning of the testing session (prior to running any tests)
     """
 
-    config = session.config
-    if config.getoption("--withdatabases"):
-        print("Running database manager to check for missing databases..")
-        db_manager = ARAXDatabaseManager(allow_downloads=True)
-        db_manager.update_databases()
-    else:
-        print("Skipping database check (pass --withdatabases to download/update databases)")
+    db_manager = ARAXDatabaseManager(allow_downloads=False)
+    if db_manager.check_versions():
+        raise RuntimeError("failed ARAX databases versions check")
 
     # Refresh KP info cache if it hasn't been updated in more than an hour
     kp_info_cacher = KPInfoCacher()
@@ -59,9 +49,9 @@ def pytest_sessionstart(session):
     else:
         cache_is_stale = True
     if cache_exists and not cache_is_stale:
-        print(f"KP info cache is up to date.")
+        print("KP info cache is up to date.")
     else:
-        print(f"Running KP info cacher to update stale/missing cache..")
+        print("Running KP info cacher to update stale/missing cache..")
         kp_info_cacher.refresh_kp_info_caches()
 
 

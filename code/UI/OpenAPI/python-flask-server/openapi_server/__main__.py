@@ -135,15 +135,15 @@ def main():
 
     if check_databases:
         from ARAX_database_manager import ARAXDatabaseManager  # pylint: disable=import-outside-toplevel, import-error
-        dbmanager = ARAXDatabaseManager(allow_downloads=True)
+        dbmanager = ARAXDatabaseManager()
         try:
             eprint("Checking for complete databases")
             # check_versions returns True if new databases need to be downloaded
             if dbmanager.check_versions():
-                eprint("Databases incomplete; running update_databases")
-                dbmanager.update_databases()
+                eprint("ARAX databases incomplete; aborting application server startup")
+                sys.exit(1)
             else:
-                eprint("Databases seem to be complete")
+                eprint("ARAX databases are complete; proceeding with application start-up")
         except Exception:  # pylint: disable=broad-exception-caught
             eprint(traceback.format_exc())
             raise

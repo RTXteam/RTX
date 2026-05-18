@@ -5,9 +5,6 @@ set -euo pipefail
 #   1. configure `DB_DIR` and `LATEST_KG2_VER` shell variabless
 #   2. `cd` to the directory just above the `RTX` root code directory
 #   3. `./generate-db-symlinks.sy`
-# When you run the pytest suite, don't forget to pass `--nodatabases`
-# so that the database manager won't attempt to download 200 GiB worth
-# of databases to your development machine.
 
 # Stephen Ramsey, Oregon State University
 
