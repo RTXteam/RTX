@@ -523,3 +523,64 @@ def test_xcrg_infer_dsl():
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
         assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
+
+
+@pytest.mark.slow
+def test_xdtd_publications_in_edge_attributes():
+    query = {
+        "message": {"query_graph": {
+            "edges": {
+                "t_edge": {
+                    "attribute_constraints": [],
+                    "knowledge_type": "inferred",
+                    "object": "on",
+                    "predicates": [
+                        "biolink:treats"
+                    ],
+                    "qualifier_constraints": [],
+                    "subject": "sn"
+                }
+            },
+            "nodes": {
+                "on": {
+                    "categories": [
+                        "biolink:Disease"
+                    ],
+                    "constraints": [],
+                    "ids": [
+                        "MONDO:0015564"
+                    ],
+                },
+                "sn": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ],
+                    "constraints": [],
+                }
+            }
+        }}
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
+
+    prediction_edge_keys = {k for k in message.knowledge_graph.edges if k.startswith("creative_DTD_prediction_")}
+    path_edge_keys = set(message.knowledge_graph.edges.keys()) - prediction_edge_keys
+
+    publications_found = False
+    for edge_key in path_edge_keys:
+        edge = message.knowledge_graph.edges[edge_key]
+        if edge.attributes:
+            for attr in edge.attributes:
+                if attr.attribute_type_id == "biolink:publications":
+                    publications_found = True
+                    assert attr.original_attribute_name == "publications"
+                    assert attr.value is not None
+                    assert isinstance(attr.value, list)
+                    assert len(attr.value) > 0
+                    assert all(isinstance(v, str) for v in attr.value)
+                    break
+        if publications_found:
+            break
+
+    assert publications_found, "No biolink:publications attribute found on any explanation path edge"
