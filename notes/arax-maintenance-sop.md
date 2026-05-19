@@ -7,7 +7,7 @@
 - [ ] Run ARAX pytest suite, using the code in the issue branch
 - [ ] `arax.ncats.io` integration test of the code in the `issue-XXX` branch
 - [ ] Switch `arax.ncats.io` devarea back to the branch it was previously on (often `master`)
-- [ ] Merge the feature branch into `master` (if using a PR, "squash and merge", or if not using a PR, `git merge --squash issue-XXX`
+- [ ] Merge the feature branch into `master` 
 - [ ] Delete `issue-XXX` branch
 - [ ] Note in ARAX changelog
 - [ ] Note in CATRAX Y2 milestones
@@ -95,7 +95,7 @@ After downloading the databases, the `DB_DIR` directory structure would look lik
 
 
 ```bash
-DB_DIR/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db
+DB_DIR/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db  
 DB_DIR/tier0-YYYYMMDD/ExplainableDTD_tier0-20260408-all_with_paths.db
 DB_DIR/tier0-YYYYMMDD/autocomplete_v1.0_tier0-20260408.sqlite
 DB_DIR/tier0-YYYYMMDD/curie_ngd_v1.0_tier0-20260408.sqlite
@@ -529,8 +529,7 @@ flagged an issue. If there is an issue, fix it before merging.
 or with particular risk for impacts on ARAX in CI, consider also messaging
 the `#arax-alerts` channel in the `NCATSTranslator` Slack workspace, a message that
 there will be a restart of ARAX in CI, with new code.
-5. Merge the PR, by using the green "Merge pull request" button in GitHub, and selecting
-"squash and merge". 
+5. Merge the PR, by using the green "Merge pull request" button in GitHub
 A warning about the GitHub tool for managing merge conflicts:
 it _only modifies the parent branch_, which is fine if you are merging `issue-XXX` into
 `master`, but in situations where you want to merge `master` into an issue branch,
@@ -544,13 +543,9 @@ you can just cd into a local fresh checkout of the `master` branch code and
 run
 ```
 git fetch origin
-git merge --squash origin/issue-XXX
+git merge origin/issue-XXX
 ```
-The `--squash` combines all the commits from your `issue-XXX` branch into
-a single commit, which is what you want, for all but the most complex
-branch development efforts (for major efforts with multiple sub-issues,
-it may sometimes be appropriate to omit the `--squash` when you merge
-to `master`).
+
 
 ## If you need to bring your feature branch up-to-date with `master`
 For a long-running feature branch (typically complex projects),
