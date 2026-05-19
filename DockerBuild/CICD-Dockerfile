@@ -2,6 +2,7 @@ FROM ubuntu:24.04
 
 # suppress debconf error messages:
 ARG DEBIAN_FRONTEND=noninteractive
+ARG BUILD_BRANCH=master
 
 # add user "rt" and give sudo privilege:
 RUN useradd rt -m -s /bin/bash
@@ -28,10 +29,8 @@ RUN chmod -R 700 /home/rt/.ssh
 # clone RTX repo
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt:rt /mnt/data/orangeboard/production
-# Temporary: clone the issue-2730 branch so CI exercises the Tier0/NodeNorm
-# code under test in this PR. Revert back to a plain `git clone` (default
-# branch) after issue-2730 is merged into master.
 RUN su - rt -c "cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git"
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && git checkout ${BUILD_BRANCH}"
 RUN chown -R rt:rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file

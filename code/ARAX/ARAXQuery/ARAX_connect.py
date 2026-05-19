@@ -3,6 +3,7 @@ import sys
 
 from RTXConfiguration import RTXConfiguration
 from pathfinder.Pathfinder import Pathfinder
+from xcrg import XCRGConfig, run_xcrg
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -30,7 +31,71 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymize
 from node_synonymizer import NodeSynonymizer
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
-from biolink_helper import get_biolink_helper
+from biolink_helper import get_biolink_helper, get_current_arax_biolink_version
+
+
+XCRG_RETRIEVER_URL_ENV = "ARAX_XCRG_RETRIEVER_URL"
+XCRG_TIMEOUT_ENV = "ARAX_XCRG_TIMEOUT"
+XCRG_TF_BATCH_SIZE_ENV = "ARAX_XCRG_TF_BATCH_SIZE"
+XCRG_RETRIEVER_URL_BY_MATURITY = {
+    "staging": "https://retriever.ci.transltr.io/query",
+    "testing": "https://retriever.test.transltr.io/query",
+    "production": "https://retriever.transltr.io/query",
+    "development": "https://retriever.ci.transltr.io/query",
+}
+DEFAULT_XCRG_TIMEOUT = 210
+DEFAULT_XCRG_TF_BATCH_SIZE = 200
+
+
+class ARAXXCRGLogger:
+    """Adapt xCRG package log calls to ARAXResponse logging."""
+
+    def __init__(self, response):
+        self.response = response
+
+    def debug(self, message, *args):
+        self.response.debug(self._format(message, args))
+
+    def info(self, message, *args):
+        self.response.info(self._format(message, args))
+
+    def warning(self, message, *args):
+        self.response.warning(self._format(message, args))
+
+    def error(self, message, *args):
+        self.response.error(self._format(message, args), http_status=500)
+
+    @staticmethod
+    def _format(message, args):
+        if not args:
+            return str(message)
+        try:
+            return str(message) % args
+        except Exception:
+            return " ".join([str(message), *(str(arg) for arg in args)])
+
+
+def get_xcrg_env_int(name, default):
+    """Return a positive integer xCRG environment override, or the default."""
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    try:
+        value = int(raw_value)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+def get_xcrg_retriever_url(rtx_config):
+    """Return the Retriever URL for the current ARAX deployment."""
+    override = os.environ.get(XCRG_RETRIEVER_URL_ENV)
+    if override:
+        return override
+    return XCRG_RETRIEVER_URL_BY_MATURITY.get(
+        rtx_config.maturity,
+        XCRG_RETRIEVER_URL_BY_MATURITY["development"],
+    )
 
 
 class ARAXConnect:
@@ -41,6 +106,7 @@ class ARAXConnect:
         self.parameters = None
         self.allowable_actions = {
             'connect_nodes',
+            'xcrg',
         }
 
         # Set this to False when ready to go to production, this is only for debugging purposes
@@ -77,6 +143,15 @@ class ARAXConnect:
                     "max_path_length": self.max_path_length_info,
                     "max_pathfinder_paths": self.max_pathfinder_paths_info
                 }
+            },
+            "xcrg": {
+                "dsl_command": "connect(action=xcrg)",
+                "description": """
+                    `xcrg` runs reusable xCRG for MVP2 gene activity/abundance
+                    inferred TRAPI queries.
+                    """,
+                'brief_description': "xcrg returns xCRG inferred ChemicalEntity-Gene results.",
+                "parameters": {}
             }
         }
 
@@ -194,26 +269,41 @@ class ARAXConnect:
         #### Check the cache to see if we have this query cached already
         start = time.time()
         cacher = KPQueryCacher()
-        kp_curie = "PathFinder"
-        kp_url = "PathFinder"
+        is_xcrg_action = parameters.get('action') == 'xcrg'
+        kp_curie = "xCRG" if is_xcrg_action else "PathFinder"
+        kp_url = "xCRG" if is_xcrg_action else "PathFinder"
         response_envelope_as_dict = self.response.envelope.to_dict()
         cleaned_parameters = self._clean_parameters(parameters)
         pathfinder_input_data = {'query_graph': response_envelope_as_dict['message']['query_graph'],
                                  'parameters': cleaned_parameters}
         self.response.info(f"Looking for a previously cached result from {kp_curie}")
         response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, pathfinder_input_data)
-        if response_code != -2 and response_code == 200 and self.response.envelope.message.results:
+        if (
+                response_code != -2
+                and response_code == 200
+                and (is_xcrg_action or self.response.envelope.message.results)
+        ):
             n_results = cacher._get_n_results(response_data)
             self.response.info(
                 f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
             self.response.envelope.message = ARAXMessenger().from_dict(response_data['message'])
 
-            # Hack to explicitly convert the analyses to PathfinderAnalysis objects because this doesn't work automatically. It should. Maybe move this into Messenger? FIXME
-            i_analysis = 0
-            for analysis_dict in response_data['message']['results'][0]['analyses']:
-                analysis_obj = PathfinderAnalysis.from_dict(analysis_dict)
-                self.response.envelope.message.results[0].analyses[i_analysis] = analysis_obj
-                i_analysis += 1
+            if is_xcrg_action:
+                self.response.envelope.schema_version = (
+                    response_data.get("schema_version") or self.response.envelope.schema_version
+                )
+                self.response.envelope.biolink_version = (
+                    response_data.get("biolink_version") or self.response.envelope.biolink_version
+                )
+                self.response.data["xcrg_connect"] = True
+                self.response.total_results_count = len(response_data['message'].get("results") or [])
+            else:
+                # Hack to explicitly convert the analyses to PathfinderAnalysis objects because this doesn't work automatically. It should. Maybe move this into Messenger? FIXME
+                i_analysis = 0
+                for analysis_dict in response_data['message']['results'][0]['analyses']:
+                    analysis_obj = PathfinderAnalysis.from_dict(analysis_dict)
+                    self.response.envelope.message.results[0].analyses[i_analysis] = analysis_obj
+                    i_analysis += 1
 
         else:
             self.response.debug(f"Applying Connect to Message with parameters {parameters}")
@@ -230,7 +320,7 @@ class ARAXConnect:
 
             #### Store the result into the cache for next time
             elapsed_time = time.time() - start
-            self.response.info(f"Got result from ARAX PathFinder Connect after {elapsed_time}. Converting to_dict()")
+            self.response.info(f"Got result from ARAX {kp_curie} Connect after {elapsed_time}. Converting to_dict()")
             response_object = self.response.envelope.to_dict()
             self.response.info(f"Storing resulting dict in the cache")
             cacher.store_response(
@@ -402,6 +492,54 @@ class ARAXConnect:
         mode = 'ARAX'
         if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
             self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
+        return self.response
+
+    def __xcrg(self, describe=False):
+        """Run reusable xCRG for MVP2 inferred gene activity/abundance queries."""
+        allowable_parameters = {
+            'action': {'xcrg'},
+        }
+        if describe:
+            allowable_parameters['brief_description'] = self.command_definitions['xcrg']
+            return allowable_parameters
+
+        resp = self.check_params(allowable_parameters)
+        if self.response.status != 'OK' or resp == -1:
+            return self.response
+
+        query = {
+            "message": self.response.envelope.to_dict()["message"],
+        }
+        rtx_config = RTXConfiguration()
+        retriever_url = get_xcrg_retriever_url(rtx_config)
+        timeout = get_xcrg_env_int(XCRG_TIMEOUT_ENV, DEFAULT_XCRG_TIMEOUT)
+        tf_batch_size = get_xcrg_env_int(XCRG_TF_BATCH_SIZE_ENV, DEFAULT_XCRG_TF_BATCH_SIZE)
+        ngd_db_path = get_curie_ngd_path().removeprefix("sqlite:")
+        config = XCRGConfig(
+            retriever_url=retriever_url,
+            ngd_db_path=ngd_db_path,
+            timeout=timeout,
+            tiers=[0],
+            tf_batch_size=tf_batch_size,
+            resource_id="infores:arax",
+            trapi_schema_version=rtx_config.trapi_version,
+            biolink_version=get_current_arax_biolink_version(),
+        )
+        try:
+            xcrg_response = run_xcrg(
+                query,
+                config=config,
+                logger=ARAXXCRGLogger(self.response),
+            )
+        except Exception as e:
+            self.response.error(f"xCRG failed to generate a response. Error message is: {e}", http_status=500)
+            return self.response
+
+        self.response.envelope.message = ARAXMessenger().from_dict(xcrg_response["message"])
+        self.response.envelope.schema_version = xcrg_response.get("schema_version")
+        self.response.envelope.biolink_version = xcrg_response.get("biolink_version")
+        self.response.total_results_count = len(xcrg_response["message"].get("results") or [])
+        self.response.data["xcrg_connect"] = True
         return self.response
 
     def get_block_list(self):
