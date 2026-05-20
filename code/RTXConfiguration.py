@@ -102,8 +102,8 @@ class RTXConfiguration:
             elif self.domain in ["arax.transltr.io", "kg2.transltr.io"] or self.current_branch_name == "production":
                 self.maturity = "production"
             elif self.domain == "arax.ncats.io":
-                if self.instance_name in ["ARAX", "kg2"] or self.current_branch_name == "production":
-                    self.maturity = "staging"
+                if self.current_branch_name == "production":
+                    self.maturity = "production"
                 else:
                     self.maturity = "development"
             else:
