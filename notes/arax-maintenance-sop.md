@@ -7,7 +7,7 @@
 - [ ] Run ARAX pytest suite, using the code in the issue branch
 - [ ] `arax.ncats.io` integration test of the code in the `issue-XXX` branch
 - [ ] Switch `arax.ncats.io` devarea back to the branch it was previously on (often `master`)
-- [ ] Merge the feature branch into `master` (if using a PR, "squash and merge", or if not using a PR, `git merge --squash issue-XXX`
+- [ ] Merge the feature branch into `master` 
 - [ ] Delete `issue-XXX` branch
 - [ ] Note in ARAX changelog
 - [ ] Note in CATRAX Y2 milestones
@@ -24,10 +24,7 @@ process steps and suggested coding standards described in this document that
 don't apply to them or the parts of ARAX that they work on).
 
 ## Preparing your local dev computer to maintain ARAX
-To efficiently maintain ARAX, it is essential to have a local development system that you don't have
-to `ssh` into. You will need to have Linux or macOS (though Linux running on Windows via WSL2 is also probably
-fine); either `x86_64` or `ARM64` architecture is probably fine (the parts of ARAX that the Ramsey
-Lab maintains seem to work fine on both architectures). Your local development computer should have:
+At least for the Ramsey Lab maintained artifacts and dev area, `x86_64` and `ARM64` architectures both work. Your local development computer should have:
 
 - 200 GiB of free disk space
 - 32 GiB of memory
@@ -35,7 +32,7 @@ Lab maintains seem to work fine on both architectures). Your local development c
 - Internet (access to the OSU address space via VPN is only required for certain steps late in the process)
 - a mainstream web browser installed (Chrome/Firefox)
 - tools that need to be installed, by Homebrew or apt or similar: bash, curl, OpenSSH, git, jq, yq
-- OSU VPN access (in order to be able to `ssh` into `arax.ncats.io` from off-campus) from your local dev computer
+- VPN access to which ever IP block is registered with ITRB for access to `arax.ncats.io`
 
 Further, you will need:
 - write access to the ARAX GitHub project area (`RTXteam/RTX.git`)
@@ -56,60 +53,65 @@ You only need to perform this "setup" procedure once; you don't need to do it
 each time you work on a new ARAX issue. You will, however, need to carry out this
 procedure after each major new release of ARAX databases.
 
-1. Inspect the shell script 
-[`generate-db-symlinks.sh`](https://github.com/RTXteam/RTX/blob/master/code/generate-db-symlinks.sh)
-and, from it, compile a list of all the files referenced in that script (each of them is
-an "ARAX database" of some kind or other). Download all the ARAX databases on
-the list that you compiled, to your development machine, to a directory that
-you choose (but which will be persistent across ARAX issues); we'll call that
-directory `DB_DIR` (assume `DB_DIR` is an absolute path to the directory you
-chose). Then underneath `DB_DIR`, there should be subdirectories like `KG2.10.2`,
-`KG2.10.0`, and `KG2.8.0` (the latter is to hold the COHD database which hasn't been
-refreshed in a very long time).
+1. You will need to get the following databases: 
+
+```bash
+COHDdatabase_v1.0_KG2.8.0.db
+ExplainableDTD_tier0-20260408-all_with_paths.db
+autocomplete_v1.0_tier0-20260408.sqlite
+curie_ngd_v1.0_tier0-20260408.sqlite
+curie_to_pmids_v1.0_tier0-20260408.sqlite
+fda_approved_drugs_v1.0.pickle
+gandalf_mmap_tier0-20260408.tar.gz
+tier0-info-for-overlay_v1.0_tier0-20260408.sqlite
 ```
+
+It is probably a good idea to inspect the shell script [`generate-db-symlinks.sh`](https://github.com/RTXteam/RTX/blob/master/code/generate-db-symlinks.sh)
+and confirm that the above list has not changed. Download all the ARAX databases on the list, to your development machine, to a directory that you choose (but which will be persistent across ARAX issues); we'll call that directory `DB_DIR` (assume `DB_DIR` is an absolute path to the directory you chose). Then underneath `DB_DIR`, there should be subdirectories like `tier0-20260408`, and `KG2.8.0` (the latter is to hold the COHD database which hasn't been refreshed in a very long time).
+
+```bash
 mkdir DB_DIR
-mkdir DB_DIR/KG2.10.2
-mkdir DB_DIR/KG2.10.0
+mkdir DB_DIR/tier0-20260408
 mkdir DB_DIR/KG2.8.0
 ```
-To download the databases, you would need
-ssh access to `arax-databases.rtx.ai` as user `rtxconfig`; but if you do not have that,
-as long as you have ssh access to `arax-databases.rtx.ai` as user `ubuntu`, you can 
-log in as `ubuntu` and configure ssh access as user `rtxconfig`, for yourself, like this:
-```
+
+To download the databases, you would need ssh access to `arax-databases.rtx.ai` as user `rtxconfig`; but if you do not have that, as long as you have ssh access to `arax-databases.rtx.ai` as user `ubuntu`, you can log in as `ubuntu` and configure ssh access as user `rtxconfig`, for yourself, like this:
+
+```bash
 scp ~/.ssh/id_ecdsa.pub ubuntu@arax-databases.rtx.ai:
 ssh ubuntu@arax-databases.rtx.ai
 sudo sh -c 'cat id_ecdsa.pub >> /home/rtxconfig/.ssh/authorized_keys'
 sudo chown rtxconfig:rtxconfig /home/rtxconfig/.ssh/authorized_keys
 sudo chmod 600 /home/rtxconfig/.ssh/authorized_keys
 ```
-Then you can download files like this:
-```
-mkdir DB_DIR/KG2.10.2
-scp -C rtxconfig@arax-databases.rtx.ai:KG2.10.2/node_synonymizer_v1.0_KG2.10.2.sqlite DB_DIR/KG2.10.2/
-```
-After downloading the databases, the `DB_DIR` directory structure would
-look like this:
-```
-DB_DIR/KG2.10.0
-DB_DIR/KG2.10.0/xcrg_decrease_model_v1.0.KG2.10.0_new_version.pt
-DB_DIR/KG2.10.0/xcrg_increase_model_v1.0.KG2.10.0_new_version.pt
-DB_DIR/KG2.8.0
-DB_DIR/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db
-DB_DIR/KG2.10.2
-DB_DIR/KG2.10.2/node_synonymizer_v1.0_KG2.10.2.sqlite
-DB_DIR/KG2.10.2/kg2c_v1.0_KG2.10.2.sqlite
-DB_DIR/KG2.10.2/ExplainableDTD_v1.0_KG2.10.0_refreshedTo_KG2.10.2.db
-DB_DIR/KG2.10.2/chemical_gene_embeddings_v1.0.KG2.10.0_refreshedTo_KG2.10.2.npz
-DB_DIR/KG2.10.2/autocomplete_v1.0_KG2.10.2.sqlite
-DB_DIR/KG2.10.2/curie_ngd_v1.0_KG2.10.2.sqlite
-DB_DIR/KG2.10.2/curie_to_pmids_v1.0_KG2.10.2.sqlite
-DB_DIR/KG2.10.2/fda_approved_drugs_v1.0_KG2.10.2c.pickle
-```
-To get your list of database files, check `generate-db-symlinks.sh` since that script
-should have the
-latest list of database dependencies.
 
+Then you can download files like this:
+
+```bash
+scp -C rtxconfig@arax-databases.rtx.ai:KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db DB_DIR/KG2.8.0/
+```
+
+After downloading the databases, the `DB_DIR` directory structure would look like this:
+
+
+```bash
+DB_DIR/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db  
+DB_DIR/tier0-YYYYMMDD/ExplainableDTD_tier0-20260408-all_with_paths.db
+DB_DIR/tier0-YYYYMMDD/autocomplete_v1.0_tier0-20260408.sqlite
+DB_DIR/tier0-YYYYMMDD/curie_ngd_v1.0_tier0-20260408.sqlite
+DB_DIR/tier0-YYYYMMDD/curie_to_pmids_v1.0_tier0-20260408.sqlite
+DB_DIR/tier0-YYYYMMDD/fda_approved_drugs_v1.0.pickle
+DB_DIR/tier0-YYYYMMDD/gandalf_mmap_tier0-20260408.tar.gz
+DB_DIR/tier0-YYYYMMDD/tier0-info-for-overlay_v1.0_tier0-20260408.sqlite
+```
+
+where `tier0-YYYYMMDD` is the date stamp of the current build for ARAX. This may _not_ always be the most recent release of `translator-kg` (which is the Tier0 graph). In the case for the build at the time of the document, it is `tier0-20260408`
+
+After downloading, extract the gandalf_mmap tarball in place — the flask server will not do this automatically because `check_databases` is `false`:
+```bash
+cd $DB_DIR/tier0-YYYYMMDD
+tar -xzf gandalf_mmap_tier0-YYYYMMDD.tar.gz
+```
 2. On your local dev system, create a directory for your ARAX development work; you can 
 call it whatever you want, but in this document we will denote the directory's
 absolute path by `ARAX_DEV_DIR`. You will need to install the script
@@ -120,10 +122,8 @@ curl -o generate-db-symlinks.sh -s -L \
   https://raw.githubusercontent.com/RTXteam/RTX/refs/heads/master/code/generate-db-symlinks.sh
 chmod a+x generate-db-symlinks.sh
 ```
-Note, if you are actually _working on a new ARAX database release_, that will
-involve customization of the aforementioned script; but that kind of work is
-beyond the scope of this procedure document which is for more routine
-maintenance.
+
+One important thing to notice is that `generate-db-symlinks.sh` hardcodes `DB_DIR="/mnt/data/orangeboard/databases"`. This needs to be changed to reflect your own local development work. For example, I've edited mine to be: `DB_DIR="/home/hodgesf/Desktop/code/database"`
 
 3. Create a file `ARAX_DEV_DIR/flask_config.json` containing the following JSON:
 ```
@@ -529,8 +529,7 @@ flagged an issue. If there is an issue, fix it before merging.
 or with particular risk for impacts on ARAX in CI, consider also messaging
 the `#arax-alerts` channel in the `NCATSTranslator` Slack workspace, a message that
 there will be a restart of ARAX in CI, with new code.
-5. Merge the PR, by using the green "Merge pull request" button in GitHub, and selecting
-"squash and merge". 
+5. Merge the PR, by using the green "Merge pull request" button in GitHub
 A warning about the GitHub tool for managing merge conflicts:
 it _only modifies the parent branch_, which is fine if you are merging `issue-XXX` into
 `master`, but in situations where you want to merge `master` into an issue branch,
@@ -544,13 +543,9 @@ you can just cd into a local fresh checkout of the `master` branch code and
 run
 ```
 git fetch origin
-git merge --squash origin/issue-XXX
+git merge origin/issue-XXX
 ```
-The `--squash` combines all the commits from your `issue-XXX` branch into
-a single commit, which is what you want, for all but the most complex
-branch development efforts (for major efforts with multiple sub-issues,
-it may sometimes be appropriate to omit the `--squash` when you merge
-to `master`).
+
 
 ## If you need to bring your feature branch up-to-date with `master`
 For a long-running feature branch (typically complex projects),
