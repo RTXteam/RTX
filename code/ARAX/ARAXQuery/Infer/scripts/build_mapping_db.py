@@ -12,7 +12,7 @@ Tables:
   EDGE_MAPPING_TABLE:
     subject, predicate, object, id, category, qualifier, publications, sources,
     resource_id (pipe-delimited), resource_role (pipe-delimited), knowledge_level,
-    agent_type, stage_qualifier, original_subject, original_object
+    agent_type, stage_qualifier, original_subject, original_object, extra_attributes (JSON)
 
 Author: Chunyu Ma
 """
@@ -38,7 +38,7 @@ EdgeInfo = collections.namedtuple('EdgeInfo', [
     'subject', 'predicate', 'object', 'id', 'category', 'qualifier',
     'publications', 'sources', 'resource_id', 'resource_role',
     'knowledge_level', 'agent_type', 'stage_qualifier',
-    'original_subject', 'original_object'
+    'original_subject', 'original_object', 'extra_attributes'
 ])
 
 
@@ -298,7 +298,7 @@ class xDTDMappingDB:
         if predicate == 'SELF_LOOP_RELATION':
             return [EdgeInfo._make((
                 subject, predicate, object_id,
-                None, None, None, None, None, None, None, None, None, None, None, None
+                None, None, None, None, None, None, None, None, None, None, None, None, None
             ))]
 
         cursor.execute(
