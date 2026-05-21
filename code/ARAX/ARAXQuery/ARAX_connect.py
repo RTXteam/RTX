@@ -15,7 +15,7 @@ import copy
 import time
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from Path_Finder.utility import get_curie_ngd_path, get_kg2c_db_path, get_gandalf_mmap_path
+from Path_Finder.utility import get_curie_ngd_path, get_curie_to_pmids_path, get_kg2c_db_path, get_gandalf_mmap_path
 from Expand.trapi_query_cacher import KPQueryCacher
 from ARAX_messenger import ARAXMessenger
 
@@ -515,9 +515,11 @@ class ARAXConnect:
         timeout = get_xcrg_env_int(XCRG_TIMEOUT_ENV, DEFAULT_XCRG_TIMEOUT)
         tf_batch_size = get_xcrg_env_int(XCRG_TF_BATCH_SIZE_ENV, DEFAULT_XCRG_TF_BATCH_SIZE)
         ngd_db_path = get_curie_ngd_path().removeprefix("sqlite:")
+        curie_to_pmids_db_path = get_curie_to_pmids_path().removeprefix("sqlite:")
         config = XCRGConfig(
             retriever_url=retriever_url,
             ngd_db_path=ngd_db_path,
+            curie_to_pmids_db_path=curie_to_pmids_db_path,
             timeout=timeout,
             tiers=[0],
             tf_batch_size=tf_batch_size,

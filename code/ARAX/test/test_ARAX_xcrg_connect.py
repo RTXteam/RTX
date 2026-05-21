@@ -206,6 +206,7 @@ def test_connect_xcrg_calls_package_and_updates_response(monkeypatch):
     monkeypatch.setattr(ARAX_connect, "RTXConfiguration", MockRTXConfiguration)
     monkeypatch.setattr(ARAX_connect, "KPQueryCacher", MockKPQueryCacher)
     monkeypatch.setattr(ARAX_connect, "get_curie_ngd_path", lambda: "sqlite:/tmp/xcrg-ngd.sqlite")
+    monkeypatch.setattr(ARAX_connect, "get_curie_to_pmids_path", lambda: "sqlite:/tmp/xcrg-pmids.sqlite")
     monkeypatch.setattr(ARAX_connect, "get_current_arax_biolink_version", lambda: "4.3.2")
     monkeypatch.setattr(ARAX_connect, "run_xcrg", mock_run_xcrg)
 
@@ -220,6 +221,7 @@ def test_connect_xcrg_calls_package_and_updates_response(monkeypatch):
     assert captured["query"]["message"]["query_graph"]["edges"]["e0"]["knowledge_type"] == "inferred"
     assert captured["config"].retriever_url == "https://retriever.test.transltr.io/query"
     assert captured["config"].ngd_db_path == "/tmp/xcrg-ngd.sqlite"
+    assert captured["config"].curie_to_pmids_db_path == "/tmp/xcrg-pmids.sqlite"
     assert captured["config"].timeout == 17
     assert captured["config"].tf_batch_size == 23
 
