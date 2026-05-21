@@ -398,8 +398,7 @@ class InferUtilities:
                     # Add the edge to the knowledge graph
                     treat_score = node_id_to_score[canonical_id]
                     edge_attribute_list = [
-                        Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                        Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source=self.kp, value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                        Attribute(original_attribute_name="created_datetime", value="2026-05-08", attribute_type_id="metatype:Datetime"),
                         Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score)),
                         Attribute(attribute_source=self.kp, attribute_type_id="biolink:agent_type", value="computational_model"),
                         Attribute(attribute_source=self.kp, attribute_type_id="biolink:knowledge_level", value="prediction"),
@@ -542,10 +541,9 @@ class InferUtilities:
                         primary_knowledge_source = self._get_primary_knowledge_source(edge_info)
                         new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[], sources=[])
                         edge_attribute_list = [
-                            Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
+                            Attribute(original_attribute_name="created_datetime", value="2026-05-08", attribute_type_id="metatype:Datetime"),
                             Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:agent_type", value=edge_info.agent_type),
                             Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:knowledge_level", value=edge_info.knowledge_level),
-                            Attribute(original_attribute_name=None, value=True, attribute_source=primary_knowledge_source, value_type_id="metatype:Boolean", value_url=None, description="This edge was extracted from Translator KG by ARAXInfer."),
                         ]
                         if edge_info.publications:
                             pubs = edge_info.publications
@@ -624,14 +622,13 @@ class InferUtilities:
                     essence_scores[path_drug_node_info.name] = treat_score
                 
                 edge_attribute_list = [
-                    Attribute(original_attribute_name="defined_datetime", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), attribute_type_id="metatype:Datetime"),
-                    Attribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source=self.kp, value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
+                    Attribute(original_attribute_name="created_datetime", value="2026-05-08", attribute_type_id="metatype:Datetime"),
                     Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score)),
                     Attribute(attribute_source=self.kp, attribute_type_id="biolink:agent_type", value="computational_model"),
                     Attribute(attribute_source=self.kp, attribute_type_id="biolink:knowledge_level", value="prediction"),
                 ]
                 retrieval_source = [
-                        RetrievalSource(resource_id="infores:arax-xdtd", resource_role="primary_knowledge_source")
+                        RetrievalSource(resource_id=self.kp, resource_role="primary_knowledge_source")
                     ]
                 #edge_predicate = qedge_id
                 edge_predicate = "biolink:treats"
