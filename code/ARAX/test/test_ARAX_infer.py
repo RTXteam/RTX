@@ -523,3 +523,156 @@ def test_xcrg_infer_dsl():
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
         assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
+
+
+@pytest.mark.slow
+def test_xdtd_publications_in_edge_attributes():
+    query = {
+        "message": {"query_graph": {
+            "edges": {
+                "t_edge": {
+                    "attribute_constraints": [],
+                    "knowledge_type": "inferred",
+                    "object": "on",
+                    "predicates": [
+                        "biolink:treats"
+                    ],
+                    "qualifier_constraints": [],
+                    "subject": "sn"
+                }
+            },
+            "nodes": {
+                "on": {
+                    "categories": [
+                        "biolink:Disease"
+                    ],
+                    "constraints": [],
+                    "ids": [
+                        "MONDO:0015564"
+                    ],
+                },
+                "sn": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ],
+                    "constraints": [],
+                }
+            }
+        }}
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
+
+    prediction_edge_keys = {k for k in message.knowledge_graph.edges if k.startswith("creative_DTD_prediction_")}
+    path_edge_keys = set(message.knowledge_graph.edges.keys()) - prediction_edge_keys
+
+    publications_found = False
+    for edge_key in path_edge_keys:
+        edge = message.knowledge_graph.edges[edge_key]
+        if edge.attributes:
+            for attr in edge.attributes:
+                if attr.attribute_type_id == "biolink:publications":
+                    publications_found = True
+                    assert attr.original_attribute_name == "publications"
+                    assert attr.value is not None
+                    assert isinstance(attr.value, list)
+                    assert len(attr.value) > 0
+                    assert all(isinstance(v, str) for v in attr.value)
+                    break
+        if publications_found:
+            break
+
+    assert publications_found, "No biolink:publications attribute found on any explanation path edge"
+
+
+@pytest.mark.slow
+def test_xdtd_extra_edge_attributes():
+    query = {
+        "message": {"query_graph": {
+            "edges": {
+                "t_edge": {
+                    "attribute_constraints": [],
+                    "knowledge_type": "inferred",
+                    "object": "on",
+                    "predicates": [
+                        "biolink:treats"
+                    ],
+                    "qualifier_constraints": [],
+                    "subject": "sn"
+                }
+            },
+            "nodes": {
+                "on": {
+                    "categories": [
+                        "biolink:Disease"
+                    ],
+                    "constraints": [],
+                    "ids": [
+                        "MONDO:0015564"
+                    ],
+                },
+                "sn": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ],
+                    "constraints": [],
+                }
+            }
+        }}
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
+
+    new_column_type_ids = {
+        "biolink:category",
+        "biolink:original_subject",
+        "biolink:original_object",
+    }
+
+    extra_attr_type_ids = {
+        "biolink:qualified_predicate",
+        "biolink:has_confidence_score",
+        "biolink:object_aspect_qualifier",
+        "biolink:object_direction_qualifier",
+        "biolink:has_affinity",
+        "biolink:species_context_qualifier",
+        "biolink:max_research_phase",
+        "biolink:p_value",
+        "biolink:has_supporting_studies",
+    }
+
+    found_new_column_attrs = set()
+    found_extra_attrs = set()
+    infer_edge_count = 0
+
+    for edge_key, edge in message.knowledge_graph.edges.items():
+        if not edge_key.startswith("urn:uuid:"):
+            continue
+        if not edge.attributes:
+            continue
+        infer_edge_count += 1
+
+        for attr in edge.attributes:
+            if attr.attribute_type_id in new_column_type_ids:
+                found_new_column_attrs.add(attr.attribute_type_id)
+                assert attr.value is not None
+                assert attr.original_attribute_name is None
+            if attr.attribute_type_id in extra_attr_type_ids:
+                found_extra_attrs.add(attr.attribute_type_id)
+                assert attr.value is not None
+                assert attr.original_attribute_name is None
+
+    assert infer_edge_count > 0, "No infer-produced path edges found"
+    assert found_new_column_attrs, (
+        "No new column attributes (category/original_subject/original_object) "
+        "found on any infer path edge"
+    )
+    assert "biolink:category" in found_new_column_attrs, (
+        "biolink:category attribute not found on any infer path edge"
+    )
+    assert found_extra_attrs, (
+        "No extra_attributes (qualified_predicate, has_confidence_score, etc.) "
+        "found on any infer path edge"
+    )

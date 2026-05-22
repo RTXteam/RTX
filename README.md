@@ -216,7 +216,7 @@ is a knowledge graph comprising 7.5M nodes and 34.3M relationships
 that is built by integrating concepts and concept-predicate-concept triples
 obtained from:
 
-1. Unified Medical Language System (UMLS; including SNOMED CT)
+1. Unified Medical Language System (UMLS)
 2. NCBI Genes
 3. Ensembl Genes
 4. UniChem

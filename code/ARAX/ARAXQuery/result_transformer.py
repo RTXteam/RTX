@@ -145,9 +145,14 @@ class ResultTransformer:
                     group_id_prefix = "_".join(group_id.split("_")[:2])
 
                     # Create an attribute for the support graph that we'll tack onto the treats edge for this result
-                    support_graph_attribute = Attribute(attribute_type_id="biolink:support_graphs",
-                                                        value=[aux_graph_key],
-                                                        attribute_source="infores:arax")
+                    if group_id_prefix == "creative_DTD":
+                        support_graph_attribute = Attribute(attribute_type_id="biolink:support_graphs",
+                                                            value=[aux_graph_key],
+                                                            attribute_source="infores:arax-xdtd")
+                    else:
+                        support_graph_attribute = Attribute(attribute_type_id="biolink:support_graphs",
+                                                            value=[aux_graph_key],
+                                                            attribute_source="infores:arax")
                     # Find the 'treats' edge that this result is all about
                     inferred_qedge_keys = [qedge_key for qedge_key, qedge in response.original_query_graph.edges.items()
                                            if qedge.knowledge_type == "inferred"]
