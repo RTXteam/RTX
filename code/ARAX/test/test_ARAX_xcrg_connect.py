@@ -223,6 +223,7 @@ def test_connect_xcrg_calls_package_and_updates_response(monkeypatch):
     assert captured["config"].ngd_db_path == "/tmp/xcrg-ngd.sqlite"
     assert captured["config"].curie_to_pmids_db_path == "/tmp/xcrg-pmids.sqlite"
     assert captured["config"].timeout == 17
+    assert captured["config"].tiers == [0, 1]
     assert captured["config"].tf_batch_size == 23
 
 
