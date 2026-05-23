@@ -291,14 +291,16 @@ Copy the file directly to the servers listed in [Phase 5](#phase-5--stage-artifa
 
 **Purpose.** Pre-computed normalized Google distance (NGD) values for CURIE pairs. Loaded by `ARAXQuery/Path_Finder/utility.py::get_curie_ngd_path` and consumed by `ARAX_connect.py` for the connect/path-finding step.
 
-**Owner.** This artifact does not have an in-repo build script; it is built by the PSU team (typically by @mohsenht ; see the corresponding `Build CURIE NGD database` task in the kickoff issue). Coordinate the build with them as part of [Phase 2](#phase-2--build-artifacts) so it is ready in time for [Phase 5](#phase-5--stage-artifacts).
+**Owner.** This artifact does not have an in-repo build script; it is built by the PSU team (typically by @mohsenht ; see the corresponding `Build CURIE NGD database` task in the kickoff issue). Coordinate the build with them as part of [Phase 2](#phase-2--build-artifacts) so it is ready in time for [Phase 5](#phase-5--stage-artifacts). 
+
+**Build Instructions.** For complete, step-by-step details on how this database is generated, refer to the [Pathfinder db_build README](https://github.com/Translator-CATRAX/pathfinder/blob/master/build_model/db_build/README.md).
 
 **What PSU needs from us.**
 - The Tier0 build date stamp (so the filename matches).
 - Confirmation of which Tier0 graph snapshot to compute over.
 - The freshly built `curie_to_pmids_v1.0_tier0-MMDDYYYY.sqlite` (PSU uses this as input).
 
-**Output filename.** `curie_ngd_v1.0_tier0-MMDDYYYY.sqlite` ; staged into the same directory on `arax-databases.rtx.ai` as the rest of the Tier0 artifacts. Someone will then neecd to copy this from `arax-databases.rtx.ai` to the other servers as listed in [Phase 5](#phase-5--stage-artifacts)
+**Output filename.** `curie_ngd_v1.0_tier0-MMDDYYYY.sqlite` ; staged into the same directory on `arax-databases.rtx.ai` as the rest of the Tier0 artifacts. Someone will then need to copy this from `arax-databases.rtx.ai` to the other servers as listed in [Phase 5](#phase-5--stage-artifacts)
 
 <a id="xdtd-refresh"></a>
 ### xDTD refresh (PSU team)
@@ -324,10 +326,9 @@ The xDTD (Explainable Drug-treats-Disease) model and its _with_paths database pr
 
 **Owner.** PSU team. Track as a subissue.
 
-**Expected output.** `gandalf_mmap.tar.gz` ; staged into the Tier0 artifact directory on `arax-databases.rtx.ai`. Note this filename does **not** carry a Tier0 date stamp; the staged copy is overwritten per rollout. Tag the previous version on `master` (per [Phase 6](#phase-6--merge-to-master)) before overwriting so a rollback can recover the prior artifact path.
+**Build Instructions.** The build and staging process is fully automated via a bash script. Please refer to the [Pathfinder Gandalf build README](https://github.com/Translator-CATRAX/pathfinder/blob/master/build_model/gandalf/README.md) for the script, prerequisites, and execution steps.
 
- Someone will then neecd to copy this from `arax-databases.rtx.ai` to the other servers as listed in [Phase 5](#phase-5--stage-artifacts)
-
+**Expected output.** `gandalf_mmap_tier0-MMDDYYYY.tar.gz`. The build script automatically stages this tarball into the correct `~/tier0-MMDDYYYY` artifact directory on `arax-databases.rtx.ai`. From there, someone will then need to copy this to the other servers as listed in [Phase 5](#phase-5--stage-artifacts).
 <a id="artifacts-reused-as-is"></a>
 ### Artifacts reused as-is (version invariant)
 The following artifacts are version invariant and can be reused (meaning, **DO NOT** update the DB manager paths and all will work as expected):
