@@ -14,7 +14,7 @@
   - [`autocomplete_v1.0_tier0-MMDDYYYY.sqlite`](#autocomplete) (OSU, typically Frankie)
   - [`tier0-info-for-overlay_v1.0_tier0-MMDDYYYY.sqlite`](#tier0-info-for-overlay) (OSU, typically Frankie)
   - [`curie_ngd_v1.0_tier0-MMDDYYYY.sqlite`](#curie_ngd) (PSU, typically Mohsen)
-  - [xDTD refresh](#xdtd-refresh) (PSU, typically Chunyu)
+  - [`ExplainableDTD_v1.0_tier0-MMDDYYYY-all_with_paths.db`](#xdtd) (PSU, typically Chunyu)
   - [gandalf_mmap tarball refresh](#gandalf_mmap-refresh) (PSU, typically Mohsen)
   - [Artifacts reused as-is (version invariant)](#artifacts-reused-as-is)
 - [Phase 3 ; Integration](#phase-3--integration)
@@ -77,7 +77,7 @@ Here is a copy and pastable checklist to put into the issue, if that is helpful:
 - [ ] Build database file `autocomplete_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: ) (build script: [`create_load_db.py`](https://github.com/RTXteam/RTX/blob/master/code/autocomplete/create_load_db.py))
 - [ ] Build database file `tier0-info-for-overlay_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: ) (build script: [`generate_sqlite.py`](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/generate_sqlite.py))
 - [ ] Build database file `curie_ngd_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: )
-- [ ] xDTD refresh work. Work with PSU team on this. (assignee: ; subissue: )
+- [ ] Build database file `ExplainableDTD_v1.0_tier0-MMDDYYYY-all_with_paths.db` (assignee: ; subissue: )
 - [ ] gandalf_mmap tarball refresh work. Work with PSU team on this. (assignee: ; subissue: )
 - [ ] Update ARAX `config_dbs.json` for the new database files. (assignee: ; subissue: )
 - [ ] Update `ARAX_database_manager.py` for the new database files. (assignee: ; subissue: )
@@ -300,22 +300,28 @@ Copy the file directly to the servers listed in [Phase 5](#phase-5--stage-artifa
 
 **Output filename.** `curie_ngd_v1.0_tier0-MMDDYYYY.sqlite` ; staged into the same directory on `arax-databases.rtx.ai` as the rest of the Tier0 artifacts. Someone will then neecd to copy this from `arax-databases.rtx.ai` to the other servers as listed in [Phase 5](#phase-5--stage-artifacts)
 
-<a id="xdtd-refresh"></a>
-### xDTD refresh (PSU team)
+<a id="xdtd"></a>
+### `ExplainableDTD_v1.0_tier0-MMDDYYYY-all_with_paths.db` (PSU team)
 
 **Purpose.** 
-The xDTD (Explainable Drug-treats-Disease) model and its _with_paths database pre-computes ARAX's drug-treats-disease inference. Rebuild against the new Tier0 graph at every rollout so the model and its supporting paths reflect the current edges. The xDTD rebuild pipeline can refer to https://github.com/RTXteam/xDTD_training_pipeline
+Pre-computed and stored prediction results (treatment probability scores with corresponding explainable MOA paths) of all common drug-disease pairs using [KGML-xDTD](https://academic.oup.com/gigascience/article/doi/10.1093/gigascience/giad057/7246583)/xDTD (Explainable Drug-treats-Disease) model trained on tier 0 graph. These results are used to support the creative `inferred` query mode of ARAX, which calls `ARAXQuery/ARAX_infer.py` through `ARAXQuery/ARAX_expander.py`. Rebuild against the new Tier0 graph at every rollout so the model predictions and its supporting paths reflect the current edges. 
 
 **Owner.** PSU team (typically @chunyuma). Track this work as a subissue under the kickoff issue.
 
+**Build Instructions.** To build/rebuild this database, please refer to the github repo: https://github.com/RTXteam/xDTD_training_pipeline.
+
+**What PSU needs from OSU team.**
+- The Tier0 build date stamp (so the filename matches).
+- Downlaod location of Tier0 graph (`nodes.jsonl` and `edges.jsonl`)
+
 **Expected outputs.**
-- `ExplainableDTD_tier0-MMDDYYYY-all_with_paths.db` ; the paths database referenced by `config_dbs.json` and `ARAX_database_manager.py`.
-- Any companion model files PSU normally ships alongside this DB (confirm with them which paths in `config_dbs.json` need updating).
+- `ExplainableDTD_tier0-MMDDYYYY-all_with_paths.db`
+- PSU team is responsible for uploading this database to `arax-databases.rtx.ai`.
+- PSU team will update the database path in `config_dbs.json` and `ARAX_database_manager.py`.
 
- Someone will then neecd to copy this from `arax-databases.rtx.ai` to the other servers as listed in [Phase 5](#phase-5--stage-artifacts)
+Someone from OSU team will then neecd to copy this from `arax-databases.rtx.ai` to the other servers as listed in [Phase 5](#phase-5--stage-artifacts)
 
-**Note.** xDTD may sometimes be "may be skipped ; depends on the changes in this Tier0 version" (per the prior KG2 workflow). Confirm with @chunyuma at the start of the rollout whether a full refresh is required or whether the previous artifact can be carried forward.
-
+**Note.** xDTD may sometimes be "may be skipped for rebuild and just need to refresh by mapping the old node ids and edge ids to the new ones used in the new version of kg; depends on the changes in this Tier0 version" (per the prior KG2 workflow). Confirm with @chunyuma at the start of the rollout whether a full refresh is required or whether the database needs to be rebuilt.
 
 <a id="gandalf_mmap-refresh"></a>
 ### gandalf_mmap tarball refresh (PSU team)
