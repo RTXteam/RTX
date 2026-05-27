@@ -267,7 +267,7 @@ class RTXConfiguration:
 
 
     def get_config_settings(self) -> dict:
-        config = { "config": {} }
+        config: dict[str, dict[str, Any]] = { "config": {} }
         for v in vars(self):
             if v.endswith(('version','_name')) or v in ['maturity','domain','is_itrb_instance','is_production_server']:
                 config['config'][v] = getattr(self, v)
