@@ -228,7 +228,7 @@ class ARAXExpander:
             kp_timeout = None
 
         # set bypass_cache based on input parameters, it'll be used later
-        if "bypass_cache" in response.envelope.query_options:
+        if response.envelope.query_options is not None and "bypass_cache" in response.envelope.query_options:
             if response.envelope.query_options["bypass_cache"] is None or str(response.envelope.query_options["bypass_cache"]).lower() == 'false':
                 bypass_cache = False
             else:
