@@ -145,7 +145,7 @@ def main():
                     eprint("ARAX databases incomplete; checking if only a symlink is missing")
                     dbmanager.symlink_from_central_and_write_versions(debug=True)
                 else:
-                    eprint("ARAX databases incomplete; aborting application server startup")
+                    eprint("ARAX databases incomplete; unable to fix on this system; aborting application server startup")
                     sys.exit(1)
             eprint("ARAX databases are complete; proceeding with application start-up")
         except Exception:  # pylint: disable=broad-exception-caught
