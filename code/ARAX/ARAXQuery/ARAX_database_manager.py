@@ -285,6 +285,59 @@ class ARAXDatabaseManager:
             self._write_db_versions_file()
         return response
 
+    def symlink_from_central_and_write_versions(self, debug=False):
+        """
+        For each configured database, create a symlink at self.local_paths[name]
+        pointing to the pre-downloaded central copy at self.docker_central_paths[name],
+        then write db_versions.json (only if its contents would change). Never downloads
+        and never extracts tarballs. Aborts with FileNotFoundError if any central copy
+        is missing.
+        """
+        # Pre-flight: collect ALL missing central files so the caller sees the full picture
+        missing = [(n, self.docker_central_paths[n])
+                   for n in self.local_paths
+                   if not os.path.exists(self.docker_central_paths[n])]
+        if missing:
+            details = "\n".join(f"  {n}: {p}" for n, p in missing)
+            raise FileNotFoundError(
+                f"Central database file(s) not found; cannot symlink:\n{details}"
+            )
+
+        for name, local_path in self.local_paths.items():
+            target = self.docker_central_paths[name]
+
+            if os.path.lexists(local_path):
+                if os.path.islink(local_path) and os.readlink(local_path) == target:
+                    if debug:
+                        eprint(f"{name}: symlink already correct at {local_path}")
+                elif os.path.islink(local_path):
+                    if debug:
+                        eprint(f"{name}: replacing stale symlink {local_path} -> {target}")
+                    os.remove(local_path)
+                    self.symlink_database(symlink_path=local_path, target_path=target)
+                else:
+                    # Real file/dir at the RTX-side path: refuse to clobber.
+                    raise FileExistsError(
+                        f"{name}: {local_path} exists and is not a symlink; refusing to overwrite"
+                    )
+            else:
+                if debug:
+                    eprint(f"{name}: symlinking {local_path} -> {target}")
+                self.symlink_database(symlink_path=local_path, target_path=target)
+
+        # Only rewrite db_versions.json if its content would actually change
+        existing = None
+        if os.path.exists(versions_path):
+            try:
+                with open(versions_path, "r") as fid:
+                    existing = json.load(fid)
+            except (json.JSONDecodeError, OSError):
+                existing = None  # corrupt/unreadable → treat as needing a rewrite
+        if existing != self.db_versions:
+            self._write_db_versions_file(debug=debug)
+        elif debug:
+            eprint(f"db_versions.json already matches; not rewriting {versions_path}")
+
     @staticmethod
     def get_database_subpath(path: str) -> str:
         path_chunks = path.split("/")
