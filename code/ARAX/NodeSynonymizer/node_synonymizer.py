@@ -927,6 +927,8 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
     _NR_MAX_RETRIES = 3       # attempts per batch
     _NR_RETRY_WAIT = 2.0      # seconds between retries
     _NR_MAX_CONCURRENT = 5    # max parallel batches (async)
+    _NR_LIMIT = 10            # candidates fetched per name
+    _PREFERRED_TAXON = "NCBITaxon:9606"  # human; preferred at rerank
 
     def _build_nr_payload(self, batch: list[str]) -> dict:
         """Build /bulk-lookup payload with all required fields.
@@ -939,7 +941,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
             "autocomplete": self._autocomplete,
             "highlighting": False,
             "offset": 0,
-            "limit": 1,
+            "limit": self._NR_LIMIT,
             "biolink_types": [],
             "only_prefixes": "",
             "exclude_prefixes": "",
@@ -950,13 +952,28 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
     def _extract_curies(
         batch: list[str], data: dict,
     ) -> dict[str, str | None]:
-        """Extract the top CURIE for each name from the API response."""
+        """Extract the top CURIE for each name from the API response.
+
+        RENCI's /bulk-lookup ranks orthologous genes ahead of
+        the human clique for some bare gene symbols (e.g. `MTOR`
+        returns pig `NCBIGene:100127359` above human
+        `NCBIGene:2475`). Since ARAX is a human-focused KG,
+        we re-rank: if any candidate is in the human clique
+        (`NCBITaxon:9606`), take its CURIE; otherwise fall back
+        to RENCI's #1 unchanged.
+        """
         results: dict[str, str | None] = {}
         for name in batch:
             candidates = data.get(name, [])
-            results[name] = (
-                candidates[0]["curie"]
-                if candidates else None)
+            if not candidates:
+                results[name] = None
+                continue
+            human = next(
+                (c for c in candidates
+                 if NodeSynonymizer._PREFERRED_TAXON
+                 in (c.get("taxa") or [])),
+                None)
+            results[name] = (human or candidates[0])["curie"]
         return results
 
     def _call_name_resolver_api(
