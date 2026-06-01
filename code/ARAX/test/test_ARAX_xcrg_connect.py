@@ -225,6 +225,10 @@ def test_connect_xcrg_calls_package_and_updates_response(monkeypatch):
     assert captured["config"].timeout == 17
     assert captured["config"].tiers == [0]
     assert captured["config"].tf_batch_size == 23
+    xcrg_plan = response.query_plan["qedge_keys"]["e0"]["arax-xcrg"]
+    assert xcrg_plan["status"] == "Done"
+    assert xcrg_plan["description"].startswith("Returned 1 results in ")
+    assert xcrg_plan["query"]["message"]["query_graph"]["edges"]["e0"]["knowledge_type"] == "inferred"
 
 
 def test_result_transformer_leaves_xcrg_response_unchanged():

@@ -510,6 +510,8 @@ class ARAXConnect:
         query = {
             "message": self.response.envelope.to_dict()["message"],
         }
+        qedge_keys = list(query["message"].get("query_graph", {}).get("edges", {}))
+        qedge_key = qedge_keys[0] if qedge_keys else "xcrg"
         rtx_config = RTXConfiguration()
         retriever_url = get_xcrg_retriever_url(rtx_config)
         timeout = get_xcrg_env_int(XCRG_TIMEOUT_ENV, DEFAULT_XCRG_TIMEOUT)
@@ -527,6 +529,14 @@ class ARAXConnect:
             trapi_schema_version=rtx_config.trapi_version,
             biolink_version=get_current_arax_biolink_version(),
         )
+        self.response.update_query_plan(
+            qedge_key,
+            "arax-xcrg",
+            "Waiting",
+            f"Sending xCRG lookup query to {retriever_url}",
+            query=query,
+        )
+        start = time.time()
         try:
             xcrg_response = run_xcrg(
                 query,
@@ -534,6 +544,13 @@ class ARAXConnect:
                 logger=ARAXXCRGLogger(self.response),
             )
         except Exception as e:
+            elapsed = round(time.time() - start)
+            self.response.update_query_plan(
+                qedge_key,
+                "arax-xcrg",
+                "Error",
+                f"xCRG failed after {elapsed} seconds",
+            )
             self.response.error(f"xCRG failed to generate a response. Error message is: {e}", http_status=500)
             return self.response
 
@@ -541,6 +558,13 @@ class ARAXConnect:
         self.response.envelope.schema_version = xcrg_response.get("schema_version")
         self.response.envelope.biolink_version = xcrg_response.get("biolink_version")
         self.response.total_results_count = len(xcrg_response["message"].get("results") or [])
+        elapsed = round(time.time() - start)
+        self.response.update_query_plan(
+            qedge_key,
+            "arax-xcrg",
+            "Done",
+            f"Returned {self.response.total_results_count} results in {elapsed} seconds",
+        )
         self.response.data["xcrg_connect"] = True
         return self.response
 
