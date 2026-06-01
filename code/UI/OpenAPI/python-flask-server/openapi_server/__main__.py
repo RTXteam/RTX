@@ -111,7 +111,13 @@ def main():
     araxquery_dir = rtx_root_dir / "code/ARAX/ARAXQuery"
     add_to_syspath(araxquery_dir)
 
-    import Expand.kp_info_cacher  # noqa: F401   See ARAX issue 2788; avoid lazy-loading race condition
+    # See ARAX issue 2788. Load kp_info_cacher once in the parent, before
+    # the fork below and before any request threads start, so two threads
+    # never import it for the first time at the same moment. Import the
+    # bare name, not Expand.kp_info_cacher, because that is the sys.modules
+    # key every runtime site uses and the one the race is on.
+    add_to_syspath(araxquery_dir / "Expand")
+    import kp_info_cacher  # noqa: F401  # pylint: disable=import-outside-toplevel, import-error, unused-import
 
     config_file_path = HERE / "flask_config.json"
     # Read any local configuration details for this instance
