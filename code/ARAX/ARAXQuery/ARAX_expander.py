@@ -227,6 +227,16 @@ class ARAXExpander:
         else:
             kp_timeout = None
 
+        # set bypass_cache based on input parameters, it'll be used later
+        if response.envelope.query_options is not None and "bypass_cache" in response.envelope.query_options:
+            if response.envelope.query_options["bypass_cache"] is None or str(response.envelope.query_options["bypass_cache"]).lower() == 'false':
+                bypass_cache = False
+            else:
+                bypass_cache = True            
+            log.debug(f"Found bypass_cache parameter {bypass_cache}")
+        else:
+            bypass_cache = False
+
         # Verify we understand all constraints
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.constraints:
@@ -438,6 +448,7 @@ class ARAXExpander:
                                                     kp_selector,
                                                     log,
                                                     multiple_kps=True,
+                                                    bypass_cache=bypass_cache,
                                                     be_creative_treats=be_creative_treats)
                              for kp_to_use in kps_to_query]
                     task_group = asyncio.gather(*tasks)
@@ -1062,6 +1073,7 @@ class ARAXExpander:
             kp_selector: KPSelector,
             log: ARAXResponse,
             multiple_kps: bool = False,
+            bypass_cache: bool = False,
             be_creative_treats: bool = False
     ) -> tuple[QGOrganizedKnowledgeGraph,
                dict[str, AuxiliaryGraph] | None,
@@ -1089,6 +1101,7 @@ class ARAXExpander:
                                       kp_name=kp_to_use,
                                       user_specified_kp=user_specified_kp,
                                       kp_timeout=kp_timeout,
+                                      bypass_cache=bypass_cache,
                                       kp_selector=kp_selector)
             qg_org_kg, aux_graphs = await kp_querier.answer_one_hop_query_async(
                 edge_qg,

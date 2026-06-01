@@ -64,7 +64,6 @@ from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.sdk.resources import Resource
 
-
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
@@ -112,6 +111,8 @@ def main():
     araxquery_dir = rtx_root_dir / "code/ARAX/ARAXQuery"
     add_to_syspath(araxquery_dir)
 
+    import Expand.kp_info_cacher  # noqa: F401   See ARAX issue 2788; avoid lazy-loading race condition
+
     config_file_path = HERE / "flask_config.json"
     # Read any local configuration details for this instance
     local_config = {}
@@ -140,10 +141,14 @@ def main():
             eprint("Checking for complete databases")
             # check_versions returns True if new databases need to be downloaded
             if dbmanager.check_versions():
-                eprint("Databases incomplete; running update_databases")
-                dbmanager.update_databases()
-            else:
-                eprint("Databases seem to be complete")
+                if (rtx_config.domain == "arax.ncats.io" and (
+                        rtx_config.maturity == "development" or rtx_config.maturity == "production")):
+                    eprint("ARAX databases incomplete; checking if only a symlink is missing")
+                    dbmanager.symlink_from_central_and_write_versions(debug=True)
+                else:
+                    eprint("ARAX databases incomplete; unable to fix on this system; aborting application server startup")
+                    sys.exit(1)
+            eprint("ARAX databases are complete; proceeding with application start-up")
         except Exception:  # pylint: disable=broad-exception-caught
             eprint(traceback.format_exc())
             raise

@@ -82,11 +82,13 @@ class TRAPIQuerier:
                  kp_name: str,
                  user_specified_kp: bool,
                  kp_timeout: Optional[int],
+                 bypass_cache: Optional[bool] = False,
                  kp_selector: Optional[KPSelector] = None):
         self.log = response_object
         self.kp_infores_curie = kp_name
         self.user_specified_kp = user_specified_kp
         self.kp_timeout = kp_timeout
+        self.bypass_cache = bypass_cache
         if kp_selector is None:
             kp_selector = KPSelector()
         self.kp_selector = kp_selector
@@ -359,6 +361,7 @@ class TRAPIQuerier:
         request_body = self._get_prepped_request_body(query_graph)
         query_sent = copy.deepcopy(request_body)
         query_timeout = self._get_query_timeout_length()
+        bypass_cache = self.bypass_cache
         if not query_graph.edges:
             raise ValueError("query graph has no edges")
         qedge_key = next(iter(query_graph.edges))
@@ -379,6 +382,7 @@ class TRAPIQuerier:
                                                                                     request_body,
                                                                                     kp_curie=self.kp_infores_curie,
                                                                                     timeout=query_timeout,
+                                                                                    bypass_cache=bypass_cache,
                                                                                     async_session=True)
             if http_code == 200:
                 r = response_data

@@ -27,6 +27,7 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 # Constants
 REFRESH_TIME_LIMIT_SECONDS = 60.0
 AGE_BEFORE_REFRESH_HOURS = 6.0
+AGE_BEFORE_TIMEOUT_RETRY_HOURS = 0.02
 NO_CACHED_RESPONSE = -2
 CONNECTION_ERROR = -1
 CLEAR_CACHE_AFTER = 30 * 24 * 60 * 60 # Clear cache completely after 30 days
@@ -225,7 +226,7 @@ class KPQueryCacher:
 
 
 
-    async def get_result(self, query_url: str, query_object: dict, kp_curie: str, timeout=30, async_session=None) -> tuple:
+    async def get_result(self, query_url: str, query_object: dict, kp_curie: str, timeout=30, bypass_cache=False, async_session=None) -> tuple:
         """
         Looks for a cached result based on the query object.
         If found, updates access stats and returns the decompressed response.
@@ -239,15 +240,24 @@ class KPQueryCacher:
 
         #### Try to get the response from the cache
         #eprint(f"*** Checking cache for query with {kp_curie} to {query_url}")
-        response_data, http_code, elapsed_time, error = self.get_cached_result(query_url, query_object)
-        if http_code != NO_CACHED_RESPONSE: 
-            #eprint("*** Found cached result")
-            return response_data, http_code, elapsed_time, 'from cache'
+        if bypass_cache:
+            eprint(f"*** Bypassing cache by user request")
+        else:
+            response_data, http_code, elapsed_time, error = self.get_cached_result(query_url, query_object)
+            if http_code != NO_CACHED_RESPONSE: 
+                #eprint("*** Found cached result")
+                return response_data, http_code, elapsed_time, 'from cache'
 
         #### Else send it to the service
         #eprint(f"*** Fetch data directly from KP {query_url} using payload {query_object}, timeout={timeout}")
-        response_data, http_code, elapsed_time, error = await self.async_post_query_to_web_service(query_url, query_object, timeout=timeout, async_session=async_session)
-        n_results = self._get_n_results(response_data)
+        try:
+            response_data, http_code, elapsed_time, error = await self.async_post_query_to_web_service(query_url, query_object, timeout=timeout, async_session=async_session)
+            n_results = self._get_n_results(response_data)
+        except TimeoutError:
+            response_data = None
+            http_code = -1
+            elapsed_time = timeout
+            error = 'Timeout'
         #eprint(f"*** Fetched a response with http_code={http_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds with error={error}")
 
         #### And store that result in the cache
@@ -554,7 +564,15 @@ class KPQueryCacher:
                 cache_stats['max_query_age'] = hours_difference
 
             #eprint(f"      kp_query_id={cached_query['kp_query_id']}  Stale by {hours_difference:.3f} hours")
-            if hours_difference > AGE_BEFORE_REFRESH_HOURS:
+            add_to_list = False
+            if cached_query['last_refresh_http_code'] is None and cached_query['first_query_http_code'] == -1 and hours_difference > AGE_BEFORE_TIMEOUT_RETRY_HOURS:
+                add_to_list = True
+            elif cached_query['last_refresh_http_code'] is not None and cached_query['last_refresh_http_code'] == -1 and hours_difference > AGE_BEFORE_TIMEOUT_RETRY_HOURS:
+                add_to_list = True
+            elif hours_difference > AGE_BEFORE_REFRESH_HOURS:
+                add_to_list = True
+
+            if add_to_list:
                 cached_queries_to_refresh.append(cached_query)
 
         timestamp = str(datetime.now().isoformat())
