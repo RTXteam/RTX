@@ -521,7 +521,7 @@ class ARAXConnect:
             ngd_db_path=ngd_db_path,
             curie_to_pmids_db_path=curie_to_pmids_db_path,
             timeout=timeout,
-            tiers=[0, 1],
+            tiers=[0],
             tf_batch_size=tf_batch_size,
             resource_id="infores:arax",
             trapi_schema_version=rtx_config.trapi_version,
