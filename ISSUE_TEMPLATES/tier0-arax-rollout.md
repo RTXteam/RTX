@@ -289,7 +289,7 @@ Copy the file directly to the servers listed in [Phase 5](#phase-5--stage-artifa
 
 **Purpose.** Pre-computed normalized Google distance (NGD) values for CURIE pairs. Loaded by `ARAXQuery/Path_Finder/utility.py::get_curie_ngd_path` and consumed by `ARAX_connect.py` for the connect/path-finding step.
 
-**Owner.** This artifact does not have an in-repo build script; it is built by the PSU team (typically by @mohsenht ; see the corresponding `Build CURIE NGD database` task in the kickoff issue). Coordinate the build with them as part of [Phase 2](#phase-2--build-artifacts) so it is ready in time for [Phase 5](#phase-5--stage-artifacts). 
+**Owner.** This artifact does not have an in-repo build script; it is built by the PSU team (typically by @mohsenht ; see the corresponding `Build CURIE NGD database` task in the kickoff issue). Coordinate the build with them as part of [Phase 2](#phase-2--build-artifacts) so it is ready in time for [Phase 5](#phase-5--stage-artifacts).
 
 **Build Instructions.** For complete, step-by-step details on how this database is generated, refer to the [Pathfinder db_build README](https://github.com/Translator-CATRAX/pathfinder/blob/master/build_model/db_build/README.md).
 
@@ -303,8 +303,8 @@ Copy the file directly to the servers listed in [Phase 5](#phase-5--stage-artifa
 <a id="xdtd"></a>
 ### `ExplainableDTD_v1.0_tier0-MMDDYYYY-all_with_paths.db` (PSU team)
 
-**Purpose.** 
-Pre-computed and stored prediction results (treatment probability scores with corresponding explainable MOA paths) of all common drug-disease pairs using [KGML-xDTD](https://academic.oup.com/gigascience/article/doi/10.1093/gigascience/giad057/7246583)/xDTD (Explainable Drug-treats-Disease) model trained on tier 0 graph. These results are used to support the creative `inferred` query mode of ARAX, which calls `ARAXQuery/ARAX_infer.py` through `ARAXQuery/ARAX_expander.py`. Rebuild against the new Tier0 graph at every rollout so the model predictions and its supporting paths reflect the current edges. 
+**Purpose.**
+Pre-computed and stored prediction results (treatment probability scores with corresponding explainable MOA paths) of all common drug-disease pairs using [KGML-xDTD](https://academic.oup.com/gigascience/article/doi/10.1093/gigascience/giad057/7246583)/xDTD (Explainable Drug-treats-Disease) model trained on tier 0 graph. These results are used to support the creative `inferred` query mode of ARAX, which calls `ARAXQuery/ARAX_infer.py` through `ARAXQuery/ARAX_expander.py`. Rebuild against the new Tier0 graph at every rollout so the model predictions and its supporting paths reflect the current edges.
 
 **Owner.** PSU team (typically @chunyuma). Track this work as a subissue under the kickoff issue.
 
