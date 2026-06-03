@@ -48,7 +48,7 @@ def test_command_definitions():
 def test_warnings():
     query = {"operations": {"actions": [
             "create_message",
-            "add_qnode(name=DOID:8741, key=n00)",
+            "add_qnode(ids=MONDO:0006608, key=n00)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
             "add_qedge(subject=n00, object=n01, key=e00)",
             "expand(edge_key=e00, kp=infores:retriever)",

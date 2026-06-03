@@ -1586,12 +1586,12 @@ def test_issue_2662():
         "nodes": {
             "on": {
                 "ids": [
-                    "MONDO:0005015"
+                    "MONDO:0002041"
                 ]
             },
             "sn": {
-                "ids": [
-                    "CHEBI:5931"
+                "categories": [
+                    "biolink:ChemicalEntity"
                 ]
             }
         }
