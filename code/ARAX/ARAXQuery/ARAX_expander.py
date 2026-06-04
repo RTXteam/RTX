@@ -232,7 +232,7 @@ class ARAXExpander:
             if response.envelope.query_options["bypass_cache"] is None or str(response.envelope.query_options["bypass_cache"]).lower() == 'false':
                 bypass_cache = False
             else:
-                bypass_cache = True            
+                bypass_cache = True
             log.debug(f"Found bypass_cache parameter {bypass_cache}")
         else:
             bypass_cache = False

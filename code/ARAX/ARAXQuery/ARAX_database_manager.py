@@ -79,18 +79,6 @@ class ARAXDatabaseManager:
         if not os.path.exists(explainable_dtd_db_filepath):
             _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(explainable_dtd_db_filepath)}")
 
-        xcrg_embeddings_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
-        if not os.path.exists(xcrg_embeddings_filepath):
-            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(xcrg_embeddings_filepath)}")
-
-        xcrg_increase_model_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
-        if not os.path.exists(xcrg_increase_model_filepath):
-            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(xcrg_increase_model_filepath)}")       
-
-        xcrg_decrease_model_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
-        if not os.path.exists(xcrg_decrease_model_filepath):
-            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(xcrg_decrease_model_filepath)}")
-
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
@@ -99,10 +87,7 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
             'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}",
-            'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}",
-            'xcrg_embeddings': f"{xcrg_embeddings_filepath}{os.path.sep}{self.RTXConfig.xcrg_embeddings_path.split('/')[-1]}",
-            "xcrg_increase_model": f"{xcrg_increase_model_filepath}{os.path.sep}{self.RTXConfig.xcrg_increase_model_path.split('/')[-1]}",
-            "xcrg_decrease_model": f"{xcrg_decrease_model_filepath}{os.path.sep}{self.RTXConfig.xcrg_decrease_model_path.split('/')[-1]}"
+            'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}"
         }
 
         # Stores the "/KG2.X.Y/some_database_v1.0_KG2.X.Y.sqlite" portion of each database's path
@@ -116,10 +101,7 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': self.get_database_subpath(self.RTXConfig.kg2c_sqlite_path),
             'fda_approved_drugs': self.get_database_subpath(self.RTXConfig.fda_approved_drugs_path),
             'autocomplete': self.get_database_subpath(self.RTXConfig.autocomplete_path),
-            'explainable_dtd_db': self.get_database_subpath(self.RTXConfig.explainable_dtd_db_path),
-            'xcrg_embeddings': self.get_database_subpath(self.RTXConfig.xcrg_embeddings_path),
-            "xcrg_increase_model": self.get_database_subpath(self.RTXConfig.xcrg_increase_model_path),
-            "xcrg_decrease_model": self.get_database_subpath(self.RTXConfig.xcrg_decrease_model_path)
+            'explainable_dtd_db': self.get_database_subpath(self.RTXConfig.explainable_dtd_db_path)
         }
         # user, host, and paths to databases on remote server dbs are downloaded from (arax-databases.rtx.ai)
         self.databases_server_dir_path = '/home/rtxconfig'
@@ -131,10 +113,7 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': self.get_remote_location('kg2c_sqlite'),
             'fda_approved_drugs': self.get_remote_location('fda_approved_drugs'),
             'autocomplete': self.get_remote_location('autocomplete'),
-            'explainable_dtd_db': self.get_remote_location('explainable_dtd_db'),
-            'xcrg_embeddings': self.get_remote_location('xcrg_embeddings'),
-            'xcrg_increase_model': self.get_remote_location('xcrg_increase_model'),
-            'xcrg_decrease_model': self.get_remote_location('xcrg_decrease_model')
+            'explainable_dtd_db': self.get_remote_location('explainable_dtd_db')
         }
         # database locations if inside rtx1 docker container
         self.docker_databases_dir_path = '/mnt/data/orangeboard/databases'
@@ -146,10 +125,7 @@ class ARAXDatabaseManager:
             'kg2c_sqlite': self.get_docker_path('kg2c_sqlite'),
             'fda_approved_drugs': self.get_docker_path('fda_approved_drugs'),
             'autocomplete': self.get_docker_path('autocomplete'),
-            'explainable_dtd_db': self.get_docker_path('explainable_dtd_db'),
-            'xcrg_embeddings': self.get_docker_path('xcrg_embeddings'),
-            'xcrg_increase_model': self.get_docker_path('xcrg_increase_model'),
-            'xcrg_decrease_model': self.get_docker_path('xcrg_decrease_model')
+            'explainable_dtd_db': self.get_docker_path('explainable_dtd_db')
         }
 
         # database local paths + version numbers
@@ -185,27 +161,16 @@ class ARAXDatabaseManager:
             'explainable_dtd_db': {
                 'path': self.local_paths['explainable_dtd_db'],
                 'version': self.RTXConfig.explainable_dtd_db_version
-            },
-            'xcrg_embeddings': {
-                'path': self.local_paths['xcrg_embeddings'],
-                'version': self.RTXConfig.xcrg_embeddings_version
-            },
-            'xcrg_increase_model': {
-                'path': self.local_paths['xcrg_increase_model'],
-                'version': self.RTXConfig.xcrg_increase_model_version
-            },
-            'xcrg_decrease_model': {
-                'path': self.local_paths['xcrg_decrease_model'],
-                'version': self.RTXConfig.xcrg_decrease_model_version
             }
         }
 
     def update_databases(self, debug = True, response = None):
         if not self.allow_downloads:
             raise ValueError("in ARAXDatabaseManager, update_databases called with self.allow_downloads=False")
+        debug = True
         # First ensure we have a db versions file if we're in a docker container (since host has dbs predownloaded)
         if os.path.exists(self.docker_databases_dir_path) and not os.path.exists(versions_path):
-            self._write_db_versions_file(debug=debug)
+            self._write_db_versions_file(debug=True)
 
         # Then ensure each database/symlink is up to date
         if os.path.exists(versions_path):
@@ -214,8 +179,7 @@ class ARAXDatabaseManager:
 
             # Download databases to a persistent central location if this is a docker instance (like arax.ncats.io)
             if os.path.exists(self.docker_databases_dir_path):
-                if debug:
-                    eprint(f"Downloading any missing databases from arax-databases.rtx.ai to {self.docker_databases_dir_path}")
+                eprint(f"Downloading any missing databases from arax-databases.rtx.ai to {self.docker_databases_dir_path}")
                 self._download_to_mnt(debug=debug, skip_if_exists=True, remove_unused=False)
 
             # Check that each database exists locally (or a symlink to it does, in the case of a docker host machine)
@@ -278,9 +242,9 @@ class ARAXDatabaseManager:
             self._write_db_versions_file()
         else: # If database manager has never been run download all databases
             if debug:
-                eprint("No local version json file present. Downloading all databases...")
+                eprint("No local verson json file present. Downloading all databases...")
             if response is not None:
-                response.debug("No local version json file present. Downloading all databases...")
+                response.debug("No local verson json file present. Downloading all databases...")
             self._force_download_all(debug=debug)
             self._write_db_versions_file()
         return response
@@ -353,8 +317,8 @@ class ARAXDatabaseManager:
         return f"{self.docker_databases_dir_path}/{database_subpath}"
 
     def check_versions(self, debug=True):
-        if debug:
-            eprint("ARAX_database_manager is performing check_versions()")
+        debug = True
+        eprint("ARAX_database_manager is performing check_versions()")
         download_flag = False
         if os.path.exists(versions_path):
             with open(versions_path,"r") as fid:
@@ -377,7 +341,7 @@ class ARAXDatabaseManager:
                         eprint(f"Local version of {database_name} matches the remote version")
         else:
             if debug:
-                eprint(f"No local version {versions_path}")
+                eprint("No local version {versions_path}")
             download_flag = True
         return download_flag
 
@@ -418,8 +382,7 @@ class ARAXDatabaseManager:
             _run_cmd_in_shell_chk_status(f"tar -xzf {shlex.quote(resolved)} -C {shlex.quote(extraction_dir)}")
             _run_cmd_in_shell_chk_status(f"touch {shlex.quote(tarball_extracted_indicator_file)}")
         else:
-            if debug:
-                eprint(f"Looks like we have previously extracted: {resolved}")
+            eprint(f"Looks like we have previously extracted: {resolved}")
 
     def symlink_database(self, symlink_path, target_path):
         _run_cmd_in_shell_chk_status(f"ln -s {shlex.quote(target_path)} {shlex.quote(symlink_path)}")
@@ -439,28 +402,28 @@ class ARAXDatabaseManager:
         for database_name in self.remote_locations.keys():
             database_dir = os.path.sep.join(self.docker_central_paths[database_name].split('/')[:-1])
             if debug:
-                eprint(f"On database {database_name} in _download_to_mnt()")
+                print(f"On database {database_name} in _download_to_mnt()")
             if not os.path.exists(database_dir):
                 if debug:
-                    eprint(f"Creating directory {database_dir}...")
+                    print(f"Creating directory {database_dir}...")
                 _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(database_dir)}")
             docker_host_local_path = self.docker_central_paths[database_name]
             if not skip_if_exists or not os.path.exists(docker_host_local_path):
                 remote_location = self.remote_locations[database_name]
                 if debug:
-                    eprint(f"Initiating download from location {remote_location}; "
-                           f"saving to {docker_host_local_path}")
+                    print(f"Initiating download from location {remote_location}; "
+                          f"saving to {docker_host_local_path}")
                 self._download_database(remote_location=remote_location,
                                         local_destination_path=docker_host_local_path,
                                         local_symlink_target_path=None,
                                         debug=debug)
             else:
-                eprint("  Database already exists, no need to download") if debug else None
+                print("  Database already exists, no need to download") if debug else None
        
     def _force_download_all(self, debug=False):
         for database_name in self.remote_locations.keys():
             if debug:
-                eprint(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
+                print(f"Downloading {self.remote_locations[database_name].split('/')[-1]}...")
             self._download_database(remote_location=self.remote_locations[database_name],
                                     local_destination_path=self.local_paths[database_name],
                                     local_symlink_target_path=self.docker_central_paths[database_name],
@@ -475,7 +438,7 @@ class ARAXDatabaseManager:
                     modified_time = time.localtime(os.stat(file_path).st_mtime)
                     modified_time = datetime.datetime(*modified_time[:6])
                     file_days = (now_time - modified_time).days
-                    eprint(f"{database_name}: local file is {file_days} days old")
+                    print(f"{database_name}: local file is {file_days} days old")
                     if file_days > max_days:
                         update_flag = True
                 else:
@@ -483,14 +446,14 @@ class ARAXDatabaseManager:
                         return True
             else:
                 if debug:
-                    eprint(f"{database_name}: no file found at {file_path}")
+                    print(f"{database_name}: no file found at {file_path}")
                     update_flag = True
                 else:
                     return True
         return update_flag
 
     def _write_db_versions_file(self, debug=False):
-        eprint(f"saving new version file to {versions_path}") if debug else None
+        print(f"saving new version file to {versions_path}") if debug else None
         with open(versions_path, "w") as fid:
             json.dump(self.db_versions, fid)
 
@@ -507,8 +470,7 @@ class ARAXDatabaseManager:
                 for db_file_name in os.listdir(kg2_dir_path):
                     db_file_path = f"{kg2_dir_path}/{db_file_name}"
                     if os.path.isfile(db_file_path) and db_file_name not in db_names:
-                        # not guarded with "if debug" since announcing a destructive action:
-                        eprint(f"Removing unused db file {db_file_path}")
+                        print(f"Removing unused db file {db_file_path}")
                         _run_cmd_in_shell_chk_status(f"rm -f {shlex.quote(db_file_path)}")
 
 

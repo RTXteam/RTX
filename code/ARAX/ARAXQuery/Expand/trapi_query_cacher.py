@@ -244,7 +244,7 @@ class KPQueryCacher:
             eprint(f"*** Bypassing cache by user request")
         else:
             response_data, http_code, elapsed_time, error = self.get_cached_result(query_url, query_object)
-            if http_code != NO_CACHED_RESPONSE: 
+            if http_code != NO_CACHED_RESPONSE:
                 #eprint("*** Found cached result")
                 return response_data, http_code, elapsed_time, 'from cache'
 

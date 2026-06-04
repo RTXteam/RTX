@@ -13,6 +13,7 @@ from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
 from knowledge_graph_info import KnowledgeGraphInfo
 from ARAX_messenger import ARAXMessenger
+from xcrg import is_xcrg_mvp2_query
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
@@ -80,6 +81,15 @@ class ARAXQueryGraphInterpreter:
 
             response.data['araxi_commands'] = [
                 f"connect(action=connect_nodes{max_path_length_str}{max_pathfinder_paths_str})",
+            ]
+            return response
+
+        if is_xcrg_mvp2_query(response.envelope.to_dict()):
+            response.info(
+                "QueryGraphInterpreter recognized query_graph as an xCRG MVP2 query: triggering xCRG subsystem."
+            )
+            response.data['araxi_commands'] = [
+                'connect(action=xcrg)',
             ]
             return response
 
