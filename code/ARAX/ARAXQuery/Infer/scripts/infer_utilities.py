@@ -55,6 +55,17 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 from RTXConfiguration import RTXConfiguration
 RTXConfig = RTXConfiguration()
 
+from bmt import Toolkit as BmtToolkit
+_bmt_toolkit = BmtToolkit()
+# TODO: "disease_context_qualifier" is temporarily hard-coded because of a known
+# bmt bug that omits it from get_descendants("qualifier").  Once the bmt fix is
+# released, remove the hard-coded entry and rely solely on bmt.
+_QUALIFIER_TYPES = frozenset(
+    d.replace("biolink:", "")
+    for d in _bmt_toolkit.get_descendants("qualifier", formatted=True)
+) | {"disease_context_qualifier"}
+del _bmt_toolkit
+
 
 class InferUtilities:
     """Utility class for building TRAPI-compliant subgraphs from inference results.
@@ -539,12 +550,13 @@ class InferUtilities:
 
                     for edge_info in edges_info[i]:
                         primary_knowledge_source = self._get_primary_knowledge_source(edge_info)
-                        new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[], sources=[])
+                        new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[], qualifiers=[], sources=[])
                         edge_attribute_list = [
                             Attribute(original_attribute_name="created_datetime", value="2026-05-08", attribute_type_id="metatype:Datetime"),
                             Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:agent_type", value=edge_info.agent_type),
                             Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:knowledge_level", value=edge_info.knowledge_level),
                         ]
+                        edge_qualifier_list = []
                         if edge_info.publications:
                             pubs = edge_info.publications
                             if isinstance(pubs, str):
@@ -564,12 +576,12 @@ class InferUtilities:
                                 Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:category", value=cat)
                             )
                         if edge_info.qualifier:
-                            edge_attribute_list.append(
-                                Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:qualifier", value=edge_info.qualifier)
+                            edge_qualifier_list.append(
+                                Qualifier(qualifier_type_id="biolink:qualifier", qualifier_value=edge_info.qualifier)
                             )
                         if edge_info.stage_qualifier:
-                            edge_attribute_list.append(
-                                Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:stage_qualifier", value=edge_info.stage_qualifier)
+                            edge_qualifier_list.append(
+                                Qualifier(qualifier_type_id="biolink:stage_qualifier", qualifier_value=edge_info.stage_qualifier)
                             )
                         if edge_info.original_subject:
                             edge_attribute_list.append(
@@ -588,11 +600,19 @@ class InferUtilities:
                                     extra = {}
                             if isinstance(extra, dict):
                                 for attr_key, attr_val in extra.items():
-                                    edge_attribute_list.append(
-                                        Attribute(attribute_source=primary_knowledge_source, attribute_type_id=f"biolink:{attr_key}", value=attr_val)
-                                    )
+                                    if attr_key in _QUALIFIER_TYPES:
+                                        qualifier_value = attr_val if isinstance(attr_val, str) else str(attr_val)
+                                        edge_qualifier_list.append(
+                                            Qualifier(qualifier_type_id=f"biolink:{attr_key}", qualifier_value=qualifier_value)
+                                        )
+                                    else:
+                                        edge_attribute_list.append(
+                                            Attribute(attribute_source=primary_knowledge_source, attribute_type_id=f"biolink:{attr_key}", value=attr_val)
+                                        )
                         retrieval_source = self._build_retrieval_sources(edge_info, kp=self.kp)
                         new_edge.attributes += edge_attribute_list
+                        if edge_qualifier_list:
+                            new_edge.qualifiers += edge_qualifier_list
                         new_edge.sources += retrieval_source
                         new_edge_key = edge_info.id if edge_info.id else f"urn:uuid:{uuid.uuid4()}"
                         message.knowledge_graph.edges[new_edge_key] = new_edge
