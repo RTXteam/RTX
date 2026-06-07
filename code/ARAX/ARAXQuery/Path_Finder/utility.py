@@ -17,6 +17,13 @@ def get_curie_ngd_path():
     sqlite_name = RTXConfiguration().curie_ngd_path.split("/")[-1]
     return f"sqlite:{filepath}{os.path.sep}{sqlite_name}"
 
+def get_curie_to_pmids_path():
+    pathlist = os.path.realpath(__file__).split(os.path.sep)
+    RTXindex = pathlist.index("RTX")
+    filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
+    sqlite_name = RTXConfiguration().curie_to_pmids_path.split("/")[-1]
+    return f"sqlite:{filepath}{os.path.sep}{sqlite_name}"
+
 def get_gandalf_mmap_path():
     # The ARAX_database_manager.py module unpacks the tarball
     # /mnt/data/orangeboard/databases/tier0-20260408/gandalf_mmap_tier0-20260408.tar.gz"

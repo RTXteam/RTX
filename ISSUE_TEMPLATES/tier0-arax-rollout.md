@@ -21,9 +21,8 @@
 - [Phase 4 ; Test on dev + CI](#phase-4--test-on-dev--ci)
 - [Phase 5 ; Stage artifacts](#phase-5--stage-artifacts)
 - [Phase 6 ; Merge to master](#phase-6--merge-to-master)
-- [Phase 7 ; First-time KG2 to Tier0 endpoint conversion (optional, one-time per endpoint)](#phase-7--first-time-kg2-to-tier0-endpoint-conversion-optional-one-time-per-endpoint)
-- [Phase 8 ; Production rollout](#phase-8--production-rollout)
-- [Phase 9 ; Final cleanup](#phase-9--final-cleanup)
+- [Phase 7 ; Production rollout](#phase-7--production-rollout)
+- [Phase 8 ; Final cleanup](#phase-8--final-cleanup)
 - [Rollback procedure](#rollback-procedure)
 - [Copy-pasteable issue checklist](#copy-pasteable-issue-checklist)
 
@@ -102,7 +101,6 @@ Here is a copy and pastable checklist to put into the issue, if that is helpful:
 - [ ] Roll out the new `master` branch to [arax.ncats.io/test](http://arax.ncats.io/test) and re-test everything (pytest, flask application, etc.)
 - [ ] Test ARAX in ITRB CI to see if the auto-deployment worked
 - [ ] Roll out the new `master` branch progressively to different [arax.ncats.io](http://arax.ncats.io/) endpoints, leaving _at least one legacy endpoint_
-- [ ] **Optional, only if an endpoint is still on KG2:** do the first-time KG2 to Tier0 endpoint conversion (see [Phase 7](#phase-7--first-time-kg2-to-tier0-endpoint-conversion-optional-one-time-per-endpoint)). This step was used originally to migrate the KG2 endpoints to Tier0 and is kept as a reusable template. Right now only `/legacy` is still on KG2. All other `arax.ncats.io` endpoints are already on Tier0, so skip this for them. (assignee: ; subissue: )
 
 
 
@@ -291,7 +289,7 @@ Copy the file directly to the servers listed in [Phase 5](#phase-5--stage-artifa
 
 **Purpose.** Pre-computed normalized Google distance (NGD) values for CURIE pairs. Loaded by `ARAXQuery/Path_Finder/utility.py::get_curie_ngd_path` and consumed by `ARAX_connect.py` for the connect/path-finding step.
 
-**Owner.** This artifact does not have an in-repo build script; it is built by the PSU team (typically by @mohsenht ; see the corresponding `Build CURIE NGD database` task in the kickoff issue). Coordinate the build with them as part of [Phase 2](#phase-2--build-artifacts) so it is ready in time for [Phase 5](#phase-5--stage-artifacts). 
+**Owner.** This artifact does not have an in-repo build script; it is built by the PSU team (typically by @mohsenht ; see the corresponding `Build CURIE NGD database` task in the kickoff issue). Coordinate the build with them as part of [Phase 2](#phase-2--build-artifacts) so it is ready in time for [Phase 5](#phase-5--stage-artifacts).
 
 **Build Instructions.** For complete, step-by-step details on how this database is generated, refer to the [Pathfinder db_build README](https://github.com/Translator-CATRAX/pathfinder/blob/master/build_model/db_build/README.md).
 
@@ -305,8 +303,8 @@ Copy the file directly to the servers listed in [Phase 5](#phase-5--stage-artifa
 <a id="xdtd"></a>
 ### `ExplainableDTD_v1.0_tier0-MMDDYYYY-all_with_paths.db` (PSU team)
 
-**Purpose.** 
-Pre-computed and stored prediction results (treatment probability scores with corresponding explainable MOA paths) of all common drug-disease pairs using [KGML-xDTD](https://academic.oup.com/gigascience/article/doi/10.1093/gigascience/giad057/7246583)/xDTD (Explainable Drug-treats-Disease) model trained on tier 0 graph. These results are used to support the creative `inferred` query mode of ARAX, which calls `ARAXQuery/ARAX_infer.py` through `ARAXQuery/ARAX_expander.py`. Rebuild against the new Tier0 graph at every rollout so the model predictions and its supporting paths reflect the current edges. 
+**Purpose.**
+Pre-computed and stored prediction results (treatment probability scores with corresponding explainable MOA paths) of all common drug-disease pairs using [KGML-xDTD](https://academic.oup.com/gigascience/article/doi/10.1093/gigascience/giad057/7246583)/xDTD (Explainable Drug-treats-Disease) model trained on tier 0 graph. These results are used to support the creative `inferred` query mode of ARAX, which calls `ARAXQuery/ARAX_infer.py` through `ARAXQuery/ARAX_expander.py`. Rebuild against the new Tier0 graph at every rollout so the model predictions and its supporting paths reflect the current edges.
 
 **Owner.** PSU team (typically @chunyuma). Track this work as a subissue under the kickoff issue.
 
@@ -398,7 +396,7 @@ The convention is to stage all rebuilt artifacts under `/home/rtxconfig/tier0-MM
 #### 5b. Push to `arax.ncats.io` (self-hosted dev endpoints)
 The dev endpoints read from `/translator/data/orangeboard/databases/`. Example:
 - [ ] `ssh myuser@arax.ncats.io`
-- [ ] Enter the `rtx2` container: `sudo docker exec -it rtx2 bash`
+- [ ] Enter the `rtx1` container: `sudo docker exec -it rtx1 bash`
 - [ ] Become user `rt`: `su - rt`
 - [ ] `cd /translator/data/orangeboard/databases/`
 - [ ] `mkdir -m 777 tier0-MMDDYYYY`
@@ -431,92 +429,15 @@ The dev endpoints read from `/translator/data/orangeboard/databases/`. Example:
 
 ---
 
-## Phase 7 ; First-time KG2 to Tier0 endpoint conversion (optional, one-time per endpoint)
+## Phase 7 ; Production rollout
 
-> **This phase is optional.** Use it only when an endpoint is still on the KG2 stack and needs to be moved to Tier0. Right now only `/legacy` is still on KG2. The other `arax.ncats.io` endpoints (production, beta, test, devED, devLM, shepherd) are already on Tier0, so Phase 7 does not apply to them. For a routine Tier0 build refresh on an already-converted endpoint, skip Phase 7 and go straight to [Phase 8](#phase-8--production-rollout).
-
-This phase was used originally to move the `arax.ncats.io` endpoints from KG2 to Tier0. It is kept here as a reusable template for any future endpoint that still needs that one-time conversion (for example `/legacy`, or a brand new endpoint that comes online on the old stack). After you finish this phase once for a given endpoint, that endpoint is a Tier0 endpoint and every future Tier0 rollout on it uses the normal [Phase 8a](#8a-roll-master-to-the-araxncatsio-dev-endpoints) flow.
-
-**Notify `#deployment` on ARAXTeam Slack before starting.** Include the endpoint name (for example `/legacy`) and the Tier0 build date stamp. Wait 10 minutes before continuing.
-
-In the steps below, replace `ENDPOINT` with the actual endpoint name (for example `legacy`, `devED`, `test`).
-
-#### 7a. Get on the endpoint and confirm clean state
-- [ ] If off-site, connect to the office VPN.
-- [ ] `ssh arax.ncats.io`
-- [ ] Enter the `rtx2` container: `sudo docker exec -it rtx2 bash`
-- [ ] Become user `rt`: `su - rt`
-- [ ] `cd /mnt/data/orangeboard/ENDPOINT/RTX`
-- [ ] `git status`. Confirm you are on `master` and there are no local edits. If there are local edits, `git stash` them before continuing.
-
-#### 7b. Pull the latest `master`
-- [ ] `git fetch origin`
-- [ ] `git pull origin master`
-
-#### 7c. Point the start script at system python 3.12
-Tier0 ARAX runs under **system python 3.12** at `/usr/bin/python3.12`. Master's `requirements.txt` is installed against system python on the host, so converted endpoints share the same interpreter and deps.
-
-`/legacy/` is the one exception. It runs on its own dedicated venv at `/mnt/data/python/venv-legacy-arax/bin/python3.12`, which preserves the pre-Tier0 python state for the KG2 stack. So a KG2-to-Tier0 conversion for `/legacy` means switching its `.start` away from `venv-legacy-arax` and onto system python. See [`arax-ncats-io-architecture.md`](../arax-ncats-io-architecture.md) §3 for the full URL/port/python-interpreter table.
-
-- [ ] Open `/mnt/data/orangeboard/ENDPOINT/RTX/code/UI/OpenAPI/python-flask-server/RTX_OpenAPI_ENDPOINT.start`
-- [ ] Save a backup first: `cp RTX_OpenAPI_ENDPOINT.start RTX_OpenAPI_ENDPOINT.start.kg2.bak`
-- [ ] On the `exec` launch line, change the python path to `/usr/bin/python3.12`
-- [ ] If the `.start` also sets `export PATH=/mnt/data/python/venv-legacy-arax/bin:...` (or any other venv-specific PATH prefix), remove that PATH override so the launch resolves cleanly against system python.
-- [ ] Confirm the port in the `.start` is still correct for this endpoint.
-- [ ] If `requirements.txt` changed in the `git pull` above, refresh system python's deps: `sudo /usr/bin/python3.12 -m pip install -r code/requirements.txt`
-
-#### 7d. Regenerate the database symlinks
-Tier0 database filenames differ from the KG2 ones, so the symlinks under the endpoint's `code/ARAX/KnowledgeSources/...` (and `code/autocomplete/`) need to be rebuilt and `db_versions.json` must be aligned with what is actually on disk. Follow the canonical reset documented in [`arax-ncats-io-architecture.md`](../arax-ncats-io-architecture.md) §7.4 (running `generate-db-symlinks.sh` without also running `-g` will desync `db_versions.json` and trip the `ln -s` bug in §7.1).
-
-- [ ] `cd /mnt/data/orangeboard/ENDPOINT`
-- [ ] Create all expected Tier0 symlinks: `runuser -u rt -- ./RTX/code/generate-db-symlinks.sh`
-- [ ] `cd RTX/code/ARAX/ARAXQuery`
-- [ ] Regenerate `db_versions.json` so dbmanager's bookkeeping matches the symlinks on disk: `runuser -u rt -- /usr/bin/python3.12 ARAX_database_manager.py -g`
-- [ ] Spot-check a few symlinks: `ls -l /mnt/data/orangeboard/ENDPOINT/RTX/code/ARAX/KnowledgeSources/NormalizedGoogleDistance/`. Confirm the Tier0 artifacts from [Phase 2](#phase-2--build-artifacts) (for example `curie_to_pmids_v1.0_tier0-MMDDYYYY.sqlite`) are linked into `/mnt/data/orangeboard/databases/tier0-MMDDYYYY/`.
-
-#### 7e. Refresh the KP info cache and confirm TRAPI 1.6.0
-Tier0 KPs (notably Gandalf) advertise TRAPI 1.6.0. The KP info cache must be rebuilt against that version before ARAX will route to them.
-
-- [ ] `cd code/ARAX/ARAXQuery/Expand`
-- [ ] Open `kp_info_cacher.py` and confirm `forced_kp_version = '1.6.0'` (or the equivalent line that pins TRAPI 1.6.0). **Do not commit any local change to this value.** It is environment-specific.
-- [ ] Clear the old cache: `rm -f cache_smart_api_and_meta_map_*.pkl`
-- [ ] Rebuild it: `runuser -u rt -- /usr/bin/python3.12 -u kp_info_cacher.py`
-- [ ] Read the output. Confirm it finished without errors and that the expected KPs (Gandalf, Retriever, etc.) appear in the cache.
-
-#### 7f. Restart ARAX and watch the elog
-- [ ] Exit the `rt` user shell to get back to container root: `exit` (stay inside the `rtx2` container; do not exit out to the host, or `service` will not reach the in-container services).
-- [ ] If the service is still running on the old config, stop it first: `service RTX_OpenAPI_ENDPOINT stop`
-- [ ] Confirm no lingering processes are bound to the endpoint's port: `ps axwf | grep RTX_OpenAPI_ENDPOINT`. Kill any leftovers.
-- [ ] Start the service: `service RTX_OpenAPI_ENDPOINT start`
-- [ ] `tail -f /tmp/RTX_OpenAPI_ENDPOINT.elog`
-- [ ] Wait for `ARAXBackgroundTasker: Completed meta KG refresh successfully`. That is the ready signal. Watch the log for warnings and stack traces while you wait.
-
-#### 7g. Run the four example queries and check the TRAPI messages
-- [ ] Open the ARAX UI pointed at this endpoint (for example `http://arax.ncats.io/legacy/`).
-- [ ] Run each of the four example queries from the Examples menu.
-- [ ] For each query, check:
-  - [ ] The result list is non-empty and looks biologically reasonable.
-  - [ ] The TRAPI message logs do not show KP timeouts, fall-through errors, or unexpected warnings.
-  - [ ] The Synonyms tab on a few result nodes shows Tier0 CURIEs, not just KG2 carry-overs.
-- [ ] Run one extra known Tier0-only query (a CURIE that exists in Tier0 but not in the prior KG2 graph) to confirm the new graph is actually loaded.
-
-#### 7h. Sign off
-- [ ] Post a short status to `#deployment` on Slack: endpoint name, Tier0 build stamp, four-query result, anything anomalous.
-- [ ] Update the rollout issue with the endpoint name and the conversion result.
-
-After 7h, this endpoint is a Tier0 endpoint. Future Tier0 rollouts on it use the normal [Phase 8a](#8a-roll-master-to-the-araxncatsio-dev-endpoints) flow.
-
----
-
-## Phase 8 ; Production rollout
-
-### 8a. Roll `master` to the `arax.ncats.io` dev endpoints
+### 7a. Roll `master` to the `arax.ncats.io` dev endpoints
 
 **Notify `#deployment` on ARAXTeam Slack before each endpoint rollout.** Include the Tier0 build date stamp.
 
 - [ ] If off-site, connect to the office VPN.
 - [ ] `ssh arax.ncats.io` (requires the ssh config from [Prerequisites](#prerequisites))
-- [ ] Enter the `rtx2` container: `sudo docker exec -it rtx2 bash`
+- [ ] Enter the `rtx1` container: `sudo docker exec -it rtx1 bash`
 - [ ] Become user `rt`: `su - rt`
 - [ ] `cd /mnt/data/orangeboard/ENDPOINT/RTX`
 - [ ] Confirm on `master`: `git branch` → should show `* master`
@@ -531,19 +452,19 @@ After 7h, this endpoint is a Tier0 endpoint. Future Tier0 rollouts on it use the
 - [ ] Verify the Tier0 version actually loaded ; run a known Tier0-only test query
 
 After all dev endpoints are up:
-- [ ] On each endpoint, inside the `rtx2` container: `cd /mnt/data/orangeboard/EEE/RTX/code/ARAX/test && pytest -v`
+- [ ] On each endpoint, inside the `rtx1` container: `cd /mnt/data/orangeboard/EEE/RTX/code/ARAX/test && pytest -v`
 
-### 8b. Verify ITRB CI auto-deployment
+### 7b. Verify ITRB CI auto-deployment
 - [ ] Check that ITRB CI auto-deployed the new `master`. Hit the CI ARAX endpoint and run a Tier0 verification query.
 - [ ] Run the full pytest suite against the CI endpoint and confirm green.
 
-### 8c. Progressive production rollout
+### 7c. Progressive production rollout
 - [ ] Roll the new `master` to the `arax.ncats.io` production endpoints **one at a time**, smoke-testing after each.
 - [ ] **Leave at least one legacy endpoint on the previous Tier0 build** until the new build has been stable in production for at least one week.
 
 ---
 
-## Phase 9 ; Final cleanup
+## Phase 8 ; Final cleanup
 
 - [ ] Update the current RTX GitHub changelog issue ; add an entry for this Tier0 rollout (date, build stamp, summary of what changed).
 - [ ] Delete the `issue-XXXX` branch in the RTX repo (it has been merged into `master`).
@@ -558,7 +479,7 @@ After all dev endpoints are up:
 If the new build misbehaves after rollout:
 
 1. **Identify the last-known-good tag.** This is the tag created in Phase 6 (head of `master` immediately before the Tier0 merge).
-2. **Revert the production endpoint(s).** Redeploy the tagged commit to the affected `arax.ncats.io` endpoint(s) following the same `git stash`, `git checkout <tag>`, `service restart` procedure as Phase 8a. The legacy endpoint kept in Phase 8c should remain untouched and can absorb traffic while the others roll back.
+2. **Revert the production endpoint(s).** Redeploy the tagged commit to the affected `arax.ncats.io` endpoint(s) following the same `git stash → git checkout <tag> → service restart` procedure as Phase 7a. The legacy endpoint kept in Phase 7c should remain untouched and can absorb traffic while the others roll back.
 3. **Restore DB manager paths.** If `config_dbs.json` and/or `ARAX_database_manager.py` were already updated to point at Tier0 artifacts, revert those changes on `master` (or hot-fix the deployed copy) so the rolled-back code finds the previous artifacts.
 4. **Confirm the artifacts the rolled-back code expects are still present** on `arax-databases.rtx.ai` and the ITRB SFTP ; do **not** delete the previous Tier0 build's artifacts until the new build has been stable in production for at least one week.
 5. **Notify `#deployment` on ARAXTeam Slack** and update the rollout issue with what failed and why.

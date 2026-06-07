@@ -587,7 +587,7 @@ def test_xdtd_publications_in_edge_attributes():
 
 
 @pytest.mark.slow
-def test_xdtd_extra_edge_attributes():
+def test_xdtd_extra_edge_attributes_and_qualifiers():
     query = {
         "message": {"query_graph": {
             "edges": {
@@ -632,19 +632,23 @@ def test_xdtd_extra_edge_attributes():
     }
 
     extra_attr_type_ids = {
-        "biolink:qualified_predicate",
         "biolink:has_confidence_score",
-        "biolink:object_aspect_qualifier",
-        "biolink:object_direction_qualifier",
         "biolink:has_affinity",
-        "biolink:species_context_qualifier",
         "biolink:max_research_phase",
         "biolink:p_value",
         "biolink:has_supporting_studies",
     }
 
+    extra_qualifier_type_ids = {
+        "biolink:qualified_predicate",
+        "biolink:object_aspect_qualifier",
+        "biolink:object_direction_qualifier",
+        "biolink:species_context_qualifier",
+    }
+
     found_new_column_attrs = set()
     found_extra_attrs = set()
+    found_qualifiers = set()
     infer_edge_count = 0
 
     for edge_key, edge in message.knowledge_graph.edges.items():
@@ -664,6 +668,12 @@ def test_xdtd_extra_edge_attributes():
                 assert attr.value is not None
                 assert attr.original_attribute_name is None
 
+        if edge.qualifiers:
+            for qual in edge.qualifiers:
+                if qual.qualifier_type_id in extra_qualifier_type_ids:
+                    found_qualifiers.add(qual.qualifier_type_id)
+                    assert qual.qualifier_value is not None
+
     assert infer_edge_count > 0, "No infer-produced path edges found"
     assert found_new_column_attrs, (
         "No new column attributes (category/original_subject/original_object) "
@@ -673,6 +683,10 @@ def test_xdtd_extra_edge_attributes():
         "biolink:category attribute not found on any infer path edge"
     )
     assert found_extra_attrs, (
-        "No extra_attributes (qualified_predicate, has_confidence_score, etc.) "
+        "No extra_attributes (has_confidence_score, etc.) "
+        "found on any infer path edge"
+    )
+    assert found_qualifiers, (
+        "No qualifiers (qualified_predicate, object_aspect_qualifier, etc.) "
         "found on any infer path edge"
     )

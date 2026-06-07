@@ -932,6 +932,7 @@ class ARAXQuery:
             response.response_id = response_id
 
             #### Record how many results came back
+            message = response.envelope.message
             n_results = len(message.results)
             response.info(f"Processing is complete and resulted in {n_results} results.")
             if response.message == 'Normal completion':

@@ -142,7 +142,7 @@ def main():
 
     if check_databases:
         from ARAX_database_manager import ARAXDatabaseManager  # pylint: disable=import-outside-toplevel, import-error
-        dbmanager = ARAXDatabaseManager()
+        dbmanager = ARAXDatabaseManager(allow_downloads=True)
         try:
             eprint("Checking for complete databases")
             # check_versions returns True if new databases need to be downloaded
