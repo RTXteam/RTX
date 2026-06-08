@@ -36,7 +36,7 @@ from openapi_server.models.node import Node  # type: ignore[import-not-found]  #
 from openapi_server.models.attribute import Attribute  # type: ignore[import-not-found]  # noqa: E402  # pylint: disable=import-error,wrong-import-position
 
 
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
 
 # 13 instance attrs (limit 7): API URLs, session, cache, config,
 # infores CURIEs, bmt toolkit, category levels. All needed for the
@@ -148,6 +148,8 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         self._cache_hits = 0
         self._cache_misses = 0
 
+        self.logger = logging.getLogger(__name__)
+
     # ------------ EXTERNAL MAIN METHODS ------------- #
 
     # Locals/branches are high because this method orchestrates
@@ -228,7 +230,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                         # the entire TRAPI query over one bad row.
                         result_name_dict = result.get("id")
                         if not result_name_dict:
-                            logger.warning(
+                            self.logger.warning(
                                 "Node Normalizer response for "
                                 "name %r has no 'id' field; "
                                 "treating as unresolved", name)
@@ -236,7 +238,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                             continue
                         result_name = result_name_dict.get("label")
                         if not result_name:
-                            logger.warning(
+                            self.logger.warning(
                                 "Node Normalizer response for "
                                 "name %r has no 'label' in 'id';"
                                 " treating as unresolved", name)
@@ -999,7 +1001,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         failed_batches = 0
         last_error: Optional[str] = None
 
-        logger.info(
+        self.logger.info(
             "Name Resolver SYNC: %d names, %d batches "
             "(batch_size=%d)", total, num_batches, batch_size)
 
@@ -1025,7 +1027,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                     results.update(batch_curies)
                     resolved = sum(
                         1 for v in batch_curies.values() if v)
-                    logger.info(
+                    self.logger.info(
                         "batch %d/%d: resolved %d/%d  "
                         "%.2fs  HTTP %d",
                         batch_num, num_batches,
@@ -1036,7 +1038,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                 except requests.exceptions.RequestException as e:
                     elapsed = time.time() - batch_start
                     last_error = str(e)
-                    logger.warning(
+                    self.logger.warning(
                         "batch %d/%d  %.2fs  attempt %d/%d "
                         "failed: %s",
                         batch_num, num_batches, elapsed,
@@ -1056,7 +1058,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                 for name in batch:
                     results[name] = None
                 failed_batches += 1
-                logger.error(
+                self.logger.error(
                     "batch %d/%d giving up after %d attempts, "
                     "%d names set to None",
                     batch_num, num_batches,
@@ -1064,13 +1066,13 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
 
         if failed_batches > 0:
             failed_names = failed_batches * batch_size
-            logger.warning(
+            self.logger.warning(
                 "Name Resolver SYNC finished with %d failed "
                 "batches (~%d names set to None). "
                 "Last error: %s",
                 failed_batches, failed_names, last_error)
         else:
-            logger.info(
+            self.logger.info(
                 "Name Resolver SYNC done: %d names, "
                 "%d batches, 0 failures",
                 total, num_batches)
@@ -1092,7 +1094,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         ]
         num_batches = len(batches)
 
-        logger.info(
+        self.logger.info(
             "Name Resolver ASYNC: %d names, %d batches "
             "(batch_size=%d, max_concurrent=%d)",
             total, num_batches, batch_size,
@@ -1148,7 +1150,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                                     completed_batches += 1
                                     total_resolved += resolved
                                     total_null += nulls
-                                    logger.info(
+                                    self.logger.info(
                                         "batch %d/%d: "
                                         "resolved %d/%d  "
                                         "%.2fs  HTTP %d",
@@ -1163,7 +1165,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                                 elapsed = (
                                     time.time() - batch_start)
                                 last_error = str(e)
-                                logger.warning(
+                                self.logger.warning(
                                     "batch %d/%d  %.2fs  "
                                     "attempt %d/%d failed: %s",
                                     batch_num, num_batches,
@@ -1176,7 +1178,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                                     continue
                         # All retries exhausted
                         failed_batches += 1
-                        logger.error(
+                        self.logger.error(
                             "batch %d/%d giving up after "
                             "%d attempts, %d names set "
                             "to None",
@@ -1196,13 +1198,13 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
 
             if failed_batches > 0:
                 failed_names = failed_batches * batch_size
-                logger.warning(
+                self.logger.warning(
                     "Name Resolver ASYNC finished with "
                     "%d failed batches (~%d names set to "
                     "None). Last error: %s",
                     failed_batches, failed_names, last_error)
             else:
-                logger.info(
+                self.logger.info(
                     "Name Resolver ASYNC done: %d names, "
                     "%d batches, 0 failures",
                     total, num_batches)
