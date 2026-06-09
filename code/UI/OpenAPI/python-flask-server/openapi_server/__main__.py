@@ -119,6 +119,21 @@ def main():
     add_to_syspath(araxquery_dir / "Expand")
     import kp_info_cacher  # noqa: F401  # pylint: disable=import-outside-toplevel, import-error, unused-import
 
+    # See ARAX issue 2800. node_synonymizer builds its BMT toolkit lazily, so
+    # build it here once in the single-threaded parent, before the fork below
+    # and before any request threads start. Otherwise two request threads could
+    # trigger the first build at the same moment. get_bmt_toolkit caches one
+    # toolkit process-wide, so every controller reuses this one.
+    nodesyn_dir = rtx_root_dir / "code/ARAX/NodeSynonymizer"
+    add_to_syspath(nodesyn_dir)
+    try:
+        import node_synonymizer  # pylint: disable=import-outside-toplevel, import-error
+        node_synonymizer.get_bmt_toolkit()
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        eprint("FATAL: NodeSynonymizer could not load the BMT toolkit at "
+               f"startup, aborting. {exc}")
+        sys.exit(1)
+
     config_file_path = HERE / "flask_config.json"
     # Read any local configuration details for this instance
     local_config = {}
