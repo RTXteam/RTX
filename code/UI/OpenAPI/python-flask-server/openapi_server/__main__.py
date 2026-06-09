@@ -119,16 +119,16 @@ def main():
     add_to_syspath(araxquery_dir / "Expand")
     import kp_info_cacher  # noqa: F401  # pylint: disable=import-outside-toplevel, import-error, unused-import
 
-    # See ARAX issue 2800. Many controllers import node_synonymizer indirectly,
-    # so without this two request threads could import it, and each build a
-    # bmt.Toolkit, at the same moment. Build it here once in the single-threaded
-    # parent before the fork below and before any request threads start. Import
-    # the bare name, the same sys.modules key the controllers use, so they get
-    # this warmed module as a cache hit rather than building a second toolkit.
+    # See ARAX issue 2800. node_synonymizer builds its BMT toolkit lazily, so
+    # build it here once in the single-threaded parent, before the fork below
+    # and before any request threads start. Otherwise two request threads could
+    # trigger the first build at the same moment. get_bmt_toolkit caches one
+    # toolkit process-wide, so every controller reuses this one.
     nodesyn_dir = rtx_root_dir / "code/ARAX/NodeSynonymizer"
     add_to_syspath(nodesyn_dir)
     try:
-        import node_synonymizer  # noqa: F401  # pylint: disable=import-outside-toplevel, import-error, unused-import
+        import node_synonymizer  # pylint: disable=import-outside-toplevel, import-error
+        node_synonymizer.get_bmt_toolkit()
     except Exception as exc:  # pylint: disable=broad-exception-caught
         eprint("FATAL: NodeSynonymizer could not load the BMT toolkit at "
                f"startup, aborting. {exc}")
