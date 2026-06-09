@@ -7,6 +7,7 @@ import logging
 import math
 import os
 import sys
+import threading
 import time
 from collections import Counter, defaultdict
 from typing import Any, Optional, Union, List, Set
@@ -38,19 +39,37 @@ from openapi_server.models.attribute import Attribute  # type: ignore[import-not
 
 #logger = logging.getLogger(__name__)
 
-# Build the BMT (Biolink Model Toolkit) once and share it across all
-# NodeSynonymizer instances. Constructing it fetches the Biolink model from
-# GitHub and parses it. Doing that per instance caused the issue 2800 memory
-# growth. If it cannot load, fail with a clear, named reason.
-try:
-    _BMT_TOOLKIT = bmt.Toolkit()
-except Exception as exc:  # pylint: disable=broad-exception-caught
-    raise RuntimeError(
-        "NodeSynonymizer could not load the BMT (Biolink Model Toolkit). "
-        "bmt.Toolkit() fetches the Biolink model from "
-        "raw.githubusercontent.com, so this most likely means that host was "
-        f"unreachable. Original error: {exc}"
-    ) from exc
+# Share one BMT (Biolink Model Toolkit) across all NodeSynonymizer instances.
+# Building it per instance caused the issue 2800 memory growth. Build it lazily
+# on first use, not at import, so importing this module (which happens in many
+# non-server places, including the test suite, CLI usage, and the KG2c build
+# scripts) does no network or parsing. The Flask server warms it once at
+# startup (see __main__.py) before any request threads start.
+_BMT_TOOLKIT = None
+_BMT_TOOLKIT_LOCK = threading.Lock()
+
+
+def get_bmt_toolkit():
+    """Return the process-wide bmt.Toolkit, building it once on first call.
+
+    Constructing it fetches the Biolink model from GitHub and parses it. If it
+    cannot load, fail with a clear, named reason rather than a bare traceback.
+    """
+    global _BMT_TOOLKIT
+    if _BMT_TOOLKIT is None:
+        with _BMT_TOOLKIT_LOCK:
+            if _BMT_TOOLKIT is None:
+                try:
+                    _BMT_TOOLKIT = bmt.Toolkit()
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    raise RuntimeError(
+                        "NodeSynonymizer could not load the BMT (Biolink Model "
+                        "Toolkit). bmt.Toolkit() fetches the Biolink model from "
+                        "raw.githubusercontent.com, so this most likely means "
+                        f"that host was unreachable. Original error: {exc}"
+                    ) from exc
+    return _BMT_TOOLKIT
+
 
 # 13 instance attrs (limit 7): API URLs, session, cache, config,
 # infores CURIEs, bmt toolkit, category levels. All needed for the
@@ -141,7 +160,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         self.kg2_infores_curie = "infores:rtx-kg2"
         self.sri_nn_infores_curie = "infores:sri-node-normalizer"
         self.arax_infores_curie = "infores:arax"
-        self.bmt_tk = _BMT_TOOLKIT
+        self.bmt_tk = get_bmt_toolkit()
         self.category_levels = self._get_categories_and_levels()
 
         # Since we now hit external APIs instead of a local DB,
