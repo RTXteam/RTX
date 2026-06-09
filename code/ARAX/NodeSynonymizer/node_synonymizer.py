@@ -38,6 +38,20 @@ from openapi_server.models.attribute import Attribute  # type: ignore[import-not
 
 #logger = logging.getLogger(__name__)
 
+# Build the BMT (Biolink Model Toolkit) once and share it across all
+# NodeSynonymizer instances. Constructing it fetches the Biolink model from
+# GitHub and parses it. Doing that per instance caused the issue 2800 memory
+# growth. If it cannot load, fail with a clear, named reason.
+try:
+    _BMT_TOOLKIT = bmt.Toolkit()
+except Exception as exc:  # pylint: disable=broad-exception-caught
+    raise RuntimeError(
+        "NodeSynonymizer could not load the BMT (Biolink Model Toolkit). "
+        "bmt.Toolkit() fetches the Biolink model from "
+        "raw.githubusercontent.com, so this most likely means that host was "
+        f"unreachable. Original error: {exc}"
+    ) from exc
+
 # 13 instance attrs (limit 7): API URLs, session, cache, config,
 # infores CURIEs, bmt toolkit, category levels. All needed for the
 # API-based lifecycle — the old SQLite version had similar state.
@@ -127,7 +141,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         self.kg2_infores_curie = "infores:rtx-kg2"
         self.sri_nn_infores_curie = "infores:sri-node-normalizer"
         self.arax_infores_curie = "infores:arax"
-        self.bmt_tk = bmt.Toolkit()
+        self.bmt_tk = _BMT_TOOLKIT
         self.category_levels = self._get_categories_and_levels()
 
         # Since we now hit external APIs instead of a local DB,
