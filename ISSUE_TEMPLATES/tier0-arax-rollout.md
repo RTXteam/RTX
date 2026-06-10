@@ -103,10 +103,31 @@ Here is a copy and pastable checklist to put into the issue, if that is helpful:
 - [ ] Roll out the new `master` branch progressively to different [arax.ncats.io](http://arax.ncats.io/) endpoints, leaving _at least one legacy endpoint_
 
 
-
 ---
 
 ## Phase 2 ; Build artifacts
+
+Here is a diagram of the build artifacts for ARAX and their dependencies:
+```
+    KGX Tier0 graph            Babel distribution          PubMed mirror
+    (download, not built)      (download)                  (download)
+         │                          │ stitch-proj               │
+         │                          ▼                           │
+         │                     Babel sqlite                     │
+         │                                                      │
+         ├──────────────►  autocomplete                         │
+         │                                                      │
+         ├──────────────►  tier0-info-for-overlay               │
+         │                                                      │
+         ├──────────────►  ExplainableDTD (xDTD)                │
+         │                                                      │
+         ├──────────────►  gandalf_mmap                         │
+         │                                                      │
+         ├──────────────►  curie_to_pmids  ◄── Babel sqlite ────┤
+         │                       │            (+ PubMed mirror)
+         │                       ▼
+         └──────────────►  curie_ngd
+```
 
 The following artifacts must be rebuilt against the new Tier0 graph. Typical assignees: OSU team for DB builds; PSU team for xDTD and gandalf_mmap.
 
