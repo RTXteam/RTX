@@ -65,6 +65,7 @@ class KPQuery(Base):  # type: ignore[misc, valid-type]
     n_successful_refreshes = Column(Integer, nullable=True, default=0)
     n_failed_refreshes = Column(Integer, nullable=True, default=0)
     last_refresh_elapsed = Column(Float, nullable=True)
+    last_attempted_refresh_http_code = Column(Integer, nullable=True)
     last_refresh_http_code = Column(Integer, nullable=True)
     last_refresh_n_results = Column(Integer, nullable=True)
     n_refresh_same_results = Column(Integer, nullable=True, default=0)
@@ -608,7 +609,7 @@ class KPQueryCacher:
             # 3. Update stats based on outcome
             try:
                 record.last_refresh_elapsed = elapsed
-                record.last_refresh_http_code = status_code
+                record.last_attempted_refresh_http_code = status_code
             
                 if error:
                     # Refresh failed
@@ -623,6 +624,7 @@ class KPQueryCacher:
                 else:
                     # Refresh succeeded
                     record.status = "OK"
+                    record.last_refresh_http_code = status_code
                     record.n_successful_refreshes = (record.n_successful_refreshes or 0) + 1
                     record.last_successful_refresh_datetime = now_str
                     record.last_refresh_n_results = self._get_n_results(response_data)
@@ -800,8 +802,9 @@ class KPQueryCacher:
             { "key": "last_successful_refresh_datetime", "title": "last success datetime", "title_hover": "Datetime of the last successful attempt to refresh this query" },
             { "key": "n_successful_refreshes", "title": "n success", "title_hover": "Number of successful refreshes" },
             { "key": "n_failed_refreshes", "title": "n failed", "title_hover": "Number of failed refreshes", "red_if_greater_than_value": 0 },
-            { "key": "last_refresh_elapsed", "title": "last elapsed", "title_hover": "Elapsed time of the last refresh attempt in seconds", "red_if_greater_than_value": 5 },
-            { "key": "last_refresh_http_code", "title": "last code", "title_hover": "HTTP code of the last refresh attempt (-1 is a timeout)", "red_if_not_equal_to_value": 200 },
+            { "key": "last_refresh_elapsed", "title": "last elapsed", "title_hover": "Elapsed time of the last successfulrefresh in seconds", "red_if_greater_than_value": 5 },
+            { "key": "last_attempted_refresh_http_code", "title": "last attemptcode", "title_hover": "HTTP code of the last refresh attempt (-1 is a timeout)", "red_if_not_equal_to_value": 200 },
+            { "key": "last_refresh_http_code", "title": "last code", "title_hover": "HTTP code of the last successful refresh (-1 is a timeout)", "red_if_not_equal_to_value": 200 },
             { "key": "last_refresh_n_results", "title": "last n results", "title_hover": "Number of TRAPI results in the most recent successful refresh attempt" },
             { "key": "n_refresh_same_results", "title": "n same", "title_hover": "Number of refreshes that yielded the same results as the most recent successful refresh" },
             { "key": "n_refresh_different_results", "title": "n diff", "title_hover": "Number of refreshes that yielded different results as the most recent successful refresh", "red_if_greater_than_value": 0 },
