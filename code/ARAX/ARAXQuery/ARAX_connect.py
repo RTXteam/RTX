@@ -276,8 +276,18 @@ class ARAXConnect:
         cleaned_parameters = self._clean_parameters(parameters)
         pathfinder_input_data = {'query_graph': response_envelope_as_dict['message']['query_graph'],
                                  'parameters': cleaned_parameters}
-        self.response.info(f"Looking for a previously cached result from {kp_curie}")
-        response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, pathfinder_input_data)
+
+        query_options = self.response.envelope.query_options
+        if query_options is not None and "bypass_cache" in query_options:
+            bypass_cache = query_options["bypass_cache"] is not None and str(query_options["bypass_cache"]).lower() != 'false'
+        else:
+            bypass_cache = False
+        if bypass_cache:
+            self.response.debug(f"bypass_cache is set; skipping cache lookup for {kp_curie}")
+            response_code = -2
+        else:
+            self.response.info(f"Looking for a previously cached result from {kp_curie}")
+            response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, pathfinder_input_data)
         if (
                 response_code != -2
                 and response_code == 200
