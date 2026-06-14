@@ -534,7 +534,7 @@ class TRAPIQuerier:
         if self.kp_infores_curie == "infores:retriever":
             body.setdefault('parameters', {})
             if 'tiers' not in body['parameters']:
-                body['parameters']['tiers'] = [ 1 ]
+                body['parameters']['tiers'] = [ 0 ]
                 self.log.info(f"For query to {self.kp_infores_curie}, "
                               f"set body.parameters.tiers to {body['parameters']['tiers']}")
 

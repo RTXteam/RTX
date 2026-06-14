@@ -20,6 +20,15 @@ from ARAX_ranker import ARAXRanker
 from operation_to_ARAXi import WorkflowToARAXi
 from ARAX_query_tracker import ARAXQueryTracker
 from result_transformer import ResultTransformer
+# Imported here instead of inside execute_processing_plan, which runs in
+# per-query threads. See ARAX issue 2794.
+from ARAX_expander import ARAXExpander
+from ARAX_overlay import ARAXOverlay
+from ARAX_filter_kg import ARAXFilterKG
+from ARAX_resultify import ARAXResultify
+from ARAX_filter_results import ARAXFilterResults
+from ARAX_infer import ARAXInfer
+from ARAX_connect import ARAXConnect
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response
@@ -673,14 +682,7 @@ class ARAXQuery:
             response.envelope.operations['actions'] = operations.actions
 
 
-            #### Import the individual ARAX processing modules and process DSL commands
-            from ARAX_expander import ARAXExpander
-            from ARAX_overlay import ARAXOverlay
-            from ARAX_filter_kg import ARAXFilterKG
-            from ARAX_resultify import ARAXResultify
-            from ARAX_filter_results import ARAXFilterResults
-            from ARAX_infer import ARAXInfer
-            from ARAX_connect import ARAXConnect
+            #### Instantiate the individual ARAX processing modules and process DSL commands
             expander = ARAXExpander()
             filter = ARAXFilter()
             overlay = ARAXOverlay()

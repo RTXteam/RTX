@@ -13,12 +13,16 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/Expand")
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 
 from RTXConfiguration import RTXConfiguration
+# kp_info_cacher lives in ARAXQuery/Expand, added to sys.path above.
+# Imported here instead of inside _merge_kp_info, see ARAX issue 2794.
+from kp_info_cacher import KPInfoCacher
 
 
 class KnowledgeSourceMetadata:
@@ -61,10 +65,6 @@ class KnowledgeSourceMetadata:
     def _merge_kp_info(self, base_meta_kg: Dict[str, Any]) -> Dict[str, Any]:
         """Merge additional KP information from the KP info cacher"""
         try:
-            # Import here to avoid circular dependencies
-            sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery/Expand")
-            from kp_info_cacher import KPInfoCacher
-            
             kp_cacher = KPInfoCacher()
             if kp_cacher.cache_file_present():
                 # Create a simple mock ARAXResponse for logging

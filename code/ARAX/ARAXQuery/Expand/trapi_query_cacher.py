@@ -25,12 +25,15 @@ from typing import cast, Any, Collection
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 # Constants
+DEBUG = False
 REFRESH_TIME_LIMIT_SECONDS = 60.0
 AGE_BEFORE_REFRESH_HOURS = 6.0
 AGE_BEFORE_TIMEOUT_RETRY_HOURS = 0.02
 NO_CACHED_RESPONSE = -2
 CONNECTION_ERROR = -1
-CLEAR_CACHE_AFTER = 30 * 24 * 60 * 60 # Clear cache completely after 30 days
+TEST_QUERY_FAILURE = False
+CLEAR_CACHE_ON_BACKGROUND_TASKER_START = True
+# not currently used CLEAR_CACHE_AFTER = 30 * 24 * 60 * 60 # Clear cache completely after 30 days
 
 # --- SQLAlchemy Model Definition ---
 
@@ -65,6 +68,7 @@ class KPQuery(Base):  # type: ignore[misc, valid-type]
     n_successful_refreshes = Column(Integer, nullable=True, default=0)
     n_failed_refreshes = Column(Integer, nullable=True, default=0)
     last_refresh_elapsed = Column(Float, nullable=True)
+    last_attempted_refresh_http_code = Column(Integer, nullable=True)
     last_refresh_http_code = Column(Integer, nullable=True)
     last_refresh_n_results = Column(Integer, nullable=True)
     n_refresh_same_results = Column(Integer, nullable=True, default=0)
@@ -112,10 +116,11 @@ class KPQueryCacher:
         print(f"Cacher initialized. database: '{self.db_file_path}'\n                    cachedir: '{self.cache_dir}'")
 
         if str(mode) == 'BackgroundTasker':
-            if True:
-                eprint(f"INFO: BackgroundTasker initialization now always clears the KP Query Cache")
+            if CLEAR_CACHE_ON_BACKGROUND_TASKER_START:
+                eprint(f"INFO: BackgroundTasker initialization clearing the KP Query Cache")
                 self.initialize_cache()
-
+            else:
+                eprint(f"INFO: BackgroundTasker initialization NOT clearing the KP Query Cache due to CLEAR_CACHE_ON_BACKGROUND_TASKER_START = False")
 
     def initialize_cache(self):
         """
@@ -169,9 +174,19 @@ class KPQueryCacher:
         :param query_object: The dictionary to hash.
         :return: A hex digest string.
         """
-        query_json = json.dumps(query_object, sort_keys=True, ensure_ascii=True)
-        return hashlib.sha256(query_json.encode('utf-8')).hexdigest()
 
+        query_json = json.dumps(query_object, sort_keys=True, ensure_ascii=True).encode('utf-8')
+
+        new_query_object = self._regularize_query_object(query_object)
+        new_query_json = json.dumps(new_query_object, sort_keys=True, ensure_ascii=True).encode('utf-8')
+        hash = hashlib.sha256(new_query_json).hexdigest()
+        if DEBUG:
+            eprint(f"%%%%%%%%%%%%%%%%%%% query_json to hash %%%%%%%%%%")
+            eprint(query_json)
+            eprint(f"%% to %%%%%")
+            eprint(new_query_json)
+            eprint(f"%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%")
+        return hash
 
 
     def _get_cache_filepath(self, query_hash: str) -> str:
@@ -223,6 +238,34 @@ class KPQueryCacher:
             # Fail silently and return None if structure is unexpected
             pass
         return None
+
+
+
+    def _regularize_query_object(self, query_object: dict) -> dict | None:
+        """
+        Attempts to uniformly sort lists that might be in different orders.
+        
+        :param query_object: The query object to regularize.
+        :return: regularized query object, or None.
+        """
+
+        if query_object is None:
+            return None
+
+        query_graph = {}
+        if 'query_object' in query_object:
+            query_graph = query_object['query_object']
+        if 'message' in query_graph:
+            query_graph = query_graph['message']
+        if 'query_graph' in query_graph:
+            query_graph = query_graph['query_graph']
+        if 'nodes' in query_graph:
+            for node_id, node in query_graph['nodes'].items():
+                if 'categories' in node:
+                    if node['categories'] is not None:
+                        node['categories'] = sorted(node['categories'])
+
+        return query_object
 
 
 
@@ -288,13 +331,7 @@ class KPQueryCacher:
         """
 
         start_time = time.time()
-        use_new_mode = False
-        if query_url == 'PathFinder':
-            use_new_mode = True
-        if use_new_mode:
-            query_hash = self._hash_query( { 'query_url': query_url, 'query_object': query_object } )
-        else:
-            query_hash = self._hash_query(query_url + str(query_object))
+        query_hash = self._hash_query( { 'query_url': query_url, 'query_object': query_object } )
 
         eprint(f"*** Looking for pre-existing query_url={query_url}, query_object={query_object} which yields query_hash={query_hash}")
 
@@ -339,8 +376,14 @@ class KPQueryCacher:
         :return: A tuple of (response_data, http_status_code, elapsed_time, error_message)
         """
         start_time = time.time()
+
+        requests_query_url = query_url
+        if TEST_QUERY_FAILURE:
+            requests_query_url = requests_query_url.replace('https://dev.retriever.biothings.io', 'https://gateway.systemsbiology.net')
+            eprint(f"XXXXXX POSTing to {requests_query_url} instead of {query_url}")
+
         try:
-            response = requests.post(query_url, json=query_object, timeout=timeout, headers={'accept': 'application/json'})
+            response = requests.post(requests_query_url, json=query_object, timeout=timeout, headers={'accept': 'application/json'})
             elapsed = time.time() - start_time
             # Raise an exception for bad status codes (4xx, 5xx)
             response.raise_for_status() 
@@ -368,9 +411,14 @@ class KPQueryCacher:
         :return: A tuple of (response_data, http_status_code, elapsed_time, error_message)
         """
         start_time = time.time()
+        requests_query_url = query_url
+        if TEST_QUERY_FAILURE:
+            requests_query_url = requests_query_url.replace('https://dev.retriever.biothings.io', 'https://gateway.systemsbiology.net')
+            eprint(f"XXXXXX POSTing async to {requests_query_url} instead of {query_url}")
+
         async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
             try:
-                async with session.post(query_url, json=query_object, timeout=timeout, headers={'accept': 'application/json'}) as response:
+                async with session.post(requests_query_url, json=query_object, timeout=timeout, headers={'accept': 'application/json'}) as response:
                     elapsed = time.time() - start_time
                     # Raise an exception for bad status codes (4xx, 5xx)
                     response.raise_for_status() 
@@ -409,13 +457,7 @@ class KPQueryCacher:
         :param status: The initial status string (e.g., "OK" or "FAILED").
         """
 
-        use_new_mode = False
-        if query_url == 'PathFinder':
-            use_new_mode = True
-        if use_new_mode:
-            query_hash = self._hash_query( { 'query_url': query_url, 'query_object': query_object } )
-        else:
-            query_hash = self._hash_query(query_url + str(query_object))
+        query_hash = self._hash_query( { 'query_url': query_url, 'query_object': query_object } )
 
         eprint(f"*** Planning to write a cache entry for query_url={query_url}, query_object={query_object} which yields query_hash={query_hash}")
 
@@ -552,7 +594,7 @@ class KPQueryCacher:
                 continue
 
             time_now = datetime.now()
-            time_at_last_refresh_str = cached_query['last_successful_refresh_datetime'] or cached_query['last_attempted_refresh_datetime'] or cached_query['first_request_datetime']
+            time_at_last_refresh_str = cached_query['last_attempted_refresh_datetime'] or cached_query['last_successful_refresh_datetime'] or cached_query['first_request_datetime']
             time_at_last_refresh = datetime.strptime(time_at_last_refresh_str, "%Y-%m-%d %H:%M:%S")
             time_difference = time_now - time_at_last_refresh
             seconds_difference = time_difference.total_seconds()
@@ -608,7 +650,7 @@ class KPQueryCacher:
             # 3. Update stats based on outcome
             try:
                 record.last_refresh_elapsed = elapsed
-                record.last_refresh_http_code = status_code
+                record.last_attempted_refresh_http_code = status_code
             
                 if error:
                     # Refresh failed
@@ -623,15 +665,18 @@ class KPQueryCacher:
                 else:
                     # Refresh succeeded
                     record.status = "OK"
+                    record.last_refresh_http_code = status_code
                     record.n_successful_refreshes = (record.n_successful_refreshes or 0) + 1
                     record.last_successful_refresh_datetime = now_str
                     record.last_refresh_n_results = self._get_n_results(response_data)
                 
                     # 4. Compare results
                     filepath = self._get_cache_filepath(record.query_hash)
-                    if True: #try:
+                    try:
                         old_response_data = self._read_cache_file(filepath)
-                        if isinstance(old_response_data, tuple):
+                        if old_response_data is None:
+                            old_response_n_results = -1
+                        elif isinstance(old_response_data, tuple):
                             old_response_n_results = old_response_data[0]['message']['results']
                         else:
                             old_response_n_results = old_response_data['message']['results']
@@ -647,8 +692,7 @@ class KPQueryCacher:
                     #    # File was missing, so this counts as "different"
                     #    record.n_refresh_different_results = (record.n_refresh_different_results or 0) + 1
                     #    self._write_cache_file(filepath, response_data)
-                    #except Exception as e:
-                    else:
+                    except Exception as e:
                         print(f"Error comparing/writing cache file {filepath}: {e}")
 
                 # Commit changes for this single record
@@ -800,11 +844,13 @@ class KPQueryCacher:
             { "key": "last_successful_refresh_datetime", "title": "last success datetime", "title_hover": "Datetime of the last successful attempt to refresh this query" },
             { "key": "n_successful_refreshes", "title": "n success", "title_hover": "Number of successful refreshes" },
             { "key": "n_failed_refreshes", "title": "n failed", "title_hover": "Number of failed refreshes", "red_if_greater_than_value": 0 },
-            { "key": "last_refresh_elapsed", "title": "last elapsed", "title_hover": "Elapsed time of the last refresh attempt in seconds", "red_if_greater_than_value": 5 },
-            { "key": "last_refresh_http_code", "title": "last code", "title_hover": "HTTP code of the last refresh attempt (-1 is a timeout)", "red_if_not_equal_to_value": 200 },
+            { "key": "last_refresh_elapsed", "title": "last elapsed", "title_hover": "Elapsed time of the last successfulrefresh in seconds", "red_if_greater_than_value": 5 },
+            { "key": "last_attempted_refresh_http_code", "title": "last attemptcode", "title_hover": "HTTP code of the last refresh attempt (-1 is a timeout)", "red_if_not_equal_to_value": 200 },
+            { "key": "last_refresh_http_code", "title": "last code", "title_hover": "HTTP code of the last successful refresh (-1 is a timeout)", "red_if_not_equal_to_value": 200 },
             { "key": "last_refresh_n_results", "title": "last n results", "title_hover": "Number of TRAPI results in the most recent successful refresh attempt" },
             { "key": "n_refresh_same_results", "title": "n same", "title_hover": "Number of refreshes that yielded the same results as the most recent successful refresh" },
             { "key": "n_refresh_different_results", "title": "n diff", "title_hover": "Number of refreshes that yielded different results as the most recent successful refresh", "red_if_greater_than_value": 0 },
+            #{ "key": "query_hash", "title": "query hash", "title_hover": "query hash" },
         ]
 
         cache_stats['total_cache_size_MiB'] = sum(os.path.getsize(f"{self.cache_dir}/{file}") for file in os.listdir(self.cache_dir)) / 1024 / 1024
