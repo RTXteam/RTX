@@ -700,77 +700,78 @@ function postQuery_ARAX(qtype,queryObj) {
 
 		    if (enqueue) {
                 respjson += msg;
-		    } else {
-                msg += "}"; // lost in the split, above
+                continue;
+            }
 
-                var jsonMsg = JSON.parse(msg);
+            msg += "}"; // lost in the split, above
 
-                if (jsonMsg.logs) { // was:: (jsonMsg.description) {
-                    enqueue = true;
-                    respjson += msg;
-                } else if (jsonMsg.message) {
-                    if (jsonMsg.message.match(/^Parsing action: [^\#]\S+/)) {
-                        totalSteps++;
-                    }
-                    else if (jsonMsg.message.match(/triggering pathfinder subsystem.$/)) {
-                        totalSteps++;
-                    }
-                    else if (totalSteps > 0) {
-                        document.getElementById("totalSteps").innerHTML = totalSteps;
+            var jsonMsg = JSON.parse(msg);
 
-                        if (numCurrMsgs < 99) {
-                            numCurrMsgs++;
-                        }
-                        if (finishedSteps == totalSteps) {
-                            numCurrMsgs = 1;
-                        }
-
-                        document.getElementById("progressBar").style.width = (800*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"px";
-                        document.getElementById("progressBar").innerHTML = Math.round(99*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"%\u00A0\u00A0";
-
-                        if (jsonMsg.message.match(/^Processing action/)) {
-                            finishedSteps++;
-                            document.getElementById("finishedSteps").innerHTML = finishedSteps;
-                            numCurrMsgs = 0;
-                        }
-                    }
-
-                    cmddiv.append(jsonMsg.timestamp+'\u00A0'+jsonMsg.level+':\u00A0'+jsonMsg.message);
-                    cmddiv.append(document.createElement("br"));
-                    cmddiv.scrollTop = cmddiv.scrollHeight;
-                } else if (jsonMsg.qedge_keys) {
-                    var div;
-
-                    if (document.getElementById("queryplan_stream")) {
-                        div = document.getElementById("queryplan_stream");
-                    } else {
-                        div = document.createElement("div");
-                        div.id = "queryplan_streamhead";
-                        div.className = 'statushead';
-                        div.append("Expansion Progress");
-                        document.getElementById("status_container").before(div);
-
-                        div = document.createElement("div");
-                        div.id = "queryplan_stream";
-                        div.className = 'status';
-                        document.getElementById("status_container").before(div);
-                    }
-
-                    div.innerHTML = '';
-                    div.append(document.createElement("br"));
-                    div.append(render_queryplan_table(jsonMsg));
-                    div.append(document.createElement("br"));
-                } else if (jsonMsg.pid) {
-                    UIstate["pid"] = jsonMsg;
-                    display_kill_button();
-                } else if (jsonMsg.detail) {
-                    cmddiv.append(document.createElement("br"));
-                    cmddiv.append("ERROR:\u00A0"+jsonMsg.detail);
-                    throw new Error(jsonMsg.detail);
-                } else {
-                    console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
+            if (jsonMsg.logs) { // was:: (jsonMsg.description) {
+                enqueue = true;
+                respjson += msg;
+            } else if (jsonMsg.message) {
+                if (jsonMsg.message.match(/^Parsing action: [^\#]\S+/)) {
+                    totalSteps++;
                 }
-		    }
+                else if (jsonMsg.message.match(/triggering pathfinder subsystem.$/)) {
+                    totalSteps++;
+                }
+                else if (totalSteps > 0) {
+                    document.getElementById("totalSteps").innerHTML = totalSteps;
+
+                    if (numCurrMsgs < 99) {
+                        numCurrMsgs++;
+                    }
+                    if (finishedSteps == totalSteps) {
+                        numCurrMsgs = 1;
+                    }
+
+                    document.getElementById("progressBar").style.width = (800*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"px";
+                    document.getElementById("progressBar").innerHTML = Math.round(99*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"%\u00A0\u00A0";
+
+                    if (jsonMsg.message.match(/^Processing action/)) {
+                        finishedSteps++;
+                        document.getElementById("finishedSteps").innerHTML = finishedSteps;
+                        numCurrMsgs = 0;
+                    }
+                }
+
+                cmddiv.append(jsonMsg.timestamp+'\u00A0'+jsonMsg.level+':\u00A0'+jsonMsg.message);
+                cmddiv.append(document.createElement("br"));
+                cmddiv.scrollTop = cmddiv.scrollHeight;
+            } else if (jsonMsg.qedge_keys) {
+                var div;
+
+                if (document.getElementById("queryplan_stream")) {
+                    div = document.getElementById("queryplan_stream");
+                } else {
+                    div = document.createElement("div");
+                    div.id = "queryplan_streamhead";
+                    div.className = 'statushead';
+                    div.append("Expansion Progress");
+                    document.getElementById("status_container").before(div);
+
+                    div = document.createElement("div");
+                    div.id = "queryplan_stream";
+                    div.className = 'status';
+                    document.getElementById("status_container").before(div);
+                }
+
+                div.innerHTML = '';
+                div.append(document.createElement("br"));
+                div.append(render_queryplan_table(jsonMsg));
+                div.append(document.createElement("br"));
+            } else if (jsonMsg.pid) {
+                UIstate["pid"] = jsonMsg;
+                display_kill_button();
+            } else if (jsonMsg.detail) {
+                cmddiv.append(document.createElement("br"));
+                cmddiv.append("ERROR:\u00A0"+jsonMsg.detail);
+                throw new Error(jsonMsg.detail);
+            } else {
+                console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
+            }
 		}
 
 		if (result.done) {
