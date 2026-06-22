@@ -98,6 +98,8 @@ class TRAPIQuerier:
         self.arax_retrieval_source = RetrievalSource(resource_id=self.arax_infores_curie,
                                                      resource_role="aggregator_knowledge_source",
                                                      upstream_resource_ids=[self.kp_infores_curie])
+        self.arax_primary_source = RetrievalSource(resource_id=self.arax_infores_curie,
+                                                   resource_role="primary_knowledge_source")
 
     async def answer_one_hop_query_async(
             self,
@@ -244,15 +246,37 @@ class TRAPIQuerier:
                     # Have we already constructed a heuristic predicted edge for this pair?
                     if heuristic_edge_id not in add_bound_edges:
                         # no we have not, so make one
-                        edge_attribute = Attribute(
-                            attribute_type_id = 'biolink:support_graphs',
-                            attribute_source = self.arax_infores_curie,
-                            value = [aux_graph_id])
+                        edge_attributes = [
+                            Attribute(
+                                original_attribute_name=None,
+                                value = [aux_graph_id],
+                                attribute_type_id = 'biolink:support_graphs',
+                                value_url = None,
+                                description = None,
+                                attribute_source = self.arax_infores_curie
+                            ),
+                            Attribute(
+                                original_attribute_name=None,
+                                value="automated_agent",
+                                attribute_type_id="biolink:agent_type",
+                                value_url=None,
+                                description=None,
+                                attribute_source = self.arax_infores_curie
+                            ),
+                            Attribute(
+                                original_attribute_name=None,
+                                value="prediction",
+                                attribute_type_id="biolink:knowledge_level",
+                                value_url=None,
+                                description=None,
+                                attribute_source = self.arax_infores_curie
+                            ),
+                        ]
                         heuristic_predicted_edge = Edge(predicate="biolink:treats",
                                                         subject=edge.subject,
                                                         object=edge.object,
-                                                        attributes=[edge_attribute],
-                                                        sources=[self.arax_retrieval_source])
+                                                        attributes=edge_attributes,
+                                                        sources=[self.arax_primary_source])
                         add_bound_edges[heuristic_edge_id] = heuristic_predicted_edge
                     delete_bound_edges.add(edge_id)
 
