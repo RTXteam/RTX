@@ -749,7 +749,7 @@ function postQuery_ARAX(qtype,queryObj) {
 
                     if (
                         jsonMsg.message.match(/^Processing action/) ||
-                        jsonMsg.message.match(/^xCRG Retriever returned/) // see comments above about xCRG runner
+                        jsonMsg.message.match(/^xCRG Retriever response/) // see comments above about xCRG runner
                     ) {
                         finishedSteps++;
                         document.getElementById("finishedSteps").innerHTML = finishedSteps;
