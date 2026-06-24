@@ -167,7 +167,7 @@ class KPQueryCacher:
 
 
 
-    def _hash_query(self, query_object: dict | str) -> str:
+    def _hash_query(self, query_object: dict) -> str:
         """
         Creates a stable SHA-256 hash of a query object.
         
