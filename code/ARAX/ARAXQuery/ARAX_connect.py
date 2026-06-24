@@ -294,6 +294,7 @@ class ARAXConnect:
                 and (is_xcrg_action or self.response.envelope.message.results)
         ):
             n_results = cacher._get_n_results(response_data)
+            # Note: This logging message is keyed off to provide progress updates to the RTX front-end.
             self.response.info(
                 f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
             self.response.envelope.message = ARAXMessenger().from_dict(response_data['message'])

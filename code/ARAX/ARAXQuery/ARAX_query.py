@@ -739,6 +739,7 @@ class ARAXQuery:
             actions = result.data['actions']
             action = None
             for action in actions:
+                # Note: This logging message is keyed off to provide progress updates to the RTX front-end.
                 response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
 
                 # Catch a crash
