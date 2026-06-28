@@ -18,7 +18,7 @@ import time
 
 from lxml import etree
 from extraction_script import process_names
-from stitch_proj.local_babel import (
+from stitch.local_babel import (
     connect_to_db_read_only,
     map_curie_to_preferred_curies,
     map_name_to_curie,
