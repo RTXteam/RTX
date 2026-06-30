@@ -1,5 +1,6 @@
 {
    "database_downloads": {
+<<<<<<< Updated upstream
       "tier0_sqlite": "/translator/data/orangeboard/databases/tier0-20260621/tier0-info-for-overlay_v1.0_tier0-20260621.sqlite",
       "kg2c_sqlite": "/translator/data/orangeboard/databases/tier0-20260621/tier0-info-for-overlay_v1.0_tier0-20260621.sqlite",
       "fda_approved_drugs": "/translator/data/orangeboard/databases/tier0-20260408/fda_approved_drugs_v1.0.pickle",
@@ -8,6 +9,16 @@
       "curie_ngd": "/translator/data/orangeboard/databases/tier0-20260621/curie_ngd_v1.0_tier0-20260621.sqlite",
       "gandalf_mmap": "/translator/data/orangeboard/databases/tier0-20260621/gandalf_mmap_tier0-20260621.tar.gz",
       "explainable_dtd_db": "/translator/data/orangeboard/databases/tier0-tier0-20260621/ExplainableDTD_v1.0-tier0-20260621-all_with_paths.db",
+=======
+      "tier0_sqlite": "/translator/data/orangeboard/databases/tier0-20260408/tier0-info-for-overlay_v1.0_tier0-20260621.sqlite",
+      "kg2c_sqlite": "/translator/data/orangeboard/databases/tier0-20260408/tier0-info-for-overlay_v1.0_tier0-20260621.sqlite",
+      "fda_approved_drugs": "/translator/data/orangeboard/databases/tier0-20260408/fda_approved_drugs_v1.0.pickle",
+      "autocomplete": "/translator/data/orangeboard/databases/tier0-20260408/autocomplete_v1.0_tier0-20260621.sqlite",
+      "curie_to_pmids": "/translator/data/orangeboard/databases/tier0-20260408/curie_to_pmids_v1.0_tier0-20260621.sqlite",
+      "curie_ngd": "/translator/data/orangeboard/databases/tier0-20260408/curie_ngd_v1.0_tier0-20260621.sqlite",
+      "gandalf_mmap": "/translator/data/orangeboard/databases/tier0-20260408/gandalf_mmap_tier0-20260621.tar.gz",
+      "explainable_dtd_db": "/translator/data/orangeboard/databases/tier0-20260408/ExplainableDTD_v1.0_tier0-20260621-all_with_paths.db",
+>>>>>>> Stashed changes
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db"
    },
    "plover_url_override": "https://automat.renci.org/translatorkg-gandalf",
