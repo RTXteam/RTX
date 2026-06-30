@@ -1054,14 +1054,14 @@ def test_xdtd_expand():
                     "ids": ["MONDO:0015564"]
                 },
                 "chemical": {
-                    "ids": ["CHEBI:2659"]
+                    "categories": ["biolink:ChemicalEntity"]
                 }
             },
             "edges": {
                 "t_edge": {
                     "object": "disease",
                     "subject": "chemical",
-                    "predicates": ["biolink:treats_or_applied_or_studied_to_treat"],
+                    "predicates": ["biolink:treats"],
                     "knowledge_type": "inferred"
                 }
             }
