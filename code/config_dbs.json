@@ -7,7 +7,7 @@
       "curie_to_pmids": "/translator/data/orangeboard/databases/tier0-20260621/curie_to_pmids_v1.0_tier0-20260621.sqlite",
       "curie_ngd": "/translator/data/orangeboard/databases/tier0-20260621/curie_ngd_v1.0_tier0-20260621.sqlite",
       "gandalf_mmap": "/translator/data/orangeboard/databases/tier0-20260621/gandalf_mmap_tier0-20260621.tar.gz",
-      "explainable_dtd_db": "/translator/data/orangeboard/databases/tier0-20260621/ExplainableDTD_v1.0-tier0-20260621-all_with_paths.db",
+      "explainable_dtd_db": "/translator/data/orangeboard/databases/tier0-20260621/ExplainableDTD_v1.0_tier0-20260621-all_with_paths.db",
       "cohd_database": "/translator/data/orangeboard/databases/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db"
    },
    "plover_url_override": "https://automat.renci.org/translatorkg-gandalf",
