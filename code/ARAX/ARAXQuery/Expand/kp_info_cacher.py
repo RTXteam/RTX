@@ -108,6 +108,9 @@ class KPInfoCacher:
                 # Captures an override if one is in place; otherwise server is read from our SmartAPI yaml/JSON
                 raw_url = self.rtx_config.plover_url
 
+            if kp_smart_api_registration["infores_name"] == "infores:retriever":
+                raw_url = "https://retriever.ci.transltr.io"
+
             # Remove any trailing slashes
             return raw_url.strip("/") if isinstance(raw_url, str) else raw_url
         else:
