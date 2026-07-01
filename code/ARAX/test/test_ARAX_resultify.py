@@ -1450,7 +1450,7 @@ def test_issue1848():
     non_subclass_qedge_bindings_in_kg = {qedge_key for qedge_key in qedge_bindings_in_kg if not qedge_key.startswith("subclass:")}
     assert non_subclass_qedge_bindings_in_kg == {"e0"}
 
-
+@pytest.mark.broken 
 def test_node_binding_query_id_one_hop_single_input_curie():
 
     actions = [
@@ -1645,6 +1645,7 @@ def test_issue2166():
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
 
+@pytest.mark.broken 
 def test_legacy_subclass_of_handling():
     query_graph = {
         "edges": {

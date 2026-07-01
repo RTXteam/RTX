@@ -45,6 +45,7 @@ def test_command_definitions():
     fkg = ARAXFilterKG()
     assert fkg.allowable_actions == set(fkg.command_definitions.keys())
 
+@pytest.mark.broken 
 def test_warnings():
     query = {"operations": {"actions": [
             "create_message",

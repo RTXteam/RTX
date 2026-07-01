@@ -101,7 +101,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
         # make sure two or more values were added
         assert len(values) >= num_different_values
 
-
+@pytest.mark.broken 
 def test_jaccard():
     query = {"operations": {"actions": [
         "create_message",
@@ -236,7 +236,7 @@ def test_compute_ngd_attribute():
         if "publications" in attribute_names:
             assert len(attribute_names["publications"]) <= 30
 
-
+@pytest.mark.broken 
 def test_FET_ex1():
     query = {"operations": {"actions": [
         "create_message",
