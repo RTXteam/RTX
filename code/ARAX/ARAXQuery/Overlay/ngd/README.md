@@ -20,7 +20,7 @@ The builder runs in two stages:
    final database:
    - Every concept name from stage 1 is resolved to a canonical CURIE
      against a local Babel SQLite snapshot via
-     `stitch_proj.local_babel.map_name_to_curie`.
+     `stitch.local_babel.map_name_to_curie`.
    - When `--tier0-edges` is provided, every edge in the tier 0 KGX graph
      that carries `publications` contributes those PMIDs to **both** its
      subject and object CURIEs directly (no name resolution, since tier 0
@@ -92,8 +92,10 @@ Before running the build you need four things on disk:
 
 ### 1. Python environment
 
-A virtualenv with `lxml` and `stitch_proj` installed. `stitch_proj` provides
-the `local_babel` module the resolver depends on.
+A virtualenv with `lxml` and `stitch_proj` installed. The PyPI package is
+named `stitch_proj`, but it installs as the import package `stitch` (the
+package was renamed from `stitch_proj` to `stitch` after 0.1.0). The
+resolver depends on `stitch.local_babel`.
 
 ```
 python3 -m venv venv

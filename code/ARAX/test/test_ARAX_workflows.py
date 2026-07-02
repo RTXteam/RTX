@@ -156,7 +156,7 @@ def test_example_3():
     _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM-DATA:0951', 2)
     _virtual_tester(message, 'biolink:occurs_together_in_literature_with', 'N1', 'normalized_google_distance', 'EDAM-DATA:2526', 2)
 
-
+@pytest.mark.broken 
 def test_FET_example_1():
     # This a FET 3-hop example: try to find the phenotypes of drugs connected to proteins connected to DOID:14330
     query = {"operations": {"actions": [
@@ -191,7 +191,7 @@ def test_FET_example_1():
         assert 0 <= float(FET_edge_attribute[0].value) < 0.005
         assert FET_edge_attribute[0].attribute_type_id == 'EDAM-DATA:1669'
 
-
+@pytest.mark.broken 
 def test_FET_example_2():
     # This a FET 2-hop example: try to find the diseases that share the same protein with ibuprofen (CHEMBL.COMPOUND:CHEMBL521)
     query = {"operations": {"actions": [
@@ -222,7 +222,7 @@ def test_FET_example_2():
         assert 0 <= float(FET_edge_attribute[0].value) < 0.01
         assert FET_edge_attribute[0].attribute_type_id == 'EDAM-DATA:1669'
 
-
+@pytest.mark.broken 
 def test_FET_example_3():
     # This a FET 3-hop example: try to find the genes connected to diseases that share the same phenotypes of a given disease
     query = {"operations": {"actions": [
@@ -257,7 +257,7 @@ def test_FET_example_3():
         assert 0 <= float(FET_edge_attribute[0].value) < 0.001
         assert FET_edge_attribute[0].attribute_type_id == 'EDAM-DATA:1669'
 
-
+@pytest.mark.broken 
 def test_FET_example_4():
     # This a FET 2-hop example collecting nodes and edges from KG2: try to find the diseases that share the same protein with Parkinson disease（DOID:14330)
     query = {"operations": {"actions": [

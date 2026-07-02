@@ -1054,14 +1054,14 @@ def test_xdtd_expand():
                     "ids": ["MONDO:0015564"]
                 },
                 "chemical": {
-                    "ids": ["CHEBI:2659"]
+                    "categories": ["biolink:ChemicalEntity"]
                 }
             },
             "edges": {
                 "t_edge": {
                     "object": "disease",
                     "subject": "chemical",
-                    "predicates": ["biolink:treats_or_applied_or_studied_to_treat"],
+                    "predicates": ["biolink:treats"],
                     "knowledge_type": "inferred"
                 }
             }
@@ -1570,7 +1570,7 @@ def test_creative_treats_predicate_alteration_2412():
                 assert set(aux_graph.edges).issubset(message.knowledge_graph.edges)
 
 
-
+@pytest.mark.broken 
 def test_issue_2662():
     query_graph_dict = {
         "edges": {

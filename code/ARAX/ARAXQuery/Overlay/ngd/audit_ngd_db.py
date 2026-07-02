@@ -426,7 +426,7 @@ def live_spot_check(report, curie_conn, babel_conn):
     """Resolve a fixed list of names through Babel and confirm each
     resulting CURIE is present in the NGD DB with a plausible PMID count.
     """
-    from stitch_proj.local_babel import map_name_to_curie
+    from stitch.local_babel import map_name_to_curie
 
     report.header("Live spot check via Babel resolution")
     ccur = curie_conn.cursor()
@@ -485,7 +485,7 @@ def enrich_top_curies_with_labels(report, curie_conn, babel_conn, top_n=25):
     """Re-run the top-N-by-PMID-count report with labels from Babel so the
     opaque UMLS/MeSH codes are human-readable.
     """
-    from stitch_proj.local_babel import get_all_names_for_curie
+    from stitch.local_babel import get_all_names_for_curie
 
     report.header(f"Top {top_n} curies by PMID count (with Babel labels)")
     cur = curie_conn.cursor()
@@ -528,13 +528,13 @@ _trace_targets = None
 
 def _init_trace_worker(babel_db_path, targets):
     global _trace_babel_conn, _trace_targets
-    from stitch_proj.local_babel import connect_to_db_read_only
+    from stitch.local_babel import connect_to_db_read_only
     _trace_babel_conn = connect_to_db_read_only(babel_db_path)
     _trace_targets = targets
 
 
 def _trace_one(item):
-    from stitch_proj.local_babel import map_name_to_curie
+    from stitch.local_babel import map_name_to_curie
     name, pmids_json = item
     try:
         result = map_name_to_curie(_trace_babel_conn, name)
@@ -1021,14 +1021,14 @@ def _check_environment(args):
     p("Dependencies:")
 
     try:
-        from stitch_proj.local_babel import connect_to_db_read_only  # noqa: F401
-        p("  [ OK ] stitch_proj.local_babel")
+        from stitch.local_babel import connect_to_db_read_only  # noqa: F401
+        p("  [ OK ] stitch.local_babel")
     except ImportError:
         if args.babel_db:
-            p("  [FAIL] stitch_proj — not installed (required for --babel-db)")
+            p("  [FAIL] stitch — not installed (required for --babel-db)")
             ok = False
         else:
-            p("  [ -- ] stitch_proj — not installed (not needed without --babel-db)")
+            p("  [ -- ] stitch — not installed (not needed without --babel-db)")
 
     # Summary
     p("")
@@ -1115,7 +1115,7 @@ def main():
                 report.fail("babel db", f"not found: {args.babel_db}")
             else:
                 try:
-                    from stitch_proj.local_babel import connect_to_db_read_only
+                    from stitch.local_babel import connect_to_db_read_only
                     babel_conn = connect_to_db_read_only(args.babel_db)
                 except Exception as e:
                     report.fail("babel db connect", str(e))

@@ -38,9 +38,9 @@ aiohttp==3.9.4
 boto3==1.40.16  # UPGRADED: 1.24.59 doesn't support urllib3>=2.5.0 required by reasoner-validator 5.0.0
 tornado==6.4.1
 MarkupSafe==2.1.2
-reasoner-validator==6.0.1 
+reasoner-validator==6.0.2
 pronto==2.5.3
-bmt==1.4.6
+bmt==1.4.8 # catrax-pathfinder==2.3.0, transitively demands bmt>=1.4.8.
 pygit2==1.18.0  # UPGRADED: 1.10.0 doesn't build on Python 3.12, 1.18.0 has pre-built wheels
 tabulate==0.9.0
 urllib3==2.5.0  # UPGRADED: 1.26.19 doesn't meet reasoner-validator 5.0.0 requirement of urllib3>=2.5.0
@@ -60,7 +60,7 @@ opentelemetry-proto==1.17.0
 opentelemetry-sdk==1.17.0
 opentelemetry-semantic-conventions==0.38b0
 opentelemetry-util-http==0.38b0
-catrax-pathfinder==2.2.0
+catrax-pathfinder==2.3.0
 catrax-xcrg @ git+https://github.com/Translator-CATRAX/xCRG.git@c97da5349a432e29d7a6432ee272a8c1311de9da
 biolink-helper-pkg==1.0.1
 httpx
