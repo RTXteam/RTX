@@ -86,9 +86,10 @@ class RemoveNodes:
             RemoveNodes.load_block_list_file()
         if RemoveNodes.block_list_dict is None:
             raise RuntimeError("RemoveNodes: unable to load block_list dictionary")
-        self.block_list_synonyms = None
-        self.block_list_curies = None
-        self.block_list_patterns = None
+
+        self.block_list_synonyms : set[str]
+        self.block_list_curies   : set[str]
+        self.block_list_patterns : list[re.Pattern]
 
     @classmethod
     def load_block_list_file(cls):
@@ -244,29 +245,44 @@ class RemoveNodes:
 
         return self.response
 
-    def _is_general_concept(self, node):
-        curies = set()
-        synonyms = set()
+    def _is_general_concept(self, node) -> bool:
+        curies   : set[str] = set()
+        synonyms : set[str] = set()
+
         if not node['attributes']:
             return False
+
         for attribute in node['attributes']:
-            if attribute['attribute_type_id'] == 'biolink:xref' \
-               and isinstance(attribute.get('value', []),list):
+            type_id = attribute['attribute_type_id']
+
+            has_curie   = type_id == 'biolink:xref'
+            has_synonym = type_id == 'biolink:synonym'
+
+            # Issue #2841: Sometimes attributes are shaped like this
+            if type_id == 'biolink:Attribute':
+                if attribute['original_attribute_name'] == 'xref':
+                    has_curie = True
+                if attribute['original_attribute_name'] == 'equivalent_identifiers':
+                    has_curie = True
+                if attribute['original_attribute_name'] == 'synonym':
+                    has_synonym = True
+
+            if has_curie and isinstance(attribute.get('value', []), list):
                 curies.update(map(str.lower, attribute.get('value', [])))
-            if attribute['attribute_type_id'] == 'biolink:synonym' \
-               and  isinstance(attribute.get('value', []),list):
+
+            if has_synonym and isinstance(attribute.get('value', []), list):
                 synonyms.update(map(str.lower, attribute.get('value', [])))
+
         if node['name']:
             synonyms.add(node['name'].lower())
-        if self.block_list_curies.intersection(curies) \
-           or self.block_list_synonyms.intersection(synonyms):
+
+        if (self.block_list_curies & curies) or (self.block_list_synonyms & synonyms):
             return True
 
         for synonym in synonyms:
-            if not isinstance(synonym,str):
-                continue
             if any(p.match(synonym) for p in self.block_list_patterns):
                 return True
+
         return False
 
     @classmethod
@@ -288,13 +304,15 @@ class RemoveNodes:
         self.response.info("Removing nodes from the knowledge graph which are blocklisted (overly general) concepts")
         block_list_dict = RemoveNodes._get_block_list_dict()
         try:
-            self.block_list_synonyms = set(block_list_dict["synonyms"])  # pylint: disable=unsubscriptable-object
-            self.block_list_curies = set(block_list_dict["curies"])  # pylint: disable=unsubscriptable-object
-            node_to_remove = set()
+            # TODO: Unless we are going to hot-reload general_concepts.json,
+            #  these collections could be initialized once when the json file is loaded
+            self.block_list_synonyms = set(map(str.lower, block_list_dict["synonyms"])) # pylint: disable=unsubscriptable-object
+            self.block_list_curies   = set(map(str.lower, block_list_dict["curies"]))   # pylint: disable=unsubscriptable-object
             self.block_list_patterns = [
                 re.compile(pattern, re.IGNORECASE)
-                for pattern in block_list_dict["patterns"]  # pylint: disable=unsubscriptable-object
+                for pattern in block_list_dict["patterns"]
             ]
+            node_to_remove = set()
             edges_to_remove = []
             for key, edge in self.message.knowledge_graph.edges.items():
                 if {edge.subject, edge.object}.intersection(node_to_remove):
@@ -304,14 +322,17 @@ class RemoveNodes:
                 object_node = self.message.knowledge_graph.nodes[edge.object].to_dict()
 
                 if self._is_general_concept(subject_node):
+                    # self.response.debug(f"Removing general concept (subject node): {subject_node['name']}")
                     node_to_remove.add(edge.subject)
                     edges_to_remove.append(key)
                     continue
 
                 if self._is_general_concept(object_node):
+                    # self.response.debug(f"Removing general concept (object node): {object_node['name']}")
                     node_to_remove.add(edge.object)
                     edges_to_remove.append(key)
                     continue
+
             for edge_id in edges_to_remove:
                 del self.message.knowledge_graph.edges[edge_id]
             self.remove_orphaned_nodes()
