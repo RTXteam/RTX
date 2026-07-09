@@ -41,6 +41,13 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ResponseCache")
 from response_cache import ResponseCache  #noqa: E402
 
+# NodeSynonymizer lives in a sibling directory. Add it to the path the same
+# way as the imports above so query() can read its configured endpoint URLs
+# for the diagnostic log line. Imported once here at module load, so no import
+# runs per query (issue #2833).
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../NodeSynonymizer")
+from node_synonymizer import NodeSynonymizer  #noqa: E402
+
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 
@@ -294,6 +301,16 @@ class ARAXQuery:
                        f"is_itrb_instance={self.rtxConfig.is_itrb_instance}, "
                        f"arax_version={self.rtxConfig.arax_version}, "
                        f"trapi_version={self.rtxConfig.trapi_version}")
+
+        #### Log which SRI endpoints NodeSynonymizer is wired to, next to the
+        #### RTXConfiguration line above. These are hardcoded class attributes
+        #### (issue #2833 pointed Node Normalizer at the Translator
+        #### ElasticSearch deployment), so this shows the exact endpoint the
+        #### running instance will call. Reading the class attribute does not
+        #### instantiate the synonymizer or make any network call.
+        response.debug(f"NodeSynonymizer says "
+                       f"NODE_NORMALIZER_URL={NodeSynonymizer.NODE_NORMALIZER_URL}, "
+                       f"NAME_RESOLVER_URL={NodeSynonymizer.NAME_RESOLVER_URL}")
 
         #### Create an empty envelope
         messenger = ARAXMessenger()
