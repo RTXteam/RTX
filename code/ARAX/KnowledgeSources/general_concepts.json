@@ -4187,7 +4187,12 @@
         "KEGG.COMPOUND:C02737",
         "UMLS:C4740649",
         "UMLS:C0597298",
-        "UMLS:C0206587"
+        "UMLS:C0206587",
+        "CHEBI:36333",
+        "UMLS:C0242912",
+        "UMLS:C0599934",
+        "UMLS:C0302837",
+        "UMLS:C3166216"
     ],
     "synonyms": [
         "used in nicotine dependence",

@@ -7,6 +7,11 @@ This module defines the `RemoveNodes` class, which provides methods to modify
 a Translator Reasoner API (TRAPI) `KnowledgeGraph` by removing nodes (and their
 associated edges) according to user-specified parameters or predefined rules.
 
+Terminology:
+- "General concepts" are nodes that have been determined to be generic, broad,
+  overly general, or non-informative. They are generally viewed as noisy or
+  not useful. Examples of these include "air", "surgery", "vitamins", etc.
+
 Supported removal strategies include:
 - Removing nodes by Biolink category (`remove_nodes_by_category`)
 - Removing nodes by property/value match (`remove_nodes_by_property`)
@@ -29,7 +34,7 @@ External dependencies:
 - Relies on ARAX message/response objects and TRAPI-compliant knowledge graph
   structures.
 - Loads a JSON "block list" file (`general_concepts.json`) from the ARAX
-  repository to identify overly general or non-informative nodes.
+  repository
 
 Implementation notes:
 - Uses defensive programming to handle heterogeneous node/edge structures
@@ -69,6 +74,8 @@ def eprint(*args, **kwargs):
 
 class RemoveNodes:
 
+    # The blocklist for nodes that are general concepts.
+    #
     # the first ARAX query loads the blocklist file, but ever after, just use the
     # blocklist data that has been cached as a class attribute `block_list_dict`
     block_list_dict: ClassVar[dict[str, Any] | None] = None
