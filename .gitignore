@@ -1,6 +1,9 @@
 # emacs backup files
 **/*~
 
+# swp files (vim, etc.)
+*.swp
+
 # macOS finder folder-level attributes
 **/.DS_store
 .idea
