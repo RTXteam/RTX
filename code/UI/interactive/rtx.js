@@ -637,7 +637,7 @@ function postQuery_ARAX(qtype,queryObj) {
     span.id = "finishedSteps";
     span.style.fontWeight = "bold";
 //    span.className = "menunum numnew";
-    span.append("0");
+    span.append("1"); // was 0; but 1 is less janky regarding progress
     statusdiv.append(span);
     statusdiv.append(" of ");
     span = document.createElement("span");
@@ -699,79 +699,99 @@ function postQuery_ARAX(qtype,queryObj) {
 		    //console.log(msg);
 
 		    if (enqueue) {
-			respjson += msg;
-		    }
-		    else {
-			msg += "}"; // lost in the split, above
+                respjson += msg;
+                continue;
+            }
 
-			var jsonMsg = JSON.parse(msg);
-			if (jsonMsg.logs) { // was:: (jsonMsg.description) {
-			    enqueue = true;
-			    respjson += msg;
-			}
-			else if (jsonMsg.message) {
-			    if (jsonMsg.message.match(/^Parsing action: [^\#]\S+/)) {
-				totalSteps++;
-			    }
-			    else if (jsonMsg.message.match(/triggering pathfinder subsystem.$/)) {
-				totalSteps++;
-			    }
-			    else if (totalSteps>0) {
-				document.getElementById("totalSteps").innerHTML = totalSteps;
-				if (numCurrMsgs < 99)
-				    numCurrMsgs++;
-				if (finishedSteps == totalSteps)
-				    numCurrMsgs = 1;
+            msg += "}"; // lost in the split, above
 
-                                document.getElementById("progressBar").style.width = (800*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"px";
-				document.getElementById("progressBar").innerHTML = Math.round(99*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"%\u00A0\u00A0";
+            var jsonMsg = JSON.parse(msg);
 
-				if (jsonMsg.message.match(/^Processing action/)) {
-				    finishedSteps++;
-				    document.getElementById("finishedSteps").innerHTML = finishedSteps;
-				    numCurrMsgs = 0;
-				}
-			    }
+            if (jsonMsg.logs) { // was:: (jsonMsg.description) {
+                enqueue = true;
+                respjson += msg;
+            } else if (jsonMsg.message) {
+                // TODO: All this code to update progress is very fragile and depends on highly specific logging messages
+                // TODO: In the future, the server needs to send back actual structured progress updates
+                let match;
 
-			    cmddiv.append(jsonMsg.timestamp+'\u00A0'+jsonMsg.level+':\u00A0'+jsonMsg.message);
-			    cmddiv.append(document.createElement("br"));
-			    cmddiv.scrollTop = cmddiv.scrollHeight;
-			}
-                        else if (jsonMsg.qedge_keys) {
-			    var div;
-			    if (document.getElementById("queryplan_stream"))
-				div = document.getElementById("queryplan_stream");
-			    else {
-				div = document.createElement("div");
-				div.id = "queryplan_streamhead";
-				div.className = 'statushead';
-				div.append("Expansion Progress");
-				document.getElementById("status_container").before(div);
+                if (jsonMsg.message.match(/^Parsing action: [^\#]\S+/)) {
+                    // xCRG progress must be delayed otherwise progress bar will be erratic
+                    // Parsing action: connect(action=xcrg)
+                    if (!jsonMsg.message.includes("xcrg")) {
+                        totalSteps++;
+                    }
+                }
+                else if (jsonMsg.message.match(/triggering pathfinder subsystem.$/)) {
+                    totalSteps++;
+                }
+                // Cached result is going to return very quickly
+                else if (jsonMsg.message.match(/^Found a cached result/)) {
+                    totalSteps = 1;
+                }
+                // This logging message comes from the xCRG runner, which resides in the Translator-CATRAX/xCRG codebase:
+                // https://github.com/Translator-CATRAX/xCRG/blob/c97da5349a432e29d7a6432ee272a8c1311de9da/src/xcrg/runner.py#L2194
+                else if (match = jsonMsg.message.match(/^Running inferred xCRG.*(\d+) batches.*$/)) {
+                    totalSteps = Number(match[1]) * 2; // x2 because each batch is ran twice (see code in link above)
+                }
+                else if (totalSteps > 0) {
+                    document.getElementById("totalSteps").innerHTML = totalSteps;
 
-				div = document.createElement("div");
-				div.id = "queryplan_stream";
-				div.className = 'status';
-				document.getElementById("status_container").before(div);
-			    }
+                    if (numCurrMsgs < 99) {
+                        numCurrMsgs++;
+                    }
+                    if (finishedSteps == totalSteps) {
+                        numCurrMsgs = 1;
+                    }
 
-			    div.innerHTML = '';
-			    div.append(document.createElement("br"));
-			    div.append(render_queryplan_table(jsonMsg));
-			    div.append(document.createElement("br"));
-			}
-                        else if (jsonMsg.pid) {
-			    UIstate["pid"] = jsonMsg;
-			    display_kill_button();
-			}
-			else if (jsonMsg.detail) {
-			    cmddiv.append(document.createElement("br"));
-                            cmddiv.append("ERROR:\u00A0"+jsonMsg.detail);
-			    throw new Error(jsonMsg.detail);
-			}
-			else {
-			    console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
-			}
-		    }
+                    document.getElementById("progressBar").style.width = (800*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"px";
+                    document.getElementById("progressBar").innerHTML = Math.round(99*(finishedSteps+0.5*Math.log10(numCurrMsgs))/totalSteps)+"%\u00A0\u00A0";
+
+                    if (
+                        jsonMsg.message.match(/^Processing action/) ||
+                        jsonMsg.message.match(/^xCRG Retriever response/) // see comments above about xCRG runner
+                    ) {
+                        finishedSteps++;
+                        document.getElementById("finishedSteps").innerHTML = finishedSteps;
+                        numCurrMsgs = 0;
+                    }
+                }
+
+                cmddiv.append(jsonMsg.timestamp+'\u00A0'+jsonMsg.level+':\u00A0'+jsonMsg.message);
+                cmddiv.append(document.createElement("br"));
+                cmddiv.scrollTop = cmddiv.scrollHeight;
+            } else if (jsonMsg.qedge_keys) {
+                var div;
+
+                if (document.getElementById("queryplan_stream")) {
+                    div = document.getElementById("queryplan_stream");
+                } else {
+                    div = document.createElement("div");
+                    div.id = "queryplan_streamhead";
+                    div.className = 'statushead';
+                    div.append("Expansion Progress");
+                    document.getElementById("status_container").before(div);
+
+                    div = document.createElement("div");
+                    div.id = "queryplan_stream";
+                    div.className = 'status';
+                    document.getElementById("status_container").before(div);
+                }
+
+                div.innerHTML = '';
+                div.append(document.createElement("br"));
+                div.append(render_queryplan_table(jsonMsg));
+                div.append(document.createElement("br"));
+            } else if (jsonMsg.pid) {
+                UIstate["pid"] = jsonMsg;
+                display_kill_button();
+            } else if (jsonMsg.detail) {
+                cmddiv.append(document.createElement("br"));
+                cmddiv.append("ERROR:\u00A0"+jsonMsg.detail);
+                throw new Error(jsonMsg.detail);
+            } else {
+                console.log("bad msg:"+JSON.stringify(jsonMsg,null,2));
+            }
 		}
 
 		if (result.done) {
@@ -799,8 +819,11 @@ function postQuery_ARAX(qtype,queryObj) {
 		document.getElementById("killquerybutton").remove();
 
 	    document.getElementById("progressBar").style.width = "800px";
-	    if (data.status == "OK" || data.status == "Success")
-		document.getElementById("progressBar").innerHTML = "Finished\u00A0\u00A0";
+	    if (data.status == "OK" || data.status == "Success") {
+            document.getElementById("progressBar").innerHTML = "Finished\u00A0\u00A0";
+            // Make these match no matter what because the task has finished successfully
+            document.getElementById("totalSteps").innerHTML = document.getElementById("finishedSteps").innerHTML;
+	    }
 	    else {
 		document.getElementById("progressBar").classList.add("barerror");
 		document.getElementById("progressBar").innerHTML = "Error\u00A0\u00A0";
