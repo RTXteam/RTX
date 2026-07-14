@@ -1,0 +1,12 @@
+# curie_to_pmids artifact build variables
+artifact_dir: /artifacts
+curie_to_pmids_script: code/automation/scripts/build_curie_to_pmid.py
+diag_dir: code/automation/logs
+threads: 30
+pubmed_ftp_url: ftp://ftp.ncbi.nlm.nih.gov/pubmed
+pubmed_parse_script: code/automation/scripts/parse_pubmed.py
+pubmed_ingest_script: code/automation/scripts/ingest_pubmed.py
+
+
+
+

@@ -1,0 +1,22 @@
+configfile: "config.yaml"
+
+ARTIFACT_DIR = config["artifact_dir"].rstrip("/")  
+SUPPORT_DIR  = f"{ARTIFACT_DIR}/support"
+
+CURIE_TO_PMID_SCRIPT   = config["curie_to_pmids_script"]
+PUBMED_INGEST_SCRIPT = config["pubmed_ingest_script"]
+PUBMED_PARSE_SCRIPT = config["pubmed_parse_script"]
+CURIE_TO_PMID_WORK_DIR = f"{ARTIFACT_DIR}/ngd/work"
+PUBMED_DIR   = f"{SUPPORT_DIR}/pubmed"
+BABEL_DB     = f"{SUPPORT_DIR}/babel.sqlite"
+EDGES        = f"{SUPPORT_DIR}/edges.jsonl"
+DIAG_DIR     = config["diag_dir"]
+PUBMED_FTP_URL = config["pubmed_ftp_url"]
+
+rule ingest_pubmed: 
+    output: touch(f"{PUBMED_DIR}/.mirror.done")
+    shell: 
+        "python {INGEST_SCRIPT} "
+        "--pubmed-dir {PUBMED_DIR} --mirror-sentinel {output} "
+        "--diag-dir {DIAG_DIR} --ftp_url {PUBMED_FTP_URL}"
+
