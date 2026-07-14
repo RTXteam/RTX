@@ -67,6 +67,7 @@ class ARAXQueryGraphInterpreter:
 
         # Detect a "pathfinder" QueryGraph pattern in the query and branch off to different behavior
         if hasattr(message.query_graph, 'paths') and message.query_graph.paths is not None and len(message.query_graph.paths) > 0:
+            # Note: This logging message is keyed off to provide progress updates to the RTX front-end.
             response.info("QueryGraphInterpreter recognized query_graph as a 'pathfinder' query: triggering pathfinder subsystem.")
 
             max_pathfinder_paths_str = ''
@@ -111,6 +112,7 @@ class ARAXQueryGraphInterpreter:
         if n_inferred_edges > 1:
             pathfinder = True
         if pathfinder is True:
+            # Note: This logging message is keyed off to provide progress updates to the RTX front-end.
             response.info("QueryGraphInterpreter recognized query_graph as a 'pathfinder' query: triggering pathfinder subsystem.")
             response.data['araxi_commands'] = [
                 'connect(action=connect_nodes, max_path_length=4)',

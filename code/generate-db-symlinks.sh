@@ -11,7 +11,7 @@ set -euo pipefail
 
 # Stephen Ramsey, Oregon State University
 
-LATEST_TIER0_VER="tier0-20260408"
+LATEST_TIER0_VER="tier0-20260621"
 
 DB_DIR="/mnt/data/orangeboard/databases"
 

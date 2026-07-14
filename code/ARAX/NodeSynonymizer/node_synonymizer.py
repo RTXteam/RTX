@@ -83,41 +83,31 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
     SQLite queries with live API calls to two SRI services:
 
     SRI Node Normalizer (CURIE -> canonical info + equivalents):
-      RENCI (used by this module): https://nodenormalization-sri.renci.org/1.5
-      Translator Production:       https://nodenorm.transltr.io/1.5
-      Translator CI/Dev:           https://nodenorm.ci.transltr.io/1.5
-      Docs:                        https://nodenorm.ci.transltr.io/1.5/docs
+      https://nodenorm-es.ci.transltr.io  (Translator ElasticSearch, #2833)
       Main endpoint: POST /get_normalized_nodes
+      NOTE: the ES deployment serves /get_normalized_nodes at the root
+      (no /1.5 version prefix); requesting /1.5/... returns HTTP 404.
 
     SRI Name Resolver (free-text name -> best CURIE match):
-      RENCI (used by this module): https://name-resolution-sri.renci.org
-      Translator CI/Dev:           https://name-lookup.ci.transltr.io
-      Translator Production:       https://name-lookup.transltr.io  (NO /bulk-lookup)
-      Docs:                        https://name-lookup.ci.transltr.io/docs
+      https://name-resolution-sri.renci.org  (RENCI)
       Main endpoint: POST /bulk-lookup
-      WARNING: The `transltr.io` production Name Resolver deployment
-      does NOT expose /bulk-lookup -- only /lookup, /reverse_lookup,
-      /status. This implementation relies on /bulk-lookup. The RENCI
-      endpoint (https://name-resolution-sri.renci.org) does expose
-      /bulk-lookup, which is another reason we pin to RENCI here.
+      NOTE: RENCI is used because it exposes /bulk-lookup, which this
+      module relies on.
 
-    The Node Normalizer and Name Resolver URLs are hardcoded to the
-    SRI endpoints hosted at RENCI:
-      - NodeNorm:     https://nodenormalization-sri.renci.org/1.5
-      - NameResolver: https://name-resolution-sri.renci.org
+    The Node Normalizer and Name Resolver URLs are hardcoded:
+      - NodeNorm:     https://nodenorm-es.ci.transltr.io   (Translator ES, #2833)
+      - NameResolver: https://name-resolution-sri.renci.org   (RENCI)
 
     Why hardcode (no env vars, no constructor overrides, no RTXConfiguration):
-      1. The SRI services at RENCI are the canonical upstream. The
-         `transltr.io` mirrors proxy them and can drift or lag. Pinning
-         to RENCI removes that ambiguity.
-      2. `transltr.io` production does not expose /bulk-lookup for
-         Name Resolver, which this module requires. RENCI does.
-      3. One URL per service keeps this module dependency-free:
+      1. Node Normalizer uses the Translator ElasticSearch deployment
+         (#2833), which replaces the retired Redis nodenorm services.
+         Name Resolver stays on RENCI because it needs /bulk-lookup.
+      2. One URL per service keeps this module dependency-free:
          no RTXConfiguration, no config_dbs.json, no maturity-based
          branching. That is a prerequisite for extracting this file
          as a standalone PyPI package that Pathfinder, DrugBankNER,
          and other repos can import directly.
-      4. If we ever need to point at a different endpoint (test
+      3. If we ever need to point at a different endpoint (test
          environment, private mirror), subclassing and overriding
          `NODE_NORMALIZER_URL` / `NAME_RESOLVER_URL` is trivial and
          explicit, without hiding the behavior in env vars or configs.
@@ -127,7 +117,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
     don't need changes.
     """
 
-    NODE_NORMALIZER_URL = "https://nodenormalization-sri.renci.org/1.5"
+    NODE_NORMALIZER_URL = "https://nodenorm-es.ci.transltr.io"
     NAME_RESOLVER_URL = "https://name-resolution-sri.renci.org"
 
     def __init__(self, sqlite_file_name: Optional[str] = None,
