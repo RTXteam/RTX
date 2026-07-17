@@ -138,7 +138,8 @@ class InferUtilities:
             retrieval_sources.append(RetrievalSource(
                 resource_id=s['resource_id'],
                 resource_role=s['resource_role'],
-                upstream_resource_ids=s.get('upstream_resource_ids') or None
+                upstream_resource_ids=s.get('upstream_resource_ids') or None,
+                source_record_urls=s.get('source_record_urls') or None
             ))
 
         retrieval_sources.append(RetrievalSource(
