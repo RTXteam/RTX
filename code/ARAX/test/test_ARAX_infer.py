@@ -652,9 +652,11 @@ def test_xdtd_extra_edge_attributes_and_qualifiers():
     infer_edge_count = 0
 
     for edge_key, edge in message.knowledge_graph.edges.items():
-        if not edge_key.startswith("urn:uuid:"):
+        if edge_key.startswith("creative_DTD_prediction_"):
             continue
         if not edge.attributes:
+            continue
+        if not any(a.attribute_type_id == "metatype:Datetime" for a in edge.attributes):
             continue
         infer_edge_count += 1
 
