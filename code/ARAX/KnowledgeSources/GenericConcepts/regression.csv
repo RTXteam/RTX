@@ -1,0 +1,4 @@
+TestCase,TestAsset,name,url
+TestCase_83,Asset_90,NeverShow: fibrinogen treats Heart Disorder,https://arax.ncats.io/test?r=495106
+TestCase_58,Asset_402,Acceptable: Ipilimumab (Yervoy) treats Colorectal Cancer,https://arax.ncats.io/test?r=495069
+TestCase_58,Asset_401,Acceptable: Metformin treats Colorectal Cancer,https://arax.ncats.io/test?r=495069
