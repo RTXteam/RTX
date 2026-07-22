@@ -53,8 +53,6 @@ code/ARAX/KnowledgeSources/meta_kg*.json
 code/ARAX/KnowledgeSources/Prediction/*.pkl
 code/ARAX/KnowledgeSources/Prediction/*.txt
 code/ARAX/KnowledgeSources/Prediction/*.gz
-code/ARAX/KnowledgeSources/Gandalf/*.gz
-code/ARAX/KnowledgeSources/Gandalf/gandalf_mmap
 
 code/ARAX/NodeSynonymizer/*.tsv
 code/ARAX/NodeSynonymizer/*.pickle

@@ -54,10 +54,6 @@ class ARAXDatabaseManager:
         ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
         if not  os.path.exists(ngd_filepath):
             _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(ngd_filepath)}")
-
-        gandalf_mmap_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Gandalf'])
-        if not  os.path.exists(gandalf_mmap_filepath):
-            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(gandalf_mmap_filepath)}")
         
         cohd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         if not  os.path.exists(cohd_filepath):
@@ -83,7 +79,6 @@ class ARAXDatabaseManager:
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'curie_ngd': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_ngd_path.split('/')[-1]}",
-            'gandalf_mmap': f"{gandalf_mmap_filepath}{os.path.sep}{self.RTXConfig.gandalf_mmap_path.split('/')[-1]}",
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
             'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}",
@@ -97,7 +92,6 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_database_subpath(self.RTXConfig.cohd_database_path),
             'curie_to_pmids': self.get_database_subpath(self.RTXConfig.curie_to_pmids_path),
             'curie_ngd': self.get_database_subpath(self.RTXConfig.curie_ngd_path),
-            'gandalf_mmap': self.get_database_subpath(self.RTXConfig.gandalf_mmap_path),
             'kg2c_sqlite': self.get_database_subpath(self.RTXConfig.kg2c_sqlite_path),
             'fda_approved_drugs': self.get_database_subpath(self.RTXConfig.fda_approved_drugs_path),
             'autocomplete': self.get_database_subpath(self.RTXConfig.autocomplete_path),
@@ -109,7 +103,6 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_remote_location('cohd_database'),
             'curie_to_pmids': self.get_remote_location('curie_to_pmids'),
             'curie_ngd': self.get_remote_location('curie_ngd'),
-            'gandalf_mmap': self.get_remote_location('gandalf_mmap'),
             'kg2c_sqlite': self.get_remote_location('kg2c_sqlite'),
             'fda_approved_drugs': self.get_remote_location('fda_approved_drugs'),
             'autocomplete': self.get_remote_location('autocomplete'),
@@ -121,7 +114,6 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_docker_path('cohd_database'),
             'curie_to_pmids': self.get_docker_path('curie_to_pmids'),
             'curie_ngd': self.get_docker_path('curie_ngd'),
-            'gandalf_mmap': self.get_docker_path('gandalf_mmap'),
             'kg2c_sqlite': self.get_docker_path('kg2c_sqlite'),
             'fda_approved_drugs': self.get_docker_path('fda_approved_drugs'),
             'autocomplete': self.get_docker_path('autocomplete'),
@@ -141,10 +133,6 @@ class ARAXDatabaseManager:
             'curie_ngd': {
                 'path': self.local_paths['curie_ngd'],
                 'version': self.RTXConfig.curie_ngd_version
-            },
-            'gandalf_mmap': {
-                'path': self.local_paths['gandalf_mmap'],
-                'version': self.RTXConfig.gandalf_mmap_version
             },
             'kg2c_sqlite': {
                 'path': self.local_paths['kg2c_sqlite'],
@@ -224,8 +212,7 @@ class ARAXDatabaseManager:
                                             local_symlink_target_path=self.docker_central_paths[database_name],
                                             debug=debug)
                 # tarball is present but the unpacked dir next to the real archive
-                # is missing; re-extract in place without re-running rsync (avoids
-                # re-downloading large tarballs like gandalf_mmap on every restart).
+                # is missing; re-extract in place without re-running rsync
                 # realpath follows the symlink to the docker-central side so the
                 # check matches where _extract_tarball actually puts the unpacked dir.
                 elif local_path.endswith('.tar.gz') and not os.path.isdir(
@@ -370,7 +357,7 @@ class ARAXDatabaseManager:
 
     def _extract_tarball(self, tarball_path, debug=False):
         # follow the symlink to the real archive so extraction lands next to the
-        # docker-central tarball (where Pathfinder reads it via get_gandalf_mmap_path),
+        # docker-central tarball,
         # not next to the RTX-side symlink. realpath is a no-op on dev machines
         # where the path is already a real file.
         resolved = os.path.realpath(tarball_path)

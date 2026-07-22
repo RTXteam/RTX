@@ -167,8 +167,6 @@ class RTXConfiguration:
         self.curie_to_pmids_version = self.curie_to_pmids_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.curie_ngd_path = database_downloads["curie_ngd"]
         self.curie_ngd_version = self.curie_ngd_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.gandalf_mmap_path = database_downloads["gandalf_mmap"]
-        self.gandalf_mmap_version = self.gandalf_mmap_path.split('/')[-1].split('_v')[-1].replace('.tar.gz', '')
         self.kg2c_sqlite_path = database_downloads["kg2c_sqlite"]
         self.kg2c_sqlite_version = self.kg2c_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.tier0_sqlite_path = database_downloads["tier0_sqlite"]

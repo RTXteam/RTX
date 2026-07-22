@@ -13,7 +13,6 @@ assignees: ""
 - [ ] Build database file `tier0-info-for-overlay_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: ) (build script: [`generate_sqlite.py`](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/generate_sqlite.py))
 - [ ] Build database file `curie_ngd_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: )
 - [ ] Build database file `ExplainableDTD_v1.0_tier0-MMDDYYYY-all_with_paths.db` (assignee: ; subissue: )
-- [ ] gandalf_mmap tarball refresh work. Work with PSU team on this. (assignee: ; subissue: )
 - [ ] Update ARAX `config_dbs.json` for the new database files. (assignee: ; subissue: )
 - [ ] Update `ARAX_database_manager.py` for the new database files. (assignee: ; subissue: )
 - [ ] Stage all rebuilt Tier0 KG-based ARAX database files on the following servers: (assignee: ; subissue: )
