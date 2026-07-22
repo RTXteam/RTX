@@ -645,7 +645,7 @@ class ARAXConnect:
 
         try:
             res = requests.post(
-                retriever_url, headers=headers, json=payload, timeout=30
+                retriever_url.replace("query", "rehydrate"), headers=headers, json=payload, timeout=30
             )
             res.raise_for_status()
             return res.json()["message"]["knowledge_graph"]
