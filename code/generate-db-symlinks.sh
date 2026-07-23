@@ -50,4 +50,3 @@ link "${DB_DIR}/${LATEST_TIER0_VER}/curie_to_pmids_v1.0_${LATEST_TIER0_VER}.sqli
 link "${DB_DIR}/${LATEST_TIER0_VER}/fda_approved_drugs_v1.0.pickle" "RTX/code/ARAX/KnowledgeSources/fda_approved_drugs_v1.0.pickle"
 link "${DB_DIR}/${LATEST_TIER0_VER}/tier0-info-for-overlay_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/ARAX/KnowledgeSources/KG2c/tier0-info-for-overlay_v1.0_${LATEST_TIER0_VER}.sqlite"
 link "${DB_DIR}/${LATEST_TIER0_VER}/autocomplete_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/autocomplete/autocomplete_v1.0_${LATEST_TIER0_VER}.sqlite"
-link "${DB_DIR}/${LATEST_TIER0_VER}/gandalf_mmap_${LATEST_TIER0_VER}-gandalf_csr-0_4_2.tar.gz" "RTX/code/ARAX/KnowledgeSources/Gandalf/gandalf_mmap_${LATEST_TIER0_VER}-gandalf_csr-0_4_2.tar.gz"
