@@ -67,6 +67,7 @@ function main() {
     UIstate["pruning"] = '50';
     UIstate["maxpaths"] = '500';
     UIstate["maxpathlen"] = '4';
+    UIstate['usecache'] = true;
     UIstate["pid"] = null;
     UIstate["viewing"] = null;
     UIstate["version"] = checkUIversion(false);
@@ -94,7 +95,7 @@ function main() {
 	document.getElementById(prov+"_url").value = providers[prov].url;
 	document.getElementById(prov+"_url_button").disabled = true;
     }
-    for (var setting of ["useicons","submitter","timeout","pruning","maxpaths","maxpathlen","maxresults","maxsyns"]) {
+    for (var setting of ["useicons","usecache","submitter","timeout","pruning","maxpaths","maxpathlen","maxresults","maxsyns"]) {
 	if (document.getElementById(setting+"_url")) {
 	    document.getElementById(setting+"_url").value = UIstate[setting];
 	    document.getElementById(setting+"_url_button").disabled = true;
@@ -625,6 +626,11 @@ function postQuery_ARAX(qtype,queryObj) {
         if (!queryObj.query_options)
             queryObj.query_options = {};
         queryObj.query_options['max_path_length'] = UIstate["maxpathlen"];
+    }
+    if (!UIstate["usecache"]) {
+        if (!queryObj.query_options)
+            queryObj.query_options = {};
+        queryObj.query_options['bypass_cache'] = true;
     }
 
     var cmddiv = document.createElement("div");
@@ -3290,7 +3296,10 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 	    span = document.createElement("span");
             span.className = 'filterbutton';
 	    span.title = "Filter for all Paths that contain ["+pnode+"]";
-            span.append(kg.nodes[pnode]["name"]);
+            if (kg.nodes[pnode]["name"].length < 40)
+                span.append(kg.nodes[pnode]["name"]);
+            else
+                span.append(pnode);
 	    span.setAttribute('onclick', 'filter_results("paths","'+pnode+'");');
 	    span.dataset.curie = pnode;
 	    div.append(span);
@@ -3518,7 +3527,10 @@ function display_pathfilter() {
 	var span = document.createElement("span");
         if (fcur.startsWith("X::")) {
             span.className = 'filterbutton p1';
-            span.append(all_nodes[fcur.replace("X::","")]['name']);
+            if (all_nodes[fcur.replace("X::","")]['name'].length < 40)
+                span.append(all_nodes[fcur.replace("X::","")]['name']);
+            else
+                span.append(fcur.replace("X::",""));
 	}
         else if (fcur.startsWith("PATH::")) {
             span.className = 'filterbutton p1';
@@ -3526,7 +3538,10 @@ function display_pathfilter() {
 	}
 	else {
             span.className = 'filterbutton p9';
-            span.append(all_nodes[fcur]['name']);
+            if (all_nodes[fcur]['name'].length < 40)
+                span.append(all_nodes[fcur]['name']);
+            else
+                span.append(fcur);
 	}
         span.title = "Remove this filter";
         span.setAttribute('onclick', 'filter_results("paths","'+fcur+'");');
@@ -7144,6 +7159,8 @@ function retrieveRecentQs(active) {
 	    else throw new Error('Something went wrong with '+apicall);
 	})
         .then(data => {
+	    if (document.getElementById("recent_queries_histograms"))
+		document.getElementById("recent_queries_histograms").remove();
 	    if (data.recent_queries.length < 1) {
 		qfspan.innerHTML = '';
 		var span = document.createElement("h2");
@@ -7152,6 +7169,11 @@ function retrieveRecentQs(active) {
 		recents_node.append(span);
 		return;
 	    }
+            else if (!active && document.getElementById("recentreporttype").value == 'histogram') {
+                qfspan.innerHTML = '';
+                displayResponseTimeline(recents_node,data.recent_queries,hours);
+                return;
+            }
 
 	    var stats = {};
 	    stats.elapsed   = 0;
@@ -7504,6 +7526,171 @@ function displayQTimeline(tdata) {
 
     timeline_node.append("Your computer's local time");
 }
+
+
+
+function displayResponseTimeline(thenode,thequeries,hago) {
+    //var stats = { "_max" : { "OK":1, "NOT_OK":0 } };
+    var stats = { "_max" : {} };
+
+    const all_hours = Array.from({ length: 24 }, (_, i) => i);
+
+    for (var query of thequeries) {
+        var domain = query['domain'].startsWith("?") ? "?? : "+query['hostname']:query['domain'];
+        domain += ' / '+query['instance_name']; //+']';
+        var status = query['status'] == "OK" ? "OK" : "NOT_OK";
+        var elapsed = query['elapsed'];
+
+        const date = new Date(query['start_datetime']);
+        var day = date.getFullYear() + " / " + (1+date.getMonth()) + " / " + date.getDate();
+        var hour = date.getHours();
+
+        if (!stats[domain]) {
+            stats[domain] = {};
+            stats["_max"][domain] = { "OK":1, "NOT_OK":0 };
+        }
+        if (!stats[domain][day]) {
+            stats[domain][day] = {};
+            for (var h of all_hours)
+                stats[domain][day][h] = { "OK":0, "NOT_OK":0, "elapsed":0 };
+        }
+
+        stats[domain][day][hour][status]++;
+        stats[domain][day][hour]['elapsed']+=elapsed;
+
+        if (stats["_max"][domain][status] < stats[domain][day][hour][status])
+            stats["_max"][domain][status] = stats[domain][day][hour][status];
+    }
+
+    var now = new Date();
+    var then = new Date();
+    then.setHours(then.getHours() - hago);
+
+    // this sets a global scale (instead of a by-domain scale)
+    //var scale = 0;
+    //for (var st in stats["_max"])
+    //scale += stats["_max"][st];
+    //scale /= 185;
+
+    var anothernode = document.createElement("div");
+    anothernode.id = "recent_queries_histograms";
+    thenode.parentNode.parentNode.append(anothernode);
+
+    var hide = null;
+    thenode.append(document.createElement("br"));
+    for (let where in stats) {
+        if (where.startsWith("_"))
+            continue;
+
+        var span = document.createElement("span");
+        span.id = "button_for_recent_queries_for_"+where;
+        span.className = 'filterbutton '+hide;
+        //span.style.marginLeft = "10px";
+        //span.style.display = "inline-block";
+        span.style.display = "table-cell";
+        span.style.cursor = "pointer";
+        span.title = 'expand/hide';
+        span.setAttribute('onclick', 'show_hide(\"recent_queries_for_'+where+'\", this);');
+        span.append(where);
+        thenode.append(span);
+
+        var ddiv = document.createElement("div");
+        ddiv.className = 'statushead';
+        ddiv.style.cursor = "pointer";
+        ddiv.title = 'expand/hide';
+        ddiv.onclick = function () { document.getElementById("button_for_recent_queries_for_"+where).click(); };
+        ddiv.append("Host: ");
+        span = document.createElement("span");
+        span.className = 'essence';
+        span.append(where);
+        ddiv.append(span);
+        anothernode.append(ddiv);
+
+        var div = document.createElement("div");
+        div.id = "recent_queries_for_"+where;
+        div.className = 'status';
+        if (hide)
+            div.style.display = "none";
+        div.append(document.createElement("br"));
+        anothernode.append(div);
+
+        var scale = 0;
+        for (var st in stats["_max"][where])
+            scale += stats["_max"][where][st];
+        scale /= 185; // max pixel height
+
+        var total = 0;
+        for (var when in stats[where]) {
+            var box = document.createElement("span");
+            box.className = 'attbox';
+            span = document.createElement("div");
+            span.className = 'head';
+            span.append(when);
+            box.append(span);
+            div.append(box);
+
+            var table = document.createElement("table");
+            table.style.display = "inline-table";
+            table.style.height = "90%";
+            var tr = document.createElement("tr");
+
+            for (var whenwhen in stats[where][when]) {
+                whenwhen = 23 - whenwhen; // reverse time...
+
+                var howmanyok = stats[where][when][whenwhen]["OK"];
+                var howmanyno = stats[where][when][whenwhen]["NOT_OK"];
+                var howmany = howmanyok + howmanyno;
+                var avgtime = stats[where][when][whenwhen]["elapsed"]/howmany;
+
+                var td = document.createElement("td");
+                td.className = 'hoverable';
+                td.style.verticalAlign = "bottom";
+                td.style.textAlign = "center";
+                td.style.padding = "0px";
+                if (avgtime > 30)
+                    td.style.background = "#ccc";
+                td.append(howmany>0?howmany:'.');
+                td.append(document.createElement("br"));
+                //td.title = "OK ("+howmanyok + ") :: NOT_OK ("+howmanyno + ")";
+                td.title = howmanyok + " OK :: NOT "+howmanyno + "";
+
+                span = document.createElement("span");
+                span.className = "bar";
+                var barh = Number(howmany);
+                span.style.height = barh/scale + "px";
+                span.style.width = "13px";
+                span.style.background = "linear-gradient(to bottom, #d22 " + 100*howmanyno/howmany + "%, #5596d0 " + 100*howmanyno/howmany + "%)";
+                td.append(span);
+
+                td.append(document.createElement("br"));
+
+                const d = new Date(when);
+                d.setUTCHours(whenwhen);
+                if (now.getTime() < d.getTime() || then.getTime() > d.getTime())
+                    td.append('.');
+                else
+                    td.append(whenwhen);
+
+                tr.append(td);
+
+                total += howmany;
+            }
+            table.append(tr);
+            box.append(table);
+        }
+
+        var span = document.createElement("span");
+        span.style.float = 'right';
+        span.append(total+' requests');
+        ddiv.append(span);
+
+        //ddiv.append(' [ '+total+' requests ]');
+        hide = 'hide';
+    }
+    thenode.append(document.createElement("br"));
+    thenode.append(document.createElement("br"));
+}
+
 
 function add_filtermenu(tid, field, values) {
     var node = document.getElementById('filter_'+field);
@@ -9789,18 +9976,21 @@ function update_url(urlkey,value) {
 	UIstate[urlkey] = document.getElementById(urlkey+"_url").value.trim();
         document.getElementById(urlkey+"_url").value = UIstate[urlkey];
     }
-    else if (urlkey == 'useicons') {
+    else if (urlkey == 'useicons' || urlkey == 'usecache') {
         UIstate[urlkey] = document.getElementById(urlkey+"_url").value == "true";
     }
     else {
-	providers[urlkey].url = document.getElementById(urlkey+"_url").value.trim();
+        providers[urlkey].url = document.getElementById(urlkey+"_url").value.trim().replace(/\/+$/, "");
 	document.getElementById(urlkey+"_url").value = providers[urlkey].url;
     }
     addCheckBox(document.getElementById(urlkey+"_url_button"),true);
     var timeout = setTimeout(function() { document.getElementById(urlkey+"_url_button").disabled = true; } , 1500 );
 }
 function update_submit_button(urlkey) {
-    var currval = (urlkey == 'useicons' || urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxpaths' || urlkey == 'maxpathlen' || urlkey == 'maxresults' || urlkey == 'maxsyns') ? UIstate[urlkey] : providers[urlkey].url;
+    var currval = (urlkey == 'useicons' || urlkey == 'usecache' || urlkey == 'submitter' || urlkey == 'timeout' || urlkey == 'pruning' || urlkey == 'maxpaths' || urlkey == 'maxpathlen' || urlkey == 'maxresults' || urlkey == 'maxsyns') ? UIstate[urlkey] : providers[urlkey].url;
+
+    if (urlkey == 'useicons' || urlkey == 'usecache')
+	currval = currval.toString();
 
     if (currval == document.getElementById(urlkey+"_url").value)
 	document.getElementById(urlkey+"_url_button").disabled = true;

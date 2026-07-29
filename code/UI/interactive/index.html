@@ -598,6 +598,10 @@
   <div class="status">
     <input type="button" class="questionBox button" name="action" value="Active Queries" onClick="retrieveRecentQs(true);"/>
     -- or --
+    <span class="qgselect"><select id="recentreporttype">
+	<option value="table" selected='selected'>Table with Timeline of </option>
+	<option value="histogram">Hourly Histogram of </option>
+    </select></span>
     <input type="button" class="questionBox button" name="action" value="Recent Queries" onClick="retrieveRecentQs(false);"/>
     <input type="text" class="questionBox" id="qftime" onkeydown="submit_on_enter(this);" value="24" size="3" maxlength="3"/>hours (max.200)
     <span style="margin-left:50px;" id="qfilter"></span>
@@ -698,6 +702,17 @@
     </span>
 
     <span>
+      <h3 style="display:inline;margin-right:5px;margin-bottom:0px;">RESPONSE CACHE:</h3>
+      <select class="qgbutton" onchange="enter_url(this,'usecache');" id="usecache_url">
+        <option value="true">Use</option>
+        <option value="false">Bypass</option>
+      </select>
+    </span>
+    <span>
+      <input type="button" class="questionBox button" id="usecache_url_button" value="Update" onClick="update_url('usecache',null);"/>
+    </span>
+
+    <span>
       <h3 style="margin-bottom:0px;">BASE API URL (ARAX):</h3>
       <input type="text" class="questionBox" id="ARAX_url" onkeyup="enter_url(this,'ARAX');" size="100" maxlength="1000"/>
     </span>
@@ -731,18 +746,15 @@
     </span>
 
     <span>
-      <input type="button" class="qprob sbte" value="BTE" onClick="update_url('EXT','https://api.bte.ncats.io/v1');"/>
-      <input type="button" class="qprob schp" value="CHP" onClick="update_url('EXT','http://chp.thayer.dartmouth.edu');"/>
-      <input type="button" class="qprob p0" value="ClinicalRiskKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a');"/>
-      <input type="button" class="qprob p3" value="ClinicalTrialsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/ctkp');"/>
-      <input type="button" class="qprob scod" value="COHD" onClick="update_url('EXT','https://cohd.io/api');"/>
-      <input type="button" class="qprob p5" value="DrugApprovalsKP" onClick="update_url('EXT','https://multiomics.rtx.ai:9990/dakp');"/>
-      <input type="button" class="qprob p0" value="DrugResponseKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31');"/>
-      <input type="button" class="qprob sgen" value="GeneticsKP" onClick="update_url('EXT','https://translator.broadinstitute.org/genetics_provider/trapi/v1.5');"/>
-      <input type="button" class="qprob smol" value="MolePro" onClick="update_url('EXT','https://translator.broadinstitute.org/molepro/trapi/v1.5');"/>
-      <input type="button" class="qprob srtx" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.4');"/>
-      <input type="button" class="qprob p0" value="TumorGeneMutationKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/5219cefb9d2b8d5df08c3a956fdd20f3');"/>
-      <input type="button" class="qprob p0" value="WellnessKP" onClick="update_url('EXT','https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027');"/>
+      <input type="button" class="qprob scod" value="Retriever DEV" onClick="update_url('EXT','https://dev.retriever.biothings.io');"/>
+      <input type="button" class="qprob sbte" value="Retriever CI" onClick="update_url('EXT','https://retriever.ci.transltr.io');"/>
+      <input type="button" class="qprob sgen" value="Shepherd-aragorn DEV" onClick="update_url('EXT','https://shepherd.renci.org/aragorn');"/>
+      <input type="button" class="qprob schp" value="Shepherd-aragorn CI" onClick="update_url('EXT','https://shepherd.ci.transltr.io/aragorn');"/>
+      <input type="button" class="qprob p3" value="Shepherd-BTE DEV" onClick="update_url('EXT','https://shepherd.renci.org/bte');"/>
+      <input type="button" class="qprob p5" value="Shepherd-BTE CI" onClick="update_url('EXT','https://shepherd.ci.transltr.io/bte');"/>
+      <input type="button" class="qprob smol" value="Shepherd-ARAX DEV" onClick="update_url('EXT','https://shepherd.renci.org/arax');"/>
+      <input type="button" class="qprob srtx" value="Shepherd-ARAX CI" onClick="update_url('EXT','https://shepherd.ci.transltr.io/arax');"/>
+      <input type="button" class="qprob p0" value="RTX-KG2" onClick="update_url('EXT','https://arax.ncats.io/api/rtxkg2/v1.4');"/>
       <br><br>
     </span>
     <span>
@@ -787,14 +799,6 @@
     <span>
       <input type="button" class="questionBox button" id="submitter_url_button" value="Update" onClick="update_url('submitter',null);"/>
     </span>
-
-
-    <!-- label id="useCacheText" class="tiny blue">
-      <span class="switch">
-	<input id="useCache" type="checkbox" checked="checked" onchange="togglecolor(this,'useCacheText');">
-	<span class="slider"></span>
-      </span>
-      Use cache</label -->
 
   </div>
 
