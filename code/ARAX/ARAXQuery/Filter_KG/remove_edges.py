@@ -5,6 +5,16 @@ import sys
 import traceback
 
 
+_significance_ordinal: dict[str, int] = {
+    "very_strongly_significant": 4,
+    "strongly_significant":      3,
+    "significant":               2,
+    "suggestive":                1,
+    "not_significant":           0,
+}
+_significance_qualifier_type_id: str = "biolink:statistical_significance_qualifier"
+
+
 class RemoveEdges:
 
     #### Constructor
@@ -531,5 +541,129 @@ class RemoveEdges:
             self.response.error("Something went wrong removing edges from the knowledge graph")
         else:
             self.response.info("Edges successfully removed")
+
+        return self.response
+
+    def remove_edges_by_statistical_significance(self):
+        """
+        Iterate over all edges in the knowledge graph, remove any edges whose
+        statistical_significance_qualifier falls below the specified minimum band.
+        Edges without the qualifier are kept (not penalized during rollout).
+        :return: response
+        """
+        self.response.debug("Removing Edges")
+        edge_params = self.edge_parameters
+        self.response.info(
+            "Removing edges from the knowledge graph with statistical significance below "
+            f"{edge_params['minimum_significance']}")
+        message = self.message
+        kg = message.knowledge_graph
+
+        try:
+            threshold_ordinal = _significance_ordinal.get(edge_params['minimum_significance'])
+            if threshold_ordinal is None:
+                self.response.error(
+                    f"Invalid minimum_significance value '{edge_params['minimum_significance']}'. "
+                    f"Allowable values: {list(_significance_ordinal.keys())}",
+                    error_code="InvalidParameterValue")
+                return self.response
+
+            edges_to_remove = set()
+            node_keys_to_remove = {}
+            edge_qid_dict = {}
+            for key, q_edge in self.message.query_graph.edges.items():
+                edge_qid_dict[key] = {'subject': q_edge.subject, 'object': q_edge.object}
+
+            # iterate over edges, find those below the significance threshold
+            for key, edge in kg.edges.items():
+                sig_value = None
+                # Check edge.qualifiers (expected TRAPI path for biolink qualifier descendants)
+                if edge.qualifiers:
+                    for q in edge.qualifiers:
+                        if q.qualifier_type_id == _significance_qualifier_type_id:
+                            sig_value = q.qualifier_value
+                            if isinstance(sig_value, str) and sig_value.startswith("biolink:"):
+                                sig_value = sig_value[len("biolink:"):]
+                            break
+
+                # Only remove edges that explicitly carry a below-threshold qualifier;
+                # edges without the qualifier are kept.
+                if sig_value is not None:
+                    edge_ordinal = _significance_ordinal.get(sig_value)
+                    if edge_ordinal is not None and edge_ordinal < threshold_ordinal:
+                        edges_to_remove.add(key)
+                        if edge_params.get('remove_connected_nodes', False):
+                            for qedge_key in (getattr(edge, 'qedge_keys', None) or []):
+                                if edge.subject not in node_keys_to_remove:
+                                    node_keys_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
+                                else:
+                                    node_keys_to_remove[edge.subject].add(edge_qid_dict[qedge_key]['subject'])
+                                if edge.object not in node_keys_to_remove:
+                                    node_keys_to_remove[edge.object] = {edge_qid_dict[qedge_key]['object']}
+                                else:
+                                    node_keys_to_remove[edge.object].add(edge_qid_dict[qedge_key]['object'])
+
+            if edge_params.get('remove_connected_nodes', False):
+                self.response.debug("Removing Nodes")
+                self.response.info("Removing connected nodes and their edges from the knowledge graph")
+                nodes_to_remove = set()
+                skipped_qnode_keys = set()
+                for key, node in kg.nodes.items():
+                    if key in node_keys_to_remove:
+                        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
+                        if 'qnode_keys' in edge_params:
+                            if node_qnode_keys:
+                                for param_qnode_key in edge_params['qnode_keys']:
+                                    if param_qnode_key in node_qnode_keys:
+                                        if len(node_qnode_keys) == 1:
+                                            nodes_to_remove.add(key)
+                                        else:
+                                            node_qnode_keys.remove(param_qnode_key)
+                                            node.qnode_keys = node_qnode_keys
+                                    else:
+                                        skipped_qnode_keys.add(key)
+                            else:
+                                skipped_qnode_keys.add(key)
+                        else:
+                            if len(node_qnode_keys) == 1:
+                                nodes_to_remove.add(key)
+                            else:
+                                for node_key in node_keys_to_remove[key]:
+                                    node_qnode_keys.remove(node_key)
+                                    node.qnode_keys = node_qnode_keys
+                                if len(node_qnode_keys) == 0:
+                                    nodes_to_remove.add(key)
+                for key in skipped_qnode_keys:
+                    del node_keys_to_remove[key]
+                for key in nodes_to_remove:
+                    del kg.nodes[key]
+                for key, edge in kg.edges.items():
+                    if edge.subject in node_keys_to_remove or edge.object in node_keys_to_remove:
+                        edges_to_remove.add(key)
+                self.check_kg_nodes()
+
+            # remove edges
+            for key in edges_to_remove:
+                if edge_params.get('qedge_keys', None) is not None:
+                    key_edge = kg.edges[key]
+                    key_edge_qedge_keys = getattr(key_edge, 'qedge_keys', None)
+                    if key_edge_qedge_keys is not None:
+                        qedge_key_diff = set(key_edge_qedge_keys) - set(edge_params['qedge_keys'])
+                        if len(qedge_key_diff) < 1:
+                            del kg.edges[key]
+                        else:
+                            key_edge.qedge_keys = list(qedge_key_diff)
+                    else:
+                        self.response.warning(
+                            f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
+                else:
+                    del kg.edges[key]
+        except Exception:
+            tb = traceback.format_exc()
+            error_type, error, _ = sys.exc_info()
+            self.response.error(tb, error_code=error_type.__name__)
+            self.response.error("Something went wrong removing edges from the knowledge graph")
+        else:
+            self.response.info(f"Edges successfully removed: {len(edges_to_remove)}; num left: {len(kg.edges)}")
 
         return self.response
