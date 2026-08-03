@@ -1,129 +1,103 @@
 """
 Attach training labels to the generic-concept feature table (issue-2654).
 
-Reads the feature parquet produced by generic_concept_features_build.py and
-adds a `label` column:
+Reads the feature parquet from generic_concept_features_build.py and adds a
+`label` column:
 
-    label =  1   positive: node is generic
-    label =  0   pseudo-negative: sampled from structurally clearly-NON-generic
-                 nodes (a "reliable negative" pool, so we do not poison the
-                 negatives with unlabeled generics)
-    label = -1   unlabeled: everything else (kept so the same file can be scored)
+    label =  1   positive: a curated generic concept
+    label =  0   pseudo-negative: sampled uniformly from everything else
+    label = -1   unlabeled: kept so the same file can be scored
 
-Positives come from two sources:
-  1. The curated blocklist (general_concepts.json), matched against each node's
-     equivalent_identifiers -- NOT just its primary id. The KG is node-normalized,
-     so ~77% of blocklist CURIEs live in equivalent_identifiers, not the id.
-  2. An optional supplemental id list (SUPPLEMENTAL_POS): one node id per line.
-     This is where LLM-confirmed generic nodes get folded in to grow the seed set
-     without circularity (they are confirmed by NAME, which is not a model feature).
+Positives come from normalize_concepts.py, which normalises the hand-built
+list through Babel and keeps whatever survives the join to tier0. This is a
+positive-unlabeled setup: the positives are clean, the rest is unlabeled
+rather than negative, and the pseudo-negatives are a sample drawn from that
+unlabeled mass.
 
-This is a positive-unlabeled setup: positives are clean, the rest is unlabeled.
+Input:
+    FEATURES_FILE: one row per node, written by the feature build.
+    POSITIVES: curated generic concepts.
+    NODES_TABLE: node names, so candidates can be reviewed by name.
+
+Output:
+    OUTPUT_FILE: the feature table with name and label attached.
 """
-import json
-import re
+
+import os
 import random
-from pathlib import Path
 
 import pandas as pd
 
-KG_DIR = "/home/hodgesf/Desktop/code/database/tier0-20260621/knowledge_graph"
-NODES_FILE = f"{KG_DIR}/nodes.jsonl"
-FEATURES_FILE = "/home/hodgesf/Desktop/code/generic_concept_features.parquet"
-BLOCKLIST_FILE = str(Path(__file__).resolve().parent.parent / "general_concepts.json")
-SUPPLEMENTAL_POS: str | None = "/home/hodgesf/Desktop/code/confirmed_generics.txt"  # audit-confirmed generics -> extra positives
-HARD_NEGATIVES: str | None = "/home/hodgesf/Desktop/code/hard_negatives.txt"  # audit false positives -> forced negatives
-OUTPUT_FILE = "/home/hodgesf/Desktop/code/generic_concept_training.parquet"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FEATURES_FILE = os.path.expanduser(
+    "~/Desktop/code/generic_concept_features.parquet")
+POSITIVES = os.path.join(BASE_DIR, "data", "positive_generic.parquet")
+NODES_TABLE = os.path.join(BASE_DIR, "data", "nodes_table.parquet")
+OUTPUT_FILE = os.path.expanduser(
+    "~/Desktop/code/generic_concept_training.parquet")
 
-NEG_PER_POS = 10        # random pseudo-negatives per positive, ON TOP OF the curated
-                        # hard negatives. Curated-only (0) inverts the model: with only
-                        # high-degree hard negatives it flags every low-degree obscure
-                        # specific as generic. Random draw supplies the low-degree
-                        # specific negatives that anchor the boundary.
+# Pseudo-negatives per positive. Sampling none of them inverts the model:
+# trained against curated hard negatives alone it learns that any low-degree
+# obscure node is generic. The random draw supplies the ordinary specific
+# nodes that anchor the boundary.
+NEG_PER_POS = 10
 SEED = 2654
 
 
-def load_blocklist(path: str) -> tuple[set[str], set[str], list[re.Pattern]]:
-    block = json.load(open(path, encoding="utf-8"))
-    curies = {c.lower() for c in block["curies"]}
-    synonyms = {s.lower() for s in block["synonyms"]}
-    patterns = [re.compile(p, re.IGNORECASE) for p in block["patterns"]]
-    return curies, synonyms, patterns
+def label(features: pd.DataFrame, positives: set[str],
+          rng: random.Random) -> pd.DataFrame:
+    """
+    Add the label column in place and return the frame.
 
+    Input:
+        features: one row per node, keyed on id.
+        positives: ids of curated generic concepts.
+        rng: seeded source for the pseudo-negative draw.
 
-def scan_nodes(nodes_file: str,
-               curies: set[str],
-               synonyms: set[str],
-               patterns: list[re.Pattern]) -> tuple[set[str], dict[str, str]]:
-    """Single nodes pass returning (positive ids, id->name).
+    Output:
+        The same frame with a label column. Pseudo-negatives are drawn
+        uniformly from every non-positive with no feature-based filter:
+        selecting them by a feature, say low child count, would bake that
+        feature's bias straight into the labels. Generics are rare enough
+        in the graph that a uniform draw contaminates the negatives only
+        negligibly.
+    """
+    is_positive = features["id"].isin(positives)
+    pool = features.loc[~is_positive, "id"]
+    n_negative = min(NEG_PER_POS * int(is_positive.sum()), len(pool))
+    negatives = set(rng.sample(list(pool), n_negative))
 
-    A node is positive if any of its equivalent_identifiers (or its id) is a
-    blocklist CURIE, or its name matches a blocklist synonym/pattern. Names are
-    collected for the eventual LLM audit / eyeballing."""
-    positives: set[str] = set()
-    names: dict[str, str] = {}
-    with open(nodes_file, encoding="utf-8") as fp:
-        for line in fp:
-            rec = json.loads(line)
-            nid = rec["id"]
-            names[nid] = rec.get("name") or ""
-            eqs = [e.lower() for e in rec.get("equivalent_identifiers", [])]
-            eqs.append(nid.lower())
-            name = names[nid].lower()
-            # Positives are blocklist ITEMS present in the graph: a blocklist CURIE
-            # in the node's equivalent_identifiers/id, or an exact blocklist-synonym
-            # name match. Regex `patterns` are intentionally NOT used here -- they are
-            # rule-based fuzzy matches that previously pulled in specific pathways as
-            # false positives. Curated generics come in via SUPPLEMENTAL_POS.
-            if curies.intersection(eqs):
-                positives.add(nid)
-            elif name and name in synonyms:
-                positives.add(nid)
-    return positives, names
+    features["label"] = -1
+    features.loc[is_positive, "label"] = 1
+    features.loc[features["id"].isin(negatives), "label"] = 0
+    return features
 
 
 def main() -> None:
     rng = random.Random(SEED)
 
-    curies, synonyms, patterns = load_blocklist(BLOCKLIST_FILE)
-    print("Scanning nodes for blocklist positives...")
-    positives, names = scan_nodes(NODES_FILE, curies, synonyms, patterns)
-    print(f"  blocklist positives: {len(positives):,}")
+    features = pd.read_parquet(FEATURES_FILE)
+    positives = set(pd.read_parquet(POSITIVES, columns=["id"])["id"])
+    names = pd.read_parquet(NODES_TABLE, columns=["id", "name"])
+    features = features.merge(names, on="id", how="left")
 
-    if SUPPLEMENTAL_POS:
-        extra = {ln.strip() for ln in open(SUPPLEMENTAL_POS, encoding="utf-8") if ln.strip()}
-        positives |= extra
-        print(f"  + supplemental positives: {len(extra):,}  (total {len(positives):,})")
+    features = label(features, positives, rng)
+    features.to_parquet(OUTPUT_FILE, index=False)
 
-    hard_neg: set[str] = set()
-    if HARD_NEGATIVES:
-        hard_neg = {ln.strip() for ln in open(HARD_NEGATIVES, encoding="utf-8") if ln.strip()}
-        hard_neg -= positives  # a confirmed generic never becomes a hard negative
-        print(f"  hard negatives (audit false positives): {len(hard_neg):,}")
+    counts = features["label"].value_counts()
+    matched = int(counts.get(1, 0))
+    print(f"\nWrote {len(features):,} rows to {OUTPUT_FILE}")
+    print(f"  positives (1):  {matched:>9,}")
+    print(f"  negatives (0):  {counts.get(0, 0):>9,}")
+    print(f"  unlabeled (-1): {counts.get(-1, 0):>9,}")
 
-    df = pd.read_parquet(FEATURES_FILE)
-    df["name"] = df["id"].map(names)
-
-    is_pos = df["id"].isin(positives)
-    # Pseudo-negatives: sample uniformly at random from ALL non-positives, with no
-    # feature-based filter. Selecting negatives by a feature (e.g. low child-count)
-    # would bake that feature's bias into the labels -- the same leakage we avoid on
-    # the positive side. True generics are rare in the graph, so random draw yields
-    # only negligible (~0.1-0.5%) contamination of the negatives.
-    neg_pool = df.loc[~is_pos & ~df["id"].isin(hard_neg), "id"]
-    n_neg = min(NEG_PER_POS * int(is_pos.sum()), len(neg_pool))
-    neg_ids = set(rng.sample(list(neg_pool), n_neg)) | hard_neg  # random + curated hard negatives
-
-    df["label"] = -1
-    df.loc[is_pos, "label"] = 1
-    df.loc[df["id"].isin(neg_ids), "label"] = 0
-
-    df.to_parquet(OUTPUT_FILE, index=False)
-    counts = df["label"].value_counts()
-    print(f"\nWrote {len(df):,} rows to {OUTPUT_FILE}")
-    print(f"  positives (1): {counts.get(1, 0):,}")
-    print(f"  negatives (0): {counts.get(0, 0):,}")
-    print(f"  unlabeled (-1): {counts.get(-1, 0):,}")
+    # A shortfall means the positives file names nodes the feature build
+    # never saw, which would point at the two passes disagreeing about the
+    # graph rather than at anything to do with labelling.
+    if matched != len(positives):
+        print(f"\n  warning: {len(positives) - matched:,} of "
+              f"{len(positives):,} curated positives are absent from "
+              "the feature table")
 
 
 if __name__ == "__main__":

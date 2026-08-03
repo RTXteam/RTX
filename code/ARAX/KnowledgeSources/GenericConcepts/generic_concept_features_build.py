@@ -1,11 +1,21 @@
-import json 
+import json
 import math
-import pandas as pd 
+import os
 import sys
 from collections import defaultdict, Counter
 
+import numpy as np
+import pandas as pd
+
 nodes_file = "/home/hodgesf/Desktop/code/database/tier0-20260621/knowledge_graph/nodes.jsonl"
 edges_file = "/home/hodgesf/Desktop/code/database/tier0-20260621/knowledge_graph/edges.jsonl"
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+NODES_TABLE = os.path.join(BASE_DIR, "data", "nodes_table.parquet")
+PREDICTED_IC = os.path.join(BASE_DIR, "data", "predicted_ic_full.parquet")
+NODE_EMBEDDINGS = os.path.expanduser(
+    "~/Desktop/code/large_files/node_embeddings.npy")
+CHUNK_SIZE = 50_000
 
 # The biolink "category" list is inconsistently ordered across nodes (some
 # specificity-first, some alphabetical), so category[0] is not reliably the most
@@ -73,11 +83,60 @@ with open(edges_file, encoding="utf-8") as ef:
         if p == "biolink:subclass_of": 
             child_count[o] += 1
 
-def entropy(counter: Counter) -> float: 
+def entropy(counter: Counter) -> float:
     total = sum(counter.values())
-    if total == 0: 
+    if total == 0:
         return 0.0
     return -sum((c / total) * math.log2(c / total) for c in counter.values())
+
+
+def category_centroid_similarity(ids: pd.Series, categories: pd.Series,
+                                 embeddings: np.ndarray) -> pd.DataFrame:
+    """
+    Measure how typical each node is of its own category.
+
+    A generic concept sits near the middle of its category's cloud in
+    embedding space, because it is close to the average of everything the
+    category contains. Specific ones sit out at the edge.
+
+    Input:
+        ids: node ids, in the same row order as embeddings.
+        categories: most specific category per node, same order.
+        embeddings: memmapped unit-norm embeddings, one row per node.
+
+    Output:
+        id and cos_to_category_centroid. Two chunked passes: one to
+        accumulate a centroid per category, one to score against it. The
+        embeddings are unit-norm, so the cosine is a dot product against
+        the normalised centroid.
+    """
+    codes, levels = pd.factorize(categories)
+    sums = np.zeros((len(levels), embeddings.shape[1]))
+    counts = np.zeros(len(levels))
+
+    for start in range(0, len(codes), CHUNK_SIZE):
+        block = np.asarray(embeddings[start:start + CHUNK_SIZE],
+                           dtype=np.float64)
+        block_codes = codes[start:start + CHUNK_SIZE]
+        for code in np.unique(block_codes):
+            member = block_codes == code
+            sums[code] += block[member].sum(axis=0)
+            counts[code] += member.sum()
+
+    centroids = sums / counts[:, None]
+    centroids /= np.linalg.norm(centroids, axis=1, keepdims=True)
+    centroids = centroids.astype(np.float32)
+
+    similarity = np.empty(len(codes), dtype=np.float32)
+    for start in range(0, len(codes), CHUNK_SIZE):
+        stop = start + CHUNK_SIZE
+        block = np.asarray(embeddings[start:stop], dtype=np.float32)
+        similarity[start:stop] = np.einsum(
+            "ij,ij->i", block, centroids[codes[start:stop]])
+
+    return pd.DataFrame({"id": ids.to_numpy(),
+                         "cos_to_category_centroid": similarity})
+
 
 rows = []
 for nid, cat in own_cat.items(): 
@@ -91,14 +150,36 @@ for nid, cat in own_cat.items():
         "neighbor_cat_entropy": entropy(nc),
         "predicate_entropy": entropy(pred_counts.get(nid, Counter())),
         "hierarchical_child_count": child_count.get(nid, 0),
-        "information_content": ic.get(nid), 
-        "ic_missing": nid not in ic,
+        "information_content": ic.get(nid),
     })
 
-output_file = "/home/hodgesf/Desktop/code/generic_concept_features.parquet"
-pd.DataFrame(rows).to_parquet(output_file, index = False)
+features = pd.DataFrame(rows)
 
-print(f"\nWrote {len(rows):,} rows to {output_file}")
+# Joined on id rather than row position: the embeddings are aligned to
+# nodes_table.parquet, which was built by a separate pass over nodes.jsonl.
+nodes = pd.read_parquet(NODES_TABLE,
+                        columns=["id", "most_specific_category"])
+embeddings = np.load(NODE_EMBEDDINGS, mmap_mode="r")
+centroid = category_centroid_similarity(
+    nodes["id"], nodes["most_specific_category"], embeddings)
+
+features = features.merge(pd.read_parquet(PREDICTED_IC), on="id", how="left")
+features = features.merge(centroid, on="id", how="left")
+
+# Trees split one feature at a time and can never reconstruct a difference
+# between two of them, so the disagreement between the curated and the
+# semantic estimate has to be handed over precomputed.
+features["ic_minus_predicted_ic"] = (features["information_content"]
+                                     - features["predicted_ic"])
+
+output_file = "/home/hodgesf/Desktop/code/generic_concept_features.parquet"
+features.to_parquet(output_file, index=False)
+
+print(f"\nWrote {len(features):,} rows to {output_file}")
+print("\nColumns:")
+for column in features.columns:
+    filled = features[column].notna().mean()
+    print(f"  {column:<28}{filled:>7.1%} populated")
 print("\nTop predicates:")
 for pred, n in predicate_histogram.most_common(25):
     print(f"  {n:>12,}  {pred}")

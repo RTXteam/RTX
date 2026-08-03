@@ -56,6 +56,8 @@ code/ARAX/KnowledgeSources/Prediction/*.gz
 code/ARAX/KnowledgeSources/Gandalf/*.gz
 code/ARAX/KnowledgeSources/Gandalf/gandalf_mmap
 
+code/ARAX/KnowledgeSources/GenericConcepts/data/*
+
 code/ARAX/NodeSynonymizer/*.tsv
 code/ARAX/NodeSynonymizer/*.pickle
 code/ARAX/NodeSynonymizer/kg2_synonyms.json
