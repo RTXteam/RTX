@@ -652,9 +652,11 @@ def test_xdtd_extra_edge_attributes_and_qualifiers():
     infer_edge_count = 0
 
     for edge_key, edge in message.knowledge_graph.edges.items():
-        if not edge_key.startswith("urn:uuid:"):
+        if edge_key.startswith("creative_DTD_prediction_"):
             continue
         if not edge.attributes:
+            continue
+        if not any(a.attribute_type_id == "metatype:Datetime" for a in edge.attributes):
             continue
         infer_edge_count += 1
 
@@ -689,4 +691,66 @@ def test_xdtd_extra_edge_attributes_and_qualifiers():
     assert found_qualifiers, (
         "No qualifiers (qualified_predicate, object_aspect_qualifier, etc.) "
         "found on any infer path edge"
+    )
+
+
+@pytest.mark.slow
+def test_xdtd_source_record_urls_in_retrieval_sources():
+    query = {
+        "message": {"query_graph": {
+            "edges": {
+                "t_edge": {
+                    "attribute_constraints": [],
+                    "knowledge_type": "inferred",
+                    "object": "on",
+                    "predicates": [
+                        "biolink:treats"
+                    ],
+                    "qualifier_constraints": [],
+                    "subject": "sn"
+                }
+            },
+            "nodes": {
+                "on": {
+                    "categories": [
+                        "biolink:Disease"
+                    ],
+                    "constraints": [],
+                    "ids": [
+                        "MONDO:0015564"
+                    ],
+                },
+                "sn": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ],
+                    "constraints": [],
+                }
+            }
+        }}
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
+
+    prediction_edge_keys = {k for k in message.knowledge_graph.edges if k.startswith("creative_DTD_prediction_")}
+    path_edge_keys = set(message.knowledge_graph.edges.keys()) - prediction_edge_keys
+
+    source_record_urls_found = False
+    for edge_key in path_edge_keys:
+        edge = message.knowledge_graph.edges[edge_key]
+        if not edge.sources:
+            continue
+        for source in edge.sources:
+            if source.source_record_urls:
+                source_record_urls_found = True
+                assert isinstance(source.source_record_urls, list)
+                assert len(source.source_record_urls) > 0
+                assert all(isinstance(url, str) for url in source.source_record_urls)
+                break
+        if source_record_urls_found:
+            break
+
+    assert source_record_urls_found, (
+        "No source_record_urls found in any RetrievalSource on explanation path edges"
     )

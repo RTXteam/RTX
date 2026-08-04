@@ -125,7 +125,8 @@ class xDTDMappingDB:
                 agent_type TEXT,
                 stage_qualifier TEXT,
                 original_subject TEXT,
-                original_object TEXT
+                original_object TEXT,
+                extra_attributes TEXT
             )
         """)
         self.conn.commit()
@@ -138,7 +139,7 @@ class xDTDMappingDB:
         """
         BATCH_SIZE = 50000
         NODE_INSERT = "INSERT INTO NODE_MAPPING_TABLE VALUES (?,?,?,?,?,?,?,?,?,?)"
-        EDGE_INSERT = "INSERT INTO EDGE_MAPPING_TABLE VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        EDGE_INSERT = "INSERT INTO EDGE_MAPPING_TABLE VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
         self.conn.execute("PRAGMA journal_mode = WAL")
         self.conn.execute("PRAGMA synchronous = OFF")
@@ -180,11 +181,19 @@ class xDTDMappingDB:
             self.conn.commit()
         print(f"INFO: Inserted {count} rows into NODE_MAPPING_TABLE", flush=True)
 
+    _CORE_EDGE_KEYS = frozenset({
+        'subject', 'predicate', 'object', 'id', 'category', 'qualifier',
+        'publications', 'sources', 'knowledge_level', 'agent_type',
+        'stage_qualifier', 'original_subject', 'original_object',
+    })
+
     def _insert_edges(self, jsonl_path: str, insert_sql: str, batch_size: int):
         """Parse edges.jsonl and batch-insert rows.
 
         Flattens the 'sources' array into pipe-delimited resource_id and resource_role strings
-        for efficient querying of primary knowledge sources.
+        for efficient querying of primary knowledge sources.  Any top-level keys not in
+        _CORE_EDGE_KEYS are collected into an ``extra_attributes`` JSON column so that
+        qualifiers and other metadata survive the round-trip.
         """
         batch: list = []
         count = 0
@@ -194,6 +203,7 @@ class xDTDMappingDB:
                 sources = d.get('sources', [])
                 resource_ids = '|'.join(s.get('resource_id', '') for s in sources)
                 resource_roles = '|'.join(s.get('resource_role', '') for s in sources)
+                extra = {k: v for k, v in d.items() if k not in self._CORE_EDGE_KEYS}
                 row = (
                     d['subject'],
                     d['predicate'],
@@ -210,6 +220,7 @@ class xDTDMappingDB:
                     d.get('stage_qualifier'),
                     d.get('original_subject'),
                     d.get('original_object'),
+                    json.dumps(extra) if extra else None,
                 )
                 batch.append(row)
                 count += 1

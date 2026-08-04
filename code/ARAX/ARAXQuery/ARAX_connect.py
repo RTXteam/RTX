@@ -1,6 +1,7 @@
 import json
 import sys
 
+import requests
 from RTXConfiguration import RTXConfiguration
 from pathfinder.Pathfinder import Pathfinder
 from xcrg import XCRGConfig, run_xcrg
@@ -15,7 +16,7 @@ import copy
 import time
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from Path_Finder.utility import get_curie_ngd_path, get_curie_to_pmids_path, get_kg2c_db_path, get_gandalf_mmap_path
+from Path_Finder.utility import get_curie_ngd_path, get_curie_to_pmids_path, get_kg2c_db_path
 from Expand.trapi_query_cacher import KPQueryCacher
 from ARAX_messenger import ARAXMessenger
 
@@ -462,10 +463,10 @@ class ARAXConnect:
         descendants = []
         if category_constraint:
             descendants = set(get_biolink_helper().get_descendants(category_constraint))
-
+        rtx_config = RTXConfiguration()
+        retriever_url = get_xcrg_retriever_url(rtx_config)
         pathfinder = Pathfinder(
-            "MLRepo",
-            get_gandalf_mmap_path(),
+            f"retriever:{retriever_url}",
             get_curie_ngd_path(),
             get_kg2c_db_path(),
             blocked_curies,
@@ -498,7 +499,7 @@ class ARAXConnect:
                                   f"with a max path length of {self.parameters['max_path_length']}.")
             return self.response
 
-        self.convert_to_trapi(result, aux_graphs, knowledge_graph)
+        self.convert_to_trapi(result, aux_graphs, knowledge_graph, retriever_url)
 
         mode = 'ARAX'
         if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
@@ -586,7 +587,7 @@ class ARAXConnect:
         synonyms = set(s.lower() for s in json_block_list['synonyms'])
         return set(json_block_list['curies']), synonyms
 
-    def convert_to_trapi(self, result, aux_graphs, knowledge_graph):
+    def convert_to_trapi(self, result, aux_graphs, knowledge_graph, retriever_url):
         if self.response.envelope.message.results is None:
             self.response.envelope.message.results = []
 
@@ -595,8 +596,8 @@ class ARAXConnect:
 
         if self.response.envelope.message.knowledge_graph is None:
             self.response.envelope.message.knowledge_graph = {}
-
-        kg = KnowledgeGraph().from_dict(knowledge_graph)
+        rehydrated_kg = self.rehydrate(knowledge_graph, retriever_url)
+        kg = KnowledgeGraph().from_dict(rehydrated_kg)
 
         analyses = []
         for analys in result['analyses']:
@@ -629,6 +630,47 @@ class ARAXConnect:
             )
         self.response.envelope.message.knowledge_graph.edges.update(kg.edges)
         self.response.envelope.message.knowledge_graph.nodes.update(kg.nodes)
+
+    def rehydrate(self, kg, retriever_url):
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        payload = {
+            "message": {
+                "knowledge_graph": kg
+            },
+            "parameters": {
+                "rehydrate": True,
+                "tier": 0
+            }
+        }
+
+        try:
+            res = requests.post(
+                retriever_url.replace("query", "rehydrate"), headers=headers, json=payload, timeout=30
+            )
+            res.raise_for_status()
+            return res.json()["message"]["knowledge_graph"]
+
+        except requests.exceptions.HTTPError as http_err:
+            self.response.error(f"HTTP error occurred: {http_err}")
+            if res.text:
+                self.response.error(f"Error details: {res.text}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            self.response.error(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            self.response.error(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            self.response.error(f"An unexpected error occurred: {req_err}")
+            raise req_err
+        except json.JSONDecodeError:
+            self.response.error("Failed to parse the response as JSON.")
+            self.response.error(f"Raw response: {res.text}")
+            raise json.JSONDecodeError
+        except Exception as e:
+            self.response.error(f"An unexpected error occurred: {e}")
+            raise e
 
 
 ##########################################################################################

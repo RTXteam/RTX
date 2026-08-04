@@ -138,7 +138,8 @@ class InferUtilities:
             retrieval_sources.append(RetrievalSource(
                 resource_id=s['resource_id'],
                 resource_role=s['resource_role'],
-                upstream_resource_ids=s.get('upstream_resource_ids') or None
+                upstream_resource_ids=s.get('upstream_resource_ids') or None,
+                source_record_urls=s.get('source_record_urls') or None
             ))
 
         retrieval_sources.append(RetrievalSource(
@@ -409,7 +410,7 @@ class InferUtilities:
                     # Add the edge to the knowledge graph
                     treat_score = node_id_to_score[canonical_id]
                     edge_attribute_list = [
-                        Attribute(original_attribute_name="created_datetime", value="2026-05-08", attribute_type_id="metatype:Datetime"),
+                        Attribute(original_attribute_name="created_datetime", value="2026-06-28", attribute_type_id="metatype:Datetime"),
                         Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score)),
                         Attribute(attribute_source=self.kp, attribute_type_id="biolink:agent_type", value="computational_model"),
                         Attribute(attribute_source=self.kp, attribute_type_id="biolink:knowledge_level", value="prediction"),
@@ -552,7 +553,7 @@ class InferUtilities:
                         primary_knowledge_source = self._get_primary_knowledge_source(edge_info)
                         new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[], qualifiers=[], sources=[])
                         edge_attribute_list = [
-                            Attribute(original_attribute_name="created_datetime", value="2026-05-08", attribute_type_id="metatype:Datetime"),
+                            Attribute(original_attribute_name="created_datetime", value="2026-06-28", attribute_type_id="metatype:Datetime"),
                             Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:agent_type", value=edge_info.agent_type),
                             Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:knowledge_level", value=edge_info.knowledge_level),
                         ]
@@ -642,7 +643,7 @@ class InferUtilities:
                     essence_scores[path_drug_node_info.name] = treat_score
                 
                 edge_attribute_list = [
-                    Attribute(original_attribute_name="created_datetime", value="2026-05-08", attribute_type_id="metatype:Datetime"),
+                    Attribute(original_attribute_name="created_datetime", value="2026-06-28", attribute_type_id="metatype:Datetime"),
                     Attribute(attribute_type_id="EDAM-DATA:0951", original_attribute_name="probability_treats", value=str(treat_score)),
                     Attribute(attribute_source=self.kp, attribute_type_id="biolink:agent_type", value="computational_model"),
                     Attribute(attribute_source=self.kp, attribute_type_id="biolink:knowledge_level", value="prediction"),
