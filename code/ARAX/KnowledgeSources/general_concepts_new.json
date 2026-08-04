@@ -1261,10 +1261,6 @@
             "name": "Pneumococcal Vaccines"
         },
         {
-            "curie": "MESH:D053260",
-            "name": "Soot"
-        },
-        {
             "curie": "MONDO:0000001",
             "name": "disease"
         },
@@ -17551,10 +17547,6 @@
         {
             "curie": "MONDO:0005039",
             "name": "reproductive system disorder"
-        },
-        {
-            "curie": "UMLS:C0242896",
-            "name": "Anticholinergic Agents"
         },
         {
             "curie": "MESH:D010860",
