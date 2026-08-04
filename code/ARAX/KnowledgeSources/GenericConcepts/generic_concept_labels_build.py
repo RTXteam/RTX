@@ -44,13 +44,8 @@ NODES_TABLE = os.path.join(BASE_DIR, "data", "nodes_table.parquet")
 OUTPUT_FILE = os.path.expanduser(
     "~/Desktop/code/generic_concept_training.parquet")
 SUPPLEMENTAL_POS = os.path.expanduser(
-    "~/Desktop/code/confirmed_generics.txt")
-HARD_NEGATIVES = os.path.expanduser("~/Desktop/code/hard_negatives.txt")
-
-# Pseudo-negatives per positive. Sampling none of them inverts the model:
-# trained against curated hard negatives alone it learns that any low-degree
-# obscure node is generic. The random draw supplies the ordinary specific
-# nodes that anchor the boundary.
+    "~/Desktop/code/llm_confirmed_generics.txt")
+HARD_NEGATIVES = os.path.expanduser("~/Desktop/code/llm_hard_negatives.txt")
 NEG_PER_POS = 10
 SEED = 2654
 
@@ -113,8 +108,6 @@ def main() -> None:
 
     confirmed = read_ids(SUPPLEMENTAL_POS)
     positives = curated | confirmed
-    # A node confirmed generic never becomes a negative, whatever an
-    # earlier review round said about it.
     hard_neg = read_ids(HARD_NEGATIVES) - positives
 
     features = label(features, positives, hard_neg, rng)
@@ -129,9 +122,6 @@ def main() -> None:
           f"   random draw + hard {len(hard_neg):,}")
     print(f"  unlabeled (-1): {counts.get(-1, 0):>9,}")
 
-    # A shortfall means the positives file names nodes the feature build
-    # never saw, which would point at the two passes disagreeing about the
-    # graph rather than at anything to do with labelling.
     if matched != len(positives):
         print(f"\n  warning: {len(positives) - matched:,} of "
               f"{len(positives):,} curated positives are absent from "

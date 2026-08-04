@@ -351,8 +351,6 @@ def main() -> None:
         NODES_TABLE,
         columns=["id", "most_specific_category", "information_content",
                  "description"])
-    # Only presence matters downstream, and the text itself is several
-    # hundred MB, so collapse it before anything else is allocated.
     nodes["has_description"] = nodes["description"].notna()
     nodes = nodes.drop(columns=["description"])
 
@@ -377,10 +375,6 @@ def main() -> None:
 
     table[["id", "predicted"]].to_parquet(PREDICTIONS, index=False)
     print(f"\nwrote {len(table):,} predictions to {PREDICTIONS}")
-
-    # Labelled rows keep their out-of-fold value. Using the full fit for
-    # them would hand the downstream classifier an in-sample prediction on
-    # a third of its training rows, which is a leaked feature.
     alpha = max(set(chosen), key=chosen.count)
     scored = score_all(embeddings, dummies, moments, alpha)
     scored[labelled] = predictions

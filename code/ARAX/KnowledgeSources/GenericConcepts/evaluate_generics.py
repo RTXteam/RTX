@@ -1,21 +1,3 @@
-"""
-Acceptance test for the predicted IC feature (issue-2654).
-
-Joins the hand-labelled generic concepts to the out-of-fold predictions
-from predict_ic.py and measures how far they fall below the rest of the
-graph. Separation is what matters rather than accuracy: the downstream
-classifier splits on a threshold, so the feature earns its place if
-generics sit low on the predicted scale, calibrated or not.
-
-Input:
-    PREDICTIONS: id and predicted IC, written by predict_ic.py.
-    POSITIVES: hand-labelled generic concepts.
-    NODES_TABLE: curated information_content, to contrast with predicted.
-
-Output:
-    Coverage, distribution, recall and the worst misses, to stdout.
-"""
-
 import os
 
 import numpy as np
@@ -33,19 +15,6 @@ NAME_WIDTH = 46
 
 
 def load() -> tuple[int, pd.DataFrame, np.ndarray]:
-    """
-    Join the labelled generics to their predictions.
-
-    Input:
-        None. Reads the module-level paths.
-
-    Output:
-        The number of labelled generics, those carrying a prediction with
-        their curated IC where one exists, and the predicted values over
-        the whole graph as the comparison population. Curated IC is left
-        null rather than dropped: two thirds of the generics have none, and
-        they are the population the feature exists to reach.
-    """
     predictions = pd.read_parquet(PREDICTIONS).rename(
         columns={"predicted_ic": "predicted"})
     positives = pd.read_parquet(POSITIVES, columns=["id", "name"])

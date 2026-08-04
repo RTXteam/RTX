@@ -17,10 +17,7 @@ NODE_EMBEDDINGS = os.path.expanduser(
     "~/Desktop/code/large_files/node_embeddings.npy")
 CHUNK_SIZE = 50_000
 
-# The biolink "category" list is inconsistently ordered across nodes (some
-# specificity-first, some alphabetical), so category[0] is not reliably the most
-# specific type. Pick the most specific by skipping umbrella, union ("...Or..."),
-# and mixin pseudo-classes.
+
 _GENERIC_CATS = {
     "biolink:NamedThing", "biolink:Entity", "biolink:BiologicalEntity",
     "biolink:OntologyClass", "biolink:ThingWithTaxon",
@@ -92,24 +89,6 @@ def entropy(counter: Counter) -> float:
 
 def category_centroid_similarity(ids: pd.Series, categories: pd.Series,
                                  embeddings: np.ndarray) -> pd.DataFrame:
-    """
-    Measure how typical each node is of its own category.
-
-    A generic concept sits near the middle of its category's cloud in
-    embedding space, because it is close to the average of everything the
-    category contains. Specific ones sit out at the edge.
-
-    Input:
-        ids: node ids, in the same row order as embeddings.
-        categories: most specific category per node, same order.
-        embeddings: memmapped unit-norm embeddings, one row per node.
-
-    Output:
-        id and cos_to_category_centroid. Two chunked passes: one to
-        accumulate a centroid per category, one to score against it. The
-        embeddings are unit-norm, so the cosine is a dot product against
-        the normalised centroid.
-    """
     codes, levels = pd.factorize(categories)
     sums = np.zeros((len(levels), embeddings.shape[1]))
     counts = np.zeros(len(levels))
@@ -155,8 +134,6 @@ for nid, cat in own_cat.items():
 
 features = pd.DataFrame(rows)
 
-# Joined on id rather than row position: the embeddings are aligned to
-# nodes_table.parquet, which was built by a separate pass over nodes.jsonl.
 nodes = pd.read_parquet(NODES_TABLE,
                         columns=["id", "most_specific_category"])
 embeddings = np.load(NODE_EMBEDDINGS, mmap_mode="r")
@@ -165,10 +142,6 @@ centroid = category_centroid_similarity(
 
 features = features.merge(pd.read_parquet(PREDICTED_IC), on="id", how="left")
 features = features.merge(centroid, on="id", how="left")
-
-# Trees split one feature at a time and can never reconstruct a difference
-# between two of them, so the disagreement between the curated and the
-# semantic estimate has to be handed over precomputed.
 features["ic_minus_predicted_ic"] = (features["information_content"]
                                      - features["predicted_ic"])
 
