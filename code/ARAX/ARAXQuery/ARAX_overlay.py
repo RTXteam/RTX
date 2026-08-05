@@ -2,20 +2,17 @@
 import sys
 
 
-def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
-
-
 import os
 import json
 import ast
-import re
 import numpy as np
 from ARAX_response import ARAXResponse
 from collections import Counter
 import traceback
-import itertools
 
-from ARAX_decorator import ARAXDecorator
+from Overlay.fisher_exact_test import ComputeFTEST
+
+def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 
 class ARAXOverlay:
@@ -35,7 +32,6 @@ class ARAXOverlay:
             'overlay_exposures_data'
         }
         self.report_stats = True
-        self.decorator = ARAXDecorator()
 
         # parameter descriptions
         self.default_value_info = {
@@ -446,11 +442,11 @@ This information is included in edge attributes with the name 'icees_p-value'.
                     f"Supplied parameter {key} is not permitted. Allowable parameters are: {list(allowable_parameters.keys())}",
                     error_code="UnknownParameter")
             elif item not in allowable_parameters[key]:
-                if any([type(x) == float for x in allowable_parameters[key]]) or any([type(x) == int for x in
-                                                                                      allowable_parameters[
-                                                                                          key]]):  # if it's a float or int, just accept it as it is
+                if any([isinstance(x, float) for x in allowable_parameters[key]]) or any([isinstance(x, int) for x in
+                                                                                          allowable_parameters[
+                                                                                              key]]):  # if it's a float or int, just accept it as it is
                     return
-                elif key == "virtual_relation_label" and type(item) == str:
+                elif key == "virtual_relation_label" and isinstance(item, str):
                     return
                 else:  # otherwise, it's really not an allowable parameter
                     self.response.error(
@@ -479,8 +475,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
         if response is None:
             response = ARAXResponse()
         self.response = response
-        self.message = response.envelope.message
-
+        message = response.envelope.message
+        self.message = message
+        kg = message.knowledge_graph
         #### Basic checks on arguments
         if not isinstance(input_parameters, dict):
             response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
@@ -512,21 +509,29 @@ This information is included in edge attributes with the name 'icees_p-value'.
         self.parameters = parameters
 
         response.debug(
-            f"Applying Overlay to Message with parameters {parameters}")  # TODO: re-write this to be more specific about the actual action
+            # TODO: re-write this to be more specific about the actual action
+            f"Applying Overlay to Message with parameters {parameters}")
 
         # Don't try to overlay anything if the KG is empty
-        message = response.envelope.message
-        if not message.knowledge_graph or not message.knowledge_graph.nodes:
-            response.debug(f"Nothing to overlay (KG is empty)")
+        if not kg or not kg.nodes:
+            response.debug("Nothing to overlay (KG is empty)")
             return response
         # Don't try to overlay anything if any of the specified qnodes aren't fulfilled in the KG
-        possible_node_params = {"subject_qnode_key", "object_qnode_key", "start_node_key", "intermediate_node_key",
+        possible_node_params = {"subject_qnode_key",
+                                "object_qnode_key",
+                                "start_node_key",
+                                "intermediate_node_key",
                                 "end_node_key"}
         node_params_to_check = set(self.parameters).intersection(possible_node_params)
         qnode_keys_to_check = {self.parameters[node_param] for node_param in node_params_to_check}
-        if not all(any(node for node in message.knowledge_graph.nodes.values() if qnode_key in node.qnode_keys)
-                   for qnode_key in qnode_keys_to_check):
-            response.debug(f"Nothing to overlay (one or more of the specified qnodes is not fulfilled in the KG)")
+        response.debug(f"Checking for KG fulfillment for qnode keys: {qnode_keys_to_check}")
+        qnode_keys_not_fulfilled = {qnode_key
+                                    for qnode_key in qnode_keys_to_check
+                                    if not any(node for node in kg.nodes.values()
+                                               if qnode_key in (getattr(node, 'qnode_keys', None) or []))}
+        if qnode_keys_not_fulfilled:
+            response.debug("Nothing to overlay (one or more of the specified qnodes is not "
+                           f"fulfilled in the KG): {qnode_keys_not_fulfilled}")
             return response
 
         # convert the action string to a function call (so I don't need a ton of if statements
@@ -606,7 +611,11 @@ This information is included in edge attributes with the name 'icees_p-value'.
         from Overlay.compute_ngd import ComputeNGD
         NGD = ComputeNGD(self.response, self.message, parameters)
         response = NGD.compute_ngd()
-        self.decorator.decorate_edges(response, kind="NGD")
+        # NGD edges already carry biolink:publications natively (the PMID
+        # intersection is added in compute_ngd.py). The previous call to
+        # decorator.decorate_edges(kind="NGD") was borrowing supporting_text
+        # from any other Tier0 edge between the same node pair; that data
+        # is no longer in the slim tier0-info-for-overlay sqlite (per #2731).
         return response
 
     def __overlay_clinical_info(self, describe=False):  # TODO: put the default paramas and all that other goodness in
@@ -733,11 +742,11 @@ This information is included in edge attributes with the name 'icees_p-value'.
                 else:
                     try:
                         pass_params[key] = int(value)
-                    except:
+                    except Exception:
                         tb = traceback.format_exc()
                         error_type, error, _ = sys.exc_info()
                         self.response.error(tb, error_code=error_type.__name__)
-                        self.response.error(f"parameter 'max_num' must be an integer")
+                        self.response.error("parameter 'max_num' must be an integer")
         if self.response.status != 'OK':
             return self.response
 
@@ -942,9 +951,9 @@ This information is included in edge attributes with the name 'icees_p-value'.
                     del self.parameters['top_n']
             elif self.parameters['filter_type'] == 'top_n':
                 self.parameters['top_n'] = self.parameters['value']
-                if type(self.parameters['top_n']) == float:
+                if isinstance(self.parameters['top_n'], float):
                     self.response.error(
-                        f"Supplied value {self.parameters['top_n']} is not permitted. If 'top_n' is supplied for the 'filter_type' parameter, then the 'value' parameter cannot be a float it must be an integer or None.",
+                        f"Supplied value {self.parameters['top_n']} is not permitted. If 'top_n' is supplied for the 'filter_type' parameter, then the 'value' parameter cannot be a float; it must be an integer or None.",
                         error_code="UnknownValue")
                 if 'cutoff' in self.parameters:
                     del self.parameters['cutoff']
@@ -952,7 +961,6 @@ This information is included in edge attributes with the name 'icees_p-value'.
             return self.response
 
         # now do the call out to FTEST
-        from Overlay.fisher_exact_test import ComputeFTEST
         FTEST = ComputeFTEST(self.response, self.message, self.parameters)
         response = FTEST.fisher_exact_test()
         return response
@@ -1106,4 +1114,5 @@ def main():
     # print(actions_parser.parse(actions_list))
 
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()

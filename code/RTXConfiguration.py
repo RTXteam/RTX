@@ -9,7 +9,7 @@ import json
 import time
 import timeit
 import re
-from typing import Optional
+from typing import Any, Optional
 
 import yaml
 from pygit2 import Repository, discover_repository
@@ -66,7 +66,7 @@ class RTXConfiguration:
             with open(f"{file_dir}/config.domain") as infile:
                 for line in infile:
                     self.domain = line.strip()
-        except:
+        except OSError:
             self.domain = '??'
         if DEBUG:
             t1 = timeit.default_timer()
@@ -167,24 +167,31 @@ class RTXConfiguration:
         self.curie_to_pmids_version = self.curie_to_pmids_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.curie_ngd_path = database_downloads["curie_ngd"]
         self.curie_ngd_version = self.curie_ngd_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.node_synonymizer_path = database_downloads["node_synonymizer"]
-        self.node_synonymizer_version = self.node_synonymizer_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.kg2c_sqlite_path = database_downloads["kg2c_sqlite"]
         self.kg2c_sqlite_version = self.kg2c_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.kg2c_meta_kg_path = database_downloads["kg2c_meta_kg"]
-        self.kg2c_meta_kg_version = self.kg2c_meta_kg_path.split('/')[-1].split('_v')[-1].replace('.json', '')
+        self.tier0_sqlite_path = database_downloads["tier0_sqlite"]
+        self.tier0_sqlite_version = self.tier0_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.fda_approved_drugs_path = database_downloads["fda_approved_drugs"]
         self.fda_approved_drugs_version = self.fda_approved_drugs_path.split('/')[-1].split('_v')[-1].replace('.pickle', '')
         self.autocomplete_path = database_downloads["autocomplete"]
         self.autocomplete_version = self.autocomplete_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.explainable_dtd_db_path = database_downloads["explainable_dtd_db"]
         self.explainable_dtd_db_version = self.explainable_dtd_db_path.split('/')[-1].split('_v')[-1].replace('.db', '')
-        self.xcrg_embeddings_path = database_downloads["xcrg_embeddings"]
-        self.xcrg_embeddings_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.npz', '')
-        self.xcrg_increase_model_path = database_downloads["xcrg_increase_model"]
-        self.xcrg_increase_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
-        self.xcrg_decrease_model_path = database_downloads["xcrg_decrease_model"]
-        self.xcrg_decrease_model_version = self.xcrg_embeddings_path.split('/')[-1].split('_v')[-1].replace('.pt', '')
+
+        # Legacy model-based xCRG paths are retained for old creativeCRG code
+        # compatibility only. These files are no longer managed by
+        # ARAXDatabaseManager or config_dbs.json; the new package-backed
+        # connect(action=xcrg) path is model-free and does not use them.
+        legacy_xcrg_data_dir = f"{file_dir}/ARAX/ARAXQuery/Infer/data/xCRG_data"
+        self.xcrg_embeddings_path = (
+            f"{legacy_xcrg_data_dir}/chemical_gene_embeddings_v1.0.KG2.10.0_refreshedTo_KG2.10.2.npz"
+        )
+        self.xcrg_increase_model_path = (
+            f"{legacy_xcrg_data_dir}/xcrg_increase_model_v1.0.KG2.10.0_new_version.pt"
+        )
+        self.xcrg_decrease_model_path = (
+            f"{legacy_xcrg_data_dir}/xcrg_decrease_model_v1.0.KG2.10.0_new_version.pt"
+        )
 
         # Set up mysql feedback
         self.mysql_feedback_host = self.config_secrets["mysql_feedback"]["host"]
@@ -240,8 +247,8 @@ class RTXConfiguration:
                     'password': config_secrets["neo4j"][kg2_type]["password"]}
 
     @staticmethod
-    def load_openapi_json(yaml_path: str, t0: any) -> dict:
-        # YAML is super slow to ready, so refresh a JSON if necessary or read the JSON, which is much faster
+    def load_openapi_json(yaml_path: str, t0: Any) -> dict:
+        # YAML is super slow to read, so refresh a JSON if necessary or read the JSON, which is much faster
         json_path = yaml_path.replace(".yaml", ".json")
         if not os.path.exists(json_path) or os.path.getmtime(yaml_path) > os.path.getmtime(json_path):
             if DEBUG:
@@ -265,6 +272,13 @@ class RTXConfiguration:
                 print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Read OpenAPI JSON file")
         return openapi_configuration
 
+
+    def get_config_settings(self) -> dict:
+        config: dict[str, dict[str, Any]] = { "config": {} }
+        for v in vars(self):
+            if v.endswith(('version','_name')) or v in ['maturity','domain','is_itrb_instance','is_production_server']:
+                config['config'][v] = getattr(self, v)
+        return config
 
 
 def main():

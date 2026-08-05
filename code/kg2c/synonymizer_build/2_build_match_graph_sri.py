@@ -14,7 +14,7 @@ import pandas as pd
 import requests
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAX/BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 KG2C_DIR = f"{SCRIPT_DIR}/../"
@@ -64,7 +64,7 @@ def create_sri_match_graph(kg2pre_node_ids_set: Set[str]):
     sri_nodes_dict = dict()
     sri_edges_dict = dict()
     category_map = dict()
-    bh = BiolinkHelper()
+    bh = get_biolink_helper()
     for node_id_batch in kg2pre_node_id_batches:
         # Send the batch to the SRI NN RestAPI
         query_body = {

@@ -10,15 +10,34 @@ import datetime
 import json
 import time
 import argparse
+import shlex
+import subprocess
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration
+from RTXConfiguration import RTXConfiguration  # noqa: E402
 
 knowledge_sources_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
 versions_path = os.path.sep.join([knowledge_sources_filepath, 'db_versions.json'])
+
+# this will raise CalledProcessError if shell command `cmd` fails
+def _run_cmd_in_shell_chk_status(cmd: str) -> None:
+    try:
+        subprocess.run(cmd,
+                       shell=True,
+                       check=True,
+                       text=True,
+                       capture_output=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error running shell command: {cmd}", file=sys.stderr)
+        print(f"code: {e.returncode}", file=sys.stderr)
+        if e.stdout:
+            print(f"stdout:\n{e.stdout}", file=sys.stderr)
+        if e.stderr:
+            print(f"stderr:\n{e.stderr}", file=sys.stderr)
+        raise
 
 
 class ARAXDatabaseManager:
@@ -30,82 +49,53 @@ class ARAXDatabaseManager:
 
         pred_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
         if not  os.path.exists(pred_filepath):
-            os.system(f"mkdir -p {pred_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(pred_filepath)}")
         
         ngd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'NormalizedGoogleDistance'])
         if not  os.path.exists(ngd_filepath):
-            os.system(f"mkdir -p {ngd_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(ngd_filepath)}")
         
         cohd_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         if not  os.path.exists(cohd_filepath):
-            os.system(f"mkdir -p {cohd_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(cohd_filepath)}")
         
-        synonymizer_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer'])
-        if not  os.path.exists(synonymizer_filepath):
-            os.system(f"mkdir -p {synonymizer_filepath}")
-
         kg2c_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
         if not os.path.exists(kg2c_filepath):
-            os.system(f"mkdir -p {kg2c_filepath}")
-
-        kg2c_meta_kg_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
-        if not os.path.exists(kg2c_meta_kg_filepath):
-            os.system(f"mkdir -p {kg2c_meta_kg_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(kg2c_filepath)}")
 
         fda_approved_drugs_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
         if not os.path.exists(fda_approved_drugs_filepath):
-            os.system(f"mkdir -p {fda_approved_drugs_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(fda_approved_drugs_filepath)}")
 
         autocomplete_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'autocomplete'])
         if not os.path.exists(autocomplete_filepath):
-            os.system(f"mkdir -p {autocomplete_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(autocomplete_filepath)}")
 
         explainable_dtd_db_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Prediction'])
         if not os.path.exists(explainable_dtd_db_filepath):
-            os.system(f"mkdir -p {explainable_dtd_db_filepath}")
-
-        xcrg_embeddings_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
-        if not os.path.exists(xcrg_embeddings_filepath):
-            os.system(f"mkdir -p {xcrg_embeddings_filepath}")        
-
-        xcrg_increase_model_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
-        if not os.path.exists(xcrg_increase_model_filepath):
-            os.system(f"mkdir -p {xcrg_increase_model_filepath}")       
-
-        xcrg_decrease_model_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'data', 'xCRG_data'])
-        if not os.path.exists(xcrg_decrease_model_filepath):
-            os.system(f"mkdir -p {xcrg_decrease_model_filepath}")
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(explainable_dtd_db_filepath)}")
 
         self.local_paths = {
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'curie_ngd': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_ngd_path.split('/')[-1]}",
-            'node_synonymizer': f"{synonymizer_filepath}{os.path.sep}{self.RTXConfig.node_synonymizer_path.split('/')[-1]}",
             'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
-            'kg2c_meta_kg': f"{kg2c_meta_kg_filepath}{os.path.sep}{self.RTXConfig.kg2c_meta_kg_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
             'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}",
-            'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}",
-            'xcrg_embeddings': f"{xcrg_embeddings_filepath}{os.path.sep}{self.RTXConfig.xcrg_embeddings_path.split('/')[-1]}",
-            "xcrg_increase_model": f"{xcrg_increase_model_filepath}{os.path.sep}{self.RTXConfig.xcrg_increase_model_path.split('/')[-1]}",
-            "xcrg_decrease_model": f"{xcrg_decrease_model_filepath}{os.path.sep}{self.RTXConfig.xcrg_decrease_model_path.split('/')[-1]}"
+            'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}"
         }
 
         # Stores the "/KG2.X.Y/some_database_v1.0_KG2.X.Y.sqlite" portion of each database's path
         # This portion of the db path is the same on arax-databases.rtx.ai as it is on the ARAX docker instance
+        # Note: kg2c_meta_kg is excluded since we now use dynamic meta knowledge graph from PloverDB
         self.database_subpaths = {
             'cohd_database': self.get_database_subpath(self.RTXConfig.cohd_database_path),
             'curie_to_pmids': self.get_database_subpath(self.RTXConfig.curie_to_pmids_path),
             'curie_ngd': self.get_database_subpath(self.RTXConfig.curie_ngd_path),
-            'node_synonymizer': self.get_database_subpath(self.RTXConfig.node_synonymizer_path),
             'kg2c_sqlite': self.get_database_subpath(self.RTXConfig.kg2c_sqlite_path),
-            'kg2c_meta_kg': self.get_database_subpath(self.RTXConfig.kg2c_meta_kg_path),
             'fda_approved_drugs': self.get_database_subpath(self.RTXConfig.fda_approved_drugs_path),
             'autocomplete': self.get_database_subpath(self.RTXConfig.autocomplete_path),
-            'explainable_dtd_db': self.get_database_subpath(self.RTXConfig.explainable_dtd_db_path),
-            'xcrg_embeddings': self.get_database_subpath(self.RTXConfig.xcrg_embeddings_path),
-            "xcrg_increase_model": self.get_database_subpath(self.RTXConfig.xcrg_increase_model_path),
-            "xcrg_decrease_model": self.get_database_subpath(self.RTXConfig.xcrg_decrease_model_path)
+            'explainable_dtd_db': self.get_database_subpath(self.RTXConfig.explainable_dtd_db_path)
         }
         # user, host, and paths to databases on remote server dbs are downloaded from (arax-databases.rtx.ai)
         self.databases_server_dir_path = '/home/rtxconfig'
@@ -113,15 +103,10 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_remote_location('cohd_database'),
             'curie_to_pmids': self.get_remote_location('curie_to_pmids'),
             'curie_ngd': self.get_remote_location('curie_ngd'),
-            'node_synonymizer': self.get_remote_location('node_synonymizer'),
             'kg2c_sqlite': self.get_remote_location('kg2c_sqlite'),
-            'kg2c_meta_kg': self.get_remote_location('kg2c_meta_kg'),
             'fda_approved_drugs': self.get_remote_location('fda_approved_drugs'),
             'autocomplete': self.get_remote_location('autocomplete'),
-            'explainable_dtd_db': self.get_remote_location('explainable_dtd_db'),
-            'xcrg_embeddings': self.get_remote_location('xcrg_embeddings'),
-            'xcrg_increase_model': self.get_remote_location('xcrg_increase_model'),
-            'xcrg_decrease_model': self.get_remote_location('xcrg_decrease_model')
+            'explainable_dtd_db': self.get_remote_location('explainable_dtd_db')
         }
         # database locations if inside rtx1 docker container
         self.docker_databases_dir_path = '/mnt/data/orangeboard/databases'
@@ -129,15 +114,10 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_docker_path('cohd_database'),
             'curie_to_pmids': self.get_docker_path('curie_to_pmids'),
             'curie_ngd': self.get_docker_path('curie_ngd'),
-            'node_synonymizer': self.get_docker_path('node_synonymizer'),
             'kg2c_sqlite': self.get_docker_path('kg2c_sqlite'),
-            'kg2c_meta_kg': self.get_docker_path('kg2c_meta_kg'),
             'fda_approved_drugs': self.get_docker_path('fda_approved_drugs'),
             'autocomplete': self.get_docker_path('autocomplete'),
-            'explainable_dtd_db': self.get_docker_path('explainable_dtd_db'),
-            'xcrg_embeddings': self.get_docker_path('xcrg_embeddings'),
-            'xcrg_increase_model': self.get_docker_path('xcrg_increase_model'),
-            'xcrg_decrease_model': self.get_docker_path('xcrg_decrease_model')
+            'explainable_dtd_db': self.get_docker_path('explainable_dtd_db')
         }
 
         # database local paths + version numbers
@@ -154,17 +134,9 @@ class ARAXDatabaseManager:
                 'path': self.local_paths['curie_ngd'],
                 'version': self.RTXConfig.curie_ngd_version
             },
-            'node_synonymizer': {
-                'path': self.local_paths['node_synonymizer'],
-                'version': self.RTXConfig.node_synonymizer_version
-            },
             'kg2c_sqlite': {
                 'path': self.local_paths['kg2c_sqlite'],
                 'version': self.RTXConfig.kg2c_sqlite_version
-            },
-            'kg2c_meta_kg': {
-                'path': self.local_paths['kg2c_meta_kg'],
-                'version': self.RTXConfig.kg2c_meta_kg_version
             },
             'fda_approved_drugs': {
                 'path': self.local_paths['fda_approved_drugs'],
@@ -177,18 +149,6 @@ class ARAXDatabaseManager:
             'explainable_dtd_db': {
                 'path': self.local_paths['explainable_dtd_db'],
                 'version': self.RTXConfig.explainable_dtd_db_version
-            },
-            'xcrg_embeddings': {
-                'path': self.local_paths['xcrg_embeddings'],
-                'version': self.RTXConfig.xcrg_embeddings_version
-            },
-            'xcrg_increase_model': {
-                'path': self.local_paths['xcrg_increase_model'],
-                'version': self.RTXConfig.xcrg_increase_model_version
-            },
-            'xcrg_decrease_model': {
-                'path': self.local_paths['xcrg_decrease_model'],
-                'version': self.RTXConfig.xcrg_decrease_model_version
             }
         }
 
@@ -235,7 +195,7 @@ class ARAXDatabaseManager:
                         if debug:
                             eprint("Download successful. Removing local version...")
                         if os.path.exists(local_versions[database_name]['path']):
-                            os.system(f"rm {local_versions[database_name]['path']}") 
+                            _run_cmd_in_shell_chk_status(f"rm {shlex.quote(local_versions[database_name]['path'])}") 
                     else:
                         if debug:
                             eprint(f"Error downloading {database_name} leaving local copy.")
@@ -251,6 +211,18 @@ class ARAXDatabaseManager:
                                             local_destination_path=self.local_paths[database_name],
                                             local_symlink_target_path=self.docker_central_paths[database_name],
                                             debug=debug)
+                # tarball is present but the unpacked dir next to the real archive
+                # is missing; re-extract in place without re-running rsync
+                # realpath follows the symlink to the docker-central side so the
+                # check matches where _extract_tarball actually puts the unpacked dir.
+                elif local_path.endswith('.tar.gz') and not os.path.isdir(
+                        os.path.join(os.path.dirname(os.path.realpath(local_path)), database_name)):
+                    if debug:
+                        eprint(f"{database_name}: tarball symlink present at {local_path} "
+                               f"but unpacked dir is missing, re-extracting...")
+                    if response is not None:
+                        response.debug(f"Re-extracting tarball for {database_name}...")
+                    self._extract_tarball(local_path, debug=debug)
                 else:
                     if debug:
                         eprint(f"Local version of {database_name} ({local_path}) matches the remote version, skipping...")
@@ -259,10 +231,63 @@ class ARAXDatabaseManager:
             if debug:
                 eprint("No local verson json file present. Downloading all databases...")
             if response is not None:
-                response.debug(f"No local verson json file present. Downloading all databases...")
+                response.debug("No local verson json file present. Downloading all databases...")
             self._force_download_all(debug=debug)
             self._write_db_versions_file()
         return response
+
+    def symlink_from_central_and_write_versions(self, debug=False):
+        """
+        For each configured database, create a symlink at self.local_paths[name]
+        pointing to the pre-downloaded central copy at self.docker_central_paths[name],
+        then write db_versions.json (only if its contents would change). Never downloads
+        and never extracts tarballs. Aborts with FileNotFoundError if any central copy
+        is missing.
+        """
+        # Pre-flight: collect ALL missing central files so the caller sees the full picture
+        missing = [(n, self.docker_central_paths[n])
+                   for n in self.local_paths
+                   if not os.path.exists(self.docker_central_paths[n])]
+        if missing:
+            details = "\n".join(f"  {n}: {p}" for n, p in missing)
+            raise FileNotFoundError(
+                f"Central database file(s) not found; cannot symlink:\n{details}"
+            )
+
+        for name, local_path in self.local_paths.items():
+            target = self.docker_central_paths[name]
+
+            if os.path.lexists(local_path):
+                if os.path.islink(local_path) and os.readlink(local_path) == target:
+                    if debug:
+                        eprint(f"{name}: symlink already correct at {local_path}")
+                elif os.path.islink(local_path):
+                    if debug:
+                        eprint(f"{name}: replacing stale symlink {local_path} -> {target}")
+                    os.remove(local_path)
+                    self.symlink_database(symlink_path=local_path, target_path=target)
+                else:
+                    # Real file/dir at the RTX-side path: refuse to clobber.
+                    raise FileExistsError(
+                        f"{name}: {local_path} exists and is not a symlink; refusing to overwrite"
+                    )
+            else:
+                if debug:
+                    eprint(f"{name}: symlinking {local_path} -> {target}")
+                self.symlink_database(symlink_path=local_path, target_path=target)
+
+        # Only rewrite db_versions.json if its content would actually change
+        existing = None
+        if os.path.exists(versions_path):
+            try:
+                with open(versions_path, "r") as fid:
+                    existing = json.load(fid)
+            except (json.JSONDecodeError, OSError):
+                existing = None  # corrupt/unreadable → treat as needing a rewrite
+        if existing != self.db_versions:
+            self._write_db_versions_file(debug=debug)
+        elif debug:
+            eprint(f"db_versions.json already matches; not rewriting {versions_path}")
 
     @staticmethod
     def get_database_subpath(path: str) -> str:
@@ -320,19 +345,40 @@ class ARAXDatabaseManager:
             return True
 
     def _download_database(self, remote_location, local_destination_path, local_symlink_target_path, debug=False):
-        if local_symlink_target_path is not None and os.path.exists(local_symlink_target_path): # if on the server symlink instead of downloading
+        # on the docker host symlink to the central copy; otherwise rsync from arax-databases.rtx.ai
+        if local_symlink_target_path is not None and os.path.exists(local_symlink_target_path):
             self.symlink_database(symlink_path=local_destination_path, target_path=local_symlink_target_path)
         else:
             self.rsync_database(remote_location=remote_location, local_path=local_destination_path, debug=debug)
 
+        # for tar.gz entries, also unpack so the database dir is present next to the archive
+        if local_destination_path.endswith('.tar.gz') and os.path.exists(local_destination_path):
+            self._extract_tarball(local_destination_path, debug=debug)
+
+    def _extract_tarball(self, tarball_path, debug=False):
+        # follow the symlink to the real archive so extraction lands next to the
+        # docker-central tarball,
+        # not next to the RTX-side symlink. realpath is a no-op on dev machines
+        # where the path is already a real file.
+        resolved = os.path.realpath(tarball_path)
+        tarball_extracted_indicator_file = f"{resolved}-unpacked"
+        extraction_dir = os.path.dirname(resolved)
+        if not os.path.exists(tarball_extracted_indicator_file):
+            if debug:
+                eprint(f"Extracting {resolved} into {extraction_dir}...")
+            _run_cmd_in_shell_chk_status(f"tar -xzf {shlex.quote(resolved)} -C {shlex.quote(extraction_dir)}")
+            _run_cmd_in_shell_chk_status(f"touch {shlex.quote(tarball_extracted_indicator_file)}")
+        else:
+            eprint(f"Looks like we have previously extracted: {resolved}")
+
     def symlink_database(self, symlink_path, target_path):
-        os.system(f"ln -s {target_path} {symlink_path}")
+        _run_cmd_in_shell_chk_status(f"ln -s {shlex.quote(target_path)} {shlex.quote(symlink_path)}")
 
     def rsync_database(self, remote_location, local_path, debug=False):
         verbose = ""
         if debug:
             verbose = "vv"
-        os.system(f"rsync -Lhzc{verbose} --progress {remote_location} {local_path}")
+        _run_cmd_in_shell_chk_status(f"rsync -Lhzc{verbose} --progress {shlex.quote(remote_location)} {shlex.quote(local_path)}")
 
     def _download_to_mnt(self, debug=False, skip_if_exists=False, remove_unused=False):
         """
@@ -347,7 +393,7 @@ class ARAXDatabaseManager:
             if not os.path.exists(database_dir):
                 if debug:
                     print(f"Creating directory {database_dir}...")
-                os.system(f"mkdir -p {database_dir}")
+                _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(database_dir)}")
             docker_host_local_path = self.docker_central_paths[database_name]
             if not skip_if_exists or not os.path.exists(docker_host_local_path):
                 remote_location = self.remote_locations[database_name]
@@ -359,7 +405,7 @@ class ARAXDatabaseManager:
                                         local_symlink_target_path=None,
                                         debug=debug)
             else:
-                print(f"  Database already exists, no need to download") if debug else None
+                print("  Database already exists, no need to download") if debug else None
        
     def _force_download_all(self, debug=False):
         for database_name in self.remote_locations.keys():
@@ -373,7 +419,7 @@ class ARAXDatabaseManager:
     def check_all(self, max_days=31, debug=False):
         update_flag = False
         for database_name, file_path in self.local_paths.items():
-            if os.path.exitss(file_path):
+            if os.path.exists(file_path):
                 if debug:
                     now_time = datetime.datetime.now()
                     modified_time = time.localtime(os.stat(file_path).st_mtime)
@@ -412,7 +458,7 @@ class ARAXDatabaseManager:
                     db_file_path = f"{kg2_dir_path}/{db_file_name}"
                     if os.path.isfile(db_file_path) and db_file_name not in db_names:
                         print(f"Removing unused db file {db_file_path}")
-                        os.system(f"rm -f {db_file_path}")
+                        _run_cmd_in_shell_chk_status(f"rm -f {shlex.quote(db_file_path)}")
 
 
 def main():
@@ -427,13 +473,13 @@ def main():
     arguments = parser.parse_args()
     DBManager = ARAXDatabaseManager(allow_downloads=True)
 
-    print(f"Local paths:")
+    print("Local paths:")
     for db_name, path in DBManager.local_paths.items():
         print(f"  {db_name}: {path}")
-    print(f"Remote locations:")
+    print("Remote locations:")
     for db_name, path in DBManager.remote_locations.items():
         print(f"  {db_name}: {path}")
-    print(f"Docker paths:")
+    print("Docker paths:")
     for db_name, path in DBManager.docker_central_paths.items():
         print(f"  {db_name}: {path}")
 

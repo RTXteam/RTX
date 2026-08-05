@@ -216,7 +216,7 @@ is a knowledge graph comprising 7.5M nodes and 34.3M relationships
 that is built by integrating concepts and concept-predicate-concept triples
 obtained from:
 
-1. Unified Medical Language System (UMLS; including SNOMED CT)
+1. Unified Medical Language System (UMLS)
 2. NCBI Genes
 3. Ensembl Genes
 4. UniChem
@@ -252,21 +252,6 @@ literature co-occurrence information, ARAX uses a pre-indexed version of PubMed
 (indexed for Medical Subject Heading or MeSH terms). For any concepts that
 cannot be mapped to MeSH, ARAX queries PubMed via a web API.
 
-## Identifier mapping
-
-RTX's reasoning code uses several different web services for on-the-fly mapping
-between certain identifier types:
-1. Ontology Lookup Service 
-2. MyChem.info
-3. Disease Ontology
-4. PubChem
-5. NCBI eUtils
-6. Human Metabolome Database
-
-A computable file enumerating and summarizing the external APIs that are
-used by ARAX/RTX, in YAML format, can be found
-[here](code/ARAX/KnowledgeSources/API_LIST.yaml). 
-
 # Team Expander Agent: who we are
 
 Our team includes investigators from Oregon State University, the Pennsylvania
@@ -277,8 +262,8 @@ Netherlands.
 
 | Name           | Role                                        | Email                             | GitHub username                               | Areas of relevant expertise      |
 | -------------- | ------------------------------------------- | --------------------------------- | --------------------------------------------- | -------------------------------- |
-| Stephen&nbsp;Ramsey | OSU                 | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
 | David&nbsp;Koslicki | PSU                   | `dmk333@psu.edu`                  | [dkoslicki](https://github.com/dkoslicki)     | compbio, graph algorithms        |
+| Stephen&nbsp;Ramsey | OSU                 | `stephen.ramsey@oregonstate.edu`  | [saramsey](https://github.com/saramsey)       | compbio, systems biology         |
 | Eric&nbsp;Deutsch   | ISB           | `eric.deutsch@systemsbiology.org` | [edeutsch](https://github.com/edeutsch)       | bioinformatics, data management, standards development  | 
 
 ## Team members
@@ -287,11 +272,9 @@ Netherlands.
 | ---------------- | ----------------------------- | ------------------------------------- | --------------------------------------------------- | --------------------------- |
 | Jared&nbsp;Roach      | ISB | `jared.roach@systemsbiology.org`      |                                                     | genomics, genetics, medicine, systems biology | 
 | Luis&nbsp;Mendoza     | ISB | `luis.mendoza@systemsbiology.org`     | [isbluis](https://github.com/isbluis)               | software engineering, proteomics, systems biology |
-| Finn&nbsp;Womack           | OSU       | `womackf@oregonstate.edu`        | [finnagin](https://github.com/finnagin)   | drug repositioning, Neo4j  |
-| Amy&nbsp;Glen           | OSU       | `glena@oregonstate.edu`        | [amykglen](https://github.com/amykglen)   | knowledge graphs  |
-| Arun&nbsp;Muluka          | PSU       | `avm6604@psu.edu`        | [aruntejam1](https://github.com/aruntejam1)   | knowledge graphs  |
 | Chunyu&nbsp;Ma        | PSU     | `cqm5886@psu.edu` | [chunyuma](https://github.com/chunyuma) | programmer/analyst | 
 | Sundareswar&nbsp;Pullela | OSU  | `pullelas@oregonstate.edu` | [sundareswarpullela](https://github.com/sundareswarpullela) | programmer, knowledge graphs |
+| Adilbek Bazarkulov | OSU  | `bazarkua@oregonstate.edu` | [bazarkua](https://github.com/bazarkua) | programmer, knowledge graphs |
 
 For our work on the Translator program, we also extensively
 collaborate and cooperate with investigators at Oregon Health &amp; Science
@@ -459,7 +442,7 @@ ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
 - 16 vCPUs
 - 64 GiB of RAM
 - 1,023 GiB of elastic block storage
-- host OS Ubuntu v18.04. 
+- host OS Ubuntu v22.04. 
 
 The host OS has nginx v1.14.0 installed and configured
 (see `notes/ARAX/rtx-host-os-nginx-config` for configuration details) for
@@ -478,9 +461,9 @@ follows (host-port:container-port):
 `notes/ARAX/arax-run-container-nodes.md`). Within the Docker container,
 ARAX uses
 
-- Ubuntu v16.04
+- Ubuntu v20.04
 - Apache v2.4.18 
-- python v3.7.3
+- python v3.9
 - Neo4j v3.2.6 (see [`code/reasoningtool/kg-construction`](code/reasoningtool/kg-construction) on how to set up Neo4j for running ARAX/RTX)
 - OpenJDK v1.8.0_131
 - mysql v5.7.19-0ubuntu0.16.04.1
@@ -493,8 +476,6 @@ SQLite v3.11.0.
 
 The best way to contact Team Expander Agent is by 
 
-- sending an email message to
-**[`expander.agent@gmail.com`](mailto:expander.agent@gmail.com)**
 - logging an [issue](../../issues/) in this GitHub repository
 - (for members of the Biomedical Data Translator consortium) messaging us on the
 [NCATS Translator Slack](https://ncatstranslator.slack.com). 
@@ -506,7 +487,7 @@ See also the contact information for the Team Expander Agent PIs above.
 ## ...in your web browser
 
 Here is the link to access the web browser interface to RTX:
-[arax.rtx.ai](https://arax.rtx.ai)
+[arax.transltr.io](https://arax.transltr.io)
 
 ## ...using our web API
 

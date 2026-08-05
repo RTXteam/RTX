@@ -79,7 +79,7 @@ class QueryNCBIeUtils:
             return None
         except BaseException as e:
             print(url_str, file=sys.stderr)
-            print('%s received in QueryMiRGate for URL: %s' % (e, url_str), file=sys.stderr)
+            print('%s received in QueryNCBIeUtils for URL: %s' % (e, url_str), file=sys.stderr)
             return None
         status_code = res.status_code
         if status_code != 200:
@@ -587,7 +587,7 @@ class QueryNCBIeUtils:
         df = pandas.read_csv(StringIO(r.content.decode('utf-8')), sep='\t')
         search = df.loc[0, 'Entry name']  # initializes search term variable
         if type(df.loc[0, 'Protein names']) == str:
-            for name in re.compile("[()\[\]]").split(df.loc[0, 'Protein names']):  # checks for protein section
+            for name in re.compile(r"[()\[\]]").split(df.loc[0, 'Protein names']):  # checks for protein section
                 if len(name) > 1:
                     if QueryNCBIeUtils.is_mesh_term(name):
                         search += '|' + name + '[MeSH Terms]'

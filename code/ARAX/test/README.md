@@ -17,7 +17,7 @@ A test can be marked with more than one tag (e.g., slow *and* external).
 Example: Running `pytest -v --runslow --runexternal` will include all tests.
 
 #### Helpful tips:
-You can list the top, say, 10 slowest tests by adding the flag `--durations=10`.
+You can list the top 10 slowest tests by adding the flag `--durations=10`.
 
 Use the `-s` option to display output (it's suppressed by default, unless a test fails).
 

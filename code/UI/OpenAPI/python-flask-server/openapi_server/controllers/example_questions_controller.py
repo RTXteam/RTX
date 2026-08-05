@@ -1,18 +1,14 @@
-import connexion
-import six
-
-from openapi_server import util
-
-from QuestionExamples import QuestionExamples
-
-
-def example_questions():  # noqa: E501
+def example_questions(request_body=None):  # noqa: E501
     """Request a list of example questions that ARAX can answer
 
      # noqa: E501
 
 
-    :rtype: List[object]
+    :rtype: list[dict[str, str]]
     """
-    exampleQuestions = QuestionExamples()
-    return(exampleQuestions.questions)
+    return [{
+            "status": "501",
+            "title": "/exampleQuestions not implemented",
+            "detail": "The /exampleQuestions function used to work, "
+            "but has been disabled", "type": "about:blank"
+    }], 501

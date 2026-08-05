@@ -13,6 +13,7 @@ from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
 from knowledge_graph_info import KnowledgeGraphInfo
 from ARAX_messenger import ARAXMessenger
+from xcrg import is_xcrg_mvp2_query
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
@@ -66,9 +67,30 @@ class ARAXQueryGraphInterpreter:
 
         # Detect a "pathfinder" QueryGraph pattern in the query and branch off to different behavior
         if hasattr(message.query_graph, 'paths') and message.query_graph.paths is not None and len(message.query_graph.paths) > 0:
+            # Note: This logging message is keyed off to provide progress updates to the RTX front-end.
             response.info("QueryGraphInterpreter recognized query_graph as a 'pathfinder' query: triggering pathfinder subsystem.")
+
+            max_pathfinder_paths_str = ''
+            if 'max_pathfinder_paths' in response.envelope.query_options:
+                max_pathfinder_paths_str = f", max_pathfinder_paths={response.envelope.query_options['max_pathfinder_paths']}"
+                response.info(f"QueryGraphInterpreter setting max_pathfinder_paths={response.envelope.query_options['max_pathfinder_paths']}")
+
+            max_path_length_str = ', max_path_length=4'
+            if 'max_path_length' in response.envelope.query_options:
+                max_path_length_str = f", max_path_length={response.envelope.query_options['max_path_length']}"
+                response.info(f"QueryGraphInterpreter setting max_path_length={response.envelope.query_options['max_path_length']}")
+
             response.data['araxi_commands'] = [
-                'connect(action=connect_nodes, max_path_length=4)',
+                f"connect(action=connect_nodes{max_path_length_str}{max_pathfinder_paths_str})",
+            ]
+            return response
+
+        if is_xcrg_mvp2_query(response.envelope.to_dict()):
+            response.info(
+                "QueryGraphInterpreter recognized query_graph as an xCRG MVP2 query: triggering xCRG subsystem."
+            )
+            response.data['araxi_commands'] = [
+                'connect(action=xcrg)',
             ]
             return response
 
@@ -90,6 +112,7 @@ class ARAXQueryGraphInterpreter:
         if n_inferred_edges > 1:
             pathfinder = True
         if pathfinder is True:
+            # Note: This logging message is keyed off to provide progress updates to the RTX front-end.
             response.info("QueryGraphInterpreter recognized query_graph as a 'pathfinder' query: triggering pathfinder subsystem.")
             response.data['araxi_commands'] = [
                 'connect(action=connect_nodes, max_path_length=4)',

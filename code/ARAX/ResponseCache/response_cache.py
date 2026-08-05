@@ -20,6 +20,7 @@ import requests_cache
 from flask import Flask,redirect
 import copy
 import multiprocessing
+from importlib import metadata
 
 import boto3
 import timeit
@@ -28,7 +29,7 @@ import shutil
 
 import sqlalchemy
 from sqlalchemy import Column, ForeignKey, Integer, Float, String, DateTime, Text, PickleType, LargeBinary
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -47,8 +48,14 @@ from ARAX_attribute_parser import ARAXAttributeParser
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response as Envelope
 
-trapi_version = '1.5.0'
-biolink_version = '4.2.1'
+# only certain versions of TRAPI can be validated; place default in position [0]
+valid_trapi_versions = ['1.6.0', '1.5.0']
+biolink_version = '4.4.2'
+
+try:
+    validator_version = f"{metadata.version('reasoner-validator')}"
+except metadata.PackageNotFoundError:
+    validator_version = ""
 
 component_cache_dir = os.path.dirname(os.path.abspath(__file__))+"/json_cache"
 if os.path.exists(component_cache_dir):
@@ -211,8 +218,12 @@ class ResponseCache:
     #### Store a new response into the database
     def add_new_response(self,response):
 
+        #### Run connect again because if the object has been lying around for a while the connection may have been lost
+        self.connect()
+
         DEBUG = True
         session = self.session
+
         envelope = response.envelope
         message = envelope.message
 
@@ -279,7 +290,7 @@ class ResponseCache:
                 s3.Object(bucket_name, response_filename).put(Body=serialized_response)
                 t1 = timeit.default_timer()
 
-                response.info(f"INFO: Successfully wrote {response_filename} to {region_name} S3 bucket {bucket_name} in {t1-t0} seconds")
+                response.info(f"Successfully wrote {response_filename} to {region_name} S3 bucket {bucket_name} in {t1-t0} seconds")
                 succeeded_to_s3 = True
 
             except:
@@ -403,8 +414,10 @@ class ResponseCache:
 
 
                 #### Perform a validation on it
-                enable_validation = False
-                schema_version = trapi_version
+                enable_validation = True
+                schema_version = valid_trapi_versions[0]
+                if 'schema_version' in envelope and envelope['schema_version'] in valid_trapi_versions:
+                    schema_version = envelope['schema_version']
                 if enable_validation:
                     #if True:
                     try:
@@ -414,10 +427,12 @@ class ResponseCache:
                         validator = TRAPIResponseValidator(trapi_version=schema_version, biolink_version=biolink_version)
                         validator.check_compliance_of_trapi_response(envelope)
                         validation_messages_text = validator.dumps()
+                        validation_messages_text = validation_messages_text[:120] + '...truncated'
                         raw_messages: Dict[str, List[Dict[str,str]]] = validator.get_all_messages()
                         messages = raw_messages['Validate TRAPI Response']['Standards Test']
                         #eprint(json.dumps(messages, indent=2, sort_keys=True))
 
+                        envelope['validation_result'] = { 'status': '?', 'version': schema_version, 'message': 'Internal error', 'validation_messages': messages, 'validation_messages_text': validation_messages_text, 'validator_version': validator_version }
                         critical_errors = 0
                         errors = 0
                         if 'critical' in messages and len(messages['critical']) > 0:
@@ -425,11 +440,14 @@ class ResponseCache:
                         if 'error' in messages and len(messages['error']) > 0:
                             errors = len(messages['error'])
                         if critical_errors > 0:
-                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'FAIL'
+                            envelope['validation_result']['message'] = 'There were critical validator errors'
                         elif errors > 0:
-                            envelope['validation_result'] = { 'status': 'ERROR', 'version': schema_version, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'ERROR'
+                            envelope['validation_result']['message'] = 'There were validator errors'
                         else:
-                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'PASS'
+                            envelope['validation_result']['message'] = ''
 
                     #else:
                     except Exception as error:
@@ -497,10 +515,10 @@ class ResponseCache:
 
 
             #### Perform a validation on it
-            enable_validation = False
-            schema_version = trapi_version
-            #if 'schema_version' in envelope:
-            #    schema_version = envelope['schema_version']
+            enable_validation = True
+            schema_version = valid_trapi_versions[0]
+            if 'schema_version' in envelope and envelope['schema_version'] in valid_trapi_versions:
+                schema_version = envelope['schema_version']
             try:
                 if enable_validation:
 
@@ -558,20 +576,20 @@ class ResponseCache:
             if response_id.startswith('Z'):
                 return( { "status": 404, "title": f"Cached component not found", "detail": f"The component cache has been cleared since the initial request. Refresh the entire response", "type": "about:blank" }, 404)
 
-            #### If it started with X, then turn off the default attribute stripping mode
-            attribute_caching = True
+            #### If the UUID starts with X, then enable attribute stripping mode and attribute caching, which makes the GUI faster
+            attribute_caching = False
             original_response_id = response_id
             if response_id.startswith('X'):
-                attribute_caching = False
+                attribute_caching = True
                 response_id = response_id[1:]
 
-            ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io', 'ars.transltr.io' ]
+            ars_hosts = [ 'ars-prod.transltr.io', 'ars.test.transltr.io', 'ars.ci.transltr.io', 'ars-dev.transltr.io' ]
             for ars_host in ars_hosts:
                 with requests_cache.disabled():
                     if debug:
                         eprint(f"Trying {ars_host}...")
                     try:
-                        response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'})
+                        response_content = requests.get(f"https://{ars_host}/ars/api/messages/"+response_id, headers={'accept': 'application/json'}, timeout=15)
                     except Exception as e:
                         return( { "status": 404, "title": f"Remote host {ars_host} unavailable", "detail": f"Connection attempts to {ars_host} triggered an exception: {e}", "type": "about:blank" }, 404)
                 status_code = response_content.status_code
@@ -637,7 +655,10 @@ class ResponseCache:
                     return( { "status": 404, "title": "Error decoding Response", "detail": "Cannot decode ARS response_id="+str(response_id)+" to a Translator Response", "type": "about:blank" }, 404)
 
                 response_dict['ars_host'] = ars_host
-                response_dict['ui_host'] = ars_host.replace('ars','ui').replace('-prod','')
+                if "-dev" in ars_host:
+                    response_dict['ui_host'] = 'transltr-bma-ui-dev.ncats.io'
+                else:
+                    response_dict['ui_host'] = ars_host.replace('ars','ui').replace('-prod','')
 
                 return response_dict
 
@@ -725,13 +746,15 @@ class ResponseCache:
                     is_trapi = False
 
                 if not is_trapi:
-                    envelope['validation_result'] = { 'status': 'NA', 'version': trapi_version, 'size': content_size, 'message': 'Returned response is not TRAPI: ' + actual_response }
+                    envelope['validation_result'] = { 'status': 'NA', 'version': valid_trapi_versions[0], 'size': content_size, 'message': 'Returned response is not TRAPI: ' + actual_response }
                     return envelope
 
 
                 #### Perform a validation on it
                 enable_validation = True
-                schema_version = trapi_version
+                schema_version = valid_trapi_versions[0]
+                if 'schema_version' in envelope and envelope['schema_version'] in valid_trapi_versions:
+                    schema_version = envelope['schema_version']
                 try:
                     if enable_validation:
 
@@ -744,7 +767,9 @@ class ResponseCache:
                         raw_messages: Dict[str, List[Dict[str,str]]] = validator.get_all_messages()
                         messages = raw_messages['Validate TRAPI Response']['Standards Test']
                         validation_messages_text = validator.dumps()
+                        validation_messages_text = validation_messages_text[:120] + '...truncated'
 
+                        envelope['validation_result'] = { 'status': '?', 'version': schema_version, 'size': content_size, 'message': 'Internal error', 'validation_messages': messages, 'validation_messages_text': validation_messages_text, 'validator_version': validator_version }
                         critical_errors = 0
                         errors = 0
                         if 'critical' in messages and len(messages['critical']) > 0:
@@ -752,11 +777,14 @@ class ResponseCache:
                         if 'error' in messages and len(messages['error']) > 0:
                             errors = len(messages['error'])
                         if critical_errors > 0:
-                            envelope['validation_result'] = { 'status': 'FAIL', 'version': schema_version, 'size': content_size, 'message': 'There were critical validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'FAIL'
+                            envelope['validation_result']['message'] = 'There were critical validator errors'
                         elif errors > 0:
-                            envelope['validation_result'] = { 'status': 'ERROR', 'version': schema_version, 'size': content_size, 'message': 'There were validator errors', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'ERROR'
+                            envelope['validation_result']['message'] = 'There were validator errors'
                         else:
-                            envelope['validation_result'] = { 'status': 'PASS', 'version': schema_version, 'size': content_size, 'message': '', 'validation_messages': messages, 'validation_messages_text': validation_messages_text }
+                            envelope['validation_result']['status'] = 'PASS'
+                            envelope['validation_result']['message'] = ''
 
                     else:
                         envelope['validation_result'] = { 'status': 'DISABLED', 'version': schema_version, 'message': 'Validation disabled.', 'validation_messages': { "critical": {}, "error": {}, "warning": {}, "info": { "message": 'Validation has been temporarily disabled due to various problems running it. It may return if the problems can be resolved.' } } }
@@ -900,17 +928,17 @@ class ResponseCache:
     ##################################################################################################
     #### Fetch the configs stored in the MySQL server
     def get_configs(self):
+
         session = self.session
+        configs = {}
+
+        #configs['S3BucketMigrationDatetime'] = '2023-10-11 15:00:00'
+        #return configs
 
         query_result = session.query(ResponseCacheConfigSetting).all()
 
-        configs = {}
         for row in query_result:
-            #print(row.__dict__)
             configs[row.key] = row.value
-
-        #### Force value for testing code logic on one instance endpoint only:
-        #configs['S3BucketMigrationDatetime'] = '2023-10-11 15:00:00'
 
         return configs
 

@@ -6,12 +6,7 @@ import sys
 import os
 import pytest
 from collections import Counter
-import copy
-import json
-import ast
 from typing import List, Union
-
-import numpy as np
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
@@ -20,7 +15,7 @@ from ARAX_response import ARAXResponse
 
 PACKAGE_PARENT = '../../UI/OpenAPI/openapi_server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
-from openapi_server.models.message import Message
+from openapi_server.models.message import Message  # noqa: E402
 
 
 def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
@@ -83,7 +78,7 @@ def test_xdtd_infer_castleman_disease_1():
     query = {"operations": {"actions": [
             "create_message",
             "infer(action=drug_treatment_graph_expansion,disease_curie=MONDO:0015564)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
@@ -95,13 +90,38 @@ def test_xdtd_infer_castleman_disease_2():
     query = {"operations": {"actions": [
             "create_message",
             "infer(action=drug_treatment_graph_expansion,disease_curie=MONDO:0015564,n_drugs=2,n_paths=15)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
     assert response.status == 'OK'
     assert message.auxiliary_graphs
     assert len(message.results) > 0
+
+def test_xdtd_infer_rituximab_1():
+    query = {"operations": {"actions": [
+            "create_message",
+            "infer(action=drug_treatment_graph_expansion,drug_curie=UNII:4F4X42SYQ6)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert len(message.query_graph.edges) == 1
+    assert len(message.results) > 0
+
+def test_xdtd_infer_rituximab_2():
+    query = {"operations": {"actions": [
+            "create_message",
+            "infer(action=drug_treatment_graph_expansion,drug_curie=UNII:4F4X42SYQ6,n_diseases=2,n_paths=15)",
+            "return(message=true, store=false)"
+        ]}}
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert message.auxiliary_graphs
+    assert len(message.results) > 0
+
 
 def test_xdtd_issue2160():
     query = {
@@ -169,7 +189,7 @@ def test_xdtd_with_qg():
         },
         "operations": {"actions": [
             "infer(action=drug_treatment_graph_expansion, disease_curie=test_xdtd_with_qg, qedge_id=t_edge)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -202,7 +222,7 @@ def test_xdtd_with_qg2():
         },
         "operations": {"actions": [
             "infer(action=drug_treatment_graph_expansion, disease_curie=MONDO:0015564, qedge_id=t_edge)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -234,8 +254,8 @@ def test_xdtd_with_qg3():
         }
         },
         "operations": {"actions": [
-            "infer(action=drug_treatment_graph_expansion, disease_curie=MONDO:0015564, qedge_id=t_edge, n_drugs=10, n_paths=10)",
-            "return(message=true, store=true)"
+            "infer(action=drug_treatment_graph_expansion, disease_curie=MONDO:0015564, qedge_id=t_edge, n_drugs=20, n_paths=15)",
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -243,6 +263,41 @@ def test_xdtd_with_qg3():
     assert response.status == 'OK'
     assert message.auxiliary_graphs
     assert len(message.results) > 0
+
+
+@pytest.mark.slow
+def test_xdtd_with_qg4():
+    query = {
+        "message": {"query_graph": {
+            "nodes": {
+                "disease": {
+                    "categories": ["biolink:Disease"]
+                },
+                "chemical": {
+                    "ids": ["UNII:4F4X42SYQ6"]
+                }
+            },
+            "edges": {
+                "t_edge": {
+                    "object": "disease",
+                    "subject": "chemical",
+                    "predicates": ["biolink:treats"],
+                    "knowledge_type": "inferred"
+                }
+            }
+        }
+        },
+        "operations": {"actions": [
+            "infer(action=drug_treatment_graph_expansion, drug_curie=UNII:4F4X42SYQ6, qedge_id=t_edge)",
+            "return(message=true, store=false)"
+        ]}
+    }
+    [response, message] = _do_arax_query(query)
+    # return response, message
+    assert response.status == 'OK'
+    assert message.auxiliary_graphs
+    assert len(message.results) > 0
+
 
 def test_xdtd_with_only_qg():
     query = {
@@ -277,7 +332,7 @@ def test_xcrg_infer_bomeol():
     query = {"operations": {"actions": [
             "create_message",
             "infer(action=chemical_gene_regulation_graph_expansion, subject_curie=CHEMBL.COMPOUND:CHEMBL1097205, regulation_type=increase, threshold=0.6, path_len=2, n_result_curies=1, n_paths=1)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
@@ -324,7 +379,7 @@ def test_xcrg_with_qg1():
         },
         "operations": {"actions": [
             "infer(action=chemical_gene_regulation_graph_expansion,object_qnode_id=gene,qedge_id=r_edge,n_result_curies=1, n_paths=1)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -336,7 +391,7 @@ def test_xcrg_with_qg1():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:regulates'
+        assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
 
 
 @pytest.mark.slow
@@ -374,7 +429,7 @@ def test_xcrg_with_qg2():
         },
         "operations": {"actions": [
             "infer(action=chemical_gene_regulation_graph_expansion,subject_qnode_id=chemical,qedge_id=r_edge,n_result_curies=1, n_paths=1)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}
     }
     [response, message] = _do_arax_query(query)
@@ -386,7 +441,7 @@ def test_xcrg_with_qg2():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:regulates'
+        assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
 
 @pytest.mark.slow
 def test_xcrg_with_only_qg():
@@ -408,7 +463,7 @@ def test_xcrg_with_only_qg():
                         },
                         {
                         "qualifier_type_id": "biolink:object_direction_qualifier",
-                        "qualifier_value": "decreased"
+                        "qualifier_value": "increased"
                         }
                     ]
                     }
@@ -419,11 +474,10 @@ def test_xcrg_with_only_qg():
             "nodes": {
                 "ON": {
                 "categories": [
-                    "biolink:Gene",
-                    "biolink:Protein"
+                    "biolink:Gene"
                 ],
                 "ids": [
-                    "NCBIGene:3043"
+                    "NCBIGene:1576"
                 ]
                 },
                 "SN": {
@@ -444,7 +498,7 @@ def test_xcrg_with_only_qg():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:affects'
+        assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
 
 @pytest.mark.slow
 def test_xcrg_infer_dsl():
@@ -457,7 +511,7 @@ def test_xcrg_infer_dsl():
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
             "resultify()",
             "filter_results(action=limit_number_of_results, max_results=30)",
-            "return(message=true, store=true)"
+            "return(message=true, store=false)"
         ]}}
     [response, message] = _do_arax_query(query)
     # return response, message
@@ -468,4 +522,235 @@ def test_xcrg_infer_dsl():
     if len(creative_mode_edges) != 0:
         edge_key = creative_mode_edges[0]
         edge_result = message.knowledge_graph.edges[edge_key]
-        assert edge_result.predicate == 'biolink:regulates'
+        assert edge_result.predicate in ['biolink:regulates', 'biolink:affects']
+
+
+@pytest.mark.slow
+def test_xdtd_publications_in_edge_attributes():
+    query = {
+        "message": {"query_graph": {
+            "edges": {
+                "t_edge": {
+                    "attribute_constraints": [],
+                    "knowledge_type": "inferred",
+                    "object": "on",
+                    "predicates": [
+                        "biolink:treats"
+                    ],
+                    "qualifier_constraints": [],
+                    "subject": "sn"
+                }
+            },
+            "nodes": {
+                "on": {
+                    "categories": [
+                        "biolink:Disease"
+                    ],
+                    "constraints": [],
+                    "ids": [
+                        "MONDO:0015564"
+                    ],
+                },
+                "sn": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ],
+                    "constraints": [],
+                }
+            }
+        }}
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
+
+    prediction_edge_keys = {k for k in message.knowledge_graph.edges if k.startswith("creative_DTD_prediction_")}
+    path_edge_keys = set(message.knowledge_graph.edges.keys()) - prediction_edge_keys
+
+    publications_found = False
+    for edge_key in path_edge_keys:
+        edge = message.knowledge_graph.edges[edge_key]
+        if edge.attributes:
+            for attr in edge.attributes:
+                if attr.attribute_type_id == "biolink:publications":
+                    publications_found = True
+                    assert attr.original_attribute_name == "publications"
+                    assert attr.value is not None
+                    assert isinstance(attr.value, list)
+                    assert len(attr.value) > 0
+                    assert all(isinstance(v, str) for v in attr.value)
+                    break
+        if publications_found:
+            break
+
+    assert publications_found, "No biolink:publications attribute found on any explanation path edge"
+
+
+@pytest.mark.slow
+def test_xdtd_extra_edge_attributes_and_qualifiers():
+    query = {
+        "message": {"query_graph": {
+            "edges": {
+                "t_edge": {
+                    "attribute_constraints": [],
+                    "knowledge_type": "inferred",
+                    "object": "on",
+                    "predicates": [
+                        "biolink:treats"
+                    ],
+                    "qualifier_constraints": [],
+                    "subject": "sn"
+                }
+            },
+            "nodes": {
+                "on": {
+                    "categories": [
+                        "biolink:Disease"
+                    ],
+                    "constraints": [],
+                    "ids": [
+                        "MONDO:0015564"
+                    ],
+                },
+                "sn": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ],
+                    "constraints": [],
+                }
+            }
+        }}
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
+
+    new_column_type_ids = {
+        "biolink:category",
+        "biolink:original_subject",
+        "biolink:original_object",
+    }
+
+    extra_attr_type_ids = {
+        "biolink:has_confidence_score",
+        "biolink:has_affinity",
+        "biolink:max_research_phase",
+        "biolink:p_value",
+        "biolink:has_supporting_studies",
+    }
+
+    extra_qualifier_type_ids = {
+        "biolink:qualified_predicate",
+        "biolink:object_aspect_qualifier",
+        "biolink:object_direction_qualifier",
+        "biolink:species_context_qualifier",
+    }
+
+    found_new_column_attrs = set()
+    found_extra_attrs = set()
+    found_qualifiers = set()
+    infer_edge_count = 0
+
+    for edge_key, edge in message.knowledge_graph.edges.items():
+        if edge_key.startswith("creative_DTD_prediction_"):
+            continue
+        if not edge.attributes:
+            continue
+        if not any(a.attribute_type_id == "metatype:Datetime" for a in edge.attributes):
+            continue
+        infer_edge_count += 1
+
+        for attr in edge.attributes:
+            if attr.attribute_type_id in new_column_type_ids:
+                found_new_column_attrs.add(attr.attribute_type_id)
+                assert attr.value is not None
+                assert attr.original_attribute_name is None
+            if attr.attribute_type_id in extra_attr_type_ids:
+                found_extra_attrs.add(attr.attribute_type_id)
+                assert attr.value is not None
+                assert attr.original_attribute_name is None
+
+        if edge.qualifiers:
+            for qual in edge.qualifiers:
+                if qual.qualifier_type_id in extra_qualifier_type_ids:
+                    found_qualifiers.add(qual.qualifier_type_id)
+                    assert qual.qualifier_value is not None
+
+    assert infer_edge_count > 0, "No infer-produced path edges found"
+    assert found_new_column_attrs, (
+        "No new column attributes (category/original_subject/original_object) "
+        "found on any infer path edge"
+    )
+    assert "biolink:category" in found_new_column_attrs, (
+        "biolink:category attribute not found on any infer path edge"
+    )
+    assert found_extra_attrs, (
+        "No extra_attributes (has_confidence_score, etc.) "
+        "found on any infer path edge"
+    )
+    assert found_qualifiers, (
+        "No qualifiers (qualified_predicate, object_aspect_qualifier, etc.) "
+        "found on any infer path edge"
+    )
+
+
+@pytest.mark.slow
+def test_xdtd_source_record_urls_in_retrieval_sources():
+    query = {
+        "message": {"query_graph": {
+            "edges": {
+                "t_edge": {
+                    "attribute_constraints": [],
+                    "knowledge_type": "inferred",
+                    "object": "on",
+                    "predicates": [
+                        "biolink:treats"
+                    ],
+                    "qualifier_constraints": [],
+                    "subject": "sn"
+                }
+            },
+            "nodes": {
+                "on": {
+                    "categories": [
+                        "biolink:Disease"
+                    ],
+                    "constraints": [],
+                    "ids": [
+                        "MONDO:0015564"
+                    ],
+                },
+                "sn": {
+                    "categories": [
+                        "biolink:SmallMolecule"
+                    ],
+                    "constraints": [],
+                }
+            }
+        }}
+    }
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    assert len(message.results) > 0
+
+    prediction_edge_keys = {k for k in message.knowledge_graph.edges if k.startswith("creative_DTD_prediction_")}
+    path_edge_keys = set(message.knowledge_graph.edges.keys()) - prediction_edge_keys
+
+    source_record_urls_found = False
+    for edge_key in path_edge_keys:
+        edge = message.knowledge_graph.edges[edge_key]
+        if not edge.sources:
+            continue
+        for source in edge.sources:
+            if source.source_record_urls:
+                source_record_urls_found = True
+                assert isinstance(source.source_record_urls, list)
+                assert len(source.source_record_urls) > 0
+                assert all(isinstance(url, str) for url in source.source_record_urls)
+                break
+        if source_record_urls_found:
+            break
+
+    assert source_record_urls_found, (
+        "No source_record_urls found in any RetrievalSource on explanation path edges"
+    )

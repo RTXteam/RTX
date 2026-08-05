@@ -42,9 +42,6 @@ ssh -q -oStrictHostKeyChecking=no araxconfig@araxconfig.rtx.ai exit
 # copy the config secrets file into the RTX/code directory
 scp araxconfig@araxconfig.rtx.ai:config_secrets.json RTX/code
 
-# create an override to point to the local RTX-KG2 API
-echo "http://localhost:5008/api/rtxkg2/v1.2" > RTX/code/kg2_url_override.txt
-
 # download the database files (this step takes a long time)
 python3 RTX/code/ARAX/ARAXQuery/ARAX_database_manager.py --mnt --skip-if-exists
 
@@ -59,10 +56,8 @@ cp RTX/DockerBuild/Merged-Dockerfile .
 # EOF
 # --------------------------------------------------------------------------------------------------
 
-sed -i 's/checkout production/checkout master/g' ./Merged-Dockerfile  # for issue 1740; temporary fix during code freeze until commit `ffbd287` can be merged to `production` branch
-
 # build the Docker image
-sudo docker build --file ./Merged-Dockerfile --no-cache --rm --tag arax:1.0 ./RTX/DockerBuild/
+sudo docker build --file ./Dockerfile --no-cache --rm --tag arax:1.0 ./RTX/DockerBuild/
 
 # create the Docker container
 sudo docker create --name arax --tty --publish "${port_number}":80 \
@@ -74,7 +69,7 @@ sudo docker start arax
 
 # copy the config files into the devareas in the container
 
-for devarea in kg2 production
+for devarea in production
 do
     sudo docker cp RTX/code/config_secrets.json arax:${arax_base}/${devarea}/RTX/code
     sudo docker exec arax chown rt.rt ${arax_base}/${devarea}/RTX/code/config_secrets.json
@@ -84,6 +79,5 @@ done
 
 # start all the services
 sudo docker exec arax service apache2 start
-sudo docker exec arax service RTX_OpenAPI_kg2 start
 sudo docker exec arax service RTX_OpenAPI_production start
-sudo docker exec arax service RTX_Complete start
+sudo docker exec arax service RTX_Complete start  # this is autocomplete; can be commented out for a simple test of ARAX

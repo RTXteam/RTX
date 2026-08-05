@@ -1,6 +1,6 @@
 # Code for the RTX Proof-of-Concept software 
 
-### Subdirectory `ARAX`
+### Subdirectory `ARAX`  
 
 - Contains the code for the ARAX system; see the [RTX/ARAX main repository page](..) for a high-level overview.
 

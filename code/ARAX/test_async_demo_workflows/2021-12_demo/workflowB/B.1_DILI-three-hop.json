@@ -20,7 +20,7 @@
                 "e01": {
                     "subject": "n0",
                     "object": "n1",
-                    "predicates": ["biolink:has_real_world_evidence_of_association_with"]
+                    "predicates": ["biolink:associated_with"]
                 },
                 "e02": {
                     "subject": "n2",

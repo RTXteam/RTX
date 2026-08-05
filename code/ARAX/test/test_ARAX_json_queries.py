@@ -138,7 +138,7 @@ def test_workflow1():
                 "id": "fill",
                 "parameters": {
                     "allowlist": [
-                        "infores:rtx-kg2"
+                        "infores:retriever"
                     ],
                     "qedge_keys": [
                         "e00"
@@ -159,7 +159,7 @@ def test_workflow1():
                         "subject": "n00",
                         "object": "n01",
                         "predicates": [
-                            "biolink:physically_interacts_with"
+                            "biolink:interacts_with"
                         ]
                     }
                 },
@@ -171,7 +171,7 @@ def test_workflow1():
                     },
                     "n01": {
                         "categories": [
-                            "biolink:Protein"
+                            "biolink:Gene"
                         ]
                     }
                 }
@@ -180,7 +180,7 @@ def test_workflow1():
     }
     nodes_by_qg_id, edges_by_qg_id, response = _run_query_and_do_standard_testing(json_query=query)
     essences = [x.to_dict()['essence'].upper() for x in response.envelope.message.results]
-    assert 'VANILLOID RECEPTOR' in essences
+    assert 'PTGS2' in essences
 
 @pytest.mark.slow
 def test_workflow2():
@@ -193,7 +193,7 @@ def test_workflow2():
                 "id": "fill",
                 "parameters": {
                     "allowlist": [
-                        "infores:rtx-kg2",
+                        "infores:retriever",
                         "infores:biothings-explorer"
                     ],
                     "qedge_keys": [
@@ -213,7 +213,7 @@ def test_workflow2():
                 "id": "fill",
                 "parameters": {
                     "allowlist": [
-                        "infores:rtx-kg2",
+                        "infores:retriever",
                         "infores:biothings-explorer"
                     ]
                 }
@@ -234,7 +234,7 @@ def test_workflow2():
                 "id": "fill",
                 "parameters": {
                     "allowlist": [
-                        "infores:rtx-kg2",
+                        "infores:retriever",
                         "infores:biothings-explorer"
                     ],
                     "qedge_keys": [

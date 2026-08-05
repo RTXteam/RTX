@@ -1,0 +1,5 @@
+./code/ARAX/ARAXQuery/Overlay/ngd/build_ngd_database.py
+./code/ARAX/KnowledgeSources/generate_fda_pickle.py
+./code/ARAX/KnowledgeSources/generate_sqlite.py
+./code/autocomplete/create_load_db.py
+./code/autocomplete/extract_names_ids.py

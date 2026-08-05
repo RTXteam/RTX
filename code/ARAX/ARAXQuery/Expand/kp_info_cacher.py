@@ -6,34 +6,32 @@ The cached information includes metadata about KPs and their APIs, as well as in
 import os
 import pathlib
 import pickle
-import sys
-from datetime import datetime, timedelta
-from typing import Set, Dict, Optional
-
 import requests
 import requests_cache
-import time
+import sys
+from datetime import datetime, timedelta
+from typing import Optional
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../")
+
+from RTXConfiguration import RTXConfiguration
+from ARAX_response import ARAXResponse
+from smartapi import SmartAPI
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
-pathlist = os.path.realpath(__file__).split(os.path.sep)
-rtx_index = pathlist.index("RTX")
-
-sys.path.append(os.path.sep.join([*pathlist[:(rtx_index + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration
-sys.path.append(os.path.sep.join([*pathlist[:(rtx_index + 1)], 'code', 'ARAX', 'ARAXQuery']))
-from ARAX_response import ARAXResponse
-sys.path.append(os.path.sep.join([*pathlist[:(rtx_index + 1)], 'code', 'ARAX', 'ARAXQuery', 'Expand']))
-from smartapi import SmartAPI
-
 
 class KPInfoCacher:
+
 
     def __init__(self):
         self.rtx_config = RTXConfiguration()
         version_string = f"{self.rtx_config.trapi_major_version}--{self.rtx_config.maturity}"
         self.cache_refresh_pid_path = f"{os.path.dirname(os.path.abspath(__file__))}/cache_refresh.pid"
         self.smart_api_and_meta_map_cache = f"{os.path.dirname(os.path.abspath(__file__))}/cache_smart_api_and_meta_map_{version_string}.pkl"
+        self.forced_kp_version = '1.6.0'
 
     def refresh_kp_info_caches(self):
         """
@@ -49,10 +47,15 @@ class KPInfoCacher:
         try:
             # Grab KP registrations from Smart API
             smart_api_helper = SmartAPI()
-            smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
+            #smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.rtx_config.trapi_major_version,
+            #                                                                             req_maturity=self.rtx_config.maturity)
+            # When we start advertising that ARAX is TRAPI 1.6.0, we still want to use 1.5.0 KPs.
+            # This is a hack to be removed when we are ready to roll out TRAPI 2.0
+            smart_api_kp_registrations = smart_api_helper.get_all_trapi_kp_registrations(trapi_version=self.forced_kp_version,
                                                                                          req_maturity=self.rtx_config.maturity)
+
             if not smart_api_kp_registrations:
-                print(f"Didn't get any KP registrations back from SmartAPI!")
+                eprint("Didn't get any KP registrations back from SmartAPI!")
             previous_cache_exists = pathlib.Path(self.smart_api_and_meta_map_cache).exists()
             if smart_api_kp_registrations or not previous_cache_exists:
                 # Transform the info into the format we want
@@ -64,7 +67,7 @@ class KPInfoCacher:
                                             "kps_excluded_by_maturity": smart_api_helper.kps_excluded_by_maturity}
                 
             else:
-                eprint(f"Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
+                eprint("Keeping pre-existing SmartAPI cache since we got no results back from SmartAPI")
                 with open(self.smart_api_and_meta_map_cache, "rb") as cache_file:
                     smart_api_cache_contents = pickle.load(cache_file)['smart_api_cache']
 
@@ -105,6 +108,9 @@ class KPInfoCacher:
                 # Captures an override if one is in place; otherwise server is read from our SmartAPI yaml/JSON
                 raw_url = self.rtx_config.plover_url
 
+            if kp_smart_api_registration["infores_name"] == "infores:retriever":
+                raw_url = "https://retriever.ci.transltr.io"
+
             # Remove any trailing slashes
             return raw_url.strip("/") if isinstance(raw_url, str) else raw_url
         else:
@@ -139,7 +145,7 @@ class KPInfoCacher:
             log.error(f"Unable to load KP info caches: {e}")
 
         # The caches MUST be up to date at this point, so we just load them
-        log.debug(f"Loading cached Smart API amd meta map info")
+        log.debug("Loading cached Smart API and meta map info")
         with open(self.smart_api_and_meta_map_cache, "rb") as cache:
             cache = pickle.load(cache)
             smart_api_info = cache['smart_api_cache']
@@ -151,7 +157,7 @@ class KPInfoCacher:
     # --------------------------------- METHODS FOR BUILDING META MAP ----------------------------------------------- #
     # --- Note: These methods can't go in KPSelector because it would create a circular dependency with this class -- #
 
-    def _build_meta_map(self, allowed_kps_dict: Dict[str, str]):
+    def _build_meta_map(self, allowed_kps_dict: dict[str, str]):
         # Start with whatever pre-existing meta map we might already have (can use this info in case an API fails)
         cache_file = pathlib.Path(self.smart_api_and_meta_map_cache )
         if cache_file.exists():
@@ -176,16 +182,20 @@ class KPInfoCacher:
                     if kp_response.status_code == 200:
                         try:
                             kp_meta_kg = kp_response.json()
-                        except:
+                        except Exception:
                             eprint(f"Skipping {kp_infores_curie} because they returned invalid JSON")
                             kp_meta_kg = "Failed"
 
-                        if type(kp_meta_kg) != dict:
+                        if not isinstance(kp_meta_kg, dict):
                             eprint(f"Skipping {kp_infores_curie} because they returned an invalid meta knowledge graph")
                         else:
-                            meta_map[kp_infores_curie] = {"predicates": self._convert_meta_kg_to_meta_map(kp_meta_kg),
+                            conversion_results = self._convert_meta_kg_to_meta_map(kp_meta_kg)
+                            meta_map[kp_infores_curie] = {"predicates": conversion_results['meta_map'],
                                                           "prefixes": {category: meta_node["id_prefixes"]
                                                                        for category, meta_node in kp_meta_kg["nodes"].items()}}
+                            conversion_errors = conversion_results['errors']
+                            if conversion_errors:
+                                eprint(f"for KP {kp_infores_curie}, in converting the meta KG to the meta map, {len(conversion_errors)} errors occurred")
                     else:
                         eprint(f"Unable to access {kp_infores_curie}'s /meta_knowledge_graph endpoint "
                                f"(returned status of {kp_response.status_code} for URL {kp_endpoint_url})")
@@ -201,17 +211,28 @@ class KPInfoCacher:
 
     @staticmethod
     def _convert_meta_kg_to_meta_map(kp_meta_kg: dict) -> dict:
-        kp_meta_map = dict()
+        # returns a dictionary with two entries, whose keys and values are:
+        #  - `meta_map`: a dictionary containing the meta_map
+        #  - `errors`: a list of string error messages from the conversion
+        error_messages = []
+        kp_meta_map: dict[str, dict[str, set[str]]] = dict()
         for meta_edge in kp_meta_kg["edges"]:
             subject_category = meta_edge["subject"]
+            if not (subject_category.startswith("biolink:")):
+                error_messages.append(f"in _convert_meta_kg_to_meta_map; invalid subject category: {subject_category}; missing biolink CURIE prefix")
+                subject_category = "biolink:" + subject_category
             object_category = meta_edge["object"]
+            if not (object_category.startswith("biolink:")):
+                error_messages.append(f"in _convert_meta_kg_to_meta_map; invalid object category: {object_category}; missing biolink CURIE prefix")
+                object_category = "biolink:" + object_category
             predicate = meta_edge["predicate"]
             if subject_category not in kp_meta_map:
                 kp_meta_map[subject_category] = dict()
             if object_category not in kp_meta_map[subject_category]:
                 kp_meta_map[subject_category][object_category] = set()
             kp_meta_map[subject_category][object_category].add(predicate)
-        return kp_meta_map
+        return {'meta_map': kp_meta_map,
+                'errors': error_messages}
 
 
 if __name__ == "__main__":

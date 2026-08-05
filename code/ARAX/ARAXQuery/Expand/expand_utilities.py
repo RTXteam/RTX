@@ -4,13 +4,11 @@ import copy
 import sys
 import os
 import traceback
-import yaml
-from typing import List, Dict, Union, Set, Tuple, Optional
+from typing import Union, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
-from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
@@ -26,22 +24,37 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
-from RTXConfiguration import RTXConfiguration
-RTXConfig = RTXConfiguration()
+
+
+def _inspect_kg_for_qg_keys(kg: KnowledgeGraph) -> dict[str, int]:
+    res_dict = {}
+    for node in kg.nodes.values():
+        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
+        for qnode_key in node_qnode_keys:
+            if qnode_key not in res_dict:
+                res_dict[qnode_key] = 0
+            res_dict[qnode_key] += 1
+    return res_dict
 
 
 class QGOrganizedKnowledgeGraph:
-    def __init__(self, nodes: Dict[str, Dict[str, Node]] = None, edges: Dict[str, Dict[str, Edge]] = None):
-        self.nodes_by_qg_id = nodes if nodes else dict()
-        self.edges_by_qg_id = edges if edges else dict()
+    def __init__(self,
+                 nodes: Optional[dict[str, dict[str, Node]]] = None,
+                 edges: Optional[dict[str, dict[str, Edge]]] = None,
+                 unbound_nodes: Optional[dict[str, Node]] = None,
+                 unbound_edges: Optional[dict[str, Edge]] = None):
+        self.nodes_by_qg_id = nodes if nodes else {}
+        self.edges_by_qg_id = edges if edges else {}
+        self.unbound_nodes = unbound_nodes if unbound_nodes else {}
+        self.unbound_edges = unbound_edges if unbound_edges else {}
 
     def __str__(self):
-        return f"nodes_by_qg_id:\n{self.nodes_by_qg_id}\nedges_by_qg_id:\n{self.edges_by_qg_id}"
+        return f"nodes_by_qg_id:\n{self.nodes_by_qg_id}\nedges_by_qg_id:\n{self.edges_by_qg_id}\nunbound_nodes:\n{self.unbound_nodes}"
 
     def add_node(self, node_key: str, node: Node, qnode_key: str):
         if qnode_key not in self.nodes_by_qg_id:
@@ -72,7 +85,7 @@ class QGOrganizedKnowledgeGraph:
             self.edges_by_qg_id[qedge_key] = dict()
         self.edges_by_qg_id[qedge_key][edge_key] = edge
 
-    def remove_nodes(self, node_keys_to_delete: Set[str], target_qnode_key: str, qg: QueryGraph):
+    def remove_nodes(self, node_keys_to_delete: set[str], target_qnode_key: str, qg: QueryGraph):
         # First delete the specified nodes
         for node_key in node_keys_to_delete:
             del self.nodes_by_qg_id[target_qnode_key][node_key]
@@ -96,16 +109,16 @@ class QGOrganizedKnowledgeGraph:
             for orphan_node_key in orphan_node_keys:
                 del self.nodes_by_qg_id[non_orphan_qnode_key][orphan_node_key]
 
-    def get_all_node_keys_used_by_edges(self) -> Set[str]:
+    def get_all_node_keys_used_by_edges(self) -> set[str]:
         return {node_key for edges in self.edges_by_qg_id.values() for edge in edges.values()
                 for node_key in [edge.subject, edge.object]}
 
-    def get_node_keys_used_by_edges_fulfilling_qedge(self, qedge_key: str) -> Set[str]:
+    def get_node_keys_used_by_edges_fulfilling_qedge(self, qedge_key: str) -> set[str]:
         relevant_edges = self.edges_by_qg_id.get(qedge_key, dict())
         return {node_key for edge in relevant_edges.values()
                 for node_key in [edge.subject, edge.object]}
 
-    def get_all_node_keys(self) -> Set[str]:
+    def get_all_node_keys(self) -> set[str]:
         return {node_key for nodes in self.nodes_by_qg_id.values() for node_key in nodes}
 
     def is_empty(self) -> bool:
@@ -169,7 +182,7 @@ def convert_string_to_snake_case(input_string: str) -> str:
         return input_string.lower()
 
 
-def convert_to_list(item: Union[str, set, list, None]) -> List[str]:
+def convert_to_list(item: Union[str, set, list, None]) -> list[str]:
     if isinstance(item, str):
         return [item]
     elif isinstance(item, set):
@@ -180,16 +193,16 @@ def convert_to_list(item: Union[str, set, list, None]) -> List[str]:
         return []
 
 
-def convert_to_set(item: Union[str, set, list, None]) -> Set[str]:
+def convert_to_set(item: Union[str, set, list, None]) -> set[str]:
     item_list = convert_to_list(item)
     return set(item_list)
 
 
-def get_node_keys_used_by_edges(edges_dict: Dict[str, Edge]) -> Set[str]:
+def get_node_keys_used_by_edges(edges_dict: dict[str, Edge]) -> set[str]:
     return {node_key for edge in edges_dict.values() for node_key in [edge.subject, edge.object]}
 
 
-def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> Dict[str, int]:
+def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> dict[str, int]:
     counts_by_qg_id = dict()
     for qnode_key, nodes_dict in dict_kg.nodes_by_qg_id.items():
         counts_by_qg_id[qnode_key] = len(nodes_dict)
@@ -201,7 +214,7 @@ def get_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> Dict[str, int]:
 def get_printable_counts_by_qg_id(dict_kg: QGOrganizedKnowledgeGraph) -> str:
     counts_by_qg_id = get_counts_by_qg_id(dict_kg)
     counts_string = ", ".join([f"{qg_id}: {counts_by_qg_id[qg_id]}" for qg_id in sorted(counts_by_qg_id)])
-    return counts_string if counts_string else "no answers"
+    return (counts_string + f", Unbound: {len(dict_kg.unbound_nodes)}")  if counts_string else "no answers"
 
 
 def get_qg_without_kryptonite_portion(qg: QueryGraph) -> QueryGraph:
@@ -246,13 +259,13 @@ def convert_standard_kg_to_qg_organized_kg(standard_kg: KnowledgeGraph) -> QGOrg
     organized_kg = QGOrganizedKnowledgeGraph()
     if standard_kg.nodes:
         for node_key, node in standard_kg.nodes.items():
-            for qnode_key in node.qnode_keys:
+            for qnode_key in getattr(node, 'qnode_keys', None) or []:
                 if qnode_key not in organized_kg.nodes_by_qg_id:
                     organized_kg.nodes_by_qg_id[qnode_key] = dict()
                 organized_kg.nodes_by_qg_id[qnode_key][node_key] = node
     if standard_kg.edges:
         for edge_key, edge in standard_kg.edges.items():
-            for qedge_key in edge.qedge_keys:
+            for qedge_key in getattr(edge, 'qedge_keys', None) or []:
                 if qedge_key not in organized_kg.edges_by_qg_id:
                     organized_kg.edges_by_qg_id[qedge_key] = dict()
                 organized_kg.edges_by_qg_id[qedge_key][edge_key] = edge
@@ -275,20 +288,27 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
             else:
                 edge.qedge_keys = [qedge_key]
                 standard_kg.edges[edge_key] = edge
+    for node_key, node in organized_kg.unbound_nodes.items():
+        standard_kg.nodes[node_key] = node
+    for edge_key, edge in organized_kg.unbound_edges.items():
+        standard_kg.edges[edge_key] = edge
     return standard_kg
 
 
-def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse] = ARAXResponse()) -> List[str]:
+def get_curie_synonyms(curie: Union[str, list[str]], log: Optional[ARAXResponse]) -> list[str]:
     curies = convert_to_list(curie)
+    if log is None:
+        log = ARAXResponse()
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
         equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
-        log.debug(f"Got response back from NodeSynonymizer")
+        log.debug("Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
+                  error_code=error_type.__name__) # type: ignore[union-attr]
         return []
     else:
         if equivalent_curies_dict is not None:
@@ -300,21 +320,25 @@ def get_curie_synonyms(curie: Union[str, List[str]], log: Optional[ARAXResponse]
             all_curies = equivalent_curies.union(set(curies))  # Make sure even curies without synonyms are included
             return sorted(list(all_curies))
         else:
-            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return []
 
 
-def get_curie_synonyms_dict(curie: Union[str, List[str]], log: Optional[ARAXResponse] = ARAXResponse()) -> Dict[str, List[str]]:
+def get_curie_synonyms_dict(curie: Union[str, list[str]],
+                            log: Optional[ARAXResponse] = None) -> dict[str, list[str]]:
     curies = convert_to_list(curie)
+    if log is None:
+        log = ARAXResponse()
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_equivalent_nodes() a list of {len(curies)} curies")
         equivalent_curies_dict = synonymizer.get_equivalent_nodes(curies)
-        log.debug(f"Got response back from NodeSynonymizer")
+        log.debug("Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
+                  error_code=error_type.__name__) # type: ignore[union-attr]
         return dict()
     else:
         if equivalent_curies_dict is not None:
@@ -327,21 +351,22 @@ def get_curie_synonyms_dict(curie: Union[str, List[str]], log: Optional[ARAXResp
                 final_curie_dict[input_curie] = list(curie_dict) if curie_dict else [input_curie]
             return final_curie_dict
         else:
-            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return dict()
 
 
-def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, Dict[str, str]]:
+def get_canonical_curies_dict(curie: Union[str, list[str]], log: ARAXResponse) -> dict[str, dict[str, str]]:
     curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
         canonical_curies_dict = synonymizer.get_canonical_curies(curies)
-        log.debug(f"Got response back from NodeSynonymizer")
+        log.debug("Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
+                  error_code=error_type.__name__) # type: ignore[union-attr]
         return {}
     else:
         if canonical_curies_dict is not None:
@@ -350,21 +375,22 @@ def get_canonical_curies_dict(curie: Union[str, List[str]], log: ARAXResponse) -
                 log.warning(f"NodeSynonymizer did not recognize: {unrecognized_curies}")
             return canonical_curies_dict
         else:
-            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return {}
 
 
-def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -> List[str]:
+def get_canonical_curies_list(curie: Union[str, list[str]], log: ARAXResponse) -> list[str]:
     curies = convert_to_list(curie)
     try:
         synonymizer = NodeSynonymizer()
         log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
         canonical_curies_dict = synonymizer.get_canonical_curies(curies)
-        log.debug(f"Got response back from NodeSynonymizer")
+        log.debug("Got response back from NodeSynonymizer")
     except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(f"Encountered a problem using NodeSynonymizer: {tb}", error_code=error_type.__name__)
+        log.error(f"Encountered a problem using NodeSynonymizer: {tb}",
+                  error_code=error_type.__name__) # type: ignore[union-attr]
         return []
     else:
         if canonical_curies_dict is not None:
@@ -376,19 +402,19 @@ def get_canonical_curies_list(curie: Union[str, List[str]], log: ARAXResponse) -
             # Include any original curies we weren't able to find a canonical version for
             canonical_curies.update(unrecognized_curies)
             if not canonical_curies:
-                log.error(f"Final list of canonical curies is empty. This shouldn't happen!", error_code="CanonicalCurieIssue")
+                log.error("Final list of canonical curies is empty. This shouldn't happen!", error_code="CanonicalCurieIssue")
             return list(canonical_curies)
         else:
-            log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+            log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
             return []
 
 
-def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) -> Optional[List[str]]:
+def get_preferred_categories(curie: Union[str, list[str]], log: ARAXResponse) -> Optional[list[str]]:
     curies = convert_to_list(curie)
     synonymizer = NodeSynonymizer()
     log.debug(f"Sending NodeSynonymizer.get_canonical_curies() a list of {len(curies)} curies")
     canonical_curies_dict = synonymizer.get_canonical_curies(curies)
-    log.debug(f"Got response back from NodeSynonymizer")
+    log.debug("Got response back from NodeSynonymizer")
     if canonical_curies_dict is not None:
         recognized_input_curies = {input_curie for input_curie in canonical_curies_dict if canonical_curies_dict.get(input_curie)}
         unrecognized_curies = set(curies).difference(recognized_input_curies)
@@ -399,14 +425,14 @@ def get_preferred_categories(curie: Union[str, List[str]], log: ARAXResponse) ->
         if preferred_categories:
             return list(preferred_categories)
         else:
-            log.warning(f"Unable to find any preferred categories; will default to biolink:NamedThing")
+            log.warning("Unable to find any preferred categories; will default to biolink:NamedThing")
             return ["biolink:NamedThing"]
     else:
-        log.error(f"NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
+        log.error("NodeSynonymizer returned None", error_code="NodeNormalizationIssue")
         return []
 
 
-def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str, str]:
+def get_curie_names(curie: Union[str, list[str]], log: ARAXResponse) -> dict[str, str]:
     curies = convert_to_list(curie)
     synonymizer = NodeSynonymizer()
     log.debug(f"Looking up names for {len(curies)} input curies using NodeSynonymizer.get_curie_names()")
@@ -414,8 +440,11 @@ def get_curie_names(curie: Union[str, List[str]], log: ARAXResponse) -> Dict[str
     return curie_to_name_map
 
 
-def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph, enforce_required_only=False,
-                    enforce_expanded_only=False, return_unfulfilled_qedges: bool = False) -> any:
+def qg_is_fulfilled(query_graph: QueryGraph,
+                    dict_kg: QGOrganizedKnowledgeGraph,
+                    enforce_required_only=False,
+                    enforce_expanded_only=False,
+                    return_unfulfilled_qedges: bool = False) -> tuple[bool, Union[bool, set[str]]]:
     if enforce_required_only:
         qg_without_kryptonite_portion = get_qg_without_kryptonite_portion(query_graph)
         query_graph = get_required_portion_of_qg(qg_without_kryptonite_portion)
@@ -432,7 +461,7 @@ def qg_is_fulfilled(query_graph: QueryGraph, dict_kg: QGOrganizedKnowledgeGraph,
     for qnode_key in query_graph.nodes:
         if not dict_kg.nodes_by_qg_id.get(qnode_key):
             is_fulfilled = False
-    unfulfilled_qedge_keys = set()
+    unfulfilled_qedge_keys: set[str] = set()
     for qedge_key, qedge in query_graph.edges.items():
         if not dict_kg.edges_by_qg_id.get(qedge_key):
             unfulfilled_qedge_keys.add(qedge_key)
@@ -453,7 +482,7 @@ def qg_is_disconnected(qg: QueryGraph) -> bool:
     return True if not connected_qnode_key and qnode_keys_remaining else False
 
 
-def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_keys_to_choose_from: Set[str], qg: QueryGraph) -> Tuple[str, Set[str]]:
+def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: set[str], qnode_keys_to_choose_from: set[str], qg: QueryGraph) -> tuple[str, set[str]]:
     """
     This function selects a qnode ID from the qnode_keys_to_choose_from that connects to one or more of the qnode IDs
     in the qnode_keys_to_connect_to (which itself could be considered a sub-graph of the QG). It also returns the IDs
@@ -469,7 +498,7 @@ def find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_key
     return "", set()
 
 
-def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> Set[str]:
+def get_connected_qedge_keys(qnode_key: str, qg: QueryGraph) -> set[str]:
     return {qedge_key for qedge_key, qedge in qg.edges.items() if qnode_key in {qedge.subject, qedge.object}}
 
 
@@ -485,7 +514,7 @@ def flip_edge(edge: Edge, new_predicate: str) -> Edge:
     return edge
 
 
-def flip_qedge(qedge: QEdge, new_predicates: List[str]):
+def flip_qedge(qedge: QEdge, new_predicates: list[str]):
     qedge.predicates = new_predicates
     original_subject = qedge.subject
     qedge.subject = qedge.object
@@ -494,7 +523,7 @@ def flip_qedge(qedge: QEdge, new_predicates: List[str]):
 
 def check_for_canonical_predicates(kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
     non_canonical_predicates_used = set()
-    biolink_helper = BiolinkHelper()
+    biolink_helper = get_biolink_helper()
     for qedge_id, edges in kg.edges_by_qg_id.items():
         for edge in edges.values():
             canonical_predicate = biolink_helper.get_canonical_predicates(edge.predicate)[0]
@@ -517,7 +546,7 @@ def get_computed_value_attribute() -> Attribute:
                                  "directly attachable to other edges.")
 
 
-def sort_kps_for_asyncio(kp_names: Union[List[str], Set[str]],  log: ARAXResponse) -> List[str]:
+def sort_kps_for_asyncio(kp_names: Union[list[str], set[str]],  log: ARAXResponse) -> list[str]:
     # Our in-house KPs block the multi-threading, because there's no request to wait for; so we process them first
     kp_names = set(kp_names)
     to_call_first = ["infores:arax-drug-treats-disease", "infores:arax-normalized-google-distance"]
@@ -544,7 +573,7 @@ def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
     edge_keys = set(kg.edges)
     for edge_key in edge_keys:
         edge = kg.edges[edge_key]
-        if qedge_key in edge.qedge_keys:
+        if qedge_key in (getattr(edge, 'qedge_keys', None) or []):
             del kg.edges[edge_key]
 
 
@@ -586,11 +615,11 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph,
         orphaned_nodes = removed_nodes - connected_nodes
         for node_key in orphaned_nodes:
             del kg.nodes[node_key]
-    except:
+    except Exception:
         tb = traceback.format_exc()
         error_type, error, _ = sys.exc_info()
-        log.error(tb, error_code=error_type.__name__)
-        log.error(f"Something went wrong removing semmeddb edges from the knowledge graph")
+        log.error(tb, error_code=error_type.__name__) # type: ignore[union-attr]
+        log.error("Something went wrong removing semmeddb edges from the knowledge graph")
     else:
         log.info(f"{edges_removed_counter} Semmeddb Edges with low publication count successfully removed")
 
@@ -608,7 +637,7 @@ def filter_response_domain_range_exclusion(plover_answer, qg, log: ARAXResponse)
                 filtered_count += 1
 
         log.info(f"Filtered out {filtered_count} edges from response due to domain range exclusion")
-    except:
+    except Exception:
         log.warning("Plover response does not have domain_range_exclusion key.")
 
 
@@ -631,8 +660,18 @@ def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool
     return basic_format_met and qnode_is_valid
 
 
-def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse, overlay_fet: bool = False,
-                   rank_results: bool = False, qnode_key_to_prune: Optional[str] = None,) -> Response:
+def _inspect_qgorgkg_for_qg_keys(kg: QGOrganizedKnowledgeGraph) -> dict[str, int]:
+    return {qnode_key: len(qnode_nodes) for qnode_key, qnode_nodes in kg.nodes_by_qg_id.items()}
+
+
+def create_results(
+        qg: QueryGraph,
+        kg: QGOrganizedKnowledgeGraph,
+        log: ARAXResponse,
+        overlay_fet: bool = False,
+        rank_results: bool = False,
+        qnode_key_to_prune: str | None = None
+) -> Response:
     regular_format_kg = convert_qg_organized_kg_to_standard_kg(kg)
     resultifier = ARAXResultify()
     prune_response = ARAXResponse()
@@ -642,9 +681,9 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
     prune_message.query_graph = qg
     prune_message.knowledge_graph = regular_format_kg
     if overlay_fet:
-        log.debug(f"Determining whether we can use FET to assess quality of intermediate answers in Expand")
+        log.debug("Determining whether we can use FET to assess quality of intermediate answers in Expand")
         # Figure out which qnodes to overlay FET edges between
-        connected_qedges = [qedge for qedge in qg.edges.values()
+        connected_qedges = [qedge for qedge_key, qedge in qg.edges.items()
                             if qedge.subject == qnode_key_to_prune or qedge.object == qnode_key_to_prune]
         qnode_pairs_to_overlay = set()
         for connected_qedge in connected_qedges:
@@ -662,7 +701,7 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
         if qnode_pairs_to_overlay:
             log.debug(f"Qnode pairs to overlay FET between are: {qnode_pairs_to_overlay}")
         else:
-            log.debug(f"No suitable qnode pairs to overlay FET between were detected. Continuing pruning without FET.")
+            log.debug("No suitable qnode pairs to overlay FET between were detected. Continuing pruning without FET.")
 
         # Overlay FET between each of the selected qnode pairs
         for qnode_pair in qnode_pairs_to_overlay:
@@ -676,6 +715,7 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
                           "object_qnode_key": qnode_pair[1],
                           "virtual_relation_label": fet_qedge_key}
                 overlayer.apply(prune_response, params)
+                log.merge(prune_response)
             except Exception as error:
                 exception_type, exception_value, exception_traceback = sys.exc_info()
                 log.warning(f"An uncaught error occurred when overlaying with FET during Expand's pruning: {error}: "
@@ -683,7 +723,7 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
             if prune_response.status != "OK":
                 log.warning(f"FET produced an error when Expand tried to use it to prune the KG. "
                             f"Log was: {prune_response.show()}")
-                log.debug(f"Will continue pruning without overlaying FET")
+                log.debug("Will continue pruning without overlaying FET")
                 # Get rid of any FET edges that might be in the KG/QG, since this step failed
                 remove_edges_with_qedge_key(prune_response.envelope.message.knowledge_graph, fet_qedge_key)
                 qg.edges.pop(fet_qedge_key, None)
@@ -692,14 +732,15 @@ def create_results(qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXRespo
                 if fet_qedge_key in qg.edges:
                     qg.edges[fet_qedge_key].option_group_id = f"FET_VIRTUAL_GROUP_{pair_string_id}"
                 else:
-                    log.warning(f"Attempted to overlay FET from Expand, but it didn't work. Pruning without it.")
+                    log.info(f"Attempted to overlay FET from Expand for pair {qnode_pair}, but it didn't work. Pruning without it.")
 
     # Create results and rank them as appropriate
-    log.debug(f"Calling Resultify from Expand..")
-    resultifier.apply(prune_response, {})
+    log.debug("Calling Resultify from Expand..")
+    resultifier.response = prune_response
+    resultifier.resultify(mode='ARAX')
     if rank_results:
         try:
-            log.debug(f"Ranking Expand's intermediate pruning results")
+            log.debug("Ranking Expand's intermediate pruning results")
             ranker = ARAXRanker()
             ranker.aggregate_scores_dmk(prune_response)
         except Exception as error:
@@ -734,7 +775,7 @@ def get_knowledge_source_constraints(edge):
             if negated:
                 denylist |= knowledge_sources
             else:
-                if allowlist == None:
+                if allowlist is None:
                     allowlist = set()
                 allowlist |= knowledge_sources
     return allowlist, denylist
@@ -909,3 +950,5 @@ def get_kp_command_definitions() -> dict:
             })
         }
     }
+
+

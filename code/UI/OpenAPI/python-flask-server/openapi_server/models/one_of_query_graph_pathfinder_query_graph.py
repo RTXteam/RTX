@@ -20,7 +20,7 @@ class OneOfQueryGraphPathfinderQueryGraph():
             eprint(f"DEBUG:   kwargs={kwargs}")
 
         #### If there is a path in the kwargs, then assume that this should be a PathfinderQueryGraph object
-        if 'path_bindings' in kwargs:
+        if 'path' in kwargs:
             if debug:
                 eprint(f"DEBUG: OneOfQueryGraphPathfinderQueryGraph is generating a PathfinderQueryGraph ({PathfinderQueryGraph})")
             pathfinder_query_graph = super().__new__(PathfinderQueryGraph, *args, **kwargs)

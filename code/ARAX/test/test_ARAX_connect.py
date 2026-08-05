@@ -151,30 +151,13 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
 
 
 def test_TRAPI_unconstrained_query():
-    query = {
-        "message": {
-            "query_graph": {
-                "nodes": {
-                    "n0": {
-                        "ids": ["CHEBI:37626"]
-                    },
-                    "n1": {
-                        "ids": ["MONDO:0005015"]
-                    }
-                },
-                "paths": {
-                    "p0": {
-                        "subject": "n0",
-                        "object": "n1"
-                    }
-                }
-            }
-        }
-    }
-
-    araxq = ARAXQuery()
-    araxq.query(query)
-    response = araxq.response
+    query = {"operations": {"actions": [
+        "add_qnode(ids=MONDO:0005011, key=n0)",
+        "add_qnode(ids=MONDO:0005180, key=n1)",
+        "add_qpath(subject=n0, object=n1)",
+        "connect(action=connect_nodes, max_path_length=2)"
+    ]}}
+    [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
     assert len(response.envelope.message.results) == 1
     assert len(response.envelope.message.results[0].node_bindings) == 2
@@ -185,7 +168,7 @@ def test_TRAPI_unconstrained_query():
     assert len(response.envelope.message.query_graph.nodes) == 2
     assert len(response.envelope.message.query_graph.paths) == 1
 
-
+@pytest.mark.slow
 def test_TRAPI_constrained_query():
     query = {
         "message": {

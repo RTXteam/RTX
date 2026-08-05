@@ -35,6 +35,7 @@ class ActionsParser:
         actions = []
         n_lines = 1
         for action in input_actions:
+            # Note: This logging message is keyed off to provide progress updates to the RTX front-end.
             response.debug(f"Parsing action: {action}")
 
             # If this line is empty, then skip

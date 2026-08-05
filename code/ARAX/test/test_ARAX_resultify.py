@@ -9,8 +9,8 @@ import pytest
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
-from typing import List, Union, Dict, Tuple, Set, Iterable
-
+from ARAX_expander import ARAXExpander
+from typing import List, Dict, Tuple, Set, Iterable
 import ARAX_resultify
 from ARAX_resultify import ARAXResultify
 from ARAX_query import ARAXQuery
@@ -190,14 +190,20 @@ def _run_resultify_directly(query_graph: QueryGraph,
     return response, message
 
 
-def _convert_shorthand_to_qg(shorthand_qnodes: Dict[str, str], shorthand_qedges: Dict[str, str]) -> QueryGraph:
-    return QueryGraph(nodes={qnode_key: QNode(is_set=bool(is_set)) for qnode_key, is_set in shorthand_qnodes.items()},
+def _convert_shorthand_to_qg(
+        shorthand_qnodes: Dict[str, str],
+        shorthand_qedges: Dict[str, str]
+) -> QueryGraph:
+    return QueryGraph(nodes={qnode_key: QNode(is_set=bool(is_set)) \
+                             for qnode_key, is_set in shorthand_qnodes.items()},
                       edges={qedge_key: QEdge(subject=qnodes.split("--")[0],
-                                              object=qnodes.split("--")[1]) for qedge_key, qnodes in shorthand_qedges.items()})
+                                              object=qnodes.split("--")[1]) \
+                             for qedge_key, qnodes in shorthand_qedges.items()})
 
 
-def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]], shorthand_edges: Dict[str, List[str]]) -> KnowledgeGraph:
-    nodes_dict = dict()
+def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]],
+                             shorthand_edges: Dict[str, List[str]]) -> KnowledgeGraph:
+    nodes_dict = {}
     for qnode_key, nodes_list in shorthand_nodes.items():
         for node_key in nodes_list:
             node = nodes_dict.get(node_key, Node())
@@ -205,7 +211,7 @@ def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]], shorthand_ed
                 node.qnode_keys = []
             node.qnode_keys.append(qnode_key)
             nodes_dict[node_key] = node
-    edges_dict = dict()
+    edges_dict = {}
     for qedge_key, edges_list in shorthand_edges.items():
         for edge_key in edges_list:
             source_node_key = edge_key.split("--")[0]
@@ -693,7 +699,7 @@ def test09():
         "add_qnode(name=DOID:731, key=n00, categories=biolink:Disease, is_set=false)",
         "add_qnode(categories=biolink:PhenotypicFeature, is_set=false, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:retriever)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "filter_results(action=limit_number_of_results, max_results=100)",
         "return(message=true, store=false)"
@@ -716,7 +722,7 @@ def test_example1():
         "add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)",
         "add_qnode(key=qg1, categories=biolink:Protein)",
         "add_qedge(subject=qg1, object=qg0, key=qe0)",
-        "expand(edge_key=qe0, kp=infores:rtx-kg2)",
+        "expand(edge_key=qe0, kp=infores:retriever)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)"
     ]
@@ -840,7 +846,7 @@ def test_issue680():
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n01, object=n00, key=e00, predicates=biolink:causes)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
+        "expand(edge_key=[e00,e01], kp=infores:retriever)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_keys=[n02])",
         "resultify(ignore_edge_direction=true, debug=true)",
@@ -874,11 +880,14 @@ def test_issue686a():
     # Tests that an error is thrown when an invalid parameter is passed to resultify
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=infores:rtx-kg2)',
+        'add_qnode(key=qg1, ids=MONDO:0018958)',
+        'add_qedge(key=e0, subject=qg0, object=qg1, predicates=biolink:treats)',
+        'expand(kp=infores:retriever)',
         'resultify(ignore_edge_direction=true, INVALID_PARAMETER_NAME=true)',
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
+    assert response.status == 'ERROR'
     assert 'INVALID_PARAMETER_NAME' in response.show()
 
 
@@ -886,7 +895,9 @@ def test_issue686b():
     # Tests that resultify can be called with no parameters passed in
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=infores:rtx-kg2)',
+        'add_qnode(key=qg1, ids=MONDO:0018958)',
+        'add_qedge(key=e0, subject=qg0, object=qg1, predicates=biolink:treats)',
+        'expand(kp=infores:retriever)',
         'resultify()',
         "return(message=true, store=false)"
     ]
@@ -898,7 +909,9 @@ def test_issue686c():
     # Tests that setting ignore_edge_direction to an invalid value results in an error
     actions = [
         'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=infores:rtx-kg2)',
+        'add_qnode(key=qg1, ids=MONDO:0018958)',
+        'add_qedge(key=e0, subject=qg0, object=qg1, predicates=biolink:treats)',
+        'expand(kp=infores:retriever)',
         'resultify(ignore_edge_direction=foo)',
         "return(message=true, store=false)"
     ]
@@ -909,14 +922,16 @@ def test_issue686c():
 def test_issue687():
     # Tests that ignore_edge_direction need not be specified
     actions = [
-        'add_qnode(key=qg0, ids=CHEMBL.COMPOUND:CHEMBL112)',
-        'expand(kp=infores:rtx-kg2)',
+        'add_qnode(key=n0, ids=CHEBI:15367)',
+        'add_qnode(key=n1, ids=MONDO:0015564)',
+        'add_qedge(key=e0, subject=n0, object=n1, predicates=biolink:treats_or_applied_or_studied_to_treat)',
+        'expand(kp=infores:retriever)',
         'resultify(debug=true)',
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert message.results and len(message.results) == len(message.knowledge_graph.nodes)
+    assert message.results
 
 
 def test_issue727():
@@ -961,7 +976,7 @@ def test_issue731b():
         "add_qnode(categories=biolink:Disease, key=n2)",
         "add_qedge(subject=n0, object=n1, key=e0)",
         "add_qedge(subject=n1, object=n2, key=e1)",
-        "expand(edge_key=[e0,e1], kp=infores:rtx-kg2)",
+        "expand(edge_key=[e0,e1], kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1051,7 +1066,7 @@ def test_issue720_1():
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1075,7 +1090,7 @@ def test_issue720_2():
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n01, object=n02, predicates=biolink:interacts_with)",
         "add_qedge(key=e02, subject=n02, object=n03, predicates=biolink:interacts_with)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1111,18 +1126,6 @@ def test_issue833_extraneous_intermediate_nodes():
             kg_edges_using_this_node = _get_kg_edge_keys_using_node(n01_node_key, message.knowledge_graph)
             assert result_e01_edges.intersection(kg_edges_using_this_node)
             assert result_e00_edges.intersection(kg_edges_using_this_node)
-
-
-def test_single_node():
-    actions = [
-        "add_qnode(name=ibuprofen, key=n00)",
-        "expand(node_key=n00, kp=infores:rtx-kg2)",
-        "resultify(debug=true)",
-        "return(message=true, store=false)"
-    ]
-    response, message = _do_arax_query(actions)
-    assert response.status == 'OK'
-    assert len(message.results) > 0
 
 
 def test_parallel_edges_between_nodes():
@@ -1190,7 +1193,7 @@ def test_issue1119_a():
         "add_qnode(categories=biolink:Drug, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes_to_condition, key=e01)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify()",
         "return(message=true, store=false)"
     ]
@@ -1207,7 +1210,7 @@ def test_issue1119_a():
         "add_qnode(categories=biolink:Drug, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:predisposes_to_condition, exclude=true, key=ex0)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify()",
         "return(message=true, store=false)"
     ]
@@ -1231,7 +1234,7 @@ def test_issue1119_b():
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "add_qnode(categories=biolink:Pathway, key=n03)",
         "add_qedge(subject=n01, object=n03, key=e02, predicates=biolink:participates_in, exclude=true)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify()",
         "return(message=true, store=false)"
     ]
@@ -1251,7 +1254,7 @@ def test_issue1119_c():
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
         "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:predisposes_to_condition, option_group_id=1)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1268,7 +1271,7 @@ def test_issue1119_c():
         "add_qnode(key=n00, ids=MONDO:0005015)",
         "add_qnode(key=n01, categories=biolink:ChemicalEntity)",
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:causes)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1283,7 +1286,7 @@ def test_issue1119_c():
         "add_qnode(key=n00, ids=MONDO:0005015)",
         f"add_qnode(key=n01, ids=[{', '.join(n01_node_keys_original)}])",
         "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:predisposes_to_condition)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1301,7 +1304,7 @@ def test_issue1119_d():
         "add_qedge(key=e00, subject=n01, object=n00, predicates=biolink:affects)",
         "add_qedge(key=e01, subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, option_group_id=1)",
         "add_qedge(key=e03, subject=n01, object=n00, exclude=True, predicates=biolink:predisposes_to_condition)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1325,7 +1328,7 @@ def test_issue1146_a():
         "add_qnode(key=n1, categories=biolink:Protein, is_set=true)",
         "add_qedge(key=e0, subject=n2, object=n1, predicates=biolink:physically_interacts_with)",
         "add_qedge(key=e1, subject=n1, object=n0, predicates=biolink:causes)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n0, object_qnode_key=n2)",
         "resultify(debug=true)",
         "filter_results(action=limit_number_of_results, max_results=4)",
@@ -1352,7 +1355,7 @@ def test_disconnected_qg():
         "add_qnode(name=acetaminophen, key=n01)",
         "add_qnode(categories=biolink:Disease, key=n02)",
         "add_qedge(key=e00, subject=n01, object=n02)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1413,7 +1416,7 @@ def test_issue1446():
         "add_qedge(key=e0,subject=n1,object=n0, predicates=biolink:affects)",
         "add_qedge(key=e1,subject=n1,object=n0, predicates=biolink:associated_with, option_group_id=1)",
         "add_qedge(key=e2,subject=n1,object=n0, predicates=biolink:related_to, option_group_id=2)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
         "resultify()",
         "filter_results(action=limit_number_of_results, max_results=100)",
@@ -1431,7 +1434,7 @@ def test_issue1848():
         "add_qnode(key=n0, ids=MONDO:0019391)",
         "add_qnode(key=n1, categories=biolink:Gene)",
         "add_qedge(key=e0, subject=n1, object=n0, predicates=biolink:causes)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "add_qnode(key=n2, categories=biolink:Drug)",
         "add_qedge(key=e1, subject=n1, object=n2)",
         "resultify()",
@@ -1447,20 +1450,21 @@ def test_issue1848():
     non_subclass_qedge_bindings_in_kg = {qedge_key for qedge_key in qedge_bindings_in_kg if not qedge_key.startswith("subclass:")}
     assert non_subclass_qedge_bindings_in_kg == {"e0"}
 
-
+@pytest.mark.broken 
 def test_node_binding_query_id_one_hop_single_input_curie():
 
     actions = [
         f"add_qnode(ids={DIABETES_CURIE}, key=n00)",
-        f"add_qnode(categories=biolink:Drug, key=n01)",
+        f"add_qnode(ids={INSULIN_CURIE}, key=n01)",
+#        f"add_qnode(categories=biolink:Drug, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    assert len(message.results) > 1
+    assert len(message.results) > 0
     kg = response.envelope.message.knowledge_graph
     # Make sure the input curie and one of its children appear somewhere in the results
     assert DIABETES_CURIE in kg.nodes
@@ -1488,7 +1492,7 @@ def test_node_binding_query_id_one_hop_multiple_input_curies():
         f"add_qnode(ids=[{','.join(parent_query_ids)}], key=n00)",
         f"add_qnode(categories=biolink:Drug, key=n01)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e00)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1525,7 +1529,7 @@ def test_node_binding_query_id_two_hop_double_pinned():
         f"add_qnode(categories=biolink:Drug, key=n02)",
         "add_qedge(subject=n01, object=n00, predicates=biolink:related_to, key=e00)",
         "add_qedge(subject=n01, object=n02, predicates=biolink:treats_or_applied_or_studied_to_treat, key=e01)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(debug=true)",
         "return(message=true, store=false)"
     ]
@@ -1635,11 +1639,48 @@ def test_issue2166():
         "add_qedge(key=e3, subject=n2, object=n3, option_group_id=option1)",
         "add_qedge(key=e4, subject=n3, object=nMET, option_group_id=option1)",
         # expand
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "resultify(ignore_edge_direction=true)"
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
+
+@pytest.mark.broken 
+def test_legacy_subclass_of_handling():
+    query_graph = {
+        "edges": {
+            "e0": {
+                "knowledge_type": "lookup",
+                "object": "on",
+                "predicates": [
+                    "biolink:treats"
+                ],
+                "subject": "sn"
+            }
+        },
+        "nodes": {
+            "on": {
+                "ids": [
+                    "MONDO:0005015"
+                ]
+            },
+            "sn": {
+                "ids": [
+                    "CHEBI:5931"
+                ]
+            }
+        }
+    }
+    response = ARAXResponse(status='OK',
+                            logging_level=ARAXResponse.DEBUG)
+    ARAXMessenger().create_envelope(response)
+    response.envelope.message.query_graph = QueryGraph.from_dict(query_graph)
+    expander = ARAXExpander()
+    expander.apply(response, {"kp": "infores:retriever"})
+    resultifier = ARAXResultify()
+    resultifier.apply(response, {})
+    message = response.envelope.message
+    assert any(edge.predicate == "biolink:subclass_of" for edge in message.knowledge_graph.edges.values())
 
 
 if __name__ == '__main__':

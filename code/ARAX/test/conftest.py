@@ -10,6 +10,8 @@ from ARAX_database_manager import ARAXDatabaseManager
 sys.path.append(os.path.sep.join([*pathlist[:(pathlist.index("RTX") + 1)], "code", "ARAX", "ARAXQuery", "Expand"]))
 from kp_info_cacher import KPInfoCacher
 
+from Filter_KG.remove_nodes import RemoveNodes
+RemoveNodes.load_block_list_file()
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -24,21 +26,39 @@ def pytest_addoption(parser):
     parser.addoption(
         "--runonlyexternal", action="store_true", default=False, help="run only external tests"
     )
+    parser.addoption(
+        "--nodatabases", action="store_true", default=False, help="(deprecated, now the default) do not download databases"
+    )
+    parser.addoption(
+        "--withdatabases", action="store_true", default=False, help="download/update databases before running tests"
+    )
 
+    parser.addoption(
+        "--runbroken", action="store_true", default=False, help="include known broken tests"
+    )
+
+    parser.addoption(
+        "--runonlybroken", action="store_true", default=False, help="Run only the known broken tests"
+    )
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "slow: mark test as slow to run")
     config.addinivalue_line("markers", "external: mark test as relying on an external KP")
+    config.addinivalue_line("markers", "broken: mark test as broken to run")
 
 
 def pytest_sessionstart(session):
     """
     Pytest runs these steps at the beginning of the testing session (prior to running any tests)
     """
-    # Ensure local databases are up to date
-    print(f"Running database manager to check for missing databases..")
-    db_manager = ARAXDatabaseManager(allow_downloads=True)
-    db_manager.update_databases()
+
+    config = session.config
+    if config.getoption("--withdatabases"):
+        print("Running database manager to check for missing databases..")
+        db_manager = ARAXDatabaseManager(allow_downloads=True)
+        db_manager.update_databases()
+    else:
+        print("Skipping database check (pass --withdatabases to download/update databases)")
 
     # Refresh KP info cache if it hasn't been updated in more than an hour
     kp_info_cacher = KPInfoCacher()
@@ -60,6 +80,8 @@ def pytest_collection_modifyitems(config, items):
     skip_fast = pytest.mark.skip(reason="--runonlyslow option was used; this test is fast")
     skip_external = pytest.mark.skip(reason="need --runexternal option to run")
     skip_internal = pytest.mark.skip(reason="--runonlyexternal option was used; this test is internal")
+    skip_broken = pytest.mark.skip(reason="need --runbroken option to run")
+    skip_working = pytest.mark.skip(reason="--runonlybroken option was used; this test is known working")
     for item in items:
         if "slow" in item.keywords:
             if not config.getoption("--runslow") and not config.getoption("--runonlyslow"):
@@ -72,3 +94,9 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_external)
         elif config.getoption("--runonlyexternal"):
             item.add_marker(skip_internal)
+
+        if "broken" in item.keywords:
+            if not config.getoption("--runbroken") and not config.getoption("--runonlybroken"):
+                item.add_marker(skip_broken)
+        elif config.getoption("--runonlybroken"):
+            item.add_marker(skip_working)

@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!/usr/bin/env python3
 import asyncio
 import copy
 import pickle
@@ -7,20 +7,19 @@ import os
 import time
 import traceback
 from collections import defaultdict
-from typing import List, Dict, Tuple, Union, Set, Optional
+from typing import Union, Optional, Any
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
-from ARAX_decorator import ARAXDecorator
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/Expand/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../BiolinkHelper/")
+from biolink_helper import get_biolink_helper
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/Expand/")
 import expand_utilities as eu
 from expand_utilities import QGOrganizedKnowledgeGraph
 from kp_selector import KPSelector
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_edge import QEdge
@@ -29,8 +28,12 @@ from openapi_server.models.edge import Edge
 from openapi_server.models.attribute_constraint import AttributeConstraint
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.retrieval_source import RetrievalSource
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 from Expand.trapi_querier import TRAPIQuerier
+from Expand.trapi_query_cacher import KPQueryCacher
+from ARAX_messenger import ARAXMessenger
 
+UNBOUND_NODES_KEY = "__UNBOUND__"
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -46,11 +49,13 @@ def trim_to_size(input_list, length):
     else:
         return input_list
 
+KPS_THAT_RETURN_PREFERRED_NODE_CURIES = {'infores:retriever'}
+KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES = {'infores:rtx-kg2'}
 
 class ARAXExpander:
 
     def __init__(self):
-        self.bh = BiolinkHelper()
+        self.bh = get_biolink_helper()
         self.rtxc = RTXConfiguration()
         self.plover_url = self.rtxc.plover_url
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
@@ -58,6 +63,8 @@ class ARAXExpander:
         self.supported_qedge_attribute_constraints = {"knowledge_source": {"==": "*"},
                                                       "primary_knowledge_source": {"==": "*"},
                                                       "aggregator_knowledge_source": {"==": "*"}}
+        # NOTE: nothing in the code-base seems to reference self.supported_qedge_qualifier_constraints;
+        #       that makes me wonder if there is a bug, and if we should be using this attribute, somewhere? (SAR):
         self.supported_qedge_qualifier_constraints = {"biolink:qualified_predicate", "biolink:object_direction_qualifier",
                                                       "biolink:object_aspect_qualifier"}
         self.treats_like_predicates = set(self.bh.get_descendants("biolink:treats_or_applied_or_studied_to_treat")).difference({"biolink:treats"})
@@ -140,20 +147,34 @@ class ARAXExpander:
         }
         return parameter_info_dict
 
-    def apply(self, response, input_parameters, mode: str = "ARAX"):
+    def apply(
+            self,
+            response,
+            input_parameters,
+            mode: str = "ARAX"
+    ):
+        _ = mode  # this quiets a vulture error without breaking the API contract
         message = response.envelope.message
         # Initiate an empty knowledge graph if one doesn't already exist
         if message.knowledge_graph is None:
-            message.knowledge_graph = KnowledgeGraph(nodes=dict(), edges=dict())
+            message.knowledge_graph = KnowledgeGraph(nodes={}, edges={})
         log = response
         # Fetch the list of all registered kps with compatible versions
-        kp_selector = KPSelector(log=log)
+        try:
+            kp_selector = KPSelector(log=log)
+        except ValueError as e:
+            response.error(str(e))
+            return response
+
+        # Covert blocking of certain KPs
+        blocked_kp_list = [ 'infores:automat-robokop', 'infores:knowledge-collaboratory' ]
 
         # Save the original QG, if it hasn't already been saved in ARAXQuery (happens for DSL queries..)
         if not hasattr(response, "original_query_graph"):
-            response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
+            response.original_query_graph = copy.deepcopy(message.query_graph)
             response.debug(f"Saving original query graph (has qnodes {set(response.original_query_graph.nodes)} "
                            f"and qedges {set(response.original_query_graph.edges)})..")
+
 
         # We'll use a copy of the QG because we modify it for internal use within Expand
         query_graph = copy.deepcopy(message.query_graph)
@@ -162,18 +183,18 @@ class ARAXExpander:
         for qedge_key in set(query_graph.edges):
             qedge = query_graph.edges[qedge_key]
             if qedge.subject == qedge.object and not qedge.predicates == ["biolink:subclass_of"]:
-                log.error(f"ARAX does not support queries with self-qedges (qedges whose subject == object)",
+                log.error("ARAX does not support queries with self-qedges (qedges whose subject == object)",
                           error_code="InvalidQG")
 
         # Make sure the QG structure appears to be valid (cannot be disjoint, unless it consists only of qnodes)
         required_portion_of_qg = eu.get_required_portion_of_qg(message.query_graph)
         if required_portion_of_qg.edges and eu.qg_is_disconnected(required_portion_of_qg):
-            log.error(f"Required portion of QG is disconnected. This is not allowed.", error_code="InvalidQG")
+            log.error("Required portion of QG is disconnected. This is not allowed.", error_code="InvalidQG")
             return response
 
         # Create global slots to store some info that needs to persist between expand() calls
         if not hasattr(message, "encountered_kryptonite_edges_info"):
-            message.encountered_kryptonite_edges_info = dict()
+            message.encountered_kryptonite_edges_info = {}
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -206,6 +227,16 @@ class ARAXExpander:
         else:
             kp_timeout = None
 
+        # set bypass_cache based on input parameters, it'll be used later
+        if response.envelope.query_options is not None and "bypass_cache" in response.envelope.query_options:
+            if response.envelope.query_options["bypass_cache"] is None or str(response.envelope.query_options["bypass_cache"]).lower() == 'false':
+                bypass_cache = False
+            else:
+                bypass_cache = True
+            log.debug(f"Found bypass_cache parameter {bypass_cache}")
+        else:
+            bypass_cache = False
+
         # Verify we understand all constraints
         for qnode_key, qnode in query_graph.nodes.items():
             if qnode.constraints:
@@ -232,7 +263,7 @@ class ARAXExpander:
         qedge_keys_to_expand = eu.convert_to_list(parameters['edge_key'])
         if any(qedge_key for qedge_key in qedge_keys_to_expand
                if eu.is_expand_created_subclass_qedge_key(qedge_key, message.query_graph)):
-            log.error(f"Cannot expand subclass self-qedges. KPs take care of this reasoning automatically.",
+            log.error("Cannot expand subclass self-qedges. KPs take care of this reasoning automatically.",
                       error_code="InvalidQG")
             return response
         qnode_keys_to_expand = eu.convert_to_list(parameters['node_key'])
@@ -243,25 +274,20 @@ class ARAXExpander:
 
         # Add in any category equivalencies to the QG (e.g., protein == gene, since KPs handle these differently)
         for qnode_key, qnode in query_graph.nodes.items():
-            if qnode.ids and not qnode.categories:
-                # Infer categories for expand's internal use (in KP selection and etc.)
-                qnode.categories = eu.get_preferred_categories(qnode.ids, log)
-                # remove all descendent categories of "biolink:ChemicalEntity" and replace them with "biolink:ChemicalEntity"
-                # This is so SPOKE will be correctly chosen as a KP for queries where a pinned qnode has a category which descends from ChemicalEntity. More info on Github issue1773
-                categories_set = set(qnode.categories)
-                chem_entity_descendents = set(self.bh.get_descendants("biolink:ChemicalEntity"))
-                filtered_categories = categories_set - chem_entity_descendents
-                if categories_set != filtered_categories:
-                    filtered_categories.add("biolink:ChemicalEntity")
-                qnode.categories = list(filtered_categories)
+            if qnode.ids:
+                qnode.categories = None
+                log.debug(f"for qnode {qnode_key} which is specified by id {qnode.ids}, setting categories to None")
+            elif qnode.categories:
+                log.debug(f"for qnode {qnode_key} which is specified by categories {qnode.categories}, applying conflations")
+                qnode.categories = self.bh.add_conflations(qnode.categories)
+                log.debug(f"For qnode {qnode_key}, conflated categories are: {qnode.categories}")
+            else:
+                root_category = self.bh.get_root_category()
+                qnode.categories = [root_category]
+                log.debug(f"For qnode {qnode_key}, which has no ids and no supplied categories, using root category {root_category}")
 
-                log.debug(f"Inferred category for qnode {qnode_key} is {qnode.categories}")
-            elif not qnode.categories:
-                # Default to NamedThing if no category was specified
-                qnode.categories = [self.bh.get_root_category()]
-            qnode.categories = self.bh.add_conflations(qnode.categories)
         # Make sure QG only uses canonical predicates
-        log.debug(f"Making sure QG only uses canonical predicates")
+        log.debug("Making sure QG only uses canonical predicates")
         qedge_keys = set(query_graph.edges)
         for qedge_key in qedge_keys:
             qedge = query_graph.edges[qedge_key]
@@ -295,6 +321,13 @@ class ARAXExpander:
         # Expand any specified edges
         inferred_qedge_keys = [qedge_key for qedge_key, qedge in query_graph.edges.items() if
                                qedge.knowledge_type == "inferred"]
+
+        # Stores just the portion of the KG that is the "aux_graph" edges and nodes
+        unbound_kg = KnowledgeGraph(nodes={}, edges={})
+
+        # Stores the aux_graph data that will go into the final message
+        aux_graphs_combined: dict[str, AuxiliaryGraph] = {}
+
         if qedge_keys_to_expand:
             query_sub_graph = self._extract_query_subgraph(qedge_keys_to_expand, query_graph, log)
             log.debug(f"Query graph for this Expand() call is: {query_sub_graph.to_dict()}")
@@ -316,11 +349,13 @@ class ARAXExpander:
                 response.update_query_plan(qedge_key, 'edge_properties', 'object', object_details)
                 response.update_query_plan(qedge_key, 'edge_properties', 'predicate', predicate_details)
                 for kp in kp_selector.valid_kps:
-                    response.update_query_plan(qedge_key, kp, 'Waiting', f'Waiting for processing to begin')
+                    response.update_query_plan(qedge_key, kp, 'Waiting', 'Waiting for processing to begin')
 
             # Get any inferred results from ARAX Infer
             if inferred_qedge_keys:
                 response, overarching_kg = self.get_inferred_answers(inferred_qedge_keys, query_graph, response)
+                #### Update the local message with a potentially new message created in previous method call
+                message = response.envelope.message
                 if log.status != 'OK':
                     return response
                 # Now mark qedges as 'lookup' if this is an inferred query
@@ -330,7 +365,7 @@ class ARAXExpander:
 
             # Expand the query graph edge-by-edge (in regular 'lookup' fashion)
             for qedge_key in ordered_qedge_keys_to_expand:
-                log.debug(f"Expanding qedge {qedge_key}")
+                log.info(f"Expanding qedge {qedge_key} in lookup fashion")
                 response.update_query_plan(qedge_key, 'edge_properties', 'status', 'Expanding')
                 for kp in kp_selector.valid_kps:
                     response.update_query_plan(qedge_key, kp, 'Waiting', 'Prepping query to send to KP')
@@ -381,6 +416,17 @@ class ARAXExpander:
                         skipped_message = "This KP was constrained by this edge"
                         response.update_query_plan(qedge_key, skipped_kp, "Skipped", skipped_message)
 
+                    # Drop any KPs in the block list
+                    if len(blocked_kp_list) > 0:
+                        kps_to_query_not_blocked = {}
+                        for kp in kps_to_query:
+                            if kp in blocked_kp_list:
+                                response.update_query_plan(qedge_key, kp, "Skipped", "KP is blocked due to data quality issues")
+                                log.debug(f"KP {kp} has been blocked due to data quality issues")
+                            else:
+                                kps_to_query_not_blocked[kp] = True
+                        kps_to_query = kps_to_query_not_blocked
+
                     log.info(f"Expand decided to use {len(kps_to_query)} KPs to answer {qedge_key}: {kps_to_query}")
                 else:
                     kps_to_query = set(eu.convert_to_list(parameters["kp"]))
@@ -392,147 +438,145 @@ class ARAXExpander:
                 # Concurrently send this query to the KPs selected to answer it
                 if kps_to_query:
                     kps_to_query = eu.sort_kps_for_asyncio(kps_to_query, log)
-                    log.debug(f"Will use asyncio to run KP queries concurrently")
+                    log.debug("Will use asyncio to run KP queries concurrently")
                     loop = asyncio.new_event_loop()  # Need to create NEW event loop for threaded environments
                     asyncio.set_event_loop(loop)
-                    tasks = [self._expand_edge_async(one_hop_qg,
-                                                     kp_to_use,
-                                                     user_specified_kp,
-                                                     kp_timeout,
-                                                     kp_selector,
-                                                     log,
-                                                     multiple_kps=True,
-                                                     be_creative_treats=be_creative_treats)
+                    tasks = [self.expand_edge_async(one_hop_qg,
+                                                    kp_to_use,
+                                                    user_specified_kp,
+                                                    kp_timeout,
+                                                    kp_selector,
+                                                    log,
+                                                    multiple_kps=True,
+                                                    bypass_cache=bypass_cache,
+                                                    be_creative_treats=be_creative_treats)
                              for kp_to_use in kps_to_query]
                     task_group = asyncio.gather(*tasks)
                     kp_answers = loop.run_until_complete(task_group)
                     loop.close()
                 else:
-                    log.error("Expand could not find any KPs to answer "
-                              f"{qedge_key} with.", error_code="NoResults")
-                    return response
+                    kp_answers = []
+                    log.warning("Expand could not find any KPs to answer "
+                                f"{qedge_key} with.")
 
                 # Merge KPs' answers into our overarching KG
-                log.debug(f"Got answers from all KPs; merging them into one KG")
+                log.debug("Got answers from all KPs; merging them into one KG")
                 for index, response_tuple in enumerate(kp_answers):
-                    answer_kg = response_tuple[0]
+                    kp_queried = kps_to_query[index]
+                    qg_org_kg, aux_graphs, _ = response_tuple
+
+                    node_keys = qg_org_kg.get_all_node_keys()
                     # Store any kryptonite edge answers as needed
-                    if qedge.exclude and not answer_kg.is_empty():
-                        self._store_kryptonite_edge_info(answer_kg, qedge_key, message.query_graph,
-                                                         message.encountered_kryptonite_edges_info, response)
+                    if qedge.exclude and not qg_org_kg.is_empty():
+                        self._store_kryptonite_edge_info(qg_org_kg,
+                                                         qedge_key,
+                                                         message.query_graph,
+                                                         message.encountered_kryptonite_edges_info,
+                                                         response)
                     # Otherwise just merge the answer into the overarching KG
                     else:
-                        self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, query_graph, response)
+                        self._merge_answer_into_message_kg(qg_org_kg,
+                                                           overarching_kg,
+                                                           message.query_graph,
+                                                           query_graph,
+                                                           response)
                     if response.status != 'OK':
                         return response
+
+                    if aux_graphs is not None:
+                        for sgraph_id, sgraph_obj in aux_graphs.items():
+                            if sgraph_id in aux_graphs_combined:
+                                log.warning(f"For KP {kp_queried}, aux graph with ID {sgraph_id} was returned, "
+                                            "but there is already another aux graph with that ID; skipping")
+                                continue
+                            aux_graphs_combined[sgraph_id] = sgraph_obj
+                            for edge_id in sgraph_obj.edges:
+                                if edge_id in overarching_kg.edges_by_qg_id.get(qedge_key, {}):
+                                    # if this edge is in the overarching KG,
+                                    # its subject and object nodes must also be;
+                                    # so we can just skip to the next edge
+                                    # in qg_org_kg
+                                    continue
+                                # at this point, look for the edge in qg_org_kg
+                                edge = qg_org_kg.unbound_edges.get(edge_id, None)
+                                if edge is None:
+                                    log.warning(f"{kp_queried}: For qedge {qedge_key}, the response "
+                                                f"from the KP has an auxiliary graph {sgraph_id} "
+                                                f"that references an edge_id not in KG: {edge_id}; "
+                                                "not recording this aux graph edge in the KG")
+                                    continue
+                                subject_node_id = edge.subject
+                                if subject_node_id not in node_keys:
+                                    # subject node is not qnode bound
+                                    subject_node = qg_org_kg.unbound_nodes.get(subject_node_id)
+                                    if not subject_node:
+                                        # subject node is not in the unbound nodes dictionary; warn
+                                        log.warning(f"{kp_queried}: For qedge {qedge_key}, the response "
+                                                    f"from the KP has an auxiliary graph {sgraph_id} "
+                                                    f"that references a subject node ID not in "
+                                                    f"the KG: {subject_node_id}; "
+                                                    "not recording this aux graph edge in the KG")
+                                        continue
+                                else:
+                                    subject_node = None
+                                object_node_id = edge.object
+                                if object_node_id not in node_keys:
+                                    object_node = qg_org_kg.unbound_nodes.get(object_node_id)
+                                    if object_node is None:
+                                        log.warning(f"{kp_queried}: For qedge {qedge_key}, the response "
+                                                    f"from the KP has an auxiliary graph {sgraph_id} "
+                                                    f"that references an object node ID not in "
+                                                    f"the KG: {object_node_id}; "
+                                                    "not recording this aux graph edge in the KG")
+                                        continue
+                                else:
+                                    object_node = None
+                                if edge_id not in unbound_kg.edges:
+                                    unbound_kg.edges[edge_id] = edge
+                                if subject_node is not None and subject_node_id not in unbound_kg.nodes:
+                                    unbound_kg.nodes[subject_node_id] = subject_node
+                                if object_node is not None and object_node_id not in unbound_kg.nodes:
+                                    unbound_kg.nodes[object_node_id] = object_node
                 log.debug(f"After merging KPs' answers, total KG counts are: {eu.get_printable_counts_by_qg_id(overarching_kg)}")
+                log.debug(f"After merging KPs' answers, total aux graphs are: {len(aux_graphs_combined)}")
 
                 # Handle any constraints for this qedge and/or its qnodes (that require post-filtering)
-                qnode_keys = {qedge.subject, qedge.object}
-                qnode_keys_with_answers = qnode_keys.intersection(set(overarching_kg.nodes_by_qg_id))
-                for qnode_key in qnode_keys_with_answers:
-                    qnode = query_graph.nodes[qnode_key]
-                    if qnode.constraints:
-                        for constraint in qnode.constraints:
-                            if constraint.id == "biolink:highest_FDA_approval_status" and constraint.operator == "==" and constraint.value == "regular approval":
-                                log.info(f"Applying qnode {qnode_key} constraint: {'NOT ' if constraint._not else ''}"
-                                         f"biolink:highest_FDA_approval_status == regular approval")
-                                fda_approved_drug_ids = self._load_fda_approved_drug_ids()
-                                answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
-                                if constraint._not:
-                                    nodes_to_remove = answer_node_ids.intersection(fda_approved_drug_ids)
-                                else:
-                                    nodes_to_remove = answer_node_ids.difference(fda_approved_drug_ids)
-                                log.debug(f"Removing {len(nodes_to_remove)} nodes fulfilling {qnode_key} for FDA "
-                                          f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
-                                overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
+                self._apply_qnode_post_filters(qedge_key,
+                                               query_graph,
+                                               overarching_kg,
+                                               log)
 
                 # Handle knowledge source constraints for this qedge
-                # Removing kedges that have any sources that are constrained
-                log.debug(f"Handling any knowledge source constraints")
-                allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
-                log.debug(f"KP allowlist is {allowlist}, denylist is {denylist}")
-                if qedge_key in overarching_kg.edges_by_qg_id:
-                    kedges_to_remove = []
-                    for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
-                        edge_sources = {retrieval_source.resource_id for retrieval_source in kedge.sources} if kedge.sources else set()
-                        if edge_sources:
-                            # always accept arax as a source
-                            if edge_sources == {"infores:arax"}:
-                                continue
-                            # Don't keep edges that ONLY come from excluded sources
-                            if edge_sources.issubset(denylist):
-                                kedges_to_remove.append(kedge_key)
-                                break
-                            # Only keep edges that come from at least ONE allowed source
-                            elif allowlist and not edge_sources.intersection(allowlist):
-                                kedges_to_remove.append(kedge_key)
-                                break
-                    if kedges_to_remove:
-                        log.debug(f"Removing {len(kedges_to_remove)} edges because they do not fulfill knowledge source constraint")
-                        # remove kedges which have been determined to be constrained
-                        for kedge_key in kedges_to_remove:
-                            if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
-                                del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
-                # Handle Expand's creative treats predicate answers
-                if be_creative_treats and qedge_key in overarching_kg.edges_by_qg_id:  # Skip if no answers
-                    # First remove any SemMedDB treats_or_applied-type edges (not trustworthy)
-                    edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
-                                           if edge.predicate in self.treats_like_predicates and
-                                           any(source.resource_id == "infores:semmeddb" for source in edge.sources)}
-                    log.debug(f"Removing {len(edge_keys_to_remove)} semmeddb treats_or_applied-type edges "
-                              f"fulfilling {qedge_key}")
-                    for edge_key in edge_keys_to_remove:
-                        del overarching_kg.edges_by_qg_id[qedge_key][edge_key]
+                # (remove edges that have any sources that are constrained)
+                self._apply_knowledge_source_constraints(qedge_key,
+                                                         message.query_graph,
+                                                         overarching_kg,
+                                                         log)
 
-                    # Use remaining treats-like edges as support for one merged 'treats' edge (per subj/obj pair)
-                    higher_level_treats_edges = {edge_key: edge
-                                                 for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
-                                                 if edge.predicate in self.treats_like_predicates}
-                    if higher_level_treats_edges:
-                        # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
-                        virtual_qedge_key = f"creative_expand_treats_{qedge_key}"
-                        virtual_qedge = QEdge(subject=qedge.subject,
-                                              object=qedge.object,
-                                              option_group_id=f"creative_expand_treats_group_{qedge_key}")
-                        virtual_qedge.filled = True  # Resultify needs this flag
-                        message.query_graph.edges[virtual_qedge_key] = virtual_qedge
-                        overarching_kg.edges_by_qg_id[virtual_qedge_key] = dict()
-
-                        # Lump the higher-level treats edges together by subject/object
-                        subj_obj_map = defaultdict(set)
-                        for higher_treats_edge_key, higher_treats_edge in higher_level_treats_edges.items():
-                            hash_key = (higher_treats_edge.subject, higher_treats_edge.object)
-                            subj_obj_map[hash_key].add(higher_treats_edge_key)
-
-                        for (subj_key, obj_key), higher_treats_edge_keys in subj_obj_map.items():
-                            # Create a lumped edge to represent all of these edges
-                            lumped_edge = Edge(subject=subj_key, object=obj_key, predicate="biolink:treats",
-                                               sources=[RetrievalSource(resource_id="infores:arax",
-                                                                        resource_role="primary_knowledge_source")],
-                                               attributes=[Attribute(attribute_type_id="biolink:agent_type",
-                                                                     value="automated_agent",
-                                                                     attribute_source="infores:arax"),
-                                                           Attribute(attribute_type_id="biolink:knowledge_level",
-                                                                     value="prediction",
-                                                                     attribute_source="infores:arax")])
-                            lumped_edge_key = f"creative_expand_treats_edge:{subj_key}--treats--{obj_key}--infores:arax"
-                            overarching_kg.edges_by_qg_id[qedge_key][lumped_edge_key] = lumped_edge
-
-                            # Move the higher-level treats edges so that they fulfill the virtual qedge instead
-                            for higher_treats_edge_key in higher_treats_edge_keys:
-                                higher_treats_edge = overarching_kg.edges_by_qg_id[qedge_key][higher_treats_edge_key]
-                                overarching_kg.edges_by_qg_id[virtual_qedge_key][higher_treats_edge_key] = higher_treats_edge
-                                del overarching_kg.edges_by_qg_id[qedge_key][higher_treats_edge_key]
+                # If there are creative-treats edges: handle Expand's creative treats predicate answers
+                if be_creative_treats and qedge_key in overarching_kg.edges_by_qg_id:
+                    self._handle_creative_treats_predicate_answers(qedge_key,
+                                                                   overarching_kg,
+                                                                   message.query_graph,
+                                                                   log)
 
                 # Apply any kryptonite ("not") qedges
-                self._apply_any_kryptonite_edges(overarching_kg, message.query_graph,
-                                                 message.encountered_kryptonite_edges_info, response)
+                self._apply_any_kryptonite_edges(overarching_kg,
+                                                 message.query_graph,
+                                                 message.encountered_kryptonite_edges_info,
+                                                 response)
+
                 # Remove any paths that are now dead-ends
                 if inferred_qedge_keys and len(inferred_qedge_keys) == 1:
-                    overarching_kg = self._remove_dead_end_paths(message.query_graph, overarching_kg, response)
+                    # message.query_graph is the original copy of the QG, unmodified
+                    overarching_kg = self._remove_dead_end_paths(message.query_graph,
+                                                                 overarching_kg,
+                                                                 response)
                 else:
-                    overarching_kg = self._remove_dead_end_paths(query_graph, overarching_kg, response)
+                    # query_graph is the local copy of the QG that has been modified for use by Expand
+                    overarching_kg = self._remove_dead_end_paths(query_graph,
+                                                                 overarching_kg,
+                                                                 response)
                 if response.status != 'OK':
                     return response
 
@@ -563,8 +607,7 @@ class ARAXExpander:
                                               query_graph,
                                               user_specified_kp,
                                               kp_timeout,
-                                              log,
-                                              self.plover_url)
+                                              log)
                 if log.status != 'OK':
                     return response
                 self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, query_graph, log)
@@ -574,32 +617,266 @@ class ARAXExpander:
         # Get rid of any lingering expand-added subclass self-qedges that are no longer relevant (edges pruned)
         all_qedge_keys = set(message.query_graph.edges)
         for qedge_key in all_qedge_keys:
-            if not overarching_kg.edges_by_qg_id.get(qedge_key) and eu.is_expand_created_subclass_qedge_key(qedge_key, message.query_graph):
+            if not overarching_kg.edges_by_qg_id.get(qedge_key) and \
+               eu.is_expand_created_subclass_qedge_key(qedge_key, message.query_graph):
                 log.debug(f"Deleting {qedge_key} from the QG because no edges fulfill it anymore")
                 del message.query_graph.edges[qedge_key]
 
         # Convert message knowledge graph back to standard TRAPI
         message.knowledge_graph = eu.convert_qg_organized_kg_to_standard_kg(overarching_kg)
 
-        # Decorate all nodes with additional attributes info from KG2c if requested (iri, description, etc.)
+        log.debug(f"unbound_kg node count: {len(unbound_kg.nodes)}; "
+                  f"unbound_kg edge count: {len(unbound_kg.edges)}")
+
+        kg = message.knowledge_graph
+        log.debug(f"message KG node count before merging unbound KG: {len(kg.nodes)}; "
+                  f"message KG edge count before merging unbound KG: {len(kg.edges)}")
+
+        for edge_id, edge in unbound_kg.edges.items():
+            if edge_id not in kg.edges:
+                kg.edges[edge_id] = edge
+        for node_id, node in unbound_kg.nodes.items():
+            if node_id not in kg.nodes:
+                kg.nodes[node_id] = node
+
+        log.debug(f"message KG node count after merging unbound KG: {len(kg.nodes)}; "
+                  f"message KG edge count after merging unbound KG: {len(kg.edges)}")
+
+        # check aux graphs to see if edges are still in the KG
+        aux_graphs_delete = set()
+
+        for aux_graph_id, aux_graph_obj in aux_graphs_combined.items():
+            aux_graph_dict = aux_graph_obj.to_dict()
+            aux_graph_edges = aux_graph_dict.get("edges", [])
+            aux_graph_edges_final = []
+            for edge_id in aux_graph_edges:
+                if edge_id not in unbound_kg.edges:
+                    log.warning(f"for aux graph {aux_graph_id}, edge {edge_id} is not in the KG; skipping edge")
+                else:
+                    aux_graph_edges_final.append(edge_id)
+            if aux_graph_edges_final:
+                aux_graph_dict["edges"] = aux_graph_edges_final
+                aux_graphs_combined[aux_graph_id] = AuxiliaryGraph.from_dict(aux_graph_dict)
+            else:
+                # slate this aux graph for deletion, since it has no edges
+                # (but don't delete it yet; don't want to modify our iterable
+                # while we are iterating over it):
+                aux_graphs_delete.add(aux_graph_id)
+        # for any aux graph that no longer has _any_ edges, delete that aux graph
+        for aux_graph_id in aux_graphs_delete:
+            aux_graphs_combined.pop(aux_graph_id, None)
+
+        message.auxiliary_graphs = aux_graphs_combined
+
+        # Per #2731: ARAX no longer back-fills missing node descriptions from
+        # an OSU-built sqlite. Surface the count of bare nodes once, as a
+        # single TRAPI informational message, so downstream tooling can
+        # notice without us flooding the log.
         if not parameters.get("return_minimal_metadata"):
-            decorator = ARAXDecorator()
-            decorator.decorate_nodes(response, only_decorate_bare=True)
+            bare_node_count = sum(
+                1 for node in kg.nodes.values()
+                if not node.attributes or not any(
+                    a.attribute_type_id == "biolink:description" for a in node.attributes
+                )
+            )
+            if bare_node_count:
+                log.info(
+                    f"{bare_node_count} node(s) in the knowledge graph are missing a "
+                    f"biolink:description attribute."
+                )
 
         # Map canonical curies back to the input curies in the QG (where applicable) #1622
         self._map_back_to_input_curies(message.knowledge_graph, query_graph, log)
 
         # Return the response and done
-        kg = message.knowledge_graph
         log.info(f"After Expand, the KG has {len(kg.nodes)} nodes and {len(kg.edges)} edges "
                  f"({eu.get_printable_counts_by_qg_id(overarching_kg)})")
-        
+
         return response
 
+    def _apply_knowledge_source_constraints(
+        self,
+        qedge_key: str,
+        query_graph: QueryGraph,
+        overarching_kg: QGOrganizedKnowledgeGraph,
+        log: ARAXResponse,
+    ) -> None:
+        log.debug("Handling any knowledge source constraints")
+        qedge = query_graph.edges[qedge_key]
+        allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
+        log.debug(f"KP allowlist is {allowlist}, denylist is {denylist}")
+        if qedge_key in overarching_kg.edges_by_qg_id:
+            kedges_to_remove = []
+            for kedge_key, kedge in overarching_kg.edges_by_qg_id[qedge_key].items():
+                edge_sources = {retrieval_source.resource_id for retrieval_source in kedge.sources} if kedge.sources else set()
+                if edge_sources:
+                    # always accept arax as a source
+                    if edge_sources == {"infores:arax"}:
+                        continue
+                    # Don't keep edges that ONLY come from excluded sources
+                    if edge_sources.issubset(denylist):
+                        kedges_to_remove.append(kedge_key)
+                        break
+                    # Only keep edges that come from at least ONE allowed source
+                    elif allowlist and not edge_sources.intersection(allowlist):
+                        kedges_to_remove.append(kedge_key)
+                        break
+            if kedges_to_remove:
+                log.debug(f"Removing {len(kedges_to_remove)} edges because they do not fulfill knowledge source constraint")
+                # remove kedges which have been determined to be constrained
+                for kedge_key in kedges_to_remove:
+                    if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
+                        del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
+
+
+    def _apply_qnode_post_filters(
+        self,
+        qedge_key: str,
+        query_graph: QueryGraph,
+        overarching_kg: QGOrganizedKnowledgeGraph,
+        log: ARAXResponse,
+    ) -> None:
+        qedge = query_graph.edges[qedge_key]
+        qnode_keys = {qedge.subject, qedge.object}
+        qnode_keys_with_answers = qnode_keys.intersection(set(overarching_kg.nodes_by_qg_id))
+        for qnode_key in qnode_keys_with_answers:
+            qnode = query_graph.nodes[qnode_key]
+            if qnode.constraints:
+                for constraint in qnode.constraints:
+                    if constraint.id == "biolink:highest_FDA_approval_status" and constraint.operator == "==" and constraint.value == "regular approval":
+                        log.info(f"Applying qnode {qnode_key} constraint: {'NOT ' if constraint._not else ''}"
+                                 f"biolink:highest_FDA_approval_status == regular approval")
+                        fda_approved_drug_ids = self._load_fda_approved_drug_ids()
+                        answer_node_ids = set(overarching_kg.nodes_by_qg_id[qnode_key])
+                        if constraint._not:
+                            nodes_to_remove = answer_node_ids.intersection(fda_approved_drug_ids)
+                        else:
+                            nodes_to_remove = answer_node_ids.difference(fda_approved_drug_ids)
+                        log.debug(f"Removing {len(nodes_to_remove)} nodes fulfilling {qnode_key} for FDA "
+                                  f"approval constraint ({round((len(nodes_to_remove) / len(answer_node_ids)) * 100)}%)")
+                        overarching_kg.remove_nodes(nodes_to_remove, qnode_key, query_graph)
+
+
+    def _handle_creative_treats_predicate_answers(
+        self,
+        qedge_key: str,
+        overarching_kg: QGOrganizedKnowledgeGraph,
+        query_graph: QueryGraph,
+        log: ARAXResponse,
+    ) -> None:
+        qedge = query_graph.edges[qedge_key]
+        # First remove any SemMedDB treats_or_applied-type edges with < 10 associated publications (not trustworthy)
+        edge_keys_to_remove = {
+            edge_key
+            for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
+            if edge.predicate in self.treats_like_predicates
+            and any(source.resource_id == "infores:semmeddb" for source in edge.sources)
+            and (
+                (pub_count := next(
+                    (
+                        len(x.value)
+                        for x in (edge.attributes or [])
+                        if x.attribute_type_id == "biolink:publications"
+                    ),
+                    None,
+                )) is not None
+                and pub_count < 10
+            )
+        }
+        # edge_keys_to_remove = {edge_key for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
+        #                        if edge.predicate in self.treats_like_predicates and
+        #                        any(source.resource_id == "infores:semmeddb" for source in edge.sources) and
+        #                        [len(x.value) for x in edge.attributes if x.attribute_type_id == "biolink:publications"][0] < 10}
+        log.debug(f"Removing {len(edge_keys_to_remove)} semmeddb treats_or_applied-type edges with < 10 associated publications "
+                  f"fulfilling {qedge_key}")
+        for edge_key in edge_keys_to_remove:
+            del overarching_kg.edges_by_qg_id[qedge_key][edge_key]
+
+        # Use remaining treats-like edges as support for one merged 'treats' edge (per subj/obj pair)
+        higher_level_treats_edges = {edge_key: edge
+                                     for edge_key, edge in overarching_kg.edges_by_qg_id[qedge_key].items()
+                                     if edge.predicate in self.treats_like_predicates}
+        if higher_level_treats_edges:
+
+            higher_level_treats_edges_temp = {}
+            for edge_key_temp, edge_temp in higher_level_treats_edges.items():
+
+                # issue2634 - curated CTKP edges implement elevation to treats prediction if and only if elevate_to_prediction = True is returned by KTKP.
+                if (edge_temp.predicate == "biolink:in_clinical_trials_for" and
+                    any(source.resource_id == "infores:multiomics-clinicaltrials" for source in edge_temp.sources) and
+                    len([x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"]) > 0):
+                    if [x.value for x in edge_temp.attributes if x.attribute_type_id == "elevate_to_prediction"][0]:
+                        higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+
+                # issue2634 - curated DAKP/FAERS edges implement elevation to treats prediction if and only if the applied_to_treat predicate has evidence count (N_cases) >10
+                elif (edge_temp.predicate == "biolink:applied_to_treat" and
+                    (any(source.resource_id == "infores:multiomics-drugapprovals" for source in edge_temp.sources) or any(source.resource_id == "infores:faers" for source in edge_temp.sources)) and
+                    len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:number_of_cases"]) > 0):
+                    if [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:number_of_cases"][0] > 24:
+                        higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+
+                # issue2634 - curated TMKP edges implement elevation to treats prediction if and only if the treats_or_applied_or_studied_to_treat predicate has evidence count (biolink:evidence_count) > 5
+                elif (edge_temp.predicate == "biolink:treats_or_applied_or_studied_to_treat" and
+                      any(source.resource_id == "infores:text-mining-provider-cooccurrence" for source in edge_temp.sources) and
+                    len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:agent_type" and x.value == "text_mining_agent"]) > 0 and
+                    len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:evidence_count"]) > 0):
+                    if [x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:evidence_count"][0] > 5:
+                        higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+
+                # issue2634 - allow elevation to treats prediction for all curated CTD edges
+                elif any(source.resource_id == "infores:ctd" for source in edge_temp.sources):
+                    higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+
+                # issue2634 - SemMedDB treats_or_applied-type edges with >= 10 associated publications are elevated to treats prediction
+                elif (any(source.resource_id == "infores:semmeddb" for source in edge_temp.sources) and
+                    len([x.value for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"]) > 0 and
+                    [len(x.value) for x in edge_temp.attributes if x.attribute_type_id == "biolink:publications"][0] >= 10):
+                        higher_level_treats_edges_temp[edge_key_temp] = edge_temp
+
+                # issue2634 - for other non-treats edges, do not elevate to treats prediction
+                else:
+                    pass
+            higher_level_treats_edges = higher_level_treats_edges_temp
+
+            # Add a virtual edge to the QG to capture all higher-level treats edges ('support' edges)
+            virtual_qedge_key = f"creative_expand_treats_{qedge_key}"
+            virtual_qedge = QEdge(subject=qedge.subject,
+                                  object=qedge.object,
+                                  option_group_id=f"creative_expand_treats_group_{qedge_key}")
+            virtual_qedge.filled = True  # Resultify needs this flag
+            query_graph.edges[virtual_qedge_key] = virtual_qedge
+            overarching_kg.edges_by_qg_id[virtual_qedge_key] = {}
+
+            # Lump the higher-level treats edges together by subject/object
+            subj_obj_map = defaultdict(set)
+            for higher_treats_edge_key, higher_treats_edge in higher_level_treats_edges.items():
+                hash_key = (higher_treats_edge.subject, higher_treats_edge.object)
+                subj_obj_map[hash_key].add(higher_treats_edge_key)
+
+            for (subj_key, obj_key), higher_treats_edge_keys in subj_obj_map.items():
+                # Create a lumped edge to represent all of these edges
+                lumped_edge = Edge(subject=subj_key, object=obj_key, predicate="biolink:treats",
+                                   sources=[RetrievalSource(resource_id="infores:arax",
+                                                            resource_role="primary_knowledge_source")],
+                                   attributes=[Attribute(attribute_type_id="biolink:agent_type",
+                                                         value="computational_model",
+                                                         attribute_source="infores:arax"),
+                                               Attribute(attribute_type_id="biolink:knowledge_level",
+                                                         value="prediction",
+                                                         attribute_source="infores:arax")])
+                lumped_edge_key = f"creative_expand_treats_edge:{subj_key}--treats--{obj_key}--infores:arax"
+                overarching_kg.edges_by_qg_id[qedge_key][lumped_edge_key] = lumped_edge
+
+                # Move the higher-level treats edges so that they fulfill the virtual qedge instead
+                for higher_treats_edge_key in higher_treats_edge_keys:
+                    higher_treats_edge = overarching_kg.edges_by_qg_id[qedge_key][higher_treats_edge_key]
+                    overarching_kg.edges_by_qg_id[virtual_qedge_key][higher_treats_edge_key] = higher_treats_edge
+                    del overarching_kg.edges_by_qg_id[qedge_key][higher_treats_edge_key]
+
     @staticmethod
-    def get_inferred_answers(inferred_qedge_keys: List[str],
+    def get_inferred_answers(inferred_qedge_keys: list[str],
                              query_graph: QueryGraph,
-                             response: ARAXResponse) -> Tuple[ARAXResponse, QGOrganizedKnowledgeGraph]:
+                             response: ARAXResponse) -> tuple[ARAXResponse, QGOrganizedKnowledgeGraph]:
         # Send ARAXInfer any one-hop, "inferred", "treats" queries (temporary way of making creative mode work)
         overarching_kg = QGOrganizedKnowledgeGraph()
         if inferred_qedge_keys:
@@ -619,7 +896,7 @@ class ARAXExpander:
                     else:
                         # object_curie = None
                         response.error(f"No CURIEs found for qnode {qedge.object}; ARAXInfer/XDTD requires that the"
-                                f" object qnode has 'ids' specified", error_code="NoCURIEs")
+                                       f" object qnode has 'ids' specified", error_code="NoCURIEs")
                         return response, overarching_kg
                     if subject_qnode.ids and len(subject_qnode.ids) >= 1:
                         subject_curie = subject_qnode.ids[0]  # FIXME: will need a way to handle multiple IDs
@@ -636,28 +913,76 @@ class ARAXExpander:
                     if subject_curie and object_curie:    
                         response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
                     elif subject_curie:
-                        response.warning(f"Currently ARAXInfer/XDTD disables 'given a drug CURIE, it predicts predicts what potential disease this drug can treat'.")
+                        response.warning("Currently ARAXInfer/XDTD disables 'given a drug CURIE, it predicts predicts what potential disease this drug can treat'.")
                         # response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie}")
                     else:
                         response.info(f"Calling XDTD from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the object is {object_curie}")
                     
                     response.update_query_plan(inferred_qedge_key, "arax-xdtd",
-                                               "Waiting", f"Waiting for response")
+                                               "Waiting", "Waiting for response")
                     start = time.time()
 
                     from ARAX_infer import ARAXInfer
                     infer_input_parameters = {"action": "drug_treatment_graph_expansion",
                                               'disease_curie': object_curie, 'qedge_id': inferred_qedge_key,
                                               'drug_curie': subject_curie}
-                    inferer = ARAXInfer()
-                    infer_response = inferer.apply(response, infer_input_parameters)
+
+                    #### Check the cache to see if we have this query cached already
+                    cacher = KPQueryCacher()
+                    enable_caching = False
+                    kp_curie = "xDTD"
+                    kp_url = "xDTD"
+                    if enable_caching:
+                        response.info(f"Looking for a previously cached result from {kp_curie}")
+                        response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, infer_input_parameters)
+                    else:
+                        response.info("KP results caching for xDTD is currently disabled, pending further debugging")
+                    if enable_caching and response_code != -2: 
+                        n_results = cacher._get_n_results(response_data)
+                        response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
+                        #### Transform the dict message into objects
+                        response.envelope.message = ARAXMessenger().from_dict(response_data['message'])
+                        response.envelope.message.encountered_kryptonite_edges_info = response_data['message']['encountered_kryptonite_edges_info']
+                        for node_key, node in response_data['message']['knowledge_graph']['nodes'].items():
+                            response.info(f"Copying qnode_keys for node {node_key}") 
+                            response.envelope.message.knowledge_graph.nodes[node_key].qnode_keys = node['qnode_keys']
+                        for edge_key, edge in response_data['message']['knowledge_graph']['edges'].items():
+                            response.info(f"Copying qedge_keys for edge {edge_key}") 
+                            response.envelope.message.knowledge_graph.edges[edge_key].qedge_keys = edge['qedge_keys']
+                        response.dtd_from_cache = True   # type: ignore[attr-defined]
+
+                    #### Else run the inferer to get the result and then cache it
+                    else:
+                        inferer = ARAXInfer()
+                        response.info("Launching ARAX inferer")
+                        infer_response = inferer.apply(response, infer_input_parameters)
+                        elapsed_time = time.time() - start
+                        response.info(f"Got result from ARAX inferer after {elapsed_time}. Converting to_dict()")
+                        response_object = response.envelope.to_dict()
+                        response_object['message']['encountered_kryptonite_edges_info'] = response.envelope.message.encountered_kryptonite_edges_info
+                        for node_key, node in response.envelope.message.knowledge_graph.nodes.items():
+                            response_object['message']['knowledge_graph']['nodes'][node_key]['qnode_keys'] = node.qnode_keys
+                        for edge_key, edge in response.envelope.message.knowledge_graph.edges.items():
+                            response_object['message']['knowledge_graph']['edges'][edge_key]['qedge_keys'] = edge.qedge_keys
+                        response.info("Storing result in the cache")
+                        cacher.store_response(
+                            kp_curie=kp_curie,
+                            query_url=kp_url,
+                            query_object=infer_input_parameters,
+                            response_object=response_object,
+                            http_code=200,
+                            elapsed_time=elapsed_time,
+                            status="OK"
+                        )
+                        response.info("Stored result in the cache.")
+
                     # return infer_response
-                    response = infer_response
+                    response = infer_response  # these are already always the same object?
                     overarching_kg = eu.convert_standard_kg_to_qg_organized_kg(response.envelope.message.knowledge_graph)
 
-                    wait_time = round(time.time() - start)
+                    wait_time = round(time.time() - start, 2)
                     if response.status == "OK":
-                        done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, dict()))} " \
+                        done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, {}))} " \
                                        f"edges in {wait_time} seconds"
                         response.update_query_plan(inferred_qedge_key, "arax-xdtd", "Done", done_message)
                     else:
@@ -694,12 +1019,12 @@ class ARAXExpander:
                                        error_code="NoCURIEs")
                         return response, overarching_kg
                     if subject_curie and object_curie:
-                        response.error(f"The action 'chemical_gene_regulation_graph_expansion' hasn't support the prediction for a single chemical-gene pair yet.",
+                        response.error("The action 'chemical_gene_regulation_graph_expansion' hasn't support the prediction for a single chemical-gene pair yet.",
                                        error_code="InvalidCURIEs")
                         return response, overarching_kg
                     response.info(f"Calling XCRG from Expand for qedge {inferred_qedge_key} (has knowledge_type == inferred) and the subject is {subject_curie} and the object is {object_curie}")
                     response.update_query_plan(inferred_qedge_key, "arax-xcrg",
-                                               "Waiting", f"Waiting for response")
+                                               "Waiting", "Waiting for response")
                     start = time.time()
 
                     from ARAX_infer import ARAXInfer
@@ -720,7 +1045,7 @@ class ARAXExpander:
 
                     wait_time = round(time.time() - start)
                     if response.status == "OK":
-                        done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, dict()))} " \
+                        done_message = f"Returned {len(overarching_kg.edges_by_qg_id.get(inferred_qedge_key, {}))} " \
                                        f"edges in {wait_time} seconds"
                         response.update_query_plan(inferred_qedge_key, "arax-xcrg", "Done", done_message)
                     else:
@@ -731,21 +1056,28 @@ class ARAXExpander:
                                   f"DTD-related (e.g., 'biolink:ameliorates', 'biolink:treats') or CRG-related ('biolink:regulates') according to the specified predicate. Will answer using the normal 'fill' strategy (not creative mode).")
             else:
                 response.warning(
-                    f"Expand does not yet know how to answer multi-qedge query graphs when one or more of "
-                    f"the qedges has knowledge_type == inferred. Will answer using the normal 'fill' strategy "
-                    f"(not creative mode).")
+                    "Expand does not yet know how to answer multi-qedge query graphs when one or more of "
+                    "the qedges has knowledge_type == inferred. Will answer using the normal 'fill' strategy "
+                    "(not creative mode).")
 
-        response.debug(f"Done calling ARAX Infer from Expand; returning to regular Expand execution")
+        response.debug("Done calling ARAX Infer from Expand; returning to regular Expand execution")
         return response, overarching_kg
 
-    async def _expand_edge_async(self, edge_qg: QueryGraph,
-                                 kp_to_use: str,
-                                 user_specified_kp: bool,
-                                 kp_timeout: Optional[int],
-                                 kp_selector: KPSelector,
-                                 log: ARAXResponse,
-                                 multiple_kps: bool = False,
-                                 be_creative_treats: bool = False) -> Tuple[QGOrganizedKnowledgeGraph, ARAXResponse]:
+    # Note: this function is also used by the module `Overlay/fisher_exact_test.py`.
+    async def expand_edge_async(
+            self,
+            edge_qg: QueryGraph,
+            kp_to_use: str,
+            user_specified_kp: bool,
+            kp_timeout: Optional[int],
+            kp_selector: KPSelector,
+            log: ARAXResponse,
+            multiple_kps: bool = False,
+            bypass_cache: bool = False,
+            be_creative_treats: bool = False
+    ) -> tuple[QGOrganizedKnowledgeGraph,
+               dict[str, AuxiliaryGraph] | None,
+               ARAXResponse]:
         # This function answers a single-edge (one-hop) query using the specified knowledge provider
         qedge_key = next(qedge_key for qedge_key in edge_qg.edges)
         log.info(f"Expanding qedge {qedge_key} using {kp_to_use}")
@@ -753,15 +1085,15 @@ class ARAXExpander:
 
         # Make sure at least one of the qnodes has a curie specified
         if not any(qnode for qnode in edge_qg.nodes.values() if qnode.ids):
-            log.error(f"Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
-                      f"a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
-            return answer_kg, log
+            log.error("Cannot expand an edge for which neither end has any curies. (Could not find curies to use from "
+                      "a prior expand step, and neither qnode has a curie specified.)", error_code="InvalidQuery")
+            return answer_kg, None, log
         # Make sure the specified KP is a valid option
         allowable_kps = kp_selector.valid_kps
         if kp_to_use not in allowable_kps:
             log.error(f"Invalid knowledge provider: {kp_to_use}. Valid options are {', '.join(allowable_kps)}",
                       error_code="InvalidKP")
-            return answer_kg, log
+            return answer_kg, None, log
 
         # Route this query to the KP's TRAPI API
         try:
@@ -769,85 +1101,84 @@ class ARAXExpander:
                                       kp_name=kp_to_use,
                                       user_specified_kp=user_specified_kp,
                                       kp_timeout=kp_timeout,
+                                      bypass_cache=bypass_cache,
                                       kp_selector=kp_selector)
-            answer_kg = await kp_querier.answer_one_hop_query_async(edge_qg,
-                                                                    be_creative_treats=be_creative_treats)
+            qg_org_kg, aux_graphs = await kp_querier.answer_one_hop_query_async(
+                edge_qg,
+                be_creative_treats=be_creative_treats)
         except Exception:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             if user_specified_kp:
-                log.error(f"An uncaught error was thrown while trying to Expand using {kp_to_use}. Error was: {tb}",
-                          error_code=f"UncaughtError")
+                log.error(f"An uncaught error of type {error_type} was thrown while "
+                          f"trying to Expand using {kp_to_use}. Error was: {tb}",
+                          error_code="UncaughtError")
             else:
                 log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
                             f"get answers from that KP. Error was: {tb}")
             log.update_query_plan(qedge_key, kp_to_use, "Error", f"Process error-ed out with {log.status}")
-            return QGOrganizedKnowledgeGraph(), log
+            return QGOrganizedKnowledgeGraph(), {}, log
 
         if log.status != 'OK':
             if multiple_kps:
                 log.status = 'OK'  # We don't want to halt just because one KP reported an error #1500
-            return answer_kg, log
+            return qg_org_kg, aux_graphs, log
 
-        log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+        log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(qg_org_kg)})")
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)
-        if kp_to_use != 'infores:rtx-kg2':  # KG2c is already deduplicated and uses canonical predicates
-            answer_kg = eu.check_for_canonical_predicates(answer_kg, kp_to_use, log)
-            answer_kg,\
-                dropped_edge_counts = self._deduplicate_nodes(answer_kg,
-                                                              kp_to_use,
-                                                              log)
-            for qedge_key, count in dropped_edge_counts.items():
-                if count > 0:
-                    # update query plan here
-                    done_str = log.query_plan['qedge_keys'][qedge_key][kp_to_use]['description']
-                    log.update_query_plan(qedge_key,
-                                          kp_to_use,
-                                          "Warning",
-                                          done_str + "; "
-                                          f"{count} edges dropped due "
-                                          "to node reference failure")
-        if any(edges for edges in answer_kg.edges_by_qg_id.values()):  # Make sure the KP actually returned something
-            answer_kg = self._remove_self_edges(answer_kg, kp_to_use, log)
+        # KG2c and retriever are already deduplicated and uses canonical predicates
+        if kp_to_use not in KPS_THAT_RETURN_PREFERRED_NODE_CURIES:
+            log.warning(f"{kp_to_use}: this KP may not return preferred CURIEs; please check, and if it does return only preferred CURIEs, add to the Expand whitelist")
 
-        return answer_kg, log
+        if any(edges for edges in qg_org_kg.edges_by_qg_id.values()):  # Make sure the KP actually returned something
+            qg_org_kg = self._remove_self_edges(qg_org_kg, kp_to_use, log)
+
+        log.info(f"{kp_to_use}: checking unbound nodes and edges in result; "
+                 f"number of unbound nodes: {len(qg_org_kg.unbound_nodes)}; "
+                 f"number of unbound edges: {len(qg_org_kg.unbound_edges)}")
+
+        return qg_org_kg, aux_graphs, log
 
     @staticmethod
     def _expand_node(qnode_key: str,
-                     kps_to_use: List[str],
+                     kps_to_use: list[str],
                      query_graph: QueryGraph,
                      user_specified_kp: bool,
                      kp_timeout: Optional[int],
-                     log: ARAXResponse,
-                     url: str) -> QGOrganizedKnowledgeGraph:
+                     log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
         # This function expands a single node using the specified knowledge provider (for now only KG2 is supported)
         log.debug(f"Expanding node {qnode_key} using {kps_to_use}")
         qnode = query_graph.nodes[qnode_key]
-        single_node_qg = QueryGraph(nodes={qnode_key: qnode}, edges=dict())
+        if qnode.ids:
+            qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
+        single_node_qg = QueryGraph(nodes={qnode_key: qnode}, edges={})
         answer_kg = QGOrganizedKnowledgeGraph()
         if log.status != 'OK':
             return answer_kg
         if not qnode.ids:
-            log.error(f"Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
+            log.error("Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
             return answer_kg
 
         # Answer the query using the proper KP (only our own KP answers single-node queries for now)
-        if kps_to_use == ["infores:rtx-kg2"]:
-            kp_querier = TRAPIQuerier(response_object=log,
-                                      kp_name=kps_to_use[0],
-                                      user_specified_kp=user_specified_kp,
-                                      kp_timeout=kp_timeout)
-            answer_kg = kp_querier.answer_single_node_query(single_node_qg)
-            log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+        kps_to_use_that_cannot_handle_single_node_queries = set(kps_to_use) - KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES
+        if kps_to_use_that_cannot_handle_single_node_queries:
+            log.error("these KPs cannot answer single-node queries: "
+                      f"{kps_to_use_that_cannot_handle_single_node_queries}",
+                      error_code="InvalidKP")
             return answer_kg
-        else:
-            log.error(f"Only infores:rtx-kg2 can answer single-node queries currently", error_code="InvalidKP")
-            return answer_kg
+
+        kp_querier = TRAPIQuerier(response_object=log,
+                                  kp_name=next(iter(KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES)),
+                                  user_specified_kp=user_specified_kp,
+                                  kp_timeout=kp_timeout)
+        answer_kg = kp_querier.answer_single_node_query(single_node_qg)
+        log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
+        return answer_kg
 
     def _get_query_graph_for_edge(self, qedge_key: str, full_qg: QueryGraph, overarching_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed
-        edge_qg = QueryGraph(nodes=dict(), edges=dict())
+        edge_qg = QueryGraph(nodes={}, edges={})
         qedge = full_qg.edges[qedge_key]
         qnode_keys = [qedge.subject, qedge.object]
 
@@ -894,72 +1225,9 @@ class ARAXExpander:
         return edge_qg
 
     @staticmethod
-    def _deduplicate_nodes(answer_kg: QGOrganizedKnowledgeGraph, kp_name: str, log: ARAXResponse) -> \
-            tuple[QGOrganizedKnowledgeGraph, dict[str, int]]:
-        log.debug(f"{kp_name}: Deduplicating nodes")
-        deduplicated_kg = QGOrganizedKnowledgeGraph(nodes={qnode_key: dict() for qnode_key in answer_kg.nodes_by_qg_id},
-                                                    edges={qedge_key: dict() for qedge_key in answer_kg.edges_by_qg_id})
-        curie_mappings = dict()
-
-        # First deduplicate the nodes
-        for qnode_key, nodes in answer_kg.nodes_by_qg_id.items():
-            # Load preferred curie info from NodeSynonymizer
-            log.debug(f"{kp_name}: Getting preferred curies for {qnode_key} nodes returned in this step")
-            canonicalized_nodes = eu.get_canonical_curies_dict(list(nodes), log) if nodes else dict()
-            if log.status != 'OK':
-                return deduplicated_kg
-
-            for node_key in nodes:
-                # Figure out the preferred curie/name for this node
-                node = nodes.get(node_key)
-                canonicalized_node = canonicalized_nodes.get(node_key)
-                if canonicalized_node:
-                    preferred_curie = canonicalized_node.get('preferred_curie', node_key)
-                    preferred_name = canonicalized_node.get('preferred_name', node.name)
-                    preferred_type = canonicalized_node.get('preferred_type')
-                    preferred_categories = eu.convert_to_list(preferred_type) if preferred_type else node.categories
-                    curie_mappings[node_key] = preferred_curie
-                else:
-                    # Means the NodeSynonymizer didn't recognize this curie
-                    preferred_curie = node_key
-                    preferred_name = node.name
-                    preferred_categories = node.categories
-                    curie_mappings[node_key] = preferred_curie
-
-                # Add this node into our deduplicated KG as necessary
-                if preferred_curie not in deduplicated_kg.nodes_by_qg_id[qnode_key]:
-                    node_key = preferred_curie
-                    node.name = preferred_name
-                    node.categories = preferred_categories
-                    deduplicated_kg.add_node(node_key, node, qnode_key)
-
-        # Then update the edges to reflect changes made to the nodes
-        dropped_edge_count = dict()
-        for qedge_key, edges in answer_kg.edges_by_qg_id.items():
-            dropped_edge_count[qedge_key] = 0
-            for edge_key, edge in edges.items():
-                drop_edge = False
-                if edge.subject not in curie_mappings:
-                    log.warning(f"{kp_name}: edge subject not in curie mappings; qedge key: {qedge_key}; subject ID: {edge.subject}")
-                    drop_edge = True
-                    dropped_edge_count[qedge_key] += 1
-                else:
-                    edge.subject = curie_mappings.get(edge.subject)
-                if edge.object not in curie_mappings:
-                    log.warning(f"{kp_name}: edge object not in curie mappings; qedge key: {qedge_key}; object ID: {edge.object}")
-                    drop_edge = True
-                    dropped_edge_count[qedge_key] += 1
-                else:
-                    edge.object = curie_mappings.get(edge.object)
-                if not drop_edge:
-                    deduplicated_kg.add_edge(edge_key, edge, qedge_key)
-        log.debug(f"{kp_name}: After deduplication, answer KG counts are: {eu.get_printable_counts_by_qg_id(deduplicated_kg)}")
-        return deduplicated_kg, dropped_edge_count
-
-    @staticmethod
-    def _extract_query_subgraph(qedge_keys_to_expand: List[str], query_graph: QueryGraph, log: ARAXResponse) -> QueryGraph:
+    def _extract_query_subgraph(qedge_keys_to_expand: list[str], query_graph: QueryGraph, log: ARAXResponse) -> QueryGraph:
         # This function extracts a sub-query graph containing the provided qedge IDs from a larger query graph
-        sub_query_graph = QueryGraph(nodes=dict(), edges=dict())
+        sub_query_graph = QueryGraph(nodes={}, edges={})
 
         for qedge_key in qedge_keys_to_expand:
             # Make sure this query edge actually exists in the query graph
@@ -991,8 +1259,13 @@ class ARAXExpander:
         return sub_query_graph
 
     @staticmethod
-    def _merge_answer_into_message_kg(answer_kg: QGOrganizedKnowledgeGraph, overarching_kg: QGOrganizedKnowledgeGraph,
-                                      overarching_qg: QueryGraph, expands_qg: QueryGraph, log: ARAXResponse):
+    def _merge_answer_into_message_kg(
+            answer_kg: QGOrganizedKnowledgeGraph,
+            overarching_kg: QGOrganizedKnowledgeGraph,
+            overarching_qg: QueryGraph,
+            expands_qg: QueryGraph,
+            log: ARAXResponse
+    ):
         # This function merges an answer KG (from the current edge/node expansion) into the overarching KG
         log.debug("Merging answer into Message.KnowledgeGraph")
         pinned_curies_map = defaultdict(set)
@@ -1020,6 +1293,8 @@ class ARAXExpander:
         # Merge edges
         qedge_keys_with_answers = {qedge_key for qedge_key, edges in answer_kg.edges_by_qg_id.items() if edges}
         for qedge_key in qedge_keys_with_answers:
+            overarching_qg_qedges = str(overarching_qg.edges.keys())
+            log.debug(f"in merge: qedge_key: {qedge_key} oqg_edges: {overarching_qg_qedges}")
             # Add this qedge to the QG if it's a subclass_of edge that TRAPIQuerier added to the QG
             if qedge_key not in overarching_qg.edges:
                 # Make sure the key conforms to the format TRAPIQuerier assigns to subclass_of self-qedges
@@ -1034,7 +1309,7 @@ class ARAXExpander:
                     overarching_qg.edges[qedge_key] = subclass_qedge
                     expands_qg.edges[qedge_key] = subclass_qedge
                 else:
-                    log.error(f"An unknown QEdge has been added to the QG since Expand began processing!",
+                    log.error("An unknown QEdge has been added to the QG since Expand began processing!",
                               error_code="InvalidQG")
             num_orphan_edges_removed = 0
             qedge = overarching_qg.edges[qedge_key]
@@ -1057,20 +1332,21 @@ class ARAXExpander:
                     del overarching_qg.edges[qedge_key]
                     del expands_qg.edges[qedge_key]
 
+
     @staticmethod
     def _store_kryptonite_edge_info(kryptonite_kg: QGOrganizedKnowledgeGraph, kryptonite_qedge_key: str, qg: QueryGraph,
-                                    encountered_kryptonite_edges_info: Dict[str, Dict[str, Set[str]]], log: ARAXResponse):
+                                    encountered_kryptonite_edges_info: dict[str, dict[str, set[str]]], log: ARAXResponse):
         """
         This function adds the IDs of nodes found by expansion of the given kryptonite ("not") edge to the global
         encountered_kryptonite_edges_info dictionary, which is organized by QG IDs. This allows Expand to "remember"
         which kryptonite edges/nodes it found previously, without adding them to the KG.
         Example of encountered_kryptonite_edges_info: {"e01": {"n00": {"MONDO:1"}, "n01": {"PR:1", "PR:2"}}}
         """
-        log.debug(f"Storing info for kryptonite edges found")
+        log.debug("Storing info for kryptonite edges found")
         kryptonite_qedge = qg.edges[kryptonite_qedge_key]
         # First just initiate empty nested dictionaries/sets as needed
         if kryptonite_qedge_key not in encountered_kryptonite_edges_info:
-            encountered_kryptonite_edges_info[kryptonite_qedge_key] = dict()
+            encountered_kryptonite_edges_info[kryptonite_qedge_key] = {}
         kryptonite_nodes_dict = encountered_kryptonite_edges_info[kryptonite_qedge_key]
         if kryptonite_qedge.subject not in kryptonite_nodes_dict:
             kryptonite_nodes_dict[kryptonite_qedge.subject] = set()
@@ -1086,8 +1362,10 @@ class ARAXExpander:
                   f"{kryptonite_qedge_key} kryptonite edges")
 
     @staticmethod
-    def _apply_any_kryptonite_edges(organized_kg: QGOrganizedKnowledgeGraph, full_query_graph: QueryGraph,
-                                    encountered_kryptonite_edges_info: Dict[str, Dict[str, Set[str]]], log):
+    def _apply_any_kryptonite_edges(
+            organized_kg: QGOrganizedKnowledgeGraph,
+            full_query_graph: QueryGraph,
+            encountered_kryptonite_edges_info: dict[str, dict[str, set[str]]], log):
         """
         This function breaks any paths in the KG for which a "not" (exclude=True) condition has been met; the remains
         of the broken paths not used in other paths in the KG are cleaned up during later pruning of dead ends. The
@@ -1138,18 +1416,28 @@ class ARAXExpander:
             if not organized_kg.edges_by_qg_id[qedge_key]:
                 log.warning(f"All {qedge_key} edges have been deleted!")
 
+
     @staticmethod
-    def _prune_kg(qnode_key_to_prune: str, prune_threshold: int, kg: QGOrganizedKnowledgeGraph,
-                  qg: QueryGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
-        log.info(f"Pruning back {qnode_key_to_prune} nodes because there are more than {prune_threshold}")
+    def _prune_kg(
+            qnode_key_to_prune: str,
+            prune_threshold: int,
+            kg: QGOrganizedKnowledgeGraph,
+            qg: QueryGraph,
+            log: ARAXResponse
+    ) -> QGOrganizedKnowledgeGraph:
+        log.info(f"Pruning some {qnode_key_to_prune} nodes because there are more than {prune_threshold}")
         kg_copy = copy.deepcopy(kg)
         qg_for_resultify = copy.deepcopy(qg)
-        qg_for_resultify.nodes[qnode_key_to_prune].is_set = False  # Necessary for assessment of answer quality
+        # Necessary for assessment of answer quality:
+        qg_for_resultify.nodes[qnode_key_to_prune].is_set = False
         num_edges_in_kg = sum([len(edges) for edges in kg.edges_by_qg_id.values()])
         overlay_fet = True if num_edges_in_kg < 100000 else False
         # Use fisher exact test and the ranker to prune down answers for this qnode
-        intermediate_results_response = eu.create_results(qg_for_resultify, kg_copy, log,
-                                                          rank_results=True, overlay_fet=overlay_fet,
+        intermediate_results_response = eu.create_results(qg_for_resultify,
+                                                          kg_copy,
+                                                          log,
+                                                          rank_results=True,
+                                                          overlay_fet=overlay_fet,
                                                           qnode_key_to_prune=qnode_key_to_prune)
         log.debug(f"A total of {len(intermediate_results_response.envelope.message.results)} "
                   f"intermediate results were created/ranked")
@@ -1157,7 +1445,7 @@ class ARAXExpander:
             # Filter down so we only keep the top X nodes
             results = intermediate_results_response.envelope.message.results
             results.sort(key=lambda x: x.analyses[0].score, reverse=True)
-            kept_nodes = set()
+            kept_nodes: set[str] = set()
             scores = []
             counter = 0
             while len(kept_nodes) < prune_threshold and counter < len(results):
@@ -1182,15 +1470,20 @@ class ARAXExpander:
         return kg
 
     @staticmethod
-    def _remove_dead_end_paths(expands_qg: QueryGraph, kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
+    def _remove_dead_end_paths(
+            expands_qg: QueryGraph,
+            kg: QGOrganizedKnowledgeGraph,
+            log: ARAXResponse,
+    ) -> QGOrganizedKnowledgeGraph:
         """
         This function removes any 'dead-end' paths from the KG. (Because edges are expanded one-by-one, not all edges
         found in the last expansion will connect to edges in the next one)
         """
-        log.debug(f"Pruning any paths that are now dead ends (with help of Resultify)")
+        log.debug("Pruning any paths that are now dead ends (with help of Resultify)")
         is_set_true_qg = copy.deepcopy(expands_qg)
         for qnode in is_set_true_qg.nodes.values():
-            qnode.is_set = True  # This makes resultify run faster and doesn't hurt in this case
+            # this makes resultify run faster and doesn't hurt in this case:
+            qnode.is_set = True
         resultify_response = eu.create_results(is_set_true_qg, kg, log)
         if resultify_response.status == "OK":
             pruned_kg = eu.convert_standard_kg_to_qg_organized_kg(resultify_response.envelope.message.knowledge_graph)
@@ -1203,14 +1496,14 @@ class ARAXExpander:
 
     @staticmethod
     def _add_node_connection_to_map(qnode_key_a: str, qnode_key_b: str, edge: Edge,
-                                    node_connections_map: Dict[str, Dict[str, Dict[str, Set[str]]]]):
+                                    node_connections_map: dict[str, dict[str, dict[str, set[str]]]]):
         # This is a helper function that's used when building a map of which nodes are connected to which
         # Example node_connections_map: {'n01': {'UMLS:1222': {'n00': {'DOID:122'}, 'n02': {'UniProtKB:22'}}}, ...}
         # Initiate entries for this edge's nodes as needed
         if edge.subject not in node_connections_map[qnode_key_a]:
-            node_connections_map[qnode_key_a][edge.subject] = dict()
+            node_connections_map[qnode_key_a][edge.subject] = {}
         if edge.object not in node_connections_map[qnode_key_b]:
-            node_connections_map[qnode_key_b][edge.object] = dict()
+            node_connections_map[qnode_key_b][edge.object] = {}
         # Initiate empty sets for the qnode keys connected to each of the nodes as needed
         if qnode_key_b not in node_connections_map[qnode_key_a][edge.subject]:
             node_connections_map[qnode_key_a][edge.subject][qnode_key_b] = set()
@@ -1220,14 +1513,14 @@ class ARAXExpander:
         node_connections_map[qnode_key_a][edge.subject][qnode_key_b].add(edge.object)
         node_connections_map[qnode_key_b][edge.object][qnode_key_a].add(edge.subject)
 
-    def _get_order_to_expand_qedges_in(self, query_graph: QueryGraph, log: ARAXResponse) -> List[str]:
+    def _get_order_to_expand_qedges_in(self, query_graph: QueryGraph, log: ARAXResponse) -> list[str]:
         """
         This function determines what order to expand the edges in a query graph in; it aims to start with a required,
         non-kryptonite qedge that has a qnode with a curie specified. It then looks for a qedge connected to that
         starting qedge, and so on.
         """
         qedge_keys_remaining = [qedge_key for qedge_key in query_graph.edges]
-        ordered_qedge_keys = []
+        ordered_qedge_keys: list[str] = []
         while qedge_keys_remaining:
             if not ordered_qedge_keys:
                 # Try to start with a required, non-kryptonite qedge that has a qnode with a curie specified
@@ -1253,12 +1546,12 @@ class ARAXExpander:
                     ordered_qedge_keys.append(connected_qedge_key)
                     qedge_keys_remaining.remove(connected_qedge_key)
                 else:
-                    log.error(f"Query graph is disconnected (has more than one component)", error_code="UnsupportedQG")
+                    log.error("Query graph is disconnected (has more than one component)", error_code="UnsupportedQG")
                     return []
         return ordered_qedge_keys
 
     @staticmethod
-    def _find_qedge_connected_to_subgraph(subgraph_qedge_keys: List[str], qedge_keys_to_choose_from: List[str],
+    def _find_qedge_connected_to_subgraph(subgraph_qedge_keys: list[str], qedge_keys_to_choose_from: list[str],
                                           qg: QueryGraph) -> Optional[str]:
         qnode_keys_in_subgraph = {qnode_key for qedge_key in subgraph_qedge_keys for qnode_key in
                                   {qg.edges[qedge_key].subject, qg.edges[qedge_key].object}}
@@ -1322,9 +1615,9 @@ class ARAXExpander:
         log.debug(f"{kp_name}: After removing self-edges, answer KG counts are: {eu.get_printable_counts_by_qg_id(kg)}")
         return kg
 
-    def _set_and_validate_parameters(self, input_parameters: Dict[str, any], kp_selector: KPSelector,
-                                     log: ARAXResponse) -> Dict[str, any]:
-        parameters = dict()
+    def _set_and_validate_parameters(self, input_parameters: dict[str, Any], kp_selector: KPSelector,
+                                     log: ARAXResponse) -> dict[str, Any]:
+        parameters: dict[str, Any] = {}
         parameter_info_dict = self.get_parameter_info_dict()
 
         # First set parameters to their defaults
@@ -1359,7 +1652,7 @@ class ARAXExpander:
         return parameters
 
     @staticmethod
-    def is_supported_constraint(constraint: AttributeConstraint, supported_constraints_map: Dict[str, Dict[str, Set[str]]]) -> bool:
+    def is_supported_constraint(constraint: AttributeConstraint, supported_constraints_map: dict[str, dict[str, set[str]]]) -> bool:
         if constraint.id not in supported_constraints_map:
              return False
         if constraint.operator not in supported_constraints_map[constraint.id]:
@@ -1371,7 +1664,7 @@ class ARAXExpander:
             return True
 
     @staticmethod
-    def _load_fda_approved_drug_ids() -> Set[str]:
+    def _load_fda_approved_drug_ids() -> set[str]:
         # Determine the local path to the FDA-approved drugs pickle
         path_list = os.path.realpath(__file__).split(os.path.sep)
         rtx_index = path_list.index("RTX")
@@ -1393,7 +1686,7 @@ class ARAXExpander:
               a Sep. 2021 mini-hackathon that that was the least bad option vs. copying nodes/edges in such a situation.
         """
         # First create a lookup map of the curies we'll need to remap
-        canonical_to_input_curie_map = dict()
+        canonical_to_input_curie_map = {}
         for qnode_key, qnode in qg.nodes.items():
             if qnode.ids:
                 canonical_nodes_info = eu.get_canonical_curies_dict(qnode.ids, log)
@@ -1432,7 +1725,7 @@ class ARAXExpander:
                     # Answers from in-house KPs may not have query_ids filled out (they don't do subclass reasoning)
                     node.query_ids = []
         else:
-            log.debug(f"No KG nodes found that use a different curie than was asked for in the QG")
+            log.debug("No KG nodes found that use a different curie than was asked for in the QG")
 
     @staticmethod
     def _get_prune_threshold(one_hop_qg: QueryGraph) -> int:
@@ -1467,12 +1760,12 @@ class ARAXExpander:
         return list(all_qnode_keys.difference(qnode_keys_used_by_qedges))
 
     @staticmethod
-    def _get_qedges_with_curie_qnode(query_graph: QueryGraph) -> List[str]:
+    def _get_qedges_with_curie_qnode(query_graph: QueryGraph) -> list[str]:
         return [qedge_key for qedge_key, qedge in query_graph.edges.items()
                 if query_graph.nodes[qedge.subject].ids or query_graph.nodes[qedge.object].ids]
 
     @staticmethod
-    def _find_connected_qedge(qedge_choices: List[QEdge], qedge: QEdge) -> QEdge:
+    def _find_connected_qedge(qedge_choices: list[QEdge], qedge: QEdge) -> QEdge:
         qedge_qnode_keys = {qedge.subject, qedge.object}
         connected_qedges = []
         for other_qedge in qedge_choices:

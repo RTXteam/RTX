@@ -13,7 +13,7 @@ import psutil
 from datetime import datetime, timezone
 import sqlalchemy
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, Float, String, DateTime, PickleType
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -350,7 +350,7 @@ class ARAXQueryTracker:
                     elapsed = 0,
                     message_id = None,
                     message_code = 'OverLimit',
-                    code_description = 'Request has exceeded 4 concurrent query limit. Denied.')
+                    code_description = f"Request has exceeded {MAX_CONCURRENT_FROM_REMOTE} concurrent query limit. Denied.")
                 session.add(tracker_entry)
                 session.commit()
                 tracker_id = tracker_entry.query_id
