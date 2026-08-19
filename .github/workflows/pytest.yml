@@ -18,6 +18,10 @@ on:
       - 'requirements.txt'
       - '.github/workflows/pytest.yml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }} # this is the workflow name and the branch name
+  cancel-in-progress: true # this is to cancel the in-progress workflow if a new one is started
+
 jobs:
   analyze:
     name: Analyze
