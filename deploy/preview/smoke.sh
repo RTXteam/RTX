@@ -76,18 +76,53 @@ http_code() {
     curl -s -o /dev/null -w '%{http_code}' -m "${timeout}" "${url}" 2>/dev/null || printf '000'
 }
 
+render_report() {
+    printf '| check | result | detail |\n'
+    printf '| --- | --- | --- |\n'
+    local row
+    for row in "${ROWS[@]}"; do
+        printf '%s\n' "${row}"
+    done
+    if [ -n "${PYTEST_TAIL}" ]; then
+        printf '\n<details><summary>pytest output, last 60 lines</summary>\n\n'
+        # the backticks are a literal markdown fence, not a substitution
+        # shellcheck disable=SC2016
+        printf '```\n%s\n```\n\n' "${PYTEST_TAIL}"
+        printf '</details>\n'
+    fi
+}
+
+# Renders the table, mirrors it into the step summary and exits with the
+# number of failures as the verdict. Called at the end, and early when the
+# container is not even running.
+finish() {
+    render_report
+    if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+        render_report >> "${GITHUB_STEP_SUMMARY}"
+    fi
+    if [ "${FAILURES}" -gt 0 ]; then
+        log "${FAILURES} smoke check(s) failed for PR ${PR}"
+        exit 1
+    fi
+    log "all smoke checks passed for PR ${PR}"
+    exit 0
+}
+
 log "smoke testing PR ${PR} at ${BASE}"
 
-# The container must exist at all before any HTTP check is meaningful.
+# The container must exist and be running before any HTTP check is
+# meaningful. Short-circuit here rather than walking through four curl
+# checks with timeouts of up to 180 seconds against a dead port.
 if ! ${DOCKER} inspect "${CONTAINER}" >/dev/null 2>&1; then
-    record "container ${CONTAINER} exists" "no" "not found"
+    record "container ${CONTAINER} exists" "no" "not found, skipping every HTTP check"
+    finish
+fi
+RUNNING="$(${DOCKER} inspect --format '{{.State.Running}}' "${CONTAINER}" 2>/dev/null || printf 'false')"
+if [ "${RUNNING}" = "true" ]; then
+    record "container ${CONTAINER} running" "yes" "up"
 else
-    RUNNING="$(${DOCKER} inspect --format '{{.State.Running}}' "${CONTAINER}" 2>/dev/null || printf 'false')"
-    if [ "${RUNNING}" = "true" ]; then
-        record "container ${CONTAINER} running" "yes" "up"
-    else
-        record "container ${CONTAINER} running" "no" "state ${RUNNING}"
-    fi
+    record "container ${CONTAINER} running" "no" "state ${RUNNING}, skipping every HTTP check"
+    finish
 fi
 
 # 1. the ARAX status endpoint
@@ -154,30 +189,4 @@ fi
 # Report
 # ---------------------------------------------------------------------------
 
-render_report() {
-    printf '| check | result | detail |\n'
-    printf '| --- | --- | --- |\n'
-    local row
-    for row in "${ROWS[@]}"; do
-        printf '%s\n' "${row}"
-    done
-    if [ -n "${PYTEST_TAIL}" ]; then
-        printf '\n<details><summary>pytest output, last 60 lines</summary>\n\n'
-        # the backticks are a literal markdown fence, not a substitution
-        # shellcheck disable=SC2016
-        printf '```\n%s\n```\n\n' "${PYTEST_TAIL}"
-        printf '</details>\n'
-    fi
-}
-
-render_report
-
-if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-    render_report >> "${GITHUB_STEP_SUMMARY}"
-fi
-
-if [ "${FAILURES}" -gt 0 ]; then
-    log "${FAILURES} smoke check(s) failed for PR ${PR}"
-    exit 1
-fi
-log "all smoke checks passed for PR ${PR}"
+finish
