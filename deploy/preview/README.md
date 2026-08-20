@@ -41,15 +41,17 @@ commit, and the smoke test table. Redeploying updates that same comment instead 
 new one. A refused `/deploy` (fork pull request, closed pull request) gets a short reply saying
 why.
 
-The scripts always run from the workflow's own branch (master once merged, `issue-2846` while
-testing with **Run workflow**), never from the pull request. The pull request head is checked out
+The scripts always run from the workflow's own branch on master, never from the pull
+request. The pull request head is checked out
 into `pr-head/` and used only as the docker build context, so a pull request that changes
 `DockerBuild/CICD-Dockerfile` is built with its own Dockerfile, exactly as `pytest.yml` does.
 This also means a pull request opened before this tooling existed can be previewed.
 
-GitHub only fires `issue_comment` and `schedule` from the default branch copy of a workflow
-file. Until this workflow is merged to master, the only trigger that works is
-**Run workflow** against the `issue-2846` branch.
+GitHub only registers a workflow, and only fires `workflow_dispatch`, `issue_comment` and
+`schedule`, from the default branch copy of the file. Until this workflow is merged to master
+no GitHub trigger works at all, not even **Run workflow**, because the workflow does not appear
+in the Actions tab. Test on the host with `deploy/preview/deploy.sh` until then, and verify the
+triggers immediately after the merge.
 
 ## How it works
 
@@ -113,7 +115,9 @@ Run this once on `cicd.rtx.ai`, as a human with sudo:
 sudo bash deploy/preview/install-nginx-include.sh
 ```
 
-It creates `/etc/nginx/arax-preview.d/`, backs up `/etc/nginx/sites-enabled/default`, and adds
+It creates `/etc/nginx/arax-preview.d/`, backs up `/etc/nginx/sites-enabled/default` into
+`/var/backups/arax-preview/` (a backup inside `sites-enabled/` would itself be parsed as
+configuration, Ubuntu's nginx.conf includes that directory with a bare glob), and adds
 one line inside the certbot managed TLS server block for `cicd.rtx.ai`:
 
 ```
