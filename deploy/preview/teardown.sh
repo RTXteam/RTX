@@ -24,17 +24,34 @@ IMAGE="$(preview_image "${PR}")"
 NGINX_CONF="$(preview_nginx_conf "${PR}")"
 
 REMOVED=()
+FAILURES=0
 
 log "tearing down the preview for PR ${PR}"
 
-if ${DOCKER} rm -f "${CONTAINER}" >/dev/null 2>&1; then
-    REMOVED+=("container ${CONTAINER}")
+# docker rm -f and docker rmi -f exit 0 even when the target does not exist
+# (verified on Docker 20.10.21), so their exit status cannot tell "removed"
+# from "was never there". Check existence explicitly before and after, and
+# treat "still there afterwards" as a failure the caller must hear about.
+if ${DOCKER} inspect --type container "${CONTAINER}" >/dev/null 2>&1; then
+    if ${DOCKER} rm -f "${CONTAINER}" >/dev/null 2>&1 \
+        && ! ${DOCKER} inspect --type container "${CONTAINER}" >/dev/null 2>&1; then
+        REMOVED+=("container ${CONTAINER}")
+    else
+        log "WARNING: could not remove container ${CONTAINER}"
+        FAILURES=$(( FAILURES + 1 ))
+    fi
 else
     log "no container ${CONTAINER}"
 fi
 
-if ${DOCKER} rmi -f "${IMAGE}" >/dev/null 2>&1; then
-    REMOVED+=("image ${IMAGE}")
+if ${DOCKER} inspect --type image "${IMAGE}" >/dev/null 2>&1; then
+    if ${DOCKER} rmi -f "${IMAGE}" >/dev/null 2>&1 \
+        && ! ${DOCKER} inspect --type image "${IMAGE}" >/dev/null 2>&1; then
+        REMOVED+=("image ${IMAGE}")
+    else
+        log "WARNING: could not remove image ${IMAGE}"
+        FAILURES=$(( FAILURES + 1 ))
+    fi
 else
     log "no image ${IMAGE}"
 fi
@@ -72,11 +89,15 @@ else
     log "WARNING: ${PREVIEW_NGINX_DIR} does not exist, skipping the nginx cleanup"
 fi
 
-if [ "${#REMOVED[@]}" -eq 0 ]; then
-    printf 'Nothing to remove for PR %s.\n' "${PR}"
-else
+if [ "${#REMOVED[@]}" -gt 0 ]; then
     printf 'Removed for PR %s:\n' "${PR}"
     for item in "${REMOVED[@]}"; do
         printf '  - %s\n' "${item}"
     done
+elif [ "${FAILURES}" -eq 0 ]; then
+    printf 'Nothing to remove for PR %s.\n' "${PR}"
 fi
+
+# A non-zero exit tells gc.sh and the workflow that something is still on the
+# host, so neither of them can report a clean teardown that did not happen.
+[ "${FAILURES}" -eq 0 ] || die "teardown of PR ${PR} left ${FAILURES} resource(s) behind"
