@@ -323,7 +323,8 @@ class ARAXQueryTracker:
             timestamp = str(datetime.now().isoformat())
             eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker create_tracker_entry")
 
-        MAX_CONCURRENT_FROM_REMOTE = 10
+        MAX_CONCURRENT_FROM_REMOTE = 45
+        MIN_MEMORY_LIMIT_GB = 10.0
 
         instance_info = self.get_instance_info()
 
@@ -333,7 +334,16 @@ class ARAXQueryTracker:
         start_timestamp = datetime.now().timestamp()
 
         remote_address = attributes['remote_address']
+        deny_message = None
         if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > MAX_CONCURRENT_FROM_REMOTE and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
+            deny_message = f"Request has exceeded {MAX_CONCURRENT_FROM_REMOTE} concurrent query limit. Denied."
+        else:
+            system_memory = psutil.virtual_memory()
+            available_gb = system_memory.available / (1024 ** 3)
+            if available_gb < MIN_MEMORY_LIMIT_GB:
+                deny_message = f"Server below {MIN_MEMORY_LIMIT_GB} GB safety limit. Unable to accept query at this time."
+
+        if deny_message is not None:
             try:
                 tracker_entry = ARAXQuery(
                     status = "Denied",
@@ -350,7 +360,7 @@ class ARAXQueryTracker:
                     elapsed = 0,
                     message_id = None,
                     message_code = 'OverLimit',
-                    code_description = f"Request has exceeded {MAX_CONCURRENT_FROM_REMOTE} concurrent query limit. Denied.")
+                    code_description = deny_message)
                 session.add(tracker_entry)
                 session.commit()
                 tracker_id = tracker_entry.query_id
