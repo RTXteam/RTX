@@ -43,7 +43,10 @@ if ${SUDO} grep -qF "${INCLUDE_MARKER}" "${PREVIEW_NGINX_SITE}"; then
 fi
 
 TIMESTAMP="$(date -u '+%Y%m%d%H%M%S')"
-BACKUP="${PREVIEW_NGINX_SITE}.bak.${TIMESTAMP}"
+
+BACKUP_DIR="${PREVIEW_NGINX_DIR_BACKUP_DIR:-/var/backups/arax-preview}"
+${SUDO} mkdir -p "${BACKUP_DIR}"
+BACKUP="${BACKUP_DIR}/$(basename "${PREVIEW_NGINX_SITE}").bak.${TIMESTAMP}"
 ${SUDO} cp -p "${PREVIEW_NGINX_SITE}" "${BACKUP}"
 log "backed up ${PREVIEW_NGINX_SITE} to ${BACKUP}"
 
