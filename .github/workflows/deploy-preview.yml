@@ -1,10 +1,12 @@
 # ARAX preview environments, one docker container per pull request on
 # cicd.rtx.ai. See deploy/preview/README.md and issue #2846.
 #
-# GitHub only ever runs the issue_comment and schedule triggers from the copy
-# of this file on the default branch. Until this workflow lands on master the
-# only trigger that works is workflow_dispatch, run against the issue-2846
-# branch with the pr_number input.
+# GitHub only registers a workflow, and only fires workflow_dispatch,
+# issue_comment and schedule, from the default branch copy of the file. Until
+# this workflow is merged to master no GitHub trigger works at all, not even
+# Run workflow, because the workflow does not appear in the Actions tab.
+# Test on the host with deploy/preview/deploy.sh until then, and verify the
+# triggers immediately after the merge.
 name: "Preview Deploy"
 
 on:
@@ -45,11 +47,18 @@ jobs:
     name: Deploy preview
     runs-on: [self-hosted, ARAX, docker]
     timeout-minutes: 120
+    # The command must be exactly /deploy, or /deploy followed by whitespace,
+    # so that comments like "/deploying soon" do not trigger a deploy. GitHub
+    # expressions have no regex, and a literal newline can only be produced
+    # with fromJSON.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.pull_request != null &&
-       startsWith(github.event.comment.body, '/deploy') &&
+       (github.event.comment.body == '/deploy' ||
+        startsWith(github.event.comment.body, '/deploy ') ||
+        startsWith(github.event.comment.body, format('/deploy{0}', fromJSON('"\n"'))) ||
+        startsWith(github.event.comment.body, format('/deploy{0}', fromJSON('"\r"')))) &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     steps:
       - name: Resolve PR
@@ -274,11 +283,16 @@ jobs:
     name: Tear down preview
     runs-on: [self-hosted, ARAX, docker]
     timeout-minutes: 120
+    # Same exact-match rule as the deploy job: /undeploy alone or followed by
+    # whitespace, so "/undeployment" and similar do not tear a preview down.
     if: >-
       (github.event_name == 'pull_request' && github.event.action == 'closed') ||
       (github.event_name == 'issue_comment' &&
        github.event.issue.pull_request != null &&
-       startsWith(github.event.comment.body, '/undeploy') &&
+       (github.event.comment.body == '/undeploy' ||
+        startsWith(github.event.comment.body, '/undeploy ') ||
+        startsWith(github.event.comment.body, format('/undeploy{0}', fromJSON('"\n"'))) ||
+        startsWith(github.event.comment.body, format('/undeploy{0}', fromJSON('"\r"')))) &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     steps:
       # On a pull_request event checkout would default to the PR merge ref,
@@ -291,15 +305,21 @@ jobs:
           fetch-depth: 1
 
       - name: Tear down preview
+        id: teardown
         env:
           PR: ${{ github.event.pull_request.number || github.event.issue.number }}
         run: bash deploy/preview/teardown.sh "$PR"
 
+      # The comment reflects what actually happened. teardown.sh exits
+      # non-zero when a resource could not be removed, and silently claiming
+      # success here would leave leaked containers unnoticed.
       - name: Comment on PR
         if: always()
         uses: actions/github-script@v7
         env:
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          TEARDOWN_OUTCOME: ${{ steps.teardown.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           script: |
             const marker = '<!-- arax-preview-status -->';
@@ -308,7 +328,15 @@ jobs:
               core.info('no PR number available, nothing to comment on');
               return;
             }
-            const body = marker + '\n## ARAX preview\n\n🧹 ARAX preview for this PR was removed.';
+            const ok = process.env.TEARDOWN_OUTCOME === 'success';
+            const runUrl = process.env.RUN_URL;
+            const body = ok
+              ? marker + '\n## ARAX preview\n\n🧹 ARAX preview for this PR was removed.'
+              : marker + '\n## ARAX preview\n\n' +
+                '⚠️ Teardown did not finish cleanly. The container `rtx_pr_' + pr + '`, ' +
+                'the image `rtx:pr-' + pr + '` or its nginx route may still be live on the host. ' +
+                'See the [workflow run](' + runUrl + ') and clean up with ' +
+                '`bash deploy/preview/teardown.sh ' + pr + '` on cicd.rtx.ai.';
 
             const existing = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
