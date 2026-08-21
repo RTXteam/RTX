@@ -1,0 +1,383 @@
+# ARAX preview environments, one docker container per pull request on
+# cicd.rtx.ai. See deploy/preview/README.md and issue #2846.
+#
+# GitHub only registers a workflow, and only fires workflow_dispatch,
+# issue_comment and schedule, from the default branch copy of the file. Until
+# this workflow is merged to master no GitHub trigger works at all, not even
+# Run workflow, because the workflow does not appear in the Actions tab.
+# Test on the host with deploy/preview/deploy.sh until then, and verify the
+# triggers immediately after the merge.
+name: "Preview Deploy"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to deploy"
+        required: true
+        type: string
+      run_tests:
+        description: "Run pytest inside the preview container after deploy"
+        required: false
+        type: boolean
+        default: false
+      pytest_args:
+        description: "Extra pytest args (for example -k test_ARAX_query)"
+        required: false
+        type: string
+        default: ""
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [closed]
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: preview-${{ github.event.inputs.pr_number || github.event.issue.number || github.event.pull_request.number || 'gc' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy preview
+    runs-on: [self-hosted, ARAX, docker]
+    timeout-minutes: 120
+    # The command must be exactly /deploy, or /deploy followed by whitespace,
+    # so that comments like "/deploying soon" do not trigger a deploy. GitHub
+    # expressions have no regex, and a literal newline can only be produced
+    # with fromJSON.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       (github.event.comment.body == '/deploy' ||
+        startsWith(github.event.comment.body, '/deploy ') ||
+        startsWith(github.event.comment.body, format('/deploy{0}', fromJSON('"\n"'))) ||
+        startsWith(github.event.comment.body, format('/deploy{0}', fromJSON('"\r"')))) &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    steps:
+      - name: Resolve PR
+        id: resolve
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fromInput = context.payload.inputs && context.payload.inputs.pr_number;
+            const fromComment = context.payload.issue && context.payload.issue.number;
+            const prNumber = parseInt(fromInput || fromComment, 10);
+
+            // Refusals are posted back to the PR when a comment triggered us,
+            // otherwise the person is already looking at the Actions log.
+            async function refuse(message) {
+              core.setFailed(message);
+              if (context.eventName === 'issue_comment' && prNumber) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: '❌ ARAX preview not deployed: ' + message,
+                });
+              }
+            }
+
+            if (!prNumber) {
+              await refuse('could not work out which pull request to deploy');
+              return;
+            }
+
+            const { data } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            const upstream = context.repo.owner + '/' + context.repo.repo;
+            if (data.head.repo === null || data.head.repo.full_name !== upstream) {
+              await refuse('fork PRs are not supported (CICD-Dockerfile clones by branch name from RTXteam/RTX)');
+              return;
+            }
+            if (data.state !== 'open') {
+              await refuse('PR #' + prNumber + ' is ' + data.state + ', only open PRs can be deployed');
+              return;
+            }
+
+            core.setOutput('pr', String(prNumber));
+            core.setOutput('branch', data.head.ref);
+            core.setOutput('sha', data.head.sha);
+            core.setOutput('html_url', data.html_url);
+
+            // Acknowledge the /deploy comment so the author knows it was picked up.
+            if (context.eventName === 'issue_comment') {
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: 'eyes',
+              });
+            }
+
+      # Two checkouts on purpose. The scripts run from the trusted copy of this
+      # workflow's branch (the default branch for /deploy comments, the
+      # dispatched branch for Run workflow), so a PR opened before this tooling
+      # existed can still be previewed and a PR cannot swap the scripts that run
+      # on the self-hosted runner. The PR head goes into pr-head/ and is used
+      # only as the docker build context, which mirrors pytest.yml building the
+      # Dockerfile of the branch under test.
+      - name: Checkout the scripts
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Checkout the PR head as the build context
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.sha }}
+          path: pr-head
+          fetch-depth: 1
+
+      - name: Deploy preview
+        id: deploy
+        env:
+          PR: ${{ steps.resolve.outputs.pr }}
+          BRANCH: ${{ steps.resolve.outputs.branch }}
+          SHA: ${{ steps.resolve.outputs.sha }}
+          PREVIEW_BUILD_CONTEXT: ${{ github.workspace }}/pr-head/DockerBuild
+        run: |
+          set -o pipefail
+          bash deploy/preview/deploy.sh "$PR" "$BRANCH" "$SHA" 2>&1 | tee preview-deploy.log
+
+      - name: Smoke test
+        id: smoke
+        continue-on-error: true
+        env:
+          PR: ${{ steps.resolve.outputs.pr }}
+          RUN_TESTS: ${{ github.event.inputs.run_tests || 'false' }}
+          PYTEST_ARGS: ${{ github.event.inputs.pytest_args || '' }}
+        run: |
+          set -o pipefail
+          if [ "$RUN_TESTS" = "true" ]; then
+            bash deploy/preview/smoke.sh "$PR" --pytest "$PYTEST_ARGS" 2>&1 | tee preview-smoke.log
+          else
+            bash deploy/preview/smoke.sh "$PR" 2>&1 | tee preview-smoke.log
+          fi
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-pr-${{ steps.resolve.outputs.pr }}-logs
+          path: |
+            preview-deploy.log
+            preview-smoke.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      # Values that originate outside this file (branch names above all) are
+      # handed to the script through env, never spliced into the JavaScript
+      # source with ${{ }}, so a crafted branch name cannot inject code.
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_TTL_DAYS: ${{ vars.PREVIEW_TTL_DAYS || '7' }}
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          PR_BRANCH: ${{ steps.resolve.outputs.branch }}
+          PR_SHA: ${{ steps.resolve.outputs.sha }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- arax-preview-status -->';
+            const pr = Number(process.env.PR_NUMBER);
+            if (!pr) {
+              core.info('no PR was resolved, nothing to comment on');
+              return;
+            }
+
+            const deployOutcome = process.env.DEPLOY_OUTCOME;
+            const smokeOutcome = process.env.SMOKE_OUTCOME;
+            const ok = deployOutcome === 'success' && smokeOutcome === 'success';
+
+            let smokeTable = '_No smoke test output was produced._';
+            try {
+              const raw = fs.readFileSync('preview-smoke.log', 'utf8');
+              const start = raw.indexOf('| check |');
+              smokeTable = start >= 0 ? raw.slice(start).trim() : raw.trim();
+            } catch (error) {
+              core.info('preview-smoke.log is missing: ' + error.message);
+            }
+
+            const url = process.env.PREVIEW_URL || '';
+            const branch = process.env.PR_BRANCH || 'unknown';
+            const sha = process.env.PR_SHA || '';
+            const shortSha = sha ? sha.slice(0, 7) : 'unknown';
+            const runUrl = process.env.RUN_URL;
+            const ttl = process.env.PREVIEW_TTL_DAYS || '7';
+
+            const lines = [];
+            lines.push(marker);
+            lines.push('## ARAX preview');
+            lines.push('');
+            lines.push(ok ? '✅ deployed' : '❌ failed');
+            lines.push('');
+            if (url) {
+              lines.push('**URL:** ' + url);
+            } else {
+              lines.push('**URL:** not available, the deploy did not finish');
+            }
+            lines.push('');
+            lines.push('**Build:** `' + branch + '` @ `' + shortSha + '`');
+            lines.push('');
+            lines.push('### Smoke test');
+            lines.push('');
+            lines.push(smokeTable);
+            lines.push('');
+            lines.push('[Workflow run](' + runUrl + ')');
+            lines.push('');
+            lines.push('Comment `/deploy` to redeploy, `/undeploy` to remove. Previews are garbage-collected after ' + ttl + ' days or when the PR closes.');
+            const body = lines.join('\n');
+
+            const existing = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const mine = existing.find(function (comment) {
+              return comment.body && comment.body.includes(marker);
+            });
+
+            if (mine) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: mine.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr,
+                body: body,
+              });
+            }
+
+      # The smoke step is continue-on-error so that the comment above always
+      # runs. The job still has to go red when anything failed.
+      - name: Fail the job when deploy or smoke failed
+        if: steps.deploy.outcome == 'failure' || steps.smoke.outcome == 'failure'
+        run: |
+          echo "deploy outcome: ${{ steps.deploy.outcome }}"
+          echo "smoke outcome:  ${{ steps.smoke.outcome }}"
+          exit 1
+
+  teardown:
+    name: Tear down preview
+    runs-on: [self-hosted, ARAX, docker]
+    timeout-minutes: 120
+    # Same exact-match rule as the deploy job: /undeploy alone or followed by
+    # whitespace, so "/undeployment" and similar do not tear a preview down.
+    if: >-
+      (github.event_name == 'pull_request' && github.event.action == 'closed') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       (github.event.comment.body == '/undeploy' ||
+        startsWith(github.event.comment.body, '/undeploy ') ||
+        startsWith(github.event.comment.body, format('/undeploy{0}', fromJSON('"\n"'))) ||
+        startsWith(github.event.comment.body, format('/undeploy{0}', fromJSON('"\r"')))) &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    steps:
+      # On a pull_request event checkout would default to the PR merge ref,
+      # which may be gone once the PR is closed and which would run PR supplied
+      # scripts on the runner. Pin the default branch explicitly.
+      - name: Checkout the default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 1
+
+      - name: Tear down preview
+        id: teardown
+        env:
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: bash deploy/preview/teardown.sh "$PR"
+
+      # The comment reflects what actually happened. teardown.sh exits
+      # non-zero when a resource could not be removed, and silently claiming
+      # success here would leave leaked containers unnoticed.
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          TEARDOWN_OUTCOME: ${{ steps.teardown.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const marker = '<!-- arax-preview-status -->';
+            const pr = Number(process.env.PR_NUMBER);
+            if (!pr) {
+              core.info('no PR number available, nothing to comment on');
+              return;
+            }
+            const ok = process.env.TEARDOWN_OUTCOME === 'success';
+            const runUrl = process.env.RUN_URL;
+            const body = ok
+              ? marker + '\n## ARAX preview\n\n🧹 ARAX preview for this PR was removed.'
+              : marker + '\n## ARAX preview\n\n' +
+                '⚠️ Teardown did not finish cleanly. The container `rtx_pr_' + pr + '`, ' +
+                'the image `rtx:pr-' + pr + '` or its nginx route may still be live on the host. ' +
+                'See the [workflow run](' + runUrl + ') and clean up with ' +
+                '`bash deploy/preview/teardown.sh ' + pr + '` on cicd.rtx.ai.';
+
+            const existing = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const mine = existing.find(function (comment) {
+              return comment.body && comment.body.includes(marker);
+            });
+
+            if (mine) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: mine.id,
+                body: body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr,
+                body: body,
+              });
+            }
+
+  gc:
+    name: Garbage collect previews
+    runs-on: [self-hosted, ARAX, docker]
+    timeout-minutes: 120
+    if: github.event_name == 'schedule'
+    steps:
+      # schedule events always run from the default branch, so the default
+      # checkout ref is already the right one.
+      - name: Checkout the default branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Garbage collect
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash deploy/preview/gc.sh
