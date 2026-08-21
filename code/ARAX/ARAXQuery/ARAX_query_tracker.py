@@ -324,7 +324,6 @@ class ARAXQueryTracker:
             eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker create_tracker_entry")
 
         MAX_CONCURRENT_FROM_REMOTE = 45
-        MIN_MEMORY_LIMIT_GB = 10.0
 
         instance_info = self.get_instance_info()
 
@@ -339,9 +338,11 @@ class ARAXQueryTracker:
             deny_message = f"Request has exceeded {MAX_CONCURRENT_FROM_REMOTE} concurrent query limit. Denied."
         else:
             system_memory = psutil.virtual_memory()
-            available_gb = system_memory.available / (1024 ** 3)
-            if available_gb < MIN_MEMORY_LIMIT_GB:
-                deny_message = f"Server below {MIN_MEMORY_LIMIT_GB} GB safety limit. Unable to accept query at this time."
+            available_gb = round(system_memory.available / (1024 ** 3),1)
+            total_gb = system_memory.total / (1024 ** 3)
+            min_memory_limit_gb = round(total_gb * 0.15,1)
+            if available_gb < min_memory_limit_gb:
+                deny_message = f"Server remaining memory at {available_gb} GB, below {min_memory_limit_gb} GB safety limit. Unable to accept query at this time."
 
         if deny_message is not None:
             try:
