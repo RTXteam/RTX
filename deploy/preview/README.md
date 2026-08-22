@@ -31,15 +31,18 @@ renames the snippet to `pr-2853.conf`. The port and the container name do not ch
 Three ways, all of which end up running the same scripts on the runner.
 
 - Comment `/deploy` on the pull request. Comment `/undeploy` to remove it again. Only comments
-  from an OWNER, MEMBER or COLLABORATOR are acted on.
+  from an OWNER, MEMBER or COLLABORATOR are acted on. `/deploy --force` skips the fast redeploy
+  described below and always rebuilds the image.
 - Actions tab, pick **Preview Deploy**, **Run workflow**, fill in `pr_number`. Tick `run_tests`
   to also run the ARAX test suite inside the container, and put anything extra in `pytest_args`.
-- On the host directly: `bash deploy/preview/deploy.sh 2853 my-branch`.
+  Tick `force_rebuild` for the same effect as `/deploy --force`.
+- On the host directly: `bash deploy/preview/deploy.sh 2853 my-branch`. Pass the head commit as a
+  third argument to make a fast redeploy possible, and `--force` to rule one out.
 
 The workflow posts one sticky comment on the pull request with the URL, the branch and short
-commit, and the smoke test table. Redeploying updates that same comment instead of adding a
-new one. A refused `/deploy` (fork pull request, closed pull request) gets a short reply saying
-why.
+commit, whether the deploy was a fast redeploy or a full rebuild, and the smoke test table.
+Redeploying updates that same comment instead of adding a new one. A refused `/deploy` (fork pull
+request, closed pull request) gets a short reply saying why.
 
 The scripts always run from the workflow's own branch on master, never from the pull
 request. The pull request head is checked out
@@ -54,6 +57,9 @@ in the Actions tab. Test on the host with `deploy/preview/deploy.sh` until then,
 triggers immediately after the merge.
 
 ## How it works
+
+The flow below is the full rebuild. A redeploy of a preview that is still running usually takes
+the shorter path described in the next section.
 
 ```
   PR comment "/deploy"  or  Actions "Run workflow"
@@ -107,6 +113,41 @@ Inside the container, apache serves the ARAX UI from the checked out repository 
 `/api/arax/v1.4` to the Flask service on port 5000. The UI asks for its API with a relative
 path, so it does not care that nginx stripped a prefix in front of it.
 
+## Fast redeploy
+
+Rebuilding the image takes about six minutes, and most pushes to a pull request change nothing
+that the image bakes in. `deploy.sh` therefore checks whether it can move the existing container
+to the new commit instead, which takes roughly 15 to 30 seconds.
+
+It goes the fast way when all of this holds:
+
+- the container `rtx_pr_<PR>` for that pull request exists and is running
+- `--force` was not given
+- a commit sha was passed, which the workflow always does
+- that commit is on `origin` once the container has fetched
+- `git diff` between the commit checked out in the container and the target commit is empty for
+  `requirements.txt`, `DockerBuild/` and `code/config_dbs.json`
+
+Those three paths are the gate because a change to them cannot be picked up by a checkout inside
+a container that is already running. The first two are baked into the image, and `config_dbs.json`
+decides which database files the container was set up with.
+
+A fast redeploy checks the repository clone inside the container out on the target commit as user
+`rt` with a detached HEAD, reruns `ARAX_database_manager.py` and `kp_info_cacher.py`, and restarts
+`RTX_OpenAPI_production` and `RTX_Complete`. Apache is left alone, because it serves the UI
+straight from that working tree and picks up UI changes with no restart. The nginx snippet is
+rewritten so its header names the new commit, and nginx is only reloaded when the routing itself
+changed.
+
+The commit a preview is running is read with `git rev-parse HEAD` inside the container, never from
+the `arax.preview.sha` label. Docker labels cannot be changed on a running container, so that
+label keeps naming the commit the image was built from.
+
+Anything that does not qualify falls back to the full rebuild, and the reason for it is printed
+in the log, in the summary and in the sticky pull request comment. A fast redeploy that fails its
+health check stops there rather than rebuilding behind your back, and tells you to rerun with
+`--force`.
+
 ## One-time host setup
 
 Run this once on `cicd.rtx.ai`, as a human with sudo:
@@ -146,6 +187,7 @@ Everything below is read by `deploy/preview/lib.sh` and can be overridden in the
 | `PREVIEW_CONFIG_SECRETS` | `/mnt/config/config_secrets.json` | host secrets file mounted into every preview |
 | `PREVIEW_TTL_DAYS` | `7` | age after which garbage collection removes a preview |
 | `PREVIEW_HEALTH_TIMEOUT` | `900` | seconds to wait for the ARAX status endpoint after start |
+| `PREVIEW_FAST_HEALTH_TIMEOUT` | `180` | same wait after a fast redeploy, where only the Flask services restart |
 | `PREVIEW_REPO` | `RTXteam/RTX` | repository the pull request state is checked against |
 | `PREVIEW_BUILD_CONTEXT` | `<repo>/DockerBuild` | docker build context, the workflow points it at `pr-head/DockerBuild` |
 | `PREVIEW_DOCKERFILE` | `$PREVIEW_BUILD_CONTEXT/CICD-Dockerfile` | Dockerfile used for the image |
@@ -167,8 +209,10 @@ next newest, and removes the route entirely when no previews are left.
 
 ## Lifecycle
 
-- **Redeploy** replaces. `deploy.sh` removes the existing container and image for that PR before
-  it builds, so the URL stays the same and always serves the latest push you deployed.
+- **Redeploy** takes one of two paths, and the URL stays the same either way. When the preview is
+  still running and nothing changed that the image bakes in, `deploy.sh` moves the container to
+  the new commit and restarts the Flask services. Otherwise it removes the existing container and
+  image for that pull request and builds again from scratch. See **Fast redeploy** above.
 - **Teardown on close.** Closing or merging a pull request triggers the teardown job, which
   removes the container, the image and the nginx snippet.
 - **Daily garbage collection.** A scheduled run of `gc.sh` removes previews older than
@@ -180,6 +224,12 @@ next newest, and removes the route entirely when no previews are left.
 ```
 # deploy or redeploy a preview
 bash deploy/preview/deploy.sh 2853 my-branch
+
+# redeploy with a commit, which allows the fast path
+bash deploy/preview/deploy.sh 2853 my-branch 0123456789abcdef0123456789abcdef01234567
+
+# redeploy and always rebuild the image
+bash deploy/preview/deploy.sh --force 2853 my-branch
 
 # remove one preview
 bash deploy/preview/teardown.sh 2853
