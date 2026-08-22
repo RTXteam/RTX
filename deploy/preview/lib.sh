@@ -34,6 +34,9 @@ PREVIEW_CONFIG_SECRETS="${PREVIEW_CONFIG_SECRETS:-/mnt/config/config_secrets.jso
 PREVIEW_TTL_DAYS="${PREVIEW_TTL_DAYS:-7}"
 # Seconds to wait for the ARAX Flask service to answer /status after start.
 PREVIEW_HEALTH_TIMEOUT="${PREVIEW_HEALTH_TIMEOUT:-900}"
+# Same wait for a fast redeploy. The image, the databases and the KP info cache
+# are already in place there, so only the Flask services have to come back.
+PREVIEW_FAST_HEALTH_TIMEOUT="${PREVIEW_FAST_HEALTH_TIMEOUT:-180}"
 # Repository the previews are built from. CICD-Dockerfile clones this by name.
 PREVIEW_REPO="${PREVIEW_REPO:-RTXteam/RTX}"
 # Docker build context and Dockerfile. The workflow points these at a checkout
@@ -51,7 +54,7 @@ SUDO="${SUDO-sudo}"
 
 export PREVIEW_PATH_PREFIX PREVIEW_PORT_BASE PREVIEW_NGINX_DIR \
     PREVIEW_PUBLIC_BASE_URL PREVIEW_DB_DIR PREVIEW_CONFIG_SECRETS \
-    PREVIEW_TTL_DAYS PREVIEW_HEALTH_TIMEOUT PREVIEW_REPO \
+    PREVIEW_TTL_DAYS PREVIEW_HEALTH_TIMEOUT PREVIEW_FAST_HEALTH_TIMEOUT PREVIEW_REPO \
     PREVIEW_BUILD_CONTEXT PREVIEW_DOCKERFILE DOCKER SUDO
 
 # Name of the shared autocomplete snippet. Leading underscore keeps it sorted
@@ -203,6 +206,18 @@ preview_label() {
     local container
     container="$(preview_container "${pr}")"
     ${DOCKER} inspect --format "{{index .Config.Labels \"${key}\"}}" "${container}" 2>/dev/null || true
+}
+
+# container_running <name>
+# True when the container exists and is running. Anything else, including a
+# missing container, is false rather than an error, so callers under errexit
+# can branch on it with a plain if.
+container_running() {
+    local name="${1:-}"
+    [ -n "${name}" ] || return 1
+    local state
+    state="$(${DOCKER} inspect --format '{{.State.Running}}' "${name}" 2>/dev/null || true)"
+    [ "${state}" = "true" ]
 }
 
 # PR number of the running preview with the largest creation timestamp, or
