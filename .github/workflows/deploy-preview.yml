@@ -17,10 +17,10 @@ on:
         required: true
         type: string
       run_tests:
-        description: "Run pytest inside the preview container after deploy"
+        description: "Run the pytest suite inside the preview container after deploy"
         required: false
         type: boolean
-        default: false
+        default: true
       pytest_args:
         description: "Extra pytest args (for example -k test_ARAX_query)"
         required: false
@@ -113,10 +113,15 @@ jobs:
             // deploy.sh picks a fast redeploy on its own. --force is how a human
             // says "rebuild the image anyway", either as /deploy --force on the
             // pull request or as the force_rebuild input on Run workflow.
+            // The test suite runs by default. --no-tests on the /deploy line, or
+            // clearing the run_tests input on Run workflow, turns it off.
             let force = false;
+            let runTests = true;
             if (context.eventName === 'workflow_dispatch') {
               const requested = context.payload.inputs && context.payload.inputs.force_rebuild;
               force = requested === true || String(requested).toLowerCase() === 'true';
+              const requestedTests = context.payload.inputs && context.payload.inputs.run_tests;
+              runTests = requestedTests === true || String(requestedTests).toLowerCase() === 'true';
             } else if (context.eventName === 'issue_comment') {
               const body = (context.payload.comment && context.payload.comment.body) || '';
               // Only the first line carries flags, so "/deploy" followed by a
@@ -124,6 +129,7 @@ jobs:
               const firstLine = body.split(/\r?\n/)[0].trim();
               const flags = firstLine.match(/^\/deploy(\s.*)?$/);
               force = flags !== null && / --force(\s|$)/.test(flags[1] || '');
+              runTests = !(flags !== null && / --no-tests(\s|$)/.test(flags[1] || ''));
             }
 
             core.setOutput('pr', String(prNumber));
@@ -131,6 +137,7 @@ jobs:
             core.setOutput('sha', data.head.sha);
             core.setOutput('html_url', data.html_url);
             core.setOutput('force', force ? 'true' : 'false');
+            core.setOutput('run_tests', runTests ? 'true' : 'false');
 
             // Acknowledge the /deploy comment so the author knows it was picked up.
             if (context.eventName === 'issue_comment') {
@@ -177,31 +184,16 @@ jobs:
             bash deploy/preview/deploy.sh "$PR" "$BRANCH" "$SHA" 2>&1 | tee preview-deploy.log
           fi
 
+      # The four HTTP checks only. The test suite is its own step below, so
+      # that it can have its own timeout and its own comment.
       - name: Smoke test
         id: smoke
         continue-on-error: true
         env:
           PR: ${{ steps.resolve.outputs.pr }}
-          RUN_TESTS: ${{ github.event.inputs.run_tests || 'false' }}
-          PYTEST_ARGS: ${{ github.event.inputs.pytest_args || '' }}
         run: |
           set -o pipefail
-          if [ "$RUN_TESTS" = "true" ]; then
-            bash deploy/preview/smoke.sh "$PR" --pytest "$PYTEST_ARGS" 2>&1 | tee preview-smoke.log
-          else
-            bash deploy/preview/smoke.sh "$PR" 2>&1 | tee preview-smoke.log
-          fi
-
-      - name: Upload logs
-        if: always()
-        uses: RTXteam/upload-artifact@v4
-        with:
-          name: preview-pr-${{ steps.resolve.outputs.pr }}-logs
-          path: |
-            preview-deploy.log
-            preview-smoke.log
-          retention-days: 14
-          if-no-files-found: warn
+          bash deploy/preview/smoke.sh "$PR" 2>&1 | tee preview-smoke.log
 
       # Values that originate outside this file (branch names above all) are
       # handed to the script through env, never spliced into the JavaScript
@@ -218,6 +210,7 @@ jobs:
           DEPLOY_MODE: ${{ steps.deploy.outputs.mode }}
           DEPLOY_REASON: ${{ steps.deploy.outputs.reason }}
           DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          DEPLOY_REFUSED: ${{ steps.deploy.outputs.refused }}
           SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
@@ -233,6 +226,9 @@ jobs:
             const deployOutcome = process.env.DEPLOY_OUTCOME;
             const smokeOutcome = process.env.SMOKE_OUTCOME;
             const ok = deployOutcome === 'success' && smokeOutcome === 'success';
+            // A preflight refusal is not a broken deploy, it is the host saying
+            // it has no room. Say which limit was hit instead of "failed".
+            const refused = deployOutcome !== 'success' ? (process.env.DEPLOY_REFUSED || '') : '';
 
             let smokeTable = '_No smoke test output was produced._';
             try {
@@ -254,7 +250,13 @@ jobs:
             lines.push(marker);
             lines.push('## ARAX preview');
             lines.push('');
-            lines.push(ok ? '✅ deployed' : '❌ failed');
+            if (ok) {
+              lines.push('✅ deployed');
+            } else if (refused) {
+              lines.push('❌ refused: ' + refused);
+            } else {
+              lines.push('❌ failed');
+            }
             lines.push('');
             if (url) {
               lines.push('**URL:** ' + url);
@@ -316,8 +318,204 @@ jobs:
               }
             }
 
-      # The smoke step is continue-on-error so that the comment above always
-      # runs. The job still has to go red when anything failed.
+      # Comment two. The suite takes about two and a half minutes on a healthy
+      # preview and is informational, so it never fails the job.
+      - name: Pytest suite
+        id: pytest
+        if: steps.resolve.outputs.run_tests == 'true' && steps.deploy.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 45
+        env:
+          PR: ${{ steps.resolve.outputs.pr }}
+          PYTEST_ARGS: ${{ github.event.inputs.pytest_args || '' }}
+        run: |
+          set -o pipefail
+          bash deploy/preview/pytest_report.sh "$PR" "$PYTEST_ARGS" 2>&1 | tee preview-pytest.log
+
+      - name: Comment pytest results
+        if: always() && steps.resolve.outputs.run_tests == 'true' && steps.deploy.outcome == 'success'
+        uses: RTXteam/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          PR_BRANCH: ${{ steps.resolve.outputs.branch }}
+          PR_SHA: ${{ steps.resolve.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- arax-preview-pytest -->';
+            const pr = Number(process.env.PR_NUMBER);
+            if (!pr) {
+              core.info('no PR was resolved, nothing to comment on');
+              return;
+            }
+
+            // The log holds the raw pytest output first and the report last,
+            // so the report starts at the first summary line.
+            let report = '_The pytest step produced no output._';
+            try {
+              const raw = fs.readFileSync('preview-pytest.log', 'utf8');
+              const start = raw.indexOf('**pytest:**');
+              report = start >= 0 ? raw.slice(start).trim() : raw.trim();
+            } catch (error) {
+              core.info('preview-pytest.log is missing: ' + error.message);
+            }
+            if (report.length > 60000) {
+              report = report.slice(0, 60000) + '\n\n_Truncated. The whole log is in the run artifact._';
+            }
+
+            const branch = process.env.PR_BRANCH || 'unknown';
+            const sha = process.env.PR_SHA || '';
+            const shortSha = sha ? sha.slice(0, 7) : 'unknown';
+
+            const lines = [];
+            lines.push(marker);
+            lines.push('## Preview pytest');
+            lines.push('');
+            lines.push('**Build:** `' + branch + '` @ `' + shortSha + '`');
+            lines.push('');
+            lines.push(report);
+            lines.push('');
+            lines.push('[Workflow run](' + process.env.RUN_URL + ')');
+            const body = lines.join('\n');
+
+            // Same chronology as the status comment: a new comment every run,
+            // older ones with this marker collapsed as outdated.
+            const existing = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const outdated = existing.filter(function (comment) {
+              return comment.body && comment.body.includes(marker);
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: body,
+            });
+
+            for (const old of outdated) {
+              try {
+                await github.graphql(
+                  'mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }',
+                  { id: old.node_id }
+                );
+              } catch (error) {
+                core.info('could not minimize comment ' + old.id + ': ' + error.message);
+              }
+            }
+
+      # Comment three. The four example queries of the UI, posted through the
+      # public URL so that nginx and apache are on the path as well. The
+      # payloads come from the pull request's own copy of rtx.js.
+      - name: Live query smoke
+        id: queries
+        if: steps.deploy.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          PR: ${{ steps.resolve.outputs.pr }}
+          PREVIEW_UI_RTXJS: ${{ github.workspace }}/pr-head/code/UI/interactive/rtx.js
+        run: |
+          set -o pipefail
+          bash deploy/preview/query_smoke.sh "$PR" 2>&1 | tee preview-queries.log
+
+      - name: Comment query results
+        if: always() && steps.deploy.outcome == 'success'
+        uses: RTXteam/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          PR_BRANCH: ${{ steps.resolve.outputs.branch }}
+          PR_SHA: ${{ steps.resolve.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- arax-preview-queries -->';
+            const pr = Number(process.env.PR_NUMBER);
+            if (!pr) {
+              core.info('no PR was resolved, nothing to comment on');
+              return;
+            }
+
+            let report = '_The live query step produced no output._';
+            try {
+              const raw = fs.readFileSync('preview-queries.log', 'utf8');
+              const start = raw.indexOf('| query |');
+              report = start >= 0 ? raw.slice(start).trim() : raw.trim();
+            } catch (error) {
+              core.info('preview-queries.log is missing: ' + error.message);
+            }
+            if (report.length > 60000) {
+              report = report.slice(0, 60000) + '\n\n_Truncated. The whole log is in the run artifact._';
+            }
+
+            const branch = process.env.PR_BRANCH || 'unknown';
+            const sha = process.env.PR_SHA || '';
+            const shortSha = sha ? sha.slice(0, 7) : 'unknown';
+
+            const lines = [];
+            lines.push(marker);
+            lines.push('## Preview live queries');
+            lines.push('');
+            lines.push('**Build:** `' + branch + '` @ `' + shortSha + '`');
+            lines.push('');
+            lines.push(report);
+            lines.push('');
+            lines.push('[Workflow run](' + process.env.RUN_URL + ')');
+            const body = lines.join('\n');
+
+            const existing = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const outdated = existing.filter(function (comment) {
+              return comment.body && comment.body.includes(marker);
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: body,
+            });
+
+            for (const old of outdated) {
+              try {
+                await github.graphql(
+                  'mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }',
+                  { id: old.node_id }
+                );
+              } catch (error) {
+                core.info('could not minimize comment ' + old.id + ': ' + error.message);
+              }
+            }
+
+      # Last, so that every log this job produces is in the artifact.
+      - name: Upload logs
+        if: always()
+        uses: RTXteam/upload-artifact@v4
+        with:
+          name: preview-pr-${{ steps.resolve.outputs.pr }}-logs
+          path: |
+            preview-deploy.log
+            preview-smoke.log
+            preview-pytest.log
+            preview-queries.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      # The smoke step is continue-on-error so that the comments above always
+      # run. The job still has to go red when the deploy or the smoke test
+      # failed. The pytest and live query steps are deliberately not in this
+      # condition: they are informational, and a preview that is up and
+      # answering is still useful when one test is red.
       - name: Fail the job when deploy or smoke failed
         if: steps.deploy.outcome == 'failure' || steps.smoke.outcome == 'failure'
         run: |
