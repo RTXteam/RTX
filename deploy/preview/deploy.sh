@@ -69,6 +69,76 @@ done
 require_int "${PR}" "PR number"
 [ -n "${BRANCH}" ] || die "branch name must not be empty"
 
+# ---------------------------------------------------------------------------
+# Log capture and the end of run bookkeeping
+# ---------------------------------------------------------------------------
+
+# Everything printed from here on is copied into a host log file as well, and
+# the tail of that file is what the status page shows under this pull request.
+# The workflow still tees the same output into the job log and the artifact.
+DEPLOY_LOG_FILE=""
+DEPLOY_LOG_TEE_PID=""
+
+setup_log_capture() {
+    [ -n "${PREVIEW_LOG_DIR}" ] || return 0
+    if ! ${SUDO} mkdir -p "${PREVIEW_LOG_DIR}" 2>/dev/null; then
+        log "WARNING: could not create ${PREVIEW_LOG_DIR}, this deploy is not logged to disk"
+        return 0
+    fi
+    ${SUDO} chmod 755 "${PREVIEW_LOG_DIR}" 2>/dev/null || true
+    DEPLOY_LOG_FILE="${PREVIEW_LOG_DIR}/pr${PR}-$(date -u '+%Y%m%dT%H%M%SZ').log"
+    # tee runs through sudo because the directory belongs to root and the
+    # runner user is not root.
+    exec > >(${SUDO} tee -a "${DEPLOY_LOG_FILE}") 2>&1
+    DEPLOY_LOG_TEE_PID="$!"
+    ${SUDO} chmod 644 "${DEPLOY_LOG_FILE}" 2>/dev/null || true
+}
+
+# Copies the tail of this run's log where the status page can show it, then
+# rewrites the status page. Every step is best effort.
+publish_deploy_artifacts() {
+    local tail_text
+    if [ -n "${DEPLOY_LOG_FILE}" ] && ${SUDO} test -f "${DEPLOY_LOG_FILE}"; then
+        # The secrets guard is crude on purpose. The page is public, so a line
+        # that so much as mentions a credential is dropped rather than shown.
+        tail_text="$(${SUDO} tail -n 200 "${DEPLOY_LOG_FILE}" 2>/dev/null \
+            | grep -viE 'password|token|secret|authorization' || true)"
+        printf '%s\n' "${tail_text}" | write_preview_data "${PR}" "deploy-log.txt"
+    fi
+    write_status_page
+}
+
+# Runs on every exit, including the ones die() takes. The original exit status
+# is preserved so nothing here can turn a failed deploy into a green one.
+finalize() {
+    local rc=$?
+    trap - EXIT
+    set +o errexit
+    publish_deploy_artifacts
+    # Let the tee child see end of file and finish writing before this process
+    # goes away, so neither the host log nor the workflow log loses its tail.
+    if [ -n "${DEPLOY_LOG_TEE_PID}" ]; then
+        exec 1>&- 2>&-
+        wait "${DEPLOY_LOG_TEE_PID}" 2>/dev/null || true
+    fi
+    exit "${rc}"
+}
+
+setup_log_capture
+trap finalize EXIT
+
+# refuse <one line reason>
+# A preflight refusal. The reason is handed to the workflow so the pull
+# request comment can say what the host ran out of, rather than the generic
+# "the deploy failed".
+refuse() {
+    local reason="$*"
+    if [ -n "${GITHUB_OUTPUT:-}" ]; then
+        printf 'refused=%s\n' "${reason}" >> "${GITHUB_OUTPUT}"
+    fi
+    die "${reason}"
+}
+
 PORT="$(preview_port "${PR}")"
 CONTAINER="$(preview_container "${PR}")"
 IMAGE="$(preview_image "${PR}")"
@@ -236,6 +306,77 @@ NGINX_EOF
     clean_nginx_backups
 }
 
+# preflight
+# Resource guards for the full path only. The fast path reuses a container
+# that is already running and asks the host for nothing new, so none of this
+# applies to it. Runs after the previous container and image for this pull
+# request are gone, so the space they held counts as free and the port they
+# held reads as free.
+preflight() {
+    local others count avail_gb free_mb
+
+    # 1. how many other previews are on the box. A redeploy of a pull request
+    #    that already has a container is not a new preview, so this PR is
+    #    excluded from the count.
+    others="$(list_preview_prs | sort -n -u | grep -v "^${PR}$" | tr '\n' ' ' | sed 's/  */ /g; s/ $//' || true)"
+    count=0
+    if [ -n "${others}" ]; then
+        # shellcheck disable=SC2086
+        set -- ${others}
+        count="$#"
+    fi
+    if [ "${count}" -ge "${PREVIEW_MAX_ACTIVE}" ]; then
+        refuse "the host already has ${count} other preview(s) deployed, for PR(s) ${others}, and PREVIEW_MAX_ACTIVE is ${PREVIEW_MAX_ACTIVE}. Comment /undeploy on one of them, then deploy this one again."
+    fi
+    log "preflight: ${count} other preview(s) on the host, limit ${PREVIEW_MAX_ACTIVE}"
+
+    # 2. free space where the image is going to land
+    # Both forms can fail on a host that lays its filesystems out differently,
+    # and an unreadable df is a reason to skip the check, not to refuse.
+    avail_gb="$(df -BG --output=avail /var/lib/docker 2>/dev/null \
+        || df -BG --output=avail / 2>/dev/null || true)"
+    avail_gb="$(printf '%s' "${avail_gb}" | tail -n 1 | tr -dc '0-9')"
+    case "${avail_gb}" in
+        ''|*[!0-9]*)
+            log "WARNING: could not read the free disk space, skipping that check"
+            ;;
+        *)
+            if [ "${avail_gb}" -lt "${PREVIEW_MIN_FREE_DISK_GB}" ]; then
+                refuse "the preview host has ${avail_gb} GB free where docker stores its images and PREVIEW_MIN_FREE_DISK_GB is ${PREVIEW_MIN_FREE_DISK_GB}. One preview image is about 4 GB. Tear down an old preview or run deploy/preview/gc.sh on cicd.rtx.ai."
+            fi
+            log "preflight: ${avail_gb} GB free on the docker root, minimum ${PREVIEW_MIN_FREE_DISK_GB} GB"
+            ;;
+    esac
+
+    # 3. available memory. The available column, not the free one: page cache
+    #    is reclaimable and would otherwise read as used.
+    free_mb="$(free -m 2>/dev/null | awk '/^Mem:/{print $7}' || true)"
+    case "${free_mb}" in
+        ''|*[!0-9]*)
+            log "WARNING: could not read the available memory, skipping that check"
+            ;;
+        *)
+            if [ "${free_mb}" -lt "${PREVIEW_MIN_FREE_RAM_MB}" ]; then
+                refuse "the preview host has ${free_mb} MB of memory available and PREVIEW_MIN_FREE_RAM_MB is ${PREVIEW_MIN_FREE_RAM_MB}. A preview peaks at about 1900 MB. Tear down an old preview or wait for the running queries to finish."
+            fi
+            log "preflight: ${free_mb} MB memory available, minimum ${PREVIEW_MIN_FREE_RAM_MB} MB"
+            ;;
+    esac
+
+    # 4. the port. The container for this pull request is gone by now, so
+    #    anything still listening belongs to something else and docker run
+    #    would fail several minutes from now, after the image build.
+    # The connect attempt runs in a subshell for two reasons: a failed exec
+    # redirection can take a non-interactive shell down with it, and a refused
+    # connection is the expected case here. The close is chained with && and
+    # not with a semicolon, because a semicolon would hand the successful
+    # close's exit status to the if and every port would read as taken.
+    if (exec 3<>"/dev/tcp/127.0.0.1/${PORT}" && exec 3<&-) 2>/dev/null; then
+        refuse "something is already listening on 127.0.0.1:${PORT}, which is the port PR ${PR} needs. Find it with 'sudo ss -lptn sport = :${PORT}' on cicd.rtx.ai."
+    fi
+    log "preflight: 127.0.0.1:${PORT} is free"
+}
+
 # ---------------------------------------------------------------------------
 # 2. Decide between a fast redeploy and a full rebuild
 # ---------------------------------------------------------------------------
@@ -356,10 +497,13 @@ else
     # Full path: rebuild the image and replace the container.
     # -----------------------------------------------------------------------
 
-    # 3. Remove anything left over from a previous deploy of this PR
-    log "step 3/10 removing any previous container and image for PR ${PR}"
+    # 3. Remove anything left over from a previous deploy of this PR, then
+    #    check that the host can afford what comes next. Removal comes first
+    #    so the roughly 4 GB the old image held counts as free space.
+    log "step 3/10 clearing the previous deploy of PR ${PR} and checking the host"
     ${DOCKER} rm -f "${CONTAINER}" >/dev/null 2>&1 || log "no previous container ${CONTAINER}"
     ${DOCKER} rmi -f "${IMAGE}" >/dev/null 2>&1 || log "no previous image ${IMAGE}"
+    preflight
 
     # 4. Build the image
     #    CICD-Dockerfile git clones RTXteam/RTX inside the image and checks out
@@ -380,9 +524,11 @@ else
 
     # The image has no CMD and no ENTRYPOINT, so it needs -d -i -t to stay up,
     # exactly like the pytest workflow does.
-    log "step 5/10 starting ${CONTAINER} on 127.0.0.1:${PORT}"
+    log "step 5/10 starting ${CONTAINER} on 127.0.0.1:${PORT}, capped at ${PREVIEW_MEMORY_LIMIT} memory and ${PREVIEW_CPU_LIMIT} cpus"
     ${DOCKER} run -d -i -t \
         --name "${CONTAINER}" \
+        --memory "${PREVIEW_MEMORY_LIMIT}" \
+        --cpus "${PREVIEW_CPU_LIMIT}" \
         -p "127.0.0.1:${PORT}:80" \
         -v "${PREVIEW_DB_DIR}:/mnt/data/orangeboard/databases" \
         -v "${PREVIEW_CONFIG_SECRETS}:/mnt/data/orangeboard/production/RTX/code/config_secrets.json" \

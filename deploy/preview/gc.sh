@@ -173,3 +173,24 @@ else
     log "pruning dangling images"
     ${DOCKER} image prune -f
 fi
+
+# Deploy logs outlive the previews they belong to on purpose, so a preview that
+# is already gone can still be looked at. A month is long enough for that.
+if ${SUDO} test -d "${PREVIEW_LOG_DIR}"; then
+    if [ "${DRY_RUN}" = "yes" ]; then
+        printf 'dry run: would delete files under %s older than 30 days\n' "${PREVIEW_LOG_DIR}"
+    else
+        log "deleting deploy logs under ${PREVIEW_LOG_DIR} older than 30 days"
+        ${SUDO} find "${PREVIEW_LOG_DIR}" -type f -mtime +30 -delete \
+            || log "WARNING: could not prune ${PREVIEW_LOG_DIR}"
+    fi
+else
+    log "no ${PREVIEW_LOG_DIR} on this host, no deploy logs to prune"
+fi
+
+# Last, so the page reflects the sweep that just happened.
+if [ "${DRY_RUN}" = "yes" ]; then
+    printf 'dry run: would rewrite the status page\n'
+else
+    write_status_page
+fi

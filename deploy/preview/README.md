@@ -31,19 +31,31 @@ renames the snippet to `pr-2853.conf`. The port and the container name do not ch
 Three ways, all of which end up running the same scripts on the runner.
 
 - Comment `/deploy` on the pull request. Comment `/undeploy` to remove it again. Only comments
-  from an OWNER, MEMBER or COLLABORATOR are acted on. `/deploy --force` skips the fast redeploy
-  described below and always rebuilds the image.
-- Actions tab, pick **Preview Deploy**, **Run workflow**, fill in `pr_number`. Tick `run_tests`
-  to also run the ARAX test suite inside the container, and put anything extra in `pytest_args`.
-  Tick `force_rebuild` for the same effect as `/deploy --force`.
+  from an OWNER, MEMBER or COLLABORATOR are acted on. Two flags are read off the first line of
+  the comment:
+  - `--force` skips the fast redeploy described below and always rebuilds the image.
+  - `--no-tests` skips the pytest suite. The suite runs by default.
+- Actions tab, pick **Preview Deploy**, **Run workflow**, fill in `pr_number`. `run_tests` is
+  ticked by default and runs the ARAX test suite inside the container, `pytest_args` narrows it
+  down, and `force_rebuild` does what `/deploy --force` does.
 - On the host directly: `bash deploy/preview/deploy.sh 2853 my-branch`. Pass the head commit as a
   third argument to make a fast redeploy possible, and `--force` to rule one out.
 
-The workflow posts a status comment on the pull request with the URL, the branch and short
-commit, whether the deploy was a fast redeploy or a full rebuild, and the smoke test table. Every
-deploy and teardown posts a new comment so the thread stays chronological, and the previous status
-comment is collapsed as outdated so the thread does not fill up. A refused `/deploy` (fork pull
-request, closed pull request) gets a short reply saying why.
+### The three comments
+
+One deploy posts up to three comments, in this order.
+
+| comment | marker | what is in it | can it fail the job |
+| --- | --- | --- | --- |
+| **ARAX preview** | `arax-preview-status` | the URL, the branch and short commit, fast redeploy or full rebuild with the reason, and the smoke test table | yes, through the deploy and smoke steps |
+| **Preview pytest** | `arax-preview-pytest` | one summary line of passed, failed and skipped counts, and an expander with the failing test names and the last 80 lines when something failed | no |
+| **Preview live queries** | `arax-preview-queries` | a table of the four example queries of the UI with HTTP code, wall seconds, result count and knowledge graph size | no |
+
+Every event posts a new comment so the thread reads in order, and the previous comment with the
+same marker is collapsed as outdated so the thread does not fill up. The pytest and live query
+comments are informational: they report what happened and never turn the job red, because a
+preview that is up and answering is still useful when one test is broken. A refused `/deploy`
+(fork pull request, closed pull request, no room on the host) gets a short reply saying why.
 
 The scripts always run from the workflow's own branch on master, never from the pull
 request. The pull request head is checked out
@@ -77,12 +89,14 @@ the shorter path described in the next section.
   | cicd.rtx.ai                                                 |
   |                                                             |
   |  deploy.sh                                                  |
+  |    preflight: previews on the box, disk, memory, port       |
   |    docker build -f DockerBuild/CICD-Dockerfile              |
   |      (the image git clones RTXteam/RTX and checks out       |
   |       BUILD_BRANCH, so the branch must live upstream)       |
   |         |                                                   |
   |         v                                                   |
   |    docker run -d -i -t --name rtx_pr_2853                   |
+  |      --memory 2g --cpus 1.5                                 |
   |      -p 127.0.0.1:12853:80                                  |
   |      -v databases  -v config_secrets.json                   |
   |         |                                                   |
@@ -99,6 +113,7 @@ the shorter path described in the next section.
   |         |                                                   |
   |         v                                                   |
   |    poll http://127.0.0.1:12853/api/arax/v1.4/status         |
+  |    write /var/www/arax-preview/index.html                   |
   |                                                             |
   |  nginx :443  server_name cicd.rtx.ai                        |
   |    include /etc/nginx/arax-preview.d/*.conf;                |
@@ -149,6 +164,71 @@ in the log, in the summary and in the sticky pull request comment. A fast redepl
 health check stops there rather than rebuilding behind your back, and tells you to rerun with
 `--force`.
 
+## Resource guards
+
+The box is an `m5a.large` with 2 vCPUs, 7.5 GB of memory and no swap, and it also runs the pytest
+workflow. Every full deploy therefore has to get past a preflight before the image build starts,
+and every container is capped once it runs.
+
+| guard | default | why this number |
+| --- | --- | --- |
+| `PREVIEW_MEMORY_LIMIT` | `2g` | a preview idles at about 400 MB and was measured at 1889 MiB peak while answering queries. Never set this lower than `2g`, the kernel would kill the container in the middle of a query |
+| `PREVIEW_CPU_LIMIT` | `1.5` | a pathfinder query saturates both vCPUs for about 90 seconds. Half a core stays for nginx and the runner |
+| `PREVIEW_MAX_ACTIVE` | `3` | three previews at 2 GB each still leave room for the pytest workflow on a 7.5 GB box |
+| `PREVIEW_MIN_FREE_DISK_GB` | `10` | one preview image is about 3.94 GB and the build needs room for its layers |
+| `PREVIEW_MIN_FREE_RAM_MB` | `2048` | enough for the container that is about to start |
+
+The preflight runs on the full rebuild path only, after the previous container and image for this
+pull request are removed. A fast redeploy reuses a container that is already running and asks the
+host for nothing new, so none of it applies there. The checks are, in order:
+
+1. **How many other previews are on the box.** A redeploy of a pull request that already has a
+   container is not a new preview and never counts against the cap.
+2. **Free space** on the docker root, `/var/lib/docker`, falling back to `/`.
+3. **Available memory**, the available column of `free -m` rather than the free one, because page
+   cache is reclaimable.
+4. **The port**, which must be free now that this pull request's old container is gone. Anything
+   still listening belongs to something else, and `docker run` would only discover that several
+   minutes later, after the build.
+
+A refusal names the limit that was hit and what to do about it, and the pull request comment says
+`❌ refused` with that reason instead of the generic failure text. Comment `/undeploy` on a
+preview somebody is done with, or run `bash deploy/preview/gc.sh` on the host.
+
+## Status page
+
+`https://cicd.rtx.ai/previews/` lists every preview on the box. The bare root of `cicd.rtx.ai`
+redirects there, which replaces the stock **Welcome to nginx** page. `/cicd.txt` and
+`/.well-known/` are unaffected, because the redirect is an exact match on `/` only.
+
+Each preview gets a card with the pull request number linked to GitHub, the branch, the short
+commit linked to the commit, when the container was created, whether it is running, and a link to
+the preview. The dot next to the pull request number is live: the page asks each preview for its
+`/api/arax/v1.4/status` when it loads and turns green or red. With JavaScript off the dots stay
+grey and everything else still renders.
+
+Under each card are expanders with whatever reports exist for that pull request, embedded at
+generation time rather than fetched by the browser:
+
+| file | written by | what it holds |
+| --- | --- | --- |
+| `deploy-log.txt` | `deploy.sh` | the last 200 lines of the deploy, with every line that mentions a password, token, secret or authorization dropped |
+| `smoke.md` | `smoke.sh` | the smoke test table |
+| `pytest.md` | `pytest_report.sh` | the pytest summary |
+| `queries.md` | `query_smoke.sh` | the live query table |
+
+Those files live in `${PREVIEW_WEB_ROOT}/data/<PR>/`, which is `/var/www/arax-preview/data/<PR>/`
+by default, and they are removed with the preview. The full deploy logs live in
+`${PREVIEW_LOG_DIR}`, `/var/log/arax-preview` by default, one file per deploy run named
+`pr<PR>-<timestamp>.log`. Those outlive the preview on purpose, so a preview that is already gone
+can still be looked at, and garbage collection deletes them after 30 days.
+
+The page is rewritten on every deploy, on every teardown and by the nightly garbage collection,
+so it can be up to a day behind a container that died on its own. Writing it is best effort
+throughout and can never fail a deploy or a teardown. `install-nginx-include.sh` creates the
+document root, the log directory and the nginx snippet, and writes the empty state page, so
+`/previews/` answers before the first preview is ever deployed.
+
 ## One-time host setup
 
 Run this once on `cicd.rtx.ai`, as a human with sudo:
@@ -166,9 +246,24 @@ one line inside the certbot managed TLS server block for `cicd.rtx.ai`:
     include /etc/nginx/arax-preview.d/*.conf;
 ```
 
-Then it runs `nginx -t` and reloads. If the check fails the backup is restored. If no matching
-server block is found nothing is written and the script prints the manual instructions. Running
-it a second time detects the existing line and exits without touching anything.
+It also creates `/var/www/arax-preview/` and `/var/log/arax-preview/`, and writes
+`/etc/nginx/arax-preview.d/_previews.conf`, which serves the status page and redirects the bare
+root to it:
+
+```
+location = / { return 302 /previews/; }
+location /previews/ {
+    alias /var/www/arax-preview/;
+    index index.html;
+    default_type text/html;
+}
+```
+
+Then it runs `nginx -t` and reloads. If the check fails the backup is restored and a snippet this
+run wrote is removed again. If no matching server block is found nothing is written and the script
+prints the manual instructions. Running it a second time detects the existing include line and
+exits, after making sure the status page pieces are in place, and it only reloads nginx when it
+had to write the snippet.
 
 The runner user needs passwordless sudo for `docker`, `nginx`, `systemctl reload nginx`, `tee`,
 `rm` and `mkdir`. This is already true on `cicd.rtx.ai`, because `.github/workflows/pytest.yml`
@@ -193,6 +288,15 @@ Everything below is read by `deploy/preview/lib.sh` and can be overridden in the
 | `PREVIEW_BUILD_CONTEXT` | `<repo>/DockerBuild` | docker build context, the workflow points it at `pr-head/DockerBuild` |
 | `PREVIEW_DOCKERFILE` | `$PREVIEW_BUILD_CONTEXT/CICD-Dockerfile` | Dockerfile used for the image |
 | `PREVIEW_NGINX_SITE` | `/etc/nginx/sites-enabled/default` | site file edited by `install-nginx-include.sh` |
+| `PREVIEW_MEMORY_LIMIT` | `2g` | `docker run --memory` for a preview container. Never lower than `2g` |
+| `PREVIEW_CPU_LIMIT` | `1.5` | `docker run --cpus` for a preview container |
+| `PREVIEW_MAX_ACTIVE` | `3` | how many previews may live on the host at once |
+| `PREVIEW_MIN_FREE_DISK_GB` | `10` | refuse a full rebuild below this much free space on the docker root |
+| `PREVIEW_MIN_FREE_RAM_MB` | `2048` | refuse a full rebuild below this much available memory |
+| `PREVIEW_WEB_ROOT` | `/var/www/arax-preview` | document root of the status page, per-PR reports go in `data/<PR>/` |
+| `PREVIEW_LOG_DIR` | `/var/log/arax-preview` | full deploy logs, pruned after 30 days by `gc.sh` |
+| `PREVIEW_UI_RTXJS` | `<repo>/code/UI/interactive/rtx.js` | UI source `query_smoke.sh` reads the example payloads from |
+| `PREVIEW_QUERY_BASE` | the public preview URL | base URL `query_smoke.sh` posts to |
 | `DOCKER` | `sudo docker` | docker command used by every script |
 | `SUDO` | `sudo` | privilege escalation command used by every script |
 
@@ -242,6 +346,23 @@ bash deploy/preview/gc.sh --dry-run
 bash deploy/preview/smoke.sh 2853
 bash deploy/preview/smoke.sh 2853 --pytest "-k test_ARAX_query"
 
+# run the test suite and print the Markdown report the bot posts
+bash deploy/preview/pytest_report.sh 2853
+bash deploy/preview/pytest_report.sh 2853 "-k test_ARAX_query"
+
+# post the four example queries of the UI at a preview, through its public URL
+bash deploy/preview/query_smoke.sh 2853
+
+# the same, against a preview reached some other way
+PREVIEW_QUERY_BASE=http://127.0.0.1:12853 bash deploy/preview/query_smoke.sh 2853
+
+# rewrite the status page by hand
+bash -c '. deploy/preview/lib.sh; write_status_page'
+
+# what a preview left on the host
+ls /var/www/arax-preview/data/2853/     # the reports the status page embeds
+ls /var/log/arax-preview/               # full deploy logs, pruned after 30 days
+
 # list every preview on the box
 sudo docker ps --filter label=arax.preview=true
 
@@ -256,8 +377,9 @@ sudo bash deploy/preview/install-nginx-include.sh
   built. The workflow refuses fork pull requests with a clear message rather than failing
   halfway through a build.
 - **One box, shared resources.** Previews run on the same EC2 instance as the pytest workflow
-  and as every other preview. Several previews at once compete for memory and disk. Keep the
-  number of live previews small and let garbage collection do its job.
+  and as every other preview. Several previews at once compete for memory and disk. The preflight
+  and the per-container caps described under **Resource guards** keep that from taking the host
+  down, at the price of refusing the fourth preview outright.
 - **Plain HTTP inside the box.** TLS terminates at nginx. The container speaks HTTP on a
   loopback port and is not reachable from outside the host on its own.
 - **Shared `/rtxcomplete/`.** See the section above.

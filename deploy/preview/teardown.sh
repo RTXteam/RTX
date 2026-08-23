@@ -89,6 +89,22 @@ else
     log "WARNING: ${PREVIEW_NGINX_DIR} does not exist, skipping the nginx cleanup"
 fi
 
+# The per-PR files the status page embeds. Cosmetic, so a failure here is a
+# warning and not a teardown failure.
+DATA_DIR="$(preview_data_dir "${PR}")"
+if ${SUDO} test -d "${DATA_DIR}"; then
+    if ${SUDO} rm -rf "${DATA_DIR}"; then
+        REMOVED+=("status page data ${DATA_DIR}")
+    else
+        log "WARNING: could not remove ${DATA_DIR}"
+    fi
+else
+    log "no status page data ${DATA_DIR}"
+fi
+
+# The preview is gone, so the page must stop advertising it.
+write_status_page
+
 if [ "${#REMOVED[@]}" -gt 0 ]; then
     printf 'Removed for PR %s:\n' "${PR}"
     for item in "${REMOVED[@]}"; do
