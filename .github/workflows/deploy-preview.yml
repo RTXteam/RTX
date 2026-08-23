@@ -283,30 +283,37 @@ jobs:
             lines.push('Comment `/deploy` to redeploy, `/deploy --force` to rebuild the image, `/undeploy` to remove. Previews are garbage-collected after ' + ttl + ' days or when the PR closes.');
             const body = lines.join('\n');
 
+            // Chronology over stickiness: every event posts a NEW comment so
+            // the thread reads in order, and older status comments get
+            // collapsed as outdated so the thread does not fill with bot
+            // noise. Minimizing is best effort, a missing permission must not
+            // fail the job.
             const existing = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr,
               per_page: 100,
             });
-            const mine = existing.find(function (comment) {
+            const outdated = existing.filter(function (comment) {
               return comment.body && comment.body.includes(marker);
             });
 
-            if (mine) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: mine.id,
-                body: body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr,
-                body: body,
-              });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: body,
+            });
+
+            for (const old of outdated) {
+              try {
+                await github.graphql(
+                  'mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }',
+                  { id: old.node_id }
+                );
+              } catch (error) {
+                core.info('could not minimize comment ' + old.id + ': ' + error.message);
+              }
             }
 
       # The smoke step is continue-on-error so that the comment above always
@@ -377,30 +384,37 @@ jobs:
                 'See the [workflow run](' + runUrl + ') and clean up with ' +
                 '`bash deploy/preview/teardown.sh ' + pr + '` on cicd.rtx.ai.';
 
+            // Chronology over stickiness: every event posts a NEW comment so
+            // the thread reads in order, and older status comments get
+            // collapsed as outdated so the thread does not fill with bot
+            // noise. Minimizing is best effort, a missing permission must not
+            // fail the job.
             const existing = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr,
               per_page: 100,
             });
-            const mine = existing.find(function (comment) {
+            const outdated = existing.filter(function (comment) {
               return comment.body && comment.body.includes(marker);
             });
 
-            if (mine) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: mine.id,
-                body: body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr,
-                body: body,
-              });
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: body,
+            });
+
+            for (const old of outdated) {
+              try {
+                await github.graphql(
+                  'mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }',
+                  { id: old.node_id }
+                );
+              } catch (error) {
+                core.info('could not minimize comment ' + old.id + ': ' + error.message);
+              }
             }
 
   gc:

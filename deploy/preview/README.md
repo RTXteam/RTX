@@ -39,9 +39,10 @@ Three ways, all of which end up running the same scripts on the runner.
 - On the host directly: `bash deploy/preview/deploy.sh 2853 my-branch`. Pass the head commit as a
   third argument to make a fast redeploy possible, and `--force` to rule one out.
 
-The workflow posts one sticky comment on the pull request with the URL, the branch and short
-commit, whether the deploy was a fast redeploy or a full rebuild, and the smoke test table.
-Redeploying updates that same comment instead of adding a new one. A refused `/deploy` (fork pull
+The workflow posts a status comment on the pull request with the URL, the branch and short
+commit, whether the deploy was a fast redeploy or a full rebuild, and the smoke test table. Every
+deploy and teardown posts a new comment so the thread stays chronological, and the previous status
+comment is collapsed as outdated so the thread does not fill up. A refused `/deploy` (fork pull
 request, closed pull request) gets a short reply saying why.
 
 The scripts always run from the workflow's own branch on master, never from the pull
