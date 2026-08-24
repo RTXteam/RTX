@@ -120,8 +120,13 @@ jobs:
             if (context.eventName === 'workflow_dispatch') {
               const requested = context.payload.inputs && context.payload.inputs.force_rebuild;
               force = requested === true || String(requested).toLowerCase() === 'true';
+              // An absent input keeps the declared default of true. Only an
+              // explicit value overrides it, so a dispatch payload without
+              // run_tests does not silently skip the suite (Copilot review).
               const requestedTests = context.payload.inputs && context.payload.inputs.run_tests;
-              runTests = requestedTests === true || String(requestedTests).toLowerCase() === 'true';
+              if (requestedTests !== undefined && requestedTests !== null && requestedTests !== '') {
+                runTests = requestedTests === true || String(requestedTests).toLowerCase() === 'true';
+              }
             } else if (context.eventName === 'issue_comment') {
               const body = (context.payload.comment && context.payload.comment.body) || '';
               // Only the first line carries flags, so "/deploy" followed by a

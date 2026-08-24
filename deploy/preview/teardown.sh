@@ -12,6 +12,7 @@ set -o nounset -o pipefail -o errexit
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 . "${SCRIPT_DIR}/lib.sh"
+preview_validate_env
 
 [ "$#" -ge 1 ] || { printf 'Usage: teardown.sh <PR>\n' >&2; exit 2; }
 

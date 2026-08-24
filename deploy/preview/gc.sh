@@ -17,6 +17,7 @@ set -o nounset -o pipefail -o errexit
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 . "${SCRIPT_DIR}/lib.sh"
+preview_validate_env
 
 DRY_RUN="no"
 while [ "$#" -gt 0 ]; do

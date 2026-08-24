@@ -114,6 +114,30 @@ die() {
 # Naming helpers
 # ---------------------------------------------------------------------------
 
+# preview_validate_env
+# Every numeric knob can be overridden from the environment, and a typo there
+# must fail here, before any work happens, with the variable named. Without
+# this a bad value would abort six minutes into a build with a bash
+# arithmetic error that names nothing.
+preview_validate_env() {
+    local pair name value
+    for pair in \
+        "PREVIEW_PORT_BASE=${PREVIEW_PORT_BASE}" \
+        "PREVIEW_TTL_DAYS=${PREVIEW_TTL_DAYS}" \
+        "PREVIEW_HEALTH_TIMEOUT=${PREVIEW_HEALTH_TIMEOUT}" \
+        "PREVIEW_FAST_HEALTH_TIMEOUT=${PREVIEW_FAST_HEALTH_TIMEOUT}" \
+        "PREVIEW_MAX_ACTIVE=${PREVIEW_MAX_ACTIVE}" \
+        "PREVIEW_MIN_FREE_DISK_GB=${PREVIEW_MIN_FREE_DISK_GB}" \
+        "PREVIEW_MIN_FREE_DISK_PCT=${PREVIEW_MIN_FREE_DISK_PCT}" \
+        "PREVIEW_MIN_FREE_RAM_MB=${PREVIEW_MIN_FREE_RAM_MB}"; do
+        name="${pair%%=*}"
+        value="${pair#*=}"
+        case "${value}" in
+            ''|*[!0-9]*) die "${name} must be a positive integer, got '${value}'" ;;
+        esac
+    done
+}
+
 # require_int <value> <name>
 # Fails unless the value is a positive integer with no leading sign or zero.
 require_int() {
