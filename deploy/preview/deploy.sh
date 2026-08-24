@@ -332,19 +332,28 @@ preflight() {
 
     # 2. free space where the image is going to land
     # Both forms can fail on a host that lays its filesystems out differently,
-    # and an unreadable df is a reason to skip the check, not to refuse.
-    avail_gb="$(df -BG --output=avail /var/lib/docker 2>/dev/null \
-        || df -BG --output=avail / 2>/dev/null || true)"
-    avail_gb="$(printf '%s' "${avail_gb}" | tail -n 1 | tr -dc '0-9')"
-    case "${avail_gb}" in
-        ''|*[!0-9]*)
+    # and an unreadable df is a reason to skip the check, not to refuse. The
+    # floor is the larger of PREVIEW_MIN_FREE_DISK_GB and
+    # PREVIEW_MIN_FREE_DISK_PCT percent of the volume, so the same default is
+    # sane on a small host and on the 485 GB root of cicd.rtx.ai.
+    local df_line size_gb avail_gb pct_floor_gb floor_gb
+    df_line="$(df -BG --output=size,avail /var/lib/docker 2>/dev/null \
+        || df -BG --output=size,avail / 2>/dev/null || true)"
+    df_line="$(printf '%s' "${df_line}" | tail -n 1)"
+    size_gb="$(printf '%s' "${df_line}" | awk '{print $1}' | tr -dc '0-9')"
+    avail_gb="$(printf '%s' "${df_line}" | awk '{print $2}' | tr -dc '0-9')"
+    case "${avail_gb}:${size_gb}" in
+        *[!0-9:]*|:*|*:)
             log "WARNING: could not read the free disk space, skipping that check"
             ;;
         *)
-            if [ "${avail_gb}" -lt "${PREVIEW_MIN_FREE_DISK_GB}" ]; then
-                refuse "the preview host has ${avail_gb} GB free where docker stores its images and PREVIEW_MIN_FREE_DISK_GB is ${PREVIEW_MIN_FREE_DISK_GB}. One preview image is about 4 GB. Tear down an old preview or run deploy/preview/gc.sh on cicd.rtx.ai."
+            pct_floor_gb=$(( size_gb * PREVIEW_MIN_FREE_DISK_PCT / 100 ))
+            floor_gb="${PREVIEW_MIN_FREE_DISK_GB}"
+            [ "${pct_floor_gb}" -gt "${floor_gb}" ] && floor_gb="${pct_floor_gb}"
+            if [ "${avail_gb}" -lt "${floor_gb}" ]; then
+                refuse "the preview host has ${avail_gb} GB free of ${size_gb} GB where docker stores its images and the floor is ${floor_gb} GB (the larger of PREVIEW_MIN_FREE_DISK_GB=${PREVIEW_MIN_FREE_DISK_GB} and PREVIEW_MIN_FREE_DISK_PCT=${PREVIEW_MIN_FREE_DISK_PCT}% of the volume). One preview image is about 4 GB. Tear down an old preview or run deploy/preview/gc.sh on cicd.rtx.ai."
             fi
-            log "preflight: ${avail_gb} GB free on the docker root, minimum ${PREVIEW_MIN_FREE_DISK_GB} GB"
+            log "preflight: ${avail_gb} GB free of ${size_gb} GB on the docker root, floor ${floor_gb} GB"
             ;;
     esac
 

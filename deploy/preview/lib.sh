@@ -57,9 +57,12 @@ PREVIEW_CPU_LIMIT="${PREVIEW_CPU_LIMIT:-1.5}"
 # How many previews may live on the host at once. A redeploy of a pull request
 # that already has a container never counts against this.
 PREVIEW_MAX_ACTIVE="${PREVIEW_MAX_ACTIVE:-3}"
-# Refuse to build below this much free space on the docker root. One preview
-# image is about 3.94 GB.
+# Refuse to build below this much free space on the docker root. The floor is
+# the larger of the absolute value and the percentage of the volume size, so
+# it scales with the host: one preview image is about 3.94 GB, and on the
+# 485 GB root of cicd.rtx.ai the percentage wins at about 48 GB.
 PREVIEW_MIN_FREE_DISK_GB="${PREVIEW_MIN_FREE_DISK_GB:-10}"
+PREVIEW_MIN_FREE_DISK_PCT="${PREVIEW_MIN_FREE_DISK_PCT:-10}"
 # Refuse to start a container below this much available memory on the host.
 PREVIEW_MIN_FREE_RAM_MB="${PREVIEW_MIN_FREE_RAM_MB:-2048}"
 
@@ -81,7 +84,7 @@ export PREVIEW_PATH_PREFIX PREVIEW_PORT_BASE PREVIEW_NGINX_DIR \
     PREVIEW_TTL_DAYS PREVIEW_HEALTH_TIMEOUT PREVIEW_FAST_HEALTH_TIMEOUT PREVIEW_REPO \
     PREVIEW_BUILD_CONTEXT PREVIEW_DOCKERFILE DOCKER SUDO \
     PREVIEW_MEMORY_LIMIT PREVIEW_CPU_LIMIT PREVIEW_MAX_ACTIVE \
-    PREVIEW_MIN_FREE_DISK_GB PREVIEW_MIN_FREE_RAM_MB \
+    PREVIEW_MIN_FREE_DISK_GB PREVIEW_MIN_FREE_DISK_PCT PREVIEW_MIN_FREE_RAM_MB \
     PREVIEW_WEB_ROOT PREVIEW_LOG_DIR
 
 # Name of the shared autocomplete snippet. Leading underscore keeps it sorted

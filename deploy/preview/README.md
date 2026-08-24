@@ -175,7 +175,8 @@ and every container is capped once it runs.
 | `PREVIEW_MEMORY_LIMIT` | `2g` | a preview idles at about 400 MB and was measured at 1889 MiB peak while answering queries. Never set this lower than `2g`, the kernel would kill the container in the middle of a query |
 | `PREVIEW_CPU_LIMIT` | `1.5` | a pathfinder query saturates both vCPUs for about 90 seconds. Half a core stays for nginx and the runner |
 | `PREVIEW_MAX_ACTIVE` | `3` | three previews at 2 GB each still leave room for the pytest workflow on a 7.5 GB box |
-| `PREVIEW_MIN_FREE_DISK_GB` | `10` | one preview image is about 3.94 GB and the build needs room for its layers |
+| `PREVIEW_MIN_FREE_DISK_GB` | `10` | absolute part of the disk floor, one preview image is about 3.94 GB |
+| `PREVIEW_MIN_FREE_DISK_PCT` | `10` | percentage part of the disk floor, the larger of the two wins, about 48 GB on the 485 GB root of cicd.rtx.ai |
 | `PREVIEW_MIN_FREE_RAM_MB` | `2048` | enough for the container that is about to start |
 
 The preflight runs on the full rebuild path only, after the previous container and image for this
@@ -291,7 +292,8 @@ Everything below is read by `deploy/preview/lib.sh` and can be overridden in the
 | `PREVIEW_MEMORY_LIMIT` | `2g` | `docker run --memory` for a preview container. Never lower than `2g` |
 | `PREVIEW_CPU_LIMIT` | `1.5` | `docker run --cpus` for a preview container |
 | `PREVIEW_MAX_ACTIVE` | `3` | how many previews may live on the host at once |
-| `PREVIEW_MIN_FREE_DISK_GB` | `10` | refuse a full rebuild below this much free space on the docker root |
+| `PREVIEW_MIN_FREE_DISK_GB` | `10` | absolute disk floor for a full rebuild, combined with the percentage below |
+| `PREVIEW_MIN_FREE_DISK_PCT` | `10` | percentage of the docker root volume, the larger of the two floors applies |
 | `PREVIEW_MIN_FREE_RAM_MB` | `2048` | refuse a full rebuild below this much available memory |
 | `PREVIEW_WEB_ROOT` | `/var/www/arax-preview` | document root of the status page, per-PR reports go in `data/<PR>/` |
 | `PREVIEW_LOG_DIR` | `/var/log/arax-preview` | full deploy logs, pruned after 30 days by `gc.sh` |
