@@ -48,8 +48,8 @@ One deploy posts up to three comments, in this order.
 | comment | marker | what is in it | can it fail the job |
 | --- | --- | --- | --- |
 | **ARAX preview** | `arax-preview-status` | the URL, the branch and short commit, fast redeploy or full rebuild with the reason, and the smoke test table | yes, through the deploy and smoke steps |
-| **Preview pytest** | `arax-preview-pytest` | one summary line of passed, failed and skipped counts, and an expander with the failing test names and the last 80 lines when something failed | no |
-| **Preview live queries** | `arax-preview-queries` | a table of the four example queries of the UI with HTTP code, wall seconds, result count and knowledge graph size | no |
+| **Preview pytest** | `arax-preview-pytest` | the container it ran in, one summary line of passed, failed and skipped counts, and an expander with the failing test names and the last 80 lines when something failed | no |
+| **Preview live queries** | `arax-preview-queries` | the endpoint it posted to, then a table of the four example queries of the UI numbered Example 1 to Example 3 and Pathfinder, each with HTTP code, the seconds curl measured to two decimals, result count and knowledge graph size | no |
 
 Every event posts a new comment so the thread reads in order, and the previous comment with the
 same marker is collapsed as outdated so the thread does not fill up. The pytest and live query
@@ -208,12 +208,19 @@ the preview. The dot next to the pull request number is live: the page asks each
 `/api/arax/v1.4/status` when it loads and turns green or red. With JavaScript off the dots stay
 grey and everything else still renders.
 
-Under each card are expanders with whatever reports exist for that pull request, embedded at
+Below that, each card carries one line per check, read out of the report files at generation
+time: the pytest counts, one line per example query with the seconds it took or the word failed,
+and how many smoke checks passed. A green check or a red cross says which way each one went, so
+the card answers whether the preview works without opening anything. A check whose report file is
+missing says so instead of disappearing.
+
+Under the summary are expanders with whatever reports exist for that pull request, embedded at
 generation time rather than fetched by the browser:
 
 | file | written by | what it holds |
 | --- | --- | --- |
 | `deploy-log.txt` | `deploy.sh` | the last 200 lines of the deploy, with every line that mentions a password, token, secret or authorization dropped |
+| `build-log.txt` | `deploy.sh` | the last 400 lines of the docker build, same secrets filter. Only a full rebuild writes it, and a fast redeploy deletes the one the previous deploy left |
 | `smoke.md` | `smoke.sh` | the smoke test table |
 | `pytest.md` | `pytest_report.sh` | the pytest summary |
 | `queries.md` | `query_smoke.sh` | the live query table |

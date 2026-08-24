@@ -378,6 +378,7 @@ ttl = os.environ.get("PREVIEW_TTL_DAYS", "7")
 # name on disk, label in the expander
 DATA_FILES = [
     ("deploy-log.txt", "deploy log"),
+    ("build-log.txt", "docker build log"),
     ("smoke.md", "smoke test"),
     ("pytest.md", "pytest"),
     ("queries.md", "live queries"),
@@ -400,6 +401,78 @@ def read_data_file(pr, name):
     if len(text) > MAX_EMBED_BYTES:
         text = "[truncated]\n" + text[-MAX_EMBED_BYTES:]
     return text
+
+
+# The compact one line per check summary above the expanders. Each builder
+# returns a list of (text, state) pairs, where the state is True for a pass,
+# False for a failure and None for something that did not run. Anything that
+# cannot be parsed drops its rows rather than breaking the page.
+def pytest_rows(pr):
+    text = read_data_file(pr, "pytest.md")
+    if text is None:
+        return [("pytest: not run", None)]
+    marker = "**pytest:**"
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(marker):
+            rest = stripped[len(marker):].strip()
+            if not rest:
+                return []
+            passed = " 0 failed" in rest or "failed" not in rest
+            return [("pytest: " + rest, passed)]
+    return []
+
+
+def query_rows(pr):
+    text = read_data_file(pr, "queries.md")
+    if text is None:
+        return [("live queries: not run", None)]
+    rows = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if len(cells) < 4:
+            continue
+        name = cells[0]
+        # The header row and the row of dashes under it.
+        if not name or name == "#" or set(name) <= set("-: "):
+            continue
+        failed = name.startswith("⚠")
+        short = name.lstrip("⚠").strip() or "query"
+        if failed:
+            rows.append((short + ": failed", False))
+        else:
+            rows.append((short + ": ok (" + cells[3] + " s)", True))
+    return rows
+
+
+def smoke_rows(pr):
+    text = read_data_file(pr, "smoke.md")
+    if text is None:
+        return []
+    passed = 0
+    failed = 0
+    for line in text.splitlines():
+        if "| pass |" in line:
+            passed += 1
+        elif "| FAIL |" in line:
+            failed += 1
+    total = passed + failed
+    if not total:
+        return []
+    return [("smoke: %d/%d passed" % (passed, total), failed == 0)]
+
+
+def status_rows(pr):
+    rows = []
+    for builder in (pytest_rows, query_rows, smoke_rows):
+        try:
+            rows.extend(builder(pr))
+        except Exception:
+            continue
+    return rows
 
 
 previews = []
@@ -462,6 +535,12 @@ dd { margin: 0; overflow-wrap: anywhere; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
 .running { color: #46a758; }
 .stopped { color: #d68b3c; }
+.checks { border-top: 1px solid #2b3037; margin-top: 12px; padding-top: 10px; }
+.check { display: flex; align-items: baseline; gap: 9px; font-size: 14px; padding: 1px 0; }
+.chip { flex: none; width: 15px; text-align: center; font-weight: 700; color: #6d7681; }
+.chip.ok { color: #3fb950; }
+.chip.bad { color: #f85149; }
+.checks + details { border-top: none; margin-top: 4px; padding-top: 0; }
 details { border-top: 1px solid #2b3037; margin-top: 10px; padding-top: 9px; }
 details + details { margin-top: 0; }
 summary { cursor: pointer; color: #98a0ab; font-size: 14px; }
@@ -514,6 +593,18 @@ for item in previews:
     out.append("<dt>state</dt><dd class=\"" + state_class + "\">" + esc(item["state"]) + "</dd>")
     out.append("<dt>preview</dt><dd><a href=\"" + esc(url) + "\">" + esc(url) + "</a></dd>")
     out.append("</dl>")
+    checks = status_rows(pr)
+    if checks:
+        out.append("<div class=\"checks\">")
+        for text, state in checks:
+            if state is True:
+                chip = "<span class=\"chip ok\">&#10003;</span>"
+            elif state is False:
+                chip = "<span class=\"chip bad\">&#10007;</span>"
+            else:
+                chip = "<span class=\"chip\">&#183;</span>"
+            out.append("<div class=\"check\">" + chip + "<span>" + esc(text) + "</span></div>")
+        out.append("</div>")
     for name, label in DATA_FILES:
         body = read_data_file(pr, name)
         if body is None:
