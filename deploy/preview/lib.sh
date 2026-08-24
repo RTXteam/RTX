@@ -341,12 +341,97 @@ write_preview_data() {
 # Status page
 # ---------------------------------------------------------------------------
 
+# collect_host_stats
+# Reads the host numbers the status page shows into HOST_* variables and
+# exports them, because the python that renders the page must not shell out.
+# Every collector is best effort: one that cannot read its number leaves the
+# variable empty and the page leaves that tile or that table out.
+collect_host_stats() {
+    HOST_MEM_AVAIL_MB=""
+    HOST_MEM_TOTAL_MB=""
+    HOST_DISK_AVAIL_GB=""
+    HOST_DISK_SIZE_GB=""
+    HOST_LOAD_1=""
+    HOST_LOAD_5=""
+    HOST_LOAD_15=""
+    HOST_SLOTS_USED=""
+    HOST_SLOTS_MAX="${PREVIEW_MAX_ACTIVE}"
+    HOST_CONTAINER_STATS=""
+
+    # Memory. The available column rather than the free one, same as the
+    # preflight check, because page cache is reclaimable.
+    local mem_line avail_mb total_mb
+    mem_line="$(free -m 2>/dev/null | awk '/^Mem:/{print $7, $2}' || true)"
+    avail_mb="$(printf '%s' "${mem_line}" | awk '{print $1}' | tr -dc '0-9')"
+    total_mb="$(printf '%s' "${mem_line}" | awk '{print $2}' | tr -dc '0-9')"
+    if [ -n "${avail_mb}" ] && [ -n "${total_mb}" ]; then
+        HOST_MEM_AVAIL_MB="${avail_mb}"
+        HOST_MEM_TOTAL_MB="${total_mb}"
+    fi
+
+    # Disk, the same call the preflight check makes, so the page and the
+    # refusal message can never disagree about how much room is left.
+    local df_line size_gb avail_gb
+    df_line="$(df -BG --output=size,avail /var/lib/docker 2>/dev/null \
+        || df -BG --output=size,avail / 2>/dev/null || true)"
+    df_line="$(printf '%s' "${df_line}" | tail -n 1)"
+    size_gb="$(printf '%s' "${df_line}" | awk '{print $1}' | tr -dc '0-9')"
+    avail_gb="$(printf '%s' "${df_line}" | awk '{print $2}' | tr -dc '0-9')"
+    if [ -n "${size_gb}" ] && [ -n "${avail_gb}" ]; then
+        HOST_DISK_SIZE_GB="${size_gb}"
+        HOST_DISK_AVAIL_GB="${avail_gb}"
+    fi
+
+    # Load. There is no /proc on a mac, so a missing file is expected and
+    # simply drops the tile.
+    local one five fifteen rest
+    if [ -r /proc/loadavg ]; then
+        read -r one five fifteen rest < /proc/loadavg || true
+        case "${one}:${five}:${fifteen}" in
+            *[!0-9.:]*|*::*) : ;;
+            *)
+                HOST_LOAD_1="${one}"
+                HOST_LOAD_5="${five}"
+                HOST_LOAD_15="${fifteen}"
+                ;;
+        esac
+    fi
+
+    # Preview slots. Every preview on the box counts, running or not, which
+    # is the same set the garbage collector and the preflight count walk.
+    local used
+    used="$(list_preview_prs | sort -n -u | wc -l | tr -dc '0-9' || true)"
+    if [ -n "${used}" ]; then
+        HOST_SLOTS_USED="${used}"
+    fi
+
+    # Per container memory and cpu. docker stats can hang for a long time on
+    # a wedged daemon and this runs on the path of every deploy, so it gets a
+    # hard time limit and the table is dropped rather than waited for.
+    local stats_raw
+    if command -v timeout >/dev/null 2>&1; then
+        # DOCKER is "sudo docker", two words on purpose, so it has to split.
+        # shellcheck disable=SC2086
+        stats_raw="$(timeout 20 ${DOCKER} stats --no-stream \
+            --format '{{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}' 2>/dev/null || true)"
+    else
+        stats_raw="$(${DOCKER} stats --no-stream \
+            --format '{{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}' 2>/dev/null || true)"
+    fi
+    HOST_CONTAINER_STATS="$(printf '%s\n' "${stats_raw}" | grep '^rtx_' || true)"
+
+    export HOST_MEM_AVAIL_MB HOST_MEM_TOTAL_MB HOST_DISK_AVAIL_GB HOST_DISK_SIZE_GB \
+        HOST_LOAD_1 HOST_LOAD_5 HOST_LOAD_15 HOST_SLOTS_USED HOST_SLOTS_MAX \
+        HOST_CONTAINER_STATS
+}
+
 # write_status_page
 # Regenerates ${PREVIEW_WEB_ROOT}/index.html from the docker labels of every
-# preview container on the box, plus whatever per-PR report files exist at
-# generation time. Called by deploy.sh, teardown.sh, gc.sh and the installer.
-# Best effort throughout: the page is a convenience and must never be able to
-# fail a deploy or a teardown.
+# preview container on the box, the host numbers collected just above, and
+# whatever per-PR report files exist at generation time. Called by deploy.sh,
+# teardown.sh, gc.sh, status-refresh.sh and the installer. Best effort
+# throughout: the page is a convenience and must never be able to fail a
+# deploy or a teardown.
 write_status_page() {
     if [ -z "${PREVIEW_WEB_ROOT}" ]; then
         return 0
@@ -356,6 +441,8 @@ write_status_page() {
         return 0
     fi
     ${SUDO} chmod 755 "${PREVIEW_WEB_ROOT}" "${PREVIEW_WEB_ROOT}/data" 2>/dev/null || true
+
+    collect_host_stats
 
     local rows html
     # One tab separated line per preview: pr, branch, sha, created, state.
@@ -375,6 +462,11 @@ base_url = os.environ.get("PREVIEW_PUBLIC_BASE_URL", "https://cicd.rtx.ai").rstr
 repo = os.environ.get("PREVIEW_REPO", "RTXteam/RTX")
 ttl = os.environ.get("PREVIEW_TTL_DAYS", "7")
 
+# What the host is, for the subtitle under the name. One host, so it is
+# written down here rather than read off the machine on every deploy.
+HOST_NAME = "cicd.rtx.ai"
+HOST_SPEC = "m5a.large, 2 vCPU, 7.5 GB, no swap"
+
 # name on disk, label in the expander
 DATA_FILES = [
     ("deploy-log.txt", "deploy log"),
@@ -389,6 +481,21 @@ MAX_EMBED_BYTES = 200000
 
 def esc(value):
     return html_module.escape(str(value), quote=True)
+
+
+def env_int(name):
+    """The environment value as an int, or None when it is missing or junk."""
+    try:
+        return int(os.environ.get(name, "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def env_float(name):
+    try:
+        return float(os.environ.get(name, "").strip())
+    except (TypeError, ValueError):
+        return None
 
 
 def read_data_file(pr, name):
@@ -475,6 +582,97 @@ def status_rows(pr):
     return rows
 
 
+# The host tiles. Each one is (value, label, state, title), where the state is
+# ok or bad or the empty string for a number with no threshold behind it. The
+# thresholds are the ones the preflight check refuses on, read from the same
+# environment variables, so the page turns red exactly when a deploy would be
+# turned away.
+def host_tiles():
+    tiles = []
+
+    mem_avail = env_int("HOST_MEM_AVAIL_MB")
+    mem_total = env_int("HOST_MEM_TOTAL_MB")
+    if mem_avail is not None and mem_total:
+        floor_mb = env_int("PREVIEW_MIN_FREE_RAM_MB")
+        state = "ok"
+        if floor_mb is not None and mem_avail < floor_mb:
+            state = "bad"
+        tiles.append(
+            (
+                "%.1f GB" % (mem_avail / 1024.0),
+                "memory available of %.1f GB" % (mem_total / 1024.0),
+                state,
+                "%d MB available, floor %s MB" % (mem_avail, floor_mb),
+            )
+        )
+
+    disk_avail = env_int("HOST_DISK_AVAIL_GB")
+    disk_size = env_int("HOST_DISK_SIZE_GB")
+    if disk_avail is not None and disk_size:
+        floor_gb = env_int("PREVIEW_MIN_FREE_DISK_GB") or 0
+        pct = env_int("PREVIEW_MIN_FREE_DISK_PCT") or 0
+        pct_floor = disk_size * pct // 100
+        if pct_floor > floor_gb:
+            floor_gb = pct_floor
+        state = "bad" if disk_avail < floor_gb else "ok"
+        tiles.append(
+            (
+                "%d GB" % disk_avail,
+                "disk free of %d GB" % disk_size,
+                state,
+                "floor %d GB, the larger of the absolute and the percentage guard" % floor_gb,
+            )
+        )
+
+    load_1 = env_float("HOST_LOAD_1")
+    if load_1 is not None:
+        detail = " ".join(
+            [
+                os.environ.get("HOST_LOAD_1", ""),
+                os.environ.get("HOST_LOAD_5", ""),
+                os.environ.get("HOST_LOAD_15", ""),
+            ]
+        ).strip()
+        tiles.append(("%.2f" % load_1, "load 1m", "", "1m 5m 15m: " + detail))
+
+    slots_used = env_int("HOST_SLOTS_USED")
+    slots_max = env_int("HOST_SLOTS_MAX")
+    if slots_used is not None and slots_max:
+        state = "bad" if slots_used >= slots_max else "ok"
+        tiles.append(
+            (
+                "%d/%d" % (slots_used, slots_max),
+                "preview slots",
+                state,
+                "PREVIEW_MAX_ACTIVE is %d" % slots_max,
+            )
+        )
+
+    return tiles
+
+
+def container_stats():
+    """(name, memory, cpu) for every rtx_ container docker stats reported."""
+    raw = os.environ.get("HOST_CONTAINER_STATS", "")
+    rows = []
+    for line in raw.splitlines():
+        if not line.strip():
+            continue
+        fields = line.split("\t")
+        if len(fields) < 3:
+            # Older docker builds hand the format string through without
+            # turning the escape into a real tab.
+            fields = line.split("\\t")
+        if len(fields) < 3:
+            continue
+        name, mem, cpu = [item.strip() for item in fields[:3]]
+        if not name.startswith("rtx_"):
+            continue
+        rows.append((name, mem, cpu))
+    rows.sort(key=lambda item: item[0])
+    return rows
+
+
 previews = []
 for line in sys.stdin.read().splitlines():
     if not line.strip():
@@ -504,6 +702,8 @@ for line in sys.stdin.read().splitlines():
     )
 previews.sort(key=lambda item: int(item["pr"]))
 
+generated = time.strftime("%Y-%m-%d %H:%M UTC", time.gmtime())
+
 out = []
 out.append("<!DOCTYPE html>")
 out.append("<html lang=\"en\">")
@@ -512,57 +712,110 @@ out.append("<meta charset=\"utf-8\">")
 out.append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
 out.append("<title>ARAX preview host</title>")
 out.append("<style>")
-out.append(""":root { color-scheme: dark; }
+out.append(""":root { color-scheme: light; }
 * { box-sizing: border-box; }
-body { margin: 0; background: #15171a; color: #d7dae0;
-       font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-.wrap { max-width: 920px; margin: 0 auto; padding: 34px 20px 64px; }
-h1 { font-size: 22px; margin: 0 0 10px; font-weight: 600; }
-p.lede { color: #98a0ab; margin: 0 0 26px; max-width: 70ch; }
-a { color: #7bb2f0; }
-a:hover { color: #a9cdf7; }
-.card { border: 1px solid #2b3037; border-radius: 8px; background: #1b1e23;
-        padding: 16px 18px; margin: 0 0 16px; }
-.card h2 { font-size: 17px; font-weight: 600; margin: 0 0 12px;
-           display: flex; align-items: center; gap: 9px; }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: #59616c;
-       display: inline-block; flex: none; }
-.dot.ok { background: #46a758; }
-.dot.bad { background: #d1444a; }
-dl { display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 3px 14px; margin: 0; }
-dt { color: #98a0ab; }
-dd { margin: 0; overflow-wrap: anywhere; }
+body { margin: 0; background: #f7f7f8; color: #1f2937;
+       font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
+a { color: #2563eb; text-decoration: none; }
+a:hover { text-decoration: underline; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
-.running { color: #46a758; }
-.stopped { color: #d68b3c; }
-.checks { border-top: 1px solid #2b3037; margin-top: 12px; padding-top: 10px; }
-.check { display: flex; align-items: baseline; gap: 9px; font-size: 14px; padding: 1px 0; }
-.chip { flex: none; width: 15px; text-align: center; font-weight: 700; color: #6d7681; }
-.chip.ok { color: #3fb950; }
-.chip.bad { color: #f85149; }
-.checks + details { border-top: none; margin-top: 4px; padding-top: 0; }
-details { border-top: 1px solid #2b3037; margin-top: 10px; padding-top: 9px; }
-details + details { margin-top: 0; }
-summary { cursor: pointer; color: #98a0ab; font-size: 14px; }
-pre { overflow-x: auto; background: #101216; border: 1px solid #2b3037; border-radius: 6px;
-      padding: 10px 12px; font-size: 12px; line-height: 1.45; margin: 10px 0 4px;
+.top { display: flex; align-items: flex-start; justify-content: space-between;
+       gap: 16px; flex-wrap: wrap; }
+h1 { font-size: 22px; font-weight: 600; margin: 0; }
+.spec { color: #6b7280; font-size: 13px; margin: 4px 0 0; }
+.asof { color: #6b7280; font-size: 13px; white-space: nowrap; }
+p.lede { color: #6b7280; margin: 16px 0 0; max-width: 78ch; }
+h2 { font-size: 13px; font-weight: 600; color: #6b7280; margin: 32px 0 12px; }
+.tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 12px; }
+.tile { flex: 1 1 200px; background: #ffffff; border: 1px solid #e5e7eb;
+        border-radius: 8px; padding: 16px 18px; }
+.tile .value { font-size: 24px; font-weight: 600; line-height: 1.25; }
+.tile.ok .value { color: #059669; }
+.tile.bad .value { color: #dc2626; }
+.tile .label { font-size: 13px; color: #6b7280; margin-top: 4px; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: #ffffff;
+        border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; }
+th { text-align: left; font-weight: 600; color: #6b7280; padding: 10px 16px;
+     border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
+td { padding: 10px 16px; border-top: 1px solid #f3f4f6; white-space: nowrap; }
+tr:first-child td { border-top: none; }
+.card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
+        padding: 18px 20px; margin: 0 0 12px; }
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.card h3 { font-size: 16px; font-weight: 600; margin: 0; }
+.card h3 a { color: #1f2937; }
+.meta { color: #6b7280; font-size: 13px; margin-top: 3px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #9ca3af;
+       display: inline-block; flex: none; margin-top: 7px; }
+.dot.ok { background: #059669; }
+.dot.bad { background: #dc2626; }
+dl { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 4px 16px;
+     margin: 14px 0 0; font-size: 14px; }
+dt { color: #6b7280; }
+dd { margin: 0; overflow-wrap: anywhere; }
+.running { color: #059669; }
+.stopped { color: #b45309; }
+.checks { border-top: 1px solid #f3f4f6; margin-top: 16px; padding-top: 12px; }
+.check { display: flex; align-items: center; gap: 9px; font-size: 14px; padding: 2px 0; }
+.chip { flex: none; display: inline-flex; align-items: center; justify-content: center;
+        width: 18px; height: 18px; border-radius: 5px; font-size: 11px; font-weight: 700;
+        color: #6b7280; background: #f3f4f6; }
+.chip.ok { color: #059669; background: #ecfdf5; }
+.chip.bad { color: #dc2626; background: #fef2f2; }
+details { margin-top: 10px; }
+summary { cursor: pointer; color: #6b7280; font-size: 13px; }
+pre { overflow-x: auto; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
+      padding: 12px 14px; margin: 8px 0 4px; font-size: 12px; line-height: 1.5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       white-space: pre-wrap; overflow-wrap: anywhere; }
-.empty { color: #98a0ab; border: 1px dashed #2b3037; border-radius: 8px; padding: 22px; text-align: center; }
-footer { color: #6d7681; font-size: 13px; border-top: 1px solid #2b3037;
-         margin-top: 30px; padding-top: 14px; }""")
+.empty { color: #6b7280; background: #ffffff; border: 1px dashed #e5e7eb;
+         border-radius: 8px; padding: 24px; text-align: center; }
+footer { color: #6b7280; font-size: 13px; border-top: 1px solid #e5e7eb;
+         margin-top: 36px; padding-top: 16px; }""")
 out.append("</style>")
 out.append("</head>")
 out.append("<body>")
 out.append("<div class=\"wrap\">")
-out.append("<h1>ARAX preview host</h1>")
+out.append("<div class=\"top\">")
+out.append("<div><h1>" + esc(HOST_NAME) + "</h1><p class=\"spec\">" + esc(HOST_SPEC) + "</p></div>")
+out.append("<div class=\"asof\">as of " + esc(generated) + "</div>")
+out.append("</div>")
 out.append(
-    "<p class=\"lede\">This is cicd.rtx.ai. Every card below is a per-PR preview deployment of "
+    "<p class=\"lede\">Every card below is a per-PR preview deployment of "
     "<a href=\"https://github.com/" + esc(repo) + "\">" + esc(repo) + "</a>, built from that pull "
     "request and served from its own container. See <code>deploy/preview/README.md</code> in the "
     "repository for how they are made and torn down. Previews are public, unauthenticated and "
     "temporary: they are removed " + esc(ttl) + " days after they are deployed, or as soon as "
     "their pull request closes.</p>"
 )
+
+tiles = host_tiles()
+stats = container_stats()
+if tiles or stats:
+    out.append("<h2>Host</h2>")
+if tiles:
+    out.append("<div class=\"tiles\">")
+    for value, label, state, title in tiles:
+        classes = "tile " + state if state else "tile"
+        out.append(
+            "<div class=\"" + esc(classes) + "\" title=\"" + esc(title) + "\">"
+            "<div class=\"value\">" + esc(value) + "</div>"
+            "<div class=\"label\">" + esc(label) + "</div></div>"
+        )
+    out.append("</div>")
+if stats:
+    out.append("<div class=\"scroll\"><table>")
+    out.append("<tr><th>container</th><th>memory</th><th>cpu</th></tr>")
+    for name, mem, cpu in stats:
+        out.append(
+            "<tr><td><code>" + esc(name) + "</code></td><td>" + esc(mem) + "</td><td>"
+            + esc(cpu) + "</td></tr>"
+        )
+    out.append("</table></div>")
+
+out.append("<h2>Previews</h2>")
 
 if not previews:
     out.append("<p class=\"empty\">No previews are deployed right now.</p>")
@@ -574,20 +827,27 @@ for item in previews:
     status_path = path + "/api/arax/v1.4/status"
     sha = item["sha"]
     out.append("<div class=\"card\">")
+    out.append("<div class=\"card-head\">")
+    out.append("<div>")
     out.append(
-        "<h2><span class=\"dot\" data-status=\"" + esc(status_path) + "\" title=\"health unknown\">"
-        "</span><a href=\"https://github.com/" + esc(repo) + "/pull/" + esc(pr) + "\">PR #"
-        + esc(pr) + "</a></h2>"
+        "<h3><a href=\"https://github.com/" + esc(repo) + "/pull/" + esc(pr) + "\">PR #"
+        + esc(pr) + "</a></h3>"
     )
-    out.append("<dl>")
-    out.append("<dt>branch</dt><dd><code>" + esc(item["branch"]) + "</code></dd>")
     if sha and sha != "unknown":
-        out.append(
-            "<dt>commit</dt><dd><a href=\"https://github.com/" + esc(repo) + "/commit/" + esc(sha)
-            + "\"><code>" + esc(sha[:7]) + "</code></a></dd>"
+        meta = (
+            "<code>" + esc(item["branch"]) + "</code> @ <a href=\"https://github.com/"
+            + esc(repo) + "/commit/" + esc(sha) + "\"><code>" + esc(sha[:7]) + "</code></a>"
         )
     else:
-        out.append("<dt>commit</dt><dd><code>unknown</code></dd>")
+        meta = "<code>" + esc(item["branch"]) + "</code> @ <code>unknown</code>"
+    out.append("<div class=\"meta\">" + meta + "</div>")
+    out.append("</div>")
+    out.append(
+        "<span class=\"dot\" data-status=\"" + esc(status_path) + "\" title=\"health unknown\">"
+        "</span>"
+    )
+    out.append("</div>")
+    out.append("<dl>")
     out.append("<dt>created</dt><dd>" + esc(item["created"]) + "</dd>")
     state_class = "running" if item["state"] == "running" else "stopped"
     out.append("<dt>state</dt><dd class=\"" + state_class + "\">" + esc(item["state"]) + "</dd>")
@@ -615,10 +875,9 @@ for item in previews:
     out.append("</div>")
 
 out.append(
-    "<footer>Generated " + time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
-    + ". This page is rewritten on every deploy, on every teardown and by the nightly garbage "
-    "collection, so it can be up to a day behind a container that died on its own. The dots are "
-    "live and are checked by your browser when the page loads.</footer>"
+    "<footer>Generated " + esc(generated) + ". This page is rewritten on every deploy event and "
+    "again every 5 minutes from cron, so the host numbers are never much older than that. The "
+    "dots are live and are checked by your browser when the page loads.</footer>"
 )
 out.append("</div>")
 out.append("<script>")

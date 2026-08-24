@@ -202,9 +202,16 @@ preview somebody is done with, or run `bash deploy/preview/gc.sh` on the host.
 redirects there, which replaces the stock **Welcome to nginx** page. `/cicd.txt` and
 `/.well-known/` are unaffected, because the redirect is an exact match on `/` only.
 
-Each preview gets a card with the pull request number linked to GitHub, the branch, the short
-commit linked to the commit, when the container was created, whether it is running, and a link to
-the preview. The dot next to the pull request number is live: the page asks each preview for its
+The page opens with a **Host** section: memory available, free disk, one minute load average and
+how many of the `PREVIEW_MAX_ACTIVE` preview slots are taken, each as a tile. The memory, disk and
+slot tiles turn red on exactly the thresholds the preflight check refuses a deploy on, so a red
+tile means the next `/deploy` gets turned away. Under the tiles is a row per `rtx_` container with
+what `docker stats` says it is using. A number that cannot be read leaves its tile out rather than
+showing a wrong one.
+
+Below that, each preview gets a card with the pull request number linked to GitHub, the branch and
+short commit linked to the commit, when the container was created, whether it is running, and a
+link to the preview. The dot next to the pull request number is live: the page asks each preview for its
 `/api/arax/v1.4/status` when it loads and turns green or red. With JavaScript off the dots stay
 grey and everything else still renders.
 
@@ -231,9 +238,19 @@ by default, and they are removed with the preview. The full deploy logs live in
 `pr<PR>-<timestamp>.log`. Those outlive the preview on purpose, so a preview that is already gone
 can still be looked at, and garbage collection deletes them after 30 days.
 
-The page is rewritten on every deploy, on every teardown and by the nightly garbage collection,
-so it can be up to a day behind a container that died on its own. Writing it is best effort
-throughout and can never fail a deploy or a teardown. `install-nginx-include.sh` creates the
+The page is rewritten on every deploy, on every teardown, by the nightly garbage collection and
+every 5 minutes by cron, so the host numbers on it are never much more than 5 minutes old and a
+container that died on its own stops reading as running within the same window. The cron entry
+runs `status-refresh.sh`, which does nothing but rewrite the page:
+
+```
+*/5 * * * * /bin/bash /path/to/RTX/deploy/preview/status-refresh.sh >/dev/null 2>&1
+```
+
+`install-nginx-include.sh` installs that entry in the crontab of the user who invoked it, and is
+idempotent about it: a crontab that already mentions `status-refresh.sh` is left untouched, so
+running the installer again never doubles the entry up. Writing the page is best effort
+throughout and can never fail a deploy, a teardown or a cron run. The installer also creates the
 document root, the log directory and the nginx snippet, and writes the empty state page, so
 `/previews/` answers before the first preview is ever deployed.
 
@@ -332,6 +349,8 @@ next newest, and removes the route entirely when no previews are left.
 - **Daily garbage collection.** A scheduled run of `gc.sh` removes previews older than
   `PREVIEW_TTL_DAYS` and previews whose pull request is no longer open. Merged pull requests
   count as closed. Without a GitHub token the age rule is the only one that applies.
+- **Status page refresh.** A cron entry runs `status-refresh.sh` every 5 minutes, which rewrites
+  the status page with current host numbers and container states. It touches nothing else.
 
 ## Manual operations
 
@@ -365,8 +384,8 @@ bash deploy/preview/query_smoke.sh 2853
 # the same, against a preview reached some other way
 PREVIEW_QUERY_BASE=http://127.0.0.1:12853 bash deploy/preview/query_smoke.sh 2853
 
-# rewrite the status page by hand
-bash -c '. deploy/preview/lib.sh; write_status_page'
+# rewrite the status page by hand, the same thing cron runs every 5 minutes
+bash deploy/preview/status-refresh.sh
 
 # what a preview left on the host
 ls /var/www/arax-preview/data/2853/     # the reports the status page embeds

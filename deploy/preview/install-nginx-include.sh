@@ -40,6 +40,49 @@ log "${PREVIEW_NGINX_DIR} is ready"
 
 STATUS_CONF_CREATED="no"
 
+# install_status_cron
+# The status page is rewritten on every deploy, teardown and garbage
+# collection run, and cron keeps it honest in between. Idempotent: a crontab
+# that already mentions the refresh script is left exactly as it is, so
+# running this installer again never doubles the entry up.
+install_status_cron() {
+    local script entry owner current tmp
+    script="${SCRIPT_DIR}/status-refresh.sh"
+    entry="*/5 * * * * /bin/bash ${script} >/dev/null 2>&1"
+    # This installer is run with sudo, so the crontab that matters belongs to
+    # the human who invoked it rather than to root.
+    owner="${SUDO_USER:-root}"
+
+    if [ ! -f "${script}" ]; then
+        log "WARNING: ${script} is missing, not installing the cron entry"
+        return 0
+    fi
+    if ! command -v crontab >/dev/null 2>&1; then
+        printf 'no crontab command on this host, add this line by hand: %s\n' "${entry}"
+        return 0
+    fi
+
+    current="$(${SUDO} crontab -u "${owner}" -l 2>/dev/null || true)"
+    if printf '%s\n' "${current}" | grep -qF "status-refresh.sh"; then
+        printf 'already installed: the crontab of %s already refreshes the status page\n' "${owner}"
+        return 0
+    fi
+
+    # Written through a file rather than a pipe so an existing crontab keeps
+    # its own comments and blank lines exactly as the owner wrote them.
+    tmp="$(mktemp)"
+    if [ -n "${current}" ]; then
+        printf '%s\n' "${current}" > "${tmp}"
+    fi
+    printf '%s\n' "${entry}" >> "${tmp}"
+    if ${SUDO} crontab -u "${owner}" "${tmp}"; then
+        printf 'installed in the crontab of %s: %s\n' "${owner}" "${entry}"
+    else
+        printf 'could not write the crontab of %s, add this line by hand: %s\n' "${owner}" "${entry}"
+    fi
+    rm -f "${tmp}"
+}
+
 ensure_status_assets() {
     ${SUDO} mkdir -p "${PREVIEW_WEB_ROOT}/data"
     ${SUDO} chmod 755 "${PREVIEW_WEB_ROOT}" "${PREVIEW_WEB_ROOT}/data"
@@ -69,6 +112,8 @@ STATUS_EOF
     # So that /previews/ answers with the empty state right away, before any
     # preview has ever been deployed on this host.
     write_status_page
+
+    install_status_cron
 }
 
 ensure_status_assets
