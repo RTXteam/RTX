@@ -16,6 +16,7 @@ set -o nounset -o pipefail -o errexit
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 . "${SCRIPT_DIR}/lib.sh"
+preview_validate_env
 
 usage() {
     cat >&2 <<'USAGE_EOF'
@@ -100,6 +101,8 @@ finish() {
     if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
         render_report >> "${GITHUB_STEP_SUMMARY}"
     fi
+    # Same table where the status page at /previews/ can show it.
+    render_report | write_preview_data "${PR}" "smoke.md"
     if [ "${FAILURES}" -gt 0 ]; then
         log "${FAILURES} smoke check(s) failed for PR ${PR}"
         exit 1

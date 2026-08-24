@@ -34,11 +34,60 @@ ${SUDO} chmod 755 "${PREVIEW_NGINX_DIR}"
 log "${PREVIEW_NGINX_DIR} is ready"
 
 # ---------------------------------------------------------------------------
+# The status page: its document root, the deploy log directory and the nginx
+# snippet that serves both it and the redirect from the bare root.
+# ---------------------------------------------------------------------------
+
+STATUS_CONF_CREATED="no"
+
+ensure_status_assets() {
+    ${SUDO} mkdir -p "${PREVIEW_WEB_ROOT}/data"
+    ${SUDO} chmod 755 "${PREVIEW_WEB_ROOT}" "${PREVIEW_WEB_ROOT}/data"
+    ${SUDO} mkdir -p "${PREVIEW_LOG_DIR}"
+    ${SUDO} chmod 755 "${PREVIEW_LOG_DIR}"
+    log "${PREVIEW_WEB_ROOT} and ${PREVIEW_LOG_DIR} are ready"
+
+    if ${SUDO} test -f "${PREVIEW_STATUS_CONF}"; then
+        log "${PREVIEW_STATUS_CONF} is already there, leaving it alone"
+    else
+        # The exact match on / only catches the bare root, so /cicd.txt and
+        # /.well-known/ keep being served by the site file as before. The
+        # trailing slash on the alias is required by nginx.
+        ${SUDO} tee "${PREVIEW_STATUS_CONF}" >/dev/null <<STATUS_EOF
+# managed by deploy/preview/install-nginx-include.sh
+location = / { return 302 /previews/; }
+location /previews/ {
+    alias ${PREVIEW_WEB_ROOT}/;
+    index index.html;
+    default_type text/html;
+}
+STATUS_EOF
+        STATUS_CONF_CREATED="yes"
+        log "wrote ${PREVIEW_STATUS_CONF}"
+    fi
+
+    # So that /previews/ answers with the empty state right away, before any
+    # preview has ever been deployed on this host.
+    write_status_page
+}
+
+ensure_status_assets
+
+# ---------------------------------------------------------------------------
 # The include line
 # ---------------------------------------------------------------------------
 
 if ${SUDO} grep -qF "${INCLUDE_MARKER}" "${PREVIEW_NGINX_SITE}"; then
     printf 'already installed: %s already contains "%s"\n' "${PREVIEW_NGINX_SITE}" "${INCLUDE_MARKER}"
+    # Nothing else changed, so nginx only has to hear about a snippet that was
+    # written just now.
+    if [ "${STATUS_CONF_CREATED}" = "yes" ]; then
+        if ! nginx_reload; then
+            ${SUDO} rm -f "${PREVIEW_STATUS_CONF}"
+            die "nginx rejected ${PREVIEW_STATUS_CONF}, removed it again and did not reload"
+        fi
+        printf 'added the status page at %s/previews/\n' "${PREVIEW_PUBLIC_BASE_URL%/}"
+    fi
     exit 0
 fi
 
@@ -132,6 +181,10 @@ log "inserted the include at line ${INSERTED_AT} of ${PREVIEW_NGINX_SITE}"
 if ! ${SUDO} nginx -t; then
     ${SUDO} cp -p "${BACKUP}" "${PREVIEW_NGINX_SITE}"
     log "nginx -t failed, restored ${PREVIEW_NGINX_SITE} from ${BACKUP}"
+    if [ "${STATUS_CONF_CREATED}" = "yes" ]; then
+        ${SUDO} rm -f "${PREVIEW_STATUS_CONF}"
+        log "also removed ${PREVIEW_STATUS_CONF}, which this run had just written"
+    fi
     die "nginx rejected the edited configuration, nothing was changed"
 fi
 
@@ -146,6 +199,9 @@ Installed.
   backup         ${BACKUP}
   snippet dir    ${PREVIEW_NGINX_DIR}
   include line   ${INCLUDE_LINE}
+  status page    ${PREVIEW_PUBLIC_BASE_URL%/}/previews/
+  page root      ${PREVIEW_WEB_ROOT}
+  deploy logs    ${PREVIEW_LOG_DIR}
 
 The GitHub Actions runner user also needs passwordless sudo for docker, nginx,
 systemctl reload nginx, tee, rm and mkdir. That is already the case on
