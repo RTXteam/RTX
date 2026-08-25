@@ -356,11 +356,11 @@ jobs:
             }
 
             // The log holds the raw pytest output first and the report last,
-            // so the report starts at the first summary line.
+            // so the report starts at the container line the report opens with.
             let report = '_The pytest step produced no output._';
             try {
               const raw = fs.readFileSync('preview-pytest.log', 'utf8');
-              const start = raw.indexOf('**pytest:**');
+              const start = raw.indexOf('**Container:**');
               report = start >= 0 ? raw.slice(start).trim() : raw.trim();
             } catch (error) {
               core.info('preview-pytest.log is missing: ' + error.message);
@@ -447,10 +447,12 @@ jobs:
               return;
             }
 
+            // The report starts at the endpoint line, which sits above the
+            // table, and everything before it is the progress log.
             let report = '_The live query step produced no output._';
             try {
               const raw = fs.readFileSync('preview-queries.log', 'utf8');
-              const start = raw.indexOf('| query |');
+              const start = raw.indexOf('**Endpoint:**');
               report = start >= 0 ? raw.slice(start).trim() : raw.trim();
             } catch (error) {
               core.info('preview-queries.log is missing: ' + error.message);

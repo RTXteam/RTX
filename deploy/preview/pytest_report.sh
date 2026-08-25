@@ -42,10 +42,18 @@ PYTEST_ARGS="${2:-}"
 CONTAINER="$(preview_container "${PR}")"
 TEST_DIR="/mnt/data/orangeboard/production/RTX/code/ARAX/test"
 
+# The report opens with the container it ran in, so the pull request comment
+# and the status page both say which preview was tested. The workflow slices
+# the comment body from this line, so it has to be the top of the report.
+# the backticks are markdown around the container name, not a substitution
+# shellcheck disable=SC2016
+ENV_BLOCK="$(printf '**Container:** `%s`' "${CONTAINER}")"
+
 if ! container_running "${CONTAINER}"; then
     # the backticks are markdown around the container name, not a substitution
     # shellcheck disable=SC2016
-    printf '**pytest:** not run, the container `%s` is not running\n' "${CONTAINER}"
+    printf '%s\n\n**pytest:** not run, the container `%s` is not running\n' \
+        "${ENV_BLOCK}" "${CONTAINER}"
     exit 1
 fi
 
@@ -134,11 +142,16 @@ sys.stdout.write("\n".join(report) + "\n")
 PYTHON_EOF
 )"
 
-printf '%s\n' "${REPORT}"
-printf '%s\n' "${REPORT}" | write_preview_data "${PR}" "pytest.md"
+render_report() {
+    printf '%s\n\n' "${ENV_BLOCK}"
+    printf '%s\n' "${REPORT}"
+}
+
+render_report
+render_report | write_preview_data "${PR}" "pytest.md"
 
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-    printf '%s\n' "${REPORT}" >> "${GITHUB_STEP_SUMMARY}"
+    render_report >> "${GITHUB_STEP_SUMMARY}"
 fi
 
 exit "${PYTEST_RC}"

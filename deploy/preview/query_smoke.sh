@@ -58,13 +58,16 @@ export PREVIEW_UI_RTXJS PREVIEW_QUERY_BASE
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "${WORK_DIR}"' EXIT
 
-# kind, label for the table, timeout in seconds. The pathfinder query was
-# measured at 90 seconds on this host, the other three at 3 to 5 seconds.
+# kind, short name for the first column, label for the table, timeout in
+# seconds. The short names are the ones on the Try an example buttons in the
+# UI, so a row can be matched to a button without reading the query graph.
+# The pathfinder query was measured at 90 seconds on this host, the other
+# three at 3 to 5 seconds.
 QUERIES=(
-    "JSON1|interacts_with (CHEBI:46195)|240"
-    "JSON2|treats inferred (MONDO:0015564)|240"
-    "JSON3|affects qualified (NCBIGene:1576)|240"
-    "PATH1|pathfinder (MONDO:0005011 to MONDO:0005180)|400"
+    "JSON1|Example 1|interacts_with (CHEBI:46195)|240"
+    "JSON2|Example 2|treats inferred (MONDO:0015564)|240"
+    "JSON3|Example 3|affects qualified (NCBIGene:1576)|240"
+    "PATH1|Pathfinder|pathfinder (MONDO:0005011 to MONDO:0005180)|400"
 )
 
 log "reading the example query graphs from ${PREVIEW_UI_RTXJS}"
@@ -173,6 +176,8 @@ DEGRADED=0
 for entry in "${QUERIES[@]}"; do
     KIND="${entry%%|*}"
     REST="${entry#*|}"
+    SHORT="${REST%%|*}"
+    REST="${REST#*|}"
     LABEL="${REST%%|*}"
     TIMEOUT="${REST##*|}"
 
@@ -181,7 +186,7 @@ for entry in "${QUERIES[@]}"; do
 
     if [ "${STATE}" != "ok" ]; then
         log "${KIND}: payload extraction failed, ${DETAIL}"
-        ROWS+=("| ⚠ ${LABEL} | - | - | - | - | payload extraction failed |")
+        ROWS+=("| ⚠ ${SHORT} | ${LABEL} | - | - | - | - | payload extraction failed |")
         DEGRADED=$(( DEGRADED + 1 ))
         continue
     fi
@@ -189,18 +194,26 @@ for entry in "${QUERIES[@]}"; do
     log "${KIND}: posting to ${QUERY_URL} with a ${TIMEOUT}s timeout"
     BODY_FILE="${WORK_DIR}/${KIND}.body.json"
     RESPONSE_FILE="${WORK_DIR}/${KIND}.response.json"
-    STARTED="$(date -u '+%s')"
-    CODE="$(curl -sS -m "${TIMEOUT}" \
+    # curl writes "<http code> <seconds>", for example "200 2.923400". Its own
+    # timing is what goes in the table, because whole seconds off the clock
+    # cannot tell a 3 second query from a 3.9 second one. LC_ALL=C keeps the
+    # decimal separator a dot on a host with a comma locale.
+    CURL_OUT="$(LC_ALL=C curl -sS -m "${TIMEOUT}" \
         -o "${RESPONSE_FILE}" \
-        -w '%{http_code}' \
+        -w '%{http_code} %{time_total}' \
         -H 'Content-Type: application/json' \
         --data-binary "@${BODY_FILE}" \
         "${QUERY_URL}" 2>>"${WORK_DIR}/curl.err" || true)"
-    ELAPSED=$(( $(date -u '+%s') - STARTED ))
+    CODE="${CURL_OUT%% *}"
+    RAW_SECONDS="${CURL_OUT##* }"
     case "${CODE}" in
         [1-5][0-9][0-9]) : ;;
         *) CODE="000" ;;
     esac
+    # A curl that died before it wrote anything leaves both fields empty, so
+    # anything that is not a plain number becomes a dash rather than a crash.
+    SECONDS_TEXT="$(printf '%s\n' "${RAW_SECONDS}" \
+        | LC_ALL=C awk '{ if ($1 ~ /^[0-9]+(\.[0-9]+)?$/) printf "%.2f", $1; else printf "-" }')"
 
     PARSED="$(python3 - "${RESPONSE_FILE}" <<'PYTHON_EOF'
 import json
@@ -249,34 +262,38 @@ PYTHON_EOF
         MARK="⚠ "
         DEGRADED=$(( DEGRADED + 1 ))
     fi
-    log "${KIND}: HTTP ${CODE} in ${ELAPSED}s, ${RESULTS} result(s), status ${STATUS}"
-    ROWS+=("| ${MARK}${LABEL} | ${CODE} | ${ELAPSED} | ${RESULTS} | ${NODES}/${EDGES} | ${STATUS} |")
+    log "${KIND}: HTTP ${CODE} in ${SECONDS_TEXT}s, ${RESULTS} result(s), status ${STATUS}"
+    ROWS+=("| ${MARK}${SHORT} | ${LABEL} | ${CODE} | ${SECONDS_TEXT} | ${RESULTS} | ${NODES}/${EDGES} | ${STATUS} |")
 done
 
 render_report() {
-    printf '| query | HTTP | s | results | KG nodes/edges | status |\n'
-    printf '| --- | --- | --- | --- | --- | --- |\n'
+    # The endpoint comes first because the workflow slices the pull request
+    # comment from this line, so it has to be the top of the report.
+    # the backticks are markdown around the URL, not a substitution
+    # shellcheck disable=SC2016
+    printf '**Endpoint:** `%s`\n\n' "${QUERY_URL}"
+    printf '| # | query | HTTP | s | results | KG nodes/edges | status |\n'
+    printf '| --- | --- | --- | --- | --- | --- | --- |\n'
     local row
     for row in "${ROWS[@]}"; do
         printf '%s\n' "${row}"
     done
-    printf '\n'
-    # the backticks are markdown around the URL, not a substitution
-    # shellcheck disable=SC2016
-    printf 'Posted to `%s`. Reference timings from a healthy preview on this host: about 3, 5, 4 and 90 seconds in that order. A row is marked ⚠ when the call did not answer 200 or came back with no results.\n' "${QUERY_URL}"
 }
+
+# The count goes out before the report, not after it. The workflow slices the
+# pull request comment from the endpoint line to the end of the log, so a log
+# line printed after the table would land under the table in the comment.
+if [ "${DEGRADED}" -gt 0 ]; then
+    log "${DEGRADED} of ${#QUERIES[@]} example queries came back degraded for PR ${PR}"
+else
+    log "all ${#QUERIES[@]} example queries answered for PR ${PR}"
+fi
 
 render_report
 render_report | write_preview_data "${PR}" "queries.md"
 
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
     render_report >> "${GITHUB_STEP_SUMMARY}"
-fi
-
-if [ "${DEGRADED}" -gt 0 ]; then
-    log "${DEGRADED} of ${#QUERIES[@]} example queries came back degraded for PR ${PR}"
-else
-    log "all ${#QUERIES[@]} example queries answered for PR ${PR}"
 fi
 
 # Informational by design: a slow or empty answer is worth reading, not worth

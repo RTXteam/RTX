@@ -98,13 +98,32 @@ setup_log_capture() {
 # Copies the tail of this run's log where the status page can show it, then
 # rewrites the status page. Every step is best effort.
 publish_deploy_artifacts() {
-    local tail_text
+    local tail_text build_text
     if [ -n "${DEPLOY_LOG_FILE}" ] && ${SUDO} test -f "${DEPLOY_LOG_FILE}"; then
         # The secrets guard is crude on purpose. The page is public, so a line
         # that so much as mentions a credential is dropped rather than shown.
         tail_text="$(${SUDO} tail -n 200 "${DEPLOY_LOG_FILE}" 2>/dev/null \
             | grep -viE 'password|token|secret|authorization' || true)"
         printf '%s\n' "${tail_text}" | write_preview_data "${PR}" "deploy-log.txt"
+
+        # The docker build on its own, because the build is the part that is
+        # worth reading when an image comes out wrong and the tail above is
+        # all container start and health polling by then. The section runs
+        # from the step 4 line to the step 5 line of the full path, so a fast
+        # redeploy, which has no build, matches nothing.
+        build_text="$(${SUDO} cat "${DEPLOY_LOG_FILE}" 2>/dev/null \
+            | awk '/step 5\/10 starting/ { if (inside) { exit } }
+                   /step 4\/10 building/ { inside = 1 }
+                   inside { print }' \
+            | tail -n 400 \
+            | grep -viE 'password|token|secret|authorization' || true)"
+        if [ -n "${build_text}" ]; then
+            printf '%s\n' "${build_text}" | write_preview_data "${PR}" "build-log.txt"
+        else
+            # A fast redeploy must not leave the previous build on the page
+            # looking like it belongs to this commit.
+            ${SUDO} rm -f "$(preview_data_dir "${PR}")/build-log.txt" 2>/dev/null || true
+        fi
     fi
     write_status_page
 }
