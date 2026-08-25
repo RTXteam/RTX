@@ -149,6 +149,8 @@ render_report() {
 
 render_report
 render_report | write_preview_data "${PR}" "pytest.md"
+# The page must show the result the moment it exists, not on the next cron tick.
+write_status_page
 
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
     render_report >> "${GITHUB_STEP_SUMMARY}"
