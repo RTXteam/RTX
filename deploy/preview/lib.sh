@@ -1471,8 +1471,6 @@ for item in previews:
                     "<tr><td>" + esc(check) + "</td>" + rcell + "<td>" + esc(det) + "</td></tr>"
                 )
             out.append("</tbody></table></div>")
-            out.append("<details><summary>smoke.md raw</summary><pre>"
-                       + esc(smoke_text.rstrip()) + "</pre></details>")
 
     # pytest: the summary as a status row, then the full captured output
     pytest_text = read_data_file(pr, "pytest.md")
@@ -1500,9 +1498,6 @@ for item in previews:
         if pytest_full is not None:
             out.append("<details><summary>pytest output</summary><pre>"
                        + esc(pytest_full.rstrip()) + "</pre></details>")
-        elif pytest_text is not None:
-            out.append("<details><summary>pytest.md raw</summary><pre>"
-                       + esc(pytest_text.rstrip()) + "</pre></details>")
 
     # live queries: a real table plus per query detail
     queries_text = read_data_file(pr, "queries.md")
