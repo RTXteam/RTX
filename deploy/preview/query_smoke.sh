@@ -175,6 +175,89 @@ printf '%s\n' "${EXTRACTION}" >&2
 
 ROWS=()
 DEGRADED=0
+QUERY_INDEX=0
+
+# write_query_detail <body_file> <response_file>
+# Prints the per-query detail the status page shows behind an expander: the
+# facts, the exact query graph that was posted, any error the body carried, and
+# the first 4 KB of the raw response for debugging. The whole multi-megabyte
+# TRAPI response is never saved, only its head. The fields come in through the
+# environment so the call site stays short. Best effort: an unreadable file
+# becomes a note in the text rather than a failure.
+write_query_detail() {
+    local body_file="${1:-}"
+    local response_file="${2:-}"
+    Q_ENDPOINT="${QUERY_URL}" python3 - "${body_file}" "${response_file}" <<'PYTHON_EOF'
+import json
+import os
+import sys
+
+short = os.environ.get("Q_SHORT", "")
+out = []
+out.append("query    " + short)
+out.append("endpoint " + os.environ.get("Q_ENDPOINT", ""))
+out.append("http     " + os.environ.get("Q_CODE", ""))
+out.append("seconds  " + os.environ.get("Q_SECONDS", ""))
+out.append("results  " + os.environ.get("Q_RESULTS", ""))
+out.append("KG nodes " + os.environ.get("Q_NODES", ""))
+out.append("KG edges " + os.environ.get("Q_EDGES", ""))
+out.append("status   " + os.environ.get("Q_STATUS", ""))
+
+body_path = sys.argv[1] if len(sys.argv) > 1 else ""
+resp_path = sys.argv[2] if len(sys.argv) > 2 else ""
+
+query_graph = None
+try:
+    with open(body_path, "r", errors="replace") as handle:
+        posted = json.load(handle)
+    if isinstance(posted, dict):
+        message = posted.get("message")
+        if isinstance(message, dict):
+            query_graph = message.get("query_graph")
+except Exception:
+    query_graph = None
+
+raw = ""
+try:
+    with open(resp_path, "r", errors="replace") as handle:
+        raw = handle.read()
+except Exception:
+    raw = ""
+
+error = ""
+if raw:
+    try:
+        doc = json.loads(raw)
+    except Exception:
+        doc = None
+    if isinstance(doc, dict):
+        for key in ("description", "error", "message"):
+            value = doc.get(key)
+            if isinstance(value, str) and value.strip():
+                error = value.strip()
+                break
+if error:
+    out.append("error    " + error.replace("\n", " ").replace("\r", " ")[:300])
+
+out.append("")
+out.append("query_graph:")
+if query_graph is not None:
+    out.append(json.dumps(query_graph, indent=2, sort_keys=True))
+else:
+    out.append("(unavailable)")
+
+out.append("")
+limit = 4096
+snippet = raw[:limit]
+label = "response body (first 4 KB)"
+if len(raw) > limit:
+    label = "response body (first 4 KB, truncated)"
+out.append(label + ":")
+out.append(snippet if snippet else "(empty)")
+
+sys.stdout.write("\n".join(out) + "\n")
+PYTHON_EOF
+}
 
 # Everything the queries are asked about, in one place, so the row builder
 # below stays readable.
@@ -185,6 +268,7 @@ for entry in "${QUERIES[@]}"; do
     REST="${REST#*|}"
     LABEL="${REST%%|*}"
     TIMEOUT="${REST##*|}"
+    QUERY_INDEX=$(( QUERY_INDEX + 1 ))
 
     STATE="$(printf '%s\n' "${EXTRACTION}" | awk -F'\t' -v k="${KIND}" '$1 == k {print $2; exit}')"
     DETAIL="$(printf '%s\n' "${EXTRACTION}" | awk -F'\t' -v k="${KIND}" '$1 == k {print $3; exit}')"
@@ -193,6 +277,14 @@ for entry in "${QUERIES[@]}"; do
         log "${KIND}: payload extraction failed, ${DETAIL}"
         ROWS+=("| ⚠ ${SHORT} | ${LABEL} | - | - | - | - | payload extraction failed |")
         DEGRADED=$(( DEGRADED + 1 ))
+        # A detail file even for a query that never left the box, so the page
+        # can say why. No body was posted and none came back.
+        {
+            printf 'query    %s\n' "${SHORT}"
+            printf 'endpoint %s\n' "${QUERY_URL}"
+            printf 'status   payload extraction failed\n'
+            printf 'error    %s\n' "${DETAIL}"
+        } | write_preview_data "${PR}" "query-${QUERY_INDEX}.txt"
         continue
     fi
 
@@ -269,6 +361,13 @@ PYTHON_EOF
     fi
     log "${KIND}: HTTP ${CODE} in ${SECONDS_TEXT}s, ${RESULTS} result(s), status ${STATUS}"
     ROWS+=("| ${MARK}${SHORT} | ${LABEL} | ${CODE} | ${SECONDS_TEXT} | ${RESULTS} | ${NODES}/${EDGES} | ${STATUS} |")
+
+    # The full per-query detail for the status page: the facts, the exact query
+    # graph posted, and the first 4 KB of the response body.
+    Q_SHORT="${SHORT}" Q_CODE="${CODE}" Q_SECONDS="${SECONDS_TEXT}" \
+        Q_RESULTS="${RESULTS}" Q_NODES="${NODES}" Q_EDGES="${EDGES}" Q_STATUS="${STATUS}" \
+        write_query_detail "${BODY_FILE}" "${RESPONSE_FILE}" \
+        | write_preview_data "${PR}" "query-${QUERY_INDEX}.txt"
 done
 
 render_report() {

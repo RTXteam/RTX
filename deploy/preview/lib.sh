@@ -635,6 +635,82 @@ host_container_stats() {
     return 0
 }
 
+# The facts that describe the box rather than measure it: what it runs and
+# where. Each is best effort and prints nothing when it cannot be read, so a
+# fact that is missing is simply left off the page rather than shown blank.
+# The cloud and the instance type are constants because there is one host.
+PREVIEW_HOST_CLOUD="AWS EC2"
+PREVIEW_HOST_INSTANCE="m5a.large"
+
+# The docker version as a bare number, "24.0.7" out of "Docker version 24.0.7,
+# build ...". DOCKER is "sudo docker", two words, so it must split.
+host_docker_version() {
+    local out
+    # shellcheck disable=SC2086
+    out="$(${DOCKER} --version 2>/dev/null || true)"
+    out="$(printf '%s' "${out}" | sed -n 's/^Docker version \([^, ]*\).*/\1/p')"
+    [ -n "${out}" ] && printf '%s\n' "${out}"
+    return 0
+}
+
+# The distribution name, "Ubuntu 20.04.6 LTS". /etc/os-release first, then
+# lsb_release, so a host without one still has the other.
+host_os_pretty() {
+    local pretty=""
+    if [ -r /etc/os-release ]; then
+        # os-release is a runtime host file of KEY=VALUE lines, not in this repo.
+        # shellcheck disable=SC1091
+        pretty="$(. /etc/os-release 2>/dev/null; printf '%s' "${PRETTY_NAME:-}")"
+    fi
+    if [ -z "${pretty}" ] && command -v lsb_release >/dev/null 2>&1; then
+        pretty="$(lsb_release -ds 2>/dev/null | sed 's/^"//; s/"$//')"
+    fi
+    [ -n "${pretty}" ] && printf '%s\n' "${pretty}"
+    return 0
+}
+
+# The running kernel release, "5.15.0-1084-aws".
+host_kernel() {
+    local kernel
+    kernel="$(uname -r 2>/dev/null || true)"
+    [ -n "${kernel}" ] && printf '%s\n' "${kernel}"
+    return 0
+}
+
+# Uptime as a phrase, "up 3 days, 4 hours". uptime -p is procps only, so a
+# host without it simply has no uptime fact.
+host_uptime() {
+    local up
+    up="$(uptime -p 2>/dev/null | sed 's/^up //')"
+    [ -n "${up}" ] && printf '%s\n' "${up}"
+    return 0
+}
+
+# The EC2 region, best effort and cheap. PREVIEW_HOST_REGION pins it without a
+# network call, which is what a test uses. Otherwise IMDSv2: a one second token
+# fetch then a one second lookup, and any failure, including not being on EC2,
+# prints nothing rather than hanging.
+host_region() {
+    if [ -n "${PREVIEW_HOST_REGION:-}" ]; then
+        printf '%s\n' "${PREVIEW_HOST_REGION}"
+        return 0
+    fi
+    command -v curl >/dev/null 2>&1 || return 0
+    local token region
+    token="$(curl -sS -m 1 -X PUT \
+        -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
+        http://169.254.169.254/latest/api/token 2>/dev/null || true)"
+    [ -n "${token}" ] || return 0
+    region="$(curl -sS -m 1 \
+        -H "X-aws-ec2-metadata-token: ${token}" \
+        http://169.254.169.254/latest/meta-data/placement/region 2>/dev/null || true)"
+    case "${region}" in
+        ''|*[!a-z0-9-]*) return 0 ;;
+    esac
+    printf '%s\n' "${region}"
+    return 0
+}
+
 # collect_host_stats
 # Reads the host numbers the status page shows into HOST_* variables and
 # exports them, because the python that renders the page must not shell out.
@@ -660,9 +736,19 @@ collect_host_stats() {
     HOST_SLOTS_MAX="${PREVIEW_MAX_ACTIVE}"
     HOST_CONTAINER_STATS="$(host_container_stats)"
 
+    HOST_CLOUD="${PREVIEW_HOST_CLOUD}"
+    HOST_INSTANCE="${PREVIEW_HOST_INSTANCE}"
+    HOST_REGION="$(host_region)"
+    HOST_OS_PRETTY="$(host_os_pretty)"
+    HOST_DOCKER_VERSION="$(host_docker_version)"
+    HOST_KERNEL="$(host_kernel)"
+    HOST_UPTIME="$(host_uptime)"
+
     export HOST_MEM_AVAIL_MB HOST_MEM_TOTAL_MB HOST_DISK_AVAIL_GB HOST_DISK_SIZE_GB \
         HOST_LOAD_1 HOST_LOAD_5 HOST_LOAD_15 HOST_SLOTS_USED HOST_SLOTS_MAX \
-        HOST_CONTAINER_STATS
+        HOST_CONTAINER_STATS \
+        HOST_CLOUD HOST_INSTANCE HOST_REGION HOST_OS_PRETTY HOST_DOCKER_VERSION \
+        HOST_KERNEL HOST_UPTIME
 }
 
 # ---------------------------------------------------------------------------
@@ -707,30 +793,30 @@ web_root = os.environ.get("PREVIEW_WEB_ROOT", "/var/www/arax-preview")
 prefix = os.environ.get("PREVIEW_PATH_PREFIX", "")
 base_url = os.environ.get("PREVIEW_PUBLIC_BASE_URL", "https://cicd.rtx.ai").rstrip("/")
 repo = os.environ.get("PREVIEW_REPO", "RTXteam/RTX")
-ttl = os.environ.get("PREVIEW_TTL_DAYS", "7")
-max_active = os.environ.get("PREVIEW_MAX_ACTIVE", "3")
-memory_limit = os.environ.get("PREVIEW_MEMORY_LIMIT", "2g")
 
-# What the host is, for the line under the subtitle. One host, so it is
-# written down here rather than read off the machine on every deploy.
+# Host port for a preview is this base plus the pull request number, bound to
+# loopback. The card prints it in dim so a human on the box can curl it.
+try:
+    port_base = int(os.environ.get("PREVIEW_PORT_BASE", "10000").strip())
+except (TypeError, ValueError):
+    port_base = 10000
+
+# The host is one box, so what it is stays a constant rather than being read
+# off the machine on every render. The live facts below come from the
+# collectors.
 HOST_NAME = "cicd.rtx.ai"
-HOST_SPEC = "m5a.large, 2 vCPU, 7.5 GB, no swap, Ubuntu 20.04"
 
-# name on disk, label in the expander
-DATA_FILES = [
-    ("deploy-log.txt", "deploy log"),
-    ("build-log.txt", "docker build log"),
-    ("smoke.md", "smoke test"),
-    ("pytest.md", "pytest"),
-    ("queries.md", "live queries"),
-]
-# A runaway file must not turn the page into a 40 MB download.
+# vCPU count of the box, used only to scale the load meter. m5a.large is 2.
+NVCPU = 2
+
+# A runaway file must not turn the page into a multi megabyte download. The
+# file on disk is always complete, this only caps what is embedded.
 MAX_EMBED_BYTES = 200000
 
-# stage key, label on the card, report file the done state is summarised from
+# stage key, label on the row, report file the done state is summarised from
 STAGES = [
     ("deploy", "deploy", None),
-    ("smoke", "smoke test", "smoke.md"),
+    ("smoke", "smoke", "smoke.md"),
     ("pytest", "pytest", "pytest.md"),
     ("queries", "live queries", "queries.md"),
 ]
@@ -741,7 +827,6 @@ def esc(value):
 
 
 def env_int(name):
-    """The environment value as an int, or None when it is missing or junk."""
     try:
         return int(os.environ.get(name, "").strip())
     except (TypeError, ValueError):
@@ -755,14 +840,8 @@ def env_float(name):
         return None
 
 
-def human_memory(value):
-    """2g as it is written for docker, said the way a person reads it."""
-    text = str(value).strip()
-    if text[-1:] in ("g", "G"):
-        return text[:-1] + " GB"
-    if text[-1:] in ("m", "M"):
-        return text[:-1] + " MB"
-    return text
+def env_text(name):
+    return os.environ.get(name, "").strip()
 
 
 def read_data_file(pr, name):
@@ -798,170 +877,133 @@ def clock(value):
         return ""
 
 
-# The compact one line per check summary. Each builder returns a list of
-# (text, state) pairs, where the state is True for a pass, False for a failure
-# and None for something that did not run. Anything that cannot be parsed
+# ---------------------------------------------------------------------------
+# Markdown table parsing. Every report a script writes is a GitHub flavoured
+# markdown table, and the page turns it back into a real HTML table so a
+# reader sees a grid rather than a wall of pipes. Anything that will not parse
 # drops its rows rather than breaking the page.
-def pytest_rows(pr):
-    text = read_data_file(pr, "pytest.md")
-    if text is None:
-        return []
-    marker = "**pytest:**"
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith(marker):
-            rest = stripped[len(marker):].strip()
-            if not rest:
-                return []
-            passed = " 0 failed" in rest or "failed" not in rest
-            return [("pytest: " + rest, passed)]
-    return []
-
-
-def query_rows(pr):
-    text = read_data_file(pr, "queries.md")
-    if text is None:
-        return []
+# ---------------------------------------------------------------------------
+def parse_md_table(text):
+    headers = None
     rows = []
     for line in text.splitlines():
         stripped = line.strip()
         if not stripped.startswith("|"):
             continue
         cells = [cell.strip() for cell in stripped.strip("|").split("|")]
-        if len(cells) < 4:
+        # The row of dashes under the header.
+        if cells and all(cell and set(cell) <= set("-: ") for cell in cells):
             continue
-        name = cells[0]
-        # The header row and the row of dashes under it.
-        if not name or name == "#" or set(name) <= set("-: "):
+        if headers is None:
+            headers = cells
             continue
-        failed = name.startswith("⚠")
-        short = name.lstrip("⚠").strip() or "query"
-        if failed:
-            rows.append((short + ": failed", False))
-        else:
-            rows.append((short + ": ok (" + cells[3] + " s)", True))
-    return rows
+        rows.append(cells)
+    return headers, rows
 
 
-def smoke_rows(pr):
-    text = read_data_file(pr, "smoke.md")
-    if text is None:
-        return []
-    passed = 0
-    failed = 0
-    for line in text.splitlines():
-        if "| pass |" in line:
-            passed += 1
-        elif "| FAIL |" in line:
-            failed += 1
-    total = passed + failed
-    if not total:
-        return []
-    return [("smoke: %d/%d passed" % (passed, total), failed == 0)]
-
-
-REPORT_ROWS = {
-    "smoke": smoke_rows,
-    "pytest": pytest_rows,
-    "queries": query_rows,
-}
-
-
-def report_rows(pr, key):
-    builder = REPORT_ROWS.get(key)
-    if builder is None:
-        return []
-    try:
-        return builder(pr)
-    except Exception:
-        return []
-
-
-def legacy_rows(pr):
-    """What a card showed before run state files existed, for a preview that
-    was deployed by an older copy of these scripts and has no state.json."""
-    rows = []
-    for key, label, filename in STAGES:
-        if filename is None:
-            continue
-        found = report_rows(pr, key)
-        if found:
-            rows.extend(found)
-        elif read_data_file(pr, filename) is None:
-            rows.append((label + ": not run", None))
-    return rows
+def fit(cells, width):
+    cells = list(cells)
+    while len(cells) < width:
+        cells.append("")
+    return cells[:width]
 
 
 # ---------------------------------------------------------------------------
-# Host tiles. Each one is (key, value, label, state), where the state is ok or
-# bad or the empty string for a number with no threshold behind it. The
-# thresholds are the ones the preflight check refuses on, read from the same
-# environment variables, so the page turns red exactly when a deploy would be
-# turned away. Every tile is always rendered, with the word "no data" when the
-# collector could not read it, so the live refresh never moves the page.
+# Host facts and live metrics.
 # ---------------------------------------------------------------------------
-NO_DATA = "no data"
+def host_facts():
+    """(key, value) rows for the left column. A fact that could not be read is
+    left out rather than shown blank."""
+    ordered = [
+        ("cloud", env_text("HOST_CLOUD")),
+        ("instance", env_text("HOST_INSTANCE")),
+        ("region", env_text("HOST_REGION")),
+        ("os", env_text("HOST_OS_PRETTY")),
+        ("docker", env_text("HOST_DOCKER_VERSION")),
+        ("kernel", env_text("HOST_KERNEL")),
+        ("uptime", env_text("HOST_UPTIME")),
+    ]
+    return [(key, value) for key, value in ordered if value]
 
 
-def disk_floor_gb(disk_size):
-    floor = env_int("PREVIEW_MIN_FREE_DISK_GB") or 0
-    pct = env_int("PREVIEW_MIN_FREE_DISK_PCT") or 0
-    if disk_size:
-        pct_floor = disk_size * pct // 100
-        if pct_floor > floor:
-            floor = pct_floor
-    return floor
+def clamp_pct(fraction):
+    if fraction is None:
+        return None
+    pct = int(round(fraction * 100))
+    if pct < 0:
+        return 0
+    if pct > 100:
+        return 100
+    return pct
 
 
-def host_tiles():
-    tiles = []
+def host_metrics():
+    """(id, label, value, pct, state) for the four live numbers, computed the
+    same way the browser recomputes them from host.json so the two never
+    disagree. pct is the meter fill, state is one of "", "warn", "bad"."""
+    metrics = []
 
     mem_avail = env_int("HOST_MEM_AVAIL_MB")
     mem_total = env_int("HOST_MEM_TOTAL_MB")
     ram_floor = env_int("PREVIEW_MIN_FREE_RAM_MB")
     if mem_avail is not None and mem_total:
-        state = "ok"
-        if ram_floor is not None and mem_avail < ram_floor:
-            state = "bad"
-        tiles.append(
-            (
-                "mem",
-                "%.1f GB" % (mem_avail / 1024.0),
-                "memory available of %.1f GB" % (mem_total / 1024.0),
-                state,
-            )
-        )
+        state = "bad" if (ram_floor is not None and mem_avail < ram_floor) else ""
+        pct = clamp_pct((mem_total - mem_avail) / float(mem_total))
+        value = "%.1f GB free / %.1f GB" % (mem_avail / 1024.0, mem_total / 1024.0)
+        metrics.append(("metric-mem", "memory", value, pct, state))
     else:
-        tiles.append(("mem", NO_DATA, "memory available", ""))
+        metrics.append(("metric-mem", "memory", "no data", None, ""))
 
     disk_avail = env_int("HOST_DISK_AVAIL_GB")
     disk_size = env_int("HOST_DISK_SIZE_GB")
+    disk_floor = None
+    floor = env_int("PREVIEW_MIN_FREE_DISK_GB") or 0
+    pct_floor = env_int("PREVIEW_MIN_FREE_DISK_PCT") or 0
+    if disk_size:
+        by_pct = disk_size * pct_floor // 100
+        disk_floor = by_pct if by_pct > floor else floor
     if disk_avail is not None and disk_size:
-        floor = disk_floor_gb(disk_size)
-        state = "bad" if disk_avail < floor else "ok"
-        tiles.append(("disk", "%d GB" % disk_avail, "disk free of %d GB" % disk_size, state))
+        state = "bad" if (disk_floor is not None and disk_avail < disk_floor) else ""
+        pct = clamp_pct((disk_size - disk_avail) / float(disk_size))
+        value = "%d GB free / %d GB" % (disk_avail, disk_size)
+        metrics.append(("metric-disk", "disk", value, pct, state))
     else:
-        tiles.append(("disk", NO_DATA, "disk free", ""))
+        metrics.append(("metric-disk", "disk", "no data", None, ""))
 
-    load_1 = env_float("HOST_LOAD_1")
-    if load_1 is not None:
-        tiles.append(("load", "%.2f" % load_1, "load average, 1 minute", ""))
+    load1 = env_float("HOST_LOAD_1")
+    load5 = env_float("HOST_LOAD_5")
+    load15 = env_float("HOST_LOAD_15")
+    if load1 is not None:
+        state = ""
+        if load1 > 2 * NVCPU:
+            state = "bad"
+        elif load1 > NVCPU:
+            state = "warn"
+        pct = clamp_pct(load1 / float(NVCPU))
+        parts = ["%.2f" % load1]
+        if load5 is not None:
+            parts.append("%.2f" % load5)
+        if load15 is not None:
+            parts.append("%.2f" % load15)
+        metrics.append(("metric-load", "load", "  ".join(parts), pct, state))
     else:
-        tiles.append(("load", NO_DATA, "load average, 1 minute", ""))
+        metrics.append(("metric-load", "load", "no data", None, ""))
 
     slots_used = env_int("HOST_SLOTS_USED")
     slots_max = env_int("HOST_SLOTS_MAX")
     if slots_used is not None and slots_max:
-        state = "bad" if slots_used >= slots_max else "ok"
-        tiles.append(("slots", "%d/%d" % (slots_used, slots_max), "preview slots in use", state))
+        state = "bad" if slots_used >= slots_max else ""
+        pct = clamp_pct(slots_used / float(slots_max))
+        metrics.append(("metric-slots", "slots", "%d / %d" % (slots_used, slots_max), pct, state))
     else:
-        tiles.append(("slots", NO_DATA, "preview slots in use", ""))
+        metrics.append(("metric-slots", "slots", "no data", None, ""))
 
-    return tiles
+    return metrics
 
 
 def container_stats():
-    """(name, memory, cpu) for every rtx_ container docker stats reported."""
+    """(name, memory, cpu) for every rtx_ container docker stats reported. The
+    memory field already carries "usage / limit" from docker."""
     raw = os.environ.get("HOST_CONTAINER_STATS", "")
     rows = []
     for line in raw.splitlines():
@@ -969,8 +1011,6 @@ def container_stats():
             continue
         fields = line.split("\t")
         if len(fields) < 3:
-            # Older docker builds hand the format string through without
-            # turning the escape into a real tab.
             fields = line.split("\\t")
         if len(fields) < 3:
             continue
@@ -1039,157 +1079,176 @@ for pr in sorted(set(list(containers.keys()) + state_prs), key=int):
     )
 
 generated = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+sample_hms = time.strftime("%H:%M:%S UTC", time.gmtime())
 sampled_epoch = int(time.time())
 
-# The palette lives in one place. Light is the base on :root, dark is the same
-# set of names with different values, applied both when the system asks for it
-# and when the reader picked dark by hand. Every rule below reads the tokens,
-# so neither theme can drift away from the other.
+# ---------------------------------------------------------------------------
+# Palette. Light is the base on :root, dark is the same names with the neovim
+# values, applied both when the system asks for dark and when the reader picked
+# dark by hand, so neither theme can drift from the other.
+# ---------------------------------------------------------------------------
 LIGHT_TOKENS = """  color-scheme: light dark;
-  --bg: #f7f7f8;
-  --card: #ffffff;
-  --border: #e5e7eb;
-  --border-soft: #f3f4f6;
-  --text: #1f2937;
-  --text-soft: #4b5563;
-  --muted: #6b7280;
-  --link: #2563eb;
-  --ok: #059669;
-  --ok-bg: #ecfdf5;
-  --bad: #dc2626;
-  --bad-bg: #fef2f2;
-  --neutral: #6b7280;
-  --neutral-bg: #f3f4f6;
-  --warn: #b45309;
-  --pre-bg: #f9fafb;
-  --dot: #9ca3af;
-  --spin-track: #e5e7eb;
-  --spin-head: #2563eb;
+  --bg: #fbfbfa;
+  --panel: #ffffff;
+  --border: #d9dce1;
+  --fg: #1b1f24;
+  --dim: #6b7280;
+  --accent: #0b6fc2;
+  --ok: #1a7f37;
+  --warn: #9a6700;
+  --bad: #cf222e;
+  --track: #eceef1;
 """
 
-DARK_TOKENS = """  --bg: #0f1115;
-  --card: #171a1f;
-  --border: #2a2f36;
-  --border-soft: #22262d;
-  --text: #e6e8eb;
-  --text-soft: #b3bac2;
-  --muted: #9aa3ad;
-  --link: #7cb3ff;
-  --ok: #3fb950;
-  --ok-bg: #10261a;
-  --bad: #f85149;
-  --bad-bg: #2a1618;
-  --neutral: #9aa3ad;
-  --neutral-bg: #1c2026;
-  --warn: #d29922;
-  --pre-bg: #12151a;
-  --dot: #9aa3ad;
-  --spin-track: #2a2f36;
-  --spin-head: #7cb3ff;
+DARK_TOKENS = """  --bg: #0e1013;
+  --panel: #14171b;
+  --border: #262b31;
+  --fg: #d6d9dd;
+  --dim: #8b929c;
+  --accent: #6cb6ff;
+  --ok: #6bd968;
+  --warn: #e2b53d;
+  --bad: #ff6b6b;
+  --track: #1c2127;
 """
+
+MONO = ('"JetBrains Mono", "SFMono-Regular", "SF Mono", Menlo, Consolas, '
+        '"DejaVu Sans Mono", monospace')
 
 RULES = """* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text);
-       font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+html { color-scheme: light dark; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+       font-family: MONOFONT; font-size: 13px; line-height: 1.55;
+       font-variant-numeric: tabular-nums;
        -webkit-font-smoothing: antialiased; }
-.wrap { max-width: 1100px; margin: 0 auto; padding: 40px 24px 64px; }
-a { color: var(--link); text-decoration: none; }
+.num { font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 56px; }
+a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
-code, .num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-       font-size: 13px; font-variant-numeric: tabular-nums; }
-.top { display: flex; align-items: flex-start; justify-content: space-between;
-       gap: 16px; flex-wrap: wrap; }
-h1 { font-size: 26px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
-.subtitle { font-size: 15px; color: var(--text-soft); margin: 6px 0 0; }
-.spec { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
-h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 36px 0 12px; }
-p { margin: 0 0 10px; }
-p:last-child { margin-bottom: 0; }
-.prose { max-width: 76ch; }
-ul { margin: 0; padding-left: 20px; }
-li { margin-bottom: 6px; }
-li:last-child { margin-bottom: 0; }
-.themes { display: none; border: 1px solid var(--border); border-radius: 8px;
-          background: var(--card); overflow: hidden; margin-top: 4px; }
+
+/* Header */
+.top { display: flex; align-items: baseline; justify-content: space-between;
+       gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand .name { color: var(--accent); font-weight: 700; font-size: 16px; }
+.brand .sub { color: var(--dim); font-size: 12px; }
+
+/* Theme switch: [ sys ][ light ][ dark ] */
+.themes { display: none; }
 :root[data-js="on"] .themes { display: inline-flex; }
-.themes button { appearance: none; -webkit-appearance: none; border: 0; margin: 0;
-                 background: transparent; color: var(--muted); cursor: pointer;
-                 font: inherit; font-size: 12px; line-height: 1; padding: 7px 11px; }
-.themes button + button { border-left: 1px solid var(--border); }
-.themes button:hover { color: var(--text); }
-.themes button[aria-pressed="true"] { background: var(--neutral-bg); color: var(--text);
-                                      font-weight: 600; }
+.themes button { appearance: none; -webkit-appearance: none; border: 1px solid var(--border);
+                 background: var(--panel); color: var(--dim); cursor: pointer;
+                 font-family: inherit; font-size: 12px; line-height: 1;
+                 padding: 5px 9px; margin: 0; }
+.themes button + button { border-left: 0; }
+.themes button:hover { color: var(--fg); }
+.themes button[aria-pressed="true"] { color: var(--accent); background: var(--bg); }
+
+/* Section rule: a short lead line, the label, then a rule to the edge */
+.rule { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px;
+        color: var(--dim); font-size: 12px; }
+.rule .k { white-space: nowrap; color: var(--accent); letter-spacing: 0.04em; }
+.rule .lead { flex: 0 0 22px; border-top: 1px solid var(--border); }
+.rule .fill { flex: 1 1 auto; border-top: 1px solid var(--border); }
+.rule.sub { margin: 18px 0 8px; }
+.rule.sub .k { color: var(--dim); }
+
+/* Panels */
+.panel { background: var(--panel); border: 1px solid var(--border); padding: 14px 16px; }
+.host { display: grid; grid-template-columns: minmax(260px, 0.9fr) minmax(280px, 1.1fr);
+        gap: 22px 32px; }
+@media (max-width: 720px) { .host { grid-template-columns: 1fr; gap: 18px; } }
+
+/* Key / value fact rows */
+.kv { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 3px 14px; }
+.kv dt { color: var(--dim); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }
+
+/* Live metrics */
+.metrics { display: grid; gap: 8px; align-content: start; }
+.metrics.stale { opacity: 0.5; }
+.metric { display: grid; grid-template-columns: 60px minmax(0, 1fr) 120px;
+          align-items: center; gap: 12px; }
+.metric .mk { color: var(--dim); }
+.metric .mv { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meter { position: relative; height: 8px; background: var(--track);
+         border: 1px solid var(--border); }
+.meter .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0;
+               background: var(--accent); }
+.metric[data-state="warn"] .fill { background: var(--warn); }
+.metric[data-state="bad"] .fill { background: var(--bad); }
+
+/* Live pulse line */
+.pulse { display: flex; align-items: center; gap: 8px; margin-top: 14px;
+         font-size: 12px; color: var(--dim); }
+.pulse .dot { width: 8px; height: 8px; background: var(--ok); flex: none;
+              animation: arax-blink 1.4s ease-in-out infinite; }
+.pulse.stale .dot { background: var(--bad); animation: none; }
+.pulse.stale { color: var(--bad); }
+@keyframes arax-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@media (prefers-reduced-motion: reduce) { .pulse .dot { animation: none; } }
+
+/* Tables */
 .scroll { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; background: var(--card);
-        border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
-th { text-align: left; font-weight: 600; color: var(--muted); font-size: 13px;
-     padding: 10px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-td { padding: 10px 16px; border-top: 1px solid var(--border-soft); vertical-align: top; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th { text-align: left; font-weight: 700; color: var(--dim); padding: 6px 12px;
+     border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 5px 12px; border-top: 1px solid var(--border); vertical-align: top; }
 tbody tr:first-child td { border-top: none; }
-td.cmd { white-space: nowrap; width: 1%; }
-td.num { white-space: nowrap; }
-.note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
-.tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 10px; }
-.tiles.stale .tile { opacity: 0.55; }
-.tile { flex: 1 1 200px; background: var(--card); border: 1px solid var(--border);
-        border-radius: 8px; padding: 16px 18px; }
-.tile .value { font-size: 24px; font-weight: 600; line-height: 1.25;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        font-variant-numeric: tabular-nums; }
-.tile.ok .value { color: var(--ok); }
-.tile.bad .value { color: var(--bad); }
-.tile .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
-.sample { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted);
-          margin: 0 0 14px; min-height: 18px; line-height: 18px; }
-.sample.stale { color: var(--bad); }
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
-        padding: 18px 20px; margin: 0 0 12px; }
-.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.card h3 { font-size: 16px; font-weight: 600; margin: 0; }
-.card h3 a { color: var(--text); }
-.meta { color: var(--muted); font-size: 13px; margin-top: 3px; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dot);
-       display: inline-block; flex: none; margin-top: 7px; }
+td.num { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rpt { border: 1px solid var(--border); background: var(--panel); }
+.cell-ok { color: var(--ok); white-space: nowrap; }
+.cell-bad { color: var(--bad); white-space: nowrap; }
+tr.bad-row td { color: var(--bad); }
+
+/* Preview cards */
+.pv { border: 1px solid var(--border); background: var(--panel);
+      padding: 14px 16px; margin-bottom: 14px; }
+.pv-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pv-head .pr { font-weight: 700; }
+.pv-head .pr a { color: var(--fg); }
+.pv-head .repo, .pv-head .branch, .pv-head .sha { color: var(--dim); }
+.pv-head .sha a { color: var(--dim); }
+.pv-head .health { margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+                   color: var(--dim); }
+.dot { width: 8px; height: 8px; background: var(--dim); display: inline-block; flex: none; }
 .dot.ok { background: var(--ok); }
 .dot.bad { background: var(--bad); }
-dl { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 4px 16px;
-     margin: 14px 0 0; font-size: 14px; }
-dt { color: var(--muted); }
-dd { margin: 0; overflow-wrap: anywhere; }
-.running { color: var(--ok); }
-.stopped { color: var(--warn); }
-.stages { border-top: 1px solid var(--border-soft); margin-top: 16px; padding-top: 12px; }
-.check { display: flex; align-items: center; gap: 9px; font-size: 14px; padding: 2px 0; }
-.check.sub { padding-left: 27px; color: var(--text-soft); }
-.check span { overflow-wrap: anywhere; }
-.chip { flex: none; display: inline-flex; align-items: center; justify-content: center;
-        width: 18px; height: 18px; border-radius: 5px; font-size: 11px; font-weight: 700;
-        color: var(--neutral); background: var(--neutral-bg); }
-.chip.ok { color: var(--ok); background: var(--ok-bg); }
-.chip.bad { color: var(--bad); background: var(--bad-bg); }
-.spinner { flex: none; width: 18px; height: 18px; border-radius: 50%;
-           border: 2px solid var(--spin-track); border-top-color: var(--spin-head);
+.pv .kv { margin-top: 12px; }
+.loop { color: var(--dim); }
+
+/* Stage rows */
+.stages { display: grid; gap: 3px; }
+.check { display: flex; align-items: center; gap: 9px; }
+.check .g { flex: none; width: 15px; text-align: center; font-weight: 700; }
+.check .g.ok { color: var(--ok); }
+.check .g.bad { color: var(--bad); }
+.check .g.pending { color: var(--dim); }
+.check .t { overflow-wrap: anywhere; }
+.check .t .d { color: var(--dim); }
+.spinner { flex: none; width: 11px; height: 11px; border: 2px solid var(--track);
+           border-top-color: var(--accent);
            animation: arax-spin 0.9s linear infinite; }
 @keyframes arax-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
-details { margin-top: 10px; }
-summary { cursor: pointer; color: var(--muted); font-size: 13px; }
-pre { overflow-x: auto; background: var(--pre-bg); border: 1px solid var(--border);
-      border-radius: 6px; padding: 12px 14px; margin: 8px 0 4px; font-size: 12px;
-      line-height: 1.5;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      white-space: pre-wrap; overflow-wrap: anywhere; }
-.empty { color: var(--muted); background: var(--card); border: 1px dashed var(--border);
-         border-radius: 8px; padding: 24px; text-align: center; }
-footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--border);
-         margin-top: 40px; padding-top: 16px; }
-@media (max-width: 640px) {
-  .wrap { padding: 28px 20px 48px; }
-  h1 { font-size: 22px; }
-  dl { grid-template-columns: 1fr; gap: 0 0; }
-  dt { margin-top: 8px; }
-}"""
+
+/* Expanders */
+details { margin-top: 8px; }
+summary { cursor: pointer; color: var(--dim); font-size: 12px; }
+summary:hover { color: var(--fg); }
+pre { overflow-x: auto; background: var(--bg); border: 1px solid var(--border);
+      padding: 10px 12px; margin: 6px 0 2px; font-size: 12px; line-height: 1.5;
+      font-family: MONOFONT; white-space: pre; }
+.detail-grid { display: grid; gap: 8px; margin-top: 8px; }
+
+.empty { color: var(--dim); border: 1px dashed var(--border); background: var(--panel);
+         padding: 18px; }
+footer { color: var(--dim); font-size: 12px; border-top: 1px solid var(--border);
+         margin-top: 34px; padding-top: 14px; }
+footer p { margin: 0 0 6px; }
+footer p:last-child { margin: 0; }
+"""
+RULES = RULES.replace("MONOFONT", MONO)
 
 CSS = (
     ":root {\n" + LIGHT_TOKENS + "}\n"
@@ -1200,12 +1259,10 @@ CSS = (
     + RULES
 )
 
-# Runs before any of the page is painted. It does two things and nothing else:
-# it says that JavaScript is available, which is what reveals the theme
-# control, and it puts a stored theme choice on the root element so a reload
-# cannot flash the other theme first. localStorage throws rather than returning
-# nothing in a browser that blocks site data, so the whole thing is guarded and
-# a failure simply leaves the page following the system.
+# Runs before any of the page is painted: says JavaScript is available, which
+# reveals the theme control, and applies a stored theme choice so a reload does
+# not flash the other theme. localStorage throws rather than returning nothing
+# where site data is blocked, so it is guarded.
 BOOT_SCRIPT = """(function () {
   var root = document.documentElement;
   root.setAttribute("data-js", "on");
@@ -1219,6 +1276,15 @@ BOOT_SCRIPT = """(function () {
   }
 })();"""
 
+
+def rule(label, sub=False):
+    cls = "rule sub" if sub else "rule"
+    out.append(
+        "<div class=\"" + cls + "\"><span class=\"lead\"></span>"
+        "<span class=\"k\">" + esc(label) + "</span><span class=\"fill\"></span></div>"
+    )
+
+
 out = []
 out.append("<!DOCTYPE html>")
 out.append("<html lang=\"en\">")
@@ -1231,154 +1297,127 @@ out.append(CSS)
 out.append("</style>")
 out.append("</head>")
 out.append("<body>")
-# First thing in the body, so the stored choice is on the root element before
-# anything is painted and a reload cannot flash the wrong theme.
 out.append("<script>")
 out.append(BOOT_SCRIPT)
 out.append("</script>")
 out.append("<div class=\"wrap\">")
 
+# Header
 out.append("<div class=\"top\">")
-out.append("<div>")
-out.append("<h1>ARAX preview environments</h1>")
-out.append(
-    "<p class=\"subtitle\">" + esc(HOST_NAME) + ", per pull request deployments for "
-    "<a href=\"https://github.com/" + esc(repo) + "\">" + esc(repo) + "</a></p>"
-)
-out.append("<p class=\"spec\">" + esc(HOST_SPEC) + "</p>")
+out.append("<div class=\"brand\">")
+out.append("<span class=\"name\">arax-preview</span>")
+out.append("<span class=\"sub\">" + esc(HOST_NAME) + "</span>")
 out.append("</div>")
-# The control is hidden until the boot script above says there is JavaScript to
-# run it, because a reader who cannot switch themes should not be shown a
-# switch. Aria-pressed carries which one is on for a screen reader, and the
-# boot script has already applied the stored choice by the time this renders.
 out.append("<div class=\"themes\" id=\"theme-switch\" role=\"group\" aria-label=\"Colour theme\">")
-for choice, label in (("system", "System"), ("light", "Light"), ("dark", "Dark")):
+for choice, label in (("system", "sys"), ("light", "light"), ("dark", "dark")):
     out.append(
         "<button type=\"button\" data-theme-choice=\"" + choice + "\" aria-pressed=\"false\">"
-        + label + "</button>"
+        + esc(label) + "</button>"
     )
 out.append("</div>")
 out.append("</div>")
 
-out.append("<h2>How it works</h2>")
-out.append("<ul class=\"prose\">")
-out.append("<li>One container per pull request, built from that branch.</li>")
-out.append("<li>The databases are shared from the host and mounted into every preview rather than copied.</li>")
-out.append(
-    "<li>Each preview has its own URL, <code>" + esc(base_url) + "/&lt;PR&gt;/</code>.</li>"
-)
-out.append(
-    "<li>At most " + esc(max_active) + " previews at a time, with " + esc(human_memory(memory_limit))
-    + " of memory each.</li>"
-)
-out.append(
-    "<li>Previews are public and unauthenticated, and they are removed " + esc(ttl)
-    + " days after they are deployed or as soon as the pull request closes.</li>"
-)
-out.append("</ul>")
-
-out.append("<h2>Commands</h2>")
-out.append("<div class=\"scroll\"><table>")
-out.append("<thead><tr><th>comment</th><th>what it does</th></tr></thead><tbody>")
-out.append(
-    "<tr><td class=\"cmd\"><code>/deploy</code></td><td>Full rebuild from the pull request head. "
-    "About 6 minutes. Use it for the first deploy, and after a change to the requirements or the "
-    "Dockerfile.</td></tr>"
-)
-out.append(
-    "<tr><td class=\"cmd\"><code>/redeploy</code></td><td>Restart the running preview on the "
-    "latest commit. About a minute. Refuses with a reason when a rebuild is needed.</td></tr>"
-)
-out.append(
-    "<tr><td class=\"cmd\"><code>/undeploy</code></td><td>Remove the preview now.</td></tr>"
-)
-out.append("</tbody></table></div>")
-out.append(
-    "<p class=\"note\">A command has to be the whole first line of a pull request comment, only "
-    "members of the repository can trigger one, and the results are posted back on the pull "
-    "request.</p>"
-)
-
-out.append("<h2>Host</h2>")
-out.append("<div class=\"tiles\" id=\"host-tiles\">")
-for key, value, label, state in host_tiles():
-    classes = "tile " + state if state else "tile"
+# Host
+rule("host")
+out.append("<div class=\"panel host\">")
+out.append("<dl class=\"kv\">")
+for key, value in host_facts():
+    out.append("<dt>" + esc(key) + "</dt><dd>" + esc(value) + "</dd>")
+out.append("</dl>")
+out.append("<div class=\"metrics\" id=\"host-metrics\">")
+for mid, label, value, pct, state in host_metrics():
+    width = "" if pct is None else "width:" + str(pct) + "%"
     out.append(
-        "<div class=\"" + esc(classes) + "\" id=\"tile-" + esc(key) + "\">"
-        "<div class=\"value\">" + esc(value) + "</div>"
-        "<div class=\"label\">" + esc(label) + "</div></div>"
+        "<div class=\"metric\" id=\"" + esc(mid) + "\" data-state=\"" + esc(state) + "\">"
+        "<span class=\"mk\">" + esc(label) + "</span>"
+        "<span class=\"mv num\">" + esc(value) + "</span>"
+        "<span class=\"meter\"><span class=\"fill\" style=\"" + esc(width) + "\"></span></span>"
+        "</div>"
     )
 out.append("</div>")
+out.append("</div>")
+
 out.append(
-    "<p class=\"sample\" id=\"host-sample\" data-epoch=\"" + esc(sampled_epoch) + "\" "
-    "data-at=\"" + esc(generated) + "\">last sample " + esc(generated) + " (0 s ago)</p>"
+    "<div class=\"pulse\" id=\"host-pulse\"><span class=\"dot\"></span>"
+    "<span>live</span><span class=\"num\" id=\"host-sample\" data-epoch=\"" + esc(sampled_epoch)
+    + "\" data-at=\"" + esc(sample_hms) + "\">last sample " + esc(sample_hms) + " (0 s ago)</span></div>"
 )
-out.append("<div class=\"scroll\"><table id=\"host-containers\">")
-out.append("<thead><tr><th>container</th><th>memory</th><th>cpu</th></tr></thead>")
+
+rule("containers", sub=True)
+out.append("<div class=\"scroll\"><table class=\"rpt\" id=\"host-containers\">")
+out.append("<thead><tr><th>container</th><th>mem</th><th>cpu</th></tr></thead>")
 out.append("<tbody>")
 stats = container_stats()
 if stats:
     for name, mem, cpu in stats:
         out.append(
-            "<tr><td><code>" + esc(name) + "</code></td><td class=\"num\">" + esc(mem)
+            "<tr><td>" + esc(name) + "</td><td class=\"num\">" + esc(mem)
             + "</td><td class=\"num\">" + esc(cpu) + "</td></tr>"
         )
 else:
-    out.append("<tr><td colspan=\"3\">No preview containers are running.</td></tr>")
+    out.append("<tr><td colspan=\"3\">no preview containers running</td></tr>")
 out.append("</tbody></table></div>")
 
-out.append("<h2>Previews</h2>")
-
+# Previews
+rule("previews")
 if not previews:
-    out.append("<p class=\"empty\">No previews are deployed right now.</p>")
+    out.append("<div class=\"empty\">no previews deployed right now</div>")
 
 for item in previews:
     pr = item["pr"]
     path = "/" + prefix + pr
     url = base_url + path + "/"
     status_path = path + "/api/arax/v1.4/status"
+    loop = "127.0.0.1:" + str(port_base + int(pr))
     sha = item["sha"]
-    out.append("<div class=\"card\">")
-    out.append("<div class=\"card-head\">")
-    out.append("<div>")
+
+    out.append("<div class=\"pv\">")
+    out.append("<div class=\"pv-head\">")
     out.append(
-        "<h3><a href=\"https://github.com/" + esc(repo) + "/pull/" + esc(pr) + "\">PR #"
-        + esc(pr) + "</a></h3>"
+        "<span class=\"pr\"><a href=\"https://github.com/" + esc(repo) + "/pull/" + esc(pr)
+        + "\">PR #" + esc(pr) + "</a></span>"
     )
+    out.append("<span class=\"repo\">" + esc(repo) + "#" + esc(pr) + "</span>")
+    out.append("<span class=\"branch\">" + esc(item["branch"]) + "</span>")
     if sha and sha != "unknown":
-        meta = (
-            "<code>" + esc(item["branch"]) + "</code> at <a href=\"https://github.com/"
-            + esc(repo) + "/commit/" + esc(sha) + "\"><code>" + esc(sha[:7]) + "</code></a>"
+        out.append(
+            "<span class=\"sha\"><a href=\"https://github.com/" + esc(repo) + "/commit/" + esc(sha)
+            + "\">" + esc(sha[:7]) + "</a></span>"
         )
     else:
-        meta = "<code>" + esc(item["branch"]) + "</code> at <code>unknown</code>"
-    out.append("<div class=\"meta\">" + meta + "</div>")
-    out.append("</div>")
+        out.append("<span class=\"sha\">unknown</span>")
     if item["state"]:
         out.append(
-            "<span class=\"dot\" data-status=\"" + esc(status_path) + "\" title=\"health unknown\">"
-            "</span>"
+            "<span class=\"health\"><span class=\"dot\" data-status=\"" + esc(status_path)
+            + "\" title=\"health unknown\"></span>health</span>"
         )
     out.append("</div>")
 
-    out.append("<dl>")
+    out.append("<dl class=\"kv\">")
+    if item["state"]:
+        out.append(
+            "<dt>url</dt><dd><a href=\"" + esc(url) + "\">" + esc(url) + "</a> "
+            "<span class=\"loop\">" + esc(loop) + "</span></dd>"
+        )
+        state_color = "var(--ok)" if item["state"] == "running" else "var(--warn)"
+        out.append(
+            "<dt>container</dt><dd style=\"color:" + state_color + "\">" + esc(item["state"]) + "</dd>"
+        )
+    else:
+        out.append(
+            "<dt>url</dt><dd>" + esc(url) + " <span class=\"loop\">once the container is up</span></dd>"
+        )
+        out.append("<dt>container</dt><dd style=\"color:var(--warn)\">not created yet</dd>")
     if item["command"]:
-        out.append("<dt>command</dt><dd><code>/" + esc(item["command"]) + "</code></dd>")
+        out.append("<dt>command</dt><dd>/" + esc(item["command"]) + "</dd>")
     if item["created"]:
         out.append("<dt>created</dt><dd>" + esc(item["created"]) + "</dd>")
-    if item["state"]:
-        state_class = "running" if item["state"] == "running" else "stopped"
-        out.append(
-            "<dt>container</dt><dd class=\"" + state_class + "\">" + esc(item["state"]) + "</dd>"
-        )
-        out.append("<dt>preview</dt><dd><a href=\"" + esc(url) + "\">" + esc(url) + "</a></dd>")
-    else:
-        out.append("<dt>container</dt><dd class=\"stopped\">not created yet</dd>")
-        out.append("<dt>preview</dt><dd>" + esc(url) + " once the container is up</dd>")
     out.append("</dl>")
 
-    rows = []
+    # Stage rows
     if item["has_state"]:
+        rule("stages", sub=True)
+        out.append("<div class=\"stages\">")
         for key, label, filename in STAGES:
             entry = item["stages"].get(key)
             if not isinstance(entry, dict):
@@ -1387,83 +1426,157 @@ for item in previews:
             detail = str(entry.get("detail") or "")
             since = clock(entry.get("started_at"))
             if status == "running":
+                glyph = "<span class=\"spinner\"></span>"
                 text = label + " running"
                 if since:
                     text = text + " since " + since
-                rows.append(("spin", text))
+                dim = ""
             elif status == "failed":
+                glyph = "<span class=\"g bad\">&#10007;</span>"
                 text = label + " failed"
-                if detail:
-                    text = text + ": " + detail
-                rows.append(("bad", text))
+                dim = detail
             elif status == "done":
+                glyph = "<span class=\"g ok\">&#10003;</span>"
                 text = label + " done"
-                if detail:
-                    text = text + ", " + detail
-                rows.append(("ok", text))
+                dim = detail
             else:
-                rows.append(("pending", label + " pending"))
-            # Whatever the report file says, under the stage it belongs to.
-            if status in ("done", "failed"):
-                for found, passed in report_rows(pr, key):
-                    if passed is True:
-                        rows.append(("sub-ok", found))
-                    elif passed is False:
-                        rows.append(("sub-bad", found))
-                    else:
-                        rows.append(("sub-pending", found))
-    else:
-        # A preview from before the run state files existed.
-        for found, passed in legacy_rows(pr):
-            if passed is True:
-                rows.append(("ok", found))
-            elif passed is False:
-                rows.append(("bad", found))
-            else:
-                rows.append(("pending", found))
-
-    if rows:
-        out.append("<div class=\"stages\">")
-        for kind, text in rows:
-            sub = kind.startswith("sub-")
-            base = kind[4:] if sub else kind
-            if base == "spin":
-                mark = "<span class=\"spinner\"></span>"
-            elif base == "ok":
-                mark = "<span class=\"chip ok\">&#10003;</span>"
-            elif base == "bad":
-                mark = "<span class=\"chip bad\">&#10007;</span>"
-            else:
-                mark = "<span class=\"chip\">&#183;</span>"
-            row_class = "check sub" if sub else "check"
-            out.append(
-                "<div class=\"" + row_class + "\">" + mark + "<span>" + esc(text) + "</span></div>"
-            )
+                glyph = "<span class=\"g pending\">&#183;</span>"
+                text = label + " pending"
+                dim = ""
+            row = "<div class=\"check\">" + glyph + "<span class=\"t\">" + esc(text)
+            if dim:
+                row += " <span class=\"d\">" + esc(dim) + "</span>"
+            row += "</span></div>"
+            out.append(row)
         out.append("</div>")
 
-    for name, label in DATA_FILES:
-        body = read_data_file(pr, name)
-        if body is None:
-            continue
-        out.append("<details><summary>" + esc(label) + "</summary>")
-        out.append("<pre>" + esc(body.rstrip()) + "</pre>")
-        out.append("</details>")
+    # smoke: a real table plus the raw file
+    smoke_text = read_data_file(pr, "smoke.md")
+    if smoke_text is not None:
+        headers, srows = parse_md_table(smoke_text)
+        if srows:
+            rule("smoke", sub=True)
+            out.append("<div class=\"scroll\"><table class=\"rpt\">")
+            out.append("<thead><tr><th>check</th><th>result</th><th>detail</th></tr></thead><tbody>")
+            for cells in srows:
+                check, result, det = fit(cells, 3)
+                low = result.strip().lower()
+                if low == "pass":
+                    rcell = "<td class=\"cell-ok\">&#10003; pass</td>"
+                elif low in ("fail", "failed"):
+                    rcell = "<td class=\"cell-bad\">&#10007; FAIL</td>"
+                else:
+                    rcell = "<td>" + esc(result) + "</td>"
+                out.append(
+                    "<tr><td>" + esc(check) + "</td>" + rcell + "<td>" + esc(det) + "</td></tr>"
+                )
+            out.append("</tbody></table></div>")
+            out.append("<details><summary>smoke.md raw</summary><pre>"
+                       + esc(smoke_text.rstrip()) + "</pre></details>")
+
+    # pytest: the summary as a status row, then the full captured output
+    pytest_text = read_data_file(pr, "pytest.md")
+    pytest_full = read_data_file(pr, "pytest-full.txt")
+    if pytest_text is not None or pytest_full is not None:
+        rule("pytest", sub=True)
+        summary = ""
+        passed = None
+        if pytest_text is not None:
+            for line in pytest_text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("**pytest:**"):
+                    summary = stripped[len("**pytest:**"):].strip()
+                    passed = (" 0 failed" in summary) or ("failed" not in summary)
+                    break
+        if summary:
+            if passed:
+                glyph = "<span class=\"g ok\">&#10003;</span>"
+            else:
+                glyph = "<span class=\"g bad\">&#10007;</span>"
+            out.append(
+                "<div class=\"stages\"><div class=\"check\">" + glyph
+                + "<span class=\"t\">" + esc(summary) + "</span></div></div>"
+            )
+        if pytest_full is not None:
+            out.append("<details><summary>pytest output</summary><pre>"
+                       + esc(pytest_full.rstrip()) + "</pre></details>")
+        elif pytest_text is not None:
+            out.append("<details><summary>pytest.md raw</summary><pre>"
+                       + esc(pytest_text.rstrip()) + "</pre></details>")
+
+    # live queries: a real table plus per query detail
+    queries_text = read_data_file(pr, "queries.md")
+    if queries_text is not None:
+        headers, qrows = parse_md_table(queries_text)
+        if qrows:
+            rule("live queries", sub=True)
+            out.append("<div class=\"scroll\"><table class=\"rpt\">")
+            out.append(
+                "<thead><tr><th>#</th><th>query</th><th>HTTP</th><th>s</th><th>results</th>"
+                "<th>KG nodes/edges</th><th>status</th></tr></thead><tbody>"
+            )
+            for cells in qrows:
+                num, query, code, secs, results, kg, status = fit(cells, 7)
+                degraded = num.startswith("⚠")
+                num = num.lstrip("⚠").strip()
+                row_cls = " class=\"bad-row\"" if degraded else ""
+                mark = "<span class=\"cell-bad\">! </span>" if degraded else ""
+                out.append(
+                    "<tr" + row_cls + "><td>" + mark + esc(num) + "</td><td>" + esc(query)
+                    + "</td><td class=\"num\">" + esc(code) + "</td><td class=\"num\">" + esc(secs)
+                    + "</td><td class=\"num\">" + esc(results) + "</td><td class=\"num\">" + esc(kg)
+                    + "</td><td>" + esc(status) + "</td></tr>"
+                )
+            out.append("</tbody></table></div>")
+
+        # Per query detail files, query-1.txt .. query-4.txt
+        detail_items = []
+        for index in range(1, 9):
+            detail = read_data_file(pr, "query-%d.txt" % index)
+            if detail is None:
+                continue
+            label = "query %d" % index
+            first = detail.strip().splitlines()[0] if detail.strip() else ""
+            if first.startswith("query"):
+                name = first[len("query"):].strip()
+                if name:
+                    label = name + " detail"
+            detail_items.append((label, detail))
+        if detail_items:
+            out.append("<div class=\"detail-grid\">")
+            for label, detail in detail_items:
+                out.append("<details><summary>" + esc(label) + "</summary><pre>"
+                           + esc(detail.rstrip()) + "</pre></details>")
+            out.append("</div>")
+
+    # deploy log and build log, kept distinct
+    logs = [("deploy-log.txt", "deploy log"), ("build-log.txt", "build log")]
+    log_bodies = [(label, read_data_file(pr, name)) for name, label in logs]
+    if any(body is not None for _, body in log_bodies):
+        rule("logs", sub=True)
+        for label, body in log_bodies:
+            if body is None:
+                continue
+            out.append("<details><summary>" + esc(label) + "</summary><pre>"
+                       + esc(body.rstrip()) + "</pre></details>")
+
     out.append("</div>")
 
+out.append("<footer>")
+out.append("<p>page generated " + esc(generated) + "</p>")
 out.append(
-    "<footer>Page generated " + esc(generated) + ". It is rewritten on every deploy event and "
-    "again every 5 minutes from cron. The host numbers above that refresh on their own come from "
-    "a sampler that writes them every 15 seconds, and the dot next to a pull request number is "
-    "checked by your browser. With JavaScript turned off everything on this page still renders, "
-    "as it was at generation time.</footer>"
+    "<p>rewritten on every deploy event and every 5 minutes from cron. the host metrics refresh "
+    "on their own every 15 seconds from host.json, and the health dot on each preview is checked "
+    "by your browser. with JavaScript off the page still renders as it was at generation time.</p>"
 )
+out.append("</footer>")
 out.append("</div>")
 
 # ---------------------------------------------------------------------------
-# The only script on the page. It refreshes the host numbers from host.json,
-# which the sampler service rewrites every 15 seconds, and asks each preview
-# whether it is alive. Everything it touches is already on the page, so a
-# browser with JavaScript turned off loses the live updates and nothing else.
+# The only script on the page. It handles the theme switch, refreshes the host
+# metrics from host.json every 15 seconds and asks each preview whether it is
+# alive. Everything it touches is already on the page, so JavaScript off loses
+# the live updates and nothing else.
 # ---------------------------------------------------------------------------
 SCRIPT = """(function () {
   var THEME_KEY = "arax-preview-theme";
@@ -1492,7 +1605,6 @@ SCRIPT = """(function () {
     if (choice === "light" || choice === "dark") {
       root.setAttribute("data-theme", choice);
     } else {
-      // System: no attribute at all, so prefers-color-scheme decides again.
       root.removeAttribute("data-theme");
     }
     try {
@@ -1523,8 +1635,10 @@ SCRIPT = """(function () {
 
   if (typeof fetch !== "function") { return; }
   var STALE_AFTER = 60;
+  var NVCPU = 2;
   var sample = document.getElementById("host-sample");
-  var tiles = document.getElementById("host-tiles");
+  var pulse = document.getElementById("host-pulse");
+  var metrics = document.getElementById("host-metrics");
   var table = document.getElementById("host-containers");
   var sampledEpoch = 0;
   var sampledText = "";
@@ -1536,18 +1650,25 @@ SCRIPT = """(function () {
     sampledText = sample.getAttribute("data-at") || "";
   }
 
-  function setTile(id, value, label, state) {
-    var tile = document.getElementById(id);
-    if (!tile) { return; }
-    var valueNode = tile.querySelector(".value");
-    var labelNode = tile.querySelector(".label");
-    if (valueNode) { valueNode.textContent = value; }
-    if (labelNode && label) { labelNode.textContent = label; }
-    tile.className = state ? "tile " + state : "tile";
-  }
-
   function isNumber(value) {
     return typeof value === "number" && isFinite(value);
+  }
+
+  function clampPct(fraction) {
+    var pct = Math.round(fraction * 100);
+    if (pct < 0) { return 0; }
+    if (pct > 100) { return 100; }
+    return pct;
+  }
+
+  function setMetric(id, value, pct, state) {
+    var node = document.getElementById(id);
+    if (!node) { return; }
+    var mv = node.querySelector(".mv");
+    var fill = node.querySelector(".fill");
+    if (mv) { mv.textContent = value; }
+    if (fill) { fill.style.width = (pct === null ? 0 : pct) + "%"; }
+    node.setAttribute("data-state", state || "");
   }
 
   function cell(text, className) {
@@ -1564,7 +1685,7 @@ SCRIPT = """(function () {
     while (body.firstChild) { body.removeChild(body.firstChild); }
     if (!rows.length) {
       var empty = document.createElement("tr");
-      var only = cell("No preview containers are running.");
+      var only = cell("no preview containers running");
       only.setAttribute("colspan", "3");
       empty.appendChild(only);
       body.appendChild(empty);
@@ -1572,11 +1693,7 @@ SCRIPT = """(function () {
     }
     rows.forEach(function (row) {
       var line = document.createElement("tr");
-      var nameCell = document.createElement("td");
-      var name = document.createElement("code");
-      name.textContent = row.name || "";
-      nameCell.appendChild(name);
-      line.appendChild(nameCell);
+      line.appendChild(cell(row.name || ""));
       var usage = row.mem_usage || "";
       if (row.mem_limit) { usage = usage + " / " + row.mem_limit; }
       line.appendChild(cell(usage, "num"));
@@ -1589,49 +1706,62 @@ SCRIPT = """(function () {
     var limits = data.thresholds || {};
 
     if (isNumber(data.mem_available_mb) && isNumber(data.mem_total_mb) && data.mem_total_mb) {
-      var memState = "ok";
+      var memState = "";
       if (isNumber(limits.ram_min_mb) && data.mem_available_mb < limits.ram_min_mb) {
         memState = "bad";
       }
-      setTile("tile-mem", (data.mem_available_mb / 1024).toFixed(1) + " GB",
-              "memory available of " + (data.mem_total_mb / 1024).toFixed(1) + " GB", memState);
+      setMetric("metric-mem",
+        (data.mem_available_mb / 1024).toFixed(1) + " GB free / " +
+        (data.mem_total_mb / 1024).toFixed(1) + " GB",
+        clampPct((data.mem_total_mb - data.mem_available_mb) / data.mem_total_mb), memState);
     } else {
-      setTile("tile-mem", "no data", "memory available", "");
+      setMetric("metric-mem", "no data", null, "");
     }
 
     if (isNumber(data.disk_avail_gb) && isNumber(data.disk_size_gb) && data.disk_size_gb) {
-      var diskState = "ok";
+      var diskState = "";
       if (isNumber(limits.disk_floor_gb) && data.disk_avail_gb < limits.disk_floor_gb) {
         diskState = "bad";
       }
-      setTile("tile-disk", data.disk_avail_gb + " GB",
-              "disk free of " + data.disk_size_gb + " GB", diskState);
+      setMetric("metric-disk",
+        data.disk_avail_gb + " GB free / " + data.disk_size_gb + " GB",
+        clampPct((data.disk_size_gb - data.disk_avail_gb) / data.disk_size_gb), diskState);
     } else {
-      setTile("tile-disk", "no data", "disk free", "");
+      setMetric("metric-disk", "no data", null, "");
     }
 
     if (isNumber(data.load1)) {
-      setTile("tile-load", data.load1.toFixed(2), "load average, 1 minute", "");
+      var loadState = "";
+      if (data.load1 > 2 * NVCPU) { loadState = "bad"; }
+      else if (data.load1 > NVCPU) { loadState = "warn"; }
+      var loadText = data.load1.toFixed(2);
+      if (isNumber(data.load5)) { loadText += "  " + data.load5.toFixed(2); }
+      if (isNumber(data.load15)) { loadText += "  " + data.load15.toFixed(2); }
+      setMetric("metric-load", loadText, clampPct(data.load1 / NVCPU), loadState);
     } else {
-      setTile("tile-load", "no data", "load average, 1 minute", "");
+      setMetric("metric-load", "no data", null, "");
     }
 
     if (isNumber(data.slots_used) && isNumber(data.slots_max) && data.slots_max) {
-      setTile("tile-slots", data.slots_used + "/" + data.slots_max, "preview slots in use",
-              data.slots_used >= data.slots_max ? "bad" : "ok");
+      setMetric("metric-slots", data.slots_used + " / " + data.slots_max,
+        clampPct(data.slots_used / data.slots_max),
+        data.slots_used >= data.slots_max ? "bad" : "");
     } else {
-      setTile("tile-slots", "no data", "preview slots in use", "");
+      setMetric("metric-slots", "no data", null, "");
     }
 
     applyContainers(Array.isArray(data.containers) ? data.containers : []);
 
     if (isNumber(data.sampled_epoch) && data.sampled_epoch !== sampledEpoch) {
       sampledEpoch = data.sampled_epoch;
-      sampledText = String(data.sampled_at || "").replace("T", " ").replace("Z", " UTC");
-      // How old the sample already was when it arrived, from the clock of
-      // whoever is reading the page. A browser clock that runs behind the
-      // host would make this negative, so it is floored at zero, and from
-      // here on the age is counted locally rather than against either clock.
+      var at = String(data.sampled_at || "");
+      var t = at.indexOf("T");
+      var z = at.indexOf("Z");
+      if (t >= 0 && z > t) {
+        sampledText = at.substring(t + 1, z) + " UTC";
+      } else {
+        sampledText = at;
+      }
       var seen = Math.floor(Date.now() / 1000) - sampledEpoch;
       baseAge = seen > 0 ? seen : 0;
       stampMs = Date.now();
@@ -1646,8 +1776,8 @@ SCRIPT = """(function () {
     var stale = age > STALE_AFTER;
     sample.textContent = "last sample " + sampledText + " (" + age + " s ago)" +
       (stale ? " stale" : "");
-    sample.className = stale ? "sample stale" : "sample";
-    if (tiles) { tiles.className = stale ? "tiles stale" : "tiles"; }
+    if (pulse) { pulse.className = stale ? "pulse stale" : "pulse"; }
+    if (metrics) { metrics.className = stale ? "metrics stale" : "metrics"; }
   }
 
   function poll() {

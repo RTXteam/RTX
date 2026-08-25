@@ -57,6 +57,7 @@ HOST_JSON_TMP="${PREVIEW_WEB_ROOT}/.host.json.${$}"
 # from "zero". Returns non-zero only so the caller can log it once.
 write_host_json() {
     local mem disk load slots stats json
+    local docker_version os_pretty kernel uptime_text region
 
     mem="$(host_mem_mb)"
     disk="$(host_disk_gb)"
@@ -64,11 +65,27 @@ write_host_json() {
     slots="$(host_slots_used)"
     stats="$(host_container_stats)"
 
+    # The facts that describe the box. Best effort, exactly like the numbers:
+    # one that cannot be read is written as null so the page can tell a missing
+    # fact from a real value.
+    docker_version="$(host_docker_version)"
+    os_pretty="$(host_os_pretty)"
+    kernel="$(host_kernel)"
+    uptime_text="$(host_uptime)"
+    region="$(host_region)"
+
     if ! json="$(HOST_JSON_MEM="${mem}" \
         HOST_JSON_DISK="${disk}" \
         HOST_JSON_LOAD="${load}" \
         HOST_JSON_SLOTS="${slots}" \
         HOST_JSON_CONTAINERS="${stats}" \
+        HOST_JSON_DOCKER="${docker_version}" \
+        HOST_JSON_OS="${os_pretty}" \
+        HOST_JSON_KERNEL="${kernel}" \
+        HOST_JSON_UPTIME="${uptime_text}" \
+        HOST_JSON_REGION="${region}" \
+        HOST_JSON_CLOUD="${PREVIEW_HOST_CLOUD}" \
+        HOST_JSON_INSTANCE="${PREVIEW_HOST_INSTANCE}" \
         python3 - <<'PYTHON_EOF'
 import json
 import os
@@ -105,6 +122,12 @@ def setting(name, fallback=None):
         return int(os.environ.get(name, "").strip())
     except (TypeError, ValueError):
         return fallback
+
+
+def fact(name):
+    """A best effort host fact, or None when the collector printed nothing."""
+    value = os.environ.get(name, "").strip()
+    return value or None
 
 
 mem_available, mem_total = numbers("HOST_JSON_MEM", 2)
@@ -147,6 +170,13 @@ now = int(time.time())
 document = {
     "sampled_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
     "sampled_epoch": now,
+    "cloud": fact("HOST_JSON_CLOUD"),
+    "instance": fact("HOST_JSON_INSTANCE"),
+    "region": fact("HOST_JSON_REGION"),
+    "os": fact("HOST_JSON_OS"),
+    "docker": fact("HOST_JSON_DOCKER"),
+    "kernel": fact("HOST_JSON_KERNEL"),
+    "uptime": fact("HOST_JSON_UPTIME"),
     "mem_total_mb": mem_total,
     "mem_available_mb": mem_available,
     "disk_size_gb": disk_size,

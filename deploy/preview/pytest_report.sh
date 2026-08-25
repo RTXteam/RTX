@@ -80,6 +80,12 @@ set -o errexit
 # Everything pytest said, for the job log and the artifact.
 cat "${PYTEST_LOG}" >&2
 
+# The complete captured output goes to the status page too, in its own file,
+# so the page can offer the whole run behind an expander. The pull request
+# comment below still gets only the tail, so the comment stays short while the
+# page keeps everything. Best effort, like every write to the page.
+write_preview_data "${PR}" "pytest-full.txt" < "${PYTEST_LOG}"
+
 REPORT="$(PYTEST_RC="${PYTEST_RC}" python3 - "${PYTEST_LOG}" <<'PYTHON_EOF'
 import os
 import re

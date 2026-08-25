@@ -120,7 +120,15 @@ publish_deploy_artifacts() {
     if [ -n "${DEPLOY_LOG_FILE}" ] && ${SUDO} test -f "${DEPLOY_LOG_FILE}"; then
         # The secrets guard is crude on purpose. The page is public, so a line
         # that so much as mentions a credential is dropped rather than shown.
-        tail_text="$(${SUDO} tail -n 200 "${DEPLOY_LOG_FILE}" 2>/dev/null \
+        # The docker build section is stripped out here, from the step 4 line up
+        # to but not including the step 5 line, so the deploy log is orchestration
+        # only and the build lines live once, in build-log.txt below. A fast
+        # redeploy has no such section, so nothing is removed on that path.
+        tail_text="$(${SUDO} cat "${DEPLOY_LOG_FILE}" 2>/dev/null \
+            | awk '/step 4\/10 building/ { skip = 1 }
+                   /step 5\/10 starting/ { skip = 0 }
+                   !skip { print }' \
+            | tail -n 200 \
             | grep -viE 'password|token|secret|authorization' || true)"
         printf '%s\n' "${tail_text}" | write_preview_data "${PR}" "deploy-log.txt"
 
@@ -239,7 +247,6 @@ if ! ${SUDO} test -w "${PREVIEW_NGINX_DIR}"; then
     die "${PREVIEW_NGINX_DIR} is not writable through sudo. Run deploy/preview/install-nginx-include.sh once on this host as a human with sudo."
 fi
 [ -f "${PREVIEW_DOCKERFILE}" ] || die "Dockerfile ${PREVIEW_DOCKERFILE} not found. Set PREVIEW_BUILD_CONTEXT to a checkout's DockerBuild directory."
-log "build context ${PREVIEW_BUILD_CONTEXT}, dockerfile ${PREVIEW_DOCKERFILE}"
 
 # ---------------------------------------------------------------------------
 # Helpers shared by both paths
@@ -612,6 +619,9 @@ else
     #    Fork pull requests cannot work with this build and are refused by the
     #    workflow.
     log "step 4/10 building ${IMAGE} from branch ${BRANCH} (this takes a while)"
+    # Logged here, on the full path only, right before the build. On a restart
+    # there is no build, so the deploy log never mentions a build context.
+    log "build context ${PREVIEW_BUILD_CONTEXT}, dockerfile ${PREVIEW_DOCKERFILE}"
     ${DOCKER} build \
         --no-cache=true \
         --rm \
