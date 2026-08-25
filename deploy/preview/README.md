@@ -165,13 +165,15 @@ It needs all of this to hold, and says which one failed when it refuses:
 - a commit sha was passed, which the workflow always does
 - that commit is on `origin` once the container has fetched. A commit that was never pushed
   cannot be checked out inside the container
-- `git diff` between the commit checked out in the container and the target commit is empty for
-  `requirements.txt`, `DockerBuild/` and `code/config_dbs.json`
+- `git diff` between the commit the image was built from and the target commit is empty for
+  `requirements.txt` and `DockerBuild/`
 
-Those three paths are the gate because a change to them cannot be picked up by a checkout inside
-a container that is already running. The first two are baked into the image, and `config_dbs.json`
-decides which database files the container was set up with. When the diff is not empty the
-refusal names the files that changed, and the answer is `/deploy`.
+Those two paths are the gate because they are baked into the image at build time and `pip install`
+never runs on the fast path, so a change to either needs a full rebuild. `code/config_dbs.json` is
+no longer gated: the fast path re-runs `ARAX_database_manager.py`, so a change to the database
+config is applied on every redeploy. When the diff is not empty the refusal names the files that
+changed and points out that the installed packages and the Dockerfile are frozen at build time,
+and the answer is `/deploy`.
 
 A fast redeploy checks the repository clone inside the container out on the target commit as user
 `rt` with a detached HEAD, reruns `ARAX_database_manager.py` and `kp_info_cacher.py`, and restarts
@@ -180,9 +182,12 @@ straight from that working tree and picks up UI changes with no restart. The ngi
 rewritten so its header names the new commit, and nginx is only reloaded when the routing itself
 changed.
 
-The commit a preview is running is read with `git rev-parse HEAD` inside the container, never from
-the `arax.preview.sha` label. Docker labels cannot be changed on a running container, so that
-label keeps naming the commit the image was built from.
+The gate compares the target against the commit the image was built from, read from the
+`arax.preview.sha` label rather than the commit currently checked out. `pip install` runs only at
+image build time, so the packages actually installed are frozen at the sha the image was built
+from, and a prior fast redeploy has already moved the working tree off it. A docker label cannot
+change on a running container, so the label still names the build commit after any number of fast
+redeploys.
 
 A restart that fails its health check stops there rather than rebuilding behind your back, and
 says to run `/deploy` instead. Run by hand with no flag, `deploy.sh` falls back to a full rebuild

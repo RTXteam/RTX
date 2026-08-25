@@ -329,45 +329,60 @@ jobs:
             const runUrl = process.env.RUN_URL;
             const ttl = process.env.PREVIEW_TTL_DAYS || '7';
 
+            const footer = 'Comment `/deploy` to rebuild from scratch, `/redeploy` to restart with the latest commit, `/undeploy` to remove. Previews are garbage-collected after ' + ttl + ' days or when the PR closes.';
+
             const lines = [];
             lines.push(marker);
             lines.push('## ARAX preview');
             lines.push('');
-            if (ok && command === 'redeploy') {
-              lines.push('♻️ restarted with `' + branch + '` @ `' + shortSha + '`');
-            } else if (ok) {
-              lines.push('✅ deployed');
-            } else if (refused) {
+            // A refusal is the host declining the command, not a crashed
+            // deploy. No preview URL was created, no path was chosen and no
+            // smoke test ran, so the URL, deploy mode and smoke sections would
+            // all read as "not available". Render a compact comment instead:
+            // what was refused and why, the build, the run link and the footer.
+            if (refused) {
               lines.push('❌ refused: ' + refused);
+              lines.push('');
+              lines.push('**Build:** `' + branch + '` @ `' + shortSha + '`');
+              lines.push('');
+              lines.push('[Workflow run](' + runUrl + ')');
+              lines.push('');
+              lines.push(footer);
             } else {
-              lines.push('❌ failed');
+              if (ok && command === 'redeploy') {
+                lines.push('♻️ restarted with `' + branch + '` @ `' + shortSha + '`');
+              } else if (ok) {
+                lines.push('✅ deployed');
+              } else {
+                lines.push('❌ failed');
+              }
+              lines.push('');
+              if (url) {
+                lines.push('**URL:** ' + url);
+              } else {
+                lines.push('**URL:** not available, the deploy did not finish');
+              }
+              lines.push('');
+              lines.push('**Build:** `' + branch + '` @ `' + shortSha + '`');
+              lines.push('');
+              const mode = process.env.DEPLOY_MODE || '';
+              const reason = process.env.DEPLOY_REASON || '';
+              if (mode === 'fast') {
+                lines.push('**Deploy:** fast redeploy');
+              } else if (mode === 'full') {
+                lines.push('**Deploy:** full rebuild' + (reason ? ' (' + reason + ')' : ''));
+              } else {
+                lines.push('**Deploy:** unknown');
+              }
+              lines.push('');
+              lines.push('### Smoke test');
+              lines.push('');
+              lines.push(smokeTable);
+              lines.push('');
+              lines.push('[Workflow run](' + runUrl + ')');
+              lines.push('');
+              lines.push(footer);
             }
-            lines.push('');
-            if (url) {
-              lines.push('**URL:** ' + url);
-            } else {
-              lines.push('**URL:** not available, the deploy did not finish');
-            }
-            lines.push('');
-            lines.push('**Build:** `' + branch + '` @ `' + shortSha + '`');
-            lines.push('');
-            const mode = process.env.DEPLOY_MODE || '';
-            const reason = process.env.DEPLOY_REASON || '';
-            if (mode === 'fast') {
-              lines.push('**Deploy:** fast redeploy');
-            } else if (mode === 'full') {
-              lines.push('**Deploy:** full rebuild' + (reason ? ' (' + reason + ')' : ''));
-            } else {
-              lines.push('**Deploy:** unknown');
-            }
-            lines.push('');
-            lines.push('### Smoke test');
-            lines.push('');
-            lines.push(smokeTable);
-            lines.push('');
-            lines.push('[Workflow run](' + runUrl + ')');
-            lines.push('');
-            lines.push('Comment `/deploy` to rebuild from scratch, `/redeploy` to restart with the latest commit, `/undeploy` to remove. Previews are garbage-collected after ' + ttl + ' days or when the PR closes.');
             const body = lines.join('\n');
 
             // Chronology over stickiness: every event posts a NEW comment so

@@ -229,11 +229,12 @@ HEALTH_URL="http://127.0.0.1:${PORT}/api/arax/v1.4/status"
 
 # Where CICD-Dockerfile puts the clone it makes inside the image.
 CONTAINER_REPO="/mnt/data/orangeboard/production/RTX"
-# A change to any of these cannot be picked up by a git checkout inside the
-# running container: requirements.txt and DockerBuild/ are baked into the
-# image at build time, and config_dbs.json decides which database files the
-# container was set up with.
-FAST_GATE_PATHS="requirements.txt DockerBuild/ code/config_dbs.json"
+# The only paths a fast redeploy cannot apply. requirements.txt and DockerBuild/
+# are baked into the image at build time and pip install never runs on the fast
+# path, so a change to either needs a full rebuild. code/config_dbs.json is not
+# gated: the fast path re-runs ARAX_database_manager.py, so a change to the
+# database config is applied on every redeploy.
+FAST_GATE_PATHS="requirements.txt DockerBuild/"
 
 log "step 1/10 validating host setup"
 log "PR ${PR}, branch ${BRANCH}, sha ${SHA}, force ${FORCE}, fast-only ${FAST_ONLY}"
@@ -471,7 +472,7 @@ preflight() {
 
 MODE="full"
 REASON=""
-RUNNING_SHA=""
+BUILD_SHA=""
 
 # fall_back <reason> <refusal>
 # In auto mode every reason to fall back is a plain reason to rebuild, never a
@@ -506,29 +507,42 @@ decide_mode() {
         return 0
     fi
 
-    # The arax.preview.sha label is deliberately not used here. Labels cannot
-    # be changed on a running container, so the label still names the commit
-    # the image was built from after any fast redeploy.
-    RUNNING_SHA="$(container_git git rev-parse HEAD | tr -d '[:space:]')" || RUNNING_SHA=""
-    if ! is_sha "${RUNNING_SHA}"; then
-        fall_back "could not read the sha checked out in ${CONTAINER}" \
-            "could not read the commit checked out inside ${CONTAINER}, comment /deploy for a full rebuild"
+    # The gate compares against the commit the image was built from, not the
+    # commit currently checked out. pip install runs at image build time only,
+    # so the installed packages are frozen at the sha the image was built from,
+    # and a prior fast redeploy has already moved the working tree off it. That
+    # sha is recorded in the arax.preview.sha label at docker run, and because a
+    # label cannot change on a running container it still names the build commit
+    # after any number of fast redeploys.
+    BUILD_SHA="$(preview_label "${PR}" "arax.preview.sha" | tr -d '[:space:]')" || BUILD_SHA=""
+    if ! is_sha "${BUILD_SHA}"; then
+        fall_back "could not read the image build sha for ${CONTAINER}" \
+            "could not tell what the running image was built from, comment /deploy for a full rebuild"
         return 0
     fi
-    log "${CONTAINER} currently has ${RUNNING_SHA} checked out"
+    log "${CONTAINER} image was built from ${BUILD_SHA}"
 
     if ! container_git git fetch origin; then
         fall_back "git fetch origin failed inside ${CONTAINER}" \
             "git fetch origin failed inside ${CONTAINER}, comment /deploy for a full rebuild"
         return 0
     fi
+    # Both the target and the build commit have to resolve in the container
+    # clone: the target because the fast path checks it out, and the build sha
+    # because the gate diffs from it. A branch force pushed away can take either
+    # one off origin.
     if ! container_git "git cat-file -e ${SHA}^{commit}"; then
         fall_back "target sha not on origin" \
             "commit ${SHA} is not on origin yet, push the branch and comment /redeploy again"
         return 0
     fi
+    if ! container_git "git cat-file -e ${BUILD_SHA}^{commit}"; then
+        fall_back "the commit the image was built from is no longer on origin" \
+            "the image build commit is gone from origin, comment /deploy for a full rebuild"
+        return 0
+    fi
 
-    if ! changed="$(container_git "git diff --name-only ${RUNNING_SHA} ${SHA} -- ${FAST_GATE_PATHS}" | tr '\n' ' ')"; then
+    if ! changed="$(container_git "git diff --name-only ${BUILD_SHA} ${SHA} -- ${FAST_GATE_PATHS}" | tr '\n' ' ')"; then
         fall_back "git diff failed inside ${CONTAINER}" \
             "git diff failed inside ${CONTAINER}, comment /deploy for a full rebuild"
         return 0
@@ -537,12 +551,12 @@ decide_mode() {
     changed="$(printf '%s' "${changed}" | sed 's/  */ /g; s/ $//')"
     if [ -n "${changed}" ]; then
         fall_back "image inputs changed: ${changed}" \
-            "image inputs changed (${changed}), a restart cannot pick that up, comment /deploy for a full rebuild"
+            "the image was built with a different ${changed}, its installed packages and Dockerfile are frozen at build time and a restart cannot change them, comment /deploy for a full rebuild"
         return 0
     fi
 
     MODE="fast"
-    REASON="no image inputs changed between ${RUNNING_SHA} and ${SHA}"
+    REASON="the image already has the build inputs of ${SHA}"
 }
 
 log "step 2/10 deciding how to deploy"
