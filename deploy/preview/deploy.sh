@@ -4,7 +4,11 @@
 # Idempotent: running it again either fast redeploys the container that is
 # already up, or replaces the container, the image and the nginx snippet.
 #
-# Usage: deploy.sh [--force] <PR> <BRANCH> [SHA]
+# Usage: deploy.sh [--force|--fast-only] <PR> <BRANCH> [SHA]
+#
+# With no flag the script picks the path itself, which is what a human on the
+# host wants. The workflow always says which one it means: /deploy runs it
+# with --force and /redeploy with --fast-only.
 #
 # Issue #2846.
 
@@ -17,14 +21,17 @@ preview_validate_env
 
 usage() {
     cat >&2 <<'USAGE_EOF'
-Usage: deploy.sh [--force] <PR> <BRANCH> [SHA]
+Usage: deploy.sh [--force|--fast-only] <PR> <BRANCH> [SHA]
 
-  PR       pull request number, for example 2853
-  BRANCH   branch name on RTXteam/RTX, for example issue-2846
-  SHA      optional commit sha. With a sha the script can fast redeploy an
-           already running preview instead of rebuilding its image.
-  --force  always rebuild the image, even when a fast redeploy is possible.
-           May appear before or after the positional arguments.
+  PR           pull request number, for example 2853
+  BRANCH       branch name on RTXteam/RTX, for example issue-2846
+  SHA          optional commit sha. With a sha the script can fast redeploy an
+               already running preview instead of rebuilding its image.
+  --force      always rebuild the image, even when a fast redeploy is possible.
+  --fast-only  never rebuild. Restart the running preview on the new commit,
+               and refuse with a reason when that cannot be done.
+  Both flags may appear before or after the positional arguments, and they
+  cannot be given together.
 USAGE_EOF
     exit 2
 }
@@ -34,17 +41,21 @@ USAGE_EOF
 # ---------------------------------------------------------------------------
 
 FORCE="no"
+FAST_ONLY="no"
 PR=""
 BRANCH=""
 SHA=""
 POSITIONAL_COUNT=0
 
-# Hand rolled parsing rather than getopts, because --force has to be accepted
-# on either side of the positional arguments.
+# Hand rolled parsing rather than getopts, because the flags have to be
+# accepted on either side of the positional arguments.
 for arg in "$@"; do
     case "${arg}" in
         --force)
             FORCE="yes"
+            ;;
+        --fast-only)
+            FAST_ONLY="yes"
             ;;
         -h|--help)
             usage
@@ -63,6 +74,13 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+# One flag says never restart and the other says never rebuild, so asking for
+# both is a mistake in the caller rather than a situation to resolve.
+if [ "${FORCE}" = "yes" ] && [ "${FAST_ONLY}" = "yes" ]; then
+    printf 'ERROR: --force and --fast-only cannot be given together\n\n' >&2
+    usage
+fi
 
 [ "${POSITIONAL_COUNT}" -ge 2 ] || usage
 [ -n "${SHA}" ] || SHA="unknown"
@@ -176,7 +194,7 @@ CONTAINER_REPO="/mnt/data/orangeboard/production/RTX"
 FAST_GATE_PATHS="requirements.txt DockerBuild/ code/config_dbs.json"
 
 log "step 1/10 validating host setup"
-log "PR ${PR}, branch ${BRANCH}, sha ${SHA}, force ${FORCE}"
+log "PR ${PR}, branch ${BRANCH}, sha ${SHA}, force ${FORCE}, fast-only ${FAST_ONLY}"
 log "container ${CONTAINER}, image ${IMAGE}, port 127.0.0.1:${PORT}"
 log "public url ${PUBLIC_URL}"
 
@@ -414,8 +432,21 @@ MODE="full"
 REASON=""
 RUNNING_SHA=""
 
-# Sets MODE and REASON. Every reason to fall back is a plain return, never a
-# failure, because a full rebuild is always a correct answer.
+# fall_back <reason> <refusal>
+# In auto mode every reason to fall back is a plain reason to rebuild, never a
+# failure, because a full rebuild is always a correct answer. Under
+# --fast-only there is nothing to fall back to, so the same condition is a
+# refusal and refuse() takes the script down with the reason attached, which
+# is what puts it in the pull request comment.
+fall_back() {
+    REASON="${1}"
+    if [ "${FAST_ONLY}" = "yes" ]; then
+        refuse "${2}"
+    fi
+    return 0
+}
+
+# Sets MODE and REASON.
 decide_mode() {
     local changed=""
 
@@ -424,11 +455,13 @@ decide_mode() {
         return 0
     fi
     if ! is_sha "${SHA}"; then
-        REASON="no commit sha was passed"
+        fall_back "no commit sha was passed" \
+            "no commit sha was passed, a restart has nothing to check out"
         return 0
     fi
     if ! container_running "${CONTAINER}"; then
-        REASON="no running container ${CONTAINER}"
+        fall_back "no running container ${CONTAINER}" \
+            "no preview is running for this PR, comment /deploy first"
         return 0
     fi
 
@@ -437,28 +470,33 @@ decide_mode() {
     # the image was built from after any fast redeploy.
     RUNNING_SHA="$(container_git git rev-parse HEAD | tr -d '[:space:]')" || RUNNING_SHA=""
     if ! is_sha "${RUNNING_SHA}"; then
-        REASON="could not read the sha checked out in ${CONTAINER}"
+        fall_back "could not read the sha checked out in ${CONTAINER}" \
+            "could not read the commit checked out inside ${CONTAINER}, comment /deploy for a full rebuild"
         return 0
     fi
     log "${CONTAINER} currently has ${RUNNING_SHA} checked out"
 
     if ! container_git git fetch origin; then
-        REASON="git fetch origin failed inside ${CONTAINER}"
+        fall_back "git fetch origin failed inside ${CONTAINER}" \
+            "git fetch origin failed inside ${CONTAINER}, comment /deploy for a full rebuild"
         return 0
     fi
     if ! container_git "git cat-file -e ${SHA}^{commit}"; then
-        REASON="target sha not on origin"
+        fall_back "target sha not on origin" \
+            "commit ${SHA} is not on origin yet, push the branch and comment /redeploy again"
         return 0
     fi
 
     if ! changed="$(container_git "git diff --name-only ${RUNNING_SHA} ${SHA} -- ${FAST_GATE_PATHS}" | tr '\n' ' ')"; then
-        REASON="git diff failed inside ${CONTAINER}"
+        fall_back "git diff failed inside ${CONTAINER}" \
+            "git diff failed inside ${CONTAINER}, comment /deploy for a full rebuild"
         return 0
     fi
     # Collapse the file list onto one line so it can be a GITHUB_OUTPUT value.
     changed="$(printf '%s' "${changed}" | sed 's/  */ /g; s/ $//')"
     if [ -n "${changed}" ]; then
-        REASON="image inputs changed: ${changed}"
+        fall_back "image inputs changed: ${changed}" \
+            "image inputs changed (${changed}), a restart cannot pick that up, comment /deploy for a full rebuild"
         return 0
     fi
 

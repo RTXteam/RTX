@@ -28,34 +28,54 @@ renames the snippet to `pr-2853.conf`. The port and the container name do not ch
 
 ## How to deploy
 
-Three ways, all of which end up running the same scripts on the runner.
+Three commands, all comments on the pull request itself. Only comments from an OWNER, MEMBER or
+COLLABORATOR are acted on, and the command has to be the first thing on the first line.
 
-- Comment `/deploy` on the pull request. Comment `/undeploy` to remove it again. Only comments
-  from an OWNER, MEMBER or COLLABORATOR are acted on. Two flags are read off the first line of
-  the comment:
-  - `--force` skips the fast redeploy described below and always rebuilds the image.
-  - `--no-tests` skips the pytest suite. The suite runs by default.
-- Actions tab, pick **Preview Deploy**, **Run workflow**, fill in `pr_number`. `run_tests` is
-  ticked by default and runs the ARAX test suite inside the container, `pytest_args` narrows it
-  down, and `force_rebuild` does what `/deploy --force` does.
-- On the host directly: `bash deploy/preview/deploy.sh 2853 my-branch`. Pass the head commit as a
-  third argument to make a fast redeploy possible, and `--force` to rule one out.
+| command | what it does | how long |
+| --- | --- | --- |
+| `/deploy` | fresh rebuild. Builds the image from the current head of the branch and replaces the container, whatever was there before | about 6 minutes |
+| `/redeploy` | restart with the latest code. Moves the container that is already running onto the new commit and restarts the services. Refuses with a reason when that cannot work | about a minute |
+| `/undeploy` | removes the container, the image and the nginx snippet | seconds |
 
-### The three comments
+Add `--no-tests` to `/deploy` or `/redeploy` to skip the pytest suite, which otherwise runs after
+every deploy. Nothing else is read off the line, and a leftover `--force` is accepted and ignored.
 
-One deploy posts up to three comments, in this order.
+Previews are cleaned up on their own. Closing or merging the pull request tears the preview down,
+and the nightly garbage collection removes previews older than `PREVIEW_TTL_DAYS`, so an
+`/undeploy` is only needed to free a slot early.
+
+The same thing is available from the Actions tab: pick **Preview Deploy**, **Run workflow**, fill
+in `pr_number` and pick a `mode`, either **full rebuild** which is `/deploy` or **fast restart**
+which is `/redeploy`. `run_tests` is ticked by default and `pytest_args` narrows the suite down.
+
+On the host directly, `deploy.sh` also has an automatic mode that neither command uses:
+`bash deploy/preview/deploy.sh 2853 my-branch <sha>` picks the restart itself when it can and
+rebuilds when it cannot. `--force` rules the restart out and `--fast-only` rules the rebuild out,
+which is exactly what `/deploy` and `/redeploy` pass. The two flags cannot be combined.
+
+### The comments
+
+A run posts a start notification as soon as it picks the command up, and then up to three
+comments as it goes.
 
 | comment | marker | what is in it | can it fail the job |
 | --- | --- | --- | --- |
-| **ARAX preview** | `arax-preview-status` | the URL, the branch and short commit, fast redeploy or full rebuild with the reason, and the smoke test table | yes, through the deploy and smoke steps |
+| **started** | `arax-preview-status` | which command is running, the branch and short commit, a link to the run and how long it should take | no |
+| **ARAX preview** | `arax-preview-status` | deployed or restarted, the URL, the branch and short commit, which path ran with the reason, and the smoke test table | yes, through the deploy and smoke steps |
 | **Preview pytest** | `arax-preview-pytest` | the container it ran in, one summary line of passed, failed and skipped counts, and an expander with the failing test names and the last 80 lines when something failed | no |
 | **Preview live queries** | `arax-preview-queries` | the endpoint it posted to, then a table of the four example queries of the UI numbered Example 1 to Example 3 and Pathfinder, each with HTTP code, the seconds curl measured to two decimals, result count and knowledge graph size | no |
 
 Every event posts a new comment so the thread reads in order, and the previous comment with the
-same marker is collapsed as outdated so the thread does not fill up. The pytest and live query
-comments are informational: they report what happened and never turn the job red, because a
-preview that is up and answering is still useful when one test is broken. A refused `/deploy`
-(fork pull request, closed pull request, no room on the host) gets a short reply saying why.
+same marker is collapsed as outdated so the thread does not fill up. The start notification
+carries the status marker, so the finished status comment folds it away on its way in. The pytest
+and live query comments are informational: they report what happened and never turn the job red,
+because a preview that is up and answering is still useful when one test is broken.
+
+A command that cannot be carried out gets a comment saying which limit was hit rather than a
+generic failure. The reasons are a fork pull request, a closed pull request, no free preview slot,
+not enough free disk, not enough free memory, the port already taken, and for `/redeploy` the
+cases in **What /redeploy does** below: no preview running, the commit not pushed yet, or a change
+to one of the files a restart cannot pick up.
 
 The scripts always run from the workflow's own branch on master, never from the pull
 request. The pull request head is checked out
@@ -71,11 +91,11 @@ triggers immediately after the merge.
 
 ## How it works
 
-The flow below is the full rebuild. A redeploy of a preview that is still running usually takes
-the shorter path described in the next section.
+The flow below is the full rebuild that `/deploy` runs. `/redeploy` takes the shorter path
+described in **What /redeploy does** below.
 
 ```
-  PR comment "/deploy"  or  Actions "Run workflow"
+  PR comment "/deploy" or "/redeploy"  or  Actions "Run workflow"
               |
               v
   +------------------------------------+
@@ -129,24 +149,26 @@ Inside the container, apache serves the ARAX UI from the checked out repository 
 `/api/arax/v1.4` to the Flask service on port 5000. The UI asks for its API with a relative
 path, so it does not care that nginx stripped a prefix in front of it.
 
-## Fast redeploy
+## What `/redeploy` does
 
 Rebuilding the image takes about six minutes, and most pushes to a pull request change nothing
-that the image bakes in. `deploy.sh` therefore checks whether it can move the existing container
-to the new commit instead, which takes roughly 15 to 30 seconds.
+that the image bakes in. `/redeploy` moves the container that is already running onto the new
+commit instead, which takes roughly 15 to 30 seconds.
 
-It goes the fast way when all of this holds:
+It needs all of this to hold, and says which one failed when it refuses:
 
-- the container `rtx_pr_<PR>` for that pull request exists and is running
-- `--force` was not given
+- the container `rtx_pr_<PR>` for that pull request exists and is running. Otherwise there is
+  nothing to restart and the answer is to comment `/deploy`
 - a commit sha was passed, which the workflow always does
-- that commit is on `origin` once the container has fetched
+- that commit is on `origin` once the container has fetched. A commit that was never pushed
+  cannot be checked out inside the container
 - `git diff` between the commit checked out in the container and the target commit is empty for
   `requirements.txt`, `DockerBuild/` and `code/config_dbs.json`
 
 Those three paths are the gate because a change to them cannot be picked up by a checkout inside
 a container that is already running. The first two are baked into the image, and `config_dbs.json`
-decides which database files the container was set up with.
+decides which database files the container was set up with. When the diff is not empty the
+refusal names the files that changed, and the answer is `/deploy`.
 
 A fast redeploy checks the repository clone inside the container out on the target commit as user
 `rt` with a detached HEAD, reruns `ARAX_database_manager.py` and `kp_info_cacher.py`, and restarts
@@ -159,10 +181,9 @@ The commit a preview is running is read with `git rev-parse HEAD` inside the con
 the `arax.preview.sha` label. Docker labels cannot be changed on a running container, so that
 label keeps naming the commit the image was built from.
 
-Anything that does not qualify falls back to the full rebuild, and the reason for it is printed
-in the log, in the summary and in the sticky pull request comment. A fast redeploy that fails its
-health check stops there rather than rebuilding behind your back, and tells you to rerun with
-`--force`.
+A restart that fails its health check stops there rather than rebuilding behind your back, and
+says to run `/deploy` instead. Run by hand with no flag, `deploy.sh` falls back to a full rebuild
+in every one of these cases instead of refusing, and prints the reason it chose to.
 
 ## Resource guards
 
@@ -340,10 +361,10 @@ next newest, and removes the route entirely when no previews are left.
 
 ## Lifecycle
 
-- **Redeploy** takes one of two paths, and the URL stays the same either way. When the preview is
-  still running and nothing changed that the image bakes in, `deploy.sh` moves the container to
-  the new commit and restarts the Flask services. Otherwise it removes the existing container and
-  image for that pull request and builds again from scratch. See **Fast redeploy** above.
+- **Redeploy** takes whichever path the command asks for, and the URL stays the same either way.
+  `/deploy` removes the existing container and image for that pull request and builds again from
+  scratch. `/redeploy` moves the container to the new commit and restarts the Flask services. See
+  **What /redeploy does** above.
 - **Teardown on close.** Closing or merging a pull request triggers the teardown job, which
   removes the container, the image and the nginx snippet.
 - **Daily garbage collection.** A scheduled run of `gc.sh` removes previews older than
@@ -355,14 +376,17 @@ next newest, and removes the route entirely when no previews are left.
 ## Manual operations
 
 ```
-# deploy or redeploy a preview
+# deploy a preview, letting the script pick the path
 bash deploy/preview/deploy.sh 2853 my-branch
 
-# redeploy with a commit, which allows the fast path
+# same, with a commit, which is what makes the restart path possible at all
 bash deploy/preview/deploy.sh 2853 my-branch 0123456789abcdef0123456789abcdef01234567
 
-# redeploy and always rebuild the image
+# always rebuild the image, what /deploy runs
 bash deploy/preview/deploy.sh --force 2853 my-branch
+
+# only restart, refuse rather than rebuild, what /redeploy runs
+bash deploy/preview/deploy.sh --fast-only 2853 my-branch 0123456789abcdef0123456789abcdef01234567
 
 # remove one preview
 bash deploy/preview/teardown.sh 2853
@@ -427,8 +451,9 @@ Previews run on a self-hosted runner that mounts real database files and a real
 `config_secrets.json` into the container. Anyone who can make that runner execute arbitrary code
 gets those secrets. Two guards follow from that:
 
-- `/deploy` and `/undeploy` are only honoured when the comment author association is `OWNER`,
-  `MEMBER` or `COLLABORATOR`. A drive-by comment from an outside contributor does nothing.
+- `/deploy`, `/redeploy` and `/undeploy` are only honoured when the comment author association is
+  `OWNER`, `MEMBER` or `COLLABORATOR`. A drive-by comment from an outside contributor does
+  nothing.
 - Fork pull requests are refused outright.
 
 Preview URLs are unauthenticated and anybody who knows the pull request number can reach one.

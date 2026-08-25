@@ -26,11 +26,14 @@ on:
         required: false
         type: string
         default: ""
-      force_rebuild:
-        description: "Always rebuild the image even when a fast redeploy is possible"
+      mode:
+        description: "How to deploy"
         required: false
-        type: boolean
-        default: false
+        type: choice
+        options:
+          - "full rebuild"
+          - "fast restart"
+        default: "full rebuild"
   issue_comment:
     types: [created]
   pull_request:
@@ -52,10 +55,10 @@ jobs:
     name: Deploy preview
     runs-on: [self-hosted, ARAX, docker]
     timeout-minutes: 120
-    # The command must be exactly /deploy, or /deploy followed by whitespace,
-    # so that comments like "/deploying soon" do not trigger a deploy. GitHub
-    # expressions have no regex, and a literal newline can only be produced
-    # with fromJSON.
+    # The command must be exactly /deploy or /redeploy, or one of them followed
+    # by whitespace, so that comments like "/deploying soon" do not trigger a
+    # deploy. GitHub expressions have no regex, and a literal newline can only
+    # be produced with fromJSON.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' &&
@@ -63,7 +66,11 @@ jobs:
        (github.event.comment.body == '/deploy' ||
         startsWith(github.event.comment.body, '/deploy ') ||
         startsWith(github.event.comment.body, format('/deploy{0}', fromJSON('"\n"'))) ||
-        startsWith(github.event.comment.body, format('/deploy{0}', fromJSON('"\r"')))) &&
+        startsWith(github.event.comment.body, format('/deploy{0}', fromJSON('"\r"'))) ||
+        github.event.comment.body == '/redeploy' ||
+        startsWith(github.event.comment.body, '/redeploy ') ||
+        startsWith(github.event.comment.body, format('/redeploy{0}', fromJSON('"\n"'))) ||
+        startsWith(github.event.comment.body, format('/redeploy{0}', fromJSON('"\r"')))) &&
        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     steps:
       - name: Resolve PR
@@ -110,16 +117,19 @@ jobs:
               return;
             }
 
-            // deploy.sh picks a fast redeploy on its own. --force is how a human
-            // says "rebuild the image anyway", either as /deploy --force on the
-            // pull request or as the force_rebuild input on Run workflow.
-            // The test suite runs by default. --no-tests on the /deploy line, or
-            // clearing the run_tests input on Run workflow, turns it off.
-            let force = false;
+            // Which command was asked for. /deploy always rebuilds the image
+            // from scratch and /redeploy only restarts the running preview on
+            // the new commit, so the choice is the comment, never a guess made
+            // further down. On Run workflow the mode input says the same thing.
+            // The test suite runs by default for both. --no-tests on the
+            // command line, or clearing the run_tests input on Run workflow,
+            // turns it off.
+            let command = 'deploy';
             let runTests = true;
             if (context.eventName === 'workflow_dispatch') {
-              const requested = context.payload.inputs && context.payload.inputs.force_rebuild;
-              force = requested === true || String(requested).toLowerCase() === 'true';
+              const requestedMode = (context.payload.inputs && context.payload.inputs.mode) || '';
+              // An absent input keeps the declared default of a full rebuild.
+              command = String(requestedMode).toLowerCase() === 'fast restart' ? 'redeploy' : 'deploy';
               // An absent input keeps the declared default of true. Only an
               // explicit value overrides it, so a dispatch payload without
               // run_tests does not silently skip the suite (Copilot review).
@@ -129,22 +139,35 @@ jobs:
               }
             } else if (context.eventName === 'issue_comment') {
               const body = (context.payload.comment && context.payload.comment.body) || '';
-              // Only the first line carries flags, so "/deploy" followed by a
-              // paragraph mentioning --force does not count.
+              // Only the first line carries the command and its flags, so
+              // "/deploy" followed by a paragraph mentioning --no-tests does
+              // not count, and neither does a command on the second line.
               const firstLine = body.split(/\r?\n/)[0].trim();
-              const flags = firstLine.match(/^\/deploy(\s.*)?$/);
-              force = flags !== null && / --force(\s|$)/.test(flags[1] || '');
-              runTests = !(flags !== null && / --no-tests(\s|$)/.test(flags[1] || ''));
+              const matched = firstLine.match(/^\/(deploy|redeploy)(\s.*)?$/);
+              // The job level if: only lets an exact /deploy or /redeploy
+              // through, so no match is unreachable in practice. Refusing
+              // here rather than defaulting keeps a future gate change from
+              // turning an unknown comment into a silent six minute rebuild.
+              if (matched === null) {
+                await refuse('unrecognized command on the first line, use /deploy, /redeploy or /undeploy');
+                return;
+              }
+              command = matched[1];
+              const flags = matched[2] || '';
+              // --force used to be how a human asked for a rebuild. /deploy is
+              // that now, so the flag is accepted and ignored rather than
+              // turned into an error on an old habit.
+              runTests = !/ --no-tests(\s|$)/.test(flags);
             }
 
             core.setOutput('pr', String(prNumber));
             core.setOutput('branch', data.head.ref);
             core.setOutput('sha', data.head.sha);
             core.setOutput('html_url', data.html_url);
-            core.setOutput('force', force ? 'true' : 'false');
+            core.setOutput('command', command);
             core.setOutput('run_tests', runTests ? 'true' : 'false');
 
-            // Acknowledge the /deploy comment so the author knows it was picked up.
+            // Acknowledge the command comment so the author knows it was picked up.
             if (context.eventName === 'issue_comment') {
               await github.rest.reactions.createForIssueComment({
                 owner: context.repo.owner,
@@ -153,6 +176,57 @@ jobs:
                 content: 'eyes',
               });
             }
+
+      # Posted before the slow work starts, so the thread says something is
+      # happening rather than going quiet for six minutes. It carries the
+      # status marker on purpose: the completion comment lists every comment
+      # with that marker and minimizes them after it posts, so this one folds
+      # itself away when the run finishes.
+      - name: Comment deploy started
+        uses: RTXteam/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          PR_BRANCH: ${{ steps.resolve.outputs.branch }}
+          PR_SHA: ${{ steps.resolve.outputs.sha }}
+          DEPLOY_COMMAND: ${{ steps.resolve.outputs.command }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const marker = '<!-- arax-preview-status -->';
+            const pr = Number(process.env.PR_NUMBER);
+            if (!pr) {
+              core.info('no PR was resolved, nothing to comment on');
+              return;
+            }
+
+            const command = process.env.DEPLOY_COMMAND || 'deploy';
+            const branch = process.env.PR_BRANCH || 'unknown';
+            const sha = process.env.PR_SHA || '';
+            const shortSha = sha ? sha.slice(0, 7) : 'unknown';
+            const build = '`' + branch + '` @ `' + shortSha + '`';
+
+            const lines = [];
+            lines.push(marker);
+            if (command === 'redeploy') {
+              lines.push('🚀 ARAX preview restart started for ' + build);
+              lines.push('');
+              lines.push('A restart takes about a minute.');
+            } else {
+              lines.push('🚀 ARAX preview full rebuild started for ' + build);
+              lines.push('');
+              lines.push('A full rebuild takes about 6 minutes.');
+            }
+            lines.push('');
+            lines.push('[Workflow run](' + process.env.RUN_URL + ')');
+
+            // No minimizing here. The completion comment does that for every
+            // marked comment including this one.
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: lines.join('\n'),
+            });
 
       # Two checkouts on purpose. The scripts run from the trusted copy of this
       # workflow's branch (the default branch for /deploy comments, the
@@ -179,14 +253,16 @@ jobs:
           PR: ${{ steps.resolve.outputs.pr }}
           BRANCH: ${{ steps.resolve.outputs.branch }}
           SHA: ${{ steps.resolve.outputs.sha }}
-          FORCE: ${{ steps.resolve.outputs.force }}
+          COMMAND: ${{ steps.resolve.outputs.command }}
           PREVIEW_BUILD_CONTEXT: ${{ github.workspace }}/pr-head/DockerBuild
         run: |
           set -o pipefail
-          if [ "$FORCE" = "true" ]; then
-            bash deploy/preview/deploy.sh --force "$PR" "$BRANCH" "$SHA" 2>&1 | tee preview-deploy.log
+          # The workflow never lets deploy.sh choose. /deploy means rebuild and
+          # /redeploy means restart or refuse with a reason.
+          if [ "$COMMAND" = "redeploy" ]; then
+            bash deploy/preview/deploy.sh --fast-only "$PR" "$BRANCH" "$SHA" 2>&1 | tee preview-deploy.log
           else
-            bash deploy/preview/deploy.sh "$PR" "$BRANCH" "$SHA" 2>&1 | tee preview-deploy.log
+            bash deploy/preview/deploy.sh --force "$PR" "$BRANCH" "$SHA" 2>&1 | tee preview-deploy.log
           fi
 
       # The four HTTP checks only. The test suite is its own step below, so
@@ -216,6 +292,7 @@ jobs:
           DEPLOY_REASON: ${{ steps.deploy.outputs.reason }}
           DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
           DEPLOY_REFUSED: ${{ steps.deploy.outputs.refused }}
+          DEPLOY_COMMAND: ${{ steps.resolve.outputs.command }}
           SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
@@ -245,6 +322,7 @@ jobs:
             }
 
             const url = process.env.PREVIEW_URL || '';
+            const command = process.env.DEPLOY_COMMAND || 'deploy';
             const branch = process.env.PR_BRANCH || 'unknown';
             const sha = process.env.PR_SHA || '';
             const shortSha = sha ? sha.slice(0, 7) : 'unknown';
@@ -255,7 +333,9 @@ jobs:
             lines.push(marker);
             lines.push('## ARAX preview');
             lines.push('');
-            if (ok) {
+            if (ok && command === 'redeploy') {
+              lines.push('♻️ restarted with `' + branch + '` @ `' + shortSha + '`');
+            } else if (ok) {
               lines.push('✅ deployed');
             } else if (refused) {
               lines.push('❌ refused: ' + refused);
@@ -287,7 +367,7 @@ jobs:
             lines.push('');
             lines.push('[Workflow run](' + runUrl + ')');
             lines.push('');
-            lines.push('Comment `/deploy` to redeploy, `/deploy --force` to rebuild the image, `/undeploy` to remove. Previews are garbage-collected after ' + ttl + ' days or when the PR closes.');
+            lines.push('Comment `/deploy` to rebuild from scratch, `/redeploy` to restart with the latest commit, `/undeploy` to remove. Previews are garbage-collected after ' + ttl + ' days or when the PR closes.');
             const body = lines.join('\n');
 
             // Chronology over stickiness: every event posts a NEW comment so
