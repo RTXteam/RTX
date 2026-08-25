@@ -103,6 +103,11 @@ finish() {
     fi
     # Same table where the status page at /previews/ can show it.
     render_report | write_preview_data "${PR}" "smoke.md"
+    if [ "${FAILURES}" -gt 0 ]; then
+        write_preview_state "${PR}" "smoke" "failed" "${FAILURES} check(s) failed"
+    else
+        write_preview_state "${PR}" "smoke" "done" ""
+    fi
     # The page must show the result the moment it exists, not on the next cron tick.
     write_status_page
     if [ "${FAILURES}" -gt 0 ]; then
@@ -112,6 +117,11 @@ finish() {
     log "all smoke checks passed for PR ${PR}"
     exit 0
 }
+
+# The card spins on this stage while the checks run, rather than saying
+# nothing for as long as the slowest endpoint takes.
+write_preview_state "${PR}" "smoke" "running"
+write_status_page
 
 log "smoke testing PR ${PR} at ${BASE}"
 

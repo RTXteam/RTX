@@ -70,6 +70,11 @@ QUERIES=(
     "PATH1|Pathfinder|pathfinder (MONDO:0005011 to MONDO:0005180)|400"
 )
 
+# The card spins on this stage while the queries are in flight. The
+# pathfinder example alone can take a minute and a half.
+write_preview_state "${PR}" "queries" "running"
+write_status_page
+
 log "reading the example query graphs from ${PREVIEW_UI_RTXJS}"
 
 # The extractor writes one ready to post request body per example into the
@@ -291,6 +296,12 @@ fi
 
 render_report
 render_report | write_preview_data "${PR}" "queries.md"
+if [ "${DEGRADED}" -gt 0 ]; then
+    write_preview_state "${PR}" "queries" "failed" \
+        "${DEGRADED} of ${#QUERIES[@]} example queries came back degraded"
+else
+    write_preview_state "${PR}" "queries" "done" ""
+fi
 # The page must show the result the moment it exists, not on the next cron tick.
 write_status_page
 

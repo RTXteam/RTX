@@ -83,6 +83,84 @@ install_status_cron() {
     rm -f "${tmp}"
 }
 
+# The sampler that keeps the host numbers on the page live. systemd owns it,
+# because it has to survive a logout, come back after a reboot and be
+# restarted when it dies, none of which cron can do for a loop.
+PREVIEW_STATS_SERVICE="${PREVIEW_STATS_SERVICE:-/etc/systemd/system/arax-preview-stats.service}"
+PREVIEW_STATS_SERVICE_NAME="$(basename "${PREVIEW_STATS_SERVICE}")"
+
+install_stats_service() {
+    local script owner unit current changed active
+    script="${SCRIPT_DIR}/host-stats.sh"
+    # This installer is run with sudo, so the unit runs as the human who
+    # invoked it rather than as root. The loop shells out to "sudo docker"
+    # like every other script here, which that user can already do without a
+    # password, because the pytest workflow depends on it.
+    owner="${SUDO_USER:-root}"
+
+    if [ ! -f "${script}" ]; then
+        log "WARNING: ${script} is missing, not installing the sampler service"
+        return 0
+    fi
+
+    # One sample right now, so host.json exists before the first browser asks
+    # for it and before systemd has had a chance to tick.
+    if ! /bin/bash "${script}" --once; then
+        log "WARNING: ${script} --once failed, the host tiles will say no data until it works"
+    fi
+
+    if ! command -v systemctl >/dev/null 2>&1; then
+        printf 'no systemctl on this host. Run the sampler some other way: /bin/bash %s\n' "${script}"
+        return 0
+    fi
+
+    unit="$(cat <<UNIT_EOF
+[Unit]
+Description=ARAX preview host sampler for the /previews/ status page
+After=docker.service
+
+[Service]
+Type=simple
+User=${owner}
+ExecStart=/bin/bash ${script}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+UNIT_EOF
+)"
+
+    # Idempotent: the unit is only rewritten when its content actually
+    # changed, so running this installer again does not restart a sampler
+    # that is doing its job.
+    current="$(${SUDO} cat "${PREVIEW_STATS_SERVICE}" 2>/dev/null || true)"
+    changed="no"
+    if [ "${current}" = "${unit}" ]; then
+        log "${PREVIEW_STATS_SERVICE} is already up to date"
+    else
+        printf '%s\n' "${unit}" | ${SUDO} tee "${PREVIEW_STATS_SERVICE}" >/dev/null
+        ${SUDO} chmod 644 "${PREVIEW_STATS_SERVICE}" 2>/dev/null || true
+        changed="yes"
+        log "wrote ${PREVIEW_STATS_SERVICE}"
+        ${SUDO} systemctl daemon-reload || log "WARNING: systemctl daemon-reload failed"
+    fi
+
+    if ! ${SUDO} systemctl enable --now "${PREVIEW_STATS_SERVICE_NAME}"; then
+        printf 'could not enable %s, start it by hand with: sudo systemctl enable --now %s\n' \
+            "${PREVIEW_STATS_SERVICE_NAME}" "${PREVIEW_STATS_SERVICE_NAME}"
+        return 0
+    fi
+    if [ "${changed}" = "yes" ]; then
+        ${SUDO} systemctl restart "${PREVIEW_STATS_SERVICE_NAME}" \
+            || log "WARNING: could not restart ${PREVIEW_STATS_SERVICE_NAME}"
+    fi
+
+    active="$(${SUDO} systemctl is-active "${PREVIEW_STATS_SERVICE_NAME}" 2>/dev/null || printf 'unknown')"
+    printf '%s is %s, sampling the host into %s every 15 seconds\n' \
+        "${PREVIEW_STATS_SERVICE_NAME}" "${active}" "${PREVIEW_WEB_ROOT}/host.json"
+}
+
 ensure_status_assets() {
     ${SUDO} mkdir -p "${PREVIEW_WEB_ROOT}/data"
     ${SUDO} chmod 755 "${PREVIEW_WEB_ROOT}" "${PREVIEW_WEB_ROOT}/data"
@@ -114,6 +192,7 @@ STATUS_EOF
     write_status_page
 
     install_status_cron
+    install_stats_service
 }
 
 ensure_status_assets
@@ -247,6 +326,7 @@ Installed.
   status page    ${PREVIEW_PUBLIC_BASE_URL%/}/previews/
   page root      ${PREVIEW_WEB_ROOT}
   deploy logs    ${PREVIEW_LOG_DIR}
+  host sampler   ${PREVIEW_STATS_SERVICE}
 
 The GitHub Actions runner user also needs passwordless sudo for docker, nginx,
 systemctl reload nginx, tee, rm and mkdir. That is already the case on

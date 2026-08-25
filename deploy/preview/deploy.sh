@@ -152,6 +152,19 @@ finalize() {
     local rc=$?
     trap - EXIT
     set +o errexit
+    # The card on the status page stops spinning here, whichever way this run
+    # went. die() leaves its reason in PREVIEW_LAST_ERROR, so a refusal or a
+    # failed health check is named on the card instead of a bare exit status.
+    if [ "${rc}" -eq 0 ]; then
+        if [ "${MODE:-full}" = "fast" ]; then
+            write_preview_state "${PR}" "deploy" "done" "fast redeploy, no image rebuild"
+        else
+            write_preview_state "${PR}" "deploy" "done" "full rebuild"
+        fi
+    else
+        write_preview_state "${PR}" "deploy" "failed" \
+            "${PREVIEW_LAST_ERROR:-the deploy failed, see the deploy log below}"
+    fi
     publish_deploy_artifacts
     # Let the tee child see end of file and finish writing before this process
     # goes away, so neither the host log nor the workflow log loses its tail.
@@ -164,6 +177,27 @@ finalize() {
 
 setup_log_capture
 trap finalize EXIT
+
+# Which pull request comment started this run. The workflow always says what
+# it means: /redeploy runs with --fast-only and /deploy with --force.
+if [ "${FAST_ONLY}" = "yes" ]; then
+    DEPLOY_COMMAND="redeploy"
+else
+    DEPLOY_COMMAND="deploy"
+fi
+
+# The card has to be on the status page while the image is still building,
+# which is minutes before any container exists, so the run state is written
+# and the page is regenerated before any of the work starts. The reset is
+# deliberate: the previous run's test results belong to the previous commit
+# and must not sit next to a build that has only just begun.
+export PREVIEW_STATE_RESET=1
+export PREVIEW_STATE_BRANCH="${BRANCH}"
+export PREVIEW_STATE_SHA="${SHA}"
+export PREVIEW_STATE_COMMAND="${DEPLOY_COMMAND}"
+write_preview_state "${PR}" "deploy" "running" "started by /${DEPLOY_COMMAND}"
+unset PREVIEW_STATE_RESET PREVIEW_STATE_BRANCH PREVIEW_STATE_SHA PREVIEW_STATE_COMMAND
+write_status_page
 
 # refuse <one line reason>
 # A preflight refusal. The reason is handed to the workflow so the pull

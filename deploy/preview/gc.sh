@@ -189,9 +189,12 @@ else
     log "no ${PREVIEW_LOG_DIR} on this host, no deploy logs to prune"
 fi
 
-# Last, so the page reflects the sweep that just happened.
+# Last, so the page reflects the sweep that just happened. Generating the page
+# also closes out any run that was killed between "running" and its result:
+# a stage still marked running after PREVIEW_STATE_STALE_SECONDS is written
+# down as failed with the detail "abandoned", so no card spins forever.
 if [ "${DRY_RUN}" = "yes" ]; then
-    printf 'dry run: would rewrite the status page\n'
+    printf 'dry run: would rewrite the status page and close out abandoned runs\n'
 else
     write_status_page
 fi

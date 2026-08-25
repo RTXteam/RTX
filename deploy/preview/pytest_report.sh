@@ -49,11 +49,18 @@ TEST_DIR="/mnt/data/orangeboard/production/RTX/code/ARAX/test"
 # shellcheck disable=SC2016
 ENV_BLOCK="$(printf '**Container:** `%s`' "${CONTAINER}")"
 
+# The card spins on this stage for as long as the suite runs, which is the
+# longest wait of the whole pipeline.
+write_preview_state "${PR}" "pytest" "running"
+write_status_page
+
 if ! container_running "${CONTAINER}"; then
     # the backticks are markdown around the container name, not a substitution
     # shellcheck disable=SC2016
     printf '%s\n\n**pytest:** not run, the container `%s` is not running\n' \
         "${ENV_BLOCK}" "${CONTAINER}"
+    write_preview_state "${PR}" "pytest" "failed" "the container is not running"
+    write_status_page
     exit 1
 fi
 
@@ -149,6 +156,11 @@ render_report() {
 
 render_report
 render_report | write_preview_data "${PR}" "pytest.md"
+if [ "${PYTEST_RC}" -eq 0 ]; then
+    write_preview_state "${PR}" "pytest" "done" ""
+else
+    write_preview_state "${PR}" "pytest" "failed" "pytest exited ${PYTEST_RC}"
+fi
 # The page must show the result the moment it exists, not on the next cron tick.
 write_status_page
 
