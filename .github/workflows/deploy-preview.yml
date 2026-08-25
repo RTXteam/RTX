@@ -1,0 +1,736 @@
+# ARAX preview environments, one docker container per pull request on
+# cicd.rtx.ai. See deploy/preview/README.md and issue #2846.
+#
+# GitHub only registers a workflow, and only fires workflow_dispatch,
+# issue_comment and schedule, from the default branch copy of the file. Until
+# this workflow is merged to master no GitHub trigger works at all, not even
+# Run workflow, because the workflow does not appear in the Actions tab.
+# Test on the host with deploy/preview/deploy.sh until then, and verify the
+# triggers immediately after the merge.
+name: "Preview Deploy"
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to deploy"
+        required: true
+        type: string
+      run_tests:
+        description: "Run the pytest suite inside the preview container after deploy"
+        required: false
+        type: boolean
+        default: true
+      pytest_args:
+        description: "Extra pytest args (for example -k test_ARAX_query)"
+        required: false
+        type: string
+        default: ""
+      mode:
+        description: "How to deploy"
+        required: false
+        type: choice
+        options:
+          - "full rebuild"
+          - "fast restart"
+        default: "full rebuild"
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [closed]
+  schedule:
+    - cron: "17 6 * * *"
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: preview-${{ github.event.inputs.pr_number || github.event.issue.number || github.event.pull_request.number || 'gc' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy preview
+    runs-on: [self-hosted, ARAX, docker]
+    timeout-minutes: 120
+    # The command must be exactly /deploy or /redeploy, or one of them followed
+    # by whitespace, so that comments like "/deploying soon" do not trigger a
+    # deploy. GitHub expressions have no regex, and a literal newline can only
+    # be produced with fromJSON.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       (github.event.comment.body == '/deploy' ||
+        startsWith(github.event.comment.body, '/deploy ') ||
+        startsWith(github.event.comment.body, format('/deploy{0}', fromJSON('"\n"'))) ||
+        startsWith(github.event.comment.body, format('/deploy{0}', fromJSON('"\r"'))) ||
+        github.event.comment.body == '/redeploy' ||
+        startsWith(github.event.comment.body, '/redeploy ') ||
+        startsWith(github.event.comment.body, format('/redeploy{0}', fromJSON('"\n"'))) ||
+        startsWith(github.event.comment.body, format('/redeploy{0}', fromJSON('"\r"')))) &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    steps:
+      - name: Resolve PR
+        id: resolve
+        uses: RTXteam/github-script@v7
+        with:
+          script: |
+            const fromInput = context.payload.inputs && context.payload.inputs.pr_number;
+            const fromComment = context.payload.issue && context.payload.issue.number;
+            const prNumber = parseInt(fromInput || fromComment, 10);
+
+            // Refusals are posted back to the PR when a comment triggered us,
+            // otherwise the person is already looking at the Actions log.
+            async function refuse(message) {
+              core.setFailed(message);
+              if (context.eventName === 'issue_comment' && prNumber) {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: '❌ ARAX preview not deployed: ' + message,
+                });
+              }
+            }
+
+            if (!prNumber) {
+              await refuse('could not work out which pull request to deploy');
+              return;
+            }
+
+            const { data } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber,
+            });
+
+            const upstream = context.repo.owner + '/' + context.repo.repo;
+            if (data.head.repo === null || data.head.repo.full_name !== upstream) {
+              await refuse('fork PRs are not supported (CICD-Dockerfile clones by branch name from RTXteam/RTX)');
+              return;
+            }
+            if (data.state !== 'open') {
+              await refuse('PR #' + prNumber + ' is ' + data.state + ', only open PRs can be deployed');
+              return;
+            }
+
+            // Which command was asked for. /deploy always rebuilds the image
+            // from scratch and /redeploy only restarts the running preview on
+            // the new commit, so the choice is the comment, never a guess made
+            // further down. On Run workflow the mode input says the same thing.
+            // The test suite runs by default for both. --no-tests on the
+            // command line, or clearing the run_tests input on Run workflow,
+            // turns it off.
+            let command = 'deploy';
+            let runTests = true;
+            if (context.eventName === 'workflow_dispatch') {
+              const requestedMode = (context.payload.inputs && context.payload.inputs.mode) || '';
+              // An absent input keeps the declared default of a full rebuild.
+              command = String(requestedMode).toLowerCase() === 'fast restart' ? 'redeploy' : 'deploy';
+              // An absent input keeps the declared default of true. Only an
+              // explicit value overrides it, so a dispatch payload without
+              // run_tests does not silently skip the suite (Copilot review).
+              const requestedTests = context.payload.inputs && context.payload.inputs.run_tests;
+              if (requestedTests !== undefined && requestedTests !== null && requestedTests !== '') {
+                runTests = requestedTests === true || String(requestedTests).toLowerCase() === 'true';
+              }
+            } else if (context.eventName === 'issue_comment') {
+              const body = (context.payload.comment && context.payload.comment.body) || '';
+              // Only the first line carries the command and its flags, so
+              // "/deploy" followed by a paragraph mentioning --no-tests does
+              // not count, and neither does a command on the second line.
+              const firstLine = body.split(/\r?\n/)[0].trim();
+              const matched = firstLine.match(/^\/(deploy|redeploy)(\s.*)?$/);
+              // The job level if: only lets an exact /deploy or /redeploy
+              // through, so no match is unreachable in practice. Refusing
+              // here rather than defaulting keeps a future gate change from
+              // turning an unknown comment into a silent six minute rebuild.
+              if (matched === null) {
+                await refuse('unrecognized command on the first line, use /deploy, /redeploy or /undeploy');
+                return;
+              }
+              command = matched[1];
+              const flags = matched[2] || '';
+              // --force used to be how a human asked for a rebuild. /deploy is
+              // that now, so the flag is accepted and ignored rather than
+              // turned into an error on an old habit.
+              runTests = !/ --no-tests(\s|$)/.test(flags);
+            }
+
+            core.setOutput('pr', String(prNumber));
+            core.setOutput('branch', data.head.ref);
+            core.setOutput('sha', data.head.sha);
+            core.setOutput('html_url', data.html_url);
+            core.setOutput('command', command);
+            core.setOutput('run_tests', runTests ? 'true' : 'false');
+
+            // Acknowledge the command comment so the author knows it was picked up.
+            if (context.eventName === 'issue_comment') {
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: 'eyes',
+              });
+            }
+
+      # Posted before the slow work starts, so the thread says something is
+      # happening rather than going quiet for six minutes. It carries the
+      # status marker on purpose: the completion comment lists every comment
+      # with that marker and minimizes them after it posts, so this one folds
+      # itself away when the run finishes.
+      - name: Comment deploy started
+        uses: RTXteam/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          PR_BRANCH: ${{ steps.resolve.outputs.branch }}
+          PR_SHA: ${{ steps.resolve.outputs.sha }}
+          DEPLOY_COMMAND: ${{ steps.resolve.outputs.command }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const marker = '<!-- arax-preview-status -->';
+            const pr = Number(process.env.PR_NUMBER);
+            if (!pr) {
+              core.info('no PR was resolved, nothing to comment on');
+              return;
+            }
+
+            const command = process.env.DEPLOY_COMMAND || 'deploy';
+            const branch = process.env.PR_BRANCH || 'unknown';
+            const sha = process.env.PR_SHA || '';
+            const shortSha = sha ? sha.slice(0, 7) : 'unknown';
+            const build = '`' + branch + '` @ `' + shortSha + '`';
+
+            const lines = [];
+            lines.push(marker);
+            if (command === 'redeploy') {
+              lines.push('🚀 ARAX preview restart started for ' + build);
+              lines.push('');
+              lines.push('A restart takes about a minute.');
+            } else {
+              lines.push('🚀 ARAX preview full rebuild started for ' + build);
+              lines.push('');
+              lines.push('A full rebuild takes about 6 minutes.');
+            }
+            lines.push('');
+            lines.push('[Workflow run](' + process.env.RUN_URL + ')');
+
+            // No minimizing here. The completion comment does that for every
+            // marked comment including this one.
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: lines.join('\n'),
+            });
+
+      # Two checkouts on purpose. The scripts run from the trusted copy of this
+      # workflow's branch (the default branch for /deploy comments, the
+      # dispatched branch for Run workflow), so a PR opened before this tooling
+      # existed can still be previewed and a PR cannot swap the scripts that run
+      # on the self-hosted runner. The PR head goes into pr-head/ and is used
+      # only as the docker build context, which mirrors pytest.yml building the
+      # Dockerfile of the branch under test.
+      - name: Checkout the scripts
+        uses: RTXteam/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Checkout the PR head as the build context
+        uses: RTXteam/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.sha }}
+          path: pr-head
+          fetch-depth: 1
+
+      - name: Deploy preview
+        id: deploy
+        env:
+          PR: ${{ steps.resolve.outputs.pr }}
+          BRANCH: ${{ steps.resolve.outputs.branch }}
+          SHA: ${{ steps.resolve.outputs.sha }}
+          COMMAND: ${{ steps.resolve.outputs.command }}
+          PREVIEW_BUILD_CONTEXT: ${{ github.workspace }}/pr-head/DockerBuild
+        run: |
+          set -o pipefail
+          # The workflow never lets deploy.sh choose. /deploy means rebuild and
+          # /redeploy means restart or refuse with a reason.
+          if [ "$COMMAND" = "redeploy" ]; then
+            bash deploy/preview/deploy.sh --fast-only "$PR" "$BRANCH" "$SHA" 2>&1 | tee preview-deploy.log
+          else
+            bash deploy/preview/deploy.sh --force "$PR" "$BRANCH" "$SHA" 2>&1 | tee preview-deploy.log
+          fi
+
+      # The four HTTP checks only. The test suite is its own step below, so
+      # that it can have its own timeout and its own comment.
+      - name: Smoke test
+        id: smoke
+        continue-on-error: true
+        env:
+          PR: ${{ steps.resolve.outputs.pr }}
+        run: |
+          set -o pipefail
+          bash deploy/preview/smoke.sh "$PR" 2>&1 | tee preview-smoke.log
+
+      # Values that originate outside this file (branch names above all) are
+      # handed to the script through env, never spliced into the JavaScript
+      # source with ${{ }}, so a crafted branch name cannot inject code.
+      - name: Comment on PR
+        if: always()
+        uses: RTXteam/github-script@v7
+        env:
+          PREVIEW_TTL_DAYS: ${{ vars.PREVIEW_TTL_DAYS || '7' }}
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          PR_BRANCH: ${{ steps.resolve.outputs.branch }}
+          PR_SHA: ${{ steps.resolve.outputs.sha }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.url }}
+          DEPLOY_MODE: ${{ steps.deploy.outputs.mode }}
+          DEPLOY_REASON: ${{ steps.deploy.outputs.reason }}
+          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+          DEPLOY_REFUSED: ${{ steps.deploy.outputs.refused }}
+          DEPLOY_COMMAND: ${{ steps.resolve.outputs.command }}
+          SMOKE_OUTCOME: ${{ steps.smoke.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- arax-preview-status -->';
+            const pr = Number(process.env.PR_NUMBER);
+            if (!pr) {
+              core.info('no PR was resolved, nothing to comment on');
+              return;
+            }
+
+            const deployOutcome = process.env.DEPLOY_OUTCOME;
+            const smokeOutcome = process.env.SMOKE_OUTCOME;
+            const ok = deployOutcome === 'success' && smokeOutcome === 'success';
+            // A preflight refusal is not a broken deploy, it is the host saying
+            // it has no room. Say which limit was hit instead of "failed".
+            const refused = deployOutcome !== 'success' ? (process.env.DEPLOY_REFUSED || '') : '';
+
+            let smokeTable = '_No smoke test output was produced._';
+            try {
+              const raw = fs.readFileSync('preview-smoke.log', 'utf8');
+              const start = raw.indexOf('| check |');
+              smokeTable = start >= 0 ? raw.slice(start).trim() : raw.trim();
+            } catch (error) {
+              core.info('preview-smoke.log is missing: ' + error.message);
+            }
+
+            const url = process.env.PREVIEW_URL || '';
+            const command = process.env.DEPLOY_COMMAND || 'deploy';
+            const branch = process.env.PR_BRANCH || 'unknown';
+            const sha = process.env.PR_SHA || '';
+            const shortSha = sha ? sha.slice(0, 7) : 'unknown';
+            const runUrl = process.env.RUN_URL;
+            const ttl = process.env.PREVIEW_TTL_DAYS || '7';
+
+            const footer = 'Comment `/deploy` to rebuild from scratch, `/redeploy` to restart with the latest commit, `/undeploy` to remove. Previews are garbage-collected after ' + ttl + ' days or when the PR closes.';
+
+            const lines = [];
+            lines.push(marker);
+            lines.push('## ARAX preview');
+            lines.push('');
+            // A refusal is the host declining the command, not a crashed
+            // deploy. No preview URL was created, no path was chosen and no
+            // smoke test ran, so the URL, deploy mode and smoke sections would
+            // all read as "not available". Render a compact comment instead:
+            // what was refused and why, the build, the run link and the footer.
+            if (refused) {
+              lines.push('❌ refused: ' + refused);
+              lines.push('');
+              lines.push('**Build:** `' + branch + '` @ `' + shortSha + '`');
+              lines.push('');
+              lines.push('[Workflow run](' + runUrl + ')');
+              lines.push('');
+              lines.push(footer);
+            } else {
+              if (ok && command === 'redeploy') {
+                lines.push('♻️ restarted with `' + branch + '` @ `' + shortSha + '`');
+              } else if (ok) {
+                lines.push('✅ deployed');
+              } else {
+                lines.push('❌ failed');
+              }
+              lines.push('');
+              if (url) {
+                lines.push('**URL:** ' + url);
+              } else {
+                lines.push('**URL:** not available, the deploy did not finish');
+              }
+              lines.push('');
+              lines.push('**Build:** `' + branch + '` @ `' + shortSha + '`');
+              lines.push('');
+              const mode = process.env.DEPLOY_MODE || '';
+              const reason = process.env.DEPLOY_REASON || '';
+              if (mode === 'fast') {
+                lines.push('**Deploy:** fast redeploy');
+              } else if (mode === 'full') {
+                lines.push('**Deploy:** full rebuild' + (reason ? ' (' + reason + ')' : ''));
+              } else {
+                lines.push('**Deploy:** unknown');
+              }
+              lines.push('');
+              lines.push('### Smoke test');
+              lines.push('');
+              lines.push(smokeTable);
+              lines.push('');
+              lines.push('[Workflow run](' + runUrl + ')');
+              lines.push('');
+              lines.push(footer);
+            }
+            const body = lines.join('\n');
+
+            // Chronology over stickiness: every event posts a NEW comment so
+            // the thread reads in order, and older status comments get
+            // collapsed as outdated so the thread does not fill with bot
+            // noise. Minimizing is best effort, a missing permission must not
+            // fail the job.
+            const existing = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const outdated = existing.filter(function (comment) {
+              return comment.body && comment.body.includes(marker);
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: body,
+            });
+
+            for (const old of outdated) {
+              try {
+                await github.graphql(
+                  'mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }',
+                  { id: old.node_id }
+                );
+              } catch (error) {
+                core.info('could not minimize comment ' + old.id + ': ' + error.message);
+              }
+            }
+
+      # Comment two. The suite takes about two and a half minutes on a healthy
+      # preview and is informational, so it never fails the job.
+      - name: Pytest suite
+        id: pytest
+        if: steps.resolve.outputs.run_tests == 'true' && steps.deploy.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 45
+        env:
+          PR: ${{ steps.resolve.outputs.pr }}
+          PYTEST_ARGS: ${{ github.event.inputs.pytest_args || '' }}
+        run: |
+          set -o pipefail
+          bash deploy/preview/pytest_report.sh "$PR" "$PYTEST_ARGS" 2>&1 | tee preview-pytest.log
+
+      - name: Comment pytest results
+        if: always() && steps.resolve.outputs.run_tests == 'true' && steps.deploy.outcome == 'success'
+        uses: RTXteam/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          PR_BRANCH: ${{ steps.resolve.outputs.branch }}
+          PR_SHA: ${{ steps.resolve.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- arax-preview-pytest -->';
+            const pr = Number(process.env.PR_NUMBER);
+            if (!pr) {
+              core.info('no PR was resolved, nothing to comment on');
+              return;
+            }
+
+            // The log holds the raw pytest output first and the report last,
+            // so the report starts at the container line the report opens with.
+            let report = '_The pytest step produced no output._';
+            try {
+              const raw = fs.readFileSync('preview-pytest.log', 'utf8');
+              const start = raw.indexOf('**Container:**');
+              report = start >= 0 ? raw.slice(start).trim() : raw.trim();
+            } catch (error) {
+              core.info('preview-pytest.log is missing: ' + error.message);
+            }
+            if (report.length > 60000) {
+              report = report.slice(0, 60000) + '\n\n_Truncated. The whole log is in the run artifact._';
+            }
+
+            const branch = process.env.PR_BRANCH || 'unknown';
+            const sha = process.env.PR_SHA || '';
+            const shortSha = sha ? sha.slice(0, 7) : 'unknown';
+
+            const lines = [];
+            lines.push(marker);
+            lines.push('## Preview pytest');
+            lines.push('');
+            lines.push('**Build:** `' + branch + '` @ `' + shortSha + '`');
+            lines.push('');
+            lines.push(report);
+            lines.push('');
+            lines.push('[Workflow run](' + process.env.RUN_URL + ')');
+            const body = lines.join('\n');
+
+            // Same chronology as the status comment: a new comment every run,
+            // older ones with this marker collapsed as outdated.
+            const existing = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const outdated = existing.filter(function (comment) {
+              return comment.body && comment.body.includes(marker);
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: body,
+            });
+
+            for (const old of outdated) {
+              try {
+                await github.graphql(
+                  'mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }',
+                  { id: old.node_id }
+                );
+              } catch (error) {
+                core.info('could not minimize comment ' + old.id + ': ' + error.message);
+              }
+            }
+
+      # Comment three. The four example queries of the UI, posted through the
+      # public URL so that nginx and apache are on the path as well. The
+      # payloads come from the pull request's own copy of rtx.js.
+      - name: Live query smoke
+        id: queries
+        if: steps.deploy.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 30
+        env:
+          PR: ${{ steps.resolve.outputs.pr }}
+          PREVIEW_UI_RTXJS: ${{ github.workspace }}/pr-head/code/UI/interactive/rtx.js
+        run: |
+          set -o pipefail
+          bash deploy/preview/query_smoke.sh "$PR" 2>&1 | tee preview-queries.log
+
+      - name: Comment query results
+        if: always() && steps.deploy.outcome == 'success'
+        uses: RTXteam/github-script@v7
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.pr }}
+          PR_BRANCH: ${{ steps.resolve.outputs.branch }}
+          PR_SHA: ${{ steps.resolve.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- arax-preview-queries -->';
+            const pr = Number(process.env.PR_NUMBER);
+            if (!pr) {
+              core.info('no PR was resolved, nothing to comment on');
+              return;
+            }
+
+            // The report starts at the endpoint line, which sits above the
+            // table, and everything before it is the progress log.
+            let report = '_The live query step produced no output._';
+            try {
+              const raw = fs.readFileSync('preview-queries.log', 'utf8');
+              const start = raw.indexOf('**Endpoint:**');
+              report = start >= 0 ? raw.slice(start).trim() : raw.trim();
+            } catch (error) {
+              core.info('preview-queries.log is missing: ' + error.message);
+            }
+            if (report.length > 60000) {
+              report = report.slice(0, 60000) + '\n\n_Truncated. The whole log is in the run artifact._';
+            }
+
+            const branch = process.env.PR_BRANCH || 'unknown';
+            const sha = process.env.PR_SHA || '';
+            const shortSha = sha ? sha.slice(0, 7) : 'unknown';
+
+            const lines = [];
+            lines.push(marker);
+            lines.push('## Preview live queries');
+            lines.push('');
+            lines.push('**Build:** `' + branch + '` @ `' + shortSha + '`');
+            lines.push('');
+            lines.push(report);
+            lines.push('');
+            lines.push('[Workflow run](' + process.env.RUN_URL + ')');
+            const body = lines.join('\n');
+
+            const existing = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const outdated = existing.filter(function (comment) {
+              return comment.body && comment.body.includes(marker);
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: body,
+            });
+
+            for (const old of outdated) {
+              try {
+                await github.graphql(
+                  'mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }',
+                  { id: old.node_id }
+                );
+              } catch (error) {
+                core.info('could not minimize comment ' + old.id + ': ' + error.message);
+              }
+            }
+
+      # Last, so that every log this job produces is in the artifact.
+      - name: Upload logs
+        if: always()
+        uses: RTXteam/upload-artifact@v4
+        with:
+          name: preview-pr-${{ steps.resolve.outputs.pr }}-logs
+          path: |
+            preview-deploy.log
+            preview-smoke.log
+            preview-pytest.log
+            preview-queries.log
+          retention-days: 14
+          if-no-files-found: warn
+
+      # The smoke step is continue-on-error so that the comments above always
+      # run. The job still has to go red when the deploy or the smoke test
+      # failed. The pytest and live query steps are deliberately not in this
+      # condition: they are informational, and a preview that is up and
+      # answering is still useful when one test is red.
+      - name: Fail the job when deploy or smoke failed
+        if: steps.deploy.outcome == 'failure' || steps.smoke.outcome == 'failure'
+        run: |
+          echo "deploy outcome: ${{ steps.deploy.outcome }}"
+          echo "smoke outcome:  ${{ steps.smoke.outcome }}"
+          exit 1
+
+  teardown:
+    name: Tear down preview
+    runs-on: [self-hosted, ARAX, docker]
+    timeout-minutes: 120
+    # Same exact-match rule as the deploy job: /undeploy alone or followed by
+    # whitespace, so "/undeployment" and similar do not tear a preview down.
+    if: >-
+      (github.event_name == 'pull_request' && github.event.action == 'closed') ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       (github.event.comment.body == '/undeploy' ||
+        startsWith(github.event.comment.body, '/undeploy ') ||
+        startsWith(github.event.comment.body, format('/undeploy{0}', fromJSON('"\n"'))) ||
+        startsWith(github.event.comment.body, format('/undeploy{0}', fromJSON('"\r"')))) &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    steps:
+      # On a pull_request event checkout would default to the PR merge ref,
+      # which may be gone once the PR is closed and which would run PR supplied
+      # scripts on the runner. Pin the default branch explicitly.
+      - name: Checkout the default branch
+        uses: RTXteam/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 1
+
+      - name: Tear down preview
+        id: teardown
+        env:
+          PR: ${{ github.event.pull_request.number || github.event.issue.number }}
+        run: bash deploy/preview/teardown.sh "$PR"
+
+      # The comment reflects what actually happened. teardown.sh exits
+      # non-zero when a resource could not be removed, and silently claiming
+      # success here would leave leaked containers unnoticed.
+      - name: Comment on PR
+        if: always()
+        uses: RTXteam/github-script@v7
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          TEARDOWN_OUTCOME: ${{ steps.teardown.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const marker = '<!-- arax-preview-status -->';
+            const pr = Number(process.env.PR_NUMBER);
+            if (!pr) {
+              core.info('no PR number available, nothing to comment on');
+              return;
+            }
+            const ok = process.env.TEARDOWN_OUTCOME === 'success';
+            const runUrl = process.env.RUN_URL;
+            const body = ok
+              ? marker + '\n## ARAX preview\n\n🧹 ARAX preview for this PR was removed.'
+              : marker + '\n## ARAX preview\n\n' +
+                '⚠️ Teardown did not finish cleanly. The container `rtx_pr_' + pr + '`, ' +
+                'the image `rtx:pr-' + pr + '` or its nginx route may still be live on the host. ' +
+                'See the [workflow run](' + runUrl + ') and clean up with ' +
+                '`bash deploy/preview/teardown.sh ' + pr + '` on cicd.rtx.ai.';
+
+            // Chronology over stickiness: every event posts a NEW comment so
+            // the thread reads in order, and older status comments get
+            // collapsed as outdated so the thread does not fill with bot
+            // noise. Minimizing is best effort, a missing permission must not
+            // fail the job.
+            const existing = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const outdated = existing.filter(function (comment) {
+              return comment.body && comment.body.includes(marker);
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: body,
+            });
+
+            for (const old of outdated) {
+              try {
+                await github.graphql(
+                  'mutation($id: ID!) { minimizeComment(input: {subjectId: $id, classifier: OUTDATED}) { minimizedComment { isMinimized } } }',
+                  { id: old.node_id }
+                );
+              } catch (error) {
+                core.info('could not minimize comment ' + old.id + ': ' + error.message);
+              }
+            }
+
+  gc:
+    name: Garbage collect previews
+    runs-on: [self-hosted, ARAX, docker]
+    timeout-minutes: 120
+    if: github.event_name == 'schedule'
+    steps:
+      # schedule events always run from the default branch, so the default
+      # checkout ref is already the right one.
+      - name: Checkout the default branch
+        uses: RTXteam/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Garbage collect
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash deploy/preview/gc.sh
