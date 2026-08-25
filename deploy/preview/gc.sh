@@ -95,75 +95,246 @@ human_age() {
 
 PRS="$(list_preview_prs | sort -n -u)"
 
+# The container sweep. An empty box is not a reason to stop: the status page
+# data sweep below, the image prune and the log prune all still have work to
+# do, and a pull request whose deploy died before it ever made a container
+# leaves nothing here but a data directory.
 if [ -z "${PRS}" ]; then
-    printf 'No ARAX previews found on this host.\n'
-    exit 0
+    printf 'No ARAX preview containers on this host.\n\n'
+else
+    ROWS=()
+    TO_REMOVE=()
+
+    for pr in ${PRS}; do
+        created="$(preview_label "${pr}" 'arax.preview.created')"
+        branch="$(preview_label "${pr}" 'arax.preview.branch')"
+        [ -n "${branch}" ] || branch="unknown"
+
+        case "${created}" in
+            ''|*[!0-9]*)
+                # A preview without a usable timestamp is treated as too old to
+                # keep, because nothing else can tell us when it was made.
+                age_seconds="${TTL_SECONDS}"
+                age_text="unknown"
+                expired="yes"
+                ;;
+            *)
+                age_seconds=$(( NOW - created ))
+                age_text="$(human_age "${age_seconds}")"
+                if [ "${age_seconds}" -gt "${TTL_SECONDS}" ]; then
+                    expired="yes"
+                else
+                    expired="no"
+                fi
+                ;;
+        esac
+
+        state="skipped"
+        if [ -n "${TOKEN}" ]; then
+            state="$(pr_state "${pr}")"
+        fi
+
+        decision="keep"
+        if [ "${expired}" = "yes" ]; then
+            decision="remove, older than ${PREVIEW_TTL_DAYS} days"
+        fi
+        if [ "${state}" = "closed" ]; then
+            decision="remove, pull request is closed"
+        fi
+
+        ROWS+=("| ${pr} | ${age_text} | ${branch} | ${state} | ${decision} |")
+        case "${decision}" in
+            remove*) TO_REMOVE+=("${pr}") ;;
+        esac
+    done
+
+    printf '| pr | age | branch | pr state | decision |\n'
+    printf '| --- | --- | --- | --- | --- |\n'
+    for row in "${ROWS[@]}"; do
+        printf '%s\n' "${row}"
+    done
+    printf '\n'
+
+    if [ "${#TO_REMOVE[@]}" -eq 0 ]; then
+        printf 'Nothing to remove.\n'
+    else
+        for pr in "${TO_REMOVE[@]}"; do
+            if [ "${DRY_RUN}" = "yes" ]; then
+                printf 'dry run: would tear down PR %s\n' "${pr}"
+            else
+                log "tearing down PR ${pr}"
+                "${SCRIPT_DIR}/teardown.sh" "${pr}" || log "WARNING: teardown of PR ${pr} failed"
+            fi
+        done
+    fi
+    printf '\n'
 fi
 
-ROWS=()
-TO_REMOVE=()
+# ---------------------------------------------------------------------------
+# Status page data with no container behind it
+#
+# A deploy that failed before it ever created a container still leaves
+# ${PREVIEW_WEB_ROOT}/data/<PR>/ behind, and the status page draws a card from
+# it. Teardown removes that directory, so the only ones that reach this sweep
+# belong to a pull request that never had a container to tear down. They are
+# kept for a day, long enough to read the failure on the page, and then go.
+# ---------------------------------------------------------------------------
 
-for pr in ${PRS}; do
-    created="$(preview_label "${pr}" 'arax.preview.created')"
-    branch="$(preview_label "${pr}" 'arax.preview.branch')"
-    [ -n "${branch}" ] || branch="unknown"
+# Hours a data directory with no container is kept after the run that wrote it
+# finished, or after it was last touched when there is no run state at all.
+PREVIEW_ORPHAN_TTL_HOURS="${PREVIEW_ORPHAN_TTL_HOURS:-24}"
+require_int "${PREVIEW_ORPHAN_TTL_HOURS}" "PREVIEW_ORPHAN_TTL_HOURS"
+ORPHAN_TTL_SECONDS=$(( PREVIEW_ORPHAN_TTL_HOURS * 3600 ))
 
-    case "${created}" in
-        ''|*[!0-9]*)
-            # A preview without a usable timestamp is treated as too old to
-            # keep, because nothing else can tell us when it was made.
-            age_seconds="${TTL_SECONDS}"
-            age_text="unknown"
-            expired="yes"
-            ;;
-        *)
-            age_seconds=$(( NOW - created ))
-            age_text="$(human_age "${age_seconds}")"
-            if [ "${age_seconds}" -gt "${TTL_SECONDS}" ]; then
-                expired="yes"
-            else
-                expired="no"
-            fi
-            ;;
-    esac
+# Recomputed here rather than reusing PRS, because the teardowns above have
+# just changed the answer, and their data directories are already gone.
+CONTAINER_PRS="$(list_preview_prs | sort -n -u)"
 
-    state="skipped"
-    if [ -n "${TOKEN}" ]; then
-        state="$(pr_state "${pr}")"
-    fi
+ORPHAN_ROWS=()
+ORPHAN_TO_REMOVE=()
+ORPHAN_COUNT=0
+ORPHAN_REMOVE_COUNT=0
 
-    decision="keep"
-    if [ "${expired}" = "yes" ]; then
-        decision="remove, older than ${PREVIEW_TTL_DAYS} days"
-    fi
-    if [ "${state}" = "closed" ]; then
-        decision="remove, pull request is closed"
-    fi
+# orphan_state <data dir>
+# Prints "<deploy status>\t<newest timestamp>" for one data directory. The
+# status is the state of the deploy stage, the word abandoned when the page
+# generator closed the run out, or none when there is no state file at all.
+# The timestamp is the newest moment the run recorded, and the modification
+# time of the directory when it recorded nothing.
+orphan_state() {
+    python3 -c '
+import json
+import os
+import sys
 
-    ROWS+=("| ${pr} | ${age_text} | ${branch} | ${state} | ${decision} |")
-    case "${decision}" in
-        remove*) TO_REMOVE+=("${pr}") ;;
-    esac
-done
+path = sys.argv[1]
+status = "none"
+newest = 0
 
-printf '| pr | age | branch | pr state | decision |\n'
-printf '| --- | --- | --- | --- | --- |\n'
-for row in "${ROWS[@]}"; do
-    printf '%s\n' "${row}"
-done
-printf '\n'
+try:
+    with open(os.path.join(path, "state.json"), "r", errors="replace") as handle:
+        doc = json.load(handle)
+except Exception:
+    doc = None
 
-if [ "${#TO_REMOVE[@]}" -eq 0 ]; then
-    printf 'Nothing to remove.\n'
-else
-    for pr in "${TO_REMOVE[@]}"; do
-        if [ "${DRY_RUN}" = "yes" ]; then
-            printf 'dry run: would tear down PR %s\n' "${pr}"
-        else
-            log "tearing down PR ${pr}"
-            "${SCRIPT_DIR}/teardown.sh" "${pr}" || log "WARNING: teardown of PR ${pr} failed"
+if isinstance(doc, dict):
+    status = "unknown"
+    stages = doc.get("stages")
+    if not isinstance(stages, dict):
+        stages = {}
+    deploy = stages.get("deploy")
+    if isinstance(deploy, dict):
+        status = str(deploy.get("status") or "unknown")
+        if str(deploy.get("detail") or "").strip() == "abandoned":
+            status = "abandoned"
+    for entry in list(stages.values()) + [{"finished_at": doc.get("updated_at")}]:
+        if not isinstance(entry, dict):
+            continue
+        for key in ("finished_at", "started_at"):
+            try:
+                value = int(entry.get(key) or 0)
+            except (TypeError, ValueError):
+                value = 0
+            if value > newest:
+                newest = value
+
+if not newest:
+    try:
+        newest = int(os.path.getmtime(path))
+    except Exception:
+        newest = 0
+
+sys.stdout.write("%s\t%d\n" % (status, newest))
+' "${1}"
+}
+
+if ${SUDO} test -d "${PREVIEW_WEB_ROOT}/data"; then
+    for data_dir in "${PREVIEW_WEB_ROOT}/data"/*; do
+        [ -d "${data_dir}" ] || continue
+        pr="$(basename "${data_dir}")"
+        case "${pr}" in
+            ''|*[!0-9]*) continue ;;
+        esac
+        # A preview that still has a container is the container sweep's
+        # business, and its data directory goes when the preview goes.
+        if printf '%s\n' "${CONTAINER_PRS}" | grep -qx "${pr}"; then
+            continue
         fi
+
+        verdict="$(orphan_state "${data_dir}" || true)"
+        run_status="$(printf '%s' "${verdict}" | awk -F'\t' '{print $1}')"
+        newest="$(printf '%s' "${verdict}" | awk -F'\t' '{print $2}' | tr -dc '0-9')"
+        [ -n "${run_status}" ] || run_status="unknown"
+        if [ -n "${newest}" ] && [ "${newest}" -gt 0 ]; then
+            age_seconds=$(( NOW - newest ))
+            [ "${age_seconds}" -ge 0 ] || age_seconds=0
+            age_text="$(human_age "${age_seconds}")"
+        else
+            # Nothing readable to date it by, so it is treated as old enough.
+            age_seconds="${ORPHAN_TTL_SECONDS}"
+            age_text="unknown"
+        fi
+
+        state="skipped"
+        if [ -n "${TOKEN}" ]; then
+            state="$(pr_state "${pr}")"
+        fi
+
+        decision="keep"
+        case "${run_status}" in
+            failed|abandoned)
+                if [ "${age_seconds}" -gt "${ORPHAN_TTL_SECONDS}" ]; then
+                    decision="remove, ${run_status} run older than ${PREVIEW_ORPHAN_TTL_HOURS}h"
+                fi
+                ;;
+            none)
+                if [ "${age_seconds}" -gt "${ORPHAN_TTL_SECONDS}" ]; then
+                    decision="remove, no run state and untouched for ${PREVIEW_ORPHAN_TTL_HOURS}h"
+                fi
+                ;;
+        esac
+        if [ "${state}" = "closed" ]; then
+            decision="remove, pull request is closed"
+        fi
+
+        ORPHAN_ROWS+=("| ${pr} | ${age_text} | ${run_status} | ${state} | ${decision} |")
+        ORPHAN_COUNT=$(( ORPHAN_COUNT + 1 ))
+        case "${decision}" in
+            remove*)
+                ORPHAN_TO_REMOVE+=("${data_dir}")
+                ORPHAN_REMOVE_COUNT=$(( ORPHAN_REMOVE_COUNT + 1 ))
+                ;;
+        esac
     done
+fi
+
+if [ "${ORPHAN_COUNT}" -eq 0 ]; then
+    printf 'No status page data without a container.\n\n'
+else
+    printf '| pr | age | last run | pr state | decision |\n'
+    printf '| --- | --- | --- | --- | --- |\n'
+    for row in "${ORPHAN_ROWS[@]}"; do
+        printf '%s\n' "${row}"
+    done
+    printf '\n'
+
+    if [ "${ORPHAN_REMOVE_COUNT}" -eq 0 ]; then
+        printf 'No status page data to remove.\n'
+    else
+        for data_dir in "${ORPHAN_TO_REMOVE[@]}"; do
+            if [ "${DRY_RUN}" = "yes" ]; then
+                printf 'dry run: would remove %s\n' "${data_dir}"
+            else
+                log "removing ${data_dir}, which has no container behind it"
+                if ${SUDO} rm -rf "${data_dir}"; then
+                    printf 'removed %s\n' "${data_dir}"
+                else
+                    log "WARNING: could not remove ${data_dir}"
+                fi
+            fi
+        done
+    fi
+    printf '\n'
 fi
 
 if [ "${DRY_RUN}" = "yes" ]; then

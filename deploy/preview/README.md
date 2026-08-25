@@ -470,6 +470,7 @@ Everything below is read by `deploy/preview/lib.sh` and can be overridden in the
 | `PREVIEW_WEB_ROOT` | `/var/www/arax-preview` | document root of the status page, per-PR reports go in `data/<PR>/` |
 | `PREVIEW_HOST_STATS_INTERVAL` | `15` | seconds between host samples written to `host.json` |
 | `PREVIEW_STATE_STALE_SECONDS` | `7200` | a stage still marked running after this is written down as abandoned |
+| `PREVIEW_ORPHAN_TTL_HOURS` | `24` | how long `gc.sh` keeps status page data that has no container behind it |
 | `PREVIEW_STATS_SERVICE` | `/etc/systemd/system/arax-preview-stats.service` | unit file the installer writes for the sampler |
 | `PREVIEW_LOG_DIR` | `/var/log/arax-preview` | full deploy logs, pruned after 30 days by `gc.sh` |
 | `PREVIEW_UI_RTXJS` | `<repo>/code/UI/interactive/rtx.js` | UI source `query_smoke.sh` reads the example payloads from |
@@ -499,7 +500,11 @@ next newest, and removes the route entirely when no previews are left.
   removes the container, the image and the nginx snippet.
 - **Daily garbage collection.** A scheduled run of `gc.sh` removes previews older than
   `PREVIEW_TTL_DAYS` and previews whose pull request is no longer open. Merged pull requests
-  count as closed. Without a GitHub token the age rule is the only one that applies.
+  count as closed. Without a GitHub token the age rule is the only one that applies. The same
+  run also sweeps the status page data of pull requests that have no container, removing a
+  directory whose pull request is closed and one left by a failed or abandoned run that finished
+  more than `PREVIEW_ORPHAN_TTL_HOURS` ago, 24 by default, so a deploy that died before it ever
+  created a container stops drawing a card the next day.
 - **Status page refresh.** A cron entry runs `status-refresh.sh` every 5 minutes, which rewrites
   the status page with current host numbers and container states. It touches nothing else.
 - **Host sampling.** `arax-preview-stats.service` runs `host-stats.sh` for as long as the host is

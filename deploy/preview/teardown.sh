@@ -90,8 +90,10 @@ else
     log "WARNING: ${PREVIEW_NGINX_DIR} does not exist, skipping the nginx cleanup"
 fi
 
-# The per-PR files the status page embeds. Cosmetic, so a failure here is a
-# warning and not a teardown failure.
+# The per-PR files the status page embeds, including the run state the card is
+# drawn from. This runs whether or not there was ever a container, which is
+# what takes the card of a deploy that failed before it created one off the
+# page. Cosmetic, so a failure here is a warning and not a teardown failure.
 DATA_DIR="$(preview_data_dir "${PR}")"
 if ${SUDO} test -d "${DATA_DIR}"; then
     if ${SUDO} rm -rf "${DATA_DIR}"; then
