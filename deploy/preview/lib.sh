@@ -1227,7 +1227,7 @@ tr.bad-row td { color: var(--bad); }
 .check .t { overflow-wrap: anywhere; }
 .check .t .d { color: var(--dim); }
 .spinner { flex: none; width: 11px; height: 11px; border: 2px solid var(--track);
-           border-top-color: var(--accent);
+           border-top-color: var(--accent); border-radius: 50%;
            animation: arax-spin 0.9s linear infinite; }
 @keyframes arax-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
