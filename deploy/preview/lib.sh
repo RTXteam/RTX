@@ -1041,92 +1041,148 @@ for pr in sorted(set(list(containers.keys()) + state_prs), key=int):
 generated = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
 sampled_epoch = int(time.time())
 
-CSS = """:root { color-scheme: light; }
-* { box-sizing: border-box; }
-body { margin: 0; background: #f7f7f8; color: #1f2937;
+# The palette lives in one place. Light is the base on :root, dark is the same
+# set of names with different values, applied both when the system asks for it
+# and when the reader picked dark by hand. Every rule below reads the tokens,
+# so neither theme can drift away from the other.
+LIGHT_TOKENS = """  color-scheme: light dark;
+  --bg: #f7f7f8;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --border-soft: #f3f4f6;
+  --text: #1f2937;
+  --text-soft: #4b5563;
+  --muted: #6b7280;
+  --link: #2563eb;
+  --ok: #059669;
+  --ok-bg: #ecfdf5;
+  --bad: #dc2626;
+  --bad-bg: #fef2f2;
+  --neutral: #6b7280;
+  --neutral-bg: #f3f4f6;
+  --warn: #b45309;
+  --pre-bg: #f9fafb;
+  --dot: #9ca3af;
+  --spin-track: #e5e7eb;
+  --spin-head: #2563eb;
+"""
+
+DARK_TOKENS = """  --bg: #0f1115;
+  --card: #171a1f;
+  --border: #2a2f36;
+  --border-soft: #22262d;
+  --text: #e6e8eb;
+  --text-soft: #b3bac2;
+  --muted: #9aa3ad;
+  --link: #7cb3ff;
+  --ok: #3fb950;
+  --ok-bg: #10261a;
+  --bad: #f85149;
+  --bad-bg: #2a1618;
+  --neutral: #9aa3ad;
+  --neutral-bg: #1c2026;
+  --warn: #d29922;
+  --pre-bg: #12151a;
+  --dot: #9aa3ad;
+  --spin-track: #2a2f36;
+  --spin-head: #7cb3ff;
+"""
+
+RULES = """* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
        font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
        -webkit-font-smoothing: antialiased; }
 .wrap { max-width: 1100px; margin: 0 auto; padding: 40px 24px 64px; }
-a { color: #2563eb; text-decoration: none; }
+a { color: var(--link); text-decoration: none; }
 a:hover { text-decoration: underline; }
 code, .num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
        font-size: 13px; font-variant-numeric: tabular-nums; }
+.top { display: flex; align-items: flex-start; justify-content: space-between;
+       gap: 16px; flex-wrap: wrap; }
 h1 { font-size: 26px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
-.subtitle { font-size: 15px; color: #4b5563; margin: 6px 0 0; }
-.spec { color: #6b7280; font-size: 13px; margin: 6px 0 0; }
-h2 { font-size: 13px; font-weight: 600; color: #6b7280; margin: 36px 0 12px; }
+.subtitle { font-size: 15px; color: var(--text-soft); margin: 6px 0 0; }
+.spec { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+h2 { font-size: 13px; font-weight: 600; color: var(--muted); margin: 36px 0 12px; }
 p { margin: 0 0 10px; }
 p:last-child { margin-bottom: 0; }
 .prose { max-width: 76ch; }
 ul { margin: 0; padding-left: 20px; }
 li { margin-bottom: 6px; }
 li:last-child { margin-bottom: 0; }
+.themes { display: none; border: 1px solid var(--border); border-radius: 8px;
+          background: var(--card); overflow: hidden; margin-top: 4px; }
+:root[data-js="on"] .themes { display: inline-flex; }
+.themes button { appearance: none; -webkit-appearance: none; border: 0; margin: 0;
+                 background: transparent; color: var(--muted); cursor: pointer;
+                 font: inherit; font-size: 12px; line-height: 1; padding: 7px 11px; }
+.themes button + button { border-left: 1px solid var(--border); }
+.themes button:hover { color: var(--text); }
+.themes button[aria-pressed="true"] { background: var(--neutral-bg); color: var(--text);
+                                      font-weight: 600; }
 .scroll { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; background: #ffffff;
-        border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; }
-th { text-align: left; font-weight: 600; color: #6b7280; font-size: 13px;
-     padding: 10px 16px; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }
-td { padding: 10px 16px; border-top: 1px solid #f3f4f6; vertical-align: top; }
+table { width: 100%; border-collapse: collapse; background: var(--card);
+        border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 13px;
+     padding: 10px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 10px 16px; border-top: 1px solid var(--border-soft); vertical-align: top; }
 tbody tr:first-child td { border-top: none; }
 td.cmd { white-space: nowrap; width: 1%; }
 td.num { white-space: nowrap; }
-.note { color: #6b7280; font-size: 13px; margin: 10px 0 0; }
-.flow { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
-        padding: 18px 16px; overflow-x: auto; }
-.flow svg { display: block; width: 100%; min-width: 720px; height: auto; }
+.note { color: var(--muted); font-size: 13px; margin: 10px 0 0; }
 .tiles { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 10px; }
 .tiles.stale .tile { opacity: 0.55; }
-.tile { flex: 1 1 200px; background: #ffffff; border: 1px solid #e5e7eb;
+.tile { flex: 1 1 200px; background: var(--card); border: 1px solid var(--border);
         border-radius: 8px; padding: 16px 18px; }
 .tile .value { font-size: 24px; font-weight: 600; line-height: 1.25;
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-variant-numeric: tabular-nums; }
-.tile.ok .value { color: #059669; }
-.tile.bad .value { color: #dc2626; }
-.tile .label { font-size: 13px; color: #6b7280; margin-top: 4px; }
+.tile.ok .value { color: var(--ok); }
+.tile.bad .value { color: var(--bad); }
+.tile .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
 .sample { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-          font-variant-numeric: tabular-nums; font-size: 12px; color: #6b7280;
+          font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted);
           margin: 0 0 14px; min-height: 18px; line-height: 18px; }
-.sample.stale { color: #dc2626; }
-.card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px;
+.sample.stale { color: var(--bad); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 8px;
         padding: 18px 20px; margin: 0 0 12px; }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .card h3 { font-size: 16px; font-weight: 600; margin: 0; }
-.card h3 a { color: #1f2937; }
-.meta { color: #6b7280; font-size: 13px; margin-top: 3px; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: #9ca3af;
+.card h3 a { color: var(--text); }
+.meta { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--dot);
        display: inline-block; flex: none; margin-top: 7px; }
-.dot.ok { background: #059669; }
-.dot.bad { background: #dc2626; }
+.dot.ok { background: var(--ok); }
+.dot.bad { background: var(--bad); }
 dl { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 4px 16px;
      margin: 14px 0 0; font-size: 14px; }
-dt { color: #6b7280; }
+dt { color: var(--muted); }
 dd { margin: 0; overflow-wrap: anywhere; }
-.running { color: #059669; }
-.stopped { color: #b45309; }
-.stages { border-top: 1px solid #f3f4f6; margin-top: 16px; padding-top: 12px; }
+.running { color: var(--ok); }
+.stopped { color: var(--warn); }
+.stages { border-top: 1px solid var(--border-soft); margin-top: 16px; padding-top: 12px; }
 .check { display: flex; align-items: center; gap: 9px; font-size: 14px; padding: 2px 0; }
-.check.sub { padding-left: 27px; color: #4b5563; }
+.check.sub { padding-left: 27px; color: var(--text-soft); }
 .check span { overflow-wrap: anywhere; }
 .chip { flex: none; display: inline-flex; align-items: center; justify-content: center;
         width: 18px; height: 18px; border-radius: 5px; font-size: 11px; font-weight: 700;
-        color: #6b7280; background: #f3f4f6; }
-.chip.ok { color: #059669; background: #ecfdf5; }
-.chip.bad { color: #dc2626; background: #fef2f2; }
+        color: var(--neutral); background: var(--neutral-bg); }
+.chip.ok { color: var(--ok); background: var(--ok-bg); }
+.chip.bad { color: var(--bad); background: var(--bad-bg); }
 .spinner { flex: none; width: 18px; height: 18px; border-radius: 50%;
-           border: 2px solid #e5e7eb; border-top-color: #2563eb;
+           border: 2px solid var(--spin-track); border-top-color: var(--spin-head);
            animation: arax-spin 0.9s linear infinite; }
 @keyframes arax-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 details { margin-top: 10px; }
-summary { cursor: pointer; color: #6b7280; font-size: 13px; }
-pre { overflow-x: auto; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
-      padding: 12px 14px; margin: 8px 0 4px; font-size: 12px; line-height: 1.5;
+summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+pre { overflow-x: auto; background: var(--pre-bg); border: 1px solid var(--border);
+      border-radius: 6px; padding: 12px 14px; margin: 8px 0 4px; font-size: 12px;
+      line-height: 1.5;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       white-space: pre-wrap; overflow-wrap: anywhere; }
-.empty { color: #6b7280; background: #ffffff; border: 1px dashed #e5e7eb;
+.empty { color: var(--muted); background: var(--card); border: 1px dashed var(--border);
          border-radius: 8px; padding: 24px; text-align: center; }
-footer { color: #6b7280; font-size: 13px; border-top: 1px solid #e5e7eb;
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--border);
          margin-top: 40px; padding-top: 16px; }
 @media (max-width: 640px) {
   .wrap { padding: 28px 20px 48px; }
@@ -1135,97 +1191,33 @@ footer { color: #6b7280; font-size: 13px; border-top: 1px solid #e5e7eb;
   dt { margin-top: 8px; }
 }"""
 
-# ---------------------------------------------------------------------------
-# The flow diagram. Hand written SVG on a fixed viewBox that scales to the
-# width of the page, so there is nothing to load and nothing to lay out.
-# ---------------------------------------------------------------------------
-FLOW_W = 158
-FLOW_PITCH = 178
-FLOW_H = 64
-FLOW_LEFT = 26
+CSS = (
+    ":root {\n" + LIGHT_TOKENS + "}\n"
+    + "@media (prefers-color-scheme: dark) {\n  :root:not([data-theme=\"light\"]) {\n"
+    + "".join("  " + line + "\n" for line in DARK_TOKENS.strip("\n").split("\n"))
+    + "  }\n}\n"
+    + ":root[data-theme=\"dark\"] {\n" + DARK_TOKENS + "}\n"
+    + RULES
+)
 
-FLOW_SKINS = {
-    "": ("#ffffff", "#d1d5db", "#1f2937", "#6b7280"),
-    "start": ("#eff6ff", "#bfdbfe", "#1d4ed8", "#2563eb"),
-    "target": ("#ecfdf5", "#a7f3d0", "#047857", "#059669"),
-    "gone": ("#fef2f2", "#fecaca", "#b91c1c", "#dc2626"),
-}
-
-
-def flow_col(index):
-    return FLOW_LEFT + index * FLOW_PITCH
-
-
-def flow_box(x, y, width, first, second, skin=""):
-    fill, stroke, ink, sub = FLOW_SKINS[skin]
-    middle = x + width / 2.0
-    parts = [
-        '<rect x="%g" y="%g" width="%g" height="%d" rx="8" fill="%s" stroke="%s"/>'
-        % (x, y, width, FLOW_H, fill, stroke)
-    ]
-    parts.append(
-        '<text x="%g" y="%g" text-anchor="middle" font-size="13" fill="%s">%s</text>'
-        % (middle, y + 26, ink, esc(first))
-    )
-    if second:
-        parts.append(
-            '<text x="%g" y="%g" text-anchor="middle" font-size="13" fill="%s">%s</text>'
-            % (middle, y + 44, sub, esc(second))
-        )
-    return "".join(parts)
-
-
-def flow_arrow(x_from, x_to, y):
-    return (
-        '<line x1="%g" y1="%g" x2="%g" y2="%g" stroke="#9ca3af" stroke-width="1.5" '
-        'marker-end="url(#arax-arrow)"/>' % (x_from, y + FLOW_H / 2.0, x_to, y + FLOW_H / 2.0)
-    )
-
-
-def flow_svg():
-    row1 = 34
-    row2 = 150
-    row3 = 266
-    parts = [
-        '<svg viewBox="0 0 1100 348" xmlns="http://www.w3.org/2000/svg" role="img" '
-        'aria-label="How a preview is deployed, redeployed and removed">',
-        '<defs><marker id="arax-arrow" viewBox="0 0 10 10" refX="9" refY="5" '
-        'markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" '
-        'fill="#9ca3af"/></marker></defs>',
-    ]
-
-    first_row = [
-        ("PR comment", "/deploy", "start"),
-        ("GitHub Actions", "Preview Deploy", ""),
-        ("self-hosted runner", HOST_NAME, ""),
-        ("docker build", "container rtx_pr_N", ""),
-        ("nginx route", "/N/", ""),
-        (base_url, "/N/", "target"),
-    ]
-    for index, item in enumerate(first_row):
-        x = flow_col(index)
-        parts.append(flow_box(x, row1, FLOW_W, item[0], item[1], item[2]))
-        if index:
-            parts.append(flow_arrow(flow_col(index - 1) + FLOW_W + 4, x - 5, row1))
-
-    parts.append(flow_box(flow_col(0), row2, FLOW_W, "PR comment", "/redeploy", "start"))
-    parts.append(flow_arrow(flow_col(0) + FLOW_W + 4, flow_col(1) - 5, row2))
-    parts.append(
-        flow_box(flow_col(1), row2, FLOW_W * 2 + 20, "git checkout and service restart",
-                 "inside the running container", "")
-    )
-    parts.append(flow_arrow(flow_col(1) + FLOW_W * 2 + 24, flow_col(5) - 5, row2))
-    parts.append(flow_box(flow_col(5), row2, FLOW_W, "same URL", "no image rebuild", "target"))
-
-    parts.append(flow_box(flow_col(0), row3, FLOW_W, "PR closed", "or /undeploy", "start"))
-    parts.append(flow_arrow(flow_col(0) + FLOW_W + 4, flow_col(1) - 5, row3))
-    parts.append(
-        flow_box(flow_col(1), row3, FLOW_W * 3 + 40, "teardown removes the container, the image,",
-                 "the nginx route and the reports on this page", "gone")
-    )
-    parts.append("</svg>")
-    return "".join(parts)
-
+# Runs before any of the page is painted. It does two things and nothing else:
+# it says that JavaScript is available, which is what reveals the theme
+# control, and it puts a stored theme choice on the root element so a reload
+# cannot flash the other theme first. localStorage throws rather than returning
+# nothing in a browser that blocks site data, so the whole thing is guarded and
+# a failure simply leaves the page following the system.
+BOOT_SCRIPT = """(function () {
+  var root = document.documentElement;
+  root.setAttribute("data-js", "on");
+  try {
+    var stored = localStorage.getItem("arax-preview-theme");
+    if (stored === "light" || stored === "dark") {
+      root.setAttribute("data-theme", stored);
+    }
+  } catch (error) {
+    // Storage is blocked. The system preference decides, which is the default.
+  }
+})();"""
 
 out = []
 out.append("<!DOCTYPE html>")
@@ -1239,25 +1231,33 @@ out.append(CSS)
 out.append("</style>")
 out.append("</head>")
 out.append("<body>")
+# First thing in the body, so the stored choice is on the root element before
+# anything is painted and a reload cannot flash the wrong theme.
+out.append("<script>")
+out.append(BOOT_SCRIPT)
+out.append("</script>")
 out.append("<div class=\"wrap\">")
 
+out.append("<div class=\"top\">")
+out.append("<div>")
 out.append("<h1>ARAX preview environments</h1>")
 out.append(
     "<p class=\"subtitle\">" + esc(HOST_NAME) + ", per pull request deployments for "
     "<a href=\"https://github.com/" + esc(repo) + "\">" + esc(repo) + "</a></p>"
 )
 out.append("<p class=\"spec\">" + esc(HOST_SPEC) + "</p>")
-
-out.append("<h2>About</h2>")
-out.append("<div class=\"prose\">")
-out.append(
-    "<p>This host runs disposable copies of ARAX, one per open pull request, so a change can be "
-    "used before it is merged. It is meant for the developers and reviewers of "
-    "<a href=\"https://github.com/" + esc(repo) + "\">" + esc(repo) + "</a>, who need to try a "
-    "pull request live rather than read a diff and guess. Every pull request can get its own "
-    "running ARAX with the real databases, reachable at a public URL, and it is removed when the "
-    "pull request closes.</p>"
-)
+out.append("</div>")
+# The control is hidden until the boot script above says there is JavaScript to
+# run it, because a reader who cannot switch themes should not be shown a
+# switch. Aria-pressed carries which one is on for a screen reader, and the
+# boot script has already applied the stored choice by the time this renders.
+out.append("<div class=\"themes\" id=\"theme-switch\" role=\"group\" aria-label=\"Colour theme\">")
+for choice, label in (("system", "System"), ("light", "Light"), ("dark", "Dark")):
+    out.append(
+        "<button type=\"button\" data-theme-choice=\"" + choice + "\" aria-pressed=\"false\">"
+        + label + "</button>"
+    )
+out.append("</div>")
 out.append("</div>")
 
 out.append("<h2>How it works</h2>")
@@ -1298,9 +1298,6 @@ out.append(
     "members of the repository can trigger one, and the results are posted back on the pull "
     "request.</p>"
 )
-
-out.append("<h2>Flow</h2>")
-out.append("<div class=\"flow\">" + flow_svg() + "</div>")
 
 out.append("<h2>Host</h2>")
 out.append("<div class=\"tiles\" id=\"host-tiles\">")
@@ -1469,6 +1466,61 @@ out.append("</div>")
 # browser with JavaScript turned off loses the live updates and nothing else.
 # ---------------------------------------------------------------------------
 SCRIPT = """(function () {
+  var THEME_KEY = "arax-preview-theme";
+  var themeSwitch = document.getElementById("theme-switch");
+
+  function storedChoice() {
+    try {
+      var value = localStorage.getItem(THEME_KEY);
+      return (value === "light" || value === "dark") ? value : "system";
+    } catch (error) {
+      return "system";
+    }
+  }
+
+  function paintChoice(choice) {
+    if (!themeSwitch) { return; }
+    var buttons = themeSwitch.querySelectorAll("button[data-theme-choice]");
+    Array.prototype.forEach.call(buttons, function (button) {
+      var mine = button.getAttribute("data-theme-choice") === choice;
+      button.setAttribute("aria-pressed", mine ? "true" : "false");
+    });
+  }
+
+  function applyChoice(choice) {
+    var root = document.documentElement;
+    if (choice === "light" || choice === "dark") {
+      root.setAttribute("data-theme", choice);
+    } else {
+      // System: no attribute at all, so prefers-color-scheme decides again.
+      root.removeAttribute("data-theme");
+    }
+    try {
+      if (choice === "light" || choice === "dark") {
+        localStorage.setItem(THEME_KEY, choice);
+      } else {
+        localStorage.removeItem(THEME_KEY);
+      }
+    } catch (error) {
+      // The choice still applies to this page, it just cannot be remembered.
+    }
+    paintChoice(choice);
+  }
+
+  if (themeSwitch) {
+    paintChoice(storedChoice());
+    themeSwitch.addEventListener("click", function (event) {
+      var node = event.target;
+      while (node && node !== themeSwitch) {
+        if (node.getAttribute && node.getAttribute("data-theme-choice")) {
+          applyChoice(node.getAttribute("data-theme-choice"));
+          return;
+        }
+        node = node.parentNode;
+      }
+    });
+  }
+
   if (typeof fetch !== "function") { return; }
   var STALE_AFTER = 60;
   var sample = document.getElementById("host-sample");
