@@ -1211,7 +1211,7 @@ tr.bad-row td { color: var(--bad); }
 .pv-head .sha a { color: var(--dim); }
 .pv-head .health { margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
                    color: var(--dim); }
-.dot { width: 8px; height: 8px; background: var(--dim); display: inline-block; flex: none; }
+.dot { width: 8px; height: 8px; background: var(--dim); display: inline-block; flex: none; border-radius: 50%; }
 .dot.ok { background: var(--ok); }
 .dot.bad { background: var(--bad); }
 .pv .kv { margin-top: 12px; }
