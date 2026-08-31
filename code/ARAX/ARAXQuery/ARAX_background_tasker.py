@@ -51,6 +51,8 @@ class ARAXBackgroundTasker:
         if self.run_meta_kg_refresh:
             meta_kg_refresh_counter = 0
 
+        load_file_path = os.path.dirname(os.path.abspath(__file__))+"/ARAX_background_tasker_loadlog.txt"
+
         # Clear the table of existing queries
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Clearing any "
                "potential stale queries in ongoing query table")
@@ -140,6 +142,22 @@ class ARAXBackgroundTasker:
                    FREQ_META_KG_REFRESH_SEC:
                     meta_kg_refresh_counter = 0
 
+                try:
+                    lines = []
+                    with open(load_file_path) as outfile:
+                        for line in outfile:
+                            lines.append(line.strip())
+                    if len(lines) > 60:
+                        with open(load_file_path, "w") as outfile:
+                            iline = len(lines) - 60
+                            while iline < len(lines):
+                                print(lines[iline], file=outfile)
+                                iline += 1
+                except Exception as error:
+                    eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
+                        f"Failed to trim {load_file_path}: "
+                        f"{error}")
+
             ongoing_queries_by_addr = query_tracker.check_ongoing_queries()
             n_ongoing_queries = 0
             n_clients = 0
@@ -157,8 +175,20 @@ class ARAXBackgroundTasker:
                 time_to_sleep = 2
 
             load_tuple = psutil.getloadavg()
-
+            cpu_percent = psutil.cpu_percent(interval=1)
+            system_memory = psutil.virtual_memory()
+            available_gb = round(system_memory.available / (1024 ** 3),1)
+            total_gb = system_memory.total / (1024 ** 3)
             timestamp = str(datetime.datetime.now().isoformat())
+            try:
+                with open(load_file_path, "a") as outfile:
+                    print(f"{timestamp}\t{n_ongoing_queries}\t{cpu_percent}\t"
+                          f"{available_gb}\t{total_gb}", file=outfile)
+            except Exception as error:
+                eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
+                       f"Failed to write info to {load_file_path}: "
+                       f"{error}")
+
             eprint(f"{timestamp}: INFO: ARAXBackgroundTasker "
                    f"(PID {my_pid}) status: waiting. Current "
                    f"load is {load_tuple}, n_clients={n_clients}, "
