@@ -124,6 +124,11 @@ class ARAXQueryTracker:
 
 
     ##################################################################################################
+    def get_code_location(self):
+        location = os.path.dirname(os.path.abspath(__file__))
+        return location
+
+    ##################################################################################################
     def create_tables(self):
         eprint("WARNING: Tried to call create_tables, but this is potentially catastrophic. Manual code change required")
         #### Uncomment this if you really want to drop tables, but be super careful!!
