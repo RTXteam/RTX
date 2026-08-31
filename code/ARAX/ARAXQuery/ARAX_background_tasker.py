@@ -147,9 +147,9 @@ class ARAXBackgroundTasker:
                     with open(load_file_path) as outfile:
                         for line in outfile:
                             lines.append(line.strip())
-                    if len(lines) > 60:
+                    if len(lines) > 60 * 24:
                         with open(load_file_path, "w") as outfile:
-                            iline = len(lines) - 60
+                            iline = len(lines) - 60 * 24
                             while iline < len(lines):
                                 print(lines[iline], file=outfile)
                                 iline += 1
