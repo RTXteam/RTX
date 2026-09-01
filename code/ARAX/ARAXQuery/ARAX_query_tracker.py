@@ -328,7 +328,8 @@ class ARAXQueryTracker:
             timestamp = str(datetime.now().isoformat())
             eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker create_tracker_entry")
 
-        MAX_CONCURRENT_FROM_REMOTE = 45
+        cpu_count = psutil.cpu_count()
+        MAX_CONCURRENT_FROM_REMOTE = round(cpu_count * 50 / 16)
 
         instance_info = self.get_instance_info()
 
