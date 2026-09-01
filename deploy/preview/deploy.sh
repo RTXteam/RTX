@@ -272,6 +272,30 @@ is_sha() {
     [ "${#value}" -ge 7 ]
 }
 
+# verify_checkout [remove]
+# Confirms the container is actually on the PR head commit. A pull request
+# whose branch predates the BUILD_BRANCH support in CICD-Dockerfile clones and
+# runs master instead of the branch, and the build still succeeds, so without
+# this check the preview would silently serve master while claiming to be the
+# PR. Only runs when a real sha was passed. With "remove", a mismatch tears
+# down the wrong container and image first, so no master build is left serving
+# the PR's URL. Refuses (naming both shas) on a mismatch.
+verify_checkout() {
+    local cleanup="${1:-}"
+    is_sha "${SHA}" || return 0
+    local actual
+    actual="$(container_git git rev-parse HEAD | tr -d '[:space:]')" || actual=""
+    if [ "${actual}" = "${SHA}" ]; then
+        log "verified ${CONTAINER} is on the PR head ${SHA}"
+        return 0
+    fi
+    if [ "${cleanup}" = "remove" ]; then
+        ${DOCKER} rm -f "${CONTAINER}" >/dev/null 2>&1 || true
+        ${DOCKER} rmi -f "${IMAGE}" >/dev/null 2>&1 || true
+    fi
+    refuse "the preview built ${actual:-an unknown commit}, not the PR head ${SHA}. This PR's DockerBuild/CICD-Dockerfile predates the BUILD_BRANCH support, so the build ran master instead of the branch. Rebase the branch onto master, then comment /deploy."
+}
+
 # wait_healthy <seconds>
 # Polls the container's own status endpoint. Returns non-zero on timeout so
 # the caller can decide what to log and how to fail.
@@ -581,6 +605,9 @@ if [ "${MODE}" = "fast" ]; then
     if ! container_git "git checkout --detach ${SHA}"; then
         die "git checkout ${SHA} failed inside ${CONTAINER}. Rerun deploy.sh with --force to rebuild this preview from scratch."
     fi
+    # Insurance: the checkout above should leave HEAD exactly on SHA. Keep the
+    # container as is on a mismatch, it was a working preview before this run.
+    verify_checkout
 
     # 4. Database symlinks, in case the new commit changed config_dbs.json
     #    in a way that only adds or renames a symlink.
@@ -663,6 +690,10 @@ else
         --label "arax.preview.sha=${SHA}" \
         --label "arax.preview.created=${CREATED}" \
         "${IMAGE}"
+
+    # The image clones the repo and checks out BUILD_BRANCH itself, so confirm
+    # it actually landed on the PR head before spending minutes on services.
+    verify_checkout remove
 
     # 6. Start the services inside it
     log "step 6/10 setting up databases and starting the services"
