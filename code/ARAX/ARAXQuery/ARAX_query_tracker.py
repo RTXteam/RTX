@@ -479,16 +479,37 @@ class ARAXQueryTracker:
                 ongoing_queries_by_remote_address[remote_address] += 1
             else:
                 status = 'This PID no longer exists'
-                entries_to_delete.append(ongoing_query.query_id)
+                entries_to_delete.append(ongoing_query)
 
-        for query_id in entries_to_delete:
-            attributes = {
-                'status': 'Died',
-                'message_id': None,
-                'message_code': 'FoundDead',
-                'code_description': 'The PID for this query is no longer running. Reason unknown.'
-            }
-            self.update_tracker_entry(query_id, attributes)
+        # In order to avoid race conditions, we will check again
+        if len(entries_to_delete) > 0:
+            #### Sleep for a second to allow other threads to finish their work
+            time.sleep(1)
+            #### Enclosing in commits seems to reduce the problem of threads being out of sync
+            self.session.commit()
+            ongoing_queries = self.session.query(ARAXOngoingQuery).filter(
+                ARAXOngoingQuery.domain == instance_info['domain'],
+                ARAXOngoingQuery.hostname == instance_info['hostname'],
+                ARAXOngoingQuery.instance_name == instance_info['instance_name']).all()
+            self.session.commit()
+
+            for entry_to_delete in entries_to_delete:
+                query_id = entry_to_delete.query_id
+                still_there = False
+                for ongoing_query in ongoing_queries:
+                    if ongoing_query.query_id == query_id:
+                        still_there = True
+                        break
+                if still_there:
+                    attributes = {
+                        'status': 'Died',
+                        'message_id': None,
+                        'message_code': 'MissingPID',
+                        'code_description': 'The PID for this query is no longer running. Reason unknown.'
+                    }
+                    self.update_tracker_entry(query_id, attributes)
+                else:
+                    eprint(f"INFO: Ongoing query {query_id} was already removed by another thread")
 
         return ongoing_queries_by_remote_address
 
