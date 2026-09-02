@@ -176,14 +176,23 @@ class ARAXBackgroundTasker:
 
             load_tuple = psutil.getloadavg()
             cpu_percent = psutil.cpu_percent(interval=1)
+            cpu_count = psutil.cpu_count()
             system_memory = psutil.virtual_memory()
             available_gb = round(system_memory.available / (1024 ** 3),1)
             total_gb = system_memory.total / (1024 ** 3)
             timestamp = str(datetime.datetime.now().isoformat())
+
+            matching_processes = []
+            for proc in psutil.process_iter(attrs=['cmdline']):
+                for arg in proc.info['cmdline']:
+                    if 'child' in arg:
+                        matching_processes.append(proc)
+                        eprint(f"  === {arg}")
+
             try:
                 with open(load_file_path, "a") as outfile:
                     print(f"{timestamp}\t{n_ongoing_queries}\t{cpu_percent}\t"
-                          f"{available_gb}\t{total_gb}", file=outfile)
+                          f"{available_gb}\t{total_gb}\t{cpu_count}\t{len(matching_processes)}", file=outfile)
             except Exception as error:
                 eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
                        f"Failed to write info to {load_file_path}: "
