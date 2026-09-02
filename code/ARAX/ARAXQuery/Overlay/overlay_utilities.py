@@ -4,7 +4,8 @@ import itertools
 import os
 import sys
 import traceback
-from typing import Optional
+from collections import defaultdict
+from typing import NamedTuple, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.response import Response
@@ -99,25 +100,70 @@ def determine_virtual_qedge_option_group(subject_qnode_key: str, object_qnode_ke
     else:
         return None
 
-def update_results_with_overlay_edge(subject_knode_key: str, object_knode_key: str, kedge_key: str, message: Message, log: ARAXResponse, reasoner_id: str="infores:arax"):
+class _BindingPlace(NamedTuple):
+    """One spot an overlay edge could be bound: one analysis's bindings for one qedge of one result."""
+    edge_bindings: list       # the live list an overlay edge gets appended to
+    covered_curies: set       # curies bound to that qedge's subject and object in this result
+    bound_kedge_keys: set     # edge keys already bound here
+
+
+def update_results_with_overlay_edges(kedge_keys_by_node_pair: dict[tuple[str, str], str], message: Message, log: ARAXResponse, reasoner_id: str="infores:arax"):
+    """
+    Bind each overlay edge to every result whose bound nodes it connects.
+
+    kedge_keys_by_node_pair maps a (subject curie, object curie) pair to the key of the overlay
+    edge that was built for that pair. A caller creating many overlay edges should collect them
+    and call this once instead of calling update_results_with_overlay_edge() per edge, because
+    the results are walked a single time here: the cost stops growing with the edge count.
+    """
+    if not kedge_keys_by_node_pair or not message.results:
+        return
     try:
-        new_edge_binding = EdgeBinding(id=kedge_key, attributes=[])
+        qedges = message.query_graph.edges
+
+        # Walk the results once, recording every place an overlay edge could be bound, indexed by
+        # covered curie so that each overlay edge only has to examine the relevant places.
+        binding_places_by_curie: defaultdict[str, list[_BindingPlace]] = defaultdict(list)
         for result in message.results:
             for analysis in result.analyses:
                 if reasoner_id != analysis.resource_id:
                     continue
-                for qedge_key in analysis.edge_bindings.keys():
-                    if kedge_key not in set([x.id for x in analysis.edge_bindings[qedge_key]]):
-                        if qedge_key not in message.query_graph.edges:
-                            log.warning("Encountered a result edge binding which does not exist in the query graph")
-                            continue
-                        subject_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].subject]]
-                        object_nodes = [x.id for x in result.node_bindings[message.query_graph.edges[qedge_key].object]]
-                        result_nodes = set(subject_nodes).union(set(object_nodes))
-                        if subject_knode_key in result_nodes and object_knode_key in result_nodes:
-                            analysis.edge_bindings[qedge_key].append(new_edge_binding)
+                for qedge_key, edge_bindings in analysis.edge_bindings.items():
+                    qedge = qedges.get(qedge_key)
+                    if qedge is None:
+                        # Warned once per affected result/analysis/qedge: the volume of these is
+                        # itself the signal that something upstream has gone wrong.
+                        log.warning("Encountered a result edge binding which does not exist in the query graph")
+                        continue
+                    covered_curies = {binding.id for binding in result.node_bindings[qedge.subject]}
+                    covered_curies |= {binding.id for binding in result.node_bindings[qedge.object]}
+                    binding_place = _BindingPlace(edge_bindings, covered_curies,
+                                                  {binding.id for binding in edge_bindings})
+                    for curie in covered_curies:
+                        binding_places_by_curie[curie].append(binding_place)
+
+        # A place only qualifies if it covers both endpoints of the edge, so scan whichever
+        # endpoint is indexed in fewer places and confirm the other one by membership.
+        for (subject_knode_key, object_knode_key), kedge_key in kedge_keys_by_node_pair.items():
+            subject_places = binding_places_by_curie.get(subject_knode_key)
+            object_places = binding_places_by_curie.get(object_knode_key)
+            if not subject_places or not object_places:
+                continue
+            if len(subject_places) <= len(object_places):
+                places_to_scan, curie_to_confirm = subject_places, object_knode_key
+            else:
+                places_to_scan, curie_to_confirm = object_places, subject_knode_key
+            new_edge_binding = EdgeBinding(id=kedge_key, attributes=[])
+            for place in places_to_scan:
+                if curie_to_confirm in place.covered_curies and kedge_key not in place.bound_kedge_keys:
+                    place.edge_bindings.append(new_edge_binding)
+                    place.bound_kedge_keys.add(kedge_key)
     except Exception:
         tb = traceback.format_exc()
-        log.error(f"Error encountered when modifying results with overlay edge (subject_knode_key)-kedge_key-(object_knode_key):\n{tb}",
+        log.error(f"Error encountered when modifying results with overlay edges:\n{tb}",
                     error_code="UncaughtError")
+
+
+def update_results_with_overlay_edge(subject_knode_key: str, object_knode_key: str, kedge_key: str, message: Message, log: ARAXResponse, reasoner_id: str="infores:arax"):
+    update_results_with_overlay_edges({(subject_knode_key, object_knode_key): kedge_key}, message, log, reasoner_id)
 
