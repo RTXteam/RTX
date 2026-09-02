@@ -960,3 +960,119 @@ def test_ARAXRanker_test23_asset378():
 
 if __name__ == "__main__":
     pytest.main(['-v'])
+
+
+# ── Statistical Significance Qualifier tests ───────────────────────────
+
+def test_significance_qualifier_score_mapping():
+    """Verify ordinal score mapping for all five significance bands."""
+    from ARAX_ranker import _significance_band_scores
+    scores = []
+    for band in ["very_strongly_significant", "strongly_significant",
+                 "significant", "suggestive", "not_significant"]:
+        score = _significance_band_scores[band]
+        assert 0.0 <= score <= 1.0
+        scores.append(score)
+    # Scores must be strictly descending (more significant = higher score)
+    assert scores == sorted(scores, reverse=True)
+    assert scores[-1] == 0.0  # not_significant → 0
+
+
+def test_significance_qualifier_lookup():
+    """Verify _get_significance_qualifier_value finds the qualifier in edge.qualifiers."""
+    from openapi_server.models.qualifier import Qualifier
+    ranker = ARAXRanker()
+
+    # In edge.qualifiers (expected Retriever path)
+    edge_q = Edge(subject="A", object="B", predicate="biolink:related_to",
+                  qualifiers=[Qualifier(qualifier_type_id="biolink:statistical_significance_qualifier",
+                                        qualifier_value="significant")])
+    assert ranker._get_significance_qualifier_value(edge_q) == "significant"
+
+    # biolink:-prefixed value
+    edge_prefixed = Edge(subject="A", object="B", predicate="biolink:related_to",
+                         qualifiers=[Qualifier(qualifier_type_id="biolink:statistical_significance_qualifier",
+                                               qualifier_value="biolink:significant")])
+    assert ranker._get_significance_qualifier_value(edge_prefixed) == "significant"
+
+    # No qualifier at all
+    edge_none = Edge(subject="A", object="B", predicate="biolink:related_to")
+    assert ranker._get_significance_qualifier_value(edge_none) is None
+
+
+def test_significance_qualifier_lookup_edge_cases():
+    """Verify lookup handles edge cases: multiple qualifiers, unrecognized values, empty lists."""
+    from openapi_server.models.qualifier import Qualifier
+    ranker = ARAXRanker()
+
+    # Multiple qualifiers on same edge — only pick the significance one
+    edge_multi_q = Edge(subject="A", object="B", predicate="biolink:related_to",
+                        qualifiers=[
+                            Qualifier(qualifier_type_id="biolink:object_direction_qualifier",
+                                      qualifier_value="increased"),
+                            Qualifier(qualifier_type_id="biolink:statistical_significance_qualifier",
+                                      qualifier_value="suggestive"),
+                            Qualifier(qualifier_type_id="biolink:object_aspect_qualifier",
+                                      qualifier_value="activity_or_abundance"),
+                        ])
+    assert ranker._get_significance_qualifier_value(edge_multi_q) == "suggestive"
+
+    # Empty qualifiers list (not None)
+    edge_empty_q = Edge(subject="A", object="B", predicate="biolink:related_to", qualifiers=[])
+    assert ranker._get_significance_qualifier_value(edge_empty_q) is None
+
+    # Qualifier present but value is an unrecognized enum string
+    edge_bad = Edge(subject="A", object="B", predicate="biolink:related_to",
+                    qualifiers=[Qualifier(qualifier_type_id="biolink:statistical_significance_qualifier",
+                                          qualifier_value="totally_significant")])
+    # Lookup returns the raw value; the scorer maps unknown → 0.0
+    assert ranker._get_significance_qualifier_value(edge_bad) == "totally_significant"
+
+
+def test_significance_qualifier_additive_with_pvalue():
+    """Verify the qualifier contributes additively alongside a numeric pValue attribute."""
+    from openapi_server.models.attribute import Attribute
+    from openapi_server.models.qualifier import Qualifier
+    ranker = ARAXRanker()
+
+    # Edge with both a pValue attribute AND a significance qualifier
+    edge = Edge(subject="A", object="B", predicate="biolink:related_to",
+                attributes=[Attribute(attribute_type_id="biolink:pValue",
+                                      original_attribute_name="pValue",
+                                      value="0.001")],
+                qualifiers=[Qualifier(qualifier_type_id="biolink:statistical_significance_qualifier",
+                                      qualifier_value="very_strongly_significant")])
+    confidence = ranker.edge_attribute_score_combiner("A--biolink:related_to--B--infores:test", edge)
+    assert 0.0 < confidence <= 1.0
+    # Should be higher than base score of 0.5 since both signals are positive
+    assert confidence > 0.5
+
+    # Edge with only pValue (no qualifier) — should still be > 0.5 but lower contribution
+    edge_no_qual = Edge(subject="A", object="B", predicate="biolink:related_to",
+                        attributes=[Attribute(attribute_type_id="biolink:pValue",
+                                              original_attribute_name="pValue",
+                                              value="0.001")])
+    confidence_no_qual = ranker.edge_attribute_score_combiner("A--biolink:related_to--B--infores:test", edge_no_qual)
+    assert confidence >= confidence_no_qual  # additive qualifier can only help or be neutral
+
+
+@pytest.mark.slow
+def test_significance_qualifier_ranking_integration():
+    """End-to-end: expand, rank, verify results are scored and sorted."""
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=MONDO:0005148, key=n00)",
+        "add_qnode(categories=biolink:Gene, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(edge_key=e00, kp=infores:retriever)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}}
+    araxq = ARAXQuery()
+    araxq.query(query)
+    response = araxq.response
+    assert response.status == 'OK'
+    message = response.envelope.message
+    assert len(message.results) > 0
+    scores = [r.analyses[0].score for r in message.results]
+    assert scores == sorted(scores, reverse=True)
