@@ -110,6 +110,7 @@ class ComputeNGD:
                     canonicalized_curie_lookup = self._get_canonical_curies_map(list(involved_curies))
                     self.load_curie_to_pmids_data(canonicalized_curie_lookup.values())
                     added_flag = False  # check to see if any edges where added
+                    kedge_keys_by_node_pair = {}  # bound to results in one pass once the loop finishes
                     self.response.debug(f"Looping through {len(node_pairs_to_evaluate)} node pairs and calculating NGD values")
                     # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
                     for (subject_curie, object_curie) in self._order_node_pairs(node_pairs_to_evaluate,
@@ -214,10 +215,9 @@ class ComputeNGD:
                             edge.qedge_keys = qedge_keys
                             self.message.knowledge_graph.edges[id] = edge
 
-                            #FW: check if results exist then modify them with the ngd edge
-                            # import pdb;pdb.set_trace()
-                            if self.message.results is not None and len(self.message.results) > 0:
-                                ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
+                            kedge_keys_by_node_pair[(subject_key, object_key)] = id
+
+                    ou.update_results_with_overlay_edges(kedge_keys_by_node_pair, self.message, self.response)
 
                     # Now add a q_edge the query_graph since I've added an extra edge to the KG
                     if added_flag:
@@ -253,6 +253,7 @@ class ComputeNGD:
             canonicalized_curie_lookup = self._get_canonical_curies_map(list(involved_curies))
             self.load_curie_to_pmids_data(canonicalized_curie_lookup.values())
             added_flag = False  # check to see if any edges where added
+            kedge_keys_by_node_pair = {}  # bound to results in one pass once the loop finishes
             self.response.debug(f"Looping through {len(node_pairs_to_evaluate)} node pairs and calculating NGD values")
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (subject_curie, object_curie) in self._order_node_pairs(node_pairs_to_evaluate,
@@ -357,10 +358,9 @@ class ComputeNGD:
                     edge.qedge_keys = qedge_keys
                     self.message.knowledge_graph.edges[id] = edge
 
-                    #FW: check if results exist then modify them with the ngd edge
-                    # import pdb;pdb.set_trace()
-                    if self.message.results is not None and len(self.message.results) > 0:
-                        ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
+                    kedge_keys_by_node_pair[(subject_key, object_key)] = id
+
+            ou.update_results_with_overlay_edges(kedge_keys_by_node_pair, self.message, self.response)
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
             if added_flag:
