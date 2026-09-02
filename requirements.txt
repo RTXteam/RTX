@@ -12,7 +12,7 @@ ipython-cypher==0.2.6
 networkx==2.8.8
 graphviz==0.20.1
 lxml==4.9.4  # UPGRADED: 4.9.1 doesn't build on Python 3.12, 4.9.4 has pre-built wheels
-nltk==3.7
+nltk==3.9.3
 scipy==1.15.3  # UPGRADED: scipy 1.10.1 doesn't support Python 3.12
 scikit-learn==1.7.1 # compatible with Python 3.12
 connexion==2.14.2
