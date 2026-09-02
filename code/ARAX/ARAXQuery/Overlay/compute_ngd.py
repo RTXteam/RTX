@@ -5,9 +5,9 @@ import json
 import math
 import sys
 import os
-import sqlite3
 import traceback
 import numpy as np
+from collections import OrderedDict
 from datetime import datetime
 import itertools
 import copy
@@ -18,6 +18,8 @@ import time
 # relative imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuery directory
+from util import connect_to_sqlite_read_only
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.attribute import Attribute as EdgeAttribute
 from openapi_server.models.edge import Edge
@@ -34,6 +36,13 @@ RTXConfig = RTXConfiguration()
 
 class ComputeNGD:
 
+    # Ceiling on how many PMIDs may sit in the materialized-set cache at once (see
+    # _get_pmid_set). A python set of ints costs roughly 45 bytes per element, so this holds the
+    # cache to about 22 MB. 
+    # Raising it only helps all-pairs overlays over many heavily-cited
+    # curies, which are small enough to be fast either way.
+    PMID_SET_CACHE_MAX_PMIDS = 500000
+
     #### Constructor
     def __init__(self, response, message, parameters):
         self.response = response
@@ -43,6 +52,8 @@ class ComputeNGD:
         self.ngd_database_name = RTXConfig.curie_to_pmids_path.split('/')[-1]
         self.connection, self.cursor = self._setup_ngd_database()
         self.curie_to_pmids_map = dict()
+        self.pmid_set_cache = OrderedDict()  # canonical curie -> set of its PMIDs; see _get_pmid_set
+        self.pmid_set_cache_n_pmids = 0
         self.ngd_normalizer = 3.5e+7 * 20  # From PubMed home page there are 35 million articles (based on the information on https://pubmed.ncbi.nlm.nih.gov/ on 08/09/2023); avg 20 MeSH terms per article
         self.first_ngd_log = True
 
@@ -101,7 +112,8 @@ class ComputeNGD:
                     added_flag = False  # check to see if any edges where added
                     self.response.debug(f"Looping through {len(node_pairs_to_evaluate)} node pairs and calculating NGD values")
                     # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
-                    for (subject_curie, object_curie) in node_pairs_to_evaluate:
+                    for (subject_curie, object_curie) in self._order_node_pairs(node_pairs_to_evaluate,
+                                                                               canonicalized_curie_lookup):
                         # create the edge attribute if it can be
                         canonical_subject_curie = canonicalized_curie_lookup.get(subject_curie, subject_curie)
                         canonical_object_curie = canonicalized_curie_lookup.get(object_curie, object_curie)
@@ -243,7 +255,8 @@ class ComputeNGD:
             added_flag = False  # check to see if any edges where added
             self.response.debug(f"Looping through {len(node_pairs_to_evaluate)} node pairs and calculating NGD values")
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
-            for (subject_curie, object_curie) in node_pairs_to_evaluate:
+            for (subject_curie, object_curie) in self._order_node_pairs(node_pairs_to_evaluate,
+                                                                       canonicalized_curie_lookup):
                 # create the edge attribute if it can be
                 canonical_subject_curie = canonicalized_curie_lookup.get(subject_curie, subject_curie)
                 canonical_object_curie = canonicalized_curie_lookup.get(object_curie, object_curie)
@@ -379,7 +392,14 @@ class ComputeNGD:
                 canonicalized_curie_map = self._get_canonical_curies_map([key for key in self.message.knowledge_graph.nodes.keys()])
                 self.load_curie_to_pmids_data(canonicalized_curie_map.values())
                 self.response.debug("Looping through edges and calculating NGD values")
-                for edge in self.message.knowledge_graph.edges.values():
+                # Same grouping as _order_node_pairs, for the same reason. Which edge gets
+                # decorated first does not matter here -- every edge only gains attributes of its
+                # own -- so take them in whatever order lets the PMID set cache do its job.
+                edges_in_pmid_set_order = sorted(
+                    self.message.knowledge_graph.edges.values(),
+                    key=lambda kg_edge: self._pair_sort_key(kg_edge.subject, kg_edge.object,
+                                                           canonicalized_curie_map))
+                for edge in edges_in_pmid_set_order:
                     # Make sure the attributes are not None
                     if not edge.attributes:
                         edge.attributes = []  # should be an array, but why not a list?
@@ -436,11 +456,78 @@ class ComputeNGD:
             start_index += chunk_size
             stop_index += chunk_size
 
+    def _get_pmid_set(self, curie: str) -> set[int]:
+        """
+        Return the set of PMIDs for a canonical curie, reusing an already-built set when possible.
+
+        Turning a PMID list into a set costs time proportional to the length of that list, and
+        the hub-shaped curies in this database are long: MONDO:0005148 (type 2 diabetes) carries
+        217k PMIDs, which is about 8 ms and an 8 MB hash table every time it is built. Every curie
+        takes part in many of the node pairs being scored -- in a creative-mode query one pinned
+        curie appears in *all* of them -- so its set is built once here and then reused.
+
+        The cache is bounded by total PMIDs rather than by entry count, so that a handful of hub
+        curies cannot quietly grow it; entries leave least-recently-used first, and the two most
+        recent always stay so the pair being scored right now can never evict itself.
+        """
+        pmid_set = self.pmid_set_cache.get(curie)
+        if pmid_set is not None:
+            self.pmid_set_cache.move_to_end(curie)
+            return pmid_set
+
+        pmid_set = set(self.curie_to_pmids_map[curie])
+        self.pmid_set_cache[curie] = pmid_set
+        self.pmid_set_cache_n_pmids += len(pmid_set)
+        while (self.pmid_set_cache_n_pmids > self.PMID_SET_CACHE_MAX_PMIDS
+               and len(self.pmid_set_cache) > 2):
+            _, evicted_set = self.pmid_set_cache.popitem(last=False)
+            self.pmid_set_cache_n_pmids -= len(evicted_set)
+        return pmid_set
+
+    def _pair_sort_key(self, first_curie: str, second_curie: str, canonical_curie_lookup: dict) -> tuple:
+        """
+        Sort key that puts node pairs sharing their longer-PMID-list curie next to each other.
+
+        See _order_node_pairs for why that matters. Longer lists sort first, so the most
+        expensive sets are the ones whose reuse is packed tightest, and the curies themselves
+        break ties so the ordering is deterministic from one run to the next.
+        """
+        def pmid_count(curie):
+            pmids = self.curie_to_pmids_map.get(canonical_curie_lookup.get(curie, curie))
+            return len(pmids) if pmids else 0
+
+        first_count = pmid_count(first_curie)
+        second_count = pmid_count(second_curie)
+        if first_count >= second_count:
+            return -first_count, first_curie, second_curie
+        return -second_count, second_curie, first_curie
+
+    def _order_node_pairs(self, node_pairs, canonical_curie_lookup: dict) -> list:
+        """
+        Order node pairs so that pairs sharing an expensive curie are scored consecutively.
+
+        calculate_ngd_fast reuses PMID sets through a bounded cache, and a bounded cache only
+        pays off when consecutive calls tend to ask for the same curies. Scoring pairs in
+        whatever order they arrive is fine for the one-pinned-node shape that creative mode
+        produces, because every pair contains that node anyway. It is not fine for an all-pairs
+        overlay across N nodes: pairs arrive from a set, so an arbitrary order can evict a curie's
+        set moments before the next pair needs it again, and a group of hub-sized curies would be
+        rebuilt over and over. Grouping every pair under whichever of its two curies has the
+        longer PMID list keeps each expensive set alive for the whole run of pairs that uses it,
+        which caps set construction at one build per curie per group regardless of query shape.
+        """
+        return sorted(node_pairs,
+                      key=lambda node_pair: self._pair_sort_key(node_pair[0], node_pair[1],
+                                                                canonical_curie_lookup))
+
     def calculate_ngd_fast(self, subject_curie, object_curie):
         if subject_curie in self.curie_to_pmids_map and object_curie in self.curie_to_pmids_map:
-            pubmed_ids_for_curies = [self.curie_to_pmids_map.get(subject_curie),
-                                     self.curie_to_pmids_map.get(object_curie)]
-            pubmed_id_set = set(self.curie_to_pmids_map.get(subject_curie)).intersection(set(self.curie_to_pmids_map.get(object_curie)))
+            # Set construction, not intersection, is what an NGD calculation actually costs, so
+            # both sides come from the cache in _get_pmid_set rather than being rebuilt per pair.
+            # set.intersection already walks the smaller set and probes the larger one, so there
+            # is nothing to gain from ordering the two operands here.
+            pubmed_id_sets = [self._get_pmid_set(subject_curie), self._get_pmid_set(object_curie)]
+            marginal_counts, pubmed_id_set = self._compute_marginal_and_joint_counts(pubmed_id_sets)
             n_pmids = len(pubmed_id_set)
             if n_pmids > 30:
                 if self.first_ngd_log:
@@ -452,21 +539,26 @@ class ComputeNGD:
                 #     limited_pmids.add(val)
                 # pubmed_id_set = limited_pmids
                 pubmed_id_set = set([val for val in itertools.islice(pubmed_id_set, 30)])
-            counts_res = self._compute_marginal_and_joint_counts(pubmed_ids_for_curies)
-            return self._compute_multiway_ngd_from_counts(*counts_res), pubmed_id_set
+            return self._compute_multiway_ngd_from_counts(marginal_counts, n_pmids), pubmed_id_set
         else:
             return math.nan, {}
 
     @staticmethod
-    def _compute_marginal_and_joint_counts(concept_pubmed_ids: list[list[int]]) -> list:
+    def _compute_marginal_and_joint_counts(concept_pubmed_id_sets: list[set[int]]) -> tuple[list[int], set[int]]:
+        """
+        Return the per-concept PMID counts and the PMIDs common to every concept.
+
+        Takes sets that the caller already holds, rather than raw PMID lists, because building
+        those sets is the expensive part and callers get them from _get_pmid_set, which caches.
+        The joint PMIDs come back as a set rather than a count because the caller needs a sample
+        of them for the edge's publications attribute; functools.reduce over two or more sets
+        always returns a fresh set, so the caller cannot accidentally hand back a cached one.
+        """
         def reducer(pmids_intersec_cumul: set[int], pmids_next: set[int]) -> set[int]:
             return pmids_intersec_cumul.intersection(pmids_next)
-        # Convert concept_pubmed_ids to a list of sets first
-        pubmed_id_sets: list[set[int]] = [set(pmid_list) for pmid_list in concept_pubmed_ids]
-        # Reduce over set[int], which is now type-consistent
-        joint_pubmed_ids: set[int] = functools.reduce(reducer, pubmed_id_sets)
-        marginal_counts = [len(s) for s in pubmed_id_sets]
-        return [marginal_counts, len(joint_pubmed_ids)]
+        joint_pubmed_ids: set[int] = functools.reduce(reducer, concept_pubmed_id_sets)
+        marginal_counts = [len(s) for s in concept_pubmed_id_sets]
+        return marginal_counts, joint_pubmed_ids
 
     def _compute_multiway_ngd_from_counts(self, marginal_counts: list[int],
                                           joint_count: int) -> float:
@@ -507,9 +599,11 @@ class ComputeNGD:
     def _setup_ngd_database(self):
         ngd_filepath = os.path.dirname(os.path.abspath(__file__)) + "/../../KnowledgeSources/NormalizedGoogleDistance/"
         db_path_local = f"{ngd_filepath}{self.ngd_database_name}"
-        # Set up a connection to the database so it's ready for use
+        # Set up a connection to the database so it's ready for use. ARAX only ever reads this
+        # file, so it is opened read-only; see util.connect_to_sqlite_read_only for why that
+        # matters when dozens of forked query processes open it at once.
         try:
-            connection = sqlite3.connect(db_path_local)
+            connection = connect_to_sqlite_read_only(db_path_local)
             cursor = connection.cursor()
         except Exception:
             self.response.error("Encountered an error connecting "
