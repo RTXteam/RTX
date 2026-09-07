@@ -24,7 +24,9 @@ usage() {
 Usage: deploy.sh [--force|--fast-only] <PR> <BRANCH> [SHA]
 
   PR           pull request number, for example 2853
-  BRANCH       branch name on RTXteam/RTX, for example issue-2846
+  BRANCH       branch name on RTXteam/RTX, for example issue-2846, or a
+               pull/<N>/head ref for a PR whose branch lives on a fork
+               (GitHub mirrors every PR head on the upstream repository)
   SHA          optional commit sha. With a sha the script can fast redeploy an
                already running preview instead of rebuilding its image.
   --force      always rebuild the image, even when a fast redeploy is possible.
@@ -546,7 +548,10 @@ decide_mode() {
     fi
     log "${CONTAINER} image was built from ${BUILD_SHA}"
 
-    if ! container_git git fetch origin; then
+    # Also fetch the PR's mirror ref: a fork PR's commits are reachable only
+    # through refs/pull/<N>/head, a plain fetch of branch heads misses them.
+    # PR passed require_int above, so it is safe inside the nested command.
+    if ! container_git "git fetch origin && git fetch origin +refs/pull/${PR}/head"; then
         fall_back "git fetch origin failed inside ${CONTAINER}" \
             "git fetch origin failed inside ${CONTAINER}, comment /deploy for a full rebuild"
         return 0
@@ -656,9 +661,9 @@ else
 
     # 4. Build the image
     #    CICD-Dockerfile git clones RTXteam/RTX inside the image and checks out
-    #    BUILD_BRANCH, so the branch has to exist on the upstream repository.
-    #    Fork pull requests cannot work with this build and are refused by the
-    #    workflow.
+    #    BUILD_BRANCH, either a branch on the upstream repository or a
+    #    pull/<N>/head ref, which GitHub mirrors upstream for every PR
+    #    including fork PRs.
     log "step 4/10 building ${IMAGE} from branch ${BRANCH} (this takes a while)"
     # Logged here, on the full path only, right before the build. On a restart
     # there is no build, so the deploy log never mentions a build context.

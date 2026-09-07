@@ -108,10 +108,12 @@ jobs:
             });
 
             const upstream = context.repo.owner + '/' + context.repo.repo;
-            if (data.head.repo === null || data.head.repo.full_name !== upstream) {
-              await refuse('fork PRs are not supported (CICD-Dockerfile clones by branch name from RTXteam/RTX)');
-              return;
-            }
+            // A fork PR's head branch only exists on the fork, but GitHub
+            // mirrors every PR head on this repository as refs/pull/<N>/head,
+            // and CICD-Dockerfile and deploy.sh both understand that ref form.
+            // The build recipe for a fork comes from the trusted default
+            // branch checkout, never the fork (see the build context step).
+            const isFork = data.head.repo === null || data.head.repo.full_name !== upstream;
             if (data.state !== 'open') {
               await refuse('PR #' + prNumber + ' is ' + data.state + ', only open PRs can be deployed');
               return;
@@ -161,7 +163,8 @@ jobs:
             }
 
             core.setOutput('pr', String(prNumber));
-            core.setOutput('branch', data.head.ref);
+            core.setOutput('fork', isFork ? 'true' : 'false');
+            core.setOutput('branch', isFork ? 'pull/' + prNumber + '/head' : data.head.ref);
             core.setOutput('sha', data.head.sha);
             core.setOutput('html_url', data.html_url);
             core.setOutput('command', command);
@@ -234,7 +237,10 @@ jobs:
       # existed can still be previewed and a PR cannot swap the scripts that run
       # on the self-hosted runner. The PR head goes into pr-head/ and is used
       # only as the docker build context, which mirrors pytest.yml building the
-      # Dockerfile of the branch under test.
+      # Dockerfile of the branch under test. For a fork PR the build context is
+      # the trusted checkout instead: the fork still supplies the code the
+      # image clones (via refs/pull/<N>/head), but never the build recipe that
+      # executes on this box.
       - name: Checkout the scripts
         uses: RTXteam/checkout@v4
         with:
@@ -243,7 +249,7 @@ jobs:
       - name: Checkout the PR head as the build context
         uses: RTXteam/checkout@v4
         with:
-          ref: ${{ steps.resolve.outputs.sha }}
+          ref: ${{ steps.resolve.outputs.fork == 'true' && format('refs/pull/{0}/head', steps.resolve.outputs.pr) || steps.resolve.outputs.sha }}
           path: pr-head
           fetch-depth: 1
 
@@ -254,7 +260,7 @@ jobs:
           BRANCH: ${{ steps.resolve.outputs.branch }}
           SHA: ${{ steps.resolve.outputs.sha }}
           COMMAND: ${{ steps.resolve.outputs.command }}
-          PREVIEW_BUILD_CONTEXT: ${{ github.workspace }}/pr-head/DockerBuild
+          PREVIEW_BUILD_CONTEXT: ${{ steps.resolve.outputs.fork == 'true' && format('{0}/DockerBuild', github.workspace) || format('{0}/pr-head/DockerBuild', github.workspace) }}
         run: |
           set -o pipefail
           # The workflow never lets deploy.sh choose. /deploy means rebuild and

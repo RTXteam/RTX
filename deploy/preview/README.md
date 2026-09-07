@@ -112,7 +112,7 @@ described in **What /redeploy does** below.
   |    preflight: previews on the box, disk, memory, port       |
   |    docker build -f DockerBuild/CICD-Dockerfile              |
   |      (the image git clones RTXteam/RTX and checks out       |
-  |       BUILD_BRANCH, so the branch must live upstream)       |
+  |       BUILD_BRANCH, a branch name or a pull/<N>/head)       |
   |         |                                                   |
   |         v                                                   |
   |    docker run -d -i -t --name rtx_pr_2853                   |
@@ -608,10 +608,14 @@ sudo bash deploy/preview/install-nginx-include.sh
 
 ## Limitations
 
-- **Same repository branches only.** `DockerBuild/CICD-Dockerfile` clones `RTXteam/RTX` inside
-  the image and checks out `BUILD_BRANCH`, so a branch that only exists on a fork cannot be
-  built. The workflow refuses fork pull requests with a clear message rather than failing
-  halfway through a build.
+- **Fork PRs deploy from GitHub's mirror ref.** A fork PR's branch never exists upstream, but
+  GitHub mirrors its head on `RTXteam/RTX` as `refs/pull/<N>/head`, and the build checks that
+  out. Two rules keep this sane. First, the docker build context for a fork is the default
+  branch copy of `DockerBuild/`, never the fork's, so a fork cannot change what executes on
+  the box outside its container (a fork PR that edits `DockerBuild/` will not see those edits
+  in its own preview). Second, the preview container still mounts `config_secrets.json`, so
+  read a fork's diff before commenting `/deploy` on it. The comment gate already limits the
+  command to repository members.
 - **One box, shared resources.** Previews run on the same EC2 instance as the pytest workflow
   and as every other preview. Several previews at once compete for memory and disk. The preflight
   and the per-container caps described under **Resource guards** keep that from taking the host
