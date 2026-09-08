@@ -184,10 +184,11 @@ class ARAXBackgroundTasker:
 
             matching_processes = []
             for proc in psutil.process_iter(attrs=['cmdline']):
-                for arg in proc.info['cmdline']:
-                    if 'child' in arg:
-                        matching_processes.append(proc)
-                        eprint(f"  === {arg}")
+                if proc.info['cmdline'] is not None:
+                    for arg in proc.info['cmdline']:
+                        if 'child' in arg:
+                            matching_processes.append(proc)
+                            eprint(f"  === {arg}")
 
             try:
                 with open(load_file_path, "a") as outfile:
