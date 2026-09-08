@@ -10,7 +10,7 @@ import ujson
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
-from util import get_arax_edge_key
+from util import get_arax_edge_key, connect_to_sqlite_read_only
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")  # code directory
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -406,7 +406,9 @@ class ARAXDecorator:
         sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Tier0'])
         sqlite_name = rtxc.tier0_sqlite_path.split('/')[-1]
         sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
-        connection = sqlite3.connect(sqlite_file_path)
+        # Decoration only reads this file, and on a busy instance every forked query process
+        # opens it; see util.connect_to_sqlite_read_only for what a read-only open saves.
+        connection = connect_to_sqlite_read_only(sqlite_file_path)
         cursor = connection.cursor()
         return connection, cursor
 

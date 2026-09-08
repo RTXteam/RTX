@@ -52,14 +52,16 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
                     if line == "":
                         continue
                     parts = line.split("\t")
-                    if len(parts) != 5:
+                    if len(parts) != 7:
                         continue
                     load_data.append({
                         "timestamp": parts[0],
                         "n_ongoing_queries": int(parts[1]),
                         "cpu_percent": float(parts[2]),
                         "available_gb": float(parts[3]),
-                        "total_gb": float(parts[4])
+                        "total_gb": float(parts[4]),
+                        "n_cpus": int(parts[5]),
+                        "n_child_processes": int(parts[6])
                     })
             return load_data
 
