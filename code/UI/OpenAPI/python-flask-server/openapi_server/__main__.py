@@ -57,6 +57,7 @@ import setproctitle
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -101,6 +102,7 @@ def instrument(app, host, port):
     FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=provider)
     HTTPXClientInstrumentor().instrument(tracer_provider=provider)
     RequestsInstrumentor().instrument(tracer_provider=provider)
+    SQLite3Instrumentor().instrument(tracer_provider=provider)
     AioHttpClientInstrumentor().instrument(tracer_provider=provider)
 
 
