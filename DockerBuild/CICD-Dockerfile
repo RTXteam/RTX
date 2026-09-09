@@ -30,7 +30,11 @@ RUN chmod -R 700 /home/rt/.ssh
 RUN mkdir -p /mnt/data/orangeboard/production
 RUN chown -R rt:rt /mnt/data/orangeboard/production
 RUN su - rt -c "cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git"
-RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && git checkout ${BUILD_BRANCH}"
+# BUILD_BRANCH is normally a branch name on RTXteam/RTX. A pull request ref
+# like pull/2859/head also works: GitHub mirrors every PR head on the upstream
+# repository, which is how the preview deploy builds fork PRs. Clones do not
+# fetch pull refs, so that form needs a fetch first and a detached checkout.
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && case '${BUILD_BRANCH}' in pull/*) git fetch origin refs/${BUILD_BRANCH} && git checkout --detach FETCH_HEAD ;; *) git checkout ${BUILD_BRANCH} ;; esac"
 RUN chown -R rt:rt /mnt/data/orangeboard/production/RTX
 
 # install apache2 and copy config file
