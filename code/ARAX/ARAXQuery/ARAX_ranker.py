@@ -356,8 +356,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                     normalized_score = self.edge_attribute_score_normalizer(edge_attribute.original_attribute_name, edge_attribute.value)
                 else:
                     normalized_score = self.edge_attribute_score_normalizer(edge_attribute.attribute_type_id, edge_attribute.value)
-                if edge_attribute.attribute_type_id == "biolink:publications" and data_source == "infores:semmeddb":
-                    # only publications from semmeddb are used to calculate the confidence in this way
+                if edge_attribute.attribute_type_id == "biolink:publications":
                     normalized_score = self.edge_attribute_publication_normalizer(edge_attribute.attribute_type_id, edge_attribute.value)
 
                 #  Collect scores from attributes that we used to calculate the final confidence
@@ -367,7 +366,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                 elif self.known_attributes_to_trust.get(edge_attribute.attribute_type_id, None):
                     if normalized_score > 0:
                         edge_attribute_score_list.append(normalized_score * self.known_attributes_to_trust[edge_attribute.attribute_type_id])
-                elif edge_attribute.attribute_type_id == "biolink:publications" and data_source == "infores:semmeddb":
+                elif edge_attribute.attribute_type_id == "biolink:publications":
                     if normalized_score > 0:
                         edge_attribute_score_list.append(normalized_score)
                 else:
@@ -431,10 +430,10 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             pub_value = 0.0001
         else:
             pub_value = np.log(n_publications)
-            max_value = 1.0
-            curve_steepness = 3.16993
-            logistic_midpoint = 1.60943 # log(5) = 1.60943 meaning having 5 publications is a mid point
-            normalized_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
+        max_value = 1.0
+        curve_steepness = 3.16993
+        logistic_midpoint = 1.60943 # log(5) = 1.60943 meaning having 5 publications is a mid point
+        normalized_value = max_value / float(1 + np.exp(-curve_steepness * (pub_value - logistic_midpoint)))
         return normalized_value
 
     def __normalize_probability_treats(self, value):
