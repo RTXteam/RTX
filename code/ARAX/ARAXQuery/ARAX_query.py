@@ -303,13 +303,12 @@ class ARAXQuery:
                        f"trapi_version={self.rtxConfig.trapi_version}")
 
         #### Log which SRI endpoints NodeSynonymizer is wired to, next to the
-        #### RTXConfiguration line above. These are hardcoded class attributes
-        #### (issue #2833 pointed Node Normalizer at the Translator
-        #### ElasticSearch deployment), so this shows the exact endpoint the
-        #### running instance will call. Reading the class attribute does not
-        #### instantiate the synonymizer or make any network call.
+        #### RTXConfiguration line above. The Node Normalizer URL follows the
+        #### deployment tier (issues #2833 / #2585), so this shows the exact
+        #### endpoint this instance will call. Resolving reads the
+        #### RTXConfiguration singleton and makes no network call.
         response.debug(f"NodeSynonymizer says "
-                       f"NODE_NORMALIZER_URL={NodeSynonymizer.NODE_NORMALIZER_URL}, "
+                       f"NODE_NORMALIZER_URL={NodeSynonymizer.resolve_node_normalizer_url()}, "
                        f"NAME_RESOLVER_URL={NodeSynonymizer.NAME_RESOLVER_URL}")
 
         #### Create an empty envelope
