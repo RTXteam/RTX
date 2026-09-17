@@ -36,6 +36,10 @@ RTXConfig = RTXConfiguration()
 
 class ComputeNGD:
 
+    # Directory for all NGD-related SQLite databases.
+    NGD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "..", "..", "KnowledgeSources", "NormalizedGoogleDistance")
+
     # Ceiling on how many PMIDs may sit in the materialized-set cache at once (see
     # _get_pmid_set). A python set of ints costs roughly 45 bytes per element, so this holds the
     # cache to about 22 MB. 
@@ -49,13 +53,21 @@ class ComputeNGD:
         self.message = message
         self.parameters = parameters
         self.global_iter = 0
-        self.ngd_database_name = RTXConfig.curie_to_pmids_path.split('/')[-1]
-        self.connection, self.cursor = self._setup_ngd_database()
+
+        # curie_to_pmids database (used for on-the-fly NGD computation)
+        self.curie_to_pmids_db_name = RTXConfig.curie_to_pmids_path.split('/')[-1]
+        self.curie_to_pmids_connection, self.curie_to_pmids_cursor = self._setup_curie_to_pmids_database()
         self.curie_to_pmids_map = dict()
         self.pmid_set_cache = OrderedDict()  # canonical curie -> set of its PMIDs; see _get_pmid_set
         self.pmid_set_cache_n_pmids = 0
         self.ngd_normalizer = 3.5e+7 * 20  # From PubMed home page there are 35 million articles (based on the information on https://pubmed.ncbi.nlm.nih.gov/ on 08/09/2023); avg 20 MeSH terms per article
+        self._log_normalizer = math.log(self.ngd_normalizer)
         self.first_ngd_log = True
+
+        # curie_ngd database (precomputed NGD values + shared PMIDs; used for fast NGD lookup)
+        self.curie_ngd_db_name = RTXConfig.curie_ngd_path.split('/')[-1]
+        self.curie_ngd_connection, self.curie_ngd_cursor = self._setup_curie_ngd_database()
+        self.precomputed_ngd_cache = {}
 
     def compute_ngd(self):
         """
@@ -112,6 +124,7 @@ class ComputeNGD:
                     added_flag = False  # check to see if any edges where added
                     kedge_keys_by_node_pair = {}  # bound to results in one pass once the loop finishes
                     self.response.debug(f"Looping through {len(node_pairs_to_evaluate)} node pairs and calculating NGD values")
+                    defined_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
                     for (subject_curie, object_curie) in self._order_node_pairs(node_pairs_to_evaluate,
                                                                                canonicalized_curie_lookup):
@@ -134,11 +147,9 @@ class ComputeNGD:
                             # make the edge, add the attribute
 
                             # edge properties
-                            now = datetime.now()
                             edge_type = "biolink:occurs_together_in_literature_with"
                             qedge_keys = [parameters['virtual_relation_label']]
                             relation = parameters['virtual_relation_label']
-                            defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
                             subject_key = subject_curie
                             object_key = object_curie
 
@@ -255,6 +266,7 @@ class ComputeNGD:
             added_flag = False  # check to see if any edges where added
             kedge_keys_by_node_pair = {}  # bound to results in one pass once the loop finishes
             self.response.debug(f"Looping through {len(node_pairs_to_evaluate)} node pairs and calculating NGD values")
+            defined_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
             for (subject_curie, object_curie) in self._order_node_pairs(node_pairs_to_evaluate,
                                                                        canonicalized_curie_lookup):
@@ -278,11 +290,9 @@ class ComputeNGD:
                     # make the edge, add the attribute
 
                     # edge properties
-                    now = datetime.now()
                     edge_type = "biolink:occurs_together_in_literature_with"
                     qedge_keys = [parameters['virtual_relation_label']]
                     relation = parameters['virtual_relation_label']
-                    defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
                     subject_key = subject_curie
                     object_key = object_curie
                     # now actually add the virtual edges in
@@ -449,10 +459,14 @@ class ComputeNGD:
         for num in range(num_chunks):
             chunk = curies[start_index:stop_index] if stop_index <= len(curies) else curies[start_index:]
             curie_list_str = ", ".join([f"'{curie}'" for curie in chunk if "'" not in curie])
-            self.cursor.execute(f"SELECT * FROM curie_to_pmids WHERE curie in ({curie_list_str})")
-            rows = self.cursor.fetchall()
+            self.curie_to_pmids_cursor.execute(f"SELECT * FROM curie_to_pmids WHERE curie in ({curie_list_str})")
+            rows = self.curie_to_pmids_cursor.fetchall()
             for row in rows:
-                self.curie_to_pmids_map[row[0]] = json.loads(row[1])  # PMID list is stored as JSON string in sqlite db
+                raw = row[1]
+                if isinstance(raw, bytes):
+                    self.curie_to_pmids_map[row[0]] = np.frombuffer(raw, dtype=np.int32)
+                else:
+                    self.curie_to_pmids_map[row[0]] = json.loads(raw)
             start_index += chunk_size
             stop_index += chunk_size
 
@@ -520,7 +534,61 @@ class ComputeNGD:
                       key=lambda node_pair: self._pair_sort_key(node_pair[0], node_pair[1],
                                                                 canonical_curie_lookup))
 
+    def _setup_curie_ngd_database(self):
+        """Open a read-only connection to the precomputed curie_ngd database"""
+        db_path = os.path.join(self.NGD_DIR, self.curie_ngd_db_name)
+        try:
+            connection = connect_to_sqlite_read_only(db_path)
+            cursor = connection.cursor()
+            self.response.debug(f"Connected to precomputed curie_ngd database: {self.curie_ngd_db_name}")
+            return connection, cursor
+        except Exception:
+            self.response.debug("Could not connect to curie_ngd database")
+            return None, None
+
+    def _lookup_precomputed_ngd(self, subject_curie, object_curie):
+        """
+        Look up precomputed NGD value and shared PMIDs from the curie_ngd database.
+        Returns (ngd_value, set_of_shared_pmids) if found, or (None, None) if not.
+        """
+        if self.curie_ngd_cursor is None:
+            return None, None
+
+        for source, target in [(subject_curie, object_curie), (object_curie, subject_curie)]:
+            if source in self.precomputed_ngd_cache:
+                neighbor_map = self.precomputed_ngd_cache[source]
+            else:
+                try:
+                    self.curie_ngd_cursor.execute(
+                        "SELECT ngd FROM curie_ngd WHERE curie = ?", (source,)
+                    )
+                    row = self.curie_ngd_cursor.fetchone()
+                except Exception:
+                    return None, None
+                if not row:
+                    self.precomputed_ngd_cache[source] = {}
+                    continue
+                neighbor_map = {}
+                for entry in json.loads(row[0]):
+                    n_curie = entry[0]
+                    n_ngd = entry[1]
+                    n_pmids = frozenset(entry[2]) if len(entry) >= 3 else frozenset()
+                    neighbor_map[n_curie] = (n_ngd, n_pmids)
+                self.precomputed_ngd_cache[source] = neighbor_map
+
+            if target in neighbor_map:
+                ngd_val, shared_pmids = neighbor_map[target]
+                return ngd_val, shared_pmids
+
+        return None, None
+
     def calculate_ngd_fast(self, subject_curie, object_curie):
+        # Fast lookup: try precomputed NGD + shared PMIDs from curie_ngd
+        ngd_val, shared_pmids = self._lookup_precomputed_ngd(subject_curie, object_curie)
+        if ngd_val is not None:
+            return ngd_val, shared_pmids
+
+        # On-the-fly computation: compute NGD from curie_to_pmids
         if subject_curie in self.curie_to_pmids_map and object_curie in self.curie_to_pmids_map:
             # Set construction, not intersection, is what an NGD calculation actually costs, so
             # both sides come from the cache in _get_pmid_set rather than being rebuilt per pair.
@@ -534,11 +602,7 @@ class ComputeNGD:
                     #self.response.debug(f"{n_pmids} publications found for edge ({subject_curie})-[]-({object_curie}) limiting to 30...")
                     self.response.debug("More than 30 publications found for some edges limiting to 30...")
                     self.first_ngd_log = False
-                # limited_pmids = set()
-                # for i, val in enumerate(itertools.islice(pubmed_id_set, 30)):
-                #     limited_pmids.add(val)
-                # pubmed_id_set = limited_pmids
-                pubmed_id_set = set([val for val in itertools.islice(pubmed_id_set, 30)])
+                pubmed_id_set = set(itertools.islice(pubmed_id_set, 30))
             return self._compute_multiway_ngd_from_counts(marginal_counts, n_pmids), pubmed_id_set
         else:
             return math.nan, {}
@@ -551,31 +615,25 @@ class ComputeNGD:
         Takes sets that the caller already holds, rather than raw PMID lists, because building
         those sets is the expensive part and callers get them from _get_pmid_set, which caches.
         The joint PMIDs come back as a set rather than a count because the caller needs a sample
-        of them for the edge's publications attribute; functools.reduce over two or more sets
-        always returns a fresh set, so the caller cannot accidentally hand back a cached one.
+        of them for the edge's publications attribute.
         """
-        def reducer(pmids_intersec_cumul: set[int], pmids_next: set[int]) -> set[int]:
-            return pmids_intersec_cumul.intersection(pmids_next)
-        joint_pubmed_ids: set[int] = functools.reduce(reducer, concept_pubmed_id_sets)
+        if len(concept_pubmed_id_sets) == 2:
+            joint_pubmed_ids = concept_pubmed_id_sets[0] & concept_pubmed_id_sets[1]
+        else:
+            joint_pubmed_ids = functools.reduce(set.intersection, concept_pubmed_id_sets)
         marginal_counts = [len(s) for s in concept_pubmed_id_sets]
         return marginal_counts, joint_pubmed_ids
 
     def _compute_multiway_ngd_from_counts(self, marginal_counts: list[int],
                                           joint_count: int) -> float:
-        # Make sure that things are within the right domain for the logs
-        # Should also make sure things are not negative, but I'll just do this with a ValueError
-        if None in marginal_counts:
+        if None in marginal_counts or 0 in marginal_counts or joint_count == 0:
             return math.nan
-        elif 0 in marginal_counts or 0. in marginal_counts:
+        try:
+            log_marginals = [math.log(c) for c in marginal_counts]
+            return (max(log_marginals) - math.log(joint_count)) / \
+                   (self._log_normalizer - min(log_marginals))
+        except ValueError:
             return math.nan
-        elif joint_count == 0 or joint_count == 0.:
-            return math.nan
-        else:
-            try:
-                return (max([math.log(count) for count in marginal_counts]) - math.log(joint_count)) / \
-                   (math.log(self.ngd_normalizer) - min([math.log(count) for count in marginal_counts]))
-            except ValueError:
-                return math.nan
 
     def _get_canonical_curies_map(self, curies):
         self.response.debug("Canonicalizing curies of relevant nodes using NodeSynonymizer")
@@ -596,25 +654,27 @@ class ComputeNGD:
                     canonical_curies_map[input_curie] = input_curie
             return canonical_curies_map
 
-    def _setup_ngd_database(self):
-        ngd_filepath = os.path.dirname(os.path.abspath(__file__)) + "/../../KnowledgeSources/NormalizedGoogleDistance/"
-        db_path_local = f"{ngd_filepath}{self.ngd_database_name}"
-        # Set up a connection to the database so it's ready for use. ARAX only ever reads this
-        # file, so it is opened read-only; see util.connect_to_sqlite_read_only for why that
-        # matters when dozens of forked query processes open it at once.
+    def _setup_curie_to_pmids_database(self):
+        """Open a read-only connection to the curie_to_pmids database"""
+        db_path = os.path.join(self.NGD_DIR, self.curie_to_pmids_db_name)
         try:
-            connection = connect_to_sqlite_read_only(db_path_local)
+            connection = connect_to_sqlite_read_only(db_path)
             cursor = connection.cursor()
         except Exception:
             self.response.error("Encountered an error connecting "
-                                "to ngd sqlite database",
+                                "to curie_to_pmids sqlite database",
                                 error_code="DatabaseSetupIssue")
             return None, None
         else:
             return connection, cursor
 
     def _close_database(self):
-        if self.cursor:
-            self.cursor.close()
-        if self.connection:
-            self.connection.close()
+        """Close both database connections (curie_to_pmids and curie_ngd)"""
+        if self.curie_to_pmids_cursor:
+            self.curie_to_pmids_cursor.close()
+        if self.curie_to_pmids_connection:
+            self.curie_to_pmids_connection.close()
+        if self.curie_ngd_cursor:
+            self.curie_ngd_cursor.close()
+        if self.curie_ngd_connection:
+            self.curie_ngd_connection.close()
