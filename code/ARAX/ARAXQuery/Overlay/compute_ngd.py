@@ -508,7 +508,7 @@ class ComputeNGD:
         """
         def pmid_count(curie):
             pmids = self.curie_to_pmids_map.get(canonical_curie_lookup.get(curie, curie))
-            return len(pmids) if pmids else 0
+            return len(pmids) if pmids is not None else 0
 
         first_count = pmid_count(first_curie)
         second_count = pmid_count(second_curie)
