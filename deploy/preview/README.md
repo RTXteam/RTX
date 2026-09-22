@@ -121,6 +121,7 @@ described in **What /redeploy does** below.
   |      -v databases  -v config_secrets.json                   |
   |         |                                                   |
   |         +-> ARAX_database_manager.py   (db symlinks)        |
+  |         +-> maturity_override.txt      (staging, ci KPs)    |
   |         +-> kp_info_cacher.py          (KP info cache)      |
   |         +-> service apache2 start                           |
   |         +-> service RTX_OpenAPI_production start            |
@@ -176,11 +177,11 @@ changed and points out that the installed packages and the Dockerfile are frozen
 and the answer is `/deploy`.
 
 A fast redeploy checks the repository clone inside the container out on the target commit as user
-`rt` with a detached HEAD, reruns `ARAX_database_manager.py` and `kp_info_cacher.py`, and restarts
-`RTX_OpenAPI_production` and `RTX_Complete`. Apache is left alone, because it serves the UI
-straight from that working tree and picks up UI changes with no restart. The nginx snippet is
-rewritten so its header names the new commit, and nginx is only reloaded when the routing itself
-changed.
+`rt` with a detached HEAD, reruns `ARAX_database_manager.py`, rewrites `code/maturity_override.txt`,
+reruns `kp_info_cacher.py`, and restarts `RTX_OpenAPI_production` and `RTX_Complete`. Apache is left
+alone, because it serves the UI straight from that working tree and picks up UI changes with no
+restart. The nginx snippet is rewritten so its header names the new commit, and nginx is only
+reloaded when the routing itself changed.
 
 The gate compares the target against the commit the image was built from, read from the
 `arax.preview.sha` label rather than the commit currently checked out. `pip install` runs only at
