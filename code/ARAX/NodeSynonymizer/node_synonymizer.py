@@ -94,23 +94,29 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
       NOTE: RENCI is used because it exposes /bulk-lookup, which this
       module relies on.
 
-    The Node Normalizer and Name Resolver URLs are hardcoded:
-      - NodeNorm:     https://nodenorm-es.ci.transltr.io   (Translator ES, #2833)
+    The Name Resolver URL is hardcoded; the Node Normalizer URL follows
+    the deployment tier:
+      - NodeNorm:     NODE_NORMALIZER_URL_BY_MATURITY, keyed by the ARAX
+                      maturity (RTXConfiguration, imported lazily), so
+                      arax.test talks to the test tier NodeNorm and
+                      arax.ci to the CI tier. When that import fails,
+                      NODE_NORMALIZER_URL is the fallback (Translator ES
+                      CI host, #2833).
       - NameResolver: https://name-resolution-sri.renci.org   (RENCI)
 
-    Why hardcode (no env vars, no constructor overrides, no RTXConfiguration):
-      1. Node Normalizer uses the Translator ElasticSearch deployment
-         (#2833), which replaces the retired Redis nodenorm services.
+    Why this shape (no env vars, no constructor overrides):
+      1. Each ARAX tier should normalize against its own tier's NodeNorm,
+         the same rule the Test Harness follows. The maturity map encodes
+         that in one place.
+      2. The lazy, failure-tolerant import keeps module import cheap and
+         degrades to the single hardcoded fallback when RTXConfiguration
+         cannot load. The separately maintained standalone package
+         (Translator-CATRAX/node-synonymizer) carries its own constants.
          Name Resolver stays on RENCI because it needs /bulk-lookup.
-      2. One URL per service keeps this module dependency-free:
-         no RTXConfiguration, no config_dbs.json, no maturity-based
-         branching. That is a prerequisite for extracting this file
-         as a standalone PyPI package that Pathfinder, DrugBankNER,
-         and other repos can import directly.
-      3. If we ever need to point at a different endpoint (test
-         environment, private mirror), subclassing and overriding
-         `NODE_NORMALIZER_URL` / `NAME_RESOLVER_URL` is trivial and
-         explicit, without hiding the behavior in env vars or configs.
+      3. To point at a different endpoint (private mirror), subclass and
+         override `NODE_NORMALIZER_URL` (changes the fallback) or
+         `resolve_node_normalizer_url()` (pins the URL outright), explicit
+         rather than hidden in env vars or configs.
 
     The return contracts (get_canonical_curies, get_equivalent_nodes,
     get_normalizer_results) are preserved so downstream ARAX callers
@@ -119,6 +125,49 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
 
     NODE_NORMALIZER_URL = "https://nodenorm-es.ci.transltr.io"
     NAME_RESOLVER_URL = "https://name-resolution-sri.renci.org"
+
+    # one Node Normalizer deployment per Translator maturity tier.
+    # production still runs the pre-ElasticSearch service; point it at an
+    # ES host once ITRB stands one up (nodenorm-es.transltr.io has no DNS
+    # as of 2026-09-16).
+    NODE_NORMALIZER_URL_BY_MATURITY = {
+        "development": "https://nodenorm-es.ci.transltr.io",
+        "staging": "https://nodenorm-es.ci.transltr.io",
+        "testing": "https://nodenorm-es.test.transltr.io",
+        "production": "https://nodenorm.transltr.io/1.4",
+    }
+
+    # resolved once per class by resolve_node_normalizer_url() and shared
+    # by every instance, so the many bare NodeSynonymizer() call sites do
+    # not repeat the maturity lookup
+    _resolved_node_normalizer_url: Optional[str] = None
+
+    @classmethod
+    def resolve_node_normalizer_url(cls) -> str:
+        """Return the Node Normalizer URL for this deployment's maturity.
+
+        The maturity comes from RTXConfiguration (arax.test -> "testing"
+        -> nodenorm-es.test.transltr.io, and so on). The import is lazy
+        and failure-tolerant on purpose: importing this module must stay
+        cheap, and if RTXConfiguration cannot load or read its config the
+        NODE_NORMALIZER_URL class attribute is the fallback. The
+        separately maintained standalone package carries its own copy of
+        these constants and is unaffected.
+        """
+        # cache per class (not via inheritance), so a subclass that
+        # overrides NODE_NORMALIZER_URL resolves its own value
+        if cls.__dict__.get("_resolved_node_normalizer_url") is None:
+            url = cls.NODE_NORMALIZER_URL
+            try:
+                # code/ is on sys.path from this module's header block
+                from RTXConfiguration import RTXConfiguration
+                url = cls.NODE_NORMALIZER_URL_BY_MATURITY.get(
+                    RTXConfiguration().maturity, url)
+            except Exception:
+                # keep the hardcoded fallback
+                pass
+            cls._resolved_node_normalizer_url = url
+        return cls._resolved_node_normalizer_url
 
     def __init__(self, sqlite_file_name: Optional[str] = None,
                  autocomplete: bool = True,
@@ -145,7 +194,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         # of an event loop isn't worth it.
         self._use_async = use_async
 
-        self.api_base_url = self.NODE_NORMALIZER_URL.rstrip("/")
+        self.api_base_url = self.resolve_node_normalizer_url().rstrip("/")
         self.name_resolver_url = self.NAME_RESOLVER_URL.rstrip("/")
         self.kg2_infores_curie = "infores:rtx-kg2"
         self.sri_nn_infores_curie = "infores:sri-node-normalizer"
