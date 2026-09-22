@@ -394,11 +394,9 @@ class InferUtilities:
             essence_scores = {}
             
             def _add_node_and_edge(node_ids, node_id_to_score, node_role_key, edge_subject_func, edge_object_func):
+                node_info_batch = xdtdmapping.get_nodes_info_batch(list(node_ids))
                 for canonical_id in node_ids:
-                    try:
-                        node_info = xdtdmapping.get_node_info(node_id=canonical_id)
-                    except Exception:
-                        continue
+                    node_info = node_info_batch.get(canonical_id)
                     if not node_info:
                         continue
                     categories = node_info.category
@@ -478,9 +476,26 @@ class InferUtilities:
                 path_keys[i]["qedge_keys"] = qedge_key_list
                 self.option_global_iter += 1
 
+        # ── Batch pre-fetch all node and edge metadata from the mapping DB ──
+        # Instead of querying the DB per-node/per-edge ~11,000 times (reported in issue #2893), 
+        # we gather all node IDs and edge triples in advance and then execute two batch queries.
+        all_node_ids = set()
+        all_edge_triples = set()
+        for (drug, disease), paths in top_paths.items():
+            for path_str, _score in paths:
+                elements = path_str.split("->")
+                for idx in range(0, len(elements), 2):
+                    all_node_ids.add(elements[idx])
+                for idx in range(0, len(elements) - 2, 2):
+                    all_edge_triples.add((elements[idx], elements[idx + 1], elements[idx + 2]))
+
+        node_cache = xdtdmapping.get_nodes_info_batch(list(all_node_ids))
+        edge_cache = xdtdmapping.get_edges_info_batch(list(all_edge_triples))
+
         # ── Insert explanation path nodes and edges into the knowledge graph ──
         # Each path string is "node1->predicate1->node2->predicate2->node3".
-        # We split it, look up each node/edge in the mapping DB, and insert TRAPI objects.
+        # We split it into multiple parts and use the pre-fetched caches to get the node and edge information,
+        # then insert TRAPI objects.
         essence_scores = {}
         for (drug, disease), paths in top_paths.items():
             path_added = False
@@ -491,12 +506,13 @@ class InferUtilities:
                 path_disease_curie = path[-1]  # Last element in the path is disease
                 n_elements = len(path)
 
-                # Look up each (subject, predicate, object) triple from the mapping DB.
+                # Look up each (subject, predicate, object) triple from the cached results.
                 # Each triple may return multiple edges (e.g., from different knowledge sources).
                 edges_info = []
                 break_flag = False
                 for i in range(0,n_elements-2,2):
-                    edge_info = xdtdmapping.get_edge_info(triple_id=(path[i],path[i+1],path[i+2]))
+                    triple_key = (path[i], path[i+1], path[i+2])
+                    edge_info = edge_cache.get(triple_key, [])
                     if len(edge_info) == 0:
                         break_flag = True
                     else:
@@ -511,11 +527,7 @@ class InferUtilities:
                 for i in range(path_idx+1):
                     subject_qnode_key = path_keys[path_idx]["qnode_pairs"][i][0]
                     subject_curie = edges_info[i][0].subject
-                    try:
-                        subject_node_info = xdtdmapping.get_node_info(node_id=subject_curie)
-                    except Exception:
-                        break_flag = True
-                        break
+                    subject_node_info = node_cache.get(subject_curie)
                     if subject_node_info is None:
                         break_flag = True
                         break
@@ -528,11 +540,7 @@ class InferUtilities:
                         message.knowledge_graph.nodes[subject_curie].qnode_keys.append(subject_qnode_key)
                     object_qnode_key = path_keys[path_idx]["qnode_pairs"][i][1]
                     object_curie = edges_info[i][0].object
-                    try:
-                        object_node_info = xdtdmapping.get_node_info(node_id=object_curie)
-                    except Exception:
-                        break_flag = True
-                        break
+                    object_node_info = node_cache.get(object_curie)
                     if object_node_info is None:
                         break_flag = True
                         break
@@ -627,8 +635,8 @@ class InferUtilities:
                 # carrying the xDTD model's probability_treats score as an attribute.
                 # The explanation path edges above provide supporting evidence for this prediction.
                 treat_score = top_scores.loc[(top_scores['drug_id'] == drug) & (top_scores['disease_id'] == disease)]["tp_score"].iloc[0]
-                path_drug_node_info = xdtdmapping.get_node_info(node_id=path_drug_curie)
-                path_disease_node_info = xdtdmapping.get_node_info(node_id=path_disease_curie)
+                path_drug_node_info = node_cache.get(path_drug_curie)
+                path_disease_node_info = node_cache.get(path_disease_curie)
                 
                 # essence_scores maps the "varying" node name to its score for result ranking.
                 # The "varying" node is the one predicted by the model (not the query input).

@@ -8,7 +8,10 @@ SQLite interface for mapping nodes and edges from Translator KG JSONL files
 Tables:
   NODE_MAPPING_TABLE:
     id, name, category (JSON list), equivalent_identifiers, description,
-    synonym, xref, chembl_natural_product, chembl_availability_type, chembl_black_box_warning
+    synonym, xref, information_content, taxon, symbol, full_name,
+    in_taxon (JSON list), in_taxon_label, inheritance,
+    chembl_natural_product, chembl_availability_type,
+    chembl_black_box_warning, chembl_prodrug
   EDGE_MAPPING_TABLE:
     subject, predicate, object, id, category, qualifier, publications, sources,
     resource_id (pipe-delimited), resource_role (pipe-delimited), knowledge_level,
@@ -23,15 +26,17 @@ import json
 import argparse
 import collections
 import sqlite3
-from typing import Optional, List
+from typing import Optional, List, Dict
 from tqdm import tqdm
 
 
 # Named tuples returned by get_node_info / get_edge_info
 NodeInfo = collections.namedtuple('NodeInfo', [
     'id', 'name', 'category', 'equivalent_identifiers', 'description',
-    'synonym', 'xref', 'chembl_natural_product', 'chembl_availability_type',
-    'chembl_black_box_warning'
+    'synonym', 'xref', 'information_content',
+    'taxon', 'symbol', 'full_name', 'in_taxon', 'in_taxon_label', 'inheritance',
+    'chembl_natural_product', 'chembl_availability_type',
+    'chembl_black_box_warning', 'chembl_prodrug'
 ])
 
 EdgeInfo = collections.namedtuple('EdgeInfo', [
@@ -102,9 +107,17 @@ class xDTDMappingDB:
                 description TEXT,
                 synonym TEXT,
                 xref TEXT,
+                information_content REAL,
+                taxon TEXT,
+                symbol TEXT,
+                full_name TEXT,
+                in_taxon TEXT,
+                in_taxon_label TEXT,
+                inheritance TEXT,
                 chembl_natural_product TEXT,
                 chembl_availability_type TEXT,
-                chembl_black_box_warning TEXT
+                chembl_black_box_warning TEXT,
+                chembl_prodrug TEXT
             )
         """)
 
@@ -138,7 +151,7 @@ class xDTDMappingDB:
         Uses WAL journal mode and disabled synchronous writes for bulk-load performance.
         """
         BATCH_SIZE = 50000
-        NODE_INSERT = "INSERT INTO NODE_MAPPING_TABLE VALUES (?,?,?,?,?,?,?,?,?,?)"
+        NODE_INSERT = "INSERT INTO NODE_MAPPING_TABLE VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
         EDGE_INSERT = "INSERT INTO EDGE_MAPPING_TABLE VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 
         self.conn.execute("PRAGMA journal_mode = WAL")
@@ -166,9 +179,17 @@ class xDTDMappingDB:
                     d.get('description'),
                     json.dumps(d['synonym']) if 'synonym' in d else None,
                     json.dumps(d['xref']) if 'xref' in d else None,
+                    d.get('information_content'),
+                    d.get('taxon'),
+                    d.get('symbol'),
+                    d.get('full_name'),
+                    json.dumps(d['in_taxon']) if 'in_taxon' in d else None,
+                    d.get('in_taxon_label'),
+                    d.get('inheritance'),
                     str(d['chembl_natural_product']) if 'chembl_natural_product' in d else None,
                     d.get('chembl_availability_type'),
                     d.get('chembl_black_box_warning'),
+                    str(d['chembl_prodrug']) if 'chembl_prodrug' in d else None,
                 )
                 batch.append(row)
                 count += 1
@@ -317,6 +338,97 @@ class xDTDMappingDB:
             (subject, predicate, object_id)
         )
         return [EdgeInfo._make(record) for record in cursor.fetchall()]
+
+    # ──────────────────────────────────────────────────────────────────────
+    #  Batch query methods (performance optimization for xDTD path lookups)
+    # ──────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _decode_category(raw_value):
+        """Decode a JSON-encoded category string back to a list."""
+        if raw_value is None:
+            return None
+        try:
+            return json.loads(raw_value)
+        except (json.JSONDecodeError, TypeError):
+            return raw_value
+
+    def get_nodes_info_batch(self, node_ids: List[str]) -> Dict[str, NodeInfo]:
+        """Look up multiple nodes by ID in a single query.
+
+        Args:
+            node_ids: List of node CURIEs to look up.
+        Returns:
+            Dict mapping node_id -> NodeInfo. Missing IDs are omitted.
+        """
+        if not node_ids:
+            return {}
+
+        unique_ids = list(set(node_ids))
+        result_map: Dict[str, NodeInfo] = {}
+        cat_idx = NodeInfo._fields.index('category')
+
+        CHUNK = 500
+        cursor = self.conn.cursor()
+        for start in range(0, len(unique_ids), CHUNK):
+            chunk = unique_ids[start:start + CHUNK]
+            placeholders = ','.join('?' * len(chunk))
+            cursor.execute(
+                f"SELECT * FROM NODE_MAPPING_TABLE WHERE id IN ({placeholders})", chunk
+            )
+            for row in cursor.fetchall():
+                values = list(row)
+                values[cat_idx] = self._decode_category(values[cat_idx])
+                info = NodeInfo._make(values)
+                result_map[info.id] = info
+
+        return result_map
+
+    def get_edges_info_batch(self, triples: List[tuple]) -> Dict[tuple, List[EdgeInfo]]:
+        """Look up multiple edges by (subject, predicate, object) triples in a single query.
+
+        Args:
+            triples: List of (subject, predicate, object) tuples.
+        Returns:
+            Dict mapping (subject, predicate, object) -> list of EdgeInfo.
+            Missing triples map to an empty list.
+        """
+        if not triples:
+            return {}
+
+        unique_triples = list(set(triples))
+        result_map: Dict[tuple, List[EdgeInfo]] = {t: [] for t in unique_triples}
+
+        db_triples = []
+        for t in unique_triples:
+            if t[1] == 'SELF_LOOP_RELATION':
+                result_map[t] = [EdgeInfo._make((
+                    t[0], t[1], t[2],
+                    None, None, None, None, None, None, None, None, None, None, None, None, None
+                ))]
+            else:
+                db_triples.append(t)
+
+        if not db_triples:
+            return result_map
+
+        CHUNK = 200
+        cursor = self.conn.cursor()
+        for start in range(0, len(db_triples), CHUNK):
+            chunk = db_triples[start:start + CHUNK]
+            parts = []
+            params = []
+            for s, p, o in chunk:
+                parts.append("SELECT * FROM EDGE_MAPPING_TABLE WHERE subject = ? AND predicate = ? AND object = ?")
+                params.extend([s, p, o])
+            sql = " UNION ALL ".join(parts)
+            cursor.execute(sql, params)
+            for row in cursor.fetchall():
+                edge = EdgeInfo._make(row)
+                key = (edge.subject, edge.predicate, edge.object)
+                result_map[key].append(edge)
+
+        return result_map
 
 
 # ══════════════════════════════════════════════════════════════════════════
