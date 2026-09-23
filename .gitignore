@@ -75,3 +75,9 @@ venv
 sample_names.txt
 *.log
 
+# local uv/python tooling (not part of the ARAX codebase)
+pyproject.toml
+uv.lock
+.python-version
+PLAN.md
+

@@ -11,7 +11,7 @@ import ast
 import re
 
 
-from typing import Union, Dict, Callable
+from typing import Union, Dict, Callable, Optional, Self
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
 
@@ -22,6 +22,22 @@ from openapi_server.models.edge import Edge
 
 
 edge_confidence_manual_agent = 0.90
+
+# Score mapping for the statistical significance qualifier (conservative).
+# TODO: Once all KGs populate statistical_significance_qualifier, revisit the
+# trust weight (_significance_trust_weight) — the current conservative value
+# accounts for the rollout asymmetry where qualifier-bearing edges are scored
+# against edges that lack the qualifier entirely.
+_significance_band_scores: dict[str, float] = {
+    "very_strongly_significant": 0.70,
+    "strongly_significant":      0.55,
+    "significant":               0.40,
+    "suggestive":                0.15,
+    "not_significant":           0.0,
+}
+_significance_qualifier_type_id: str = "biolink:statistical_significance_qualifier"
+# How much to trust the significance qualifier signal (conservative during rollout).
+_significance_trust_weight: float = 0.5
 
 
 def _get_query_graph_networkx_from_query_graph(query_graph: QueryGraph) -> nx.MultiDiGraph:
@@ -376,14 +392,37 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                     # add more rules in the future
                     continue 
             
-            if len(edge_attribute_score_list) == 0: # if no appropriate attribute for score calculation, set the confidence to default base score (0.5)
-                edge_confidence = base
-            else:
-                edge_confidence = _calculate_final_individual_edge_confidence(base, edge_attribute_score_list)
-        else:
+        # Check for statistical significance qualifier (carried in edge.qualifiers)
+        sig_value = self._get_significance_qualifier_value(edge)
+        if sig_value is not None:
+            sig_score = _significance_band_scores.get(sig_value, 0.0)
+            if sig_score > 0:
+                edge_attribute_score_list.append(
+                    sig_score * _significance_trust_weight
+                )
+
+        if len(edge_attribute_score_list) == 0:
             edge_confidence = base
+        else:
+            edge_confidence = _calculate_final_individual_edge_confidence(base, edge_attribute_score_list)
 
         return edge_confidence
+
+    def _get_significance_qualifier_value(self: Self, edge: Edge) -> Optional[str]:
+        """
+        Look up the statistical significance qualifier from edge.qualifiers (the
+        TRAPI path for biolink qualifier descendants). Returns the bare enum value
+        or None if not present.
+        """
+        # Check edge.qualifiers (expected path from Retriever/KPs)
+        if edge.qualifiers:
+            for q in edge.qualifiers:
+                if q.qualifier_type_id == _significance_qualifier_type_id:
+                    value = q.qualifier_value
+                    if isinstance(value, str) and value.startswith("biolink:"):
+                        return value[len("biolink:"):]
+                    return value
+        return None
 
     def edge_attribute_score_normalizer(self, edge_attribute_name: str, edge_attribute_value) -> float:
         """
