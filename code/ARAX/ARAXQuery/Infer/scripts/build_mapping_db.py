@@ -244,7 +244,7 @@ class xDTDMappingDB:
         if values[cat_idx]:
             try:
                 values[cat_idx] = json.loads(values[cat_idx])
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, TypeError):
                 pass
         return NodeInfo._make(values)
 
