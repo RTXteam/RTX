@@ -342,3 +342,125 @@ def test_tuple_bug():
 
 if __name__ == "__main__":
     pytest.main(['-v'])
+
+
+# ── Statistical Significance Qualifier tests ───────────────────────────
+
+def test_significance_qualifier_filter_ordinal():
+    """Verify ordinal removal: below-threshold edges removed, qualifier-less edges kept."""
+    from openapi_server.models.qualifier import Qualifier
+    from Filter_KG.remove_edges import RemoveEdges
+
+    response = ARAXResponse()
+    message = Message()
+    message.query_graph = QueryGraph()
+    message.query_graph.nodes = {"n0": QNode(ids=["A"]), "n1": QNode(ids=["B"])}
+    message.query_graph.edges = {"e0": QEdge(subject="n0", object="n1")}
+    message.knowledge_graph = KnowledgeGraph()
+    message.knowledge_graph.nodes = {"A": Node(), "B": Node()}
+    message.knowledge_graph.edges = {}
+
+    def _make_edge(key, sig_value):
+        quals = [Qualifier(qualifier_type_id="biolink:statistical_significance_qualifier",
+                           qualifier_value=sig_value)] if sig_value else None
+        edge = Edge(subject="A", object="B", predicate="biolink:related_to",
+                    qualifiers=quals)
+        edge.qedge_keys = ["e0"]
+        message.knowledge_graph.edges[key] = edge
+
+    _make_edge("e_sig",   "significant")
+    _make_edge("e_sugg",  "suggestive")
+    _make_edge("e_notsig","not_significant")
+    _make_edge("e_none",  None)
+
+    params = {"minimum_significance": "significant", "remove_connected_nodes": False}
+    re = RemoveEdges(response, message, params)
+    re.remove_edges_by_statistical_significance()
+
+    assert "e_sig" in message.knowledge_graph.edges
+    assert "e_sugg" not in message.knowledge_graph.edges
+    assert "e_notsig" not in message.knowledge_graph.edges
+    assert "e_none" in message.knowledge_graph.edges
+
+
+def test_significance_qualifier_filter_threshold_boundaries():
+    """Verify boundary behavior for each possible minimum_significance value."""
+    from openapi_server.models.qualifier import Qualifier
+    from Filter_KG.remove_edges import RemoveEdges
+
+    def _build_message():
+        response = ARAXResponse()
+        message = Message()
+        message.query_graph = QueryGraph()
+        message.query_graph.nodes = {"n0": QNode(ids=["A"]), "n1": QNode(ids=["B"])}
+        message.query_graph.edges = {"e0": QEdge(subject="n0", object="n1")}
+        message.knowledge_graph = KnowledgeGraph()
+        message.knowledge_graph.nodes = {"A": Node(), "B": Node()}
+        message.knowledge_graph.edges = {}
+        for band in ["very_strongly_significant", "strongly_significant",
+                     "significant", "suggestive", "not_significant"]:
+            edge = Edge(
+                subject="A", object="B", predicate="biolink:related_to",
+                qualifiers=[Qualifier(qualifier_type_id="biolink:statistical_significance_qualifier",
+                                     qualifier_value=band)])
+            edge.qedge_keys = ["e0"]
+            message.knowledge_graph.edges[f"e_{band}"] = edge
+        return response, message
+
+    # very_strongly_significant → removes everything else
+    response, message = _build_message()
+    re = RemoveEdges(response, message, {"minimum_significance": "very_strongly_significant",
+                                          "remove_connected_nodes": False})
+    re.remove_edges_by_statistical_significance()
+    assert "e_very_strongly_significant" in message.knowledge_graph.edges
+    assert len(message.knowledge_graph.edges) == 1
+
+    # not_significant → removes nothing (all at or above)
+    response, message = _build_message()
+    re = RemoveEdges(response, message, {"minimum_significance": "not_significant",
+                                          "remove_connected_nodes": False})
+    re.remove_edges_by_statistical_significance()
+    assert len(message.knowledge_graph.edges) == 5
+
+    # suggestive → removes only not_significant
+    response, message = _build_message()
+    re = RemoveEdges(response, message, {"minimum_significance": "suggestive",
+                                          "remove_connected_nodes": False})
+    re.remove_edges_by_statistical_significance()
+    assert "e_not_significant" not in message.knowledge_graph.edges
+    assert "e_suggestive" in message.knowledge_graph.edges
+    assert len(message.knowledge_graph.edges) == 4
+
+
+def test_command_definitions_includes_significance():
+    """Verify the new action is registered in command_definitions."""
+    fkg = ARAXFilterKG()
+    assert "remove_edges_by_statistical_significance" in fkg.allowable_actions
+    assert "remove_edges_by_statistical_significance" in fkg.command_definitions
+
+
+@pytest.mark.slow
+def test_significance_qualifier_filter_integration():
+    """End-to-end: expand from retriever, filter by significance, verify results."""
+    query = {"operations": {"actions": [
+        "create_message",
+        "add_qnode(name=MONDO:0005148, key=n00)",
+        "add_qnode(categories=biolink:Gene, key=n01)",
+        "add_qedge(subject=n00, object=n01, key=e00)",
+        "expand(edge_key=e00, kp=infores:retriever)",
+        "filter_kg(action=remove_edges_by_statistical_significance, "
+        "          minimum_significance=suggestive)",
+        "resultify()",
+        "return(message=true, store=false)"
+    ]}}
+    [response, message] = _do_arax_query(query)
+    assert response.status == 'OK'
+    # Verify no remaining edges have not_significant qualifier
+    for edge in message.knowledge_graph.edges.values():
+        if edge.qualifiers:
+            for q in edge.qualifiers:
+                if q.qualifier_type_id == "biolink:statistical_significance_qualifier":
+                    val = q.qualifier_value
+                    if isinstance(val, str) and val.startswith("biolink:"):
+                        val = val[len("biolink:"):]
+                    assert val != "not_significant"
