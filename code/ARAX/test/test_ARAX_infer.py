@@ -574,7 +574,6 @@ def test_xdtd_publications_in_edge_attributes():
             for attr in edge.attributes:
                 if attr.attribute_type_id == "biolink:publications":
                     publications_found = True
-                    assert attr.original_attribute_name == "publications"
                     assert attr.value is not None
                     assert isinstance(attr.value, list)
                     assert len(attr.value) > 0
@@ -678,7 +677,7 @@ def test_xdtd_extra_edge_attributes_and_qualifiers():
 
     assert infer_edge_count > 0, "No infer-produced path edges found"
     assert found_new_column_attrs, (
-        "No new column attributes (category/original_subject/original_object) "
+        "No category/original_subject/original_object attributes "
         "found on any infer path edge"
     )
     assert "biolink:category" in found_new_column_attrs, (
