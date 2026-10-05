@@ -5,7 +5,9 @@ import sys
 from openapi_server import util
 from ARAX_query_tracker import ARAXQueryTracker
 from Expand.smartapi import SmartAPI
+from Expand.trapi_query_cacher import KPQueryCacher
 from recent_uuid_manager import RecentUUIDManager
+from RTXConfiguration import RTXConfiguration
 
 
 def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=None, mode=None):  # noqa: E501
@@ -27,9 +29,42 @@ def get_status(last_n_hours=None, id_=None, terminate_pid=None, authorization=No
     :rtype: object
     """
 
-    if mode is not None and mode == 'recent_pks':
-        manager = RecentUUIDManager()
-        return manager.get_recent_uuids( ars_host=authorization, top_n_pks=last_n_hours )
+    if mode is not None:
+        if mode == 'kp_cache':
+            cacher = KPQueryCacher()
+            return cacher.list_cached_queries()
+
+        if mode == 'recent_pks':
+            manager = RecentUUIDManager()
+            return manager.get_recent_uuids( ars_host=authorization, top_n_pks=last_n_hours )
+
+        if mode == 'site_config':
+            config = RTXConfiguration()
+            return config.get_config_settings()
+
+        if mode == 'system_load':
+            query_tracker = ARAXQueryTracker()
+            location = query_tracker.get_code_location()
+            load_data = []
+            with open(os.path.join(location, "ARAX_background_tasker_loadlog.txt"), "r") as infile:
+                for line in infile:
+                    line = line.strip()
+                    if line == "":
+                        continue
+                    parts = line.split("\t")
+                    if len(parts) != 7:
+                        continue
+                    load_data.append({
+                        "timestamp": parts[0],
+                        "n_ongoing_queries": int(parts[1]),
+                        "cpu_percent": float(parts[2]),
+                        "available_gb": float(parts[3]),
+                        "total_gb": float(parts[4]),
+                        "n_cpus": int(parts[5]),
+                        "n_child_processes": int(parts[6])
+                    })
+            return load_data
+
 
     if authorization is not None and authorization == 'smartapi':
         smartapi = SmartAPI()

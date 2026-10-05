@@ -6,20 +6,14 @@ import sys
 import os
 import pytest
 from collections import Counter
-import copy
-import json
-import ast
 from typing import List, Union
 
-import numpy as np
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../ARAXQuery")
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
 
-PACKAGE_PARENT = '../../UI/OpenAPI/openapi_server'
-sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/openapi_server/models")
 from openapi_server.models.message import Message
 
 
@@ -91,16 +85,13 @@ def test_lookup():
             "query_graph": {
                 "nodes": {
                     "n0": {
-                        "categories": [
-                            "biolink:Gene"
+                        "ids": [
+                            "NCBIGene:1544"
                         ]
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:45783"
-                        ],
-                        "categories": [
-                            "biolink:SmallMolecule"
+                            "CHEBI:46195"
                         ]
                     }
                 },
@@ -128,7 +119,7 @@ def test_fill_success():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["infores:rtx-kg2"],
+                    "allowlist": ["infores:retriever"],
                     "qedge_keys": ["e01"]
                 }
             }
@@ -137,13 +128,13 @@ def test_fill_success():
             "query_graph": {
                 "nodes": {
                     "n0": {
-                        "categories": [
-                            "biolink:Gene"
+                        "ids": [
+                            "NCBIGene:677884"
                         ]
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:45783"
+                            "CHEBI:46195"
                         ],
                         "categories": [
                             "biolink:ChemicalSubstance"
@@ -173,7 +164,7 @@ def test_fill_error():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["infores:rtx-kg2"],
+                    "allowlist": ["infores:retriever"],
                     "qedge_keys": ["asdf"]
                 }
             }
@@ -227,16 +218,13 @@ def test_score():
             "query_graph": {
                 "nodes": {
                     "n0": {
-                        "categories": [
-                            "biolink:Gene"
+                        "ids": [
+                            "NCBIGene:1571"
                         ]
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:45783"
-                        ],
-                        "categories": [
-                            "biolink:SmallMolecule"
+                            "CHEBI:46195"
                         ]
                     }
                 },
@@ -264,7 +252,7 @@ def test_bind():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["infores:rtx-kg2"]
+                    "allowlist": ["infores:retriever"]
                 }
             },
             {
@@ -276,16 +264,13 @@ def test_bind():
             "query_graph": {
                 "nodes": {
                     "n0": {
-                        "categories": [
-                            "biolink:Gene"
+                        "ids": [
+                            "NCBIGene:79886"
                         ]
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:45783"
-                        ],
-                        "categories": [
-                            "biolink:ChemicalSubstance"
+                            "CHEBI:46195"
                         ]
                     }
                 },
@@ -311,7 +296,7 @@ def test_complete_results():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["infores:rtx-kg2"]
+                    "allowlist": ["infores:retriever"]
                 }
             },
             {
@@ -323,13 +308,13 @@ def test_complete_results():
             "query_graph": {
                 "nodes": {
                     "n0": {
-                        "categories": [
-                            "biolink:Gene"
+                        "ids": [
+                            "NCBIGene:122809"
                         ]
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:45783"
+                            "CHEBI:46195"
                         ],
                         "categories": [
                             "biolink:ChemicalSubstance"
@@ -358,7 +343,7 @@ def test_filter_results_top_n():
             {
                 "id": "fill",
                 "parameters": {
-                    "allowlist": ["infores:rtx-kg2"]
+                    "allowlist": ["infores:retriever"]
                 }
             },
             {
@@ -391,10 +376,7 @@ def test_filter_results_top_n():
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:45783"
-                        ],
-                        "categories": [
-                            "biolink:SmallMolecule"
+                            "CHEBI:2948"
                         ]
                     }
                 },
@@ -449,10 +431,7 @@ def test_overlay_after_lookup():
                     },
                     "n1": {
                         "ids": [
-                            "CHEBI:45783"
-                        ],
-                        "categories": [
-                            "biolink:SmallMolecule"
+                            "CHEBI:2948"
                         ]
                     }
                 },

@@ -28,7 +28,7 @@ from Overlay.predictor.predictor import predictor
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../ARAX/BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
@@ -41,7 +41,7 @@ class DTDQuerier:
         self.RTXConfig = RTXConfiguration()
         self.response = response_object
         self.synonymizer = NodeSynonymizer()
-        self.biolink_helper = BiolinkHelper()
+        self.biolink_helper = get_biolink_helper()
 
         ## check if the new model files exists in /predictor/retrain_data. If not, scp it from arax.ncats.io
         pathlist = os.path.realpath(__file__).split(os.path.sep)

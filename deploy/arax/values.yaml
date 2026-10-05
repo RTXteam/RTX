@@ -76,6 +76,6 @@ resources:
     memory: 50Gi
     cpu: 8000m
   limits:
-    memory: 58Gi
+    memory: 120Gi
     cpu: 11000m 
 

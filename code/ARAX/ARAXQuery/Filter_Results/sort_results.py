@@ -13,6 +13,8 @@ from openapi_server.models.attribute import Attribute as EdgeAttribute
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../reasoningtool/kg-construction/")
 from NormGoogleDistance import NormGoogleDistance as NGD
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
+from ARAX_resultify import analyze_message_get_referenced_IDs
 
 def sort_index(lst, desc):
     #modified from http://stackoverflow.com/questions/3382352/equivalent-of-numpy-argsort-in-basic-python/, answer by the user unutbu
@@ -282,7 +284,6 @@ class SortResults:
         else:
             self.response.info(f"Results successfully sorted")
 
-
         return self.response
 
     def prune_kg(self):
@@ -291,42 +292,30 @@ class SortResults:
         :return: response
         """
         try:
-            node_keys = set()
-            edge_keys = set()
-            nodes_to_remove = set()
-            edges_to_remove = set()
-            for result in self.message.results:
-                for node_binding_list in result.node_bindings.values():
-                    for node_binding in node_binding_list:
-                        node_keys.add(node_binding.id)
-                for analysis in result.analyses:
-                    for edge_binding_list in analysis.edge_bindings.values():
-                        for edge_binding in edge_binding_list:
-                            edge_keys.add(edge_binding.id)
-            #node_keys_to_remove = set()
-            for key, node in self.message.knowledge_graph.nodes.items():
-                if key not in node_keys:
-                    nodes_to_remove.add(key)
-                    #node_keys_to_remove.add(node.id)
-            #self.message.knowledge_graph.nodes = [val for idx, val in enumerate(self.message.knowledge_graph.nodes) if idx not in nodes_to_remove]
-            for key in nodes_to_remove:
-                del self.message.knowledge_graph.nodes[key]
-            edges_to_remove = set()
-            # iterate over edges find edges connected to the nodes
-            for key, edge in self.message.knowledge_graph.edges.items():
-                if key not in edge_keys or edge.subject in nodes_to_remove or edge.object in nodes_to_remove:
-                    edges_to_remove.add(key)
-            # remove edges
-            #self.message.knowledge_graph.edges = [val for idx, val in enumerate(self.message.knowledge_graph.edges) if idx not in edges_to_remove]
-            for key in edges_to_remove:
-                del self.message.knowledge_graph.edges[key]
+            message = self.message
+            log = self.response
+            referenced_nodes, \
+            referenced_edges, \
+            referenced_aux_graphs, \
+            _ = analyze_message_get_referenced_IDs(message,
+                                                   log)
+            kg = message.knowledge_graph
+            kg.nodes = {node_id: node for node_id, node in kg.nodes.items() \
+                        if node_id in referenced_nodes}
+            kg.edges = {edge_id: edge for edge_id, edge in kg.edges.items() \
+                        if edge_id in referenced_edges}
+            message.auxiliary_graphs = \
+                {aux_graph_id: aux_graph for aux_graph_id, aux_graph in \
+                 message.auxiliary_graphs.items() \
+                 if aux_graph_id in referenced_aux_graphs}
+
         except:
             tb = traceback.format_exc()
             error_type, error, _ = sys.exc_info()
             self.response.error(tb, error_code=error_type.__name__)
-            self.response.error(f"Something went wrong prunning the KG")
+            self.response.error("Something went wrong prunning the KG")
         else:
-            self.response.info(f"KG successfully pruned to match results")
+            self.response.info("KG successfully pruned to match results")
 
 
 

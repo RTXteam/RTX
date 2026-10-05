@@ -19,10 +19,10 @@ def main():
     response = Response()
 
     #### Read message #2 from the database. This should be the acetaminophen proteins query result message
-    sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback")
-    from RTXFeedback import RTXFeedback
-    araxdb = RTXFeedback()
-    message_dict = araxdb.getMessage(2)
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../ResponseCache")
+    from response_cache import ResponseCache
+    response_cache = ResponseCache()
+    message_dict = response_cache.get_response(314204)
 
     #### The stored message comes back as a dict. Transform it to objects
     messenger = ARAXMessenger()

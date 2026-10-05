@@ -21,4 +21,10 @@ def meta_knowledge_graph(format_=None):  # noqa: E501
     :rtype: MetaKnowledgeGraph
     """
     ksm = KnowledgeSourceMetadata()
-    return(ksm.get_meta_knowledge_graph(format_=format_))
+    meta_kg_dict = ksm.get_meta_knowledge_graph(format_=format_)
+    
+    if meta_kg_dict is None:
+        return None
+    
+    # Return the dictionary directly - Flask will handle the serialization
+    return meta_kg_dict

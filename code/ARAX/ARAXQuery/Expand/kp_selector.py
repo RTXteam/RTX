@@ -2,22 +2,24 @@
 import os
 import pprint
 import sys
-from typing import Set, List, Optional
+from typing import Optional
 from collections import defaultdict
 from itertools import product
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import expand_utilities as eu
 from kp_info_cacher import KPInfoCacher
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../")  # ARAXQuery directory
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../BiolinkHelper")
-from biolink_helper import BiolinkHelper
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelper")
+from biolink_helper import get_biolink_helper
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
 from RTXConfiguration import RTXConfiguration
-RTXConfig = RTXConfiguration()
 
+
+RTX_CONFIG = RTXConfiguration()
+KPS_SKIP_METAKG_CHECKS = {'infores:retriever'}
 
 class KPSelector:
 
@@ -26,8 +28,10 @@ class KPSelector:
         self.kg2_mode = kg2_mode
         self.kp_cacher = KPInfoCacher()
         self.meta_map, self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self._load_cached_kp_info()
+        if (not self.kg2_mode) and (self.kp_urls is None):
+            raise ValueError("KP info cache has not been filled and we are not in KG2 mode; cannot initialize KP selector")
         self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else set(self.kp_urls.keys())
-        self.bh = BiolinkHelper()
+        self.bh = get_biolink_helper()
 
     def _load_cached_kp_info(self) -> tuple:
         if self.kg2_mode:
@@ -42,10 +46,12 @@ class KPSelector:
                 self.log.error(f"Failed to load KP info caches due to {e}", error_code="LoadKPCachesFailed")
                 return None, None, None, None
 
-            return (meta_map, smart_api_info["allowed_kp_urls"], smart_api_info["kps_excluded_by_version"],
+            return (meta_map,
+                    smart_api_info["allowed_kp_urls"],
+                    smart_api_info["kps_excluded_by_version"],
                     smart_api_info["kps_excluded_by_maturity"])
 
-    def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[Set[str]]:
+    def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[set[str]]:
         """
         This function returns the names of the KPs that say they can answer the given one-hop query graph (based on
         the categories/predicates the QG uses).
@@ -64,10 +70,17 @@ class KPSelector:
         obj_categories = set(self.bh.get_descendants(qg.nodes[qedge.object].categories))
         predicates = set(self.bh.get_descendants(qedge_predicates))
 
+        kps_skip_metakg_checks_that_are_allowed = KPS_SKIP_METAKG_CHECKS - \
+            (self.kps_excluded_by_maturity | self.kps_excluded_by_version)
+
         # use metamap to check kp for predicate triple
+        self.log.debug("number of allowed KPs that can skip metakg checks: "
+                       f"{len(kps_skip_metakg_checks_that_are_allowed)}")
+
+        accepting_kps = kps_skip_metakg_checks_that_are_allowed
         self.log.debug(f"selecting from {len(self.valid_kps)} kps")
-        accepting_kps = set()
         for kp in self.meta_map:
+            # kp should contain the infores CURIE of the knowledge provider
             if self._triple_is_in_meta_map(kp,
                                            sub_categories,
                                            predicates,
@@ -80,16 +93,21 @@ class KPSelector:
                                              sub_categories):
                 accepting_kps.add(kp)
             else:
-                self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
+                if kp not in KPS_SKIP_METAKG_CHECKS:
+                    self.log.update_query_plan(qedge_key, kp, "Skipped", "MetaKG indicates this qedge is unsupported")
+                else:
+                    # this KP is one that is marked for skipping MetaKG checks (see RTXteam/RTX issue 2598)
+                    self.log.debug(f"For qedge {qedge_key}, skipping MetaKG checks for querying {kp}")
+                    accepting_kps.add(kp)
         kps_missing_meta_info = self.valid_kps.difference(set(self.meta_map))
         for missing_kp in kps_missing_meta_info:
             self.log.update_query_plan(qedge_key, missing_kp, "Skipped", "No MetaKG info available")
 
-        version = RTXConfig.trapi_major_version
+        version = RTX_CONFIG.trapi_major_version
         for kp in set(filter(None, self.kps_excluded_by_version)):  # TODO: Look into why sometimes infores is None?
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a TRAPI {version} endpoint")
             self.log.debug(f"Skipped {kp}: KP does not have a TRAPI {version} endpoint")
-        maturity = RTXConfig.maturity
+        maturity = RTX_CONFIG.maturity
         for kp in set(filter(None, self.kps_excluded_by_maturity)):
             self.log.update_query_plan(qedge_key, kp, "Skipped", f"KP does not have a {maturity} TRAPI {version} endpoint")
             self.log.debug(f"Skipped {kp}: KP does not have a {maturity} TRAPI {version} endpoint")
@@ -123,7 +141,7 @@ class KPSelector:
 
         return kp_accepts
 
-    def get_desirable_equivalent_curies(self, curies: List[str], categories: Optional[List[str]], kp: str) -> List[str]:
+    def get_desirable_equivalent_curies(self, curies: list[str], categories: Optional[list[str]], kp: str) -> list[str]:
         """
         For each input curie, this function returns an equivalent curie(s) that uses a prefix the KP supports.
         """
@@ -139,40 +157,44 @@ class KPSelector:
             supported_prefixes = self._get_supported_prefixes(eu.convert_to_list(categories), kp)
             self.log.debug(f"{kp}: Prefixes {kp} supports for categories {categories} (and descendants) are: "
                            f"{supported_prefixes}")
-            converted_curies = set()
-            unsupported_curies = set()
+            converted_curies: list[str] = []
+            converted_curies_seen: set[str] = set()
+            unsupported_curies: set[str] = set()
             synonyms_dict = eu.get_curie_synonyms_dict(curies)
             # Convert each input curie to a preferred, supported prefix
             for input_curie, equivalent_curies in synonyms_dict.items():
                 input_curie_prefix = self._get_uppercase_prefix(input_curie)
-                supported_equiv_curies_by_prefix = defaultdict(set)
+                supported_equiv_curies_by_prefix: defaultdict[str, list[str]] = defaultdict(list)
                 for curie in equivalent_curies:
                     prefix = self._get_uppercase_prefix(curie)
                     if prefix in supported_prefixes:
-                        supported_equiv_curies_by_prefix[prefix].add(curie)
+                        if curie not in supported_equiv_curies_by_prefix[prefix]:
+                            supported_equiv_curies_by_prefix[prefix].append(curie)
                 if supported_equiv_curies_by_prefix:
                     # Grab equivalent curies with the same prefix as the input curie, if available
                     if input_curie_prefix in supported_equiv_curies_by_prefix:
-                        curies_to_send = supported_equiv_curies_by_prefix[input_curie_prefix]
-                    # Otherwise pick any supported curie prefix present
+                        chosen_prefix = input_curie_prefix
+                    # Otherwise pick the first supported prefix encountered while scanning
+                    # equivalent_curies. This mirrors old behavior and stays deterministic
+                    # now that synonymizer output order is stable.
                     else:
-                        curies_to_send = next(curie_set for curie_set in supported_equiv_curies_by_prefix.values())
-                    converted_curies = converted_curies.union(curies_to_send)
+                        chosen_prefix = next(iter(supported_equiv_curies_by_prefix))
+                    for curie_to_send in supported_equiv_curies_by_prefix[chosen_prefix]:
+                        if curie_to_send not in converted_curies_seen:
+                            converted_curies.append(curie_to_send)
+                            converted_curies_seen.add(curie_to_send)
                 else:
                     unsupported_curies.add(input_curie)
             if unsupported_curies:
-                self.log.warning(f"{kp}: Could not find curies with prefixes {kp} prefers for these curies: "
+                self.log.warning(f"{kp}: Could not find curies with prefixes {kp} prefers, for these curies: "
                                  f"{unsupported_curies}; will not send these to KP")
-            return list(converted_curies)
+            return converted_curies
 
     def make_qg_use_supported_prefixes(self, qg: QueryGraph, kp_name: str, log: ARAXResponse) -> Optional[QueryGraph]:
         for qnode_key, qnode in qg.nodes.items():
             if qnode.ids:
-                if kp_name == "infores:rtx-kg2":
-                    # Just convert them into canonical curies
-                    qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
-                else:
-                    # Otherwise figure out which kind of curies KPs want
+                if qnode.categories:
+                # Otherwise figure out which kind of curies KPs want
                     categories = eu.convert_to_list(qnode.categories)
                     supported_prefixes = self._get_supported_prefixes(categories, kp_name)
                     used_prefixes = {self._get_uppercase_prefix(curie) for curie in qnode.ids}
@@ -193,22 +215,25 @@ class KPSelector:
                                      f"with prefixes it supports for qnode {qnode_key}. Original curies were: "
                                      f"{qnode.ids}")
                             return None
+                else:
+                    # the query graph has no categories; just ask NodeNorm what the preferred CURIE is and use that
+                    qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
         return qg
 
     @staticmethod
     def _get_uppercase_prefix(curie: str) -> str:
         return curie.split(":")[0].upper()
 
-    def _get_supported_prefixes(self, categories: List[str], kp: str) -> Set[str]:
+    def _get_supported_prefixes(self, categories: list[str], kp: str) -> set[str]:
         categories_with_descendants = self.bh.get_descendants(eu.convert_to_list(categories), include_mixins=False)
         supported_prefixes = {prefix.upper() for category in categories_with_descendants
                               for prefix in self.meta_map[kp]["prefixes"].get(category, set())}
         return supported_prefixes
 
     def _triple_is_in_meta_map(self, kp: str,
-                               subject_categories: Set[str],
-                               predicates: Set[str],
-                               object_categories: Set[str]) -> bool:
+                               subject_categories: set[str],
+                               predicates: set[str],
+                               object_categories: set[str]) -> bool:
         """
         Returns True if at least one possible triple exists in the KP's meta map. NOT meant to handle empty predicates;
         you should sub in "biolink:related_to" for QEdges without predicates before calling this method.
@@ -227,9 +252,7 @@ class KPSelector:
             if not subject_categories:  # any subject
                 subject_categories = set(predicates_map.keys())
             if not object_categories:  # any object
-                object_set = set()
-                _ = [object_set.add(obj) for obj_dict in predicates_map.values() for obj in obj_dict.keys()]
-                object_categories = object_set
+                object_categories = {obj for obj_dict in predicates_map.values() for obj in obj_dict.keys()}
 
             # handle combinations of subject and objects using cross product
             qg_sub_obj_dict = defaultdict(lambda: set())
@@ -254,7 +277,7 @@ class KPSelector:
 
 def main():
     kp_selector = KPSelector()
-    print(f"Meta map is:")
+    print("Meta map is:")
     pp = pprint.PrettyPrinter(indent=2)
     pp.pprint(kp_selector.meta_map)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 '''This module defines the `ARAXResultify` class whose `_resultify` method
-enumerates subgraphs of a knowledge graph (KG) that match a pattern set by a
+enumerates subgraphs of a kowledge graph (KG) that match a pattern set by a
 query graph (QG) and sets the `results` data attribute of the `message` object
 to be a list of `Result` objects, each corresponding to one of the enumerated
 subgraphs. The matching between the KG subgraphs and the QG can be forced to be
@@ -20,7 +20,8 @@ import copy
 import math
 import os
 import sys
-from typing import List, Dict, Set, Union, Iterable, cast, Optional, Tuple, DefaultDict
+from typing import Union, Iterable, cast, Optional, DefaultDict, Any
+import collections.abc
 from ARAX_response import ARAXResponse
 
 __author__ = 'Stephen Ramsey and Amy Glen'
@@ -33,9 +34,7 @@ __email__ = ''
 __status__ = 'Prototype'
 
 
-# is there a better way to import swagger_server?  Following SO posting 16981921
-PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
-sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.q_edge import QEdge
@@ -46,6 +45,442 @@ from openapi_server.models.node_binding import NodeBinding
 from openapi_server.models.edge_binding import EdgeBinding
 from openapi_server.models.result import Result
 from openapi_server.models.analysis import Analysis
+from openapi_server.models.auxiliary_graph import AuxiliaryGraph
+from openapi_server.models.message import Message
+from openapi_server.models.attribute import Attribute
+
+# SAR: defining this without leading underscore since we may
+# want to start using this function in ARAX_expander.py
+
+
+def _extract_edge_support_graph_keys(
+        edge: Edge,
+        edge_id: str,
+        log: ARAXResponse,
+) -> set[str]:
+    """Return the set of aux-graph IDs referenced from a KG edge's
+    `biolink:support_graphs` attributes (TRAPI path 1)."""
+    sg_keys: set[str] = set()
+    edge_attrs = getattr(edge, 'attributes', [])
+    if edge_attrs is None:
+        edge_attrs = []
+    if not isinstance(edge_attrs, list):
+        log.warning(f"KG edge {edge_id} "
+                    "attribute \'attributes\' is not a list; skipping")
+        return sg_keys
+    for edge_attr_index, edge_attr in enumerate(edge_attrs):
+        if not isinstance(edge_attr, Attribute):
+            log.warning(f"KG edge {edge_id} "
+                        f"attribute {edge_attr_index} "
+                        "is not an Attribute; skipping")
+            continue
+        if not hasattr(edge_attr, 'attribute_type_id') \
+           or edge_attr.attribute_type_id is None:
+            log.warning(f"KG edge {edge_id} "
+                        f"attribute {edge_attr_index} "
+                        "has no attribute_type_id; skipping")
+            continue
+        if edge_attr.attribute_type_id != "biolink:support_graphs":
+            continue
+        if not hasattr(edge_attr, 'value') or edge_attr.value is None:
+            log.warning(f"KG edge {edge_id} "
+                        f"attribute {edge_attr_index} "
+                        "has no value attribute; skipping")
+            continue
+        edge_attr_values = edge_attr.value
+        if not isinstance(edge_attr_values, list):
+            log.warning(f"KG edge {edge_id} "
+                        f"attribute {edge_attr_index} "
+                        "value attribute is not a list; skipping")
+            continue
+        for edge_attr_value_index, edge_attr_value in enumerate(edge_attr_values):
+            if edge_attr_value is None:
+                log.warning(f"KG edge {edge_id} "
+                            f"attribute {edge_attr_index} "
+                            f"attribute value {edge_attr_value_index} "
+                            "value is None; skipping")
+                # keep looking at other values for this attribute, if there are any
+                # (the TRAPI spec seems to allow for multiple support_graphs for
+                # an edge in a KnowledgeGraph)
+                continue
+            sg_keys.add(str(edge_attr_value))
+    return sg_keys
+
+
+def _extract_aux_graph_contents(
+        aux_graph_id: str,
+        source_description: str,
+        kg: KnowledgeGraph,
+        aux_graphs: dict[str, AuxiliaryGraph],
+        log: ARAXResponse,
+) -> tuple[set[str], set[str], bool]:
+    """Validate one aux graph and return (nodes, edges, ok). On any structural
+    problem, returns (empty, empty, False) and logs a warning so the caller can
+    skip this aux graph entirely. `source_description` is prepended to log
+    messages for context (e.g. "KG edge X attribute Y" or "Analysis Z")."""
+    if aux_graph_id not in aux_graphs:
+        log.warning(f"{source_description} "
+                    f"references aux graph ID {aux_graph_id} "
+                    "which is not in the aux graphs object; skipping")
+        return set(), set(), False
+    aux_graph = aux_graphs[aux_graph_id]
+    if not isinstance(aux_graph, AuxiliaryGraph):
+        log.warning(f"{source_description} "
+                    f"references aux graph {aux_graph_id} "
+                    "which is not an AuxiliaryGraph; skipping")
+        return set(), set(), False
+    if not hasattr(aux_graph, 'edges'):
+        log.warning(f"{source_description} "
+                    f"references aux graph {aux_graph_id} "
+                    "that does not have an edges attribute; skipping")
+        return set(), set(), False
+    edges = aux_graph.edges
+    if not isinstance(edges, list):
+        log.warning(f"{source_description} "
+                    f"references aux graph {aux_graph_id} "
+                    "whose edges attribute is not a list; skipping")
+        return set(), set(), False
+    aux_graph_nodes: set[str] = set()
+    aux_graph_edges: set[str] = set()
+    for aux_edge_id in edges:
+        if aux_edge_id not in kg.edges:
+            log.warning(f"{source_description} "
+                        f"references aux graph {aux_graph_id} "
+                        f"containing edge {aux_edge_id} "
+                        "which is not in the KG; skipping")
+            return set(), set(), False
+        aux_edge = kg.edges[aux_edge_id]
+        if not hasattr(aux_edge, 'subject') or aux_edge.subject is None:
+            log.warning(f"{source_description} "
+                        f"references aux graph {aux_graph_id} "
+                        f"containing edge {aux_edge_id} "
+                        "which has no subject; skipping")
+            return set(), set(), False
+        aux_edge_subject = aux_edge.subject
+        if aux_edge_subject not in kg.nodes:
+            log.warning(f"{source_description} "
+                        f"references aux graph {aux_graph_id} "
+                        f"containing edge {aux_edge_id} "
+                        f"with subject node ID {aux_edge_subject} "
+                        "which is not in the KG; skipping")
+            return set(), set(), False
+        if not hasattr(aux_edge, 'object') or aux_edge.object is None:
+            log.warning(f"{source_description} "
+                        f"references aux graph {aux_graph_id} "
+                        f"containing edge {aux_edge_id} "
+                        "which has no object; skipping")
+            return set(), set(), False
+        aux_edge_object = aux_edge.object
+        if aux_edge_object not in kg.nodes:
+            log.warning(f"{source_description} "
+                        f"references aux graph {aux_graph_id} "
+                        f"containing edge {aux_edge_id} "
+                        f"with object node ID {aux_edge_object} "
+                        "which is not in the KG; skipping")
+            return set(), set(), False
+        aux_graph_nodes.add(aux_edge_subject)
+        aux_graph_nodes.add(aux_edge_object)
+        aux_graph_edges.add(aux_edge_id)
+    return aux_graph_nodes, aux_graph_edges, True
+
+
+def analyze_message_get_referenced_IDs(
+        message: Message,
+        log: ARAXResponse
+) -> tuple[set[str], set[str], set[str], set[int]]:
+    kg = message.knowledge_graph
+    if kg is None:
+        log.error("Message has no knowledge graph; returning")
+        return set(), set(), set(), set()
+    aux_graphs: dict[str, AuxiliaryGraph] | None = message.auxiliary_graphs
+    if aux_graphs is None:
+        log.error("Message has no auxiliary graphs dictionary; returning")
+        return set(), set(), set(), set()
+    results = message.results
+    if results is None:
+        log.error("Message has no results list; returning")
+        return set(), set(), set(), set()
+    referenced_nodes: set[str] = set()
+    referenced_edges: set[str] = set()
+    referenced_results: set[int] = set()
+    referenced_aux_graphs: set[str] = set()
+    # Worklist of aux-graph IDs still to expand. Seeded from two TRAPI 1.4+
+    # paths: (1) `biolink:support_graphs` attributes on KG edges, picked up
+    # in pass 2 below; (2) the `support_graphs` field on Analysis objects,
+    # collected during pass 1 here.
+    aux_graph_worklist: set[str] = set()
+    # Aux-graph IDs we have ever attempted to expand (whether successfully or
+    # not). The fixed-point pass below revisits the KG-edge scan on each outer
+    # iteration; without this set, a dangling aux-graph reference (one whose
+    # ID is not in `message.auxiliary_graphs`) would be re-seeded into the
+    # worklist on every iteration and produce one warning per iteration.
+    seen_aux_graphs: set[str] = set()
+    # Track first known origin per aux-graph ID so worklist log messages
+    # carry useful context back to wherever the reference came from.
+    aux_graph_source: dict[str, str] = {}
+
+    # Pass 1: walk Results to collect (a) bound nodes (via NodeBinding) and
+    # (b) bound edges (via Analysis.edge_bindings); also seed the aux-graph
+    # worklist from each Analysis.support_graphs (TRAPI path 2).
+    for result_index, result in enumerate(results):
+        result_nodes: set[str] = set()
+        result_edges: set[str] = set()
+        result_aux_graph_seeds: dict[str, str] = {}
+        skip_result = False
+        if not hasattr(result, 'node_bindings') or result.node_bindings is None:
+            log.warning(f"Result {result_index} has no node_bindings attribute; skipping")
+            continue
+        result_node_bindings = result.node_bindings
+        if not isinstance(result_node_bindings, dict):
+            log.warning(f"Result {result_index} node bindings is not a dictionary; skipping")
+            continue
+        for qnode_id, node_binding_list in result.node_bindings.items():
+            if skip_result:
+                break
+            for node_binding_index, node_binding in enumerate(node_binding_list):
+                if not isinstance(node_binding, NodeBinding):
+                    log.warning(f"Result {result_index} "
+                                f"qnode {qnode_id} "
+                                f"node binding index {node_binding_index} "
+                                "object is not a NodeBinding object; skipping")
+                    skip_result = True
+                    break
+                if not hasattr(node_binding, 'id') or node_binding.id is None:
+                    log.warning(f"Result {result_index} "
+                                f"qnode {qnode_id} "
+                                "node object has no id attribute; skipping")
+                    skip_result = True
+                    break
+                node_id = node_binding.id
+                if node_id not in kg.nodes:
+                    log.warning(f"Result {result_index} "
+                                f"qnode {qnode_id} "
+                                f"node_id {node_id} "
+                                "is not in the KG; skipping")
+                    skip_result = True
+                    break
+                result_nodes.add(node_binding.id)
+        if skip_result:
+            continue
+        if not hasattr(result, 'analyses') or result.analyses is None:
+            log.warning(f"Result {result_index} has no analyses attribute; skipping")
+            continue
+        for analysis_index, analysis in enumerate(result.analyses):
+            if skip_result:
+                break
+            if not hasattr(analysis, 'resource_id') or analysis.resource_id is None:
+                log.warning(f"Result {result_index} "
+                            f"analysis {analysis_index} "
+                            "has no resource_id attribute, skipping")
+                skip_result = True
+                break
+            resource_id = analysis.resource_id
+
+            # TRAPI path 2: collect aux-graph IDs from Analysis.support_graphs.
+            # Field is optional, so missing/None is fine; only a wrong type warns.
+            sg_keys_on_analysis = getattr(analysis, 'support_graphs', None)
+            if sg_keys_on_analysis is not None:
+                if not isinstance(sg_keys_on_analysis, list):
+                    log.warning(f"Result {result_index} "
+                                f"analysis {analysis_index} "
+                                f"(from {resource_id}) "
+                                "support_graphs is not a list, skipping")
+                    skip_result = True
+                    break
+                for sg_index, sg_key in enumerate(sg_keys_on_analysis):
+                    if sg_key is None:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"support_graphs index {sg_index} "
+                                    "is None; skipping this entry")
+                        continue
+                    sg_key_str = str(sg_key)
+                    result_aux_graph_seeds.setdefault(
+                        sg_key_str,
+                        f"Result {result_index} analysis {analysis_index} "
+                        f"(from {resource_id}) support_graphs[{sg_index}]")
+
+            if not hasattr(analysis, 'edge_bindings') or analysis.edge_bindings is None:
+                log.warning(f"Result {result_index} "
+                            f"analysis {analysis_index} "
+                            f"(from {resource_id}) "
+                            "has no edge_bindings attribute, skipping")
+                skip_result = True
+                break
+            edge_bindings = analysis.edge_bindings
+            if not isinstance(edge_bindings, dict):
+                log.warning(f"Result {result_index} "
+                            f"analysis {analysis_index} "
+                            f"(from {resource_id}) "
+                            "edge bindings is not a dictionary, skipping")
+                skip_result = True
+                break
+            for qedge_id, qedge_bindings in edge_bindings.items():
+                if skip_result:
+                    break
+                if not isinstance(qedge_bindings,
+                                  list):
+                    log.warning(f"Result {result_index} "
+                                f"analysis {analysis_index} "
+                                f"(from {resource_id}) "
+                                f"qedge {qedge_id} "
+                                "edge_binding value is not a list, skipping")
+                    skip_result = True
+                    break
+                for edge_binding_index, edge_binding_obj in enumerate(qedge_bindings):
+                    if not isinstance(edge_binding_obj, EdgeBinding):
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    "is not an EdgeBinding object, skipping")
+                        skip_result = True
+                        break
+                    if not hasattr(edge_binding_obj, 'id') or edge_binding_obj.id is None:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    "does not have an id attribute, skipping")
+                        skip_result = True
+                        break
+                    edge_id = edge_binding_obj.id
+                    if edge_id not in kg.edges:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    f"edge_id: {edge_id} "
+                                    "is not in the KG, skipping")
+                        skip_result = True
+                        break
+                    edge = kg.edges[edge_id]
+                    if not hasattr(edge, 'subject') or edge.subject is None:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    f"edge_id: {edge_id} "
+                                    "has no subject, skipping")
+                        skip_result = True
+                        break
+                    edge_subject_node_id = edge.subject
+                    if edge_subject_node_id not in kg.nodes:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    f"edge_id: {edge_id} "
+                                    f"subject ID: {edge_subject_node_id} "
+                                    "is not in the KG, skipping")
+                        skip_result = True
+                        break
+                    if not hasattr(edge, 'object') or edge.object is None:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    f"edge_id: {edge_id} "
+                                    "has no object, skipping")
+                        skip_result = True
+                        break
+                    edge_object_node_id = edge.object
+                    if edge_object_node_id not in kg.nodes:
+                        log.warning(f"Result {result_index} "
+                                    f"analysis {analysis_index} "
+                                    f"(from {resource_id}) "
+                                    f"qedge {qedge_id} "
+                                    f"edge_binding_index {edge_binding_index} "
+                                    f"edge_id: {edge_id} "
+                                    f"object ID: {edge_object_node_id} "
+                                    "is not in the KG, skipping")
+                        skip_result = True
+                        break
+                    result_edges.add(edge_id)
+                    result_nodes.add(edge_subject_node_id)
+                    result_nodes.add(edge_object_node_id)
+        if not skip_result:
+            referenced_results.add(result_index)
+            referenced_nodes.update(result_nodes)
+            referenced_edges.update(result_edges)
+            for sg_key_str, src in result_aux_graph_seeds.items():
+                if sg_key_str in seen_aux_graphs:
+                    continue
+                aux_graph_worklist.add(sg_key_str)
+                seen_aux_graphs.add(sg_key_str)
+                aux_graph_source.setdefault(sg_key_str, src)
+
+    # Pass 2: fixed-point expansion of the reference closure. Two rules can
+    # grow the reference sets and they interact, so we iterate until neither
+    # fires:
+    #   (a) "Both-endpoints rule": any KG edge whose subject AND object are
+    #       both already in `referenced_nodes` is itself referenced (and gets
+    #       its `biolink:support_graphs` attributes followed via the worklist).
+    #       This preserves drive-by KG edges that connect referenced nodes.
+    #   (b) Aux-graph expansion: each aux graph in the worklist contributes
+    #       its edges (and their subject/object nodes) to the reference sets.
+    #       Aux-graph edges may themselves carry `biolink:support_graphs`
+    #       attributes pointing at further aux graphs (nested support).
+    # Because (b) can add nodes that newly satisfy (a), and (a) can add edges
+    # whose attributes feed (b), a single pass is not enough.
+    while True:
+        added_this_round = False
+
+        # Rule (a): both-endpoints scan, plus seeding the worklist from the
+        # `biolink:support_graphs` attributes of every referenced KG edge.
+        for edge_id, edge in kg.edges.items():
+            if not hasattr(edge, 'subject') or edge.subject is None:
+                log.warning(f"KG edge {edge_id} has no subject; skipping")
+                continue
+            if not hasattr(edge, 'object') or edge.object is None:
+                log.warning(f"KG edge {edge_id} has no object; skipping")
+                continue
+            if edge.subject in referenced_nodes and edge.object in referenced_nodes \
+               and edge_id not in referenced_edges:
+                referenced_edges.add(edge_id)
+                added_this_round = True
+            if edge_id not in referenced_edges:
+                continue
+            for sg_key in _extract_edge_support_graph_keys(edge, edge_id, log):
+                if sg_key in seen_aux_graphs:
+                    continue
+                aux_graph_worklist.add(sg_key)
+                seen_aux_graphs.add(sg_key)
+                aux_graph_source.setdefault(sg_key, f"KG edge {edge_id}")
+                added_this_round = True
+
+        # Rule (b): drain the aux-graph worklist. New aux-graph edges added
+        # here are picked up by rule (a) on the next outer iteration (their
+        # nested `biolink:support_graphs` attributes get seeded then).
+        while aux_graph_worklist:
+            aux_graph_id = aux_graph_worklist.pop()
+            if aux_graph_id in referenced_aux_graphs:
+                continue
+            aux_nodes, aux_edges, ok = _extract_aux_graph_contents(
+                aux_graph_id,
+                aux_graph_source.get(aux_graph_id, "(unknown source)"),
+                kg, aux_graphs, log)
+            if not ok:
+                continue
+            referenced_aux_graphs.add(aux_graph_id)
+            new_nodes = aux_nodes - referenced_nodes
+            new_edges = aux_edges - referenced_edges
+            if new_nodes or new_edges:
+                added_this_round = True
+            referenced_nodes.update(new_nodes)
+            referenced_edges.update(new_edges)
+
+        if not added_this_round:
+            break
+
+    return referenced_nodes, referenced_edges, referenced_aux_graphs, referenced_results
 
 
 class ARAXResultify:
@@ -94,11 +529,20 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
         }
         return [command_definition]
 
-    def apply(self, response: ARAXResponse, input_parameters: dict, mode: str = "ARAX") -> ARAXResponse:
+
+    def apply(
+            self,
+            response: ARAXResponse,
+            input_parameters: dict,
+            mode: str = "ARAX"
+    ) -> ARAXResponse:
 
         # Define a default response
         self.response = response
-        self.message = response.envelope.message
+        message = response.envelope.message
+        self.message = message
+        if message.auxiliary_graphs is None:
+            message.auxiliary_graphs = {}
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -113,19 +557,54 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
         response.data['parameters'] = input_parameters
         self.parameters = input_parameters
 
+        # inspect the message.query_graph to see if there are edges; if there are no edges,
+        # this is probably a pathfinder result accidentally passed to ARAX-resultify; give
+        # a helpful error message in that case
+        if not hasattr(message.query_graph, 'edges'):
+            response.warning("In ARAX-resultify, the query graph has no edges attribute; "
+                             "most likely this is because a Pathfinder (or ARAX-connect) "
+                             "analysis message was passed to ARAX-resultify using the "
+                             "resultify() ARAXi command; resultify() should not be used "
+                             "with Pathfinder; after connect(), the paths are already "
+                             "in the message and can be displayed by the ARAX UI")
+            return response
+
         response.debug(f"Applying Resultifier to Message with parameters {input_parameters}")
 
-        if not self.message.knowledge_graph:
-            self.response.error(f"No message.knowledge_graph exists for resultify to create results from",
+        kg = message.knowledge_graph
+        if not kg:
+            response.error("No message.knowledge_graph exists for resultify to create results from",
                                 error_code="NoKG")
             return response
 
-        # call _resultify
-        self._resultify(mode=mode, describe=False)
+        # call resultify
+        nodes_bound, edges_bound = self.resultify(mode=mode, describe=False)
 
-        # Clean up the KG (should only contain nodes used in the results)
-        self._clean_up_kg()
+        ref_nodes, ref_edges, ref_aux_graphs, ref_results = \
+            analyze_message_get_referenced_IDs(message,
+                                               response)
 
+        # rebuild the knowledge graph and auxiliary graphs
+        # to ensure that they are internally consistent
+        kg_new = KnowledgeGraph({node_id: node for node_id, node \
+                                 in kg.nodes.items() \
+                                 if node_id in ref_nodes},
+                                {edge_id: edge for edge_id, edge \
+                                 in kg.edges.items() \
+                                 if edge_id in ref_edges})
+        aux_graphs_new = {aux_graph_id: aux_graph for aux_graph_id, aux_graph \
+                          in message.auxiliary_graphs.items() \
+                          if aux_graph_id in ref_aux_graphs}
+        message.knowledge_graph = kg_new
+
+        message.auxiliary_graphs = aux_graphs_new
+        message.results = [result for res_id, result in enumerate(message.results) \
+                           if res_id in ref_results]
+
+        response.debug("At end of resultify: "
+                       f"nodes: {len(kg_new.nodes)} "
+                       f"edges: {len(kg_new.edges)} "
+                       f"aux_graphs: {len(aux_graphs_new)}")
         # Return the response and done
         return response
 
@@ -140,12 +619,12 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
         kg = response.envelope.message.knowledge_graph
         qg = response.envelope.message.query_graph
         if not results:
-            response.error(f"Cannot recompute QG keys for a message that has no results.", error_code="MissingResults")
+            response.error("Cannot recompute QG keys for a message that has no results.", error_code="MissingResults")
             return response
-        response.info(f"Recomputing QG keys (annotating nodes/edges in the KGs with their QG keys)")
+        response.info("Recomputing QG keys (annotating nodes/edges in the KGs with their QG keys)")
         # First build a map of KG node/edges and their corresponding QG IDs
-        kg_node_keys_to_qnode_keys = dict()
-        kg_edge_keys_to_qedge_keys = dict()
+        kg_node_keys_to_qnode_keys: dict[str, set[str]] = dict()
+        kg_edge_keys_to_qedge_keys: dict[str, set[str]] = dict()
         for result in results:
             for qnode_key, node_bindings in result.node_bindings.items():
                 # FW: This is a hack to get reranking to work. might need to fix later
@@ -153,7 +632,7 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
                     for node_binding in node_bindings:
                         if node_binding.id in kg.nodes:
                             del kg.nodes[node_binding.id]
-                    response.warning(f"While recomputing qnode keys found a node binding in the results without a corresponding query node. Removing the edge from the KG...")
+                    response.warning("While recomputing qnode keys found a node binding in the results without a corresponding query node. Removing the edge from the KG...")
                     continue
                 for node_binding in node_bindings:
                     node_key = node_binding.id
@@ -166,7 +645,7 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
                     for edge_binding in edge_bindings:
                         if edge_binding.id in kg.edges:
                             del kg.edges[edge_binding.id]
-                    response.warning(f"While recomputing qedge keys found a edge binding in the results without a corresponding query edge. Removing the edge from the KG...")
+                    response.warning("While recomputing qedge keys found a edge binding in the results without a corresponding query edge. Removing the edge from the KG...")
                     continue
                 for edge_binding in edge_bindings:
                     edge_key = edge_binding.id
@@ -176,21 +655,25 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
         # Then go ahead and annotate the nodes/edges in the KG with their QG IDs
         for node_key, node in kg.nodes.items():
             if node_key not in kg_node_keys_to_qnode_keys:
-                response.error(f"KG contains node(s) that do not appear in any results; cannot recompute their qnode_keys",
+                response.error("KG contains node(s) that do not appear in any results; cannot recompute their qnode_keys",
                                error_code="InvalidKG")
                 return response
             node.qnode_keys = list(kg_node_keys_to_qnode_keys[node_key])
         for edge_key, edge in kg.edges.items():
             if edge_key not in kg_edge_keys_to_qedge_keys:
-                response.error(f"KG contains edge(s) that do not appear in any results; cannot recompute their qedge_keys",
+                response.error("KG contains edge(s) that do not appear in any results; cannot recompute their qedge_keys",
                                error_code="InvalidKG")
                 return response
             edge.qedge_keys = list(kg_edge_keys_to_qedge_keys[edge_key])
         return response
 
-    def _resultify(self, mode: str, describe: bool = False):
+    def resultify(
+            self,
+            mode: str,
+            describe: bool = False
+    ) -> tuple[set[str], set[str]]:
         """From a knowledge graph and a query graph (both in a Message object), extract a list of Results objects, each containing
-        lists of NodeBinding and EdgeBinding objects. Add a list of Results objects to self.message.rseults.
+        lists of NodeBinding and EdgeBinding objects. Add a list of Results objects to self.message.results.
 
         It is required that `self.parameters` contain the following:
             ignore_edge_direction: a parameter of type `bool` indicating whether
@@ -203,23 +686,28 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
 
         """
         assert self.response is not None
-        results = self.message.results
-        if results is not None and len(results) > 0:
-            self.response.info(f"Clearing previous results and computing a new set of results")
-            self.message.results = []
-            results = self.message.results
-            self.message.n_results = 0
-
+        response = self.response
         message = self.message
+        if message is None:
+            message = response.envelope.message
         parameters = self.parameters
+        if parameters is None:
+            parameters = {}
+
+        results = message.results
+        if results is not None and len(results) > 0:
+            response.info("Clearing previous results and computing a new set of results")
+            results = []
+            message.results = results
+            message.n_results = 0
 
         debug_mode = parameters.get('debug', None)
         if debug_mode is not None:
             try:
                 debug_mode = _parse_boolean_case_insensitive(debug_mode)
             except Exception as e:
-                self.response.error(str(e))
-                return
+                response.error(str(e))
+                return set(), set()
 
         for parameter_name in parameters.keys():
             if parameter_name == '':
@@ -227,16 +715,18 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
             if parameter_name not in ARAXResultify.ALLOWED_PARAMETERS:
                 error_string = "parameter type is not allowed in ARAXResultify: " + str(parameter_name)
                 if not debug_mode:
-                    self.response.error(error_string)
-                    return
+                    response.error(error_string)
+                    return set(), set()
                 else:
                     raise ValueError(error_string)
 
         kg = message.knowledge_graph
+        response.debug(f"KG node count: {len(kg.nodes)}; "
+                       f"KG edge count: {len(kg.edges)}")
         # Only resultify the portion of the QG that's been expanded #1848
-        qg = _filter_to_expanded_portion(message.query_graph, self.response)
+        qg = _filter_to_expanded_portion(message.query_graph, response)
         # Ignore kryptonite ("not") edges/nodes in Resultify (Expand takes care of those) #1119
-        qg = _get_qg_without_kryptonite_portions(qg, self.response)
+        qg = _get_qg_without_kryptonite_portions(qg, response)
 
         ignore_edge_direction = parameters.get('ignore_edge_direction', None)
         if ignore_edge_direction is not None:
@@ -245,17 +735,24 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
             except ValueError as e:
                 error_string = "parameter value is not allowed in ARAXResultify: " + str(ignore_edge_direction)
                 if not debug_mode:
-                    self.response.error(error_string)
-                    return
+                    response.error(error_string)
+                    return set(), set()
                 else:
                     raise e
 
+        nodes_bound = {node_id: node for node_id, node in kg.nodes.items() \
+                       if (getattr(node, "qnode_keys", None) or [])}
+        edges_bound = {edge_id: edge for edge_id, edge in kg.edges.items() \
+                       if (getattr(edge, "qedge_keys", None) or [])}
+        kg_bound = KnowledgeGraph(nodes=nodes_bound,
+                                  edges=edges_bound)
+
         # Actually create results
-        results = _get_results_for_kg_by_qg(kg,
+        results = _get_results_for_kg_by_qg(kg_bound,
                                             qg,
                                             mode,
                                             ignore_edge_direction,
-                                            self.response)
+                                            response)
         message_code = 'OK'
         code_description = 'Result list computed from KG and QG'
 
@@ -265,27 +762,14 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
             code_description = 'no results returned'
             if len(kg.nodes) == 0:
                 code_description += '; empty knowledge graph'
-            self.response.warning(code_description)
+            response.warning(code_description)
 
         message.n_results = len(results)
         message.code_description = code_description
         message.message_code = message_code
-
-    def _clean_up_kg(self):
-        self.response.debug(f"Cleaning up the KG to remove nodes not used in the results")
-        results = self.message.results
-        kg = self.message.knowledge_graph
-
-        node_keys_used_in_results = {node_binding.id for result in results
-                                     for node_binding_list in result.node_bindings.values()
-                                     for node_binding in node_binding_list}
-        cleaned_kg = KnowledgeGraph(nodes={node_key: node for node_key, node in kg.nodes.items()
-                                           if node_key in node_keys_used_in_results},
-                                    edges={edge_key: edge for edge_key, edge in kg.edges.items() if
-                                           {edge.subject, edge.object}.issubset(node_keys_used_in_results)})
-        self.message.knowledge_graph = cleaned_kg
-        self.response.info(f"After cleaning, the KG contains {len(self.message.knowledge_graph.nodes)} nodes and "
-                           f"{len(self.message.knowledge_graph.edges)} edges")
+        response.debug(f"num nodes in kg_bound: {len(kg_bound.nodes)}")
+        response.debug(f"num edges in kg_bound: {len(kg_bound.edges)}")
+        return set(nodes_bound), set(edges_bound)
 
 
 def _make_edge_key(node1_id: str,
@@ -300,12 +784,12 @@ def _is_specific_query_node(qnode_key: str, qnode: QNode):
 
 def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
                    directed=True,
-                   droploops=True) -> Dict[str, Dict[str, Set[str]]]:
+                   droploops=True) -> dict[str, dict[str, set[str]]]:
     if directed:
-        adj_map_in: Dict[str, Set[str]] = {node_key: set() for node_key in graph.nodes}
-        adj_map_out: Dict[str, Set[str]] = {node_key: set() for node_key in graph.nodes}
+        adj_map_in: dict[str, set[str]] = {node_key: set() for node_key in graph.nodes}
+        adj_map_out: dict[str, set[str]] = {node_key: set() for node_key in graph.nodes}
     else:
-        adj_map: Dict[str, Set[str]] = {node_key: set() for node_key in graph.nodes}
+        adj_map: dict[str, set[str]] = {node_key: set() for node_key in graph.nodes}
     try:
         for edge in graph.edges.values():
             if droploops and edge.object == edge.subject:
@@ -329,8 +813,8 @@ def _make_adj_maps(graph: Union[QueryGraph, KnowledgeGraph],
     return ret_dict
 
 
-def _bfs_dists(adj_map: Dict[str, Set[str]],
-               start_node_key: str) -> Dict[str, Union[int, float]]:
+def _bfs_dists(adj_map: dict[str, set[str]],
+               start_node_key: str) -> dict[str, Union[int, float]]:
     queue = collections.deque([start_node_key])
     distances = {node_key: math.inf for node_key in adj_map.keys()}
     distances[start_node_key] = 0
@@ -369,7 +853,7 @@ def _get_essence_node_for_qg(qg: QueryGraph) -> Optional[str]:
         if len(specific_leaf_nodes) == 0:
             qnode_keys_list = [qnode_key for qnode_key in qg.nodes]
             # TODO: Now that qg.nodes is a dict, don't think there's any order to it.. is this still worthwhile?
-            map_node_key_to_pos: Dict[str, Union[int, float]] = {qnode_key: i for i, qnode_key in enumerate(qnode_keys_list)}
+            map_node_key_to_pos: dict[str, Union[int, float]] = {qnode_key: i for i, qnode_key in enumerate(qnode_keys_list)}
             if len(specific_nodes) == 0:
                 # return the node key of the non-specific node with the rightmost position in the QG node list
                 return sorted(candidate_essence_nodes,
@@ -446,7 +930,7 @@ def _filter_to_expanded_portion(qg: QueryGraph, log: ARAXResponse) -> QueryGraph
         # If NO qedges have been marked as expanded but Resultify is being called, we'll assume this is either
         # an existing knowledge graph that was not created using Expand, or this is a single-node query.
         # In either case we should resultify the full QG.
-        log.debug(f"No qedges were marked as expanded so we will resultify the entire QG")
+        log.debug("No qedges were marked as expanded so we will resultify the entire QG")
         return qg
     else:
         # Otherwise we should only resultify the portion of the QG that's already been expanded
@@ -462,23 +946,25 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                               qg: QueryGraph,
                               mode: str = "ARAX",
                               ignore_edge_direction: bool = True,
-                              log: ARAXResponse = ARAXResponse()) -> List[Result]:
+                              log: ARAXResponse = ARAXResponse()) -> list[Result]:
 
     if ignore_edge_direction is None:
         return _get_results_for_kg_by_qg(kg, qg, mode, log=log)
 
-    kg_node_keys_without_qnode_key = [node_key for node_key, node in kg.nodes.items() if not node.qnode_keys]
+    kg_node_keys_without_qnode_key = [node_key for node_key, node in kg.nodes.items() \
+                                      if not hasattr(node, 'qnode_keys') or not node.qnode_keys]
     if len(kg_node_keys_without_qnode_key) > 0:
         log.error("these node IDs do not have qnode_keys set: " + str(kg_node_keys_without_qnode_key), error_code="MissingQNodeKeys")
         return []
 
-    kg_edge_keys_without_qedge_key = [edge_key for edge_key, edge in kg.edges.items() if not edge.qedge_keys]
+    kg_edge_keys_without_qedge_key = [edge_key for edge_key, edge in kg.edges.items() \
+                                      if not hasattr(edge, 'qedge_keys') or not edge.qedge_keys]
     if len(kg_edge_keys_without_qedge_key) > 0:
         log.error("these edges do not have qedge_keys set: " + str(kg_edge_keys_without_qedge_key), error_code="MissingQEdgeKeys")
         return []
 
-    kg_edge_keys_by_qg_key = _get_kg_edge_keys_by_qg_key(kg)
-    kg_node_keys_by_qg_key = _get_kg_node_keys_by_qg_key(kg)
+    kg_edge_keys_by_qg_key: dict[str, set[str]] = _get_kg_edge_keys_by_qg_key(kg)
+    kg_node_keys_by_qg_key: dict[str, set[str]] = _get_kg_node_keys_by_qg_key(kg)
 
     # --------------------- checking for validity of the NodeBindings list --------------
     # we require that every query graph node ID in the "values" slot of the node_bindings_map corresponds to an actual node in the QG
@@ -532,10 +1018,12 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                 if not edge_is_valid:
                     kg_source_node = kg.nodes.get(kg_source_node_key)
                     kg_target_node = kg.nodes.get(kg_target_node_key)
+                    kg_source_node_qnode_keys = getattr(kg_source_node, 'qnode_keys', None) or []
+                    kg_target_node_qnode_keys = getattr(kg_target_node, 'qnode_keys', None) or []
                     log.error(f"Edge {edge_key} (fulfilling {qedge_key}) has node(s) that do not fulfill the "
                               f"expected qnodes ({qg_source_node_key} and {qg_target_node_key}). Edge's nodes are "
-                              f"{kg_source_node_key} (qnode_keys: {kg_source_node.qnode_keys}) and "
-                              f"{kg_target_node_key} (qnode_keys: {kg_target_node.qnode_keys}).", error_code="MismatchedNodes")
+                              f"{kg_source_node_key} (qnode_keys: {kg_source_node_qnode_keys}) and "
+                              f"{kg_target_node_key} (qnode_keys: {kg_target_node_qnode_keys}).", error_code="MismatchedNodes")
                     return []
 
     # ------------------- checking to make sure option groups in QG are valid ---------------------
@@ -565,10 +1053,10 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     # (2) for any QG node that has "is_set=True", *all* KG nodes that are bound to the same QG node are in the subgraph
     # (3) every edge in the QG is "covered" by at least one edge in the KG
 
-    results: List[Result] = []
+    results: list[Result] = []
 
     # Note: Subclass self-qedges are not considered 'required' (they always have an option group specified)
-    log.debug(f"Grabbing only required portion of QG")
+    log.debug("Grabbing only required portion of QG")
     required_qg = QueryGraph(
         nodes={qnode_key: qnode for qnode_key, qnode in qg.nodes.items() if not qnode.option_group_id},
         edges={qedge_key: qedge for qedge_key, qedge in qg.edges.items() if not qedge.option_group_id})
@@ -593,7 +1081,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     # Return empty result list if have empty KG
     if not kg.nodes:
-        log.debug(f"KG is empty - no results.")
+        log.debug("KG is empty - no results.")
         return results
 
     # Recompute kg_node_keys_by_qg_keys so that it only contains parents (we 'collapse' children into parents)
@@ -606,20 +1094,20 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             kg_node_keys_by_qg_key_collapsed[qnode_key] = node_keys
 
     # Handle case where QG contains multiple qnodes and no qedges (we'll dump everything in one result)
-    edge_keys_by_node_pair = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
+    edge_keys_by_node_pair: DefaultDict[str, DefaultDict[tuple[str, str], set[str]]] = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
     if not qg.edges and len(qg.nodes) > 1:
-        log.debug(f"QG contains only qnodes (no qedges); will create only one result with all qnodes.")
+        log.debug("QG contains only qnodes (no qedges); will create only one result with all qnodes.")
         result_graph = _create_new_empty_result_graph()
-        result_graph["nodes"] = kg_node_keys_by_qg_key_collapsed
+        result_graph["nodes"] = collections.defaultdict(set, kg_node_keys_by_qg_key_collapsed)
         final_result_graphs = [result_graph]
     else:
         # Build up some indexes for edges in the KG (by their subject/object nodes and qedge keys)
-        log.debug(f"Building helper indexes for faster lookup of edges")
-        edge_keys_by_subject_collapsed = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
-        edge_keys_by_object_collapsed = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
-        edge_keys_by_node_pair_collapsed = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
+        log.debug("Building helper indexes for faster lookup of edges")
+        edge_keys_by_subject_collapsed: DefaultDict[str, DefaultDict[str, set[str]]] = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
+        edge_keys_by_object_collapsed: DefaultDict[str, DefaultDict[str, set[str]]] = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
+        edge_keys_by_node_pair_collapsed: DefaultDict[str, DefaultDict[tuple[str, str], set[str]]] = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
         for edge_key, edge in kg.edges.items():
-            for qedge_id in edge.qedge_keys:
+            for qedge_id in (getattr(edge, 'qedge_keys', None) or []):
                 qedge = qg.edges[qedge_id]
                 # Remap edges to parent concepts for qnodes where subclass answers were provided
                 qnode_subj_fulfills, qnode_obj_fulfills = _get_qnodes_subj_and_obj_fulfill(edge, qedge, kg_node_keys_by_qg_key)
@@ -634,7 +1122,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                     edge_keys_by_node_pair[qedge_id][(edge.object, edge.subject)].add(edge_key)
 
         # Create results off the "required" portion of the QG (excluding any qnodes/qedges belong to an "option group")
-        log.info(f"Creating result graphs for required portion of QG")
+        log.info("Creating result graphs for required portion of QG")
         result_graphs_required = _create_result_graphs(required_qg, kg_node_keys_by_qg_key_collapsed,
                                                        edge_keys_by_subject_collapsed, edge_keys_by_object_collapsed,
                                                        edge_keys_by_node_pair_collapsed,
@@ -692,7 +1180,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             result_graphs_by_key[result_key] = result_graph
         # Then merge our results for each option group ID into the appropriate "required" results
         if option_groups_in_qg:
-            log.info(f"Merging option group result graphs into required result graphs with matching non-set qnodes")
+            log.info("Merging option group result graphs into required result graphs with matching non-set qnodes")
         for option_group_id in option_groups_in_qg:
             for option_group_result_graph in option_group_results_dict[option_group_id]:
                 result_key = _get_result_graph_key(option_group_result_graph, required_non_set_qnode_keys, log)
@@ -723,7 +1211,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         log.info(f"After separating children from parents in our single result, counts are: {qnode_counts}, {qedge_counts}")
 
     # ------------------ Convert the final result graphs into actual Swagger object model results ----------- #
-    log.debug(f"Loading final result graphs into TRAPI object model")
+    log.debug("Loading final result graphs into TRAPI object model")
     qnodes_with_ids = {qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.ids}
 
     resource_id = "infores:rtx-kg2" if mode == "RTXKG2" else "infores:arax"
@@ -781,14 +1269,13 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
             if essence_kg_node.attributes:
                 symbol_attributes = [attribute for attribute in essence_kg_node.attributes if attribute.original_attribute_name == "symbol"]
                 symbol_attribute = symbol_attributes[0] if symbol_attributes else None
-                if symbol_attribute and symbol_attribute.value is not None:
+                if symbol_attribute and symbol_attribute.value is not None and symbol_attribute.value != result.essence:
                     result.essence += " (" + str(symbol_attribute.value) + ")"
             result.essence_category = str(essence_qnode.categories) if essence_qnode else None
 
         # Programmatically generating an informative description for each result
         # seems difficult, but having something non-None is required by the
-        # database.  Just put in a placeholder for now, as is done by the
-        # QueryGraphReasoner
+        # database.  Just put in a placeholder for now.
         result.description = "No description available"  # see issue 642
 
         results.append(result)
@@ -821,8 +1308,8 @@ def _qg_is_disconnected(qg: QueryGraph) -> bool:
         return False
 
 
-def _merge_optional_into_required_result_graph(optional_result_graph: Dict[str, Dict[str, Set[str]]],
-                                               required_result_graph: Dict[str, Dict[str, Set[str]]]) -> Dict[str, Dict[str, Set[str]]]:
+def _merge_optional_into_required_result_graph(optional_result_graph: dict[str, dict[str, set[str]]],
+                                               required_result_graph: dict[str, DefaultDict[str, set[str]]]) -> dict[str, DefaultDict[str, set[str]]]:
     # Start with the required result graph and then add in any nodes/edges from the optional graph as appropriate
     merged_result_graph = _copy_result_graph(required_result_graph)
     for qnode_key, optional_kg_node_keys in optional_result_graph["nodes"].items():
@@ -838,14 +1325,14 @@ def _merge_optional_into_required_result_graph(optional_result_graph: Dict[str, 
     return merged_result_graph
 
 
-def _get_qnodes_subj_and_obj_fulfill(edge: Edge, qedge: QEdge, kg_node_keys_by_qg_key: Dict[str, Set[str]]) -> Tuple[str, str]:
+def _get_qnodes_subj_and_obj_fulfill(edge: Edge, qedge: QEdge, kg_node_keys_by_qg_key: dict[str, set[str]]) -> tuple[str, str]:
     if edge.subject in kg_node_keys_by_qg_key[qedge.subject] and edge.object in kg_node_keys_by_qg_key[qedge.object]:
         return qedge.subject, qedge.object
     else:
         return qedge.object, qedge.subject
 
 
-def _get_result_graph_key(result_graph: Dict[str, Dict[str, Set[str]]], qnodes_to_merge_on: List[str],
+def _get_result_graph_key(result_graph: dict[str, DefaultDict[str, set[str]]], qnodes_to_merge_on: list[str],
                           log: ARAXResponse) -> str:
     """
     Result graph keys are defined such that result graphs with the same key should be merged. The overall result graph
@@ -872,29 +1359,27 @@ def _get_result_graph_key(result_graph: Dict[str, Dict[str, Set[str]]], qnodes_t
     return result_graph_key
 
 
-def _get_kg_node_keys_by_qg_key(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
-    node_keys_by_qg_key = dict()
+def _get_kg_node_keys_by_qg_key(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]]:
+    node_keys_by_qg_key: dict[str, set[str]] = dict()
     for node_key, node in knowledge_graph.nodes.items():
-        if node.qnode_keys:
-            for qnode_key in node.qnode_keys:
-                if qnode_key not in node_keys_by_qg_key:
-                    node_keys_by_qg_key[qnode_key] = set()
-                node_keys_by_qg_key[qnode_key].add(node_key)
+        for qnode_key in (getattr(node, 'qnode_keys', None) or []):
+            if qnode_key not in node_keys_by_qg_key:
+                node_keys_by_qg_key[qnode_key] = set()
+            node_keys_by_qg_key[qnode_key].add(node_key)
     return node_keys_by_qg_key
 
 
-def _get_kg_edge_keys_by_qg_key(knowledge_graph: KnowledgeGraph) -> Dict[str, Set[str]]:
-    edge_keys_by_qg_key = dict()
+def _get_kg_edge_keys_by_qg_key(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]]:
+    edge_keys_by_qg_key: dict[str, set[str]] = dict()
     for edge_key, edge in knowledge_graph.edges.items():
-        if edge.qedge_keys:
-            for qedge_key in edge.qedge_keys:
-                if qedge_key not in edge_keys_by_qg_key:
-                    edge_keys_by_qg_key[qedge_key] = set()
-                edge_keys_by_qg_key[qedge_key].add(edge_key)
+        for qedge_key in (getattr(edge, 'qedge_keys', None) or []):
+            if qedge_key not in edge_keys_by_qg_key:
+                edge_keys_by_qg_key[qedge_key] = set()
+            edge_keys_by_qg_key[qedge_key].add(edge_key)
     return edge_keys_by_qg_key
 
 
-def _get_connected_qnode_keys(qnode_key: str, query_graph: QueryGraph) -> Set[str]:
+def _get_connected_qnode_keys(qnode_key: str, query_graph: QueryGraph) -> set[str]:
     qnode_keys_used_on_same_qedges = set()
     for qedge in query_graph.edges.values():
         if qnode_key in {qedge.subject, qedge.object}:
@@ -903,25 +1388,26 @@ def _get_connected_qnode_keys(qnode_key: str, query_graph: QueryGraph) -> Set[st
     return qnode_keys_used_on_same_qedges.difference({qnode_key})
 
 
-def _create_new_empty_result_graph() -> Dict[str, Dict[str, Set[str]]]:
-    empty_result_graph = {'nodes': collections.defaultdict(set),
-                          'edges': collections.defaultdict(set),
-                          'parents': collections.defaultdict(str)}
+def _create_new_empty_result_graph() -> dict[str, DefaultDict[Any, set[Any]]]:
+    empty_result_graph: dict[str, DefaultDict[Any, set[Any]]] = {'nodes': collections.defaultdict(set),
+                                                                 'edges': collections.defaultdict(set)}
+#    {'nodes': collections.defaultdict(set), 
+#                          'edges': collections.defaultdict(set)}
     return empty_result_graph
 
 
-def _copy_result_graph(result_graph: Dict[str, Dict[str, Set[str]]]) -> Dict[str, Dict[str, Set[str]]]:
+def _copy_result_graph(result_graph: dict[str, DefaultDict[str, set[str]]]) -> dict[str, DefaultDict[str, set[str]]]:
     result_graph_copy = copy.deepcopy(result_graph)
     return result_graph_copy
 
 
-def _get_parallel_qedge_keys(input_qedge: QEdge, query_graph: QueryGraph) -> Set[str]:
+def _get_parallel_qedge_keys(input_qedge: QEdge, query_graph: QueryGraph) -> set[str]:
     input_qedge_node_keys = {input_qedge.subject, input_qedge.object}
     parallel_qedge_keys = {qedge_key for qedge_key, qedge in query_graph.edges.items() if {qedge.subject, qedge.object} == input_qedge_node_keys}
     return parallel_qedge_keys
 
 
-def _get_query_id(node_key: str, node: Node, qnode_key: str, qnode_keys_with_ids: Set[str]) -> Optional[str]:
+def _get_query_id(node_key: str, node: Node, qnode_key: str, qnode_keys_with_ids: set[str]) -> Optional[str]:
     # TODO: Should this really be looking at child to parent map, instead of node's query_ids?
     if qnode_key in qnode_keys_with_ids:
         if hasattr(node, "query_ids") and node.query_ids:
@@ -933,13 +1419,13 @@ def _get_query_id(node_key: str, node: Node, qnode_key: str, qnode_keys_with_ids
         return None
 
 
-def _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key: Dict[str, Set[str]],
-                                   edge_keys_by_node_pair: DefaultDict[str, DefaultDict[Tuple[str], set]],
+def _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key: dict[str, set[str]],
+                                   edge_keys_by_node_pair: DefaultDict[str, DefaultDict[tuple[str, str], set[str]]],
                                    qg: QueryGraph,
-                                   log: ARAXResponse) -> Dict[str, Dict[str, Dict[str, Set[str]]]]:
+                                   log: ARAXResponse) -> dict[str, dict[str, dict[str, set[str]]]]:
     # Returned dict looks like {'n00': {'UMLS:11234': {'n01': {UniProtKB:122}}}}
     # First initiate the overall structure of our (QG-organized) adjacency map
-    kg_node_to_node_map = {qnode_key: dict() for qnode_key in kg_node_keys_by_qg_key}
+    kg_node_to_node_map: dict[str, dict] = {qnode_key: dict() for qnode_key in kg_node_keys_by_qg_key}
     for qnode_key in qg.nodes:
         node_keys_set = kg_node_keys_by_qg_key[qnode_key]
         connected_qnode_keys = _get_connected_qnode_keys(qnode_key, qg)
@@ -975,7 +1461,7 @@ def _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key: Dict[str, Set[str]],
     return kg_node_to_node_map
 
 
-def _result_graph_is_fulfilled(result_graph: Dict[str, Dict[str, Set[str]]], query_graph: QueryGraph,
+def _result_graph_is_fulfilled(result_graph: dict[str, dict[str, set[str]]], query_graph: QueryGraph,
                                nodes_only: bool = False) -> bool:
     for qnode_key in query_graph.nodes:
         if not result_graph['nodes'].get(qnode_key):
@@ -991,8 +1477,8 @@ def _is_subclass_self_qedge(qedge: QEdge) -> bool:
     return qedge.subject == qedge.object and qedge.predicates == ["biolink:subclass_of"]
 
 
-def _get_all_adjacent_nodes(kg_node_keys: Set[str], start_qnode_key: str, target_qnode_key: str,
-                            kg_node_adj_map_by_qg_key: Dict[str, Dict[str, Dict[str, Set[str]]]]) -> Set[str]:
+def _get_all_adjacent_nodes(kg_node_keys: set[str], start_qnode_key: str, target_qnode_key: str,
+                            kg_node_adj_map_by_qg_key: dict[str, dict[str, dict[str, set[str]]]]) -> set[str]:
     """
     This function returns all nodes adjacent to a set of nodes (kg_node_keys) that fulfill the target_qnode_key. The
     start_qnode_key is the qnode ID that the set of input nodes fulfill. Being adjacent to the set of nodes means that
@@ -1002,8 +1488,8 @@ def _get_all_adjacent_nodes(kg_node_keys: Set[str], start_qnode_key: str, target
     return {node_key for node_key_set in connections for node_key in node_key_set}
 
 
-def _find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_keys_to_choose_from: Set[str],
-                                    qg: QueryGraph) -> Tuple[str, Set[str]]:
+def _find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: set[str], qnode_keys_to_choose_from: set[str],
+                                    qg: QueryGraph) -> tuple[str, set[str]]:
     """
     This function selects a qnode ID from the qnode_keys_to_choose_from that connects to one or more of the qnode IDs
     in the qnode_keys_to_connect_to (which is generally a sub-graph of the QG). It also returns the IDs
@@ -1019,7 +1505,7 @@ def _find_qnode_connected_to_sub_qg(qnode_keys_to_connect_to: Set[str], qnode_ke
     return "", set()
 
 
-def _get_qg_adj_map_undirected(qg: QueryGraph) -> Dict[str, Set[str]]:
+def _get_qg_adj_map_undirected(qg: QueryGraph) -> dict[str, set[str]]:
     """
     This function creates a node adjacency map for a given query graph. Example: {"n0": {"n1"}, "n1": {"n0"}}
     """
@@ -1035,7 +1521,7 @@ def _get_qg_adj_map_undirected(qg: QueryGraph) -> Dict[str, Set[str]]:
     return qg_adj_map
 
 
-def _extract_sub_qg_adj_map(qg_adj_map: Dict[str, Set[str]], allowed_qnode_keys: Set[str]) -> Dict[str, Set[str]]:
+def _extract_sub_qg_adj_map(qg_adj_map: dict[str, set[str]], allowed_qnode_keys: set[str]) -> dict[str, set[str]]:
     """
     This function extracts the node adjacency info for a "subgraph" of the query graph (represented by
     allowed_qnode_keys). Example of qg_adj_map: {"n0": {"n1"}, "n1": {"n0"}}
@@ -1044,9 +1530,9 @@ def _extract_sub_qg_adj_map(qg_adj_map: Dict[str, Set[str]], allowed_qnode_keys:
             for qnode_key, neighbor_qnode_keys in qg_adj_map.items() if qnode_key in allowed_qnode_keys}
 
 
-def _get_subclass_clusters(kg_edge_keys_by_qg_key: Dict[str, Set[str]], kg_node_keys_by_qg_key: Dict[str, Set[str]],
+def _get_subclass_clusters(kg_edge_keys_by_qg_key: dict[str, set[str]], kg_node_keys_by_qg_key: dict[str, set[str]],
                            kg: KnowledgeGraph, qg: QueryGraph,
-                           log: ARAXResponse) -> Tuple[Dict[str, Dict[str, Set[str]]], Dict[str, Dict[str, str]]]:
+                           log: ARAXResponse) -> tuple[dict[str, dict[str, set[str]]], dict[str, dict[str, str]]]:
     """
     Create two helper maps: one that maps parent IDs to their set of child IDs, and another that maps child IDs to
     their parent IDs. Parent-child relationships are determined based on the edges in the KG fulfilling any subclass
@@ -1055,8 +1541,8 @@ def _get_subclass_clusters(kg_edge_keys_by_qg_key: Dict[str, Set[str]], kg_node_
     subclass_self_qedges = {qedge_key for qedge_key, qedge in qg.edges.items()
                             if _is_subclass_self_qedge(qedge)}
     subclass_self_qnodes = {qg.edges[qedge_key].subject for qedge_key in subclass_self_qedges}
-    subclass_clusters = {subclass_qnode_key: dict() for subclass_qnode_key in subclass_self_qnodes}
-    child_to_parents_map = {subclass_qnode_key: collections.defaultdict(set) for subclass_qnode_key in subclass_self_qnodes}
+    subclass_clusters: dict[str, dict] = {subclass_qnode_key: dict() for subclass_qnode_key in subclass_self_qnodes}
+    child_to_parents_map: dict[str, DefaultDict] = {subclass_qnode_key: collections.defaultdict(set) for subclass_qnode_key in subclass_self_qnodes}
     # Record parent/child mappings based on the subclass self-edges in the KG
     for subclass_qedge_key in subclass_self_qedges:
         subclass_qnode_key = qg.edges[subclass_qedge_key].subject
@@ -1071,7 +1557,7 @@ def _get_subclass_clusters(kg_edge_keys_by_qg_key: Dict[str, Set[str]], kg_node_
             child_to_parents_map[subclass_qnode_key][parent_id].add(parent_id)  # It's handy to list parents as parent of themselves
     # Also list any parents that may not have subclass self-edges as parents of themselves
     for subclass_qnode_key in subclass_self_qnodes:
-        node_keys_for_qnode = kg_node_keys_by_qg_key[subclass_qnode_key]
+        node_keys_for_qnode = kg_node_keys_by_qg_key.get(subclass_qnode_key, set())
         node_keys_with_subclass_edge = set(child_to_parents_map[subclass_qnode_key])
         node_keys_with_no_subclass_edge = node_keys_for_qnode.difference(node_keys_with_subclass_edge)
         for node_key in node_keys_with_no_subclass_edge:
@@ -1080,7 +1566,7 @@ def _get_subclass_clusters(kg_edge_keys_by_qg_key: Dict[str, Set[str]], kg_node_
             child_to_parents_map[subclass_qnode_key][node_key] = {node_key}
 
     # Keep only one parent per child per qnode key; system/TRAPI isn't set up to handle multiple yet
-    child_to_parent_map = {subclass_qnode_key: dict() for subclass_qnode_key in subclass_self_qnodes}
+    child_to_parent_map: dict[str, dict] = {subclass_qnode_key: dict() for subclass_qnode_key in subclass_self_qnodes}
     for qnode_key, mappings in child_to_parents_map.items():
         for child_id, parent_ids in mappings.items():
             best_parent_id = _get_best_parent_id(parent_ids)
@@ -1094,10 +1580,10 @@ def _get_best_parent_id(parent_ids: Iterable[str]) -> str:
     return list(sorted(list(parent_ids)))[0]
 
 
-def _clean_up_dead_ends(result_graph: Dict[str, Dict[str, Set[str]]],
-                        sub_qg_adj_map: Dict[str, Set[str]],
-                        kg_node_adj_map_by_qg_key: Dict[str, Dict[str, Dict[str, Set[str]]]],
-                        log: ARAXResponse) -> Dict[str, Dict[str, Set[str]]]:
+def _clean_up_dead_ends(result_graph: dict[str, DefaultDict[str, set[str]]],
+                        sub_qg_adj_map: dict[str, set[str]],
+                        kg_node_adj_map_by_qg_key: dict[str, dict[str, dict[str, set[str]]]],
+                        log: ARAXResponse) -> dict[str, DefaultDict[str, set[str]]]:
     """
     This function iteratively removes "dead ends" from a result graph until no more dead ends can be found. Dead ends
     can be thought of as intermediate nodes (typically for is_set=True qnodes) that connect to only a subset of the
@@ -1109,7 +1595,7 @@ def _clean_up_dead_ends(result_graph: Dict[str, Dict[str, Set[str]]],
     found_dead_ends = True
     while found_dead_ends:
         found_dead_ends = False
-        nodes_to_remove = dict()
+        nodes_to_remove: dict[str, set[str]] = dict()
         # Go through each qnode "role" in our result graph, and check the nodes corresponding to that qnode
         for qnode_key in fulfilled_qnode_keys:
             corresponding_node_keys = result_graph["nodes"][qnode_key]
@@ -1132,18 +1618,20 @@ def _clean_up_dead_ends(result_graph: Dict[str, Dict[str, Set[str]]],
 
 
 def _create_result_graphs(qg: QueryGraph,
-                          kg_node_keys_by_qg_key: Dict[str, Set[str]],
-                          edge_keys_by_subject: DefaultDict[str, DefaultDict[str, set]],
-                          edge_keys_by_object: DefaultDict[str, DefaultDict[str, set]],
-                          edge_keys_by_node_pair: DefaultDict[str, DefaultDict[Tuple[str], set]],
+                          kg_node_keys_by_qg_key: dict[str, set[str]],
+                          edge_keys_by_subject: DefaultDict[str, DefaultDict[str, set[str]]],
+                          edge_keys_by_object: DefaultDict[str, DefaultDict[str, set[str]]],
+                          edge_keys_by_node_pair: DefaultDict[str, DefaultDict[tuple[str, str], set[str]]],
                           ignore_edge_direction: bool = True,
-                          log: ARAXResponse = ARAXResponse(),
-                          base_result_graphs: Optional[List[dict]] = None) -> List[dict]:
+                          log: Optional[ARAXResponse] = None,
+                          base_result_graphs: Optional[list[dict]] = None) -> list[dict]:
+    if log is None:
+        log = ARAXResponse()
     kg_node_adj_map_by_qg_key = _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key, edge_keys_by_node_pair, qg, log)
     qg_adj_map = _get_qg_adj_map_undirected(qg)
 
     # Iteratively construct "result graphs" (initially containing only nodes, not edges) by walking through all qnodes
-    log.debug(f"Constructing result graphs qnode by qnode")
+    log.debug("Constructing result graphs qnode by qnode")
     if base_result_graphs:
         # We'll build off of the 'base' result graphs rather than start anew (saves time for option group processing)
         result_graphs = base_result_graphs
@@ -1158,7 +1646,7 @@ def _create_result_graphs(qg: QueryGraph,
         # Start with a random qnode if this is our first iteration
         if not qnode_keys_already_handled:
             current_qnode_key = list(qnode_keys_remaining)[0]
-            prior_qnode_connections = set()
+            prior_qnode_connections: set[str] = set()
         # Otherwise find a yet unhandled qnode ID that connects somehow to the part of the QG we've already handled
         else:
             current_qnode_key, prior_qnode_connections = _find_qnode_connected_to_sub_qg(qnode_keys_already_handled, qnode_keys_remaining, qg)
@@ -1169,6 +1657,9 @@ def _create_result_graphs(qg: QueryGraph,
         if not result_graphs:
             log.debug(f"Initiating result graphs with nodes for {current_qnode_key} (is_set={current_qnode.is_set})")
             all_node_keys_in_kg_for_this_qnode_key = kg_node_keys_by_qg_key.get(current_qnode_key)
+            assert all_node_keys_in_kg_for_this_qnode_key is not None, \
+                f"unexpected None state for all_node_keys_in_kg_for_this_qnode_key; current_qnode_key: {current_qnode_key}"
+
             # We'll start with one result graph with ALL corresponding nodes in the KG in this spot if is_set=True
             if current_qnode.is_set:
                 log.debug(f"Starting with one result graph because is_set=True for {current_qnode_key}")
@@ -1223,10 +1714,10 @@ def _create_result_graphs(qg: QueryGraph,
         # Update our records about which qnodes we've already processed
         qnode_keys_remaining.remove(current_qnode_key)
         qnode_keys_already_handled.add(current_qnode_key)
-    log.debug(f"Done assigning nodes to result graphs.")
+    log.debug("Done assigning nodes to result graphs.")
 
     # Then add edges to our result graphs as appropriate (note, we DON'T add subclass self-qedges for now)
-    log.debug(f"Adding edges to result graphs")
+    log.debug("Adding edges to result graphs")
     for result_graph in result_graphs:
         for qedge_key, qedge in qg.edges.items():
             qedge_source_node_ids = result_graph['nodes'][qedge.subject]

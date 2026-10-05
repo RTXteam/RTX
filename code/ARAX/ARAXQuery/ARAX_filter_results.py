@@ -26,7 +26,7 @@ class ARAXFilterResults:
             'sort_by_node_count',
             'sort_by_score'
         }
-        self.report_stats = True  # Set this to False when ready to go to production, this is only for debugging purposes
+        self.report_stats = False  # Set this to False when ready to go to production, this is only for debugging purposes
 
         #Parameter descriptions
         self.edge_attribute_info = {
@@ -350,6 +350,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
         #### Return the response and done
         if self.report_stats:  # helper to report information in debug if class self.report_stats = True
             self.response = self.report_response_stats(self.response)
+
         return self.response
 
     def __sort_by_edge_attribute(self, describe=False):
@@ -942,9 +943,9 @@ def main():
     actions = result.data['actions']
 
     #### Read message #2 from the database. This should be the acetaminophen proteins query result message
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/Feedback")
-    from RTXFeedback import RTXFeedback
-    araxdb = RTXFeedback()
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../ResponseCache")
+    from response_cache import ResponseCache
+    response_cache = ResponseCache()
 
     #message_dict = araxdb.getMessage(2)  # acetaminophen2proteins graph
     # message_dict = araxdb.getMessage(13)  # ibuprofen -> proteins -> disease # work computer
@@ -952,7 +953,7 @@ def main():
     # message_dict = araxdb.getMessage(16)  # atherosclerosis -> phenotypic_feature  # work computer
     # message_dict = araxdb.getMessage(5)  # atherosclerosis -> phenotypic_feature  # home computer
     # message_dict = araxdb.getMessage(10)
-    message_dict = araxdb.getMessage(40)
+    message_dict = response_cache.get_response(314204)
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger

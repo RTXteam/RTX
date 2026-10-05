@@ -53,7 +53,7 @@ class AuxiliaryGraph(Model):
     def edges(self):
         """Gets the edges of this AuxiliaryGraph.
 
-        List of edges that form the Auxiliary Graph. Each item is a reference to a single Knowledge Graph edge  # noqa: E501
+        List of edges that form the Auxiliary Graph. Each item is a reference to a single Knowledge Graph Edge. This list is not ordered, nor is the order intended to convey any relationship  between the edges that form this Auxiliary Graph.  # noqa: E501
 
         :return: The edges of this AuxiliaryGraph.
         :rtype: List[str]
@@ -64,7 +64,7 @@ class AuxiliaryGraph(Model):
     def edges(self, edges):
         """Sets the edges of this AuxiliaryGraph.
 
-        List of edges that form the Auxiliary Graph. Each item is a reference to a single Knowledge Graph edge  # noqa: E501
+        List of edges that form the Auxiliary Graph. Each item is a reference to a single Knowledge Graph Edge. This list is not ordered, nor is the order intended to convey any relationship  between the edges that form this Auxiliary Graph.  # noqa: E501
 
         :param edges: The edges of this AuxiliaryGraph.
         :type edges: List[str]
@@ -96,5 +96,9 @@ class AuxiliaryGraph(Model):
         :param attributes: The attributes of this AuxiliaryGraph.
         :type attributes: List[Attribute]
         """
+        if attributes is None:
+            raise ValueError("Invalid value for `attributes`, must not be `None`")  # noqa: E501
+        if attributes is not None and len(attributes) < 0:
+            raise ValueError("Invalid value for `attributes`, number of items must be greater than or equal to `0`")  # noqa: E501
 
         self._attributes = attributes

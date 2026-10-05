@@ -36,8 +36,11 @@ class ARAXResponse:
         self.n_warnings = 0
         self.data = {}
         self.envelope = None
-
         self.query_plan = { 'qedge_keys': {}, 'counter': 0 }
+        self.wait_time = None  # this attribute is set by trapi_querier.py
+        self.http_error = None  # this attribute is set by trapi_querier.py
+        self.timed_out = None  # this attribute is set by trapi_querier.py
+        self.total_results_count = None  # this attribute is set by ARAX_resultify.py
 
 
     #### Add a debugging message
@@ -224,7 +227,7 @@ class ARAXResponse:
         :type edge_key: str
         :param provider: knowledge provider name (e.g. 'infores:molepro).
         :type level: int
-        :param status: status the KP (one of: Skipped, Waiting, Timed out, Error, Done).
+        :param status: status the KP (one of: Skipped, Waiting, Timed out, Error, Warning, Done).
         :type code: str
         :param description: Description of the result (see below for examples).
         :type code: str

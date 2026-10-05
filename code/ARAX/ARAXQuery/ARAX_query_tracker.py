@@ -13,7 +13,7 @@ import psutil
 from datetime import datetime, timezone
 import sqlalchemy
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, Float, String, DateTime, PickleType
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -122,6 +122,11 @@ class ARAXQueryTracker:
     def databaseName(self, databaseName: str):
         self._databaseName = databaseName
 
+
+    ##################################################################################################
+    def get_code_location(self):
+        location = os.path.dirname(os.path.abspath(__file__))
+        return location
 
     ##################################################################################################
     def create_tables(self):
@@ -323,7 +328,8 @@ class ARAXQueryTracker:
             timestamp = str(datetime.now().isoformat())
             eprint(f"{timestamp}: DEBUG: In ARAXQueryTracker create_tracker_entry")
 
-        MAX_CONCURRENT_FROM_REMOTE = 10
+        cpu_count = psutil.cpu_count()
+        MAX_CONCURRENT_FROM_REMOTE = round(cpu_count * 50 / 16)
 
         instance_info = self.get_instance_info()
 
@@ -333,7 +339,18 @@ class ARAXQueryTracker:
         start_timestamp = datetime.now().timestamp()
 
         remote_address = attributes['remote_address']
+        deny_message = None
         if remote_address in ongoing_queries_by_remote_address and ongoing_queries_by_remote_address[remote_address] > MAX_CONCURRENT_FROM_REMOTE and attributes['submitter'] is not None and attributes['submitter'] != 'infores:arax':
+            deny_message = f"Request has exceeded {MAX_CONCURRENT_FROM_REMOTE} concurrent query limit. Denied."
+        else:
+            system_memory = psutil.virtual_memory()
+            available_gb = round(system_memory.available / (1024 ** 3),1)
+            total_gb = system_memory.total / (1024 ** 3)
+            min_memory_limit_gb = round(total_gb * 0.15,1)
+            if available_gb < min_memory_limit_gb:
+                deny_message = f"Server remaining memory at {available_gb} GB, below {min_memory_limit_gb} GB safety limit. Unable to accept query at this time."
+
+        if deny_message is not None:
             try:
                 tracker_entry = ARAXQuery(
                     status = "Denied",
@@ -350,7 +367,7 @@ class ARAXQueryTracker:
                     elapsed = 0,
                     message_id = None,
                     message_code = 'OverLimit',
-                    code_description = 'Request has exceeded 4 concurrent query limit. Denied.')
+                    code_description = deny_message)
                 session.add(tracker_entry)
                 session.commit()
                 tracker_id = tracker_entry.query_id
@@ -462,16 +479,37 @@ class ARAXQueryTracker:
                 ongoing_queries_by_remote_address[remote_address] += 1
             else:
                 status = 'This PID no longer exists'
-                entries_to_delete.append(ongoing_query.query_id)
+                entries_to_delete.append(ongoing_query)
 
-        for query_id in entries_to_delete:
-            attributes = {
-                'status': 'Died',
-                'message_id': None,
-                'message_code': 'FoundDead',
-                'code_description': 'The PID for this query is no longer running. Reason unknown.'
-            }
-            self.update_tracker_entry(query_id, attributes)
+        # In order to avoid race conditions, we will check again
+        if len(entries_to_delete) > 0:
+            #### Sleep for a second to allow other threads to finish their work
+            time.sleep(1)
+            #### Enclosing in commits seems to reduce the problem of threads being out of sync
+            self.session.commit()
+            ongoing_queries = self.session.query(ARAXOngoingQuery).filter(
+                ARAXOngoingQuery.domain == instance_info['domain'],
+                ARAXOngoingQuery.hostname == instance_info['hostname'],
+                ARAXOngoingQuery.instance_name == instance_info['instance_name']).all()
+            self.session.commit()
+
+            for entry_to_delete in entries_to_delete:
+                query_id = entry_to_delete.query_id
+                still_there = False
+                for ongoing_query in ongoing_queries:
+                    if ongoing_query.query_id == query_id:
+                        still_there = True
+                        break
+                if still_there:
+                    attributes = {
+                        'status': 'Died',
+                        'message_id': None,
+                        'message_code': 'MissingPID',
+                        'code_description': 'The PID for this query is no longer running. Reason unknown.'
+                    }
+                    self.update_tracker_entry(query_id, attributes)
+                else:
+                    eprint(f"INFO: Ongoing query {query_id} was already removed by another thread")
 
         return ongoing_queries_by_remote_address
 

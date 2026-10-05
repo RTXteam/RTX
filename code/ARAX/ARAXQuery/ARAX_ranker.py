@@ -3,6 +3,7 @@ import math
 import os
 import networkx as nx
 import numpy as np
+import numpy.typing as npt
 import scipy.stats
 import sys
 import json
@@ -10,76 +11,40 @@ import ast
 import re
 
 
-from typing import Set, Union, Dict, List, Callable
+from typing import Union, Dict, Callable
 from ARAX_response import ARAXResponse
 from query_graph_info import QueryGraphInfo
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
 from openapi_server.models.edge import Edge
-from openapi_server.models.attribute import Attribute
 
-edge_confidence_manual_agent = 0.99
 
-def _get_nx_edges_by_attr(G: Union[nx.MultiDiGraph, nx.MultiGraph], key: str, val: str) -> Set[tuple]:
-    res_set = set()
-    for edge_tuple in G.edges(data=True):
-        edge_val = edge_tuple[2].get(key, None)
-        if edge_val is not None and edge_val == val:
-            res_set.add(edge_tuple)
-    return res_set
+edge_confidence_manual_agent = 0.90
 
 
 def _get_query_graph_networkx_from_query_graph(query_graph: QueryGraph) -> nx.MultiDiGraph:
     query_graph_nx = nx.MultiDiGraph()
-    query_graph_nx.add_nodes_from([key for key, node in query_graph.nodes.items() if 'creative_DTD_qnode' not in key and 'creative_CRG_qnode' not in key])
-    edge_list = [[edge.subject, edge.object, key, {'weight': 0.0}] for key,edge in query_graph.edges.items() if 'creative_DTD_qedge' not in key and 'creative_CRG_qedge' not in key]
+    query_graph_nx.add_nodes_from([key for key, node in query_graph.nodes.items() if 'creative_' not in key])
+    edge_list = [[edge.subject, edge.object, key, {'weight': 0.0}] for key,edge in query_graph.edges.items() if 'creative_' not in key]
     query_graph_nx.add_edges_from(edge_list)
     return query_graph_nx
 
 
-def _normalize_number_of_edges(edge_number):
-    """
-    Normalize the number of edges to be between 0 and 1
-    """
-    value = edge_number
-    max_value = 1.0
-    curve_steepness = 0.5
-    midpoint = 0
-    normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - midpoint)))
-
-    return normalized_value
-
-
-def _calculate_final_individual_edge_confidence(base_score: int, attribute_scores: List[float]) -> float:
-    
-    sorted_attribute_scores = sorted(attribute_scores, reverse=True)
+def _calculate_final_individual_edge_confidence(base_score: float, attribute_scores: list[float]) -> float:
     
     # use Eric's loop algorithm
     W_r = base_score
     
-    for W_i in attribute_scores:
+    sorted_attribute_scores = sorted(attribute_scores, reverse=True)
+    for W_i in sorted_attribute_scores:
         W_r = W_r + (1 - W_r) * W_i
 
     return W_r
 
-def _normalize_number_of_goldsource_edges(goldsource_edge_number):
-    """
-    Normalize the number of drugbank edges to be between 0 and 1
-    """
-    value = goldsource_edge_number
-    max_value = 1.0
-    curve_steepness = 3
-    midpoint = 0
-    normalized_value = max_value / float(1 + np.exp(-curve_steepness * (value - midpoint)))
-    
-    if normalized_value == 0.5:
-        normalized_value = 0.0
 
-    return normalized_value
-
-def _calculate_final_result_score(kg_edge_id_to_edge: Dict[str, Edge], edge_binding_list: List[Dict]) -> float:
+def _calculate_final_result_score(all_edge_scores: list[float]) -> float:
     """
     Calculate the final result score for a given edge binding list considering the individual base edge confidence scores. The looping aglorithm is used:
         W_r = W_r + (1 - W_r) * W_i
@@ -100,40 +65,72 @@ def _calculate_final_result_score(kg_edge_id_to_edge: Dict[str, Edge], edge_bind
     Final result score = 0.99997984
     
     Parameters:
-        kg_edge_id_to_edge (Dict[str, Edge]): A dictionary mapping edge IDs to Edge objects.
-        edge_binding_list (List[Dict]): A list of dictionaries containing edge bindings.
+        kg_edge_id_to_edge (dict[str, Edge]): A dictionary mapping edge IDs to Edge objects.
+        edge_binding_list (list[Dict]): A list of dictionaries containing edge bindings.
     Returns:
         float: The final combined score between 0 and 1.
     """
-
-    # Calculate final result score
-    all_edge_scores = [kg_edge_id_to_edge[edge_binding.id].confidence for edge_binding in edge_binding_list]
-
     # Calculate the final score
     final_score = _calculate_final_individual_edge_confidence(0, all_edge_scores)
 
     return final_score
 
+def _process_valid_edge_ids(valid_edge_id_info: dict[str, Dict], kg_edge_id_to_edge: dict[str, Edge]) -> dict[str, dict[str, list[float]]]:
+    
+    results: dict[str, dict[str, list[float]]] = {}
+    
+    for qedge_key, edge_info in valid_edge_id_info.items():
+        results[qedge_key] = {}
+        results[qedge_key]['edge_tuple'] = edge_info['edge_tuple']
+        results[qedge_key]['scores'] = []
 
-def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: Dict[str, Edge],
+        same_edge_ids: dict[str, list[float]] = {}
+        for edge_binding in edge_info['edge_binding_list']:
+            edge_id = edge_binding.id.split(':', 2)[-1]
+            if edge_id not in same_edge_ids:
+                same_edge_ids[edge_id] = []
+            same_edge_ids[edge_id].append(kg_edge_id_to_edge[edge_binding.id].confidence)
+            
+        # Take the average of the scores for each edge id
+        for edge_id, scores in same_edge_ids.items():
+            results[qedge_key]['scores'].append(sum(scores) / len(scores))
+            
+    return results
+
+
+def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: dict[str, Edge],
                                                    qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
                                                    result: Result) -> Union[nx.MultiDiGraph,
                                                                             nx.MultiGraph]:
     res_graph = qg_nx.copy()
     qg_edge_tuples = tuple(qg_nx.edges(keys=True, data=True))
     qg_edge_key_to_edge_tuple = {edge_tuple[2]: edge_tuple for edge_tuple in qg_edge_tuples}
+    
+    # Get all valid edge ids from the edge binding list
+    valid_edge_id_info = {}
     for analysis in result.analyses:  # For now we only ever have one Analysis per Result
         for qedge_key, edge_binding_list in analysis.edge_bindings.items():
-            if 'creative_DTD_qedge' not in qedge_key and 'creative_CRG_qedge' not in qedge_key:
+            if 'creative_' not in qedge_key: # ignore all xDTD/xCRG supported edges
                 qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
-                res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_tuple[2]]['weight'] = _calculate_final_result_score(kg_edge_id_to_edge, edge_binding_list)
+                valid_edge_id_info[qedge_key] = {
+                    'edge_tuple': qedge_tuple,
+                    'edge_binding_list': edge_binding_list
+                }
+                
+    # Process all valid edge ids (possibly combine multiple duplicate edges into one)
+    processed_valid_edge_ids = _process_valid_edge_ids(valid_edge_id_info, kg_edge_id_to_edge)
+                
+    for qedge_key, edge_info in processed_valid_edge_ids.items():
+        qedge_tuple = edge_info['edge_tuple']
+        scores = edge_info['scores']
+        res_graph[qedge_tuple[0]][qedge_tuple[1]][qedge_tuple[2]]['weight'] = _calculate_final_result_score(scores)
                 
     return res_graph
 
 
-def _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge: Dict[str, Edge],
+def _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge: dict[str, Edge],
                                                      qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
-                                                     results: List[Result]) -> List[Union[nx.MultiDiGraph,
+                                                     results: list[Result]) -> list[Union[nx.MultiDiGraph,
                                                                                           nx.MultiGraph]]:
     res_list = []
     for result in results:
@@ -147,9 +144,9 @@ def _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge: Dict[st
 def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
                                                               nx.MultiGraph]) -> Union[nx.DiGraph,
                                                                                        nx.Graph]:
-    if type(graph_nx) == nx.MultiGraph:
+    if type(graph_nx) is nx.MultiGraph:
         ret_graph = nx.Graph()
-    elif type(graph_nx) == nx.MultiDiGraph:
+    elif type(graph_nx) is nx.MultiDiGraph:
         ret_graph = nx.DiGraph()
     for u, v, data in graph_nx.edges(data=True):
         w = data['weight'] if 'weight' in data else 1.0
@@ -163,13 +160,13 @@ def _collapse_nx_multigraph_to_weighted_graph(graph_nx: Union[nx.MultiDiGraph,
 # computes quantile ranks in *ascending* order (so a higher x entry has a higher
 # "rank"), where ties have the same (average) rank (the reason for using scipy.stats
 # here is specifically in order to handle ties correctly)
-def _quantile_rank_list(x: List[float]) -> np.array:
+def _quantile_rank_list(x: list[float]) -> npt.NDArray[np.float64]:
     y = scipy.stats.rankdata(x, method='max')
     return y/len(y)
 
 
-def _score_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGraph,
-                                                                    nx.MultiGraph]]) -> List[float]:
+def _score_networkx_graphs_by_max_flow(result_graphs_nx: list[Union[nx.MultiDiGraph,
+                                                                    nx.MultiGraph]]) -> list[float]:
     max_flow_values = []
     for result_graph_nx in result_graphs_nx:
         if len(result_graph_nx) > 1:
@@ -195,8 +192,8 @@ def _score_networkx_graphs_by_max_flow(result_graphs_nx: List[Union[nx.MultiDiGr
     return max_flow_values
 
 
-def _score_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.MultiDiGraph,
-                                                                        nx.MultiGraph]]) -> List[float]:
+def _score_networkx_graphs_by_longest_path(result_graphs_nx: list[Union[nx.MultiDiGraph,
+                                                                        nx.MultiGraph]]) -> list[float]:
     result_scores = []
     for result_graph_nx in result_graphs_nx:
         apsp_dict = dict(nx.algorithms.shortest_paths.unweighted.all_pairs_shortest_path_length(result_graph_nx))
@@ -206,7 +203,7 @@ def _score_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.Multi
         pairs_with_max_path_len = [path_len_with_pair_list_item[0:2] for path_len_with_pair_list_item in path_len_with_pairs_list if
                                    path_len_with_pair_list_item[2] == max_path_len]
         map_node_name_to_index = {node_id: node_index for node_index, node_id in enumerate(result_graph_nx.nodes)}
-        adj_matrix = nx.to_numpy_matrix(result_graph_nx)
+        adj_matrix = nx.to_numpy_array(result_graph_nx)
         adj_matrix_power = np.linalg.matrix_power(adj_matrix, max_path_len)/math.factorial(max_path_len)
         score_list = [adj_matrix_power[map_node_name_to_index[node_i],
                                        map_node_name_to_index[node_j]] for node_i, node_j in pairs_with_max_path_len]
@@ -215,21 +212,22 @@ def _score_networkx_graphs_by_longest_path(result_graphs_nx: List[Union[nx.Multi
     return result_scores
 
 
-def _score_networkx_graphs_by_frobenius_norm(result_graphs_nx: List[Union[nx.MultiDiGraph,
-                                                                          nx.MultiGraph]]) -> List[float]:
+def _score_networkx_graphs_by_frobenius_norm(result_graphs_nx: list[Union[nx.MultiDiGraph,
+                                                                          nx.MultiGraph]]) -> list[float]:
     result_scores = []
     for result_graph_nx in result_graphs_nx:
-        adj_matrix = nx.to_numpy_matrix(result_graph_nx)
+        adj_matrix = nx.to_numpy_array(result_graph_nx)
         result_score = np.linalg.norm(adj_matrix, ord='fro')
-        result_scores.append(result_score)
+        result_scores.append(float(result_score))
     return result_scores
 
 
-def _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge: Dict[str, Edge],
+def _score_result_graphs_by_networkx_graph_scorer(kg_edge_id_to_edge: dict[str, Edge],
                                                   qg_nx: Union[nx.MultiDiGraph, nx.MultiGraph],
-                                                  results: List[Result],
-                                                  nx_graph_scorer: Callable[[List[Union[nx.MultiDiGraph,
-                                                                                        nx.MultiGraph]]], np.array]) -> List[float]:
+                                                  results: list[Result],
+                                                  nx_graph_scorer: Callable[[list[Union[nx.MultiDiGraph,
+                                                                                        nx.MultiGraph]]],
+                                                                            list[float]]) -> list[float]:
     result_graphs_nx = _get_weighted_graphs_networkx_from_result_graphs(kg_edge_id_to_edge,
                                                                         qg_nx,
                                                                         results)
@@ -288,7 +286,7 @@ class ARAXRanker:
                                           }
         # how much we trust each data source
         self.data_source_base_weights = {'infores:semmeddb': 0.5, # downweight semmeddb
-                                         'infores:text-mining-provider': 0.85,
+                                         'infores:text-mining-provider-targeted': 0.85,
                                          'infores:drugcentral': 0.93,
                                          'infores:drugbank': 0.99
                                          # we can define the more customized weights for other data sources here later if needed.
@@ -326,30 +324,6 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         description_list.append(params_dict)
         return description_list
 
-    def result_confidence_maker(self, result):
-        ###############################
-        # old method of just multiplying ALL the edge confidences together
-        if True:
-            result_confidence = 1  # everybody gets to start with a confidence of 1
-            for edge in result.edge_bindings:
-                kg_edge_id = edge.id
-                # TODO: replace this with the more intelligent function
-                # here we are just multiplying the edge confidences
-                # --- to see what info is going into each result: print(f"{result.essence}: {kg_edges[kg_edge_id].type}, {kg_edges[kg_edge_id].confidence}")
-                result_confidence *= self.kg_edge_id_to_edge[kg_edge_id].confidence
-                #kg_edge_attributes = {x.original_attribute_name:x.value for x in self.kg_edge_id_to_edge[kg_edge_id].attributes}
-                #result_confidence *= kg_edge_attributes["confidence"]
-            result.confidence = result_confidence
-        else:
-            # consider each pair of nodes in the QG, then somehow combine that information
-            # Idea:
-            #   in each result
-            #       for each source and target node:
-            #           combine the confidences into a single edge with a single confidence that takes everything into account (
-            #           edges, edge scores, edge types, etc)
-            #       then assign result confidence as average/median of these "single" edge confidences?
-            result.confidence = 1
-
     def edge_attribute_score_combiner(self, edge_key, edge):
         """
         This function takes a single edge and decides how to combine its attribute scores into a single confidence
@@ -357,13 +331,17 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         1. To weight different attributes by different amounts
         2. Figure out what to do with edges that have no attributes
         """
-        edge_default_base = 0.75
+        
+        edge_default_base = 0.5
         edge_attribute_score_list = []
         
+        #  Retrieve edge data source
+        data_source = edge_key.split('--')[-1]
+        
         # find data source from edge_key
-        if edge_key.split('--')[-1] in self.data_source_base_weights:
-            base = self.data_source_base_weights[edge_key.split('--')[-1]]
-        elif 'infores' in edge_key.split('--')[-1]: # default score for other data sources
+        if data_source in self.data_source_base_weights:
+            base = self.data_source_base_weights[data_source]
+        elif 'infores' in data_source: # default score for other data sources
             base = edge_default_base
         else: # virtual edges or inferred edges
             base = 0 # no base score for these edges. Its score is based on its attribute scores.
@@ -378,18 +356,18 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                     normalized_score = self.edge_attribute_score_normalizer(edge_attribute.original_attribute_name, edge_attribute.value)
                 else:
                     normalized_score = self.edge_attribute_score_normalizer(edge_attribute.attribute_type_id, edge_attribute.value)
-                if edge_attribute.attribute_type_id == "biolink:publications" and (edge_attribute.attribute_source is None or edge_attribute.attribute_source == "infores:semmeddb"):
+                if edge_attribute.attribute_type_id == "biolink:publications" and data_source == "infores:semmeddb":
                     # only publications from semmeddb are used to calculate the confidence in this way
                     normalized_score = self.edge_attribute_publication_normalizer(edge_attribute.attribute_type_id, edge_attribute.value)
 
-
+                #  Collect scores from attributes that we used to calculate the final confidence
                 if self.known_attributes_to_trust.get(edge_attribute.original_attribute_name, None):
                     if normalized_score > 0:
                         edge_attribute_score_list.append(normalized_score * self.known_attributes_to_trust[edge_attribute.original_attribute_name])
                 elif self.known_attributes_to_trust.get(edge_attribute.attribute_type_id, None):
                     if normalized_score > 0:
                         edge_attribute_score_list.append(normalized_score * self.known_attributes_to_trust[edge_attribute.attribute_type_id])
-                elif edge_attribute.attribute_type_id == "biolink:publications" and (edge_attribute.attribute_source is None or edge_attribute.attribute_source == "infores:semmeddb"):
+                elif edge_attribute.attribute_type_id == "biolink:publications" and data_source == "infores:semmeddb":
                     if normalized_score > 0:
                         edge_attribute_score_list.append(normalized_score)
                 else:
@@ -398,7 +376,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                     # add more rules in the future
                     continue 
             
-            if len(edge_attribute_score_list) == 0: # if no appropriate attribute for score calculation, set the confidence to 1
+            if len(edge_attribute_score_list) == 0: # if no appropriate attribute for score calculation, set the confidence to default base score (0.5)
                 edge_confidence = base
             else:
                 edge_confidence = _calculate_final_individual_edge_confidence(base, edge_attribute_score_list)
@@ -669,7 +647,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         Does everything in place (no result returned)
         """
         self.response = response
-        response.debug(f"Starting to rank results")
+        response.debug("Starting to rank results")
         message = response.envelope.message
         self.message = message
 
@@ -726,7 +704,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         if no_non_inf_float_flag:
             response.warning(
-                        f"No non-infinite value was encountered in any edge attribute in the knowledge graph.")
+                        "No non-infinite value was encountered in any edge attribute in the knowledge graph.")
         response.info(f"Summary of available edge metrics: {score_stats}")
 
         edge_ids_manual_agent = set()
@@ -743,16 +721,10 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             else:
                 edge_attributes = {}
 
-            if edge_attributes.get("confidence", None) is not None:
-            #if False:       # FIXME: there is no longer such an attribute. Stored as a generic attribute?
-            #if edge.confidence is not None:
-                # don't touch the confidence, since apparently someone already knows what the confidence should be
+            if edge_attributes.get("confidence", None):
                 edge.confidence = edge_attributes['confidence']
-                #continue
-            else:
-                confidence = self.edge_attribute_score_combiner(edge_key, edge)
-                #edge.attributes.append(Attribute(name="confidence", value=confidence))
-                edge.confidence = confidence
+            else:                
+                edge.confidence = self.edge_attribute_score_combiner(edge_key, edge)
 
         # Now that each edge has a confidence attached to it based on it's attributes, we can now:
         # 1. consider edge types of the results
@@ -761,13 +733,11 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
         results = message.results
 
-        # for edge_key in edge_ids_manual_agent:
-        #     print(f"setting max confidence for edge_key: {edge_key}")
-
         ###################################
         # TODO: Replace this with a more "intelligent" separate function
         # now we can loop over all the results, and combine their edge confidences (now populated)
         qg_nx = _get_query_graph_networkx_from_query_graph(message.query_graph)
+        kg_edge_id_to_edge = self.kg_edge_id_to_edge
         kg_edge_id_to_edge = self.kg_edge_id_to_edge
 
         ranks_list = list(map(_quantile_rank_list,
@@ -779,15 +749,12 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
                                    _score_networkx_graphs_by_longest_path,
                                    _score_networkx_graphs_by_frobenius_norm])))
 
-
         result_scores = sum(ranks_list)/float(len(ranks_list))
 
 
         for result, score in zip(results, result_scores):
             result.analyses[0].score = score  # For now we only ever have one Analysis per Result
 
-        # for result in message.results:
-        #     self.result_confidence_maker(result)
         ###################################
 
             # Make all scores at least 0.001. This is all way low anyway, but let's not have anything that rounds to zero
@@ -828,7 +795,7 @@ def main():
 
     import argparse
     argparser = argparse.ArgumentParser(description='Ranker system')
-    argparser.add_argument('--local', action='store_true', help='If set, use local RTXFeedback database to fetch messages')
+    argparser.add_argument('--local', action='store_true', help='If set, use local ResponseCache database to fetch messages')
     params = argparser.parse_args()
 
     # --- Create a response object
@@ -849,10 +816,10 @@ def main():
 
     # For local messages due to local changes in code not rolled out to production:
     if params.local:
-        sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/Feedback")
-        from RTXFeedback import RTXFeedback
-        araxdb = RTXFeedback()
-        message_dict = araxdb.getMessage(294)  # local version of 2709 but with updates to COHD
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../ResponseCache")
+        from response_cache import ResponseCache
+        response_cache = ResponseCache()
+        message_dict = response_cache.get_response(314204)
         # message_dict = araxdb.getMessage(297)
         # message_dict = araxdb.getMessage(298)
         # message_dict = araxdb.getMessage(299)  # observed_expected_ratio different disease

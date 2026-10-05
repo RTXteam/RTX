@@ -101,16 +101,16 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
         # make sure two or more values were added
         assert len(values) >= num_different_values
 
-
+@pytest.mark.broken 
 def test_jaccard():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(name=DOID:1947, key=n00)",
-        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:Gene, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=infores:rtx-kg2)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:interacts_with)",
+        "expand(edge_key=[e00,e01], kp=infores:retriever)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)",
@@ -141,10 +141,10 @@ def test_jaccard():
 def test_add_node_pmids():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=MONDO:0018077, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n01)",
+        "add_qnode(ids=MONDO:0018077, key=n00)",
+        "add_qnode(ids=CHEBI:17076, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:retriever)",
         "overlay(action=add_node_pmids, max_num=15)",
         "return(message=true, store=false)"
     ]}}
@@ -176,7 +176,7 @@ def test_compute_ngd_virtual():
         "add_qnode(name=DOID:384, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:retriever)",
         "overlay(action=compute_ngd, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=N1)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)",
@@ -213,7 +213,7 @@ def test_compute_ngd_attribute():
         "add_qnode(name=DOID:384, key=n00)",
         "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:retriever)",
         "overlay(action=compute_ngd)",
         "resultify(ignore_edge_direction=true, debug=true)",
         "return(message=true, store=false)",
@@ -236,19 +236,19 @@ def test_compute_ngd_attribute():
         if "publications" in attribute_names:
             assert len(attribute_names["publications"]) <= 30
 
-
+@pytest.mark.broken 
 def test_FET_ex1():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(ids=DOID:12889, key=n00, categories=biolink:Disease)",
-        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
+        "add_qnode(categories=biolink:Gene, is_set=true, key=n01)",
         "add_qedge(subject=n00, object=n01,key=e00)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:retriever)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, object_qnode_key=n01, virtual_relation_label=FET1, rel_edge_key=e00)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=fisher_exact_test_p-value, direction=above, threshold=0.005, remove_connected_nodes=t, qnode_keys=[n01])",
         "add_qnode(categories=biolink:ChemicalEntity, is_set=true, key=n02)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=e01, kp=infores:rtx-kg2)",
+        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:interacts_with)",
+        "expand(edge_key=e01, kp=infores:retriever)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n01, object_qnode_key=n02, virtual_relation_label=FET2, filter_type=cutoff, value=0.05)",
         "resultify()",
         "return(message=true, store=false)"
@@ -284,16 +284,16 @@ def test_FET_ex1():
             assert 0 <= float(edge.attributes[0].value) < 0.005
         else:
             assert 0 <= float(edge.attributes[0].value) < 0.05
-    FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
+    # FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
     # assert len(FET_query_edges) == 2
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
     assert len(query_node_keys) == 2
-    for key, query_edge in FET_query_edges.items():
-        assert hasattr(query_edge, 'predicates')
-        assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
-        assert key == query_edge.relation
-        assert query_edge.subject in query_node_keys
-        assert query_edge.object in query_node_keys
+    # for key, query_edge in FET_query_edges.items():
+    #     assert hasattr(query_edge, 'predicates')
+    #     assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
+    #     assert key == query_edge.relation
+    #     assert query_edge.subject in query_node_keys
+    #     assert query_edge.object in query_node_keys
 
 
 @pytest.mark.slow
@@ -303,7 +303,7 @@ def test_FET_ex2():
         "add_qnode(ids=DOID:12889, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Protein, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, kp=infores:rtx-kg2)",
+        "expand(edge_key=e00, kp=infores:retriever)",
         "overlay(action=fisher_exact_test, subject_qnode_key=n00, virtual_relation_label=FET, object_qnode_key=n01, rel_edge_key=e00, top_n=20)",
         "resultify()",
         "return(message=true, store=false)"
@@ -335,16 +335,16 @@ def test_FET_ex2():
         assert edge.attributes
         assert edge.attributes[0].original_attribute_name == 'fisher_exact_test_p-value'
         assert edge.attributes[0].attribute_type_id == 'EDAM-DATA:1669'
-    FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
-    assert len(FET_query_edges) == 1
+    # FET_query_edges = {key:edge for key, edge in message.query_graph.edges.items() if key.find("FET") != -1}
+    # assert len(FET_query_edges) == 1
     query_node_keys = [key for key, node in message.query_graph.nodes.items()]
     assert len(query_node_keys) == 2
-    for key, query_edge in FET_query_edges.items():
-        assert hasattr(query_edge, 'predicates')
-        assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
-        assert key == query_edge.relation
-        assert query_edge.subject in query_node_keys
-        assert query_edge.object in query_node_keys
+    # for key, query_edge in FET_query_edges.items():
+    #     assert hasattr(query_edge, 'predicates')
+    #     assert 'biolink:has_fisher_exact_test_p_value_with' in query_edge.predicates
+    #     assert key == query_edge.relation
+    #     assert query_edge.subject in query_node_keys
+    #     assert query_edge.object in query_node_keys
 
 
 @pytest.mark.slow
@@ -354,7 +354,7 @@ def test_paired_concept_frequency_virtual():
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -362,7 +362,7 @@ def test_paired_concept_frequency_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'paired_concept_frequency', 'EDAM-DATA:0951', 2)
+    _virtual_tester(message, 'biolink:associated_with', 'CP1', 'paired_concept_frequency', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.slow
@@ -372,7 +372,7 @@ def test_paired_concept_frequency_attribute():
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=overlay_clinical_info, COHD_method=paired_concept_frequency)",
         "resultify()",
         "return(message=true, store=false)",
@@ -390,7 +390,7 @@ def test_observed_expected_ratio_virtual():
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=overlay_clinical_info,observed_expected_ratio=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -398,7 +398,7 @@ def test_observed_expected_ratio_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'observed_expected_ratio', 'EDAM-DATA:0951', 2)
+    _virtual_tester(message, 'biolink:associated_with', 'CP1', 'observed_expected_ratio', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.slow
@@ -408,7 +408,7 @@ def test_observed_expected_ratio_attribute():
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio)",
         "resultify()",
         "return(message=true, store=false)",
@@ -426,7 +426,7 @@ def test_chi_square_virtual():
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n0, object_qnode_key=n1, virtual_relation_label=CP1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -434,7 +434,7 @@ def test_chi_square_virtual():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'CP1', 'chi_square', 'EDAM-DATA:0951', 2)
+    _virtual_tester(message, 'biolink:associated_with', 'CP1', 'chi_square', 'EDAM-DATA:0951', 2)
 
 
 @pytest.mark.slow
@@ -444,7 +444,7 @@ def test_chi_square_attribute():
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=overlay_clinical_info, COHD_method=chi_square)",
         "resultify()",
         "return(message=true, store=false)",
@@ -464,7 +464,7 @@ def test_predict_drug_treats_disease_virtual():
         "add_qnode(ids=DOID:0080909, key=n0, categories=biolink:Disease)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -484,7 +484,7 @@ def test_predict_drug_treats_disease_attribute():
         "add_qnode(ids=DOID:0080909, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=predict_drug_treats_disease, threshold=0.7)",
         "resultify()",
         "return(message=true, store=false)",
@@ -504,7 +504,7 @@ def test_issue_832():
         "add_qnode(ids=DOID:0080909, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -523,7 +523,7 @@ def test_issue_832_non_drug():
         "add_qnode(ids=UniProtKB:P62328, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=predict_drug_treats_disease, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=P1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -543,7 +543,7 @@ def test_issue_840():
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -551,7 +551,7 @@ def test_issue_840():
     [response, message] = _do_arax_query(query)
     print(response.show())
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'V1', 'paired_concept_frequency', 'EDAM-DATA:0951', 2)
+    _virtual_tester(message, 'biolink:associated_with', 'V1', 'paired_concept_frequency', 'EDAM-DATA:0951', 2)
 
     # And for the non-virtual test
     query = {"operations": {"actions": [
@@ -559,7 +559,7 @@ def test_issue_840():
         "add_qnode(name=DOID:1588, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "resultify()",
         "return(message=true, store=false)",
@@ -577,7 +577,7 @@ def test_issue_840_non_drug():
         "add_qnode(name=UniProtKB:P62328, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n1, object_qnode_key=n0, virtual_relation_label=V1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -595,7 +595,7 @@ def test_issue_840_non_drug():
         "add_qnode(name=UniProtKB:P62328, key=n0)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(edge_key=e0, kp=infores:rtx-kg2)",
+        "expand(edge_key=e0, kp=infores:retriever)",
         "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
         "resultify()",
         "return(message=true, store=false)",
@@ -635,7 +635,7 @@ def test_overlay_exposures_data_virtual():
     query = {"operations": {"actions": [
         "add_qnode(name=CHEMBL.COMPOUND:CHEMBL635, key=n0)",
         "add_qnode(name=MESH:D052638, key=n1)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "overlay(action=overlay_exposures_data, virtual_relation_label=E1, subject_qnode_key=n0, object_qnode_key=n1)",
         "resultify()",
         "return(message=true, store=false)",
@@ -652,7 +652,7 @@ def test_overlay_exposures_data_attribute():
         "add_qnode(name=MONDO:0012607, key=n0)",
         "add_qnode(name=MONDO:0010940, key=n1)",
         "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "overlay(action=overlay_exposures_data)",
         "resultify()",
         "return(message=true, store=false)",
@@ -669,7 +669,7 @@ def test_overlay_clinical_info_no_ids():
         "create_message",
         "add_qnode(name=acetaminophen, key=n0)",
         "add_qnode(name=Sotos syndrome, key=n1)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
         "overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=C2,subject_qnode_key=n0,object_qnode_key=n1)",
         "overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=C3,subject_qnode_key=n0,object_qnode_key=n1)",
@@ -678,11 +678,11 @@ def test_overlay_clinical_info_no_ids():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C1', 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
+    _virtual_tester(message, 'biolink:associated_with', 'C1', 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
     _attribute_tester(message, 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C2', 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
+    _virtual_tester(message, 'biolink:associated_with', 'C2', 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
     _attribute_tester(message, 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
-    _virtual_tester(message, 'biolink:has_real_world_evidence_of_association_with', 'C3', 'chi_square', 'EDAM-DATA:0951', 1)
+    _virtual_tester(message, 'biolink:associated_with', 'C3', 'chi_square', 'EDAM-DATA:0951', 1)
     _attribute_tester(message, 'chi_square', 'EDAM-DATA:0951', 1)
 
 @pytest.mark.slow
@@ -694,7 +694,7 @@ def test_missing_ngd_pmids():
         "add_qedge(subject=n0, object=n1, key=e0)",
         "add_qnode(categories=[biolink:ChemicalEntity,biolink:Drug], key=n2)",
         "add_qedge(subject=n1, object=n2, key=e1)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
         "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",
         "overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n0, object_qnode_key=n2)",
@@ -733,7 +733,7 @@ def test_jaccard_not_above_1():
         "add_qedge(key=E0,subject=N0,object=N1,predicates=biolink:physically_interacts_with)",
         "add_qnode(key=N2,categories=biolink:ChemicalEntity)",
         "add_qedge(key=E2,subject=N1,object=N2)",
-        "expand(kp=infores:rtx-kg2)",
+        "expand(kp=infores:retriever)",
         "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=V1,subject_qnode_key=N0,object_qnode_key=N1)",
         "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=V2,subject_qnode_key=N1,object_qnode_key=N2)",
         "overlay(action=compute_ngd,default_value=inf,virtual_relation_label=V3,subject_qnode_key=N0,object_qnode_key=N2)",

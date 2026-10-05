@@ -22,7 +22,7 @@ from openapi_server.models.retrieval_source import RetrievalSource
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../KnowledgeSources/COHD_local/scripts/")
 from COHDIndex import COHDIndex
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelper/")
-from biolink_helper import BiolinkHelper
+from biolink_helper import get_biolink_helper
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import overlay_utilities as ou
 
@@ -40,7 +40,7 @@ class OverlayClinicalInfo:
         self.who_knows_about_what = {'COHD': ['small_molecule', 'phenotypic_feature', 'disease', 'drug',
                                                 'biolink:SmallMolecule', 'biolink:PhenotypicFeature', 'biolink:Disease', 'biolink:Drug']}  # FIXME: replace this with information about the KP's, KS's, and their API's
         self.node_curie_to_type = dict()
-        self.biolink_helper = BiolinkHelper()
+        self.biolink_helper = get_biolink_helper()
         self.global_iter = 0
         try:
             self.cohdIndex = COHDIndex()
@@ -269,13 +269,12 @@ class OverlayClinicalInfo:
         curies_to_names = dict()  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         # identify the nodes that we should be adding virtual edges for
         for key, node in self.message.knowledge_graph.nodes.items():
-            if hasattr(node, 'qnode_keys'):
-                if parameters['subject_qnode_key'] in node.qnode_keys:
-                    subject_curies_to_decorate.add(key)
-                    curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
-                if parameters['object_qnode_key'] in node.qnode_keys:
-                    object_curies_to_decorate.add(key)
-                    curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+            if parameters['subject_qnode_key'] in (getattr(node, 'qnode_keys', None) or []):
+                subject_curies_to_decorate.add(key)
+                curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
+            if parameters['object_qnode_key'] in (getattr(node, 'qnode_keys', None) or []):
+                object_curies_to_decorate.add(key)
+                curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         added_flag = False  # check to see if any edges where added
         # iterate over all pairs of these nodes, add the virtual edge, decorate with the correct attribute
 
@@ -297,7 +296,7 @@ class OverlayClinicalInfo:
 
                 # edge properties
                 now = datetime.now()
-                edge_type = f"biolink:has_real_world_evidence_of_association_with"
+                edge_type = f"biolink:associated_with"
                 qedge_keys = [parameters['virtual_relation_label']]
                 relation = parameters['virtual_relation_label']
                 is_defined_by = "ARAX"
@@ -348,7 +347,7 @@ class OverlayClinicalInfo:
 
         # Now add a q_edge the query_graph since I've added an extra edge to the KG
         if added_flag:
-            edge_type = f"biolink:has_real_world_evidence_of_association_with"
+            edge_type = f"biolink:associated_with"
             relation = parameters['virtual_relation_label']
             qedge_keys = [parameters['virtual_relation_label']]
             subject_qnode_key = parameters['subject_qnode_key']

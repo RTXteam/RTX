@@ -33,7 +33,7 @@
           "subject": "n00",
           "object": "n01",
           "predicates": [
-            "biolink:has_real_world_evidence_of_association_with"
+            "biolink:associated_with"
           ]
         }
       }

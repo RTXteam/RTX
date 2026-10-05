@@ -19,7 +19,7 @@
                 "e0": {
                     "subject": "n0",
                     "object": "n1",
-                    "predicates": ["biolink:treats", "biolink:has_real_world_evidence_of_association_with"]
+                    "predicates": ["biolink:treats", "biolink:associated_with"]
                 }
             }
         }

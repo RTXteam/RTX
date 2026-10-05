@@ -1,0 +1,93 @@
+FROM ubuntu:24.04
+
+# suppress debconf error messages:
+ARG DEBIAN_FRONTEND=noninteractive
+ARG BUILD_BRANCH=master
+
+# add user "rt" and give sudo privilege:
+RUN useradd rt -m -s /bin/bash
+
+# install git and sudo
+RUN apt-get update
+RUN apt-get update  # running this twice seems to work around a weird 404 error
+RUN apt-get install -y apt-utils
+RUN apt-get install -y git sudo curl rsync
+
+# give sudo privilege to user rt:
+RUN usermod -aG sudo rt
+RUN echo "rt ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/rt
+RUN touch /home/rt/.sudo_as_admin_successful
+RUN chown rt:rt /home/rt/.sudo_as_admin_successful
+
+# configure ssh for user rt
+RUN mkdir /home/rt/.ssh
+RUN echo "StrictHostKeyChecking no" > /home/rt/.ssh/config
+RUN echo "UserKnownHostsFile /dev/null" >> /home/rt/.ssh/config
+RUN chown -R rt:rt /home/rt/.ssh
+RUN chmod -R 700 /home/rt/.ssh
+
+# clone RTX repo
+RUN mkdir -p /mnt/data/orangeboard/production
+RUN chown -R rt:rt /mnt/data/orangeboard/production
+RUN su - rt -c "cd /mnt/data/orangeboard/production && git clone https://github.com/RTXteam/RTX.git"
+# BUILD_BRANCH is normally a branch name on RTXteam/RTX. A pull request ref
+# like pull/2859/head also works: GitHub mirrors every PR head on the upstream
+# repository, which is how the preview deploy builds fork PRs. Clones do not
+# fetch pull refs, so that form needs a fetch first and a detached checkout.
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX && case '${BUILD_BRANCH}' in pull/*) git fetch origin refs/${BUILD_BRANCH} && git checkout --detach FETCH_HEAD ;; *) git checkout ${BUILD_BRANCH} ;; esac"
+RUN chown -R rt:rt /mnt/data/orangeboard/production/RTX
+
+# install apache2 and copy config file
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -yq apache2
+COPY 000-default.conf /etc/apache2/sites-available/000-default.conf
+RUN cd /var/www && mv html html-orig && ln -s /mnt/data/orangeboard/production/RTX/code/UI/interactive html
+RUN cd /var/www && a2enmod proxy && a2enmod proxy_html && a2enmod proxy_http && a2enmod rewrite && a2enmod headers
+RUN a2enmod remoteip
+COPY remoteip.conf /etc/apache2/conf-available/remoteip.conf
+RUN a2enconf remoteip
+RUN cd /var/www && /usr/sbin/apachectl configtest
+
+# install python 3.12 and packages
+RUN apt-get update
+RUN apt-get install -y python3 python3-pip
+# Disabled to avoid Launchpad/deadsnakes network dependency in CI; Ubuntu 24.04
+# already includes Python 3.12 in the default repositories.
+# RUN apt-get install -y software-properties-common
+# RUN add-apt-repository -y ppa:deadsnakes/ppa
+RUN apt-get update && apt-get install -y python3.12 python3.12-dev python3.12-venv
+
+# make python3 be python 3.12 (used by RTX_OpenAPI.start and various scripts)
+RUN rm -f /usr/bin/python3 && ln -s /usr/bin/python3.12 /usr/bin/python3
+
+# verify symlink works
+RUN python3 --version | grep -qi "3.12" || (echo "ERROR: python3 symlink failed" && exit 1)
+
+# install python3.12 deps using python3 (which points to python3.12) for consistency
+# Note: Ubuntu 24.04 enforces PEP 668 (externally-managed environment), so system-wide pip installs are blocked. 
+# added --break-system-packages to bypass this restriction
+# pip 24.0 is already installed via apt (Debian-managed), skip upgrade
+RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install click==8.1.3 --break-system-packages
+RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install -r requirements.txt --break-system-packages
+RUN cd /mnt/data/orangeboard/production/RTX && python3 -m pip install 'connexion[swagger-ui]' --break-system-packages
+
+# verify packages are installed and accessible
+RUN python3 -c "import requests; import click; import connexion; print('All packages imported successfully')" || (echo "ERROR: Packages not found" && exit 1)
+
+RUN chown -R rt:rt /mnt/data/orangeboard/production/RTX
+
+# setup services
+RUN export DEVAREA=production
+RUN cat /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flask-server/RTX_OpenAPI | sed 's/template/production/g' > /etc/init.d/RTX_OpenAPI_production
+RUN chmod 700 /etc/init.d/RTX_OpenAPI_production
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flask-server && cp -p RTX_OpenAPI RTX_OpenAPI_production && sed -i 's/template/production/g' RTX_OpenAPI_production"
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX/code/UI/OpenAPI/python-flask-server && cp -p RTX_OpenAPI.start RTX_OpenAPI_production.start && sed -i 's/template/production/g' RTX_OpenAPI_production.start"
+RUN update-rc.d RTX_OpenAPI_production defaults
+
+# autocomplete
+RUN cat /mnt/data/orangeboard/production/RTX/code/autocomplete/RTX_Complete | sed 's/devED/production/g' > /etc/init.d/RTX_Complete
+RUN chmod 700 /etc/init.d/RTX_Complete
+RUN cd /mnt/data/orangeboard/production/RTX/code/autocomplete && sed -i 's/devED/production/g' RTX_Complete.start
+RUN update-rc.d RTX_Complete defaults
+
+# setup config.domain
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX/code/ && echo 'Github actions ARAX test suite' > config.domain"

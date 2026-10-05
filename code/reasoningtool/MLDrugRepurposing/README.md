@@ -1,3 +1,16 @@
+# NOTE: dependencies have been removed
+
+On May 15, 2025, one of the modules on which some code in this directory
+depends, `RTX/code/reasoningtool/SemMedDB`, was deleted from the `RTXteam/RTX`
+project area (see #2454). But if you need this code, you can obtain it from any
+earlier RTXteam/RTX [release](https://github.com/RTXteam/RTX/releases).
+
+On Oct. 9, 2025, a module,
+`RTX/code/reasoningtool/kg-construction/SynonymMapper.py`, on which the
+`MyChemGT.py` module in this directory depends, was deleted from the
+`RTXteam/RTX` project area (see #2582). But if you need this code, you can
+obtain it from any earlier RTXteam/RTX [release](https://github.com/RTXteam/RTX/releases).
+
 # Make sure python is set up correctly
 
 Make sure you have python3 installed and that the contents of [Requirements.txt](https://github.com/RTXteam/RTX/blob/master/requirements.txt) are installed

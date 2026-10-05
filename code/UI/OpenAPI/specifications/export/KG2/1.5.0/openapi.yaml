@@ -9,13 +9,13 @@ info:
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
   title: RTX KG2 - TRAPI 1.5.0
-  version: 2.10.0
+  version: 2.10.2
   x-translator:
     component: KP
     team:
     - Expander Agent
     infores: infores:rtx-kg2
-    biolink-version: 4.2.1
+    biolink-version: 4.2.5
     externalDocs:
       description: The values for component and team are restricted according to this
         external JSON schema. See schema and examples at url
@@ -27,9 +27,9 @@ info:
     multicuriequery: false
     test_data_location:
       default:
-        url: https://raw.githubusercontent.com/RTXteam/RTX/production/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json
+        url: https://kg2cploverdb.transltr.io/sri_test_triples
       development:
-        url: https://raw.githubusercontent.com/RTXteam/RTX/master/code/ARAX/KnowledgeSources/RTX_KG2c_test_triples.json
+        url: https://kg2cploverdb.ci.transltr.io/sri_test_triples
     operations:
     - lookup
     rate_limit: 4
@@ -45,7 +45,7 @@ servers:
   url: https://kg2cploverdb.transltr.io
   x-maturity: production
 - description: RTX-KG2 TRAPI 1.5 endpoint - testing
-  url: https://kg2.test.transltr.io/api/rtxkg2/v1.4
+  url: https://kg2cploverdb.test.transltr.io
   x-maturity: testing
 - description: RTX-KG2 TRAPI 1.5 endpoint - staging
   url: https://kg2cploverdb.ci.transltr.io

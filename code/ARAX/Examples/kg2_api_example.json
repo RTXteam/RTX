@@ -3,14 +3,14 @@
     "query_graph":{
       "nodes":{
         "n00":{
-          "id":"CHEMBL.COMPOUND:CHEMBL112",
-          "category":[
+          "ids":["CHEMBL.COMPOUND:CHEMBL112"],
+          "categories":[
             "biolink:Drug"
           ],
           "is_set":false
         },
         "n01":{
-          "category":[
+          "categories":[
             "biolink:Gene",
             "biolink:Protein"
           ],
@@ -19,7 +19,7 @@
       },
       "edges":{
         "e00":{
-          "predicate":[
+          "predicates":[
             "biolink:interacts_with"
           ],
           "subject":"n00",

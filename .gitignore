@@ -1,6 +1,9 @@
 # emacs backup files
 **/*~
 
+# swp files (vim, etc.)
+*.swp
+
 # macOS finder folder-level attributes
 **/.DS_store
 .idea
@@ -13,6 +16,15 @@
 
 # cache files
 **/.web_cache
+code/ARAX/ARAXQuery/Expand/trapi_query_cacher_responses/*
+**/.claude
+**/.github
+!/.github
+!/.github/**
+
+**/.pytest_cache
+*_cache/
+__pycache__/
 
 # config.json
 **/config.json
@@ -22,6 +34,8 @@
 **/*override.txt
 
 code/UI/OpenAPI/python-flask-server/openapi_server/flask_config.json
+code/UI/OpenAPI/python-flask-server/RTX_OpenAPI_*
+code/UI/OpenAPI/python-flask-server/RTX_OpenAPI_*.start
 
 code/config.domain
 
@@ -52,3 +66,12 @@ code/ARAX/ARAXQuery/Infer/data/xCRG_data/*.npz
 
 code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.json
 code/UI/OpenAPI/specifications/export/KG2/*/openapi.json
+**/cache_refresh.pid
+
+
+venv 
+.venv
+*.sqlite*
+sample_names.txt
+*.log
+

@@ -52,7 +52,7 @@ class QueryGraphInfo:
         if query_graph.nodes is not None:
             nodes = query_graph.nodes
         edges = {}
-        if query_graph.edges is not None:
+        if hasattr(query_graph, 'edges') and query_graph.edges is not None:
             edges = query_graph.edges
 
         #### Store number of nodes and edges
@@ -96,9 +96,11 @@ class QueryGraphInfo:
 
                     canonical_curies = synonymizer.get_canonical_curies(curies=curies_list, return_all_categories=True)
                     response.debug(f"canonical_curies={canonical_curies}, curie={curie}")
-                    if curie in canonical_curies and canonical_curies[curie] is not None and 'preferred_type' in canonical_curies[curie]:
+                    # The synonymizer returns `preferred_category` and not `preferred_type`.
+                    # Put it in a list because QueryGraph categories are stored as a list.
+                    if curie in canonical_curies and canonical_curies[curie] is not None and 'preferred_category' in canonical_curies[curie]:
                         node_info[key]['has_categories'] = True
-                        node_info[key]['categories'] = canonical_curies[curie]['preferred_type']
+                        node_info[key]['categories'] = [canonical_curies[curie]['preferred_category']]
 
             if qnode.categories is not None:
                 node_info[key]['has_categories'] = True
@@ -534,10 +536,10 @@ def main():
     actions = result.data['actions']
 
     #### Read message #2 from the database. This should be the acetaminophen proteins query result message
-    sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/Feedback")
-    from RTXFeedback import RTXFeedback
-    araxdb = RTXFeedback()
-    message_dict = araxdb.getMessage(2)
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../ResponseCache")
+    from response_cache import ResponseCache
+    response_cache = ResponseCache()
+    message_dict = response_cache.get_response(314204)
 
     #### The stored message comes back as a dict. Transform it to objects
     from ARAX_messenger import ARAXMessenger

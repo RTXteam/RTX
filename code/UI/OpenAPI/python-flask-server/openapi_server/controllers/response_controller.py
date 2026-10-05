@@ -6,20 +6,18 @@ import sys
 import traceback
 from typing import Union
 
-from openapi_server import util
-from typing import Iterator, TextIO, Any
+from typing import TextIO, Any
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../../../../ARAX/ResponseCache")
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../../../ARAX/ResponseCache")
 from response_cache import ResponseCache
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)) + "/../models")
-import response
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 
-do_fork = True
+fork_mode = True
 
 
 def child_receive_sigpipe(signal_number, frame):
@@ -29,7 +27,7 @@ def child_receive_sigpipe(signal_number, frame):
         os._exit(0)
 
 
-def _get_response(response_id: str) -> Union[dict, tuple]:
+def _get_response(response_id: str) -> Union[dict[str, Any], tuple[Any, ...]]:
     response_cache = ResponseCache()
     return response_cache.get_response(response_id)
 
@@ -39,6 +37,10 @@ def get_response_in_child_process(response_id: str) -> TextIO:
            "forking a child to get the response")
     read_fd, write_fd = os.pipe()
 
+# If there is any output in the buffer for either of those streams, when os.fork
+# is called, there will be two copies of the buffer, both pointing to the same
+# output stream, with the attendant potential for a double-write to the output
+# stream. So, ensure that both stderr and stdout are flushed before the fork.
     sys.stderr.flush()
     sys.stdout.flush()
     pid = os.fork()
@@ -61,11 +63,17 @@ def get_response_in_child_process(response_id: str) -> TextIO:
             with os.fdopen(write_fd, 'w') as write_fo:
                 envelope = _get_response(response_id)
                 write_fo.write(json.dumps(envelope))
-                write_fo.flush()
+                write_fo.flush()               
+# The reason why I am catching BaseException in the child process is because I
+# want to ensure that under no circumstances does the child process's cpython
+# exit with sys.exit; I only want it to exit with sys._exit, so no resource
+# (that I might have missed) that is jointly owned by child process and parent
+# process will be closed by the child process. The assumption that if such
+# resources exist, they are owned by the parent process and not to be touched by
+# the child process:
         except BaseException as e:
-            print("Exception in response_controller.get_response_"
-                  "in_child_process: "
-                  f"{type(e)}\n{traceback.format_exc()}", file=sys.stderr)
+            eprint("Exception in response_controller.get_response_in_child_process: "
+                   f"{type(e)}\n{traceback.format_exc()}")
             os._exit(1)
         os._exit(0)
     elif pid > 0:  # I am the parent process
@@ -80,7 +88,7 @@ def get_response_in_child_process(response_id: str) -> TextIO:
     return read_fo
 
 
-def get_response(response_id: str) -> Any:  # noqa: E501
+def get_response(response_id: str) -> Union[dict[str, Any], tuple[Any, ...]]:  # noqa: E501
     """Request a previously stored response from the server
 
      # noqa: E501
@@ -91,10 +99,10 @@ def get_response(response_id: str) -> Any:  # noqa: E501
     :rtype: Response
     """
 
-    if do_fork:
+    if fork_mode:
         read_fo = get_response_in_child_process(response_id)
         resp_obj = json.load(read_fo)
-        if type(resp_obj) == list and len(resp_obj) == 2:
+        if type(resp_obj) is list and len(resp_obj) == 2:
             resp_obj = tuple(resp_obj)
     else:
         resp_obj = _get_response(response_id)
