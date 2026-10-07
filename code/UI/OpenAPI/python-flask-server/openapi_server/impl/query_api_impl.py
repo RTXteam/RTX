@@ -1,0 +1,219 @@
+# coding: utf-8
+
+"""
+Query controller for executing ARAX queries within FastAPI.
+
+This module implements the `/query` endpoint for the Translator Reasoner API,
+providing both streaming and non-streaming execution modes. Queries are
+submitted as JSON dictionaries (validated upstream by FastAPI) and executed
+via the ARAXQuery engine.
+
+Key features:
+- Optional execution of queries in a forked child process to isolate resource
+  usage and improve robustness (`QUERY_CONTROLLER_FORK_MODE`).
+- Inter-process communication using an OS pipe, allowing the child process to
+  stream JSON output back to the parent.
+- Support for streaming responses using Server-Sent Events (SSE) when
+  `stream_progress` is requested.
+- Enforcement of per-query memory limits in forked child processes.
+- Defensive handling of signals (e.g., SIGPIPE) and process termination to
+  prevent resource corruption or duplicate output.
+- Injection of client metadata (e.g., remote IP address) into the query payload
+  for downstream logging and analysis.
+
+Design notes:
+- The child process uses `os._exit()` to avoid invoking Python cleanup handlers
+  that could interfere with resources shared with the parent.
+- Standard input/output streams are redirected in the child process to avoid
+  shared buffering issues after `fork()`.
+- Generators are used to stream JSON responses incrementally, minimizing memory
+  overhead for large results.
+- The first yielded line in non-streaming mode encodes the HTTP status, followed
+  by the serialized response payload.
+
+This module assumes that all incoming requests have already passed OpenAPI
+schema validation via FastAPI.
+"""
+
+import json
+import os
+import sys
+import signal
+import resource
+import traceback
+from fastapi import FastAPI, Response
+from fastapi.responses import StreamingResponse
+from typing import Callable, Iterator
+import setproctitle
+
+from typing import ClassVar, Dict, List, Tuple  # noqa: F401
+
+from pydantic import Field, StrictStr
+from typing_extensions import Annotated
+
+from openapi_server.models.query import Query
+from openapi_server.models.response import Response as TrapiResponse
+
+from openapi_server.apis.query_api_base import BaseQueryApi
+
+import ARAX_query  # pylint: disable=import-outside-toplevel,import-error,wrong-import-position
+
+
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+def child_receive_sigpipe(signal_number, _):
+    if signal_number == signal.SIGPIPE:
+        eprint("[query_controller]: child process detected a "
+               "SIGPIPE; exiting python")
+        os._exit(0)
+
+
+class ImplQueryApi(BaseQueryApi):
+
+    def run_query_dict_in_child_process(self, query_dict: dict,
+                                        query_runner: Callable,
+                                        child_rlimit: int | None = None) -> Iterator[str]:
+        eprint("[query_controller]: Creating pipe and "
+            "forking a child to handle the query")
+        read_fd, write_fd = os.pipe()
+
+        # If there is any output in the buffer for either of those streams, when os.fork
+        # is called, there will be two copies of the buffer, both pointing to the same
+        # output stream, with the attendant potential for a double-write to the output
+        # stream. So, ensure that both stderr and stdout are flushed before the fork.
+        sys.stderr.flush()
+        sys.stdout.flush()
+
+        pid = os.fork()
+
+        if pid == 0:  # I am the child process
+            # parent and child process should not share the same stdout stream object
+            sys.stdout = open(os.devnull, 'w', encoding='utf-8')  # pylint: disable=consider-using-with
+            # parent and child process should not share the same stdin stream object
+            sys.stdin = open(os.devnull, 'r', encoding='utf-8')  # pylint: disable=consider-using-with
+            os.close(read_fd)                   # child doesn't read from the pipe, it writes to it
+            setproctitle.setproctitle("python3 query_controller::run_query_dict_in_child_process")
+            # set a virtual memory limit for the child process
+            if child_rlimit is not None:
+                soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+                new_soft = min(child_rlimit, hard)
+                if sys.platform != "darwin":
+                    resource.setrlimit(resource.RLIMIT_AS, (new_soft, hard))            
+                else:
+                    print("skipping resetting RLIMIT_AS since we are running on macOS", file=sys.stderr)
+            # get rid of signal handler so we don't double-print to the log on SIGPIPE error
+            signal.signal(signal.SIGPIPE, child_receive_sigpipe)
+            # disregard any SIGCHLD signal in the child process
+            signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+            signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+            try:
+                # child process needs to get a stream object for the file descriptor `write_fd`
+                with os.fdopen(write_fd, "w") as write_fo:
+                    json_string_generator = query_runner(query_dict)
+                    for json_string in json_string_generator:
+                        write_fo.write(json_string)
+                        write_fo.flush()
+            except BaseException as e:  # pylint: disable=broad-exception-caught
+                # The reason why I am catching BaseException in the child process is because I
+                # want to ensure that under no circumstances does the child process's cpython
+                # exit with sys.exit; I only want it to exit with sys._exit, so no resource
+                # (that I might have missed) that is jointly owned by child process and parent
+                # process will be closed by the child process. The assumption that if such
+                # resources exist, they are owned by the parent process and not to be touched by
+                # the child process:
+                print("Exception in query_controller.run_query_dict_in_child_process: "
+                    f"{type(e)}\n{traceback.format_exc()}", file=sys.stderr)
+                os._exit(1)
+            os._exit(0)
+
+        elif pid > 0:  # I am the parent process
+            os.close(write_fd)  # the parent does not write to the pipe, it reads from it
+            eprint(f"[query_controller]: child process pid={pid}")
+            read_fo = os.fdopen(read_fd, "r")
+        else:
+            eprint("[query_controller]: fork() unsuccessful")
+            assert False, "********** fork() unsuccessful; something went very wrong *********"
+        return read_fo
+
+
+    def _run_query_and_return_json_generator_nonstream(self, query_dict: dict) -> Iterator[str]:
+        envelope = ARAX_query.ARAXQuery().query_return_message(query_dict)
+        envelope_dict = envelope.to_dict()
+        http_status = getattr(envelope, 'http_status', 200)
+        envelope_dict['http_status'] = http_status
+        yield json.dumps({"__http_status__": http_status}) + "\n"
+        yield json.dumps(envelope_dict, sort_keys=True, allow_nan=False) + "\n"
+
+
+    def _run_query_and_return_json_generator_stream(self, query_dict: dict) -> Iterator[str]:
+        return ARAX_query.ARAXQuery().query_return_stream(query_dict)
+
+
+    async def query(
+        self,
+        query: Annotated[Query, Field(description="Query information to be submitted")],
+        ) -> [object, list]:
+
+        """Initiate a query and wait to receive a Response
+        """
+
+        #app = FastAPI.current_app  #T2FIXME
+        #fork_mode = app.state.get("QUERY_FORK_MODE", True)  #T2FIXME
+        fork_mode = False  #T2FIXME
+        child_rlimit = None
+        #if fork_mode:  #T2FIXME
+        #    child_rlimit = app.state.get("CHILD_PROCESS_RLIMIT", None)
+
+        # Note that we never even get here if the query is not schema-valid JSON
+
+        query = dict(query)
+
+        #### T2FIXME Convert from Flask to FastAPI
+        #x_forwarded_for = connexion.request.headers.get("x-forwarded-for")
+        #remote_address = (
+        #    x_forwarded_for.split(",")[0].strip()
+        #    if x_forwarded_for
+        #    else connexion.request.remote_addr or "???"
+        #)
+        #### Record the remote IP address in the query for now so it is available downstream
+        #query['remote_address'] = remote_address
+        query['remote_address'] = '?.?.?.T2F'  #T2FIXME
+
+        # if stream_progress is specified and if it is True:
+        if query.get('stream_progress', False):
+
+            http_status = None
+            if not fork_mode:
+                json_generator = self._run_query_and_return_json_generator_stream(
+                    query
+                )
+            else:
+                json_generator = self.run_query_dict_in_child_process(
+                    query,
+                    self._run_query_and_return_json_generator_stream,
+                    child_rlimit
+                )
+            resp_obj = StreamingResponse(json_generator, media_type="text/event-stream")
+
+        else:
+            if not fork_mode:
+                json_generator = self._run_query_and_return_json_generator_nonstream(
+                    query
+                )
+            else:
+                json_generator = run_query_dict_in_child_process(
+                    query,
+                    self._run_query_and_return_json_generator_nonstream,
+                    child_rlimit
+                )
+
+            status_line = next(json_generator)
+            status_dict = json.loads(status_line)
+            http_status = status_dict['__http_status__']
+            response_serialized_str = next(json_generator)
+            resp_obj = Response(response_serialized_str, status_code=http_status, media_type="application/json")
+
+        return resp_obj
+
