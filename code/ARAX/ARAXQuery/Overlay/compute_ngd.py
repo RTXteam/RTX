@@ -180,19 +180,7 @@ class ComputeNGD:
                                               attribute_source=attribute_source,
                                               value_type_id="metatype:Boolean",
                                               value_url=None,
-                                              description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                                EdgeAttribute(original_attribute_name=None,
-                                              value="statistical_association",
-                                              attribute_type_id="biolink:knowledge_level",
-                                              value_url=None,
-                                              description=None,
-                                              attribute_source=attribute_source),
-                                EdgeAttribute(original_attribute_name=None,
-                                              value="automated_agent",
-                                              attribute_type_id="biolink:agent_type",
-                                              value_url=None,
-                                              description=None,
-                                              attribute_source=attribute_source)
+                                              description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                                 #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                                 #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
                                 #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)
@@ -219,11 +207,12 @@ class ComputeNGD:
                                         RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                             ]
                             edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
-                                        attributes=edge_attribute_list,sources=retrieval_source)
+                                        attributes=edge_attribute_list,sources=retrieval_source,
+                                        knowledge_level="statistical_association", agent_type="automated_agent")
                             #edge.relation = relation
                             #### /end FIXME
 
-                            edge.qedge_keys = qedge_keys
+                            edge._qedge_keys = qedge_keys
                             self.message.knowledge_graph.edges[id] = edge
 
                             kedge_keys_by_node_pair[(subject_key, object_key)] = id
@@ -245,8 +234,8 @@ class ComputeNGD:
                         #           object=object_qnode_key, option_group_id=option_group_id)
                         q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key,
                                    object=object_qnode_key, option_group_id=option_group_id)
-                        q_edge.relation = relation
-                        q_edge.filled = True
+                        q_edge._relation = relation
+                        q_edge._filled = True
                         #### end FIXME
 
                         self.message.query_graph.edges[relation]=q_edge
@@ -322,19 +311,7 @@ class ComputeNGD:
                                       attribute_source=attribute_source,
                                       value_type_id="metatype:Boolean",
                                       value_url=None,
-                                      description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges."),
-                        EdgeAttribute(original_attribute_name=None,
-                                      value="statistical_association",
-                                      attribute_type_id="biolink:knowledge_level",
-                                      value_url=None,
-                                      description=None,
-                                      attribute_source=attribute_source),
-                        EdgeAttribute(original_attribute_name=None,
-                                      value="automated_agent",
-                                      attribute_type_id="biolink:agent_type",
-                                      value_url=None,
-                                      description=None,
-                                      attribute_source=attribute_source)
+                                      description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                         #EdgeAttribute(original_attribute_name="confidence", value=confidence, attribute_type_id="biolink:ConfidenceLevel"),
                         #EdgeAttribute(original_attribute_name="weight", value=weight, attribute_type_id="metatype:Float"),
                         #EdgeAttribute(original_attribute_name="qedge_keys", value=qedge_keys)
@@ -361,11 +338,12 @@ class ComputeNGD:
                                         RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                             ]
                     edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
-                                attributes=edge_attribute_list, sources=retrieval_source)
+                                attributes=edge_attribute_list, sources=retrieval_source,
+                                knowledge_level="statistical_association", agent_type="automated_agent")
                     #edge.relation = relation
                     #### /end FIXME
 
-                    edge.qedge_keys = qedge_keys
+                    edge._qedge_keys = qedge_keys
                     self.message.knowledge_graph.edges[id] = edge
 
                     kedge_keys_by_node_pair[(subject_key, object_key)] = id
@@ -387,8 +365,8 @@ class ComputeNGD:
                 #           object=object_qnode_key, option_group_id=option_group_id)
                 q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
-                q_edge.relation = relation
-                q_edge.filled = True
+                q_edge._relation = relation
+                q_edge._filled = True
                 #### end FIXME
 
                 self.message.query_graph.edges[relation]=q_edge

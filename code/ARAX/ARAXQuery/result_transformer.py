@@ -10,7 +10,27 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.edge import Edge
+from openapi_server.models.edge_binding import EdgeBinding
 from openapi_server.models.knowledge_graph import KnowledgeGraph
+
+
+def _prune_orphan_node_bindings(node_bindings: dict, edge_bindings: dict, qnode_keys: set[str], kg_edges: dict[str, Edge]) -> None:
+    """
+    For each of the given qnode keys, removes node ids that are not the subject or object of any edge bound in
+    edge_bindings. In TRAPI 2.0 a NodeBinding's 'ids' may not be empty, so a binding left with no ids is deleted.
+    """
+    node_keys_used_by_result_edges = {node_key for edge_binding in edge_bindings.values()
+                                      for edge_key in edge_binding.ids
+                                      for node_key in (kg_edges[edge_key].subject, kg_edges[edge_key].object)}
+    for qnode_key in qnode_keys:
+        node_binding = node_bindings.get(qnode_key)
+        if node_binding is None:
+            continue
+        non_orphan_node_keys = [node_key for node_key in node_binding.ids if node_key in node_keys_used_by_result_edges]
+        if non_orphan_node_keys:
+            node_binding.ids = non_orphan_node_keys
+        else:
+            del node_bindings[qnode_key]
 
 
 def _support_graph_breaks_without_inf_ngd(
@@ -119,15 +139,12 @@ class ResultTransformer:
             for virtual_qedge_key in virtual_qedge_keys:
                 virtual_qedge = message.query_graph.edges[virtual_qedge_key]
                 option_group_id = virtual_qedge.option_group_id
-                virtual_edge_keys = {edge_binding.id for edge_binding in edge_bindings[virtual_qedge_key]}
+                virtual_edge_keys = set(edge_bindings[virtual_qedge_key].ids)
                 virtual_edge_groups_dict[option_group_id] = \
                     virtual_edge_groups_dict[option_group_id].union(virtual_edge_keys)
                 # Note: All edges not belonging to an option group are lumped together under 'None' key
 
             # Create a support graph for each group
-            if virtual_edge_groups_dict:
-                if first_analysis.support_graphs is None:
-                    first_analysis.support_graphs = []
             for group_id, group_edge_keys in virtual_edge_groups_dict.items():
                 group_id_str = f"_{group_id}" if group_id else ""
                 ordered_edge_keys = sorted(list(group_edge_keys))
@@ -166,9 +183,9 @@ class ResultTransformer:
                         return
                     else:
                         inferred_qedge_key = inferred_qedge_keys[0]
-                        inferred_edge_keys = {edge_binding.id for edge_binding in
-                                              first_analysis.edge_bindings[inferred_qedge_key]
-                                              if group_id_prefix in edge_binding.id}
+                        inferred_edge_keys = {edge_key for edge_key in
+                                              first_analysis.edge_bindings[inferred_qedge_key].ids
+                                              if group_id_prefix in edge_key}
                         # Refer to the support graph from the proper edge(s)
                         for inferred_edge_key in inferred_edge_keys:
                             inferred_edge = kg_edges[inferred_edge_key]
@@ -185,8 +202,12 @@ class ResultTransformer:
                             else:
                                 inferred_edge.attributes = [support_graph_attribute]
                 else:
-                    # Tack the support graph onto the result
-                    first_analysis.support_graphs.append(aux_graph_key)
+                    # Tack the support graph onto the result (TRAPI 2.0 does not allow an empty support_graphs
+                    # list, so it is only created once there is a key to put in it)
+                    if first_analysis.support_graphs is None:
+                        first_analysis.support_graphs = [aux_graph_key]
+                    else:
+                        first_analysis.support_graphs.append(aux_graph_key)
 
             # Delete virtual edges (since we moved them to supporting_graphs)
             for virtual_qedge_key in virtual_qedge_keys:
@@ -200,17 +221,8 @@ class ResultTransformer:
                 del node_bindings[virtual_qnode_key]
 
             # Delete bindings for any subclass parent nodes that are now orphans (they'll still be in the KG)
-            qedge_keys_in_result = set(first_analysis.edge_bindings)  # May not include 'optional' edges in QG
-            for non_orphan_qnode_key in non_orphan_qnode_keys:
-                node_keys = {binding.id for binding in node_bindings[non_orphan_qnode_key]}
-                node_keys_used_by_result_edges = {node_key for qedge_key in qedge_keys_in_result
-                                                  for binding in first_analysis.edge_bindings[qedge_key]
-                                                  for node_key in {kg_edges[binding.id].subject,
-                                                                   kg_edges[binding.id].object}}
-                orphan_node_keys = node_keys.difference(node_keys_used_by_result_edges)
-                non_orphan_node_bindings = [binding for binding in node_bindings[non_orphan_qnode_key]
-                                            if binding.id not in orphan_node_keys]
-                node_bindings[non_orphan_qnode_key] = non_orphan_node_bindings
+            # (edge_bindings may not include 'optional' edges in QG)
+            _prune_orphan_node_bindings(node_bindings, first_analysis.edge_bindings, non_orphan_qnode_keys, kg_edges)
 
 
             # Creative-mode-only NGD-inf filter.
@@ -235,8 +247,9 @@ class ResultTransformer:
             if is_creative_qg:
                 excludable_edge_ids: set[str] = set()
                 for inferred_qedge_key in inferred_qedge_keys:
-                    for binding in first_analysis.edge_bindings.get(inferred_qedge_key, []):
-                        inferred_edge = kg_edges.get(binding.id)
+                    inferred_edge_binding = first_analysis.edge_bindings.get(inferred_qedge_key)
+                    for inferred_edge_id in (inferred_edge_binding.ids if inferred_edge_binding else []):
+                        inferred_edge = kg_edges.get(inferred_edge_id)
                         if inferred_edge is None:
                             continue
                         sg_keys: list[str] = []
@@ -246,7 +259,7 @@ class ResultTransformer:
                                     sg_keys.append(str(v))
                         if not sg_keys:
                             # case (a): inferred edge has no support graph at all
-                            excludable_edge_ids.add(binding.id)
+                            excludable_edge_ids.add(inferred_edge_id)
                             continue
                         # case (b): a support graph breaks under inf-NGD removal
                         for sg_key in sg_keys:
@@ -257,12 +270,17 @@ class ResultTransformer:
                                     aux, kg_edges,
                                     src=inferred_edge.subject,
                                     dst=inferred_edge.object):
-                                excludable_edge_ids.add(binding.id)
+                                excludable_edge_ids.add(inferred_edge_id)
                                 break
 
-                # Tentatively prune excludable bindings from every qedge
-                surviving_bindings = {qk: [b for b in bs if b.id not in excludable_edge_ids]
-                                      for qk, bs in first_analysis.edge_bindings.items()}
+                # Tentatively prune excludable bindings from every qedge (TRAPI 2.0 EdgeBinding 'ids' may not
+                # be empty, so a qedge with no surviving edges is left out)
+                surviving_bindings = {}
+                for qk, edge_binding in first_analysis.edge_bindings.items():
+                    surviving_edge_ids = [edge_id for edge_id in edge_binding.ids
+                                          if edge_id not in excludable_edge_ids]
+                    if surviving_edge_ids:
+                        surviving_bindings[qk] = EdgeBinding(ids=surviving_edge_ids)
 
                 # Cover check: drop the result if any original qedge has no
                 # surviving binding (then it no longer answers the user's QG)
@@ -272,18 +290,7 @@ class ResultTransformer:
                 first_analysis.edge_bindings = surviving_bindings
 
                 # Re-prune any node bindings that no surviving edge references
-                qedge_keys_after_filter = set(surviving_bindings)
-                for non_orphan_qnode_key in non_orphan_qnode_keys:
-                    node_keys = {b.id for b in node_bindings[non_orphan_qnode_key]}
-                    node_keys_used = {nk
-                                      for qk in qedge_keys_after_filter
-                                      for binding in surviving_bindings[qk]
-                                      for nk in (kg_edges[binding.id].subject,
-                                                 kg_edges[binding.id].object)}
-                    orphan_node_keys = node_keys - node_keys_used
-                    node_bindings[non_orphan_qnode_key] = [
-                        b for b in node_bindings[non_orphan_qnode_key]
-                        if b.id not in orphan_node_keys]
+                _prune_orphan_node_bindings(node_bindings, surviving_bindings, non_orphan_qnode_keys, kg_edges)
 
                 new_results.append(result)
             else:
@@ -311,10 +318,10 @@ class ResultTransformer:
         ref_nodes, ref_edges, ref_aux_graphs, _ref_results = \
             analyze_message_get_referenced_IDs(message, response)
         message.knowledge_graph = KnowledgeGraph(
-            {nid: n for nid, n in message.knowledge_graph.nodes.items()
-             if nid in ref_nodes},
-            {eid: e for eid, e in message.knowledge_graph.edges.items()
-             if eid in ref_edges})
+            nodes={nid: n for nid, n in message.knowledge_graph.nodes.items()
+                   if nid in ref_nodes},
+            edges={eid: e for eid, e in message.knowledge_graph.edges.items()
+                   if eid in ref_edges})
         message.auxiliary_graphs = {aid: a
                                     for aid, a in message.auxiliary_graphs.items()
                                     if aid in ref_aux_graphs}

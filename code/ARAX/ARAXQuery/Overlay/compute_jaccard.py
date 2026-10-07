@@ -43,7 +43,7 @@ class ComputeJaccard:
             subject_node_key = dict()
             # keys will be end node curies, values will be tuples the (intermediate curie ids, edge_type)
             for key, node in message.knowledge_graph.nodes.items():
-                node_qnode_keys = getattr(node, 'qnode_keys', None) or []
+                node_qnode_keys = getattr(node, '_qnode_keys', None) or []
                 if parameters['intermediate_node_key'] in node_qnode_keys:
                     intermediate_nodes.add(key)  # add the intermediate node by it's identifier
                 # also look for the subject node id
@@ -124,8 +124,9 @@ class ComputeJaccard:
                         EdgeAttribute(original_attribute_name=None, value=True, attribute_type_id="EDAM-DATA:1772", attribute_source="infores:arax", value_type_id="metatype:Boolean", value_url=None, description="This edge is a container for a computed value between two nodes that is not directly attachable to other edges.")
                     ]
                     edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
-                                attributes=edge_attribute_list, sources=retrieval_source)
-                    edge.qedge_keys = qedge_keys
+                                attributes=edge_attribute_list, sources=retrieval_source,
+                                knowledge_level="statistical_association", agent_type="automated_agent")
+                    edge._qedge_keys = qedge_keys
                     message.knowledge_graph.edges[id] = edge
 
             # Now add a q_edge the query_graph since I've added an extra edge to the KG
@@ -139,8 +140,8 @@ class ComputeJaccard:
             # Does not look to be a way to add option group ids to the new QEdge in TRAPI 1.0? Will error as written now
             q_edge = QEdge(predicates=[edge_type], subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
-            q_edge.relation = relation
-            q_edge.filled = True
+            q_edge._relation = relation
+            q_edge._filled = True
             # Need to fix this for TRAPI 1.0
             self.message.query_graph.edges[relation] = q_edge
             return self.response

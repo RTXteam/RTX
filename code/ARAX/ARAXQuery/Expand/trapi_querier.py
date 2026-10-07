@@ -256,28 +256,14 @@ class TRAPIQuerier:
                                 description = None,
                                 attribute_source = self.arax_infores_curie
                             ),
-                            Attribute(
-                                original_attribute_name=None,
-                                value="automated_agent",
-                                attribute_type_id="biolink:agent_type",
-                                value_url=None,
-                                description=None,
-                                attribute_source = self.arax_infores_curie
-                            ),
-                            Attribute(
-                                original_attribute_name=None,
-                                value="prediction",
-                                attribute_type_id="biolink:knowledge_level",
-                                value_url=None,
-                                description=None,
-                                attribute_source = self.arax_infores_curie
-                            ),
                         ]
                         heuristic_predicted_edge = Edge(predicate="biolink:treats",
                                                         subject=edge.subject,
                                                         object=edge.object,
                                                         attributes=edge_attributes,
-                                                        sources=[self.arax_primary_source])
+                                                        sources=[self.arax_primary_source],
+                                                        knowledge_level="prediction",
+                                                        agent_type="automated_agent")
                         add_bound_edges[heuristic_edge_id] = heuristic_predicted_edge
                     delete_bound_edges.add(edge_id)
 
@@ -339,40 +325,29 @@ class TRAPIQuerier:
         kg_id_to_parent_query_id_map = defaultdict(set)
         qedge_key_mappings = defaultdict(set)
         for result in results:
-            # Record mappings from the returned node to the parent curie listed in the QG that it is fulfilling
-            for qnode_key, node_bindings in result.node_bindings.items():
+            # Record mappings from the returned node to the parent curie listed in the QG that it is fulfilling.
+            # In TRAPI 2.0, each qnode key maps to a single NodeBinding whose 'ids' may hold multiple nodes
+            # (e.g., for COLLATE qnodes), and NodeBinding no longer has a 'query_id' property
+            for qnode_key, node_binding in result.node_bindings.items():
                 query_node_ids = set(eu.convert_to_list(qg.nodes[qnode_key].ids))
-                for node_binding in node_bindings:
-                    kg_id = node_binding.id
+                for kg_id in node_binding.ids:
                     qnode_key_mappings[kg_id].add(qnode_key)
-                    # Handle case where the KP does return a query_id
-                    if node_binding.query_id:
-                        if node_binding.query_id in query_node_ids:
-                            kg_id_to_parent_query_id_map[kg_id].add(node_binding.query_id)
-                        else:
-                            self.log.warning(f"{self.kp_infores_curie} returned a NodeBinding.query_id ({node_binding.query_id})"
-                                             f" for {qnode_key} that is not in {qnode_key}'s ids in the QG sent "
-                                             f"to {self.kp_infores_curie}. This is invalid TRAPI. Skipping this binding.")
-                    # Handle case where KP does NOT return a query_id (may or may not be valid TRAPI)
-                    else:
-                        if qnode_key in qnodes_with_single_id:
-                            implied_parent_id = list(query_node_ids)[0]
+                    if qnode_key in qnodes_with_single_id:
+                        implied_parent_id = list(query_node_ids)[0]
+                        kg_id_to_parent_query_id_map[kg_id].add(implied_parent_id)
+                    elif qnode_key in qnodes_with_multiple_ids:
+                        if kg_id in query_node_ids:
+                            implied_parent_id = kg_id
                             kg_id_to_parent_query_id_map[kg_id].add(implied_parent_id)
-                        elif qnode_key in qnodes_with_multiple_ids:
-                            if kg_id in query_node_ids:
-                                implied_parent_id = kg_id
-                                kg_id_to_parent_query_id_map[kg_id].add(implied_parent_id)
-                            else:
-                                self.log.warning(f"{self.kp_infores_curie} returned a node binding for {qnode_key} that does "
-                                                 f"not include a query_id, and {qnode_key} has multiple ids in the "
-                                                 f"query sent to {self.kp_infores_curie}, none of which are the KG ID ({kg_id})."
-                                                 f" This is invalid TRAPI. Skipping this binding.")
+                        else:
+                            self.log.warning(f"{self.kp_infores_curie} returned a node binding for {qnode_key}, which "
+                                             f"has multiple ids in the query sent to {self.kp_infores_curie}, none of "
+                                             f"which are the KG ID ({kg_id}), so its parent query id cannot be determined.")
 
-            for analysis in result.analyses:  # TODO: Maybe later extract Analysis support graphs from KPs?
+            for analysis in result.analyses or []:  # TODO: Maybe later extract Analysis support graphs from KPs?
                 if analysis.edge_bindings:
-                    for qedge_key, edge_bindings in analysis.edge_bindings.items():
-                        for edge_binding in edge_bindings:
-                            kg_id = edge_binding.id
+                    for qedge_key, edge_binding in analysis.edge_bindings.items():
+                        for kg_id in edge_binding.ids:
                             qedge_key_mappings[kg_id].add(qedge_key)
 
         return {"nodes": qnode_key_mappings, "edges": qedge_key_mappings}, kg_id_to_parent_query_id_map
@@ -736,10 +711,10 @@ class TRAPIQuerier:
                              "edges in the KP's answer KG have no bindings to the QG "
                              f"and are not referenced in aux graphs: {edge_key_summary}")
 
-        # Fill out our unofficial node.query_ids property
+        # Fill out our unofficial node._query_ids property
         for nodes in answer_kg.nodes_by_qg_id.values():
             for node_key, node in nodes.items():
-                node.query_ids = eu.convert_to_list(query_curie_mappings.get(node_key))
+                node._query_ids = eu.convert_to_list(query_curie_mappings.get(node_key))
 
         # Add subclass_of edges for any parent to child relationships KPs returned
         answer_kg = self._add_subclass_of_edges(answer_kg)
@@ -783,11 +758,11 @@ class TRAPIQuerier:
     def _add_subclass_of_edges(self, answer_kg: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
         for qnode_key in answer_kg.nodes_by_qg_id:
             nodes_with_non_empty_parent_query_ids = {node_key for node_key, node in answer_kg.nodes_by_qg_id[qnode_key].items()
-                                                     if hasattr(node, "query_ids") and node.query_ids}
+                                                     if hasattr(node, "_query_ids") and node._query_ids}
             initial_edge_count = sum([len(edges) for edges in answer_kg.edges_by_qg_id.values()])
             # Grab info for any parent nodes missing from the KG in bulk for easy access later
             all_parent_query_ids = {parent_id for node_key in nodes_with_non_empty_parent_query_ids
-                                    for parent_id in answer_kg.nodes_by_qg_id[qnode_key][node_key].query_ids}
+                                    for parent_id in answer_kg.nodes_by_qg_id[qnode_key][node_key]._query_ids}
             parents_missing_from_kg = all_parent_query_ids.difference(set(answer_kg.nodes_by_qg_id[qnode_key]))
 
             # Build a lookup of existing nodes for parents missing under this qnode_key.
@@ -811,24 +786,27 @@ class TRAPIQuerier:
             # Add subclass_of edges to the answer KG for any nodes that the KP provided query ID mappings for
             for node_key in nodes_with_non_empty_parent_query_ids:
                 subclass_edges = []
-                parent_query_ids = answer_kg.nodes_by_qg_id[qnode_key][node_key].query_ids
+                parent_query_ids = answer_kg.nodes_by_qg_id[qnode_key][node_key]._query_ids
                 for parent_query_id in parent_query_ids:
                     if parent_query_id is not None and parent_query_id != node_key:
-                        subclass_edge = Edge(subject=node_key, object=parent_query_id, predicate="biolink:subclass_of")
-
                         # Add provenance info to this edge so it's clear where the assertion came from
                         kp_retrieval_source = RetrievalSource(resource_id=self.kp_infores_curie,
                                                               resource_role="primary_knowledge_source")
-                        subclass_edge.sources = [kp_retrieval_source, self.arax_retrieval_source]
 
                         # Further describe in plain english where this edge comes from
                         edge_note = Attribute(attribute_type_id="biolink:description",
                                               value=f"ARAX created this edge to represent the fact "
-                                                    f"that {self.kp_infores_curie} fulfilled {subclass_edge.object}"
-                                                    f" (for {qnode_key}) with {subclass_edge.subject}.",
+                                                    f"that {self.kp_infores_curie} fulfilled {parent_query_id}"
+                                                    f" (for {qnode_key}) with {node_key}.",
                                               value_type_id="metatype:String",
                                               attribute_source=self.arax_infores_curie)
-                        subclass_edge.attributes = [edge_note]
+
+                        # TRAPI 2.0 requires sources, knowledge_level, and agent_type at construction
+                        subclass_edge = Edge(subject=node_key, object=parent_query_id, predicate="biolink:subclass_of",
+                                             sources=[kp_retrieval_source, self.arax_retrieval_source],
+                                             attributes=[edge_note],
+                                             knowledge_level="knowledge_assertion",
+                                             agent_type="automated_agent")
 
                         subclass_edges.append(subclass_edge)
                 if subclass_edges:
@@ -836,7 +814,7 @@ class TRAPIQuerier:
                         # Add the parent to the KG if it isn't in there already
                         if edge.object not in answer_kg.nodes_by_qg_id[qnode_key]:
                             parent_node = existing_parent_nodes[edge.object]
-                            parent_node.query_ids = []   # Does not need a mapping since it appears in the QG
+                            parent_node._query_ids = []   # Does not need a mapping since it appears in the QG
                             answer_kg.add_node(edge.object, parent_node, qnode_key)
                         edge_key = self._get_arax_edge_key(edge)
                         qedge_key = f"subclass:{qnode_key}--{qnode_key}"  # Technically someone could have used this key in their query, but seems highly unlikely..
@@ -859,8 +837,5 @@ class TRAPIQuerier:
             edge.subject = edge.subject.strip()
             edge.object = edge.object.strip()
         for result in kp_message.results:
-            for qnode_key, node_bindings in result.node_bindings.items():
-                for node_binding in node_bindings:
-                    node_binding.id = node_binding.id.strip()
-                    if node_binding.query_id:
-                        node_binding.query_id = node_binding.query_id.strip()
+            for node_binding in result.node_bindings.values():
+                node_binding.ids = [node_id.strip() for node_id in node_binding.ids]

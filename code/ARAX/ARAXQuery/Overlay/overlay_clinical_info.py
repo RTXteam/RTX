@@ -269,10 +269,10 @@ class OverlayClinicalInfo:
         curies_to_names = dict()  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         # identify the nodes that we should be adding virtual edges for
         for key, node in self.message.knowledge_graph.nodes.items():
-            if parameters['subject_qnode_key'] in (getattr(node, 'qnode_keys', None) or []):
+            if parameters['subject_qnode_key'] in (getattr(node, '_qnode_keys', None) or []):
                 subject_curies_to_decorate.add(key)
                 curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
-            if parameters['object_qnode_key'] in (getattr(node, 'qnode_keys', None) or []):
+            if parameters['object_qnode_key'] in (getattr(node, '_qnode_keys', None) or []):
                 object_curies_to_decorate.add(key)
                 curies_to_names[key] = node.name  # FIXME: Super hacky way to get around the fact that COHD can't map CHEMBL drugs
         added_flag = False  # check to see if any edges where added
@@ -339,8 +339,9 @@ class OverlayClinicalInfo:
                                                         upstream_resource_ids=["infores:cohd"])
                     ]
                 edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
-                                attributes=edge_attribute_list, sources=retrieval_source)
-                edge.qedge_keys = qedge_keys
+                                attributes=edge_attribute_list, sources=retrieval_source,
+                                knowledge_level="statistical_association", agent_type="automated_agent")
+                edge._qedge_keys = qedge_keys
                 self.message.knowledge_graph.edges[id] = edge
                 if self.message.results is not None and len(self.message.results) > 0:
                     ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
@@ -357,10 +358,10 @@ class OverlayClinicalInfo:
             # q_edge = QEdge(id=relation, type=edge_type, relation=relation,
             #                subject_key=subject_qnode_key, object_key=object_qnode_key,
             #                option_group_id=option_group_id)  # TODO: ok to make the id and type the same thing?
-            q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key,
+            q_edge = QEdge(predicates=[edge_type], subject=subject_qnode_key,
                            object=object_qnode_key, option_group_id=option_group_id)
-            q_edge.relation = relation
-            q_edge.filled = True
+            q_edge._relation = relation
+            q_edge._filled = True
             self.message.query_graph.edges[relation]=q_edge
 
     def add_all_edges(self, name="", default=0.):

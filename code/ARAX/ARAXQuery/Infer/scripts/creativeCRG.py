@@ -32,7 +32,6 @@ from openapi_server.models.query_graph import QueryGraph
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 def _convert_kg2c_plover_edge_to_trapi_edge(edge_tuple: list) -> Edge:
-        edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2])
         primary_knowledge_source = edge_tuple[3]
         qualified_predicate = edge_tuple[4]
         qualified_object_direction = edge_tuple[5]
@@ -47,7 +46,10 @@ def _convert_kg2c_plover_edge_to_trapi_edge(edge_tuple: list) -> Edge:
         sources.append(RetrievalSource(resource_id="infores:retriever",
                                        resource_role="aggregator_knowledge_source",
                                        upstream_resource_ids=[primary_knowledge_source]))
-        edge.sources = sources
+
+        # TRAPI 2.0 requires sources, knowledge_level, and agent_type at construction
+        edge = Edge(subject=edge_tuple[0], object=edge_tuple[1], predicate=edge_tuple[2],
+                    sources=sources, knowledge_level=edge_tuple[7], agent_type=edge_tuple[8])
 
         # Add any qualifiers as appropriate
         qualifiers = []
@@ -135,6 +137,7 @@ def query_kp(curies: List, respect_predicate_symmetry: bool=False):
                         edge.subject, edge.object, edge.predicate,
                         primary_ks, qualified_predicate,
                         qualified_object_direction, qualified_object_aspect,
+                        edge.knowledge_level, edge.agent_type,
                     ]
             for qnode_key, node_dict in result_kg.nodes_by_qg_id.items():
                 converted_nodes = merged_kg['nodes'].setdefault(qnode_key, {})

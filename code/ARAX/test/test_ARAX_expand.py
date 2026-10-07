@@ -75,14 +75,14 @@ def print_counts_by_qgid(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_qg
 def print_nodes(nodes_by_qg_id: dict[str, dict[str, Node]]):
     for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
-            print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node.qnode_keys}, "
+            print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node._qnode_keys}, "
                   f"{node.query_ids if hasattr(node, 'query_ids') else ''}")
 
 
 def print_edges(edges_by_qg_id: dict[str, dict[str, Edge]]):
     for qedge_key, edges in sorted(edges_by_qg_id.items()):
         for edge_key, edge in sorted(edges.items()):
-            print(f"{qedge_key}: {edge_key}, {edge.subject}--{edge.predicate}->{edge.object}, {edge.qedge_keys}")
+            print(f"{qedge_key}: {edge_key}, {edge.subject}--{edge.predicate}->{edge.object}, {edge._qedge_keys}")
 
 
 def check_for_orphans(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_qg_id: dict[str, dict[str, Edge]]):
@@ -102,7 +102,7 @@ def check_property_format(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_q
     for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             assert node_key and isinstance(node_key, str)
-            assert node.qnode_keys and isinstance(node.qnode_keys, list)
+            assert node._qnode_keys and isinstance(node._qnode_keys, list)
             assert isinstance(node.name, str) or node.name is None
             assert isinstance(node.categories, list) or node.categories is None
             if node.attributes:
@@ -111,7 +111,7 @@ def check_property_format(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_q
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             assert edge_key and isinstance(edge_key, str)
-            assert edge.qedge_keys and isinstance(edge.qedge_keys, list)
+            assert edge._qedge_keys and isinstance(edge._qedge_keys, list)
             assert edge.subject and isinstance(edge.subject, str)
             assert edge.object and isinstance(edge.object, str)
             assert isinstance(edge.predicate, str) or edge.predicate is None
@@ -156,7 +156,7 @@ def test_720_multiple_qg_ids_in_different_results():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert set(nodes_by_qg_id['n01']).intersection(set(nodes_by_qg_id['n03']))
-    assert any(set(node.qnode_keys) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
+    assert any(set(node._qnode_keys) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
 
 
 @pytest.mark.external

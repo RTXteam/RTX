@@ -249,24 +249,17 @@ def analyze_message_get_referenced_IDs(
         if not isinstance(result_node_bindings, dict):
             log.warning(f"Result {result_index} node bindings is not a dictionary; skipping")
             continue
-        for qnode_id, node_binding_list in result.node_bindings.items():
+        # In TRAPI 2.0, each qnode key maps to a single NodeBinding with a list of node 'ids'
+        for qnode_id, node_binding in result.node_bindings.items():
             if skip_result:
                 break
-            for node_binding_index, node_binding in enumerate(node_binding_list):
-                if not isinstance(node_binding, NodeBinding):
-                    log.warning(f"Result {result_index} "
-                                f"qnode {qnode_id} "
-                                f"node binding index {node_binding_index} "
-                                "object is not a NodeBinding object; skipping")
-                    skip_result = True
-                    break
-                if not hasattr(node_binding, 'id') or node_binding.id is None:
-                    log.warning(f"Result {result_index} "
-                                f"qnode {qnode_id} "
-                                "node object has no id attribute; skipping")
-                    skip_result = True
-                    break
-                node_id = node_binding.id
+            if not isinstance(node_binding, NodeBinding):
+                log.warning(f"Result {result_index} "
+                            f"qnode {qnode_id} "
+                            "node binding object is not a NodeBinding object; skipping")
+                skip_result = True
+                break
+            for node_id in node_binding.ids:
                 if node_id not in kg.nodes:
                     log.warning(f"Result {result_index} "
                                 f"qnode {qnode_id} "
@@ -274,7 +267,7 @@ def analyze_message_get_referenced_IDs(
                                 "is not in the KG; skipping")
                     skip_result = True
                     break
-                result_nodes.add(node_binding.id)
+                result_nodes.add(node_id)
         if skip_result:
             continue
         if not hasattr(result, 'analyses') or result.analyses is None:
@@ -331,38 +324,19 @@ def analyze_message_get_referenced_IDs(
                             "edge bindings is not a dictionary, skipping")
                 skip_result = True
                 break
-            for qedge_id, qedge_bindings in edge_bindings.items():
+            # In TRAPI 2.0, each qedge key maps to a single EdgeBinding with a list of edge 'ids'
+            for qedge_id, edge_binding_obj in edge_bindings.items():
                 if skip_result:
                     break
-                if not isinstance(qedge_bindings,
-                                  list):
+                if not isinstance(edge_binding_obj, EdgeBinding):
                     log.warning(f"Result {result_index} "
                                 f"analysis {analysis_index} "
                                 f"(from {resource_id}) "
                                 f"qedge {qedge_id} "
-                                "edge_binding value is not a list, skipping")
+                                "edge binding is not an EdgeBinding object, skipping")
                     skip_result = True
                     break
-                for edge_binding_index, edge_binding_obj in enumerate(qedge_bindings):
-                    if not isinstance(edge_binding_obj, EdgeBinding):
-                        log.warning(f"Result {result_index} "
-                                    f"analysis {analysis_index} "
-                                    f"(from {resource_id}) "
-                                    f"qedge {qedge_id} "
-                                    f"edge_binding_index {edge_binding_index} "
-                                    "is not an EdgeBinding object, skipping")
-                        skip_result = True
-                        break
-                    if not hasattr(edge_binding_obj, 'id') or edge_binding_obj.id is None:
-                        log.warning(f"Result {result_index} "
-                                    f"analysis {analysis_index} "
-                                    f"(from {resource_id}) "
-                                    f"qedge {qedge_id} "
-                                    f"edge_binding_index {edge_binding_index} "
-                                    "does not have an id attribute, skipping")
-                        skip_result = True
-                        break
-                    edge_id = edge_binding_obj.id
+                for edge_binding_index, edge_id in enumerate(edge_binding_obj.ids):
                     if edge_id not in kg.edges:
                         log.warning(f"Result {result_index} "
                                     f"analysis {analysis_index} "
@@ -601,12 +575,12 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
 
         # rebuild the knowledge graph and auxiliary graphs
         # to ensure that they are internally consistent
-        kg_new = KnowledgeGraph({node_id: node for node_id, node \
-                                 in kg.nodes.items() \
-                                 if node_id in ref_nodes},
-                                {edge_id: edge for edge_id, edge \
-                                 in kg.edges.items() \
-                                 if edge_id in ref_edges})
+        kg_new = KnowledgeGraph(nodes={node_id: node for node_id, node \
+                                       in kg.nodes.items() \
+                                       if node_id in ref_nodes},
+                                edges={edge_id: edge for edge_id, edge \
+                                       in kg.edges.items() \
+                                       if edge_id in ref_edges})
         aux_graphs_new = {aux_graph_id: aux_graph for aux_graph_id, aux_graph \
                           in message.auxiliary_graphs.items() \
                           if aux_graph_id in ref_aux_graphs}
@@ -641,29 +615,27 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
         kg_node_keys_to_qnode_keys: dict[str, set[str]] = dict()
         kg_edge_keys_to_qedge_keys: dict[str, set[str]] = dict()
         for result in results:
-            for qnode_key, node_bindings in result.node_bindings.items():
+            for qnode_key, node_binding in result.node_bindings.items():
                 # FW: This is a hack to get reranking to work. might need to fix later
                 if qnode_key not in qg.nodes:
-                    for node_binding in node_bindings:
-                        if node_binding.id in kg.nodes:
-                            del kg.nodes[node_binding.id]
+                    for node_key in node_binding.ids:
+                        if node_key in kg.nodes:
+                            del kg.nodes[node_key]
                     response.warning("While recomputing qnode keys found a node binding in the results without a corresponding query node. Removing the edge from the KG...")
                     continue
-                for node_binding in node_bindings:
-                    node_key = node_binding.id
+                for node_key in node_binding.ids:
                     if node_key not in kg_node_keys_to_qnode_keys:
                         kg_node_keys_to_qnode_keys[node_key] = set()
                     kg_node_keys_to_qnode_keys[node_key].add(qnode_key)
-            for qedge_key, edge_bindings in result.analyses[0].edge_bindings.items():
+            for qedge_key, edge_binding in result.analyses[0].edge_bindings.items():
                 # FW: This is a hack to get reranking to work. might need to fix later
                 if qedge_key not in qg.edges:
-                    for edge_binding in edge_bindings:
-                        if edge_binding.id in kg.edges:
-                            del kg.edges[edge_binding.id]
+                    for edge_key in edge_binding.ids:
+                        if edge_key in kg.edges:
+                            del kg.edges[edge_key]
                     response.warning("While recomputing qedge keys found a edge binding in the results without a corresponding query edge. Removing the edge from the KG...")
                     continue
-                for edge_binding in edge_bindings:
-                    edge_key = edge_binding.id
+                for edge_key in edge_binding.ids:
                     if edge_key not in kg_edge_keys_to_qedge_keys:
                         kg_edge_keys_to_qedge_keys[edge_key] = set()
                     kg_edge_keys_to_qedge_keys[edge_key].add(qedge_key)
@@ -673,13 +645,13 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
                 response.error("KG contains node(s) that do not appear in any results; cannot recompute their qnode_keys",
                                error_code="InvalidKG")
                 return response
-            node.qnode_keys = list(kg_node_keys_to_qnode_keys[node_key])
+            node._qnode_keys = list(kg_node_keys_to_qnode_keys[node_key])
         for edge_key, edge in kg.edges.items():
             if edge_key not in kg_edge_keys_to_qedge_keys:
                 response.error("KG contains edge(s) that do not appear in any results; cannot recompute their qedge_keys",
                                error_code="InvalidKG")
                 return response
-            edge.qedge_keys = list(kg_edge_keys_to_qedge_keys[edge_key])
+            edge._qedge_keys = list(kg_edge_keys_to_qedge_keys[edge_key])
         return response
 
     def resultify(
@@ -755,9 +727,9 @@ automated reasoning system, not just ones generated by Team ARA Expander."""
                     raise e
 
         nodes_bound = {node_id: node for node_id, node in kg.nodes.items() \
-                       if (getattr(node, "qnode_keys", None) or [])}
+                       if (getattr(node, "_qnode_keys", None) or [])}
         edges_bound = {edge_id: edge for edge_id, edge in kg.edges.items() \
-                       if (getattr(edge, "qedge_keys", None) or [])}
+                       if (getattr(edge, "_qedge_keys", None) or [])}
         kg_bound = KnowledgeGraph(nodes=nodes_bound,
                                   edges=edges_bound)
 
@@ -963,13 +935,13 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         return _get_results_for_kg_by_qg(kg, qg, mode, log=log)
 
     kg_node_keys_without_qnode_key = [node_key for node_key, node in kg.nodes.items() \
-                                      if not hasattr(node, 'qnode_keys') or not node.qnode_keys]
+                                      if not hasattr(node, '_qnode_keys') or not node._qnode_keys]
     if len(kg_node_keys_without_qnode_key) > 0:
         log.error("these node IDs do not have qnode_keys set: " + str(kg_node_keys_without_qnode_key), error_code="MissingQNodeKeys")
         return []
 
     kg_edge_keys_without_qedge_key = [edge_key for edge_key, edge in kg.edges.items() \
-                                      if not hasattr(edge, 'qedge_keys') or not edge.qedge_keys]
+                                      if not hasattr(edge, '_qedge_keys') or not edge._qedge_keys]
     if len(kg_edge_keys_without_qedge_key) > 0:
         log.error("these edges do not have qedge_keys set: " + str(kg_edge_keys_without_qedge_key), error_code="MissingQEdgeKeys")
         return []
@@ -1029,8 +1001,8 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
                 if not edge_is_valid:
                     kg_source_node = kg.nodes.get(kg_source_node_key)
                     kg_target_node = kg.nodes.get(kg_target_node_key)
-                    kg_source_node_qnode_keys = getattr(kg_source_node, 'qnode_keys', None) or []
-                    kg_target_node_qnode_keys = getattr(kg_target_node, 'qnode_keys', None) or []
+                    kg_source_node_qnode_keys = getattr(kg_source_node, '_qnode_keys', None) or []
+                    kg_target_node_qnode_keys = getattr(kg_target_node, '_qnode_keys', None) or []
                     log.error(f"Edge {edge_key} (fulfilling {qedge_key}) has node(s) that do not fulfill the "
                               f"expected qnodes ({qg_source_node_key} and {qg_target_node_key}). Edge's nodes are "
                               f"{kg_source_node_key} (qnode_keys: {kg_source_node_qnode_keys}) and "
@@ -1118,7 +1090,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
         edge_keys_by_object_collapsed: DefaultDict[str, DefaultDict[str, set[str]]] = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
         edge_keys_by_node_pair_collapsed: DefaultDict[str, DefaultDict[tuple[str, str], set[str]]] = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
         for edge_key, edge in kg.edges.items():
-            for qedge_id in (getattr(edge, 'qedge_keys', None) or []):
+            for qedge_id in (getattr(edge, '_qedge_keys', None) or []):
                 qedge = qg.edges[qedge_id]
                 # Remap edges to parent concepts for qnodes where subclass answers were provided
                 qnode_subj_fulfills, qnode_obj_fulfills = _get_qnodes_subj_and_obj_fulfill(edge, qedge, kg_node_keys_by_qg_key)
@@ -1223,21 +1195,14 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     # ------------------ Convert the final result graphs into actual Swagger object model results ----------- #
     log.debug("Loading final result graphs into TRAPI object model")
-    qnodes_with_ids = {qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.ids}
-
     resource_id = "infores:rtx-kg2" if mode == "RTXKG2" else "infores:arax"
     results = []
     for result_graph in final_result_graphs:
-        node_bindings = dict()
-        for qnode_key, node_keys in result_graph['nodes'].items():
-            node_bindings[qnode_key] = [NodeBinding(id=node_key,
-                                                    query_id=_get_query_id(node_key, kg.nodes[node_key], qnode_key,
-                                                                           qnodes_with_ids),
-                                                    attributes=[])
-                                        for node_key in node_keys]
-        edge_bindings = dict()
-        for qedge_key, edge_keys in result_graph['edges'].items():
-            edge_bindings[qedge_key] = [EdgeBinding(id=edge_key,attributes=[]) for edge_key in edge_keys]
+        # TRAPI 2.0: one binding per qnode/qedge key, holding all bound KG ids ('ids' must be non-empty)
+        node_bindings = {qnode_key: NodeBinding(ids=sorted(node_keys))
+                         for qnode_key, node_keys in result_graph['nodes'].items() if node_keys}
+        edge_bindings = {qedge_key: EdgeBinding(ids=sorted(edge_keys))
+                         for qedge_key, edge_keys in result_graph['edges'].items() if edge_keys}
         result = Result(node_bindings=node_bindings, analyses=[Analysis(resource_id=resource_id,
                                                                         edge_bindings=edge_bindings)])
 
@@ -1373,7 +1338,7 @@ def _get_result_graph_key(result_graph: dict[str, DefaultDict[str, set[str]]], q
 def _get_kg_node_keys_by_qg_key(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]]:
     node_keys_by_qg_key: dict[str, set[str]] = dict()
     for node_key, node in knowledge_graph.nodes.items():
-        for qnode_key in (getattr(node, 'qnode_keys', None) or []):
+        for qnode_key in (getattr(node, '_qnode_keys', None) or []):
             if qnode_key not in node_keys_by_qg_key:
                 node_keys_by_qg_key[qnode_key] = set()
             node_keys_by_qg_key[qnode_key].add(node_key)
@@ -1383,7 +1348,7 @@ def _get_kg_node_keys_by_qg_key(knowledge_graph: KnowledgeGraph) -> dict[str, se
 def _get_kg_edge_keys_by_qg_key(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]]:
     edge_keys_by_qg_key: dict[str, set[str]] = dict()
     for edge_key, edge in knowledge_graph.edges.items():
-        for qedge_key in (getattr(edge, 'qedge_keys', None) or []):
+        for qedge_key in (getattr(edge, '_qedge_keys', None) or []):
             if qedge_key not in edge_keys_by_qg_key:
                 edge_keys_by_qg_key[qedge_key] = set()
             edge_keys_by_qg_key[qedge_key].add(edge_key)
@@ -1416,18 +1381,6 @@ def _get_parallel_qedge_keys(input_qedge: QEdge, query_graph: QueryGraph) -> set
     input_qedge_node_keys = {input_qedge.subject, input_qedge.object}
     parallel_qedge_keys = {qedge_key for qedge_key, qedge in query_graph.edges.items() if {qedge.subject, qedge.object} == input_qedge_node_keys}
     return parallel_qedge_keys
-
-
-def _get_query_id(node_key: str, node: Node, qnode_key: str, qnode_keys_with_ids: set[str]) -> Optional[str]:
-    # TODO: Should this really be looking at child to parent map, instead of node's query_ids?
-    if qnode_key in qnode_keys_with_ids:
-        if hasattr(node, "query_ids") and node.query_ids:
-            query_id = _get_best_parent_id(node.query_ids)  # TODO: How should multiple query_ids be handled?? Separate results? Brought up in #1871
-            return query_id if query_id != node_key else None
-        else:
-            return None
-    else:
-        return None
 
 
 def _get_kg_node_adj_map_by_qg_key(kg_node_keys_by_qg_key: dict[str, set[str]],

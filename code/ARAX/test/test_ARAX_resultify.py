@@ -37,11 +37,11 @@ HEART_DISEASE_CURIE = "MONDO:0005267"
 def _slim_kg(kg: KnowledgeGraph) -> KnowledgeGraph:
     slimmed_nodes = {node_key: Node(categories=node.categories,
                                     name=node.name,
-                                    qnode_keys=node.qnode_keys) for node_key, node in kg.nodes.items()}
+                                    qnode_keys=node._qnode_keys) for node_key, node in kg.nodes.items()}
     slimmed_edges = {edge_key: Edge(subject=edge.subject,
                                     object=edge.object,
                                     predicate=edge.predicate,
-                                    qedge_keys=edge.qedge_keys) for edge_key, edge in kg.edges.items()}
+                                    qedge_keys=edge._qedge_keys) for edge_key, edge in kg.edges.items()}
     return KnowledgeGraph(nodes=slimmed_nodes, edges=slimmed_edges)
 
 
@@ -50,7 +50,7 @@ def _create_nodes(kg_node_info: Iterable[Dict[str, any]]) -> Dict[str, Node]:
     for kg_node in kg_node_info:
         node = Node(categories=kg_node.get("categories"),
                     name=kg_node.get("name"))
-        node.qnode_keys = kg_node["qnode_keys"]
+        node._qnode_keys = kg_node["qnode_keys"]
         nodes_dict[kg_node["node_key"]] = node
     return nodes_dict
 
@@ -63,7 +63,7 @@ def _create_edges(kg_edge_info: Iterable[Dict[str, any]]) -> Dict[str, Edge]:
                     predicate=kg_edge.get("predicate", "biolink:related_to"),
                     sources=[RetrievalSource(resource_id="infores:arax",
                                              resource_role="aggregator_knowledge_source")])
-        edge.qedge_keys = kg_edge["qedge_keys"]
+        edge._qedge_keys = kg_edge["qedge_keys"]
         edges_dict[kg_edge["edge_key"]] = edge
     return edges_dict
 
@@ -176,9 +176,9 @@ def _run_resultify_directly(query_graph: QueryGraph,
     message = ARAXMessenger().from_dict(message_original.to_dict())
     # qnode_keys/qedge_keys are lost when grabbing message from_dict() - so we add them back
     for node_key, node in message_original.knowledge_graph.nodes.items():
-        message.knowledge_graph.nodes[node_key].qnode_keys = node.qnode_keys
+        message.knowledge_graph.nodes[node_key]._qnode_keys = node._qnode_keys
     for edge_key, edge in message_original.knowledge_graph.edges.items():
-        message.knowledge_graph.edges[edge_key].qedge_keys = edge.qedge_keys
+        message.knowledge_graph.edges[edge_key]._qedge_keys = edge._qedge_keys
     response.envelope.message = message
     parameters = actions[0]['parameters']
     parameters['debug'] = 'true'
@@ -207,9 +207,9 @@ def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]],
     for qnode_key, nodes_list in shorthand_nodes.items():
         for node_key in nodes_list:
             node = nodes_dict.get(node_key, Node())
-            if not hasattr(node, "qnode_keys"):
-                node.qnode_keys = []
-            node.qnode_keys.append(qnode_key)
+            if not hasattr(node, "_qnode_keys"):
+                node._qnode_keys = []
+            node._qnode_keys.append(qnode_key)
             nodes_dict[node_key] = node
     edges_dict = {}
     for qedge_key, edges_list in shorthand_edges.items():
@@ -221,9 +221,9 @@ def _convert_shorthand_to_kg(shorthand_nodes: Dict[str, List[str]],
                                                  predicate="biolink:related_to",
                                                  sources=[RetrievalSource(resource_id="infores:arax",
                                                                           resource_role="aggregator_knowledge_source")]))
-            if not hasattr(edge, "qedge_keys"):
-                edge.qedge_keys = []
-            edge.qedge_keys.append(qedge_key)
+            if not hasattr(edge, "_qedge_keys"):
+                edge._qedge_keys = []
+            edge._qedge_keys.append(qedge_key)
             edges_dict[f"{qedge_key}:{edge_key}"] = edge
     return KnowledgeGraph(nodes=nodes_dict, edges=edges_dict)
 
@@ -689,7 +689,7 @@ def test08():
     knowledge_graph = _convert_shorthand_to_kg(shorthand_kg_nodes, shorthand_kg_edges)
     response, message = _run_resultify_directly(query_graph, knowledge_graph)
     assert response.status == 'OK'
-    n01_nodes = {node_key for node_key, node in message.knowledge_graph.nodes.items() if "n01" in node.qnode_keys}
+    n01_nodes = {node_key for node_key, node in message.knowledge_graph.nodes.items() if "n01" in node._qnode_keys}
     assert message.results and len(message.results) == len(n01_nodes)
 
 
@@ -728,7 +728,7 @@ def test_example1():
     ]
     response, message = _do_arax_query(actions)
     assert response.status == 'OK'
-    qg1_nodes = {node_key for node_key, node in message.knowledge_graph.nodes.items() if "qg1" in node.qnode_keys}
+    qg1_nodes = {node_key for node_key, node in message.knowledge_graph.nodes.items() if "qg1" in node._qnode_keys}
     assert message.results and len(message.results) == len(qg1_nodes)
     assert message.results[0].essence is not None
 
@@ -1071,7 +1071,7 @@ def test_issue720_1():
         "return(message=true, store=false)"
     ]
     response, message = _do_arax_query(actions)
-    n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes.values() if "n02" in node.qnode_keys]
+    n02_nodes_in_kg = [node for node in message.knowledge_graph.nodes.values() if "n02" in node._qnode_keys]
     assert message.results and len(message.results) >= len(n02_nodes_in_kg)
     for result in message.results:
         n02s = {node_binding.id for node_binding in result.node_bindings["n02"]}
@@ -1146,7 +1146,7 @@ def test_parallel_edges_between_nodes():
     response, message = _run_resultify_directly(query_graph, kg_before_resultify)
     kg = message.knowledge_graph
     assert response.status == 'OK'
-    n02_nodes = {node_key for node_key, node in kg.nodes.items() if "n02" in node.qnode_keys}
+    n02_nodes = {node_key for node_key, node in kg.nodes.items() if "n02" in node._qnode_keys}
     assert message.results and len(message.results) == len(n02_nodes)
     # Make sure every n01 node is connected to both an e01 edge and a parallel01 edge in each result
     for result in message.results:
@@ -1202,7 +1202,7 @@ def test_issue1119_a():
     assert message.results
     # NOTE: Compare *edges* instead of n01 drugs because 'exclude=True' doesn't chain subclass relationships
     contraindicated_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in message.knowledge_graph.edges.values()
-                             if "e01" in edge.qedge_keys}
+                             if "e01" in edge._qedge_keys}
 
     # Verify those chemical substances aren't returned when we make the predisposes edge kryptonite
     actions = [
@@ -1218,7 +1218,7 @@ def test_issue1119_a():
     assert kryptonite_response.status == 'OK'
     assert kryptonite_message.results
     treats_pairs = {tuple(sorted([edge.subject, edge.object])) for edge in kryptonite_message.knowledge_graph.edges.values()
-                    if "e00" in edge.qedge_keys}
+                    if "e00" in edge._qedge_keys}
 
     assert not contraindicated_pairs.intersection(treats_pairs)
 
@@ -1281,7 +1281,7 @@ def test_issue1119_c():
 
     # And make sure the number of results with an option group edge makes sense
     n01_node_keys_original = {node_key for node_key, node in message.knowledge_graph.nodes.items()
-                              if "n01" in node.qnode_keys}
+                              if "n01" in node._qnode_keys}
     actions = [
         "add_qnode(key=n00, ids=MONDO:0005015)",
         f"add_qnode(key=n01, ids=[{', '.join(n01_node_keys_original)}])",
@@ -1378,9 +1378,9 @@ def test_recompute_qg_keys():
     assert message.results
     # Clear all qnode_keys/qedge_keys from the KG
     for node_key, node in message.knowledge_graph.nodes.items():
-        node.qnode_keys = []
+        node._qnode_keys = []
     for edge_key, edge in message.knowledge_graph.edges.items():
-        edge.qedge_keys = []
+        edge._qedge_keys = []
     # Then recompute qg keys and make sure look ok
     resultifier = ARAXResultify()
     resultifier.recompute_qg_keys(response)
@@ -1388,9 +1388,9 @@ def test_recompute_qg_keys():
     kg = response.envelope.message.knowledge_graph
     assert kg.nodes and kg.edges
     for node_key, node in kg.nodes.items():
-        assert node.qnode_keys == ["n00"] if node_key in shorthand_kg_nodes["n00"] else ["n01"]
+        assert node._qnode_keys == ["n00"] if node_key in shorthand_kg_nodes["n00"] else ["n01"]
     for edge_key, edge in kg.edges.items():
-        assert edge.qedge_keys == ["e00"]
+        assert edge._qedge_keys == ["e00"]
 
 
 def test_multi_node_edgeless_qg():
@@ -1446,7 +1446,7 @@ def test_issue1848():
     assert kg.nodes
     assert kg.edges
     assert message.results
-    qedge_bindings_in_kg = {qedge_key for edge in kg.edges.values() for qedge_key in edge.qedge_keys}
+    qedge_bindings_in_kg = {qedge_key for edge in kg.edges.values() for qedge_key in edge._qedge_keys}
     non_subclass_qedge_bindings_in_kg = {qedge_key for qedge_key in qedge_bindings_in_kg if not qedge_key.startswith("subclass:")}
     assert non_subclass_qedge_bindings_in_kg == {"e0"}
 

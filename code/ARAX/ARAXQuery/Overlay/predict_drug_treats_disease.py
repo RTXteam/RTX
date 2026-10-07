@@ -187,13 +187,13 @@ class PredictDrugTreatsDisease:
                     curie_to_name = dict()
                     # identify the nodes that we should be adding virtual edges for
                     for node_key, node in self.message.knowledge_graph.nodes.items():
-                        if hasattr(node, 'qnode_keys'):
-                            if subject_qnode_key in node.qnode_keys:
+                        if hasattr(node, '_qnode_keys'):
+                            if subject_qnode_key in node._qnode_keys:
                                 # *The code below was commented because we don't need to check the type of input nodes #issue1240
                                 # if "drug" in node.category or "chemical_substance" in node.category or "biolink:Drug" in node.category or "biolink:ChemicalSubstance" in node.category:  # this is now NOT checked by ARAX_overlay
                                 source_curies_to_decorate.add(node_key)
                                 curie_to_name[node_key] = node.name
-                            if object_qnode_key in node.qnode_keys:
+                            if object_qnode_key in node._qnode_keys:
                                 # *The code below was commented because we don't need to check the type of input nodes #issue1240
                                 # if "disease" in node.category or "phenotypic_feature" in node.category or "biolink:Disease" in node.category or "biolink:PhenotypicFeature" in node.category:  # this is now NOT checked by ARAX_overlay
                                 target_curies_to_decorate.add(node_key)
@@ -328,8 +328,9 @@ class PredictDrugTreatsDisease:
                                         RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                             ]
                             edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
-                                        attributes=edge_attribute_list, sources=retrieval_source)
-                            edge.qedge_keys = qedge_keys
+                                        attributes=edge_attribute_list, sources=retrieval_source,
+                                        knowledge_level="prediction", agent_type="computational_model")
+                            edge._qedge_keys = qedge_keys
                             self.message.knowledge_graph.edges[id] = edge
                             if self.message.results is not None and len(self.message.results) > 0:
                                 ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
@@ -339,9 +340,9 @@ class PredictDrugTreatsDisease:
                         edge_type = "biolink:probably_treats"
                         relation = parameters['virtual_relation_label']
                         option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, self.message.query_graph, self.response)
-                        q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key, object=object_qnode_key, option_group_id=option_group_id)
-                        q_edge.relation = relation
-                        q_edge.filled = True
+                        q_edge = QEdge(predicates=[edge_type], subject=subject_qnode_key, object=object_qnode_key, option_group_id=option_group_id)
+                        q_edge._relation = relation
+                        q_edge._filled = True
                         self.message.query_graph.edges[relation] = q_edge
                     return self.response
         elif 'virtual_relation_label' in parameters:
@@ -352,13 +353,13 @@ class PredictDrugTreatsDisease:
             curie_to_name = dict()
             # identify the nodes that we should be adding virtual edges for
             for node_key, node in self.message.knowledge_graph.nodes.items():
-                if hasattr(node, 'qnode_keys'):
-                    if subject_qnode_key in node.qnode_keys:
+                if hasattr(node, '_qnode_keys'):
+                    if subject_qnode_key in node._qnode_keys:
                         # *The code below was commented because we don't need to check the type of input nodes #issue1240
                         # if "drug" in node.category or "chemical_substance" in node.category or "biolink:Drug" in node.category or "biolink:ChemicalSubstance" in node.category:  # this is now NOT checked by ARAX_overlay
                         source_curies_to_decorate.add(node_key)
                         curie_to_name[node_key] = node.name
-                    if object_qnode_key in node.qnode_keys:
+                    if object_qnode_key in node._qnode_keys:
                         # *The code below was commented because we don't need to check the type of input nodes #issue1240
                         # if "disease" in node.category or "phenotypic_feature" in node.category or "biolink:Disease" in node.category or "biolink:PhenotypicFeature" in node.category:  # this is now NOT checked by ARAX_overlay
                         target_curies_to_decorate.add(node_key)
@@ -493,8 +494,9 @@ class PredictDrugTreatsDisease:
                                         RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                             ]
                     edge = Edge(predicate=edge_type, subject=subject_key, object=object_key,
-                                attributes=edge_attribute_list, sources=retrieval_source)
-                    edge.qedge_keys = qedge_keys
+                                attributes=edge_attribute_list, sources=retrieval_source,
+                                knowledge_level="prediction", agent_type="computational_model")
+                    edge._qedge_keys = qedge_keys
                     self.message.knowledge_graph.edges[id] = edge
                     if self.message.results is not None and len(self.message.results) > 0:
                         ou.update_results_with_overlay_edge(subject_knode_key=subject_key, object_knode_key=object_key, kedge_key=id, message=self.message, log=self.response)
@@ -504,9 +506,9 @@ class PredictDrugTreatsDisease:
                 edge_type = "biolink:probably_treats"
                 relation = parameters['virtual_relation_label']
                 option_group_id = ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key, self.message.query_graph, self.response)
-                q_edge = QEdge(predicates=edge_type, subject=subject_qnode_key, object=object_qnode_key, option_group_id=option_group_id)
-                q_edge.relation = relation
-                q_edge.filled = True
+                q_edge = QEdge(predicates=[edge_type], subject=subject_qnode_key, object=object_qnode_key, option_group_id=option_group_id)
+                q_edge._relation = relation
+                q_edge._filled = True
                 self.message.query_graph.edges[relation] = q_edge
             return self.response
 

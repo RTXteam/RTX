@@ -20,6 +20,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../../UI/OpenA
 from openapi_server.models.node import Node
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute import Attribute
+from openapi_server.models.retrieval_source import RetrievalSource
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
@@ -876,22 +877,23 @@ class DTDQuerier:
             return ""
 
     def _convert_to_swagger_edge(self, subject: str, object: str, name: str, value: float) -> Tuple[str, Edge]:
-        swagger_edge = Edge()
         self.count = self.count + 1
-        swagger_edge.predicate = f"biolink:{name}"
-        swagger_edge.subject = subject
-        swagger_edge.object = object
         swagger_edge_key = f"DTD:{subject}-{name}-{object}"
-        swagger_edge.relation = None
 
         type = "EDAM-DATA:0951"
         url = "https://doi.org/10.1101/765305"
 
         description = "ARAX's in-house drug-treats-disease (DTD) database (built from GraphSage model)."
-        swagger_edge.attributes = [Attribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url),
-                                #    eu.get_kp_source_attribute("infores:arax-drug-treats-disease", arax_kp=True, description=description),
-                                #    eu.get_arax_source_attribute(),
-                                   eu.get_computed_value_attribute()]
+        attributes = [Attribute(attribute_type_id=type, original_attribute_name=name, value=str(value), value_url=url),
+                    #    eu.get_kp_source_attribute("infores:arax-drug-treats-disease", arax_kp=True, description=description),
+                    #    eu.get_arax_source_attribute(),
+                      eu.get_computed_value_attribute()]
+        # TRAPI 2.0 requires sources, knowledge_level, and agent_type at construction
+        swagger_edge = Edge(predicate=f"biolink:{name}", subject=subject, object=object,
+                            attributes=attributes,
+                            sources=[RetrievalSource(resource_id="infores:arax",
+                                                     resource_role="primary_knowledge_source")],
+                            knowledge_level="prediction", agent_type="computational_model")
 
         return swagger_edge_key, swagger_edge
 

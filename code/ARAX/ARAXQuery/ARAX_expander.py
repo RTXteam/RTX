@@ -859,12 +859,8 @@ class ARAXExpander:
                 lumped_edge = Edge(subject=subj_key, object=obj_key, predicate="biolink:treats",
                                    sources=[RetrievalSource(resource_id="infores:arax",
                                                             resource_role="primary_knowledge_source")],
-                                   attributes=[Attribute(attribute_type_id="biolink:agent_type",
-                                                         value="computational_model",
-                                                         attribute_source="infores:arax"),
-                                               Attribute(attribute_type_id="biolink:knowledge_level",
-                                                         value="prediction",
-                                                         attribute_source="infores:arax")])
+                                   attributes=[],
+                                   knowledge_level="prediction", agent_type="computational_model")
                 lumped_edge_key = f"creative_expand_treats_edge:{subj_key}--treats--{obj_key}--infores:arax"
                 overarching_kg.edges_by_qg_id[qedge_key][lumped_edge_key] = lumped_edge
 
@@ -946,10 +942,10 @@ class ARAXExpander:
                         response.envelope.message.encountered_kryptonite_edges_info = response_data['message']['encountered_kryptonite_edges_info']
                         for node_key, node in response_data['message']['knowledge_graph']['nodes'].items():
                             response.info(f"Copying qnode_keys for node {node_key}") 
-                            response.envelope.message.knowledge_graph.nodes[node_key].qnode_keys = node['qnode_keys']
+                            response.envelope.message.knowledge_graph.nodes[node_key]._qnode_keys = node['qnode_keys']
                         for edge_key, edge in response_data['message']['knowledge_graph']['edges'].items():
                             response.info(f"Copying qedge_keys for edge {edge_key}") 
-                            response.envelope.message.knowledge_graph.edges[edge_key].qedge_keys = edge['qedge_keys']
+                            response.envelope.message.knowledge_graph.edges[edge_key]._qedge_keys = edge['qedge_keys']
                         response.dtd_from_cache = True   # type: ignore[attr-defined]
 
                     #### Else run the inferer to get the result and then cache it
@@ -962,9 +958,9 @@ class ARAXExpander:
                         response_object = response.envelope.to_dict()
                         response_object['message']['encountered_kryptonite_edges_info'] = response.envelope.message.encountered_kryptonite_edges_info
                         for node_key, node in response.envelope.message.knowledge_graph.nodes.items():
-                            response_object['message']['knowledge_graph']['nodes'][node_key]['qnode_keys'] = node.qnode_keys
+                            response_object['message']['knowledge_graph']['nodes'][node_key]['qnode_keys'] = node._qnode_keys
                         for edge_key, edge in response.envelope.message.knowledge_graph.edges.items():
-                            response_object['message']['knowledge_graph']['edges'][edge_key]['qedge_keys'] = edge.qedge_keys
+                            response_object['message']['knowledge_graph']['edges'][edge_key]['qedge_keys'] = edge._qedge_keys
                         response.info("Storing result in the cache")
                         cacher.store_response(
                             kp_curie=kp_curie,
@@ -1720,11 +1716,11 @@ class ARAXExpander:
                             edge.object = input_curie
             # Remap all KG ID to query ID mappings as needed
             for node_key, node in kg.nodes.items():
-                if hasattr(node, "query_ids"):
-                    node.query_ids = list({canonical_to_input_curie_map.get(query_id, query_id) for query_id in node.query_ids})
+                if hasattr(node, "_query_ids"):
+                    node._query_ids = list({canonical_to_input_curie_map.get(query_id, query_id) for query_id in node._query_ids})
                 else:
                     # Answers from in-house KPs may not have query_ids filled out (they don't do subclass reasoning)
-                    node.query_ids = []
+                    node._query_ids = []
         else:
             log.debug("No KG nodes found that use a different curie than was asked for in the QG")
 

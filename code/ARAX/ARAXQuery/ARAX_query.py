@@ -506,13 +506,24 @@ class ARAXQuery:
         response = self.response
         response.info("Validating the input query graph")
 
-        # Define allowed qnode and qedge attributes to check later
-        allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'is_set': 1, 'set_interpretation': 1, 'set_id': 1, 'member_ids': 1, 'option_group_id': 1, 'name': 1, 'constraints': 1 }
-        allowed_qedge_attributes = { 'predicates': 1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'attribute_constraints': 1, 'qualifier_constraints': 1, 'knowledge_type': 1 }
+        # Define allowed qnode and qedge attributes to check later (per the TRAPI 2.0 QNode and QEdge schemas)
+        allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'set_interpretation': 1, 'member_ids': 1, 'option_group_id': 1, 'constraints': 1 }
+        allowed_qedge_attributes = { 'predicates': 1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'constraints': 1, 'knowledge_type': 1 }
+
+        # Properties from older TRAPI versions that are no longer valid, with migration hints
+        obsolete_qnode_attributes = { 'is_set': "use 'set_interpretation': 'COLLATE' instead",
+                                      'set_id': "it was removed; for a set query, put the set UUID in 'ids' and its members in 'member_ids'" }
+        obsolete_qedge_attributes = { 'predicate': "it should be plural 'predicates' (TRAPI 1.4 and higher)",
+                                      'attribute_constraints': "use 'constraints.attributes' instead",
+                                      'qualifier_constraints': "use 'constraints.qualifiers' instead",
+                                      'relation': "it was removed from the TRAPI QEdge schema" }
 
         #### Loop through nodes checking the attributes
         for id,qnode in message['query_graph']['nodes'].items():
             for attr in qnode:
+                if attr in obsolete_qnode_attributes:
+                    response.error(f"QueryGraph node '{id}' has an obsolete property '{attr}', which is not valid in TRAPI 2.0: {obsolete_qnode_attributes[attr]}. Your query may be from an older TRAPI version and should be migrated to TRAPI 2.0", error_code="UnknownQNodeProperty")
+                    return response
                 if attr not in allowed_qnode_attributes:
                     response.error(f"QueryGraph node '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQNodeProperty")
                     return response
@@ -527,8 +538,8 @@ class ARAXQuery:
             for id,qedge in message['query_graph']['edges'].items():
                 for attr in qedge:
                     if attr not in allowed_qedge_attributes:
-                        if attr == 'predicate':
-                            response.error(f"QueryGraph edge '{id}' has an obsolete property '{attr}'. This property should be plural 'predicates' in TRAPI 1.4 and higher. Your query may be TRAPI 1.3 or lower and should be checked carefully and migrated to TRAPI 1.4", error_code="UnknownQEdgeProperty")
+                        if attr in obsolete_qedge_attributes:
+                            response.error(f"QueryGraph edge '{id}' has an obsolete property '{attr}', which is not valid in TRAPI 2.0: {obsolete_qedge_attributes[attr]}. Your query may be from an older TRAPI version and should be migrated to TRAPI 2.0", error_code="UnknownQEdgeProperty")
                         else:
                             response.error(f"QueryGraph edge '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQEdgeProperty")
                         return response

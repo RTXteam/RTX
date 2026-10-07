@@ -229,7 +229,7 @@ class RemoveNodes:
             # Don't filter out nodes that are supposed to be orphans #2306
             for node_key in nodes_to_remove:
                 node = self.message.knowledge_graph.nodes[node_key]
-                node_qnode_keys = getattr(node, 'qnode_keys', None) or []
+                node_qnode_keys = getattr(node, '_qnode_keys', None) or []
                 if set(node_qnode_keys).intersection(orphan_qnode_ids):
                     orphan_node_keys.add(node_key)
             if orphan_node_keys:

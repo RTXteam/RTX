@@ -139,8 +139,8 @@ class ComputeFTEST:
             if len(qg.edges) != 0:
                 for edge_key in qg.edges:
                     qedge_relation = None
-                    if hasattr(qg.edges[edge_key], "relation"):
-                        qedge_relation = qg.edges[edge_key].relation
+                    if hasattr(qg.edges[edge_key], "_relation"):
+                        qedge_relation = qg.edges[edge_key]._relation
                     if qg.edges[edge_key].subject == subject_qnode_key and qg.edges[edge_key].object == object_qnode_key and qedge_relation is None:
                         query_edge_key.update([edge_key])  # only actual query edge is added
                     elif qg.edges[edge_key].subject == object_qnode_key and qg.edges[edge_key].object == subject_qnode_key and qedge_relation is None:
@@ -174,7 +174,7 @@ class ComputeFTEST:
         ## loop over all nodes in KG and collect their node information
         try:
             for node_key, node in kg.nodes.items():
-                node_qnode_keys = getattr(node, 'qnode_keys', None) or []
+                node_qnode_keys = getattr(node, '_qnode_keys', None) or []
                 node_categories = node.categories
                 nodes_info[node_key] = {'qnode_keys': node_qnode_keys,
                                         'category': next(iter(node_categories), None)}
@@ -194,7 +194,7 @@ class ComputeFTEST:
                 edge_attribute_list = [x.value for x in edge_attributes if x.attribute_type_id == 'EDAM-DATA:1772'] if edge_attributes else []
                 if len(edge_attribute_list) == 0:
                     if rel_edge_key:
-                        if rel_edge_key in (getattr(edge, "qedge_keys", None) or []):
+                        if rel_edge_key in (getattr(edge, "_qedge_keys", None) or []):
                             if subject_qnode_key in nodes_info[kg.edges[edge_key].subject]['qnode_keys']:
                                 # edge_expand_kp.extend(temp_kp)
                                 rel_edge_type.update([kg.edges[edge_key].predicate])
@@ -403,8 +403,9 @@ class ComputeFTEST:
                                         RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")
                     ]
                 edge = Edge(predicate='biolink:has_fisher_exact_test_p_value_with', subject=value[2], object=value[3],
-                            attributes=edge_attribute_list, sources=retrieval_source)
-                edge.qedge_keys = [value[0]]
+                            attributes=edge_attribute_list, sources=retrieval_source,
+                            knowledge_level="statistical_association", agent_type="automated_agent")
+                edge._qedge_keys = [value[0]]
 
                 kg.edges[edge_id] = edge
 
@@ -425,8 +426,8 @@ class ComputeFTEST:
                 q_edge = QEdge(predicates=edge_type,
                                subject=subject_qnode_key, object=object_qnode_key,
                                option_group_id=option_group_id)
-                q_edge.relation = virtual_relation_label
-                q_edge.filled = True
+                q_edge._relation = virtual_relation_label
+                q_edge._filled = True
                 qg.edges[qedge_id] = q_edge
                 self.response.debug("One virtual edge was added to message QG")
 

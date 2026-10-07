@@ -34,7 +34,7 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code']))
 def _inspect_kg_for_qg_keys(kg: KnowledgeGraph) -> dict[str, int]:
     res_dict = {}
     for node in kg.nodes.values():
-        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
+        node_qnode_keys = getattr(node, '_qnode_keys', None) or []
         for qnode_key in node_qnode_keys:
             if qnode_key not in res_dict:
                 res_dict[qnode_key] = 0
@@ -74,9 +74,9 @@ class QGOrganizedKnowledgeGraph:
             else:
                 existing_node.attributes = new_node_attributes
             # Merge query IDs (which map KG nodes to query curies they fulfill)
-            if hasattr(node, "query_ids") and node.query_ids:
-                existing_query_ids = set(existing_node.query_ids) if hasattr(existing_node, "query_ids") and existing_node.query_ids else set()
-                existing_node.query_ids = list(existing_query_ids.union(set(node.query_ids)))
+            if hasattr(node, "_query_ids") and node._query_ids:
+                existing_query_ids = set(existing_node._query_ids) if hasattr(existing_node, "_query_ids") and existing_node._query_ids else set()
+                existing_node._query_ids = list(existing_query_ids.union(set(node._query_ids)))
         else:
             self.nodes_by_qg_id[qnode_key][node_key] = node
 
@@ -259,13 +259,13 @@ def convert_standard_kg_to_qg_organized_kg(standard_kg: KnowledgeGraph) -> QGOrg
     organized_kg = QGOrganizedKnowledgeGraph()
     if standard_kg.nodes:
         for node_key, node in standard_kg.nodes.items():
-            for qnode_key in getattr(node, 'qnode_keys', None) or []:
+            for qnode_key in getattr(node, '_qnode_keys', None) or []:
                 if qnode_key not in organized_kg.nodes_by_qg_id:
                     organized_kg.nodes_by_qg_id[qnode_key] = dict()
                 organized_kg.nodes_by_qg_id[qnode_key][node_key] = node
     if standard_kg.edges:
         for edge_key, edge in standard_kg.edges.items():
-            for qedge_key in getattr(edge, 'qedge_keys', None) or []:
+            for qedge_key in getattr(edge, '_qedge_keys', None) or []:
                 if qedge_key not in organized_kg.edges_by_qg_id:
                     organized_kg.edges_by_qg_id[qedge_key] = dict()
                 organized_kg.edges_by_qg_id[qedge_key][edge_key] = edge
@@ -277,16 +277,16 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
     for qnode_key, nodes_for_this_qnode_key in organized_kg.nodes_by_qg_id.items():
         for node_key, node in nodes_for_this_qnode_key.items():
             if node_key in standard_kg.nodes:
-                standard_kg.nodes[node_key].qnode_keys.append(qnode_key)
+                standard_kg.nodes[node_key]._qnode_keys.append(qnode_key)
             else:
-                node.qnode_keys = [qnode_key]
+                node._qnode_keys = [qnode_key]
                 standard_kg.nodes[node_key] = node
     for qedge_key, edges_for_this_qedge_key in organized_kg.edges_by_qg_id.items():
         for edge_key, edge in edges_for_this_qedge_key.items():
             if edge_key in standard_kg.edges:
-                standard_kg.edges[edge_key].qedge_keys.append(qedge_key)
+                standard_kg.edges[edge_key]._qedge_keys.append(qedge_key)
             else:
-                edge.qedge_keys = [qedge_key]
+                edge._qedge_keys = [qedge_key]
                 standard_kg.edges[edge_key] = edge
     for node_key, node in organized_kg.unbound_nodes.items():
         standard_kg.nodes[node_key] = node
@@ -450,7 +450,7 @@ def qg_is_fulfilled(query_graph: QueryGraph,
         query_graph = get_required_portion_of_qg(qg_without_kryptonite_portion)
     if enforce_expanded_only:
         expanded_qedge_keys = {qedge_key for qedge_key, qedge in query_graph.edges.items()
-                               if hasattr(qedge, "filled") and qedge.filled}
+                               if hasattr(qedge, "_filled") and qedge._filled}
         qg_edges = {qedge_key: query_graph.edges[qedge_key] for qedge_key in expanded_qedge_keys}
         qg_nodes = {qnode_key: query_graph.nodes[qnode_key]
                     for qedge in qg_edges.values()
@@ -573,7 +573,7 @@ def remove_edges_with_qedge_key(kg: KnowledgeGraph, qedge_key: str):
     edge_keys = set(kg.edges)
     for edge_key in edge_keys:
         edge = kg.edges[edge_key]
-        if qedge_key in (getattr(edge, 'qedge_keys', None) or []):
+        if qedge_key in (getattr(edge, '_qedge_keys', None) or []):
             del kg.edges[edge_key]
 
 

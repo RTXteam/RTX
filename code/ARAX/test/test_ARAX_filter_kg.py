@@ -104,7 +104,7 @@ def test_edge_key_removal():
     assert response.status == 'OK'
     edge_key_set = set()
     for edge in message.knowledge_graph.edges.values():
-        edge_key_set = edge_key_set.union(edge.qedge_keys)
+        edge_key_set = edge_key_set.union(edge._qedge_keys)
     assert 'e01' not in edge_key_set
 
 @pytest.mark.slow

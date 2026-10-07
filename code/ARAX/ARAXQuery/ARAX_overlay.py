@@ -528,7 +528,7 @@ This information is included in edge attributes with the name 'icees_p-value'.
         qnode_keys_not_fulfilled = {qnode_key
                                     for qnode_key in qnode_keys_to_check
                                     if not any(node for node in kg.nodes.values()
-                                               if qnode_key in (getattr(node, 'qnode_keys', None) or []))}
+                                               if qnode_key in (getattr(node, '_qnode_keys', None) or []))}
         if qnode_keys_not_fulfilled:
             response.debug("Nothing to overlay (one or more of the specified qnodes is not "
                            f"fulfilled in the KG): {qnode_keys_not_fulfilled}")

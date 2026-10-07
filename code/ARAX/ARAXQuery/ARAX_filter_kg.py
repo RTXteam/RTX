@@ -584,15 +584,15 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'qnode_keys': {
                                         qnode_key
                                         for node in kg.nodes.values()
-                                        for qnode_key in (getattr(node, "qnode_keys", None) or [])
+                                        for qnode_key in (getattr(node, "_qnode_keys", None) or [])
                                     },
                                     'qedge_keys': {
                                         qedge_key
                                         for edge in kg.edges.values()
-                                        for qedge_key in (getattr(edge, "qedge_keys", None) or [])
+                                        for qedge_key in (getattr(edge, "_qedge_keys", None) or [])
                                     }
-#                                    'qnode_keys': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
-#                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
+#                                    'qnode_keys': set([t for x in self.message.knowledge_graph.nodes.values() if x._qnode_keys is not None for t in x._qnode_keys]),
+#                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x._qedge_keys is not None for t in x._qedge_keys])
                                 }
         else:
             allowable_parameters = {'action': {'remove_edges_by_predicate'},
@@ -696,8 +696,8 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'edge_attribute': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) is str or type(val) is list]).union(known_attributes),
                                     'value': known_values,
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
-                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
+                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x._qnode_keys is not None for t in x._qnode_keys]),
+                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x._qedge_keys is not None for t in x._qedge_keys])
                                 }
         else:
             allowable_parameters = {'action': {'remove_edges_by_discrete_attribute'},
@@ -780,8 +780,8 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'direction': {'above', 'below'},
                                     'threshold': {float()},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
-                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
+                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x._qnode_keys is not None for t in x._qnode_keys]),
+                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x._qedge_keys is not None for t in x._qedge_keys])
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_continuous_attribute'},
@@ -883,12 +883,12 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'qnode_keys': {
                                         qnode_key
                                         for node in kg.nodes.values()
-                                        for qnode_key in (getattr(node, "qnode_keys", None) or [])
+                                        for qnode_key in (getattr(node, "_qnode_keys", None) or [])
                                     },
                                     'qedge_keys': {
                                         qedge_key
                                         for edge in kg.edges.values()
-                                        for qedge_key in (getattr(edge, "qedge_keys", None) or [])
+                                        for qedge_key in (getattr(edge, "_qedge_keys", None) or [])
                                     }
                                     }
         else:
@@ -1042,8 +1042,8 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'threshold': {float()},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
-                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
+                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x._qnode_keys is not None for t in x._qnode_keys]),
+                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x._qedge_keys is not None for t in x._qedge_keys])
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_percentile'},
@@ -1196,8 +1196,8 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     'n': {int()},
                                     'top': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
                                     'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
-                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
+                                    'qnode_keys':set([t for x in self.message.knowledge_graph.nodes.values() if x._qnode_keys is not None for t in x._qnode_keys]),
+                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x._qedge_keys is not None for t in x._qedge_keys])
                                     }
         else:
             allowable_parameters = {'action': {'remove_edges_by_top_n'},

@@ -36,7 +36,7 @@ def get_node_pairs_to_overlay(subject_qnode_key: str, object_qnode_key: str, que
     # Compute results using Resultify so we can see which nodes appear in the same results
     resultifier = ARAXResultify()
     sub_response = ARAXResponse()
-    sub_response.envelope = Response()
+    sub_response.envelope = Response.model_construct()
     sub_response.envelope.message = Message()
     sub_message = sub_response.envelope.message
     sub_message.query_graph = sub_query_graph
@@ -49,10 +49,10 @@ def get_node_pairs_to_overlay(subject_qnode_key: str, object_qnode_key: str, que
     if resultify_response.status == 'OK':
         node_pairs: set[tuple[str, str]] = set()
         for result in sub_message.results:
-            subject_curies_in_this_result = {node_binding.id for key, node_binding_list in result.node_bindings.items() for node_binding in node_binding_list if
-                                            key == subject_qnode_key}
-            object_curies_in_this_result = {node_binding.id for key, node_binding_list in result.node_bindings.items() for node_binding in node_binding_list if
-                                            key == object_qnode_key}
+            subject_node_binding = result.node_bindings.get(subject_qnode_key)
+            object_node_binding = result.node_bindings.get(object_qnode_key)
+            subject_curies_in_this_result = set(subject_node_binding.ids) if subject_node_binding else set()
+            object_curies_in_this_result = set(object_node_binding.ids) if object_node_binding else set()
             pairs_in_this_result: set[tuple[str, str]] = set(itertools.product(subject_curies_in_this_result, object_curies_in_this_result))
             node_pairs = node_pairs.union(pairs_in_this_result)
         log.debug(f"Identified {len(node_pairs)} node pairs to overlay (with help of resultify)")
@@ -68,7 +68,7 @@ def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]
     node_keys_by_qg_key: dict[str, set[str]] = dict()
     if knowledge_graph.nodes:
         for key, node in knowledge_graph.nodes.items():
-            for qnode_key in getattr(node, 'qnode_keys', []):
+            for qnode_key in getattr(node, '_qnode_keys', []):
                 if qnode_key not in node_keys_by_qg_key:
                     node_keys_by_qg_key[qnode_key] = set()
                 node_keys_by_qg_key[qnode_key].add(key)
@@ -80,7 +80,7 @@ def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]
     edge_keys_by_qg_key: dict[str, set[str]] = dict()
     if knowledge_graph.edges:
         for key, edge in knowledge_graph.edges.items():
-            for qedge_key in getattr(edge, 'qedge_keys', []):
+            for qedge_key in getattr(edge, '_qedge_keys', []):
                 if qedge_key not in edge_keys_by_qg_key:
                     edge_keys_by_qg_key[qedge_key] = set()
                 edge_keys_by_qg_key[qedge_key].add(key)
@@ -102,7 +102,7 @@ def determine_virtual_qedge_option_group(subject_qnode_key: str, object_qnode_ke
 
 class _BindingPlace(NamedTuple):
     """One spot an overlay edge could be bound: one analysis's bindings for one qedge of one result."""
-    edge_bindings: list       # the live list an overlay edge gets appended to
+    edge_binding: EdgeBinding  # the live binding whose 'ids' list an overlay edge key gets appended to
     covered_curies: set       # curies bound to that qedge's subject and object in this result
     bound_kedge_keys: set     # edge keys already bound here
 
@@ -125,20 +125,23 @@ def update_results_with_overlay_edges(kedge_keys_by_node_pair: dict[tuple[str, s
         # covered curie so that each overlay edge only has to examine the relevant places.
         binding_places_by_curie: defaultdict[str, list[_BindingPlace]] = defaultdict(list)
         for result in message.results:
-            for analysis in result.analyses:
+            for analysis in result.analyses or []:
                 if reasoner_id != analysis.resource_id:
                     continue
-                for qedge_key, edge_bindings in analysis.edge_bindings.items():
+                for qedge_key, edge_binding in (analysis.edge_bindings or {}).items():
                     qedge = qedges.get(qedge_key)
                     if qedge is None:
                         # Warned once per affected result/analysis/qedge: the volume of these is
                         # itself the signal that something upstream has gone wrong.
                         log.warning("Encountered a result edge binding which does not exist in the query graph")
                         continue
-                    covered_curies = {binding.id for binding in result.node_bindings[qedge.subject]}
-                    covered_curies |= {binding.id for binding in result.node_bindings[qedge.object]}
-                    binding_place = _BindingPlace(edge_bindings, covered_curies,
-                                                  {binding.id for binding in edge_bindings})
+                    # TRAPI 2.0: one NodeBinding/EdgeBinding per qnode/qedge key, each with a list of 'ids'
+                    covered_curies = set()
+                    for qnode_key in (qedge.subject, qedge.object):
+                        node_binding = result.node_bindings.get(qnode_key)
+                        if node_binding:
+                            covered_curies |= set(node_binding.ids)
+                    binding_place = _BindingPlace(edge_binding, covered_curies, set(edge_binding.ids))
                     for curie in covered_curies:
                         binding_places_by_curie[curie].append(binding_place)
 
@@ -153,10 +156,9 @@ def update_results_with_overlay_edges(kedge_keys_by_node_pair: dict[tuple[str, s
                 places_to_scan, curie_to_confirm = subject_places, object_knode_key
             else:
                 places_to_scan, curie_to_confirm = object_places, subject_knode_key
-            new_edge_binding = EdgeBinding(id=kedge_key, attributes=[])
             for place in places_to_scan:
                 if curie_to_confirm in place.covered_curies and kedge_key not in place.bound_kedge_keys:
-                    place.edge_bindings.append(new_edge_binding)
+                    place.edge_binding.ids.append(kedge_key)
                     place.bound_kedge_keys.add(kedge_key)
     except Exception:
         tb = traceback.format_exc()

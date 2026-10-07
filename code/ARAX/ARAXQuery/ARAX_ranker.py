@@ -18,6 +18,7 @@ from query_graph_info import QueryGraphInfo
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.result import Result
+from openapi_server.models.result_row_data_inner import ResultRowDataInner
 from openapi_server.models.edge import Edge
 
 
@@ -75,6 +76,12 @@ def _calculate_final_result_score(all_edge_scores: list[float]) -> float:
 
     return final_score
 
+def _make_row_data_item(value) -> ResultRowDataInner:
+    # TRAPI 2.0 Result.row_data items must be a string or number (null is no longer allowed), so use an
+    # empty string for a missing value in order to keep the columns aligned with table_column_names
+    return ResultRowDataInner("" if value is None else value)
+
+
 def _process_valid_edge_ids(valid_edge_id_info: dict[str, Dict], kg_edge_id_to_edge: dict[str, Edge]) -> dict[str, dict[str, list[float]]]:
     
     results: dict[str, dict[str, list[float]]] = {}
@@ -85,11 +92,11 @@ def _process_valid_edge_ids(valid_edge_id_info: dict[str, Dict], kg_edge_id_to_e
         results[qedge_key]['scores'] = []
 
         same_edge_ids: dict[str, list[float]] = {}
-        for edge_binding in edge_info['edge_binding_list']:
-            edge_id = edge_binding.id.split(':', 2)[-1]
+        for kg_edge_id in edge_info['edge_ids']:
+            edge_id = kg_edge_id.split(':', 2)[-1]
             if edge_id not in same_edge_ids:
                 same_edge_ids[edge_id] = []
-            same_edge_ids[edge_id].append(kg_edge_id_to_edge[edge_binding.id].confidence)
+            same_edge_ids[edge_id].append(kg_edge_id_to_edge[kg_edge_id]._confidence)
             
         # Take the average of the scores for each edge id
         for edge_id, scores in same_edge_ids.items():
@@ -109,12 +116,13 @@ def _get_weighted_graph_networkx_from_result_graph(kg_edge_id_to_edge: dict[str,
     # Get all valid edge ids from the edge binding list
     valid_edge_id_info = {}
     for analysis in result.analyses:  # For now we only ever have one Analysis per Result
-        for qedge_key, edge_binding_list in analysis.edge_bindings.items():
+        # TRAPI 2.0: each qedge key maps to a single EdgeBinding with a list of edge 'ids'
+        for qedge_key, edge_binding in analysis.edge_bindings.items():
             if 'creative_' not in qedge_key: # ignore all xDTD/xCRG supported edges
                 qedge_tuple = qg_edge_key_to_edge_tuple[qedge_key]
                 valid_edge_id_info[qedge_key] = {
                     'edge_tuple': qedge_tuple,
-                    'edge_binding_list': edge_binding_list
+                    'edge_ids': edge_binding.ids
                 }
                 
     # Process all valid edge ids (possibly combine multiple duplicate edges into one)
@@ -712,19 +720,17 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         for edge_key, edge in message.knowledge_graph.edges.items():
             if edge.attributes is not None:
                 edge_attributes = {x.original_attribute_name:x.value for x in edge.attributes}
-                for edge_attribute in edge.attributes:
-                    if edge_attribute.attribute_type_id == "biolink:agent_type" and edge_attribute.value == "manual_agent":
-                        edge_attributes['confidence'] = edge_confidence_manual_agent
-                        edge.confidence = edge_confidence_manual_agent
-                        edge_ids_manual_agent.add(edge_key)
-                        break
             else:
                 edge_attributes = {}
+            # In TRAPI 2.0, agent_type is a required top-level Edge property (no longer an attribute)
+            if edge.agent_type == "manual_agent":
+                edge_attributes['confidence'] = edge_confidence_manual_agent
+                edge_ids_manual_agent.add(edge_key)
 
             if edge_attributes.get("confidence", None):
-                edge.confidence = edge_attributes['confidence']
+                edge._confidence = edge_attributes['confidence']
             else:                
-                edge.confidence = self.edge_attribute_score_combiner(edge_key, edge)
+                edge._confidence = self.edge_attribute_score_combiner(edge_key, edge)
 
         # Now that each edge has a confidence attached to it based on it's attributes, we can now:
         # 1. consider edge types of the results
@@ -765,7 +771,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
             # Round to reasonable precision. Keep only 3 digits after the decimal
             score = int(result.analyses[0].score * 1000 + 0.5) / 1000.0
 
-            result.row_data = [score, result.essence, result.essence_category]
+            result.row_data = [_make_row_data_item(value) for value in (score, result.essence, result.essence_category)]
 
         # Add table columns name
         response.envelope.table_column_names = ['score', 'essence', 'essence_category']
@@ -780,7 +786,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
         # reinsert these scores into the results
         for result, score in zip(message.results, scores_without_ties):
             result.analyses[0].score = score
-            result.row_data[0] = score
+            result.row_data[0] = _make_row_data_item(score)
         response.debug("Results have been ranked and sorted")
 
 
