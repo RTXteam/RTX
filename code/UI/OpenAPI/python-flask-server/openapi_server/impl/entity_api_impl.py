@@ -24,7 +24,6 @@ class ImplEntityApi(BaseEntityApi):
         q: Annotated[List[StrictStr], Field(description="A string to search by (name, abbreviation, CURIE, etc.). The parameter may be repeated for multiple search strings.")],
     ) -> object:
 
-        eprint(f"DEBUG: Calling NodeSynonymizer via GET with {q}")
         synonymizer = NodeSynonymizer()
         response = synonymizer.get_normalizer_results(q)
         return response
@@ -33,10 +32,9 @@ class ImplEntityApi(BaseEntityApi):
     async def post_entity(
         self,
         body: Annotated[Dict[str, Any], Field(description="List of terms to get information about")],
-    ) -> EntityQuery:
+    ) -> object:
 
-        eprint(f"DEBUG: Calling NodeSynonymizer via POST with {body}")
         synonymizer = NodeSynonymizer()
-        response = synonymizer.get_normalizer_results(body)
+        response = synonymizer.get_normalizer_results(body.to_dict())
         return response
 
