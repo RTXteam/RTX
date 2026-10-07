@@ -1319,7 +1319,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
             return set(some_value)
         except TypeError as error:
             raise ValueError(
-                "Input is not an allowable data type"
+                f"Input {type(some_value)} is not an allowable data type"
                 " (list, set, or string)!") from error
 
     @staticmethod
@@ -1415,7 +1415,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
     def _get_cluster_graph(
             self, normalizer_info: dict) -> dict:
         """Build a TRAPI KnowledgeGraph for a cluster."""
-        kg = KnowledgeGraph()
+        kg = KnowledgeGraph.model_construct()
         cluster_id = normalizer_info["id"]["identifier"]
 
         trapi_nodes = {
