@@ -61,7 +61,7 @@ info:
         https://github.com/NCATSTranslator/translator_extensions/blob/production/x-trapi/
 servers:
 - description: ARAX TRAPI 2.0.0-beta2 endpoint - development
-  url: https://arax.ncats.io/api/arax/v2.0
+  url: https://arax.ncats.io/devED/api/arax/v2.0
   x-maturity: development
 externalDocs:
   description: >-
@@ -134,6 +134,17 @@ paths:
       summary: Meta knowledge graph representation of this TRAPI web service.
       operationId: meta_knowledge_graph
       x-openapi-router-controller: openapi_server.controllers.meta_knowledge_graph_controller
+      parameters:
+      - description: Set the format of the response
+        explode: true
+        in: query
+        name: format
+        required: false
+        schema:
+          examples:
+            - simple
+          type: string
+        style: form
       responses:
         '200':
           description: >-
@@ -1038,7 +1049,7 @@ components:
           additionalProperties:
             $ref: '#/components/schemas/AuxiliaryGraph'
           minProperties: 1
-      additionalProperties: false
+      additionalProperties: true
     LogEntry:
       description: >-
         The LogEntry object contains information useful for tracing
