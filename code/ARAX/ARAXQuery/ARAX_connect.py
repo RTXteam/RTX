@@ -26,7 +26,7 @@ from openapi_server.models.result import Result
 from openapi_server.models.node_binding import NodeBinding
 from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 from openapi_server.models.path_binding import PathBinding
-from openapi_server.models.pathfinder_analysis import PathfinderAnalysis
+from openapi_server.models.analysis import Analysis  #T2FIXME
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
@@ -312,10 +312,10 @@ class ARAXConnect:
             else:
                 # Hack to explicitly convert the analyses to PathfinderAnalysis objects because this doesn't work automatically. It should. Maybe move this into Messenger? FIXME
                 i_analysis = 0
-                for analysis_dict in response_data['message']['results'][0]['analyses']:
-                    analysis_obj = PathfinderAnalysis.from_dict(analysis_dict)
-                    self.response.envelope.message.results[0].analyses[i_analysis] = analysis_obj
-                    i_analysis += 1
+                #for analysis_dict in response_data['message']['results'][0]['analyses']:  # T2FIXME
+                #    analysis_obj = PathfinderAnalysis.from_dict(analysis_dict)
+                #    self.response.envelope.message.results[0].analyses[i_analysis] = analysis_obj
+                #    i_analysis += 1
 
         else:
             self.response.debug(f"Applying Connect to Message with parameters {parameters}")
@@ -605,7 +605,7 @@ class ARAXConnect:
             for key, value in analys['path_bindings'].items():
                 path_bindings[key] = [PathBinding(id=value[0]['id'])]
             analyses.append(
-                PathfinderAnalysis(
+                Analysis(  #T2FIXME
                     resource_id=analys["resource_id"],
                     path_bindings=path_bindings,
                     score=analys['score']
