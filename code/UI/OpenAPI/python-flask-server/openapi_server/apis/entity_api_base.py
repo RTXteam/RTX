@@ -23,6 +23,6 @@ class BaseEntityApi:
 
     async def post_entity(
         self,
-        body: Annotated[Dict[str, Any], Field(description="List of terms to get information about")],
-    ) -> EntityQuery:
+        entity_query: Annotated[EntityQuery, Field(description="List of terms to get information about")],
+    ) -> object:
         ...

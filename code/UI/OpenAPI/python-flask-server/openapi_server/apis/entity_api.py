@@ -47,8 +47,7 @@ for _, name, _ in pkgutil.iter_modules(ns_pkg.__path__, ns_pkg.__name__ + "."):
     response_model_by_alias=True,
 )
 async def get_entity(
-    q: Annotated[List[StrictStr], Field(description="A string to search by (name, abbreviation, CURIE, etc.). The parameter may be repeated for multiple search strings.")] = Query(..., description="A string to search by (name, abbreviation, CURIE, etc.). The parameter may be repeated for multiple search strings.", alias="q")
-,
+    q: Annotated[List[StrictStr], Field(description="A string to search by (name, abbreviation, CURIE, etc.). The parameter may be repeated for multiple search strings.")] = Query(None, description="A string to search by (name, abbreviation, CURIE, etc.). The parameter may be repeated for multiple search strings.", alias="q"),
 ) -> object:
     if not BaseEntityApi.subclasses:
         raise HTTPException(status_code=500, detail="Not implemented")
@@ -58,7 +57,7 @@ async def get_entity(
 @router.post(
     "/entity",
     responses={
-        200: {"model": EntityQuery, "description": "successful operation"},
+        200: {"model": object, "description": "successful operation"},
         404: {"description": "Entity not found"},
     },
     tags=["entity"],
@@ -66,9 +65,8 @@ async def get_entity(
     response_model_by_alias=True,
 )
 async def post_entity(
-    body: Annotated[Dict[str, Any], Field(description="List of terms to get information about")] = Body(..., description="List of terms to get information about")
-,
-) -> EntityQuery:
+    entity_query: Annotated[EntityQuery, Field(description="List of terms to get information about")] = Body(None, description="List of terms to get information about"),
+) -> object:
     if not BaseEntityApi.subclasses:
         raise HTTPException(status_code=500, detail="Not implemented")
-    return await BaseEntityApi.subclasses[0]().post_entity(body)
+    return await BaseEntityApi.subclasses[0]().post_entity(entity_query)
