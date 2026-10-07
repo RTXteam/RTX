@@ -372,7 +372,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              $ref: '#/components/schemas/EntityQuery'
         description: List of terms to get information about
         required: true
       responses:
@@ -380,7 +380,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EntityQuery'
+                type: object
           description: successful operation
         "404":
           description: Entity not found
@@ -2453,6 +2453,10 @@ components:
           description: Format of the response (full or compact)
           title: format
           type: string
+        max_synonyms:
+          description: Maximum number of synonyms to return
+          title: max_synonyms
+          type: integer
       title: EntityQuery
       type: object
     OperationAnnotate:
