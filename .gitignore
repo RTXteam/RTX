@@ -33,7 +33,7 @@ __pycache__/
 **/config*local.json
 **/*override.txt
 
-code/UI/OpenAPI/python-flask-server/openapi_server/flask_config.json
+code/UI/OpenAPI/python-flask-server/openapi_server/app_server_config.json
 code/UI/OpenAPI/python-flask-server/RTX_OpenAPI_*
 code/UI/OpenAPI/python-flask-server/RTX_OpenAPI_*.start
 

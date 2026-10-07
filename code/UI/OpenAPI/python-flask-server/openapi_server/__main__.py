@@ -22,7 +22,7 @@ Implementation notes:
 - Uses a custom JSON provider for Flask response serialization.
 
 Configuration:
-- The configuration file (`flask_config.json`) resides alongside this module and may define:
+- The configuration file (`app_server_config.json`) resides alongside this module and may define:
     - `port` (int): TCP port for the Flask server (default: 5000)
     - `check_databases` (bool): Whether to verify/update databases at startup
     - `run_background_tasker` (bool): Whether to launch the background tasker
@@ -155,7 +155,7 @@ def main():
     #           f"startup, aborting. {exc}")
     #    sys.exit(1)
 
-    config_file_path = HERE / "flask_config.json"
+    config_file_path = HERE / "app_server_config.json"
     # Read any local configuration details for this instance
     local_config = {}
     try:
