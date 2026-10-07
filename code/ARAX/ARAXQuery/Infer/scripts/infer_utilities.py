@@ -42,7 +42,7 @@ from openapi_server.models.node import Node
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.qualifier import Qualifier
 from openapi_server.models.retrieval_source import RetrievalSource
-from openapi_server.models.qualifier_constraint import QualifierConstraint as QConstraint
+from openapi_server.models.q_edge_constraints import QEdgeConstraints #T2FIXME
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
@@ -785,8 +785,8 @@ class InferUtilities:
             }
             self.response = messenger.add_qedge(self.response, add_qedge_params)
             message.query_graph.edges[add_qedge_params['key']].knowledge_type = "inferred"
-            message.query_graph.edges[add_qedge_params['key']].qualifier_constraints = [
-                QConstraint(qualifier_set=qualifier_set)
+            message.query_graph.edges[add_qedge_params['key']].constraints = [  #T2FIXME
+                QEdgeConstraints(qualifiers=qualifier_set)  #T2FIXME
             ]
             message.query_graph.edges[add_qedge_params['key']].filled = True
             chemical_qnode_key = 'chemical'

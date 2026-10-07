@@ -24,7 +24,7 @@ pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
 from openapi_server.models.qualifier import Qualifier
-from openapi_server.models.qualifier_constraint import QualifierConstraint as QConstraint
+from openapi_server.models.q_edge_constraints import QEdgeConstraints #T2FIXME
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
@@ -778,7 +778,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 edge = message.query_graph.edges[qedge]
                 edge.knowledge_type = "inferred"
                 edge.predicates = ["biolink:affects"]
-                edge.qualifier_constraints = [QConstraint(qualifier_set=edge_qualifier_list)]
+                edge.constraints = [QEdgeConstraints(qualifiers=edge_qualifier_list)] #T2FIXME
                    
 
         else:

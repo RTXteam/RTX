@@ -925,7 +925,7 @@ def _get_qg_without_kryptonite_portions(qg: QueryGraph, log: ARAXResponse) -> Qu
 
 def _filter_to_expanded_portion(qg: QueryGraph, log: ARAXResponse) -> QueryGraph:
     expanded_qedges = {qedge_key: qedge for qedge_key, qedge in qg.edges.items()
-                       if hasattr(qedge, "filled") and qedge.filled}
+                       if hasattr(qedge, "_filled") and qedge._filled}
     if not expanded_qedges:
         # If NO qedges have been marked as expanded but Resultify is being called, we'll assume this is either
         # an existing knowledge graph that was not created using Expand, or this is a single-node query.

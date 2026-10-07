@@ -25,7 +25,6 @@ from openapi_server.models.response import Response
 from openapi_server.models.message import Message
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
-from openapi_server.models.pathfinder_query_graph import PathfinderQueryGraph
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_path import QPath
@@ -88,7 +87,7 @@ class ARAXMessenger:
     
         #### Create the top-level Response object called an envelope
         response.info("Creating an empty template TRAPI Response")
-        envelope = Response()
+        envelope = Response.model_construct()
         response.envelope = envelope
         self.envelope = envelope
 
@@ -111,12 +110,12 @@ class ARAXMessenger:
         envelope.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 		#### Create an empty master knowledge graph
-        message.knowledge_graph = KnowledgeGraph()
+        message.knowledge_graph = KnowledgeGraph.model_construct()
         message.knowledge_graph.nodes = {}
         message.knowledge_graph.edges = {}
 
 		#### Create an empty query graph
-        message.query_graph = QueryGraph()
+        message.query_graph = QueryGraph.model_construct()
         message.query_graph.nodes = {}
         message.query_graph.edges = {}
 
@@ -728,11 +727,7 @@ class ARAXMessenger:
             message.query_graph.nodes = {}
             message.query_graph.paths = {}
 
-        #### Extract the existing paths if any
-        if isinstance(message.query_graph, PathfinderQueryGraph):
-            query_graph_paths = message.query_graph.paths
-        else:
-            query_graph_paths = []
+        query_graph_paths = message.query_graph.paths
 
         #### Create a QPath
         qpath = QPath()
@@ -767,22 +762,8 @@ class ARAXMessenger:
             response.error(f"While trying to add QPath, object is a required parameter", error_code="MissingTargetKey")
             return response
 
-        #### If the query_graph is type PathfinderQueryGraph already, then just add the new qpath
-        if isinstance(message.query_graph, PathfinderQueryGraph):
-            message.query_graph.paths[key] = qpath
+        message.query_graph.paths[key] = qpath
 
-        #### If the query_graph is type QueryGraph instead of PathfinderQueryGraph, then migrate to PathfinderQueryGraph
-        elif isinstance(message.query_graph, QueryGraph):
-            eprint(f"INFO: Converting a QueryGraph to a PathfinderQueryGraph")
-            new_query_graph = PathfinderQueryGraph(nodes = message.query_graph.nodes, paths = { key: qpath} )
-            message.query_graph = new_query_graph
-
-        #### Else fail
-        else:
-            response.error(f"Unrecognized class type for message.query_graph: {type(message.query_graph)}", error_code="UnknownQueryGraphType")
-            return response
-
-        #### Return the response
         return response
 
 
@@ -959,13 +940,6 @@ class ARAXMessenger:
 
         #### Deserialize
         message_obj = Message().from_dict(message)
-
-        #### Special handling for the QueryGraph because of its PathfinderQueryGraph duality
-        if 'query_graph' in message and message['query_graph'] is not None:
-            if 'paths' in message['query_graph']:
-                pathfinder_query_graph_obj = PathfinderQueryGraph().from_dict(message['query_graph'])
-                message_obj.query_graph = pathfinder_query_graph_obj
-
 
         #### Revert some things back temporarily
 

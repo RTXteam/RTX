@@ -235,8 +235,8 @@ class ARAXQuery:
         if response.status != 'OK':
             response.envelope.status = response.error_code
             response.envelope.description = response.message
-            if hasattr(response,'http_status'):
-                response.envelope.http_status = response.http_status
+            #if hasattr(response,'http_status'):  #T2FIXME
+            #    response.envelope.http_status = response.http_status
             self.track_query_finish()
             return response.envelope
 
@@ -284,7 +284,7 @@ class ARAXQuery:
 
 
     ########################################################################################
-    def query(self, query, mode='ARAX', origin='local'):
+    def query(self, query, mode='ARAX', origin='local'):  #T2FIXME
 
         #### Create the skeleton of the response
         response = self.response
@@ -359,16 +359,21 @@ class ARAXQuery:
 
         try:
             #### Determine a plan for what to do based on the input
-            #eprint(json.dumps(query, indent=2, sort_keys=True))
-            result = self.examine_incoming_query(query, mode=mode)
+            eprint(f"*** {query}")
+            query_dict = query.copy()
+            query_dict['message'] = query['message'].to_dict()
+            eprint(json.dumps(query_dict, indent=2, sort_keys=True))
+            result = self.examine_incoming_query(query_dict, mode=mode)
             if result.status != 'OK':
                 return response
             query_attributes = result.data
+            eprint(f"*** query_attributes={query_attributes}")
 
             #### Convert the message from dicts to objects
-            if 'message' in query:
-                response.debug("Deserializing message")
-                query['message'] = ARAXMessenger().from_dict(query['message'])
+            #if 'message' in query:                                   #  Not needed now T2FIXME
+            #    response.debug("Deserializing message")
+            #    query['message'] = ARAXMessenger().from_dict(query['message'])
+            eprint(f"*** message={query['message']}")
 
             # If there is a workflow, translate it to ARAXi and append it to the operations actions list
             if "have_workflow" in query_attributes:
