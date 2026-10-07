@@ -21,7 +21,7 @@ import json
 
 
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 try:
     from typing import Self
@@ -34,7 +34,8 @@ class EntityQuery(BaseModel):
     """ # noqa: E501
     terms: Optional[List[StrictStr]] = Field(default=None, description="List of term strings to search for")
     format: Optional[StrictStr] = Field(default=None, description="Format of the response (full or compact)")
-    __properties: ClassVar[List[str]] = ["terms", "format"]
+    max_synonyms: Optional[int] = Field(default=None, description="Maximum number of synonyms to return")
+    __properties: ClassVar[List[str]] = ["terms", "format", "max_synonyms"]
 
     model_config = {
         "populate_by_name": True,
@@ -86,7 +87,8 @@ class EntityQuery(BaseModel):
 
         _obj = cls.model_validate({
             "terms": obj.get("terms"),
-            "format": obj.get("format")
+            "format": obj.get("format"),
+            "max_synonyms": obj.get("max_synonyms")
         })
         return _obj
 
