@@ -32,6 +32,7 @@ from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 from Expand.trapi_querier import TRAPIQuerier
 from Expand.trapi_query_cacher import KPQueryCacher
 from ARAX_messenger import ARAXMessenger
+from ARAX_resultify import set_qnode_is_set
 
 UNBOUND_NODES_KEY = "__UNBOUND__"
 
@@ -563,7 +564,7 @@ class ARAXExpander:
                 # Apply any kryptonite ("not") qedges
                 self._apply_any_kryptonite_edges(overarching_kg,
                                                  message.query_graph,
-                                                 message.encountered_kryptonite_edges_info,
+                                                 message._encountered_kryptonite_edges_info,
                                                  response)
 
                 # Remove any paths that are now dead-ends
@@ -1429,7 +1430,7 @@ class ARAXExpander:
         kg_copy = copy.deepcopy(kg)
         qg_for_resultify = copy.deepcopy(qg)
         # Necessary for assessment of answer quality:
-        qg_for_resultify.nodes[qnode_key_to_prune].is_set = False
+        set_qnode_is_set(qg_for_resultify.nodes[qnode_key_to_prune], False)
         num_edges_in_kg = sum([len(edges) for edges in kg.edges_by_qg_id.values()])
         overlay_fet = True if num_edges_in_kg < 100000 else False
         # Use fisher exact test and the ranker to prune down answers for this qnode
@@ -1483,7 +1484,7 @@ class ARAXExpander:
         is_set_true_qg = copy.deepcopy(expands_qg)
         for qnode in is_set_true_qg.nodes.values():
             # this makes resultify run faster and doesn't hurt in this case:
-            qnode.is_set = True
+            set_qnode_is_set(qnode, True)
         resultify_response = eu.create_results(is_set_true_qg, kg, log)
         if resultify_response.status == "OK":
             pruned_kg = eu.convert_standard_kg_to_qg_organized_kg(resultify_response.envelope.message.knowledge_graph)

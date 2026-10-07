@@ -317,7 +317,7 @@ def main():
         #instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
 
 
-    eprint(f"Starting flask application with TCP port: {tcp_port}")
+    eprint(f"Starting ARAX API on TCP port: {tcp_port}")
     uvicorn.run(app, host="0.0.0.0", port=tcp_port)
 
 

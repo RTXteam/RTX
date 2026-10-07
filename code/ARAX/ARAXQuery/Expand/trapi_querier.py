@@ -18,6 +18,7 @@ from Expand.kp_selector import KPSelector
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 from ARAX_messenger import ARAXMessenger
+from ARAX_resultify import set_qnode_is_set
 from trapi_query_cacher import KPQueryCacher
 import util
 
@@ -536,10 +537,12 @@ class TRAPIQuerier:
         return self._load_kp_json_response(json_response, query_graph)
 
     def _get_prepped_request_body(self, qg: QueryGraph) -> dict:
-        # Liberally use is_set to improve performance since we don't need individual results
+        # Liberally use COLLATE (TRAPI 2.0's replacement for is_set) to improve performance since we
+        # don't need individual results; TRAPI 2.0 only allows COLLATE on qnodes without ids.
+        # Work on a copy so that the caller's query graph is not modified.
+        qg = copy.deepcopy(qg)
         for qnode_key, qnode in qg.nodes.items():
-            if not qnode.ids or len(qnode.ids) > 1:
-                qnode.is_set = True
+            set_qnode_is_set(qnode, not qnode.ids)
 
         # Strip non-essential and 'empty' properties off of our qnodes and qedges
         stripped_qnodes = {qnode_key: self._strip_empty_properties(qnode)

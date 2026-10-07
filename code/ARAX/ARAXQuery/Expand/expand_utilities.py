@@ -675,7 +675,7 @@ def create_results(
     regular_format_kg = convert_qg_organized_kg_to_standard_kg(kg)
     resultifier = ARAXResultify()
     prune_response = ARAXResponse()
-    prune_response.envelope = Response()
+    prune_response.envelope = Response.model_construct()
     prune_response.envelope.message = Message()
     prune_message = prune_response.envelope.message
     prune_message.query_graph = qg
@@ -765,19 +765,15 @@ def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:
 def get_knowledge_source_constraints(edge):
     allowlist = None
     denylist = set()
-    for constraint in edge.attribute_constraints:  #T2FIXMENEXT
-        if constraint.id == "knowledge_source" or constraint.id == "aggregator_knowledge_source":
-            if constraint.operator != "==":
-                raise Exception("Given incompatible operator in edge knowledge_source constraint")
-            knowledge_sources = set(constraint.value)
-            # used because "constraint.not" is invalid syntax
-            negated = getattr(constraint,"_not",False)
-            if negated:
-                denylist |= knowledge_sources
-            else:
-                if allowlist is None:
-                    allowlist = set()
-                allowlist |= knowledge_sources
+    sources_constraint = edge.constraints.sources if edge.constraints else None
+    if sources_constraint is not None:
+        # NOTE: sources_constraint.primary_only is currently ignored; the ALLOW/DENY
+        # values are treated as applying to all of an edge's retrieval sources
+        sources = set(sources_constraint.values)
+        if sources_constraint.behavior == "DENY":
+            denylist = sources
+        else:  # "ALLOW" (the only other value permitted by the pydantic validator)
+            allowlist = sources
     return allowlist, denylist
 
 
