@@ -2453,6 +2453,10 @@ components:
           description: Format of the response (full or compact)
           title: format
           type: string
+        max_synonyms:
+          description: Maximum number of synonyms to return
+          title: max_synonyms
+          type: integer
       title: EntityQuery
       type: object
     OperationAnnotate:
