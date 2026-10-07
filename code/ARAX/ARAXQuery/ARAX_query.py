@@ -125,8 +125,8 @@ class ARAXQuery:
                         n_messages = len(self.response.messages)
                     while i_message < n_messages:
                         with self.lock:
-                            i_message_obj = self.response.messages[i_message].copy()
-                        yield(json.dumps(i_message_obj, allow_nan=False) + "\n")
+                            i_message_dict = self.response.messages[i_message].copy().to_dict()
+                        yield(json.dumps(i_message_dict, allow_nan=False) + "\n")
                         i_message += 1
                         idle_ticks = 0.0
 
@@ -156,7 +156,7 @@ class ARAXQuery:
                 # #### If there are any more logging messages in the queue, send them first
             n_messages = len(self.response.messages)
             while i_message < n_messages:
-                yield(json.dumps(self.response.messages[i_message], allow_nan=False) + "\n")
+                yield(json.dumps(self.response.messages[i_message].to_dict(), allow_nan=False) + "\n")
                 i_message += 1
 
             #### Also emit any updates to the query_plan
