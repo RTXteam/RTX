@@ -193,8 +193,8 @@ class ARAXExpander:
             return response
 
         # Create global slots to store some info that needs to persist between expand() calls
-        if not hasattr(message, "encountered_kryptonite_edges_info"):
-            message.encountered_kryptonite_edges_info = {}
+        if not hasattr(message, "_encountered_kryptonite_edges_info"):   #T2FIXME
+            message._encountered_kryptonite_edges_info = {}    #T2FIXME
 
         # Basic checks on arguments
         if not isinstance(input_parameters, dict):
@@ -246,8 +246,8 @@ class ARAXExpander:
                                   f"Don't know how to handle! Supported qnode constraints are: "
                                   f"{self.supported_qnode_attribute_constraints}", error_code="UnsupportedConstraint")
         for qedge_key, qedge in query_graph.edges.items():
-            if qedge.attribute_constraints:
-                for constraint in qedge.attribute_constraints:
+            if qedge.constraints:     #T2FIXME
+                for constraint in qedge.constraints:   #T2FIXME
                     if not self.is_supported_constraint(constraint, self.supported_qedge_attribute_constraints):
                         log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: \n{constraint}\n"
                                   f"Don't know how to handle! Supported qedge constraints are: "
@@ -400,8 +400,8 @@ class ARAXExpander:
                     return response
 
                 # Mark this qedge as 'filled', but only AFTER pruning back prior node(s) as needed
-                message.query_graph.edges[qedge_key].filled = True  # Mark as expanded in overarching QG #1848
-                qedge.filled = True  # Also mark as expanded in local QG #1848
+                message.query_graph.edges[qedge_key]._filled = True  # Mark as expanded in overarching QG #1848
+                qedge._filled = True  # Also mark as expanded in local QG #1848
 
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
@@ -843,7 +843,7 @@ class ARAXExpander:
             virtual_qedge = QEdge(subject=qedge.subject,
                                   object=qedge.object,
                                   option_group_id=f"creative_expand_treats_group_{qedge_key}")
-            virtual_qedge.filled = True  # Resultify needs this flag
+            virtual_qedge._filled = True  # Resultify needs this flag
             query_graph.edges[virtual_qedge_key] = virtual_qedge
             overarching_kg.edges_by_qg_id[virtual_qedge_key] = {}
 
@@ -1302,7 +1302,7 @@ class ARAXExpander:
                     self_loop_qnode_key = qedge_key.split(":")[-1].split("--")[0]
                     subclass_qedge = QEdge(subject=self_loop_qnode_key, object=self_loop_qnode_key,
                                            predicates=["biolink:subclass_of"])
-                    subclass_qedge.filled = True
+                    subclass_qedge._filled = True
                     subclass_qedge.option_group_id = f"option_group-{qedge_key}"
                     log.debug(f"Adding subclass_of qedge {qedge_key} to the QG since KP(s) returned child nodes "
                               f"for this qnode")
