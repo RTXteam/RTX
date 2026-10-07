@@ -86,6 +86,8 @@ class LogEntry(object):
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
 
+        _dict['timestamp'] = str(_dict['timestamp'])
+
         return _dict
 
     @classmethod
