@@ -179,7 +179,7 @@ def test_FET_example_1():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert message.n_results > 0
+    assert len(message.results) > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.predicate.find("fisher_exact_test") != -1]
@@ -210,7 +210,7 @@ def test_FET_example_2():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert message.n_results > 0
+    assert len(message.results) > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.predicate.find("fisher_exact_test") != -1]
@@ -245,7 +245,7 @@ def test_FET_example_3():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert message.n_results > 0
+    assert len(message.results) > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.predicate.find("fisher_exact_test") != -1]
@@ -275,7 +275,7 @@ def test_FET_example_4():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert message.n_results > 0
+    assert len(message.results) > 0
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert 'biolink:has_fisher_exact_test_p_value_with' in edge_predicates_in_kg
     FET_edges = [x for x in message.knowledge_graph.edges.values() if x.predicate.find("fisher_exact_test") != -1]

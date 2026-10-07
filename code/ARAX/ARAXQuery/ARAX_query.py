@@ -542,7 +542,6 @@ class ARAXQuery:
             if message.results is not None:
                 if len(message.results) > query["max_results"]:
                     del message.results[query["max_results"]:]
-                    message.code_description += " (output is limited to "+str(query["max_results"]) + " results)"
 
 
 
