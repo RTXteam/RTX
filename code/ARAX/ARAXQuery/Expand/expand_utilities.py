@@ -765,7 +765,7 @@ def merge_two_dicts(dict_a: dict, dict_b: dict) -> dict:
 def get_knowledge_source_constraints(edge):
     allowlist = None
     denylist = set()
-    for constraint in edge.attribute_constraints:
+    for constraint in edge.attribute_constraints:  #T2FIXMENEXT
         if constraint.id == "knowledge_source" or constraint.id == "aggregator_knowledge_source":
             if constraint.operator != "==":
                 raise Exception("Given incompatible operator in edge knowledge_source constraint")
