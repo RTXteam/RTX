@@ -724,16 +724,12 @@ class ARAXMessenger:
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
             message.query_graph = QueryGraph()
-            message.query_graph.nodes = {}
-            message.query_graph.paths = {}
-
-        query_graph_paths = message.query_graph.paths
 
         #### Create a QPath
-        qpath = QPath()
+        qpath = QPath.model_construct()
         if parameters['key'] is not None:
             key = parameters['key']
-            if key in query_graph_paths:
+            if key in message.query_graph.paths:
                 response.error(f"Duplicate key '{key}' specified when trying to create a new QPath", error_code="QPathDuplicateKey")
                 return response
         else:
@@ -762,6 +758,8 @@ class ARAXMessenger:
             response.error(f"While trying to add QPath, object is a required parameter", error_code="MissingTargetKey")
             return response
 
+        if message.query_graph.paths is None:
+            message.query_graph.paths = {}
         message.query_graph.paths[key] = qpath
 
         return response
@@ -774,12 +772,14 @@ class ARAXMessenger:
         #### If the query_graph is absent of type legacy QueryGraph, then there are no paths yet
         #### so just default to p00
         message = self.envelope.message
-        if message.query_graph is None or isinstance(message.query_graph, QueryGraph):
+        if message.query_graph is None or not isinstance(message.query_graph, QueryGraph):
             return 'p00'
 
         #### Otherwise find the first unused key
         index = 0
         qpaths = message.query_graph.paths
+        if qpaths is None:
+            qpaths = {}
         while 1:
             pad = '0'
             if index > 9:
