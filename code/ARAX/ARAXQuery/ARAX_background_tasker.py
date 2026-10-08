@@ -18,12 +18,15 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/Expand")
 from kp_info_cacher import KPInfoCacher
 
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../KnowledgeSources")
+from meta_kg_background_refresh import refresh_meta_kg
+
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 FREQ_KP_INFO_CACHER_SEC = 3600
 FREQ_META_KG_REFRESH_SEC = 3600  # 1 hour
 FREQ_CHECK_ONGOING_SEC = 60
-
+DUMP_PACKAGE_VERSIONS_ON_START = False
 
 class ARAXBackgroundTasker:
 
@@ -35,6 +38,7 @@ class ARAXBackgroundTasker:
         self.parent_pid = parent_pid
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker created")
+
 
     def run_tasks(self):
 
@@ -58,8 +62,8 @@ class ARAXBackgroundTasker:
                "potential stale queries in ongoing query table")
         query_tracker.clear_ongoing_queries()
 
-        # Print out our packages for debugging
-        if False:  # set to true to print out the packages
+        # Print out our package versions on start for troubleshooting
+        if DUMP_PACKAGE_VERSIONS_ON_START:
             eprint("Installed packages:")
             for location, modname, flag in pkgutil.iter_modules():
                 location = f"{location}"
@@ -72,14 +76,10 @@ class ARAXBackgroundTasker:
                 else:
                     pass
 
-        # #2585: Removed SQLite corruption check and database directory
-        # listing -- NodeSynonymizer now uses SRI APIs instead of a
-        # local SQLite file.
-
         #### Set up the KP Cacher to be used for periodic refreshing
         kp_cacher = KPQueryCacher(mode='BackgroundTasker')
 
-        # Loop forever doing various things
+        # Loop forever performing various background tasks
         my_pid = os.getpid()
         while True:
             if not psutil.pid_exists(self.parent_pid):
@@ -98,8 +98,7 @@ class ARAXBackgroundTasker:
                         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
                                "Completed refresh_kp_info_caches()")
                     except Exception as error:
-                        e_type, e_value, e_traceback =\
-                            sys.exc_info()
+                        e_type, e_value, e_traceback = sys.exc_info()
                         err_str = repr(traceback.format_exception(e_type,
                                                                   e_value,
                                                                   e_traceback))
@@ -119,8 +118,6 @@ class ARAXBackgroundTasker:
                            "meta knowledge graph refresh")
                     try:
                         # Import and run meta KG refresh using existing function
-                        sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../KnowledgeSources")
-                        from meta_kg_background_refresh import refresh_meta_kg
                         success = refresh_meta_kg()
                         if success:
                             eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
@@ -158,7 +155,12 @@ class ARAXBackgroundTasker:
                         f"Failed to trim {load_file_path}: "
                         f"{error}")
 
-            ongoing_queries_by_addr = query_tracker.check_ongoing_queries()
+            # Check on the ongoing queries table to see how many we have
+            try:
+                ongoing_queries_by_addr = query_tracker.check_ongoing_queries()
+            except Exception as error:
+                eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: failed check_ongoing_queries with error {error}")
+                ongoing_queries_by_addr = {}
             n_ongoing_queries = 0
             n_clients = 0
             for client, n_queries in ongoing_queries_by_addr.items():
@@ -167,30 +169,40 @@ class ARAXBackgroundTasker:
 
             #### Refresh the KP cache
             start_time = time.time()
-            kp_cacher.refresh_cache()
+            try:
+                kp_cacher.refresh_cache()
+            except Exception as error:
+                eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: failed to_refresh_cache with error {error}")
             elapsed_time = time.time() - start_time
             if elapsed_time < FREQ_CHECK_ONGOING_SEC - 1:
                 time_to_sleep = FREQ_CHECK_ONGOING_SEC - round(elapsed_time)
             else:
                 time_to_sleep = 2
 
-            load_tuple = psutil.getloadavg()
-            cpu_percent = psutil.cpu_percent(interval=1)
-            cpu_count = psutil.cpu_count()
-            system_memory = psutil.virtual_memory()
-            available_gb = round(system_memory.available / (1024 ** 3),1)
-            total_gb = system_memory.total / (1024 ** 3)
-            timestamp = str(datetime.datetime.now().isoformat())
+            # Collect current system load information
+            try:
+                load_tuple = psutil.getloadavg()
+                cpu_percent = psutil.cpu_percent(interval=1)
+                cpu_count = psutil.cpu_count()
+                system_memory = psutil.virtual_memory()
+                available_gb = round(system_memory.available / (1024 ** 3),1)
+                total_gb = system_memory.total / (1024 ** 3)
+                timestamp = str(datetime.datetime.now().isoformat())
 
-            matching_processes = []
-            for proc in psutil.process_iter(attrs=['cmdline']):
-                if proc.info['cmdline'] is not None:
-                    for arg in proc.info['cmdline']:
-                        if 'child' in arg:
-                            matching_processes.append(proc)
-                            eprint(f"  === {arg}")
+                matching_processes = []
+                for proc in psutil.process_iter(attrs=['cmdline']):
+                    if proc.info['cmdline'] is not None:
+                        for arg in proc.info['cmdline']:
+                            if 'child' in arg:
+                                matching_processes.append(proc)
+            except Exception as error:
+                eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: failed get system load information with error {error}")
 
             try:
+                eprint(f"{timestamp}: INFO: ARAXBackgroundTasker "
+                    f"(PID {my_pid}) status: waiting. Current "
+                    f"load is {load_tuple}, n_clients={n_clients}, "
+                    f"n_ongoing_queries={n_ongoing_queries}")
                 with open(load_file_path, "a") as outfile:
                     print(f"{timestamp}\t{n_ongoing_queries}\t{cpu_percent}\t"
                           f"{available_gb}\t{total_gb}\t{cpu_count}\t{len(matching_processes)}", file=outfile)
@@ -199,10 +211,6 @@ class ARAXBackgroundTasker:
                        f"Failed to write info to {load_file_path}: "
                        f"{error}")
 
-            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker "
-                   f"(PID {my_pid}) status: waiting. Current "
-                   f"load is {load_tuple}, n_clients={n_clients}, "
-                   f"n_ongoing_queries={n_ongoing_queries}")
             time.sleep(time_to_sleep)
 
 
