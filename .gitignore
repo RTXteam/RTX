@@ -46,6 +46,7 @@ code/config.domain
 
 code/UI/interactive/config.js
 data/respons*
+obsolete/
 
 code/ARAX/KnowledgeSources/db_versions.json
 code/ARAX/KnowledgeSources/*.pickle
