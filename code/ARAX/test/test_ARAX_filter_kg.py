@@ -18,9 +18,11 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../ARAXQuery")
 from ARAX_filter_kg import ARAXFilterKG
 from ARAX_query import ARAXQuery
 from ARAX_response import ARAXResponse
+from Filter_KG.remove_nodes import RemoveNodes
 
 PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
+from openapi_server.models.attribute import Attribute
 from openapi_server.models.edge import Edge
 from openapi_server.models.node import Node
 from openapi_server.models.q_edge import QEdge
@@ -339,6 +341,40 @@ def test_tuple_bug():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
+
+
+def _make_node_attribute(name: str, value: list[str], typed: bool) -> Attribute:
+    # Retriever has sent node attributes both as typed attributes and as a generic
+    # biolink:Attribute that carries the name in original_attribute_name (#2841)
+    if typed:
+        return Attribute(attribute_type_id=f"biolink:{name}", value=value)
+    return Attribute(attribute_type_id="biolink:Attribute", original_attribute_name=name, value=value)
+
+
+@pytest.mark.parametrize("typed", [True, False], ids=["typed", "generic"])
+@pytest.mark.parametrize("attribute_name", ["equivalent_identifiers", "xref", "same_as"])
+def test_remove_general_concept_nodes_attribute_shapes(attribute_name: str, typed: bool):
+    # UMLS:C0242912 (Neuroprotective Agents) is blocklisted; the node name is not,
+    # so the node can only be caught through its identifier attribute
+    general = Node(name="test general concept", categories=["biolink:ChemicalEntity"],
+                   attributes=[_make_node_attribute(attribute_name, ["UMLS:C0242912"], typed)])
+    specific = Node(name="Bivalirudin", categories=["biolink:ChemicalEntity"],
+                    attributes=[_make_node_attribute(attribute_name, ["CHEBI:59173"], typed)])
+    gene = Node(name="F2", categories=["biolink:Gene"], attributes=[])
+    message = Message(
+        query_graph=QueryGraph(nodes={"n0": QNode(), "n1": QNode()},
+                               edges={"e0": QEdge(subject="n0", object="n1")}),
+        knowledge_graph=KnowledgeGraph(
+            nodes={"UMLS:C0242912": general, "CHEBI:59173": specific, "NCBIGene:2147": gene},
+            edges={"e_general": Edge(subject="UMLS:C0242912", object="NCBIGene:2147", predicate="biolink:affects"),
+                   "e_specific": Edge(subject="CHEBI:59173", object="NCBIGene:2147", predicate="biolink:affects")}))
+
+    response = RemoveNodes(ARAXResponse(), message, {}).remove_general_concept_nodes()
+
+    assert response.status == 'OK'
+    assert set(message.knowledge_graph.nodes) == {"CHEBI:59173", "NCBIGene:2147"}
+    assert set(message.knowledge_graph.edges) == {"e_specific"}
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
