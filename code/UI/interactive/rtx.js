@@ -16,7 +16,7 @@ var UIstate = {};
 
 // defaults
 var base = "";
-var baseAPI = base + "api/arax/v1.4";
+var baseAPI = base + "api/arax/v2.0";
 var araxQuery = '';
 
 // possibly imported by calling page (e.g. index.html)
@@ -77,7 +77,7 @@ function main() {
     UIstate["prevtimestampobj"] = null;
     UIstate["curiefilter"] = [];
     UIstate["summarizetests"] = false;
-    document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
+    document.getElementById("menuapiurl").href = providers["ARAX"].url + "/docs";
 
     load_meta_knowledge_graph();
     populate_dsl_commands();
@@ -1395,7 +1395,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.6?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 2.0?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.append(head);
@@ -1606,7 +1606,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
-	    nr.title = 'Failed TRAPI 1.6 validation';
+	    nr.title = 'Failed TRAPI validation';
 	}
         else if (jsonObj2.validation_result.status == "ERROR") {
             if (type == "all") {
@@ -1618,7 +1618,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&#x2755;';
 	    nr.className = 'explevel p3';
-            nr.title = 'There were TRAPI 1.6 validation errors';
+            nr.title = 'There were TRAPI validation errors';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all") {
@@ -1647,7 +1647,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
-	    nr.title = 'Passed TRAPI 1.6 validation';
+	    nr.title = 'Passed TRAPI validation';
 	}
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
@@ -3118,7 +3118,7 @@ function display_QG_from_JSON() {
 
     if ("nodes" in jsonInput &&
 	"edges" in jsonInput) {
-	process_graph(jsonInput,'QG',"1.6");
+	process_graph(jsonInput,'QG',"2.0");
 
 	if (cyobj[99999]) { cyobj[99999].elements().remove(); }
 	else add_cyto(99999,'QG');
@@ -3671,12 +3671,16 @@ function get_node_list_in_paths(path_bindings,kg,aux) {
 
 
 // a watered-down essence, if you will...
-function eau_du_essence(result) {
+function eau_du_essence(result,trapi) {
     var guessence = 'n/a';
-    for (var nbid in result.node_bindings)
-	for (var node of result.node_bindings[nbid])
-	    if (all_nodes[node.id] < all_nodes[guessence])
-		guessence = node.id;
+    for (var nbid in result.node_bindings) {
+		var nodelist = trapi.startsWith('1') ? result.node_bindings[nbid] : result.node_bindings[nbid].ids;
+		for (var node of nodelist) {
+			var node_id = trapi.startsWith('1') ? node.id : node;
+			if (all_nodes[node_id] < all_nodes[guessence])
+				guessence = node_id;
+		}
+	}
     return guessence;
 }
 
@@ -3684,13 +3688,15 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
     // do this only once
     if (Object.keys(all_nodes).length === 0 && all_nodes.constructor === Object) {
 	for (var result of reslist)
-            for (var nbid in result.node_bindings)
-		for (var node of result.node_bindings[nbid]) {
-		    if (all_nodes[node.id])
-			all_nodes[node.id]++;
-		    else
-			all_nodes[node.id] = 1;
-		    //console.log(node.id+" :: "+all_nodes[node.id]);
+		for (var nbid in result.node_bindings) {
+			var nodelist = trapi.startsWith('1') ? result.node_bindings[nbid] : result.node_bindings[nbid].ids;
+			for (var node of nodelist) {
+				var node_id = trapi.startsWith('1') ? node.id : node;
+				if (all_nodes[node_id])
+					all_nodes[node_id]++;
+				else
+					all_nodes[node_id] = 1;
+			}
 		}
     }
     all_nodes['n/a'] = 10000; // for eau_du_essence
@@ -3705,7 +3711,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	if (result.essence)
 	    ess = result.essence;
 	else {
-	    ess = eau_du_essence(result);
+	    ess = eau_du_essence(result,trapi);
 	    if (ess != 'n/a')
 		ess = kg.nodes[ess].name ? kg.nodes[ess].name : kg.nodes[ess].id;
 	}
@@ -3876,11 +3882,13 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	//console.log("=================== CYTO num:"+num+"  #nb:"+result.node_bindings.length);
 
         for (var nbid in result.node_bindings) {
-            for (var node of result.node_bindings[nbid]) {
-		var kmne = Object.create(kg.nodes[node.id]);
+			var nodelist = trapi.startsWith('1') ? result.node_bindings[nbid] : result.node_bindings[nbid].ids;
+            for (var node of nodelist) {
+				var node_id = trapi.startsWith('1') ? node.id : node;
+		var kmne = Object.create(kg.nodes[node_id]);
 		kmne.parentdivnum = num;
 		kmne.trapiversion = trapi;
-		kmne.id = node.id;
+		kmne.id = node_id;
 		if (node.attributes)
 		    kmne.node_binding_attributes = node.attributes;
 		else if (node.detail_lookup)
@@ -3907,16 +3915,17 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 
         for (var ebcidx in full_edge_bindings_collection) {
 	    for (var ebid in full_edge_bindings_collection[ebcidx]) {
-		for (var edge of full_edge_bindings_collection[ebcidx][ebid]) {
-
+			var edgelist = trapi.startsWith('1') ? full_edge_bindings_collection[ebcidx][ebid] : full_edge_bindings_collection[ebcidx][ebid].ids;
+		for (var edge of edgelist) {
+			var edge_id = trapi.startsWith('1') ? edge.id : edge;
 		    // console.log("ebcidx:"+ebcidx+"  ebid:"+ebid+"  edge:"+JSON.stringify(edge));
-		    if (!(edge.id in kg.edges))
-			throw Error("Result graph edge not defined in KG: "+edge.id);
+		    if (!(edge_id in kg.edges))
+			throw Error("Result graph edge not defined in KG: "+edge_id);
 
-		    var kmne = Object.create(kg.edges[edge.id]);
+		    var kmne = Object.create(kg.edges[edge_id]);
 		    kmne.parentdivnum = num;
 		    kmne.trapiversion = trapi;
-		    kmne.id = edge.id;
+		    kmne.id = edge_id;
 		    kmne.source = kmne.subject;
 		    kmne.target = kmne.object;
 		    if (kmne.predicate)
@@ -7864,8 +7873,10 @@ function retrieveKPInfo() {
 			    text.className = "qprob p0";
 			}
 			else if (item["version"] == "1.5.0")
-			    text.className = "qprob p9";
+			    text.className = "qprob p7";
 			else if (item["version"] == "1.6.0")
+			    text.className = "qprob p9";
+			else if (item["version"] == "2.0.0")
 			    text.className = "qprob schp";
 			else
 			    text.className = "qprob p1";
