@@ -158,6 +158,18 @@ class SmartAPI:
         if blacklist:
             endpoints = [ep for ep in endpoints if ep["infores_name"] not in blacklist]
 
+        #### Hack to keep dev working for 1.6.0 for now. Remove when TRAPI 2.0.0 migration complete or by 2026-11-01
+        for endpoint in endpoints:
+            if endpoint["infores_name"] == "infores:retriever" and endpoint["version"] == "1.6.0":
+                endpoint["servers"].append(
+                    {
+                        "description": "Translator CI instance DBA dev instance",
+                        "maturity": "development",
+                        "url": "https://retriever.ci.transltr.io/"
+                    } )
+        #### End Hack
+
+
         return endpoints
 
     # helper for collate_and_print
