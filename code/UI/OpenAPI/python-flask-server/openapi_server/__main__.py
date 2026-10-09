@@ -278,14 +278,14 @@ def main():
     # Response class (e.g., inheriting from starlette.responses.JSONResponse)
     # from openapi_server.provider import CustomJSONResponse 
     app = FastAPI(
-        docs_url="/devED/api/arax/v2.0/docs",
-        openapi_url="/devED/api/arax/v2.0/openapi.json"
+        docs_url="/api/arax/v2.0/docs",
+        openapi_url="/api/arax/v2.0/openapi.json"
         )
     app.openapi = trapi_openapi_definition
-    api_router = APIRouter(prefix="/devED/api/arax/v2.0")
+    api_router = APIRouter(prefix="/api/arax/v2.0")
     app.include_router(api_router)
 
-    api_prefix = "/devED/api/arax/v2.0"
+    api_prefix = "/api/arax/v2.0"
     #app.include_router(PubmedMeshNgdApiRouter, prefix=api_prefix)
     #app.include_router(AsyncqueryApiRouter, prefix=api_prefix)
     #app.include_router(AsyncqueryStatusApiRouter, prefix=api_prefix)
@@ -302,13 +302,13 @@ def main():
     app.state.CHILD_PROCESS_RLIMIT = child_process_rlimit
 
     # Set up CORS
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    #app.add_middleware(
+    #    CORSMiddleware,
+    #    allow_origins=["*"],
+    #    allow_credentials=False,
+    #    allow_methods=["*"],
+    #    allow_headers=["*"],
+    #)
 
     setproctitle.setproctitle(setproctitle.getproctitle() +
                               f" [port={tcp_port}]")
