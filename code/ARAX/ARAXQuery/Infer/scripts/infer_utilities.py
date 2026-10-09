@@ -75,6 +75,12 @@ class InferUtilities:
       - genrete_regulate_subgraphs(): for chemical-gene regulation predictions (xCRG).
     """
 
+    _EXTRAS_SKIP_KEYS = frozenset({
+        'sources',           # handled separately via _build_retrieval_sources
+        'knowledge_level',   # already in the initial edge_attribute_list
+        'agent_type',        # already in the initial edge_attribute_list
+    })
+
     def __init__(self):
         self.response = None
         self.message = None
@@ -83,53 +89,65 @@ class InferUtilities:
         self.bh = get_biolink_helper()
 
     @staticmethod
-    def _get_primary_knowledge_source(edge_info):
-        """Extract the primary_knowledge_source from the Translator KG edge schema.
+    def _parse_edge_extras(edge_info):
+        """Parse the extra_attributes JSON from an EdgeInfo into a dict."""
+        if not edge_info.extra_attributes:
+            return {}
+        if isinstance(edge_info.extra_attributes, dict):
+            return edge_info.extra_attributes
+        try:
+            return json.loads(edge_info.extra_attributes)
+        except (json.JSONDecodeError, TypeError):
+            return {}
 
-        Uses the pipe-delimited resource_id/resource_role fields for fast lookup,
-        falling back to parsing the full JSON sources array.
+    @staticmethod
+    def _get_primary_knowledge_source(extras: dict):
+        """Extract the primary_knowledge_source from a pre-parsed extras dict.
+
+        Args:
+            extras: Dict returned by _parse_edge_extras().
 
         Returns 'infores:arax-xdtd' if no primary knowledge source is found.
         """
-        resource_ids = edge_info.resource_id
-        resource_roles = edge_info.resource_role
-        if resource_ids and resource_roles:
-            ids = resource_ids.split('|')
-            roles = resource_roles.split('|')
-            for rid, role in zip(ids, roles):
-                if role == 'primary_knowledge_source':
-                    return rid
-        if edge_info.sources:
-            try:
-                sources = json.loads(edge_info.sources)
-                for s in sources:
-                    if s.get('resource_role') == 'primary_knowledge_source':
-                        return s.get('resource_id', 'infores:arax-xdtd')
-            except (json.JSONDecodeError, TypeError):
-                pass
+        sources = extras.get('sources')
+        if sources:
+            if isinstance(sources, str):
+                try:
+                    sources = json.loads(sources)
+                except (json.JSONDecodeError, TypeError):
+                    sources = []
+            for s in sources:
+                if s.get('resource_role') == 'primary_knowledge_source':
+                    return s.get('resource_id', 'infores:arax-xdtd')
         return "infores:arax-xdtd"
 
     @staticmethod
-    def _build_retrieval_sources(edge_info, kp='infores:arax-xdtd'):
-        """Build TRAPI RetrievalSource objects from the Translator KG edge sources JSON.
+    def _build_retrieval_sources(extras: dict, kp='infores:arax-xdtd'):
+        """Build TRAPI RetrievalSource objects from a pre-parsed extras dict.
 
         The sources form an ordered chain: the first entry is the primary_knowledge_source
         (no upstream), and each subsequent entry is an aggregator whose upstream_resource_ids
         points to the previous entry. This method preserves that chain and appends kp as
         the final aggregator.
 
-        Example chain from edge_info.sources:
+        Args:
+            extras: Dict returned by _parse_edge_extras().
+            kp: Knowledge provider infores CURIE to append as final aggregator.
+
+        Example chain from extras['sources']:
           [infores:mgi (primary)] -> [infores:agrkb (aggregator, upstream=[infores:mgi])]
         becomes:
           [infores:mgi (primary)] -> [infores:agrkb (aggregator)] -> [infores:arax-xdtd (aggregator)]
         """
         fallback = [RetrievalSource(resource_id=kp, resource_role="primary_knowledge_source")]
-        if not edge_info.sources:
+        sources = extras.get('sources')
+        if not sources:
             return fallback
-        try:
-            sources = json.loads(edge_info.sources)
-        except (json.JSONDecodeError, TypeError):
-            return fallback
+        if isinstance(sources, str):
+            try:
+                sources = json.loads(sources)
+            except (json.JSONDecodeError, TypeError):
+                return fallback
         if not sources:
             return fallback
 
@@ -394,11 +412,9 @@ class InferUtilities:
             essence_scores = {}
             
             def _add_node_and_edge(node_ids, node_id_to_score, node_role_key, edge_subject_func, edge_object_func):
+                node_info_batch = xdtdmapping.get_nodes_info_batch(list(node_ids))
                 for canonical_id in node_ids:
-                    try:
-                        node_info = xdtdmapping.get_node_info(node_id=canonical_id)
-                    except Exception:
-                        continue
+                    node_info = node_info_batch.get(canonical_id)
                     if not node_info:
                         continue
                     categories = node_info.category
@@ -478,9 +494,26 @@ class InferUtilities:
                 path_keys[i]["qedge_keys"] = qedge_key_list
                 self.option_global_iter += 1
 
+        # ── Batch pre-fetch all node and edge metadata from the mapping DB ──
+        # Instead of querying the DB per-node/per-edge ~11,000 times (reported in issue #2893), 
+        # we gather all node IDs and edge triples in advance and then execute two batch queries.
+        all_node_ids = set()
+        all_edge_triples = set()
+        for (drug, disease), paths in top_paths.items():
+            for path_str, _score in paths:
+                elements = path_str.split("->")
+                for idx in range(0, len(elements), 2):
+                    all_node_ids.add(elements[idx])
+                for idx in range(0, len(elements) - 2, 2):
+                    all_edge_triples.add((elements[idx], elements[idx + 1], elements[idx + 2]))
+
+        node_cache = xdtdmapping.get_nodes_info_batch(list(all_node_ids))
+        edge_cache = xdtdmapping.get_edges_info_batch(list(all_edge_triples))
+
         # ── Insert explanation path nodes and edges into the knowledge graph ──
         # Each path string is "node1->predicate1->node2->predicate2->node3".
-        # We split it, look up each node/edge in the mapping DB, and insert TRAPI objects.
+        # We split it into multiple parts and use the pre-fetched caches to get the node and edge information,
+        # then insert TRAPI objects.
         essence_scores = {}
         for (drug, disease), paths in top_paths.items():
             path_added = False
@@ -491,12 +524,13 @@ class InferUtilities:
                 path_disease_curie = path[-1]  # Last element in the path is disease
                 n_elements = len(path)
 
-                # Look up each (subject, predicate, object) triple from the mapping DB.
+                # Look up each (subject, predicate, object) triple from the cached results.
                 # Each triple may return multiple edges (e.g., from different knowledge sources).
                 edges_info = []
                 break_flag = False
                 for i in range(0,n_elements-2,2):
-                    edge_info = xdtdmapping.get_edge_info(triple_id=(path[i],path[i+1],path[i+2]))
+                    triple_key = (path[i], path[i+1], path[i+2])
+                    edge_info = edge_cache.get(triple_key, [])
                     if len(edge_info) == 0:
                         break_flag = True
                     else:
@@ -511,11 +545,7 @@ class InferUtilities:
                 for i in range(path_idx+1):
                     subject_qnode_key = path_keys[path_idx]["qnode_pairs"][i][0]
                     subject_curie = edges_info[i][0].subject
-                    try:
-                        subject_node_info = xdtdmapping.get_node_info(node_id=subject_curie)
-                    except Exception:
-                        break_flag = True
-                        break
+                    subject_node_info = node_cache.get(subject_curie)
                     if subject_node_info is None:
                         break_flag = True
                         break
@@ -528,11 +558,7 @@ class InferUtilities:
                         message.knowledge_graph.nodes[subject_curie].qnode_keys.append(subject_qnode_key)
                     object_qnode_key = path_keys[path_idx]["qnode_pairs"][i][1]
                     object_curie = edges_info[i][0].object
-                    try:
-                        object_node_info = xdtdmapping.get_node_info(node_id=object_curie)
-                    except Exception:
-                        break_flag = True
-                        break
+                    object_node_info = node_cache.get(object_curie)
                     if object_node_info is None:
                         break_flag = True
                         break
@@ -550,67 +576,32 @@ class InferUtilities:
                         break
 
                     for edge_info in edges_info[i]:
-                        primary_knowledge_source = self._get_primary_knowledge_source(edge_info)
+                        extras = self._parse_edge_extras(edge_info)
+                        primary_knowledge_source = self._get_primary_knowledge_source(extras)
                         new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate, attributes=[], qualifiers=[], sources=[])
                         edge_attribute_list = [
                             Attribute(original_attribute_name="created_datetime", value="2026-06-28", attribute_type_id="metatype:Datetime"),
-                            Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:agent_type", value=edge_info.agent_type),
-                            Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:knowledge_level", value=edge_info.knowledge_level),
+                            Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:agent_type", value=extras.get('agent_type')),
+                            Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:knowledge_level", value=extras.get('knowledge_level')),
                         ]
                         edge_qualifier_list = []
-                        if edge_info.publications:
-                            pubs = edge_info.publications
-                            if isinstance(pubs, str):
-                                pubs = json.loads(pubs)
-                            if pubs:
-                                edge_attribute_list.append(
-                                    Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:publications", original_attribute_name="publications", value=pubs)
-                                )
                         if edge_info.category:
-                            cat = edge_info.category
-                            if isinstance(cat, str):
-                                try:
-                                    cat = json.loads(cat)
-                                except json.JSONDecodeError:
-                                    pass
                             edge_attribute_list.append(
-                                Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:category", value=cat)
+                                Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:category", value=edge_info.category)
                             )
-                        if edge_info.qualifier:
-                            edge_qualifier_list.append(
-                                Qualifier(qualifier_type_id="biolink:qualifier", qualifier_value=edge_info.qualifier)
-                            )
-                        if edge_info.stage_qualifier:
-                            edge_qualifier_list.append(
-                                Qualifier(qualifier_type_id="biolink:stage_qualifier", qualifier_value=edge_info.stage_qualifier)
-                            )
-                        if edge_info.original_subject:
-                            edge_attribute_list.append(
-                                Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:original_subject", value=edge_info.original_subject)
-                            )
-                        if edge_info.original_object:
-                            edge_attribute_list.append(
-                                Attribute(attribute_source=primary_knowledge_source, attribute_type_id="biolink:original_object", value=edge_info.original_object)
-                            )
-                        if edge_info.extra_attributes:
-                            extra = edge_info.extra_attributes
-                            if isinstance(extra, str):
-                                try:
-                                    extra = json.loads(extra)
-                                except json.JSONDecodeError:
-                                    extra = {}
-                            if isinstance(extra, dict):
-                                for attr_key, attr_val in extra.items():
-                                    if attr_key in _QUALIFIER_TYPES:
-                                        qualifier_value = attr_val if isinstance(attr_val, str) else str(attr_val)
-                                        edge_qualifier_list.append(
-                                            Qualifier(qualifier_type_id=f"biolink:{attr_key}", qualifier_value=qualifier_value)
-                                        )
-                                    else:
-                                        edge_attribute_list.append(
-                                            Attribute(attribute_source=primary_knowledge_source, attribute_type_id=f"biolink:{attr_key}", value=attr_val)
-                                        )
-                        retrieval_source = self._build_retrieval_sources(edge_info, kp=self.kp)
+                        for attr_key, attr_val in extras.items():
+                            if attr_key in self._EXTRAS_SKIP_KEYS or not attr_val:
+                                continue
+                            if attr_key in _QUALIFIER_TYPES:
+                                qualifier_value = attr_val if isinstance(attr_val, str) else str(attr_val)
+                                edge_qualifier_list.append(
+                                    Qualifier(qualifier_type_id=f"biolink:{attr_key}", qualifier_value=qualifier_value)
+                                )
+                            else:
+                                edge_attribute_list.append(
+                                    Attribute(attribute_source=primary_knowledge_source, attribute_type_id=f"biolink:{attr_key}", value=attr_val)
+                                )
+                        retrieval_source = self._build_retrieval_sources(extras, kp=self.kp)
                         new_edge.attributes += edge_attribute_list
                         if edge_qualifier_list:
                             new_edge.qualifiers += edge_qualifier_list
@@ -627,8 +618,8 @@ class InferUtilities:
                 # carrying the xDTD model's probability_treats score as an attribute.
                 # The explanation path edges above provide supporting evidence for this prediction.
                 treat_score = top_scores.loc[(top_scores['drug_id'] == drug) & (top_scores['disease_id'] == disease)]["tp_score"].iloc[0]
-                path_drug_node_info = xdtdmapping.get_node_info(node_id=path_drug_curie)
-                path_disease_node_info = xdtdmapping.get_node_info(node_id=path_disease_curie)
+                path_drug_node_info = node_cache.get(path_drug_curie)
+                path_disease_node_info = node_cache.get(path_disease_curie)
                 
                 # essence_scores maps the "varying" node name to its score for result ranking.
                 # The "varying" node is the one predicted by the model (not the query input).
