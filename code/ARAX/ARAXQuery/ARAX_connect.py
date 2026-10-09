@@ -2,12 +2,9 @@ import json
 import sys
 
 import requests
-from opentelemetry import trace
 from RTXConfiguration import RTXConfiguration
 from pathfinder.Pathfinder import Pathfinder
 from xcrg import XCRGConfig, run_xcrg
-
-tracer = trace.get_tracer(__name__)
 
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
@@ -480,27 +477,18 @@ class ARAXConnect:
         if 'max_pathfinder_paths' in self.parameters:
             max_pathfinder_paths = int(self.parameters['max_pathfinder_paths'])
         try:
-            with tracer.start_as_current_span(
-                "ARAX_connect.connect_nodes",
-                attributes={
-                    "arax.connect.src_node_id": normalize_src_node_id,
-                    "arax.connect.dst_node_id": normalize_dst_node_id,
-                    "arax.connect.max_path_length": self.parameters['max_path_length'],
-                    "arax.connect.max_pathfinder_paths": max_pathfinder_paths,
-                },
-            ):
-                result, aux_graphs, knowledge_graph = pathfinder.get_paths(
-                    src_node_id=normalize_src_node_id,
-                    dst_node_id=normalize_dst_node_id,
-                    src_pinned_node=src_pinned_node,
-                    dst_pinned_node=dst_pinned_node,
-                    hops_numbers=self.parameters['max_path_length'],
-                    max_hops_to_explore=self.parameters['max_path_length'],
-                    limit=max_pathfinder_paths,
-                    prune_top_k=75,
-                    degree_threshold=10000,
-                    category_constraints=descendants,
-                )
+            result, aux_graphs, knowledge_graph = pathfinder.get_paths(
+                src_node_id=normalize_src_node_id,
+                dst_node_id=normalize_dst_node_id,
+                src_pinned_node=src_pinned_node,
+                dst_pinned_node=dst_pinned_node,
+                hops_numbers=self.parameters['max_path_length'],
+                max_hops_to_explore=self.parameters['max_path_length'],
+                limit=max_pathfinder_paths,
+                prune_top_k=75,
+                degree_threshold=10000,
+                category_constraints=descendants,
+            )
         except Exception as e:
             self.response.error(f"PathFinder failed to find paths between {src_pinned_node} and {dst_pinned_node}. "
                                 f"Error message is: {e}", http_status=500)
@@ -511,8 +499,7 @@ class ARAXConnect:
                                   f"with a max path length of {self.parameters['max_path_length']}.")
             return self.response
 
-        with tracer.start_as_current_span("ARAX_connect.convert_to_trapi"):
-            self.convert_to_trapi(result, aux_graphs, knowledge_graph, retriever_url)
+        self.convert_to_trapi(result, aux_graphs, knowledge_graph, retriever_url)
 
         mode = 'ARAX'
         if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
