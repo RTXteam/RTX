@@ -80,6 +80,11 @@ class RemoveNodes:
     # blocklist data that has been cached as a class attribute `block_list_dict`
     block_list_dict: ClassVar[dict[str, Any] | None] = None
 
+    # Node attribute names whose values are matched against the blocklist
+    CURIE_ATTRIBUTE_NAMES: ClassVar[frozenset[str]] = frozenset(
+        {'xref', 'equivalent_identifiers', 'same_as'})
+    SYNONYM_ATTRIBUTE_NAMES: ClassVar[frozenset[str]] = frozenset({'synonym'})
+
     def __init__(self,
                  response: ARAXResponse,
                  message: ARAXMessenger,
@@ -262,17 +267,16 @@ class RemoveNodes:
         for attribute in node['attributes']:
             type_id = attribute['attribute_type_id']
 
-            has_curie   = type_id == 'biolink:xref'
-            has_synonym = type_id == 'biolink:synonym'
-
-            # Issue #2841: Sometimes attributes are shaped like this
+            # Issue #2841: Sometimes attributes arrive as a generic biolink:Attribute
+            # that carries the name in original_attribute_name; other times they are
+            # typed (e.g., biolink:equivalent_identifiers), so normalize to a name
             if type_id == 'biolink:Attribute':
-                if attribute['original_attribute_name'] == 'xref':
-                    has_curie = True
-                if attribute['original_attribute_name'] == 'equivalent_identifiers':
-                    has_curie = True
-                if attribute['original_attribute_name'] == 'synonym':
-                    has_synonym = True
+                name = attribute.get('original_attribute_name')
+            else:
+                name = type_id.removeprefix('biolink:')
+
+            has_curie   = name in self.CURIE_ATTRIBUTE_NAMES
+            has_synonym = name in self.SYNONYM_ATTRIBUTE_NAMES
 
             if has_curie and isinstance(attribute.get('value', []), list):
                 curies.update(map(str.lower, attribute.get('value', [])))
