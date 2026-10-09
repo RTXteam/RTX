@@ -464,5 +464,20 @@ def test_node_normalizer_url_by_maturity(monkeypatch, maturity, expected_url):
     assert NodeSynonymizer.resolve_node_normalizer_url() == expected_url
 
 
+# each maturity must use its own tier's Name Resolver (#2913)
+@pytest.mark.parametrize("maturity, expected_url", [
+    ("development", "https://name-lookup.ci.transltr.io"),
+    ("staging", "https://name-lookup.ci.transltr.io"),
+    ("testing", "https://name-lookup.test.transltr.io"),
+    ("production", "https://name-lookup.transltr.io"),
+])
+def test_name_resolver_url_by_maturity(monkeypatch, maturity, expected_url):
+    fake_module = type(sys)("RTXConfiguration")
+    fake_module.RTXConfiguration = type("RTXConfiguration", (), {"maturity": maturity})
+    monkeypatch.setitem(sys.modules, "RTXConfiguration", fake_module)
+    monkeypatch.setattr(NodeSynonymizer, "_resolved_name_resolver_url", None)
+    assert NodeSynonymizer.resolve_name_resolver_url() == expected_url
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_synonymizer.py'])
