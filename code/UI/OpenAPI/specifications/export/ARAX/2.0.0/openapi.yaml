@@ -23,11 +23,9 @@ info:
         https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
   x-trapi:
     version: 2.0.0
-    multicuriequery: >-
-      REPLACE-WITH-true-IF-multicurie-queries-ARE-IMPLEMENTED-ELSE-false
-    asyncquery: REPLACE-WITH-true-IF-/asyncquery-IS-IMPLEMENTED-ELSE-false
-    pathfinderquery: >-
-      REPLACE-WITH-true-IF-pathfinder-queries-ARE-IMPLEMENTED-ELSE-false
+    multicuriequery: false
+    asyncquery: true
+    pathfinderquery: true
     operations:
       - lookup
       - lookup_and_score
