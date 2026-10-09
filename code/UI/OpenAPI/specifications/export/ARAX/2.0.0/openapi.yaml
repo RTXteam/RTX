@@ -1,0 +1,4349 @@
+openapi: 3.1.2
+info:
+  description: TRAPI 2.0.0-beta2 endpoint for the NCATS Biomedical Translator Reasoner called ARAX
+  version: 2.0.0
+  title: ARAX Translator Reasoner - TRAPI 2.0.0
+  contact:
+    email: edeutsch@systemsbiology.org
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: https://github.com/RTXteam/RTX/blob/master/LICENSE
+  x-translator:
+    component: ARA
+    team:
+      - Expander Agent
+    biolink-version: 4.4.4
+    infores: infores:arax
+    externalDocs:
+      description: >-
+        The values for component and team are restricted according to this
+        external JSON schema. See schema and examples at url
+      url: >-
+        https://github.com/NCATSTranslator/translator_extensions/blob/production/x-translator/
+  x-trapi:
+    version: 2.0.0
+    multicuriequery: >-
+      REPLACE-WITH-true-IF-multicurie-queries-ARE-IMPLEMENTED-ELSE-false
+    asyncquery: REPLACE-WITH-true-IF-/asyncquery-IS-IMPLEMENTED-ELSE-false
+    pathfinderquery: >-
+      REPLACE-WITH-true-IF-pathfinder-queries-ARE-IMPLEMENTED-ELSE-false
+    operations:
+      - lookup
+      - lookup_and_score
+      - overlay_compute_ngd
+      - overlay_compute_jaccard
+      - overlay_fisher_exact_test
+      - overlay_connect_knodes
+      - filter_results_top_n
+      - bind
+      - fill
+      - filter_kgraph_orphans
+      - filter_kgraph_top_n
+      - filter_kgraph_std_dev
+      - filter_kgraph_percentile
+      - filter_kgraph_discrete_kedge_attribute
+      - filter_kgraph_continuous_kedge_attribute
+      - sort_results_score
+      - sort_results_edge_attribute
+      - sort_results_node_attribute
+      - annotate_nodes
+      - score
+      - complete_results
+    batch_size_limit: 1000
+    rate_limit: 50
+    test_data_location: ADD-URL-THAT-RESOLVES-TO-SRI-TESTING-HARNESS-DATA
+    externalDocs:
+      description: >-
+        The values for version are restricted according to the regex in
+        this external JSON schema. See schema and examples at url
+      url: >-
+        https://github.com/NCATSTranslator/translator_extensions/blob/production/x-trapi/
+servers:
+- description: ARAX TRAPI 2.0.0-beta2 endpoint - development
+  url: https://arax.ncats.io/beta/api/arax/v2.0
+  x-maturity: development
+externalDocs:
+  description: >-
+    Documentation for the NCATS Biomedical Translator Reasoners web services
+  url: https://github.com/NCATSTranslator/ReasonerAPI
+tags:
+  - name: meta_knowledge_graph
+    description: >-
+      Retrieve the meta knowledge graph representation of this
+      TRAPI web service. KPs MUST provide all subject category - predicate -
+      object category triplets that are supported by the service,
+      NOT including all implied ancestor relationships. ARAs SHOULD provide
+      the union of all meta knowledge graphs of all the KPs that they can
+      consult.
+    externalDocs:
+      description: >-
+        Documentation for the reasoner meta_knowledge_graph function
+      url: https://arax.ncats.io/overview.html#predicates
+  - name: query
+    description: Initiate a query and wait to receive the response
+    externalDocs:
+      description: Documentation for the reasoner query function
+      url: https://arax.ncats.io/overview.html#query
+  - name: asyncquery
+    description: Initiate a query with a callback to receive the response
+    externalDocs:
+      description: Documentation for the reasoner asynchquery function
+      url: https://arax.ncats.io/overview.html#asyncquery
+  - name: asyncquery_status
+    description: >-
+      Retrieve the current status of a previously submitted
+      asyncquery given its job_id
+  - name: translator
+    description: Required for SmartAPI validation of x-translator
+  - name: trapi
+    description: Required for SmartAPI validation of x-trapi
+  - name: entity
+    description: Return identifier and type of some entity in the knowledge graph
+    externalDocs:
+      description: Documentation for the reasoner entity function
+      url: https://arax.ncats.io/overview.html#entity
+  - name: exampleQuestions
+    description: Return a list of example questions that the reasoner can answer
+    externalDocs:
+      description: Documentation for the reasoner exampleQuestions function
+      url: https://arax.ncats.io/overview.html#exampleQuestions
+  - name: response
+    description: Request a previously stored response from the server
+    externalDocs:
+      description: Documentation for the reasoner response function
+      url: https://arax.ncats.io/overview.html#response
+  - name: PubmedMeshNgd
+    description: Query to get the Normalized Google Distance between two MeSH terms
+      based on co-occurance in all PubMed article annotations
+    externalDocs:
+      description: Documentation for the reasoner PubmedMeshNgd function
+      url: https://arax.ncats.io/overview.html#PubmedMeshNgd
+  - name: status
+    description: Return status information about the endpoint
+  - name: translate
+    description: Translate natural language question into a standardized query
+    externalDocs:
+      description: Documentation for the reasoner translate function
+      url: https://arax.ncats.io/overview.html#translate
+paths:
+  /meta_knowledge_graph:
+    get:
+      tags:
+        - meta_knowledge_graph
+      summary: Meta knowledge graph representation of this TRAPI web service.
+      operationId: meta_knowledge_graph
+      x-openapi-router-controller: openapi_server.controllers.meta_knowledge_graph_controller
+      parameters:
+      - description: Set the format of the response
+        explode: true
+        in: query
+        name: format
+        required: false
+        schema:
+          examples:
+            - simple
+          type: string
+        style: form
+      responses:
+        '200':
+          description: >-
+            Returns meta knowledge graph representation of this TRAPI web
+            service.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetaKnowledgeGraph'
+  /query:
+    post:
+      tags:
+        - query
+      summary: Initiate a query and wait to receive a Response
+      description: ''
+      x-openapi-router-controller: openapi_server.controllers.query_controller
+      operationId: query
+      requestBody:
+        description: Query information to be submitted
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Query'
+      responses:
+        '200':
+          description: >-
+            OK. There may or may not be results. Note that some of the provided
+            identifiers may not have been recognized.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+        '400':
+          description: >-
+            Bad request. The request is invalid according to this OpenAPI
+            schema OR a specific identifier is believed to be invalid somehow
+            (not just unrecognized).
+          content:
+            application/json:
+              schema:
+                type: string
+        '409':
+          description: >-
+            There is a conflict between client-given TRAPI parameters and server
+            capabilities. The response body may contain additional details about
+            the conflict.
+          content:
+            application/json:
+              schema:
+                type: string
+        '413':
+          description: >-
+            Payload too large. Indicates that batch size was over the limit
+            specified in x-trapi.
+          content:
+            application/json:
+              schema:
+                type: string
+        '429':
+          description: >-
+            Too many requests. Indicates that the client issued requests that
+            exceed the rate limit specified in x-trapi.
+          content:
+            application/json:
+              schema:
+                type: string
+        '500':
+          description: >-
+            Internal server error.
+          content:
+            application/json:
+              schema:
+                type: string
+        '501':
+          description: >-
+            Not implemented.
+          content:
+            application/json:
+              schema:
+                type: string
+  /asyncquery:
+    post:
+      tags:
+        - asyncquery
+      summary: Initiate a query with a callback to receive the response
+      description: ''
+      requestBody:
+        description: Query information to be submitted
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AsyncQuery'
+      responses:
+        '200':
+          description: >-
+            The query is accepted for processing and the Response will be
+            sent to the callback url when complete.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncQueryResponse'
+        '400':
+          description: >-
+            Bad request. The request is invalid according to this OpenAPI
+            schema OR a specific identifier is believed to be invalid somehow
+            (not just unrecognized).
+          content:
+            application/json:
+              schema:
+                type: string
+        '409':
+          description: >-
+            There is a conflict between client-given TRAPI parameters and server
+            capabilities. The response body may contain additional details about
+            the conflict.
+          content:
+            application/json:
+              schema:
+                type: string
+        '413':
+          description: >-
+            Payload too large. Indicates that batch size was over the limit
+            specified in x-trapi.
+          content:
+            application/json:
+              schema:
+                type: string
+        '429':
+          description: >-
+            Too many requests. Indicates that the client issued requests that
+            exceed the rate limit specified in x-trapi.
+          content:
+            application/json:
+              schema:
+                type: string
+        '500':
+          description: >-
+            Internal server error.
+          content:
+            application/json:
+              schema:
+                type: string
+        '501':
+          description: >-
+            Not implemented.
+          content:
+            application/json:
+              schema:
+                type: string
+  /asyncquery_status/{job_id}:
+    get:
+      tags:
+        - asyncquery_status
+      summary: >-
+        Retrieve the current status of a previously submitted
+        asyncquery given its job_id
+      operationId: asyncquery_status
+      parameters:
+        - in: path
+          name: job_id
+          description: Identifier of the job for status request
+          required: true
+          schema:
+            type: string
+            examples:
+              - rXEOAosN3L
+      responses:
+        '200':
+          description: >-
+            Returns the status and current logs of a previously
+            submitted asyncquery.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AsyncQueryStatusResponse'
+        '404':
+          description: job_id not found
+        '501':
+          description: >-
+            Return code 501 indicates that this endpoint has not been
+            implemented at this site. Sites that implement /asyncquery
+            MUST implement /asyncquery_status/{job_id}, but those that
+            do not implement /asyncquery SHOULD NOT implement
+            /asyncquery_status.
+          content:
+            application/json:
+              schema:
+                type: string
+  /entity:
+    get:
+      operationId: get_entity
+      parameters:
+      - description: A string to search by (name, abbreviation, CURIE, etc.). The
+          parameter may be repeated for multiple search strings.
+        explode: true
+        in: query
+        name: q
+        required: true
+        schema:
+          examples:
+          - MESH:D014867
+          - NCIT:C34373
+          items:
+            type: string
+          type: array
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: successful operation
+        "404":
+          description: Entity not found
+      summary: Obtain CURIE and synonym information about a search term
+      tags:
+      - entity
+      x-openapi-router-controller: openapi_server.controllers.entity_controller
+    post:
+      operationId: post_entity
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EntityQuery'
+        description: List of terms to get information about
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: successful operation
+        "404":
+          description: Entity not found
+      summary: Obtain CURIE and synonym information about search terms
+      tags:
+      - entity
+      x-openapi-router-controller: openapi_server.controllers.entity_controller
+  /exampleQuestions:
+    get:
+      operationId: example_questions
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  type: object
+                type: array
+          description: successful operation
+      summary: Request a list of example questions that ARAX can answer
+      tags:
+      - exampleQuestions
+      x-openapi-router-controller: openapi_server.controllers.example_questions_controller
+  /response:
+    post:
+      operationId: post_response
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+        description: Object that provides annotation information
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: successful operation
+        "400":
+          description: Invalid request
+      summary: Annotate a response
+      tags:
+      - response
+      x-openapi-router-controller: openapi_server.controllers.response_controller
+  /response/{response_id}:
+    get:
+      operationId: get_response
+      parameters:
+      - description: Identifier of the response to return
+        explode: false
+        in: path
+        name: response_id
+        required: true
+        schema:
+          type: string
+          examples:
+            - 41651
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Response'
+          description: successful operation
+        "404":
+          description: response_id not found
+      summary: Request a previously stored response from the server
+      tags:
+      - response
+      x-openapi-router-controller: openapi_server.controllers.response_controller
+  /PubmedMeshNgd/{term1}/{term2}:
+    get:
+      operationId: pubmed_mesh_ngd
+      parameters:
+      - description: First of two terms. Order not important.
+        explode: false
+        in: path
+        name: term1
+        required: true
+        schema:
+          type: string
+          examples:
+            - PTGS2
+        style: simple
+      - description: Second of two terms. Order not important.
+        explode: false
+        in: path
+        name: term2
+        required: true
+        schema:
+          type: string
+          examples:
+            - acetaminophen
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeshNgdResponse'
+          description: successful operation
+        "400":
+          description: Invalid terms
+      summary: Query to get the Normalized Google Distance between two MeSH terms
+        based on co-occurrence in all PubMed article annotations
+      tags:
+      - PubmedMeshNgd
+      x-openapi-router-controller: openapi_server.controllers.pubmed_mesh_ngd_controller
+  /status:
+    get:
+      operationId: get_status
+      parameters:
+      - description: Limit results to the past N hours
+        explode: true
+        in: query
+        name: last_n_hours
+        required: false
+        schema:
+          examples:
+            - 6
+          type: integer
+        style: form
+      - description: Identifier of the log entry
+        explode: true
+        in: query
+        name: id
+        required: false
+        schema:
+          examples:
+            - 10
+          type: integer
+        style: form
+      - description: PID of an ongoing query to terminate
+        explode: true
+        in: query
+        name: terminate_pid
+        required: false
+        schema:
+          type: integer
+        style: form
+      - description: Authorization string required for certain calls to status
+        explode: true
+        in: query
+        name: authorization
+        required: false
+        schema:
+          type: string
+        style: form
+      - description: 'Switch to control the type of returned status information Possible
+          values are: activity: Show query activity on server [default] smartapi:
+          Summarize Translator endpoints at SmartAPI'
+        explode: true
+        in: query
+        name: mode
+        required: false
+        schema:
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+          description: successful operation
+        "404":
+          description: Entity not found
+      summary: Obtain status information about the endpoint
+      tags:
+      - status
+      x-openapi-router-controller: openapi_server.controllers.status_controller
+  /status/logs:
+    get:
+      operationId: get_logs
+      parameters:
+      - description: Specify the log sending mode
+        explode: true
+        in: query
+        name: mode
+        required: false
+        schema:
+          examples:
+            - tail
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            text/plain:
+              schema:
+                type: string
+          description: successful operation
+        "404":
+          description: Logs not found
+      summary: Get log information from the server
+      tags:
+      - status
+      x-openapi-router-controller: openapi_server.controllers.status_controller
+  /translate:
+    post:
+      operationId: translate
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Question'
+        description: Question information to be translated
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/Query'
+                type: array
+          description: successful operation
+        "400":
+          description: Invalid status value
+      summary: Translate natural language question into a standardized query
+      tags:
+      - translate
+      x-openapi-router-controller: openapi_server.controllers.translate_controller
+components:
+  schemas:
+    Query:
+      description: >-
+        The Query class is used to package a user request for information. A
+        Query object consists of a required Message object with optional
+        additional properties. Additional properties are intended to convey
+        implementation-specific or query-independent parameters. For example,
+        an additional property specifying a log level could allow a user to
+        override the default log level in order to receive more fine-grained
+        log information when debugging an issue.
+      x-body-name: request_body
+      type: object
+      properties:
+        submitter:
+          type: string
+          description: >-
+            Any string for self-identifying the submitter of a query. The
+            purpose of this optional property is to aid in the tracking of
+            the source of queries for development and issue resolution.
+        parameters:
+          $ref: '#/components/schemas/QueryParameters'
+          description: >-
+            Query-time parameters that don't affect the semantics
+            of the query or intended workflow, but may affect overall
+            behavior of the server in the execution of this query.
+            The server MUST repeat the parameters it is given in its Response.
+        message:
+          $ref: '#/components/schemas/Message'
+          description: >-
+            The query Message is a serialization of the user request. Content
+            of the Message object depends on the intended TRAPI operation. For
+            example, the fill operation requires a non-empty query_graph property
+            as part of the Message, whereas other operations, e.g. overlay,
+            require non-empty results and knowledge_graph properties.
+        workflow:
+          description: List of workflow steps to be executed.
+          items:
+            oneOf:
+            - $ref: '#/components/schemas/OperationAnnotate'
+            - $ref: '#/components/schemas/OperationAnnotateEdges'
+            - $ref: '#/components/schemas/OperationAnnotateNodes'
+            - $ref: '#/components/schemas/OperationBind'
+            - $ref: '#/components/schemas/OperationCompleteResults'
+            - $ref: '#/components/schemas/OperationEnrichResults'
+            - $ref: '#/components/schemas/OperationFill'
+            - $ref: '#/components/schemas/OperationFilterKgraph'
+            - $ref: '#/components/schemas/OperationFilterKgraphContinuousKedgeAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKnodeAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+            - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
+            - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
+            - $ref: '#/components/schemas/OperationFilterKgraphTopN'
+            - $ref: '#/components/schemas/OperationFilterResults'
+            - $ref: '#/components/schemas/OperationFilterResultsTopN'
+            - $ref: '#/components/schemas/OperationLookup'
+            - $ref: '#/components/schemas/OperationOverlay'
+            - $ref: '#/components/schemas/OperationOverlayComputeJaccard'
+            - $ref: '#/components/schemas/OperationOverlayComputeNgd'
+            - $ref: '#/components/schemas/OperationOverlayConnectKnodes'
+            - $ref: '#/components/schemas/OperationOverlayFisherExactTest'
+            - $ref: '#/components/schemas/OperationRestate'
+            - $ref: '#/components/schemas/OperationScore'
+            - $ref: '#/components/schemas/OperationSortResults'
+            - $ref: '#/components/schemas/OperationSortResultsEdgeAttribute'
+            - $ref: '#/components/schemas/OperationSortResultsNodeAttribute'
+            - $ref: '#/components/schemas/OperationSortResultsScore'
+          type: array
+        stream_progress:
+          type: boolean
+          default: false
+          description: Set to true in order to receive a stream of LogEntry objects
+            as the query is progressing
+        enforce_edge_directionality:
+          type: boolean
+          default: false
+          description: Set to true in order to enforce edge directionality during
+            queries. By default, edge directionality can be reversed without penalty.
+        return_minimal_metadata:
+          type: boolean
+          default: false
+          description: Set to true in order to return only the most minimal metadata.
+            By default, rich metadata for nodes and edges are supplied, which may
+            cause a very large and slower Response.
+        max_results:
+          type: integer
+          default: 100
+          description: Maximum number of individual results to return
+        page_size:
+          type: integer
+          default: 100
+          description: Split the results into pages with this number of results each
+        page_number:
+          type: integer
+          default: 1
+          description: Page number of results when the number of results exceeds the
+            page_size, with page 1 as the first page
+        operations:
+          description: Container for one or more Message objects or identifiers for
+            one or more Messages along with a processing plan and options for how
+            those messages should be processed and returned
+          oneOf:
+          - $ref: '#/components/schemas/Operations'
+      additionalProperties: true
+      required:
+        - message
+    AsyncQuery:
+      description: >-
+        The AsyncQuery class is effectively the same as the Query class but
+        it requires a callback property.
+      x-body-name: request_body
+      allOf:
+        - $ref: '#/components/schemas/Query'
+        - type: object
+          properties:
+            callback:
+              type: string
+              format: uri
+              pattern: ^https?://
+              description: >-
+                Upon completion, this server will send a POST request to the
+                callback URL with `Content-Type: application/json` header and
+                request body containing a JSON-encoded `Response` object.
+                The server MAY POST `Response` objects before work is fully
+                complete to provide interim results with a Response.status
+                value of 'Running'. If a POST operation to the callback URL
+                does not succeed, the server SHOULD retry the POST at least
+                once.
+          additionalProperties: true
+          required:
+            - callback
+    QueryParameters:
+      type: object
+      description: >-
+        Query-time parameters that don't affect the semantics
+        of a query or intended workflow, but may affect overall
+        behavior of the server in the execution of this query.
+        The server MUST repeat the parameters it is given in its Response.
+      properties:
+        timeout:
+          type: number
+          description: >-
+            Custom time in seconds that the client is willing to wait for a response.
+            After this time has elapsed, the service MAY consider the query
+            failed and respond with logs indicating as such.
+            If the service knows it cannot respond in the given time, it MAY
+            respond with an HTTP 409 and a response explaining its time capabilities.
+            Negative values SHOULD be interpreted as disabling any default
+            timeout the server implements.
+        log_level:
+          $ref: '#/components/schemas/LogLevel'
+          description: The least critical level of logs to return.
+        bypass_cache:
+          type: boolean
+          default: false
+          description: >-
+            Set to true in order to request that the agent obtain
+            fresh information from its sources in all cases where
+            it has a viable choice between requesting fresh information
+            in real time and using cached information. The agent
+            receiving this flag MUST also include it in TRAPI sent to
+            downstream sources (e.g., ARS -> ARAs -> KPs).
+      additionalProperties: true
+    AsyncQueryResponse:
+      type: object
+      description: >-
+        The AsyncQueryResponse object contains a payload that must be
+        returned from a submitted async_query.
+      properties:
+        status:
+          description: >-
+            One of a standardized set of short codes:
+            e.g. Accepted, QueryNotTraversable, KPsNotAvailable
+          type: string
+          examples:
+            - Accepted
+        description:
+          description: >-
+            A brief human-readable description of the result of the
+            async_query submission.
+          type: string
+          examples:
+            - Async_query has been queued
+        job_id:
+          description: >-
+            An identifier for the submitted job that can be used with
+            /async_query_status to receive an update on the status of
+            the job.
+          type: string
+          examples:
+            - rXEOAosN3L
+      additionalProperties: true
+      required:
+        - job_id
+    AsyncQueryStatusResponse:
+      type: object
+      description: >-
+        The AsyncQueryStatusResponse object contains a payload that describes
+        the current status of a previously submitted async_query.
+      properties:
+        status:
+          description: >-
+            One of a standardized set of short codes:
+            Queued, Running, Completed, Failed
+          type: string
+          examples:
+            - Running
+        description:
+          description: >-
+            A brief human-readable description of the current state
+            or summary of the problem if the status is Failed.
+          type: string
+          examples:
+            - Callback URL returned 500
+        logs:
+          description: >-
+            A list of LogEntry items, containing errors, warnings, debugging
+            information, etc. List items MUST be in chronological order with
+            earliest first. The most recent entry should be last. Its timestamp
+            will be compared against the current time to see if there is
+            still activity.
+          type: array
+          items:
+            $ref: '#/components/schemas/LogEntry'
+          minItems: 1
+        response_url:
+          description: >-
+            Optional URL that can be queried to restrieve the full TRAPI
+            Response.
+          type: string
+          examples:
+            - https://arax.ncats.io/api/arax/v2.0/response/116481
+      additionalProperties: true
+      required:
+        - status
+        - description
+        - logs
+    Response:
+      type: object
+      description: >-
+        The Response object contains the main payload when a TRAPI query
+        endpoint interprets and responds to the submitted query successfully
+        (i.e., HTTP Status Code 200). The message property contains the
+        knowledge of the response (query graph, knowledge graph, and results).
+        The status, description, and logs properties provide additional details
+        about the response.
+      properties:
+        parameters:
+          $ref: '#/components/schemas/QueryParameters'
+          description: >-
+            Query-time parameters that the service received in the original query.
+            The server MUST repeat the parameters it is given in its Response.
+        message:
+          $ref: '#/components/schemas/Message'
+          description: >-
+            Contains the knowledge of the response (query graph, knowledge
+            graph, and results).
+        status:
+          description: >-
+            One of a standardized set of short codes,
+            e.g. Success, QueryNotTraversable, KPsNotAvailable
+          type: string
+          examples:
+            - Success
+        description:
+          description: A brief human-readable description of the outcome
+          type: string
+          examples:
+            - Success. 42 results found.
+        logs:
+          description: >-
+            A list of LogEntry items, containing errors, warnings, debugging
+            information, etc. List items MUST be in chronological order with
+            earliest first.
+          type: array
+          items:
+            $ref: '#/components/schemas/LogEntry'
+          minItems: 1
+        workflow:
+          type: array
+          description: A list of operations that were executed.
+          items:
+            oneOf:
+            - $ref: '#/components/schemas/OperationAnnotate'
+            - $ref: '#/components/schemas/OperationAnnotateEdges'
+            - $ref: '#/components/schemas/OperationAnnotateNodes'
+            - $ref: '#/components/schemas/OperationBind'
+            - $ref: '#/components/schemas/OperationCompleteResults'
+            - $ref: '#/components/schemas/OperationEnrichResults'
+            - $ref: '#/components/schemas/OperationFill'
+            - $ref: '#/components/schemas/OperationFilterKgraph'
+            - $ref: '#/components/schemas/OperationFilterKgraphContinuousKedgeAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphDiscreteKnodeAttribute'
+            - $ref: '#/components/schemas/OperationFilterKgraphOrphans'
+            - $ref: '#/components/schemas/OperationFilterKgraphPercentile'
+            - $ref: '#/components/schemas/OperationFilterKgraphStdDev'
+            - $ref: '#/components/schemas/OperationFilterKgraphTopN'
+            - $ref: '#/components/schemas/OperationFilterResults'
+            - $ref: '#/components/schemas/OperationFilterResultsTopN'
+            - $ref: '#/components/schemas/OperationLookup'
+            - $ref: '#/components/schemas/OperationLookupAndScore'
+            - $ref: '#/components/schemas/OperationOverlay'
+            - $ref: '#/components/schemas/OperationOverlayComputeJaccard'
+            - $ref: '#/components/schemas/OperationOverlayComputeNgd'
+            - $ref: '#/components/schemas/OperationOverlayConnectKnodes'
+            - $ref: '#/components/schemas/OperationOverlayFisherExactTest'
+            - $ref: '#/components/schemas/OperationRestate'
+            - $ref: '#/components/schemas/OperationScore'
+            - $ref: '#/components/schemas/OperationSortResults'
+            - $ref: '#/components/schemas/OperationSortResultsEdgeAttribute'
+            - $ref: '#/components/schemas/OperationSortResultsNodeAttribute'
+            - $ref: '#/components/schemas/OperationSortResultsScore'
+        submitter:
+          type: string
+          description: Any string for self-identifying the submitter of a query. The
+            purpose of this optional field is to aid in the tracking of the source
+            of queries for development and issue resolution.
+        operations:
+          description: Container for one or more Message objects or identifiers for
+            one or more Messages along with the processing plan and options for how
+            those messages were processed and returned
+          oneOf:
+            - $ref: '#/components/schemas/Operations'
+        job_id:
+          type: string
+          description: An identifier for the submitted job that can be used with /async_query_status
+            to receive an update on the status of the job.
+        resource_id:
+          type: string
+          description: Identifier string of the resource that provided this response
+            (one of ARAX, Aragorn, etc.)
+        tool_version:
+          type: string
+          description: Version label of the tool that generated this response
+        schema_version:
+          type: string
+          examples:
+            - 2.0.0
+          description: Version label of the TRAPI schema used in this document
+        biolink_version:
+          type: string
+          examples:
+            - 4.4.0
+          description: Version label of the Biolink model used in this document
+        data_release_versions:
+          description: Versions of data sources used in this document.
+          type: object
+          minProperties: 1
+          additionalProperties:
+            type: string
+          examples:
+            - translator_kg: 2026_06_21
+        datetime:
+          type: string
+          description: Datetime string for the time that this response was generated
+        table_column_names:
+          type: array
+          description: List of column names that corresponds to the row_data for each
+            result
+          items:
+            type: string
+        original_question:
+          type: string
+          description: The original question text typed in by the user
+        restated_question:
+          type: string
+          description: A precise restatement of the question, as understood by the
+            Translator, for which the answer applies. The user should verify that
+            the restated question matches the intent of their original question (it
+            might not).
+        query_options:
+          type: object
+          description: Dict of options that can be sent with the query. Options are
+            tool specific and not stipulated here
+        context:
+          type: string
+          description: JSON-LD context URI
+        type:
+          type: string
+          description: Entity type of this response
+        id:
+          type: string
+          description: URI for this response
+        validation_result:
+          type: object
+          description: Validation results and other summary stats computed for this
+            Response.
+        total_results_count:
+          type: integer
+          description: The total number of results that were generated prior to any
+            filtering.
+        info:
+          type: string
+          description: A placholder for including some additional information
+      additionalProperties: true
+      required:
+        - message
+    Message:
+      description: >-
+        The message object holds the main content of a Query or a Response in
+        three properties: query_graph, results, and knowledge_graph.
+        The query_graph property contains the query configuration, the results
+        property contains any answers that are returned by the service,
+        and knowledge_graph property contains lists of edges and nodes in the
+        thought graph corresponding to this message. The content of these
+        properties is context-dependent to the encompassing object and
+        the TRAPI operation requested.
+      type: object
+      properties:
+        results:
+          description: >-
+            List of all returned Result objects for the query posed.
+            The list SHOULD NOT be assumed to be ordered. The 'score' property,
+            if present, MAY be used to infer result rankings. If Results are
+            not expected (such as for a query Message), this property SHOULD
+            be absent. If Results are expected (such as for a response
+            Message) and no Results are available, this property SHOULD be an
+            array with 0 Results in it.
+          type: array
+          items:
+            $ref: '#/components/schemas/Result'
+        query_graph:
+          description: >-
+            QueryGraph object that contains a serialization of a query in the
+            form of a graph
+          $ref: '#/components/schemas/QueryGraph'
+        knowledge_graph:
+          $ref: '#/components/schemas/KnowledgeGraph'
+          description: >-
+            KnowledgeGraph object that contains lists of nodes and edges
+            in the thought graph corresponding to the message
+        auxiliary_graphs:
+          type: object
+          description: >-
+            Dictionary of AuxiliaryGraph instances that are used by Knowledge
+            Graph Edges and Result Analyses. These are referenced elsewhere by
+            the dictionary key.
+          additionalProperties:
+            $ref: '#/components/schemas/AuxiliaryGraph'
+          minProperties: 1
+      additionalProperties: true
+    LogEntry:
+      description: >-
+        The LogEntry object contains information useful for tracing
+        and debugging across Translator components.  Although an
+        individual component (for example, an ARA or KP) may have its
+        own logging and debugging infrastructure, this internal
+        information is not, in general, available to other components.
+        In addition to a timestamp and logging level, LogEntry
+        includes a string intended to be read by a human, along with
+        one of a standardized set of codes describing the condition of
+        the component sending the message.
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: >-
+            Timestamp in ISO 8601 format, providing the LogEntry time
+            either in univeral coordinated time (UTC) using the 'Z' tag
+            (e.g 2020-09-03T18:13:49Z), or, if local time is provided,
+            the timezone offset must be provided
+            (e.g. 2020-09-03T18:13:49-04:00).
+          examples:
+            - '2020-09-03T18:13:49+00:00'
+        level:
+          $ref: '#/components/schemas/LogLevel'
+        code:
+          type: string
+          description: >-
+            One of a standardized set of short codes
+            e.g. QueryNotTraversable, KPNotAvailable, KPResponseMalformed
+        message:
+          type: string
+          description: A human-readable log message
+      additionalProperties: true
+      required:
+        - timestamp
+        - message
+    LogLevel:
+      type: string
+      description: Logging level
+      enum:
+        - ERROR
+        - WARNING
+        - INFO
+        - DEBUG
+    Result:
+      type: object
+      description: >-
+        A Result object specifies the nodes and edges in the knowledge graph
+        that satisfy the structure or conditions of a user-submitted query
+        graph. It must contain a NodeBindings object (list of query graph node
+        to knowledge graph node mappings) and a list of Analysis objects.
+      properties:
+        node_bindings:
+          type: object
+          description: >-
+            The dictionary of input QNodes to KnowledgeGraph Node
+            bindings where the dictionary keys are the key identifiers of the
+            QNodes and the associated values of those keys are
+            instances of NodeBinding schema type (see below). Because a given
+            QNode may have multiple KnowledgeGraph Nodes bound in the result,
+            the NodeBinding object may list multiple KnowledgeGraph Nodes.
+          additionalProperties:
+            $ref: '#/components/schemas/NodeBinding'
+          minProperties: 1
+        analyses:
+          type: array
+          description: >-
+            The list of all Analysis components that contribute to the result.
+            See below for Analysis components.
+          items:
+            $ref: '#/components/schemas/Analysis'
+          minItems: 1
+        id:
+          type: string
+          description: URI for this result
+        description:
+          type: string
+          description: A free text description of this result answer from the reasoner
+        essence:
+          type: string
+          description: A single string that is the terse essence of the result (useful
+            for simple answers)
+        essence_category:
+          type: string
+          description: A Translator BioLink bioentity category of the essence
+        row_data:
+          type: array
+          description: An arbitrary list of values that captures the essence of the
+            result that can be turned into a tabular result across all answers (each
+            result is a row) for a user that wants simplified tabular output
+          items:
+            oneOf:
+            - type: string
+            - type: number
+        score:
+          type: number
+          format: float
+          description: A numerical score associated with this result indicating the
+            relevance or confidence of this result relative to others in the returned
+            set. Higher MUST be better.
+        score_name:
+          type: string
+          description: Name for the score
+        score_direction:
+          type: string
+          description: 'Sorting indicator for the score: one of higher_is_better or
+            lower_is_better'
+        confidence:
+          type: number
+          format: float
+          description: |-
+            Confidence metric for this result, a value between (inclusive)
+             0.0 (no confidence) and 1.0 (highest confidence)
+        result_group:
+          type: integer
+          description: An integer group number for results for use in cases where
+            several results should be grouped together. Also useful to control sorting
+            ascending.
+        result_group_similarity_score:
+          type: number
+          format: float
+          description: A score that denotes the similarity of this result to other
+            members of the result_group
+        resource_id:
+          type: string
+          description: Identifier string of the resource that provided this result
+            (one of ARAX, Aragorn, etc.)
+      additionalProperties: true
+      required:
+        - node_bindings
+    NodeBinding:
+      type: object
+      description: >-
+        A NodeBinding object defines all relevant KnowledgeGraph Node mappings,
+        identified by the corresponding object key identifier(s) of the
+        Node(s) within the Knowledge Graph. Instances of NodeBinding may
+        include extra annotation in the form of additional properties.
+        (such annotation is not yet fully standardized). Each Node
+        Binding must bind directly to node in the original Query Graph.
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/CURIE'
+          minItems: 1
+          description: >-
+            The CURIEs of one or more Nodes within the Knowledge Graph.
+      additionalProperties: true
+      required:
+        - ids
+    Analysis:
+      type: object
+      description: >-
+        An Analysis is a dictionary that contains information about
+        the result tied to a particular service. Each Analysis is
+        generated by a single reasoning service, and describes the
+        outputs of analyses performed by the reasoner on a particular
+        Result (e.g. a result score), along with provenance information
+        supporting the analysis (e.g. method or data that supported
+        generation of the score).
+      properties:
+        resource_id:
+          $ref: '#/components/schemas/CURIE'
+          description: >-
+            The infores id of the resource generating this Analysis
+        edge_bindings:
+          type: object
+          minProperties: 1
+          description: >-
+            The dictionary of input Query Graph to Knowledge Graph edge
+            bindings where the dictionary keys are the key identifiers of
+            the Query Graph edges and the associated values of those keys
+            are instances of EdgeBinding schema type (see below). Because
+            a given QEdge may have multiple knowledge Edges bound in the
+            result, the EdgeBinding object may list multiple knowledge Edges.
+          additionalProperties:
+            $ref: '#/components/schemas/EdgeBinding'
+        path_bindings:
+          type: object
+          minProperties: 1
+          description: >-
+            The dictionary of input QueryGraph paths to Analysis paths,
+            specifically used only for pathfinder queries.
+          additionalProperties:
+            $ref: '#/components/schemas/PathBinding'
+        score:
+          type: number
+          format: float
+          examples:
+            - 163.233
+          description: >-
+            A numerical score associated with this result indicating the
+            relevance or confidence of this result relative to others in the
+            returned set. Higher MUST be better.
+        support_graphs:
+          type: array
+          description: >-
+            This is a list of references to AuxiliaryGraph instances
+            that supported the analysis of a Result as performed by the
+            reasoning service. Each item in the list is the key of a
+            single AuxiliaryGraph.
+          minItems: 1
+          items:
+            type: string
+        scoring_method:
+          type: string
+          description: >-
+            An identifier and link to an explanation for the method used
+            to generate the score.
+        attributes:
+          type: array
+          description: >-
+            The attributes of this particular Analysis.
+          items:
+            $ref: '#/components/schemas/Attribute'
+      additionalProperties: true
+      required:
+        - resource_id
+      anyOf:
+        - required: [edge_bindings]
+        - required: [path_bindings]
+    EdgeBinding:
+      type: object
+      description: >-
+        An EdgeBinding object defines all relevant KnowledgeGraph Edge mappings,
+        identified by the corresponding 'id' object key identifier of the
+        Edge within the knowledge graph. Instances of EdgeBinding may include
+        extra annotation (such annotation is not yet fully standardized).
+        EdgeBindings are captured within a specific reasoner's Analysis
+        object because the Edges in the KnowledgeGraph that get bound to
+        the input QueryGraph may differ between reasoners.
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: The key identifiers of specific KnowledgeGraph Edges.
+      additionalProperties: true
+      required:
+        - ids
+    PathBinding:
+      type: object
+      description: >-
+        A PathBinding object binds a single QueryGraph path (the key to
+        this object) to one or more relevant AuxiliaryGraph ids containing
+        a list of edges in the path. The AuxiliaryGraph does not convey any
+        order of edges in the path.
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: The key identifiers of specific auxiliary graphs.
+      additionalProperties: true
+      required:
+        - ids
+    AuxiliaryGraph:
+      type: object
+      description: >-
+        A single AuxiliaryGraph instance that is used by KnowledgeGraph
+        Edges, Result Analysis support graphs, and PathBindings.
+        Edges comprising an AuxiliaryGraph are a subset of the
+        KnowledgeGraph in the message. Data creators can
+        create an AuxiliaryGraph to assemble a specific collection
+        of edges from the KnowledgeGraph into a named graph that can be
+        referenced from an Edge as evidence/explanation supporting that Edge,
+        from a Result Analysis as information used to generate a score, or
+        from a PathBinding as the path for that Analysis.
+      properties:
+        edges:
+          type: array
+          description: >-
+            List of edges that form the AuxiliaryGraph. Each item is a
+            reference to a single KnowledgeGraph Edge. This list is not
+            ordered, nor is the order intended to convey any relationship
+            between the edges that form this AuxiliaryGraph.
+          items:
+            type: string
+          minItems: 1
+      additionalProperties: true
+      required:
+        - edges
+    KnowledgeGraph:
+      type: object
+      description: >-
+        The knowledge graph associated with a set of results. The instances
+        of Node and Edge defining this graph represent instances of
+        biolink:NamedThing (concept nodes) and biolink:Association
+        (relationship edges) representing (Attribute) annotated knowledge
+        returned from the knowledge sources and inference agents wrapped by
+        the given TRAPI implementation.
+      properties:
+        nodes:
+          type: object
+          description: >-
+            Dictionary of Node instances used in the KnowledgeGraph,
+            referenced elsewhere in the TRAPI output by the dictionary key.
+          additionalProperties:
+            $ref: '#/components/schemas/Node'
+        edges:
+          type: object
+          description: >-
+            Dictionary of Edge instances used in the KnowledgeGraph,
+            referenced elsewhere in the TRAPI output by the dictionary key.
+          additionalProperties:
+            $ref: '#/components/schemas/Edge'
+      additionalProperties: true
+      required:
+        - nodes
+    QueryGraph:
+      type: object
+      description: >-
+        A graph representing a biomedical question. It serves as a template for
+        each Result (answer), where each bound knowledge graph node/edge is
+        expected to obey the constraints of the associated QueryGraph element.
+      properties:
+        nodes:
+          type: object
+          description: >-
+            The node specifications. The keys of this map are unique node
+            identifiers and the corresponding values include the constraints
+            on bound nodes.
+          additionalProperties:
+            $ref: '#/components/schemas/QNode'
+          minProperties: 1
+        edges:
+          type: object
+          description: >-
+            The edge specifications. The keys of this map are unique edge
+            identifiers and the corresponding values include the constraints
+            on bound edges, in addition to specifying the subject and object
+            QNodes.
+          additionalProperties:
+            $ref: '#/components/schemas/QEdge'
+          minProperties: 1
+        paths:
+          type: object
+          description: >-
+            The QueryGraph path specification, used only for pathfinder type
+            queries. The keys of this map are unique path identifiers and
+            the corresponding values include the constraints on bound paths,
+            in addition to specifying the subject, object, and intermediate
+            QNodes.
+          additionalProperties:
+            $ref: '#/components/schemas/QPath'
+          minProperties: 1
+          maxProperties: 1
+      additionalProperties: true
+      required:
+        - nodes
+    QNode:
+      type: object
+      description: >-
+        A node in the QueryGraph used to represent an entity in a
+        query. If no CURIEs are not specified, any nodes matching the category
+        of the QNode will be returned in the Results.
+      properties:
+        ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/CURIE'
+          minItems: 1
+          examples:
+            - ['OMIM:603903']
+          description: >-
+            A list of one or more CURIE identifiers for this node.
+            The 'ids' property will hold a list of CURIEs only in the case of
+            a BATCH set_interpretation, where each CURIE is queried
+            separately. If a list of queried CURIEs is to be considered as a
+            set (as under a MANY or ALL set_interpretation), the 'ids' property
+            will hold a single id representing this set, and the individual members
+            of this set will be captured in a separate 'member_ids' property.
+            Note that the set id MUST be created as a UUID by the system that
+            defines the queried set, using a centralized nodenorm service.
+            Note also that downstream systems MUST re-use the original set UUID
+            in the messages that they create/send to facilitate merging or
+            caching operations.
+        categories:
+          type: array
+          description: >-
+            Biolink Model categories, which are allowed
+            to be of type 'abstract' or 'mixin' (only in QGraphs!).
+            Use of deprecated categories SHOULD be avoided.
+          items:
+            $ref: '#/components/schemas/BiolinkEntity'
+          minItems: 1
+        set_interpretation:
+          type: string
+          description: >-
+            Indicates how multiple CURIEs in the ids property MUST be
+            interpreted. BATCH indicates that the query is intended to be
+            a batch query and each CURIE is treated independently. ALL means
+            that all specified CURIES MUST appear in each Result.
+            MANY means that member CURIEs MUST form one or more
+            sets in the Results, and sets with more members are generally
+            considered more desirable that sets with fewer members.
+            Only when there are no ids provided, set_interpretation MAY be
+            set to COLLATE to indicate that multiple matching nodes MUST be
+            collated into a single Result, rather than separated into
+            separate Results. If this property is absent, the default is
+            BATCH.
+          enum:
+            - BATCH
+            - ALL
+            - MANY
+            - COLLATE
+        member_ids:
+          type: array
+          description: >-
+            A list of CURIE identifiers for members of a queried set. This
+            property MUST be populated under a set_interpretation of MANY
+            or ALL, when the 'ids' property holds a UUID representing the set
+            itself. This property MUST NOT be used under a set_interpretation
+            of BATCH or COLLATE or when set_interpretation is absent.
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CURIE'
+        constraints:
+          type: array
+          description: >-
+            A list of constraints applied to a query node.
+            If there are multiple items, they must all be true (equivalent
+            to AND)
+          items:
+            $ref: '#/components/schemas/AttributeConstraint'
+          minItems: 1
+        option_group_id:
+          type: string
+          description: 'Optional string acting as a label on a set of nodes and/or
+            edges indicating that they belong to a group that are to be evaluated
+            as a group. '
+      additionalProperties: true
+    QEdge:
+      type: object
+      description: >-
+        An edge in the QueryGraph used as a filter pattern specification in a
+        query. If the optional predicate property is not specified,
+        it is assumed to be a wildcard match to the target knowledge space.
+        If specified, the ontological inheritance hierarchy associated with
+        the term provided is assumed, such that edge bindings returned may be
+        an exact match to the given QEdge predicate term,
+        or to a term that is a descendant of the QEdge predicate term.
+      properties:
+        knowledge_type:
+          description: >-
+            Indicates the type of knowledge that the client wants from the
+            server between the subject and object. If the value is
+            'lookup', then the client wants direct lookup information from
+            knowledge sources. If the value is 'inferred', then the client
+            wants the server to get creative and connect the subject and
+            object in more speculative and non-direct-lookup ways. If this
+            property is absent, it MUST be assumed to mean
+            'lookup'.
+          examples:
+            - lookup
+          type: string
+        predicates:
+          type: array
+          description: >-
+            These should be Biolink Model predicates and are allowed to be of
+            type 'abstract' or 'mixin' (only in QGraphs!). Use of 'deprecated'
+            predicates SHOULD be avoided.
+          items:
+            $ref: '#/components/schemas/BiolinkPredicate'
+          minItems: 1
+        subject:
+          type: string
+          examples:
+            - https://omim.org/entry/603903
+          description: >-
+            Corresponds to the map key identifier of the
+            subject concept node anchoring the query filter
+            pattern for the query relationship edge.
+        object:
+          type: string
+          examples:
+            - https://www.uniprot.org/uniprot/P00738
+          description: >-
+            Corresponds to the map key identifier of the
+            object concept node anchoring the query filter
+            pattern for the query relationship edge.
+        constraints:
+          $ref: '#/components/schemas/QEdgeConstraints'
+          description: >-
+            An object containing all constraints placed on the QEdge.
+            ALL edges bound to this QEdge MUST conform to ALL given constraints;
+            underlying edges (such as those appearing in supporting graphs)
+            are not required to conform to the given constraints.
+        exclude:
+          type: boolean
+          description: If set to true, then all subgraphs containing this edge are
+            excluded from the final results. (optional)
+        option_group_id:
+          type: string
+          description: 'Optional string acting as a label on a set of nodes and/or
+            edges indicating that they belong to a group that are to be evaluated
+            as a group. '
+      additionalProperties: true
+      required:
+        - subject
+        - object
+    QEdgeConstraints:
+      type: object
+      description: >-
+        A subschema for constraints that may be placed on a given QEdge.
+        ALL edges bound to the given QEdge MUST conform to ALL given constraints;
+        underlying edges (such as those appearing in supporting graphs)
+        are not required to conform to the given constraints.
+      minProperties: 1
+      additionalProperties: true
+      properties:
+        knowledge_level:
+          $ref: '#/components/schemas/AllowDenyConstraint'
+          description: >-
+            A constraint defining knowledge_level values which are either allowed
+            or denied on bound edges.
+            Provided string(s) MUST be a valid biolink knowledge_level value.
+            (See https://biolink.github.io/biolink-model/KnowledgeLevelEnum/)
+        agent_type:
+          $ref: '#/components/schemas/AllowDenyConstraint'
+          description: >-
+            A constraint defining agent_type values which are either allowed
+            or denied on bound edges.
+            Provided string(s) MUST be a valid biolink agent_type value.
+            (See https://biolink.github.io/biolink-model/AgentTypeEnum/)
+        attributes:
+          type: array
+          description: >-
+            A list of attribute constraints applied to a query edge.
+            If there are multiple items, they must all be true (equivalent
+            to AND)
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/AttributeConstraint'
+        qualifiers:
+          type: array
+          description: >-
+            A list of QualifierSetConstraints applied to a QEdge.
+            If multiple QualifierSetConstraints are provided, there is an OR
+            relationship between them. If the QEdge has multiple
+            predicates or if the QNodes that correspond to the subject or
+            object of this QEdge have multiple categories or multiple
+            curies, then constraints.qualifiers MUST NOT be specified
+            because these complex use cases are not supported at this time.
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/QualifierSetConstraint'
+        sources:
+          description: >-
+            A list of infores CURIEs which are either allowed or denied in the
+            sources (resource_id) of the bound Edge.
+            If `behavior` is set to "ALLOW", ANY (at least 1) of the given infores
+            CURIEs MUST be present.
+            If `behavior` is set to "DENY", then ALL given infores CURIEs MUST
+            NOT be present.
+          allOf:
+            - $ref: '#/components/schemas/AllowDenyConstraint'
+            - type: object
+              properties:
+                values:
+                  type: array
+                  description: >-
+                    These SHOULD be infores CURIEs, so this is a subschema that
+                    is more stringent than the one in AllowDenyConstraint.
+                  minItems: 1
+                  items:
+                    $ref: '#/components/schemas/CURIE'
+                primary_only:
+                  type: boolean
+                  description: >-
+                    When set to `false` (the default), the ALLOW/DENY constraint
+                    of `values` applies to ALL RetrievalSources in
+                    the sources of the bound Edge.
+                    When set to `true`, the constraint ONLY applies to the
+                    RetrievalSource with the resource_role primary_knowledge_source.
+                  default: false
+    AllowDenyConstraint:
+      type: object
+      description: >-
+        A list of values which are to either be allowed or denied.
+        If `behavior` is set to "ALLOW", then ANY (at least 1) of the given values
+        MUST appear in the constrained property in order for it to meet the
+        constraint (OR relationship).
+        If `behavior` is set to "DENY", then ALL of the given values MUST NOT
+        appear in the constrained property in order for it to meet the constraint
+        (NOT (x OR y) relationship).
+      properties:
+        behavior:
+          type: string
+          enum:
+            - ALLOW
+            - DENY
+        values:
+          type: array
+          minItems: 1
+          items:
+            type: string
+      required:
+        - behavior
+        - values
+    QPath:
+      type: object
+      description: >-
+        A path in the QueryGraph used for pathfinder queries. Both subject and
+        object MUST reference QNodes that have a CURIE in their ids property.
+        Paths returned that bind to this QPath MUST represent some
+        relationship between the subject and object.
+      properties:
+        subject:
+          type: string
+          description: >-
+            Corresponds to the map key identifier of the subject concept node
+            for the start of the queried path.
+          examples:
+            - n0
+        object:
+          type: string
+          description: >-
+            Corresponds to the map key identifier of the object concept node
+            for the end of the queried path.
+          examples:
+            - n1
+        predicates:
+          type: array
+          description: >-
+            QPath predicates are intended to convey what type of paths are desired,
+            NOT a constraint on the types of predicates that may be in result
+            paths.
+            If no predicate is listed, the ARA SHOULD find paths such that the
+            relationship represented by the path is a "related_to" relationship.
+            These should be Biolink Model predicates and are allowed to be of
+            type 'abstract' or 'mixin'. Use of 'deprecated'
+            predicates SHOULD be avoided.
+          items:
+            $ref: '#/components/schemas/BiolinkPredicate'
+          minItems: 1
+        constraints:
+          type: array
+          description: >-
+            A list of constraints for the QPath. If multiple constraints are
+            listed, it should be interpreted as an OR relationship. Each path
+            returned MUST comply with at least one constraint.
+          items:
+            $ref: '#/components/schemas/PathConstraint'
+          minItems: 1
+      additionalProperties: true
+      required:
+        - object
+        - subject
+    PathConstraint:
+      type: object
+      description: >-
+        A constraint for paths. ARAs must comply with constraints when finding
+        paths.
+      properties:
+        required_intermediate_categories:
+          type: array
+          description: >-
+            A list of Biolink Model categories by which to constrain paths returned.
+            If multiple categories are listed, it should be interpreted as an
+            AND relationship. Each path returned by ARAs MUST contain at least
+            one node of each category listed.
+          items:
+            $ref: '#/components/schemas/BiolinkEntity'
+          minItems: 1
+      additionalProperties: true
+    Node:
+      type: object
+      description: >-
+        A node in the KnowledgeGraph which represents some biomedical
+        concept. Nodes are identified by the keys in the KnowledgeGraph
+        Node mapping.
+      properties:
+        name:
+          type: string
+          examples:
+            - Haptoglobin
+          description: Formal name of the entity
+        categories:
+          type: array
+          description: >-
+            These should be Biolink Model categories and are NOT allowed
+            to be of type 'abstract' or 'mixin'. Returning 'deprecated'
+            categories SHOULD also be avoided.
+          items:
+            $ref: '#/components/schemas/BiolinkEntity'
+          minItems: 1
+        attributes:
+          type: array
+          description: A list of attributes describing the node
+          items:
+            $ref: '#/components/schemas/Attribute'
+        is_set:
+          type: boolean
+          description: >-
+            Indicates that the node represents a set of entities.
+            If this property is absent, it is assumed to be
+            false.
+      required:
+        - categories
+      additionalProperties: false
+    Attribute:
+      type: object
+      description: >-
+        Generic attribute for a node or an edge that expands the key-value
+        pair concept by including properties for additional metadata. These properties
+        MAY be used to describe the source of the statement made in a key-value
+        pair of the attribute object, or describe the attribute's value itself
+        including its semantic type, or a url providing additional information
+        about it. An attribute may be further qualified with sub-attributes
+        (for example to provide confidence intervals on a value).
+      properties:
+        attribute_type_id:
+          $ref: '#/components/schemas/CURIE'
+          description: >-
+            The main 'key' of the attribute object, holding a CURIE of an ontology
+            property defining the specific attribute (preferably the CURIE of
+            a Biolink association slot). This property captures the relationship
+            asserted to hold between the value of the attribute, and the node
+            or edge from  which it hangs. For example, that a value of
+            '0.000153' represents a p-value supporting an edge.
+          examples:
+            - biolink:synonym
+        original_attribute_name:
+          type: string
+          description: >-
+            The term used by the original source of an attribute to describe
+            the meaning or significance of the value it captures. This may be
+            a column name in a source tsv file, or a key in a source json
+            document for the field in the data that held the attribute's
+            value. Capturing this information where possible preserves
+            original source meaning. Note that the data type is string
+            but the contents of the property MAY be a CURIE of a third
+            party ontology term.
+          examples:
+            - p-value
+        value:
+          description: >-
+            Value of the attribute. May be any data type, including a list.
+          examples:
+            - 0.000153
+        value_type_id:
+          $ref: '#/components/schemas/CURIE'
+          description: >-
+            CURIE describing the semantic type of an  attribute's value. Use
+            a Biolink class if possible, otherwise a term from an external
+            ontology. If a suitable CURIE/identifier does not exist, enter a
+            descriptive phrase here and submit the new type for consideration
+            by the appropriate authority.
+          examples:
+            - EDAM:data_1187
+        attribute_source:
+          type: string
+          description: >-
+            The source of the core assertion made by the key-value pair of an
+            attribute object. Use a CURIE or namespace designator for this
+            resource where possible.
+          examples:
+            - UniProtKB
+        value_url:
+          type: string
+          description: >-
+            Human-consumable URL linking to a web document that provides
+            additional information about this attribute's value (not the node
+            or the edge from which it hangs).
+          examples:
+            - https://pubmed.ncbi.nlm.nih.gov/32529952
+        description:
+          type: string
+          description: >-
+            Human-readable description for the attribute and its value.
+          examples:
+            - Assertion Authored By Dr. Trans L. Ator
+        attributes:
+          type: array
+          description: >-
+            A list of attributes providing further information about the
+            parent attribute (for example to provide provenance
+            information about the parent attribute).
+          items:
+            $ref: '#/components/schemas/Attribute'
+      required:
+        - attribute_type_id
+        - value
+      additionalProperties: false
+    Edge:
+      type: object
+      description: >-
+        A specification of the semantic relationship linking two concepts
+        that are expressed as nodes in the knowledge graph
+        resulting from a query to the service.
+      properties:
+        predicate:
+          $ref: '#/components/schemas/BiolinkPredicate'
+          description: >-
+            The type of relationship between the subject and object
+            for the statement expressed in an Edge. The predicate SHOULD
+            be from the Biolink Model and MUST NOT be
+            of type 'abstract' or 'mixin'. Returning 'deprecated'
+            predicate terms SHOULD be avoided.
+          examples:
+            - biolink:gene_associated_with_condition
+        subject:
+          $ref: '#/components/schemas/CURIE'
+          description: >-
+            Corresponds to the map key CURIE of the
+            subject concept node of this relationship edge.
+          examples:
+            - MONDO:0011382
+        object:
+          $ref: '#/components/schemas/CURIE'
+          description: >-
+            Corresponds to the map key CURIE of the
+            object concept node of this relationship edge.
+          examples:
+            - UniProtKB:P00738
+        attributes:
+          description: A list of additional attributes for this edge
+          items:
+            $ref: '#/components/schemas/Attribute'
+          type: array
+        qualifiers:
+          description: >-
+            A set of Qualifiers that act together to add nuance
+            or detail to the statement expressed in an Edge.
+          items:
+            $ref: '#/components/schemas/Qualifier'
+          minItems: 1
+          type: array
+        sources:
+          type: array
+          description: >-
+            A list of RetrievalSource objects that provide information
+            about how a particular information resource served
+            as a source from which the knowledge expressed in an Edge,
+            or data used to generate this knowledge, was retrieved.
+          items:
+            $ref: '#/components/schemas/RetrievalSource'
+          minItems: 1
+        knowledge_level:
+          type: string
+          description: >-
+            One of the biolink-enumerated permissible values for `knowledge level`
+            that provides the level of knowledge the Edge represents.
+            (See https://biolink.github.io/biolink-model/KnowledgeLevelEnum/)
+          examples:
+            - knowledge_assertion
+            - logical_entailment
+            - prediction
+        agent_type:
+          type: string
+          description: >-
+            One of the biolink-enumerated permissible values for `agent type`
+            that provides the kind of agent that originated the knowledge
+            presented by the Edge.
+            (See https://biolink.github.io/biolink-model/AgentTypeEnum/)
+          examples:
+            - manual_agent
+            - automated_agent
+            - text_mining_agent
+      additionalProperties: false
+      required:
+        - object
+        - predicate
+        - subject
+        - sources
+        - knowledge_level
+        - agent_type
+    Qualifier:
+      additionalProperties: false
+      description: >-
+        An additional nuance attached to an assertion
+      type: object
+      properties:
+        qualifier_type_id:
+          $ref: '#/components/schemas/CURIE'
+          description: >-
+            CURIE for a Biolink 'qualifier' association slot, generally taken
+            from Biolink association slots designated for this purpose
+            e.g. biolink:subject_aspect_qualifier,
+            biolink:subject_direction_qualifier,
+            biolink:object_aspect_qualifier, etc. Such qualifiers are used
+            to elaborate a second layer of meaning of a knowledge graph edge.
+            Available qualifiers can be found at
+            https://biolink.github.io/biolink-model/qualifiers.html,
+            which mostly have slot names with the suffix string 'qualifier'.
+          pattern: ^biolink:[a-z][a-z_]*$
+          examples:
+            - biolink:subject_aspect_qualifier
+        qualifier_value:
+          type: string
+          description: >-
+            The value associated with the type of the qualifier, drawn from
+            a set of controlled values by the type as specified in
+            the Biolink model (e.g. 'expression' or 'abundance' for the
+            qualifier type 'biolink:subject_aspect_qualifier', etc).
+            The enumeration of qualifier values for a given qualifier
+            type is generally constrained by the category
+            of the edge (i.e. biolink:Association subtype).
+          examples:
+            - expression
+      required:
+        - qualifier_type_id
+        - qualifier_value
+    QualifierSetConstraint:
+      type: object
+      description: >-
+        A constraint on the qualifiers of a bound Edge (types and values).
+        A given key-value pair defines the required qualifier_type_id
+        and qualifier_value of one Qualifier, respectively.
+        For example, a QualifierSetConstraint can constrain a
+        "ChemicalX - affects - ?Gene" query to return only edges where
+        ChemicalX specifically affects the 'expression' of the Gene, by
+        constraining on the qualifier_type "biolink:object_aspect_qualifier"
+        with a qualifier_value of "expression".
+        Multiple type-value pairs have an AND relationship.
+      minProperties: 1
+      patternProperties:
+        '^biolink:':
+          type: string
+    BiolinkEntity:
+      description: >-
+        Compact URI (CURIE) for a Biolink class, biolink:NamedThing
+        or a child thereof. The CURIE must use the prefix 'biolink:'
+        followed by the PascalCase class name.
+      type: string
+      pattern: ^biolink:[A-Z][a-zA-Z]*$
+      externalDocs:
+        description: Biolink model entities
+        url: https://biolink.github.io/biolink-model/docs/NamedThing.html
+      examples:
+        - biolink:PhenotypicFeature
+    BiolinkPredicate:
+      description: >-
+        CURIE for a Biolink 'predicate' slot, taken from the Biolink slot
+        ('is_a') hierarchy rooted in biolink:related_to (snake_case). This
+        predicate defines the Biolink relationship between the subject and
+        object nodes of a biolink:Association defining a knowledge graph edge.
+      type: string
+      pattern: ^biolink:[a-z][a-z_]*$
+      externalDocs:
+        description: Biolink model predicates
+        url: https://biolink.github.io/biolink-model/docs/related_to.html
+      examples:
+        - biolink:interacts_with
+    CURIE:
+      type: string
+      description: >-
+        A Compact URI, consisting of a prefix and a reference separated
+        by a colon, such as UniProtKB:P00738. Via an external context
+        definition, the CURIE prefix and colon may be replaced by a URI
+        prefix, such as https://identifiers.org/uniprot/, to form a full
+        URI.
+      externalDocs:
+        url: https://www.w3.org/TR/2010/NOTE-curie-20101216/
+    MetaKnowledgeGraph:
+      type: object
+      description: >-
+        Knowledge-map representation of this TRAPI web service. The meta
+        knowledge graph is composed of the union of most specific categories
+        and predicates for each node and edge.
+      properties:
+        nodes:
+          type: object
+          minProperties: 1
+          description: >-
+            Collection of the most specific node categories provided by
+            this TRAPI web service, indexed by Biolink class CURIEs.
+            A node category is only exposed here if there is
+            node for which that is the most specific category available.
+          additionalProperties:
+            $ref: '#/components/schemas/MetaNode'
+        edges:
+          type: array
+          description: >-
+            List of the most specific edges/predicates provided by this TRAPI
+            web service. A predicate is only exposed here if there is an edge
+            for which the predicate is the most specific available.
+          items:
+            $ref: '#/components/schemas/MetaEdge'
+      required:
+        - nodes
+        - edges
+    MetaNode:
+      type: object
+      description: >-
+        Description of a node category provided by this TRAPI web service.
+      properties:
+        id_prefixes:
+          type: array
+          description: >-
+            List of CURIE prefixes for the node category that this TRAPI web
+            service understands and accepts on the input.
+          items:
+            type: string
+          minItems: 1
+          examples:
+            - [CHEMBL.COMPOUND, INCHIKEY]
+        attributes:
+          type: array
+          description: >-
+            Node attributes provided by this TRAPI web service.
+          items:
+            $ref: '#/components/schemas/MetaAttribute'
+      required:
+        - id_prefixes
+      additionalProperties: false
+    MetaEdge:
+      type: object
+      description: >-
+        Edge in a meta knowledge map describing relationship between a subject
+        Biolink class and an object Biolink class.
+      properties:
+        subject:
+          $ref: '#/components/schemas/BiolinkEntity'
+          description: >-
+            Subject node category of this relationship edge.
+          examples:
+            - biolink:ChemicalEntity
+        predicate:
+          $ref: '#/components/schemas/BiolinkPredicate'
+          description: >-
+            Biolink relationship between the subject and object categories.
+          examples:
+            - biolink:affects
+        object:
+          $ref: '#/components/schemas/BiolinkEntity'
+          description: >-
+            Object node category of this relationship edge.
+          examples:
+            - biolink:Protein
+        knowledge_types:
+          description: >-
+            A list of knowledge_types that are supported by the service.
+            If this property is absent, this means that only 'lookup'
+            is supported. Currently allowed values are 'lookup' or 'inferred'.
+          items:
+            type: string
+          minItems: 1
+          type: array
+        attributes:
+          type: array
+          description: >-
+            Edge attributes provided by this TRAPI web service.
+          items:
+            $ref: '#/components/schemas/MetaAttribute'
+        qualifiers:
+          description: >-
+            Qualifiers that are possible to be found on this edge type.
+          items:
+            $ref: '#/components/schemas/MetaQualifier'
+          minItems: 1
+          type: array
+        association:
+          description: >-
+            The Biolink association type (entity) that this edge represents.
+            Associations are classes in Biolink
+            that represent a relationship between two entities.
+            For example, the association 'gene interacts with gene'
+            is represented by the Biolink class,
+            'biolink:GeneToGeneAssociation'.  If association
+            is filled out, then the testing harness can
+            help validate that the qualifiers are being used
+            correctly.
+          examples:
+            - biolink:ChemicalToGeneAssociation
+          $ref: '#/components/schemas/BiolinkEntity'
+        knowledge_levels:
+          description: >-
+            The knowledge levels contributing to this meta edge.
+            If provided, this property SHOULD contain all possible
+            knowledge_levels relevant edges might return.
+            (See https://biolink.github.io/biolink-model/KnowledgeLevelEnum/)
+          type: array
+          items:
+            type: string
+          minItems: 1
+        agent_types:
+          description: >-
+            The agent types contributing to this meta edge.
+            If provided, this property SHOULD contain all possible
+            agent_types relevant edges might return.
+            (See https://biolink.github.io/biolink-model/AgentTypeEnum/)
+          type: array
+          items:
+            type: string
+          minItems: 1
+        sources:
+          description: >-
+            The infores CURIEs for sources contributing to this meta edge.
+            If provided, this property SHOULD contain resource_ids for
+            all relevant resource_roles. Services MAY choose to omit
+            their own aggregator resource_ids.
+          type: array
+          items:
+            $ref: '#/components/schemas/CURIE'
+          minItems: 1
+      required:
+        - subject
+        - predicate
+        - object
+      additionalProperties: false
+    MetaQualifier:
+      type: object
+      properties:
+        qualifier_type_id:
+          $ref: '#/components/schemas/CURIE'
+          description: >-
+            The CURIE of the qualifier type.
+          examples:
+            - biolink:subject_aspect_qualifier
+        applicable_values:
+          type: array
+          minItems: 1
+          description: >-
+            The list of values that are possible for this qualifier.
+          items:
+            type: string
+          examples:
+            - [expression, activity, abundance, degradation]
+      required:
+        - qualifier_type_id
+    MetaAttribute:
+      type: object
+      properties:
+        attribute_type_id:
+          $ref: '#/components/schemas/CURIE'
+          description: >-
+            Type of an attribute provided by this TRAPI web service
+            (preferably the CURIE of a Biolink association slot)
+          examples:
+            - biolink:p_value
+        attribute_source:
+          type: string
+          description: >-
+            Source of an attribute provided by this TRAPI web service.
+          examples:
+            - infores:chembl
+        original_attribute_names:
+          type: array
+          items:
+            type: string
+          description: >-
+            Names of an the attribute as provided by the source.
+          minItems: 1
+        constraint_use:
+          type: boolean
+          description: >-
+            Indicates whether this attribute can be used as a query
+            constraint.
+          default: false
+        constraint_name:
+          type: string
+          description: >-
+            Human-readable name or label for the constraint concept.
+            Required whenever constraint_use is true.
+          examples:
+            - p-value
+      required:
+        - attribute_type_id
+    AttributeConstraint:
+      type: object
+      description: >-
+        Generic query constraint for a query node or query edge
+      properties:
+        id:
+          $ref: '#/components/schemas/CURIE'
+          description: >-
+            CURIE of the concept being constrained. For properties
+            defined by the Biolink Model this SHOULD be a biolink CURIE,
+            or else, if possible, from the EDAM ontology. If a suitable
+            CURIE does not exist, enter a descriptive phrase here and
+            submit the new type for consideration by the appropriate
+            ontology.
+          examples:
+            - EDAM:data_0844
+        name:
+          type: string
+          description: >-
+            Human-readable name or label for the constraint concept.
+            It SHOULD be the term name of the CURIE used
+            as the 'id' and SHOULD NOT supersede the use of AttributeConstraint.id
+            (which is required). This is redundant but recommended for human
+            readability.
+          examples:
+            - molecular mass
+        not:
+          type: boolean
+          default: false
+        operator:
+          type: string
+          description: >-
+            Relationship between the database value and the constraint value
+            for the specified id. The operators ==, >, and < mean
+            is equal to, is greater than, and is less than,
+            respectively. The 'matches' operator indicates that the value
+            is a regular expression to be evaluated. If value is a list type,
+            then at least one evaluation must be true (equivalent to OR).
+            This means that the == operator with a list acts like a SQL 'IN'
+            clause. If the value of the compared attribute is a list, then
+            comparisons are performed between each of the constraint values
+            and each of the attribute values, and any one true evaluation
+            counts as an overall true (e.g., [1,2,3] == [6,7,2] is true).
+            The == operator is therefore a broad interpretation of inclusion.
+            The '===' operator requires that the constraint value and
+            the attribute value be the same data type, length,
+            content, and order (e.g. only [1,2,3] === [1,2,3]).
+            The 'not' property negates the operator such that not
+            and == means 'not equal to' (or 'not in' for a list), and not >
+            means <=, and not < means >=, not matches means does not
+            match, and not === means the match between the constraint
+            and attribute values are not exact.
+            The '==' operator SHOULD NOT be used in a manner that
+            describes an "is a" subclass relationship for the parent QNode.
+          enum:
+            - ==
+            - '>'
+            - <
+            - matches
+            - ===
+        value:
+          examples:
+            - 57.0
+          description: >-
+            Value of the attribute. May be any data type, including a list.
+            If the value is a list and there are multiple items, at least one
+            comparison must be true (equivalent to OR) unless the '==='
+            operator is used. If 'value' is of data
+            type 'object', the keys of the object MAY be treated as a list.
+            A 'list' data type paired with the '>' or '<' operators will
+            encode extraneous comparisons, but this is permitted as it is in
+            SQL and other languages.
+        unit_id:
+          examples:
+            - UO:0000222
+          description: >-
+            CURIE of the units of the value or list of values in the 'value'
+            property. The Units of Measurement Ontology (UO) should be used
+            if possible. The unit_id MUST be provided for (lists of)
+            numerical values that correspond to a quantity that has units.
+        unit_name:
+          examples:
+            - kilodalton
+          description: >-
+            Term name that is associated with the CURIE of the units
+            of the value or list of values in the 'value'
+            property. The Units of Measurement Ontology (UO) SHOULD be used
+            if possible. This property SHOULD be provided if a unit_id is
+            provided. This is redundant but recommended for human readability.
+      required:
+        - id
+        - operator
+        - value
+      additionalProperties: false
+    RetrievalSource:
+      type: object
+      description: >-
+        Provides information about how a particular InformationResource
+        served as a source from which knowledge expressed in an Edge, or
+        data used to generate this knowledge, was retrieved.
+      properties:
+        resource_id:
+          $ref: '#/components/schemas/CURIE'
+          description: >-
+            The CURIE for an Information Resource that served as a source
+            of knowledge expressed in an Edge, or a source of data used to
+            generate this knowledge.
+          examples:
+            - infores:drugbank
+        resource_role:
+          $ref: '#/components/schemas/ResourceRoleEnum'
+          description: >-
+            The role played by the InformationResource in serving as a
+            source for an Edge. Note that a given Edge should have one
+            and only one 'primary' source, and may have any number of
+            'aggregator' or 'supporting data' sources.
+        upstream_resource_ids:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CURIE'
+          description: >-
+            An upstream InformationResource from which the resource
+            being described directly retrieved a record of the knowledge
+            expressed in the Edge, or data used to generate this knowledge.
+            This is an array because there are cases where a merged Edge
+            holds knowledge that was retrieved from multiple sources. e.g.
+            an Edge provided by the ARAGORN ARA can express knowledge it
+            retrieved from both the automat-mychem-info and molepro KPs,
+            which both provided it with records of this single fact.
+          examples:
+            - ['infores:automat-mychem-info', 'infores:molepro']
+        source_record_urls:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            examples:
+              - https://db.idrblab.net/ttd/data/drug/details/d0az3c
+              - https://db.idrblab.net/ttd/data/target/details/t57700
+          description: >-
+            A URL linking to a specific web page or document provided by the
+            source that contains a record of the knowledge expressed in the
+            Edge. If the knowledge is contained in more than one web page on
+            an information resource's site, urls MAY be provided for each.
+            For example, Therapeutic Targets Database (TTD) has separate web
+            pages for 'Imatinib' and its protein target KIT, both of which hold
+            the claim that 'the KIT protein is a therapeutic target for Imatinib'.
+      required:
+        - resource_id
+        - resource_role
+      additionalProperties: true
+    ResourceRoleEnum:
+      type: string
+      description: >-
+        The role played by the information resource in serving as a
+        source for an Edge. Note that a given Edge should have one
+        and only one 'primary_knowledge_source' source,
+        and may have any number of 'aggregator_knowledge_source'
+        or 'supporting_data_source' sources.  This enumeration
+        is found in Biolink Model, but is repeated here for convenience.
+      enum:
+        - primary_knowledge_source
+        - aggregator_knowledge_source
+        - supporting_data_source
+    Operations:
+      additionalProperties: true
+      description: Container for one or more Message objects or identifiers for one
+        or more Messages along with a processing plan and options for how those messages
+        should be processed and returned
+      properties:
+        message_uris:
+          description: List of URIs for Message or Response objects to fetch and process
+          items:
+            type: string
+          type: array
+        messages:
+          description: List of Message objects to process
+          items:
+            $ref: '#/components/schemas/Message'
+          type: array
+        actions:
+          description: List of order-dependent operations to execute
+          items:
+            type: string
+          type: array
+        options:
+          additionalProperties: true
+          description: Map of order independent options that apply during processing
+          type: object
+      type: object
+    Question:
+      additionalProperties: true
+      properties:
+        text:
+          description: Free text question
+          examples:
+            - what genetic conditions offer protection against malaria
+          type: string
+        language:
+          description: Human language in which the question is posed
+          enum:
+            - English
+          type: string
+      type: object
+    MeshNgdResponse:
+      properties:
+        result_code:
+          description: Set to OK for success, or some other short string to indicate
+            and error (e.g., TermNotFound, etc.)
+          examples:
+            - TermNotFound
+          title: result_code
+          type: string
+        message:
+          description: Extended message denoting the success or mode of failure for
+            request
+          title: message
+          type: string
+        value:
+          description: Calculated Normalized Google Distance for the two supplied
+            terms
+          format: float
+          title: value
+          type: number
+      title: MeshNgdResponse
+      type: object
+    EntityQuery:
+      properties:
+        terms:
+          description: List of term strings to search for
+          items:
+            type: string
+          title: terms
+          type: array
+        format:
+          description: Format of the response (full or compact)
+          title: format
+          type: string
+        max_synonyms:
+          description: Maximum number of synonyms to return
+          title: max_synonyms
+          type: integer
+      title: EntityQuery
+      type: object
+    OperationAnnotate:
+      additionalProperties: false
+      description: This operation adds attributes to knowledge graph elements.
+      properties:
+        id:
+          enum:
+          - annotate
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationAnnotateEdges:
+      additionalProperties: false
+      description: This operation adds attributes to knowledge graph edges.
+      properties:
+        id:
+          enum:
+          - annotate_edges
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationAnnotateEdges_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationAnnotateNodes:
+      additionalProperties: false
+      description: This operation adds attributes to knowledge graph nodes.
+      properties:
+        id:
+          enum:
+          - annotate_nodes
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationAnnotateNodes_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationBind:
+      additionalProperties: false
+      description: This operation adds results binding kgraph elements to qgraph elements.
+      properties:
+        id:
+          enum:
+          - bind
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationCompleteResults:
+      additionalProperties: false
+      description: This operation combines partial results into complete results.
+      properties:
+        id:
+          enum:
+          - complete_results
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationEnrichResults:
+      additionalProperties: false
+      description: Create new results by applying enrichment analysis to existing
+        results.  In particular, combines results by transforming a qnode into a set,
+        formed of knodes that share a property or relation more often than expected
+        by chance.
+      properties:
+        id:
+          enum:
+          - enrich_results
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationEnrichResults_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationFill:
+      additionalProperties: false
+      description: This operation adds knodes and kedges. Any constraints attached
+        to QNodes and QEdges specified in the TRAPI must be respected.
+      properties:
+        id:
+          enum:
+          - fill
+          type: string
+        parameters:
+          oneOf:
+          - additionalProperties: false
+            properties:
+              allowlist:
+                description: List of knowledge providers/sources that may be used
+                  to provide knowledge.
+                examples:
+                  - icees
+                items:
+                  type: string
+                minItems: 1
+                type: array
+              qedge_keys:
+                description: A list of qedge keys. If included only edges corresponding
+                  to the given qedge keys, as well as their connected nodes, will
+                  be filled. If not included all edges will be filled.
+                examples:
+                  - e00
+                items:
+                  type: string
+                type: array
+            type: object
+          - additionalProperties: false
+            properties:
+              denylist:
+                description: List of knowledge providers/sources that may NOT be used
+                  to provide knowledge.
+                examples:
+                  - ctd
+                items:
+                  type: string
+                minItems: 1
+                type: array
+              qedge_keys:
+                description: A list of qedge keys. If included only edges corresponding
+                  to the given qedge keys, as well as their connected nodes, will
+                  be filled. If not included all edges will be filled.
+                examples:
+                  - e00
+                items:
+                  type: string
+                type: array
+            type: object
+          type: object
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationFilterKgraph:
+      additionalProperties: false
+      description: This operation removes kgraph elements (nodes and/or edges).
+      properties:
+        id:
+          enum:
+          - filter_kgraph
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationFilterKgraphContinuousKedgeAttribute:
+      additionalProperties: false
+      description: This operation removes kgraph edges based on the value of a continuous
+        edge attribute. Edges without the given attribute are left alone.
+      properties:
+        id:
+          enum:
+          - filter_kgraph_continuous_kedge_attribute
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationFilterKgraphContinuousKedgeAttribute_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphDiscreteKedgeAttribute:
+      additionalProperties: false
+      description: This operation removes kgraph edges which have a discrete attribute
+        containing the specified value. Edges without the given attribute are left
+        alone.
+      properties:
+        id:
+          enum:
+          - filter_kgraph_discrete_kedge_attribute
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationFilterKgraphDiscreteKedgeAttribute_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphDiscreteKnodeAttribute:
+      additionalProperties: false
+      description: This operation removes kgraph nodes which have a discrete attribute
+        containing the specified value. In TRAPI 1.1+ this will look in the `attribute_type_id`
+        and `original_attribute_name` attribute fields for the attribute name. Node
+        without the given attribute are left alone. Edges connecting to the removed
+        nodes will also be removed.
+      properties:
+        id:
+          enum:
+          - filter_kgraph_discrete_knode_attribute
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationFilterKgraphDiscreteKnodeAttribute_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphOrphans:
+      additionalProperties: false
+      description: This operation removes kgraph elements that are not referenced
+        by any results.
+      properties:
+        id:
+          enum:
+          - filter_kgraph_orphans
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationFilterKgraphPercentile:
+      additionalProperties: false
+      description: This operation removes kgraph edges that have attribute values
+        are below/above the given percentile.
+      properties:
+        id:
+          enum:
+          - filter_kgraph_percentile
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationFilterKgraphPercentile_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphStdDev:
+      additionalProperties: false
+      description: This operation removes kgraph edges that have attribute values
+        are below/above the mean +/- n standard deviations.
+      properties:
+        id:
+          enum:
+          - filter_kgraph_std_dev
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationFilterKgraphStdDev_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterKgraphTopN:
+      additionalProperties: false
+      description: This operation removes kgraph edges that have attribute values
+        are below/above the top/bottom n values.
+      properties:
+        id:
+          enum:
+          - filter_kgraph_top_n
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationFilterKgraphTopN_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationFilterResults:
+      additionalProperties: false
+      description: This operation allows the TRAPI server to remove elements from
+        the list of results.
+      properties:
+        id:
+          enum:
+          - filter_results
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationFilterResultsTopN:
+      additionalProperties: false
+      description: This operation truncates the results to at most `max_results` that
+        appear in the TRAPI JSON message.
+      properties:
+        id:
+          enum:
+          - filter_results_top_n
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationFilterResultsTopN_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationLookup:
+      additionalProperties: false
+      description: This operation adds knodes/kedges and (complete) results. It is
+        equivalent to the workflow fill + bind + complete_results. Any constraints
+        attached to QNodes and QEdges specified in the TRAPI must be respected.
+      properties:
+        id:
+          enum:
+          - lookup
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationLookupAndScore:
+      additionalProperties: false
+      description: This operation adds knodes/kedges, (complete) results, and scores
+        (to the results). It is equivalent to the workflow fill + bind + complete_results
+        + score. Any constraints attached to QNodes and QEdges specified in the TRAPI
+        must be respected.
+      properties:
+        id:
+          enum:
+          - lookup_and_score
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationOverlay:
+      additionalProperties: false
+      description: This operation adds additional qedges and/or kedges and/or result
+        edge bindings.
+      properties:
+        id:
+          enum:
+          - overlay
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationOverlayComputeJaccard:
+      additionalProperties: false
+      description: This operation computes the Jaccard Similarity which measures how
+        many intermediate_node_key nodes are directly connected to both the end_node_keys
+        nodes for all pairs of nodes with corresponding keys. It will then add edges
+        to the knowledge graph along with edge attributes (with the property name
+        jaccard_index) between each start_node_key and object_node_key. A query graph
+        edge will also be added using the key specified by virtual_relation_label.
+        This is used for purposes such as "find me all drugs (start_node_key) that
+        have many proteins (intermediate_node_key) in common with this disease (end_node_key)."
+        This can be used for downstream filtering to concentrate on relevant bioentities.
+      properties:
+        id:
+          enum:
+          - overlay_compute_jaccard
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationOverlayComputeJaccard_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationOverlayComputeNgd:
+      additionalProperties: false
+      description: This operation computes the normalized Google distance (co-occurrence
+        frequency) in PubMed abstracts and adds virual edges between qnodes AND/OR
+        knodes AND/OR results edge bindings. If no publications are found infinity
+        is returned.
+      properties:
+        id:
+          enum:
+          - overlay_compute_ngd
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationOverlayComputeNgd_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationOverlayConnectKnodes:
+      additionalProperties: false
+      description: Given a TRAPI message, create new kedges between existing knodes.  These
+        may be created using arbitrary methods or data sources, though provenance
+        should be attached to the new kedges.   Each new kedge is also added to all
+        results containing node bindings to both the subject and object knodes.  This
+        may be independent of any qedge connections, i.e. kedges can be created between
+        any nodes in the kgraph.
+      properties:
+        id:
+          enum:
+          - overlay_connect_knodes
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationOverlayFisherExactTest:
+      additionalProperties: false
+      description: Fisher exact test computes the Fisher's Exact Test p-values of
+        the connection between a list of given nodes with specified query id (subject_qnode_key
+        e.g. n01) to their adjacent nodes with specified query id (object_qnode_key
+        e.g. n02) in the message knowledge graph. This information is then added as
+        an edge attribute to a virtual edge which is then added to the query graph
+        and knowledge graph. It can also allow you to filter out the user-defined
+        insignificance of connections based on a specified p-value cutoff or return
+        the top n smallest p-value of connections and only add their corresponding
+        virtual edges to the knowledge graph.
+      properties:
+        id:
+          enum:
+          - overlay_fisher_exact_test
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationOverlayFisherExactTest_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationRestate:
+      additionalProperties: false
+      description: This operation modifies the query graph.
+      properties:
+        id:
+          enum:
+          - restate
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationScore:
+      additionalProperties: false
+      description: This operation adds scores to results.
+      properties:
+        id:
+          enum:
+          - score
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationSortResults:
+      additionalProperties: false
+      description: This operation allows the TRAPI server to sort the elements of
+        the list of results.
+      properties:
+        id:
+          enum:
+          - sort_results
+          type: string
+        parameters: {}
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      type: object
+    OperationSortResultsEdgeAttribute:
+      additionalProperties: false
+      description: This operation sorts the results by the given edge attribute. If
+        in ascending order, the minimum value of the results edges with the given
+        attribute will be taken while the maximum will be taken for descending order.
+        If a result has no edges with the given attribute, it will be listed last.
+        If `max_results` is given, it truncates the results to at most the given value.
+      properties:
+        id:
+          enum:
+          - sort_results_edge_attribute
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationSortResultsEdgeAttribute_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationSortResultsNodeAttribute:
+      additionalProperties: false
+      description: This operation sorts the results by the given node attribute. If
+        in ascending order, the minimum value of the results nodes with the given
+        attribute will be taken while the maximum will be taken for descending order.
+        If a result has no nodes with the given attribute, it will be listed last.
+        If `max_results` is given, it truncates the results to at most the given value.
+      properties:
+        id:
+          enum:
+          - sort_results_node_attribute
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationSortResultsNodeAttribute_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationSortResultsScore:
+      additionalProperties: false
+      description: This operation sorts the results by the result score. If `max_results`
+        is given, it truncates the results to at most the given value.
+      properties:
+        id:
+          enum:
+          - sort_results_score
+          type: string
+        parameters:
+          $ref: '#/components/schemas/OperationSortResultsScore_parameters'
+        runner_parameters:
+          oneOf:
+          - properties:
+              allowlist:
+                description: List of operation providers (by infores ID) that may
+                  be used to complete operation. No others will be used. A full list
+                  of operation providers for each operation with infores ID's is available
+                  through the '/services' endpoint of the workflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          - properties:
+              denylist:
+                description: List of operation providers (by infores ID) that may
+                  not be used to complete operation. All others will be used. A full
+                  list of operation providers for each operation with infores ID's
+                  is available through the '/services' endpoint of the worflow runner.
+                examples:
+                  - infores:aragorn
+                items:
+                  type: string
+                minItems: 1
+                type: array
+          type: object
+        unique:
+          default: true
+          type: boolean
+      required:
+      - id
+      - parameters
+      type: object
+    OperationAnnotateEdges_parameters:
+      properties:
+        attributes:
+          description: A list of attributes to annotate the edges with. If not included
+            then all available data will be annotated.
+          examples:
+            - [ pmids ]
+          items:
+            type: string
+          title: attributes
+          type: array
+      title: OperationAnnotateEdges_parameters
+      type: object
+    OperationAnnotateNodes_parameters:
+      properties:
+        attributes:
+          description: A list of attributes to annotate the nodes with. If not included
+            then all available data will be annotated.
+          examples:
+            - pmids
+          items:
+            type: string
+          title: attributes
+          type: array
+      title: OperationAnnotateNodes_parameters
+      type: object
+    OperationEnrichResults_parameters:
+      properties:
+        pvalue_threshold:
+          default: 0.0000010
+          description: The cutoff p-value for enrichment.
+          examples:
+            - 1.0E-7
+          maximum: 1
+          minimum: 0
+          title: pvalue_threshold
+          type: number
+        qnode_keys:
+          description: If specified, then only knodes bound to these qnodes will be
+            examined for enrichment and combination.
+          examples:
+            - n01
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+      title: OperationEnrichResults_parameters
+      type: object
+    OperationFilterKgraphContinuousKedgeAttribute_parameters:
+      properties:
+        edge_attribute:
+          description: The name of the edge attribute to filter on.
+          examples:
+            - normalized_google_distance
+          title: edge_attribute
+          type: string
+        qedge_keys:
+          description: This indicates if you only want to remove edges with specific
+            edge_keys. If not provided or empty, all edges will be filtered on.
+          examples:
+            - e01
+          items:
+            type: string
+          title: qedge_keys
+          type: array
+        qnode_keys:
+          default: []
+          description: This indicates if you only want nodes corresponding to a specific
+            list of qnode_keys to be removed. If not provided or empty, no nodes will
+            be removed when filtering. Allows us to know what to do with the nodes
+            connected to edges that are removed.
+          examples:
+          - [ n01 ]
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+        remove_above_or_below:
+          description: Indicates whether to remove above or below the given threshold.
+          enum:
+          - above
+          - below
+          title: remove_above_or_below
+          type: string
+        threshold:
+          description: The value to compare attribute values to.
+          examples:
+            - 1.2
+          title: threshold
+          type: number
+      required:
+      - edge_attribute
+      - remove_above_or_below
+      - threshold
+      title: OperationFilterKgraphContinuousKedgeAttribute_parameters
+      type: object
+    OperationFilterKgraphDiscreteKedgeAttribute_parameters:
+      properties:
+        edge_attribute:
+          description: The name of the edge attribute to filter on.
+          examples:
+            - provided_by
+          title: edge_attribute
+          type: string
+        qedge_keys:
+          description: This indicates if you only want to remove edges with specific
+            edge_keys. If not provided or empty, all edges will be filtered on.
+          examples:
+            - e01
+          items:
+            type: string
+          title: qedge_keys
+          type: array
+        qnode_keys:
+          default: []
+          description: This indicates if you only want nodes corresponding to a specific
+            list of qnode_keys to be removed. If not provided or empty, no nodes will
+            be removed when filtering. Allows us to know what to do with the nodes
+            connected to edges that are removed
+          examples:
+            - n01
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+        remove_value:
+          description: The value for which all edges containing this value in the
+            specified edge_attribute should be removed.
+          examples:
+            - infores:semmeddb
+          title: remove_value
+      required:
+      - edge_attribute
+      - remove_value
+      title: OperationFilterKgraphDiscreteKedgeAttribute_parameters
+      type: object
+    OperationFilterKgraphDiscreteKnodeAttribute_parameters:
+      properties:
+        node_attribute:
+          description: The name of the node attribute to filter on.
+          examples:
+            - molecule_type
+          title: node_attribute
+          type: string
+        qnode_keys:
+          description: This indicates if you only want to remove nodes corresponding
+            to a specific list of qnode_keys to be removed. If not provided or empty,
+            all nodes will be considered when filtering.
+          examples:
+            - n01
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+        remove_value:
+          description: The value for which all edges containing this value in the
+            specified edge_attribute should be removed.
+          examples:
+            - small_molecule
+          title: remove_value
+      required:
+      - node_attribute
+      - remove_value
+      title: OperationFilterKgraphDiscreteKnodeAttribute_parameters
+      type: object
+    OperationFilterKgraphPercentile_parameters:
+      properties:
+        edge_attribute:
+          description: The name of the edge attribute to filter on.
+          examples:
+            - normalized_google_distance
+          title: edge_attribute
+          type: string
+        qedge_keys:
+          description: This indicates if you only want to filter on specific edge_keys.
+            If not provided or empty, all edges will be filtered on.
+          examples:
+            - e01
+          items:
+            type: string
+          title: qedge_keys
+          type: array
+        qnode_keys:
+          default: []
+          description: This indicates if you only want nodes corresponding to a specific
+            list of qnode_keys to be removed. If not provided or empty, no nodes will
+            be removed when filtering. Allows us to know what to do with the nodes
+            connected to edges that are removed.
+          examples:
+            - n01
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+        remove_above_or_below:
+          default: below
+          description: Indicates whether to remove above or below the given threshold.
+          enum:
+          - above
+          - below
+          title: remove_above_or_below
+          type: string
+        threshold:
+          default: 95
+          description: The percentile to threshold on.
+          examples:
+            - 96.8
+          maximum: 100
+          minimum: 0
+          title: threshold
+          type: number
+      required:
+      - edge_attribute
+      title: OperationFilterKgraphPercentile_parameters
+      type: object
+    OperationFilterKgraphStdDev_parameters:
+      properties:
+        edge_attribute:
+          description: The name of the edge attribute to filter on.
+          examples:
+            - normalized_google_distance
+          title: edge_attribute
+          type: string
+        num_sigma:
+          default: 1
+          description: The number of standard deviations to threshold on.
+          examples:
+            - 1.2
+          minimum: 0
+          title: num_sigma
+          type: number
+        plus_or_minus_std_dev:
+          default: plus
+          description: Indicate whether or not the threshold should be found using
+            plus or minus the standard deviation. E.g. when plus_or_minus_std_dev
+            is set to plus will set the cutoff for filtering as the mean + num_sigma
+            * std_dev while setting plus_or_minus_std_dev to minus will set the cutoff
+            as the mean - num_sigma * std_dev.
+          enum:
+          - plus
+          - minus
+          title: plus_or_minus_std_dev
+          type: string
+        qedge_keys:
+          description: This indicates if you only want to filter on specific edge_keys.
+            If not provided or empty, all edges will be filtered on.
+          examples:
+            - e01
+          items:
+            type: string
+          title: qedge_keys
+          type: array
+        qnode_keys:
+          default: []
+          description: This indicates if you only want nodes corresponding to a specific
+            list of qnode_keys to be removed. If not provided or empty, no nodes will
+            be removed when filtering.
+          examples:
+            - n01
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+        remove_above_or_below:
+          default: below
+          description: Indictes whether to remove above or below the given threshold.
+          enum:
+          - above
+          - below
+          title: remove_above_or_below
+          type: string
+      required:
+      - edge_attribute
+      title: OperationFilterKgraphStdDev_parameters
+      type: object
+    OperationFilterKgraphTopN_parameters:
+      properties:
+        edge_attribute:
+          description: The name of the edge attribute to filter on.
+          examples:
+            - normalized_google_distance
+          title: edge_attribute
+          type: string
+        keep_top_or_bottom:
+          default: top
+          description: Indicate whether or not the the top or bottom n values should
+            be kept.
+          enum:
+          - top
+          - bottom
+          title: keep_top_or_bottom
+          type: string
+        max_edges:
+          default: 50
+          description: The number of edges to keep.
+          examples:
+            - 10
+          minimum: 0
+          title: max_edges
+          type: integer
+        qedge_keys:
+          description: This indicates if you only want to filter on specific edge_keys.
+            If not provided or empty, all edges will be filtered on.
+          examples:
+            - e01
+          items:
+            type: string
+          title: qedge_keys
+          type: array
+        qnode_keys:
+          default: []
+          description: This indicates if you only want nodes corresponding to a specific
+            list of qnode_keys to be removed. If not provided or empty, no nodes will
+            be removed when filtering. Allows us to know what to do with the nodes
+            connected to edges that are removed.
+          examples:
+            - n01
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+      required:
+      - edge_attribute
+      title: OperationFilterKgraphTopN_parameters
+      type: object
+    OperationFilterResultsTopN_parameters:
+      properties:
+        max_results:
+          description: The maximum number of results to return.
+          examples:
+            - 50
+          minimum: 0
+          title: max_results
+          type: integer
+      required:
+      - max_results
+      title: OperationFilterResultsTopN_parameters
+      type: object
+    OperationOverlayComputeJaccard_parameters:
+      properties:
+        end_node_keys:
+          description: A list of qnode keys specifying the ending nodes.
+          examples:
+            - [ n0, n2 ]
+          items:
+            type: string
+          title: end_node_keys
+          type: array
+        intermediate_node_key:
+          description: A qnode key specifying the intermediate node.
+          examples:
+            - n1
+          title: intermediate_node_key
+          type: string
+        virtual_relation_label:
+          description: The key of the query graph edge that corresponds to the knowledge
+            graph edges that were added by this operation.
+          examples:
+            - J1
+          title: virtual_relation_label
+          type: string
+      required:
+      - end_node_keys
+      - intermediate_node_key
+      - virtual_relation_label
+      title: OperationOverlayComputeJaccard_parameters
+      type: object
+    OperationOverlayComputeNgd_parameters:
+      properties:
+        qnode_keys:
+          description: A list of qnode keys to overlay pairwise edges onto. Must be
+            be a list of at least 2 valid qnodes.
+          examples:
+          - [ n00, n01 ]
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+        virtual_relation_label:
+          description: An label to help identify the virtual edge in the relation
+            field
+          examples:
+            - NGD1
+          title: virtual_relation_label
+          type: string
+      required:
+      - qnode_keys
+      - virtual_relation_label
+      title: OperationOverlayComputeNgd_parameters
+      type: object
+    OperationOverlayFisherExactTest_parameters:
+      properties:
+        object_qnode_key:
+          description: A specific object query node id.
+          examples:
+            - n2
+          title: object_qnode_key
+          type: string
+        rel_edge_key:
+          description: A specific Qedge id connected to both subject nodes and object
+            nodes in message KG (optional, otherwise all edges connected to both subject
+            nodes and object nodes in message KG are considered).
+          examples:
+            - e01
+          title: rel_edge_key
+          type: string
+        subject_qnode_key:
+          description: A specific subject query node id.
+          examples:
+            - n1
+          title: subject_qnode_key
+          type: string
+        virtual_relation_label:
+          description: An label to help identify the virtual edge.
+          examples:
+            - f1
+          title: virtual_relation_label
+          type: string
+      required:
+      - object_qnode_key
+      - subject_qnode_key
+      - virtual_relation_label
+      title: OperationOverlayFisherExactTest_parameters
+      type: object
+    OperationSortResultsEdgeAttribute_parameters:
+      properties:
+        ascending_or_descending:
+          description: Indicates whether results should be sorted in ascending or
+            descending order.
+          enum:
+          - ascending
+          - descending
+          title: ascending_or_descending
+          type: string
+        edge_attribute:
+          description: The name of the edge attribute to order by.
+          examples:
+            - normalized_google_distance
+          title: edge_attribute
+          type: string
+        qedge_keys:
+          description: This indicates if you only want to consider edges with specific
+            edge_keys. If not provided or empty, all edges will be looked at.
+          examples:
+          - [ e01 ]
+          items:
+            type: string
+          title: qedge_keys
+          type: array
+      required:
+      - ascending_or_descending
+      - edge_attribute
+      title: OperationSortResultsEdgeAttribute_parameters
+      type: object
+    OperationSortResultsNodeAttribute_parameters:
+      properties:
+        ascending_or_descending:
+          description: Indicates whether results should be sorted in ascending or
+            descending order.
+          enum:
+          - ascending
+          - descending
+          title: ascending_or_descending
+          type: string
+        node_attribute:
+          description: The name of the node attribute to order by.
+          examples:
+            - normalized_google_distance
+          title: node_attribute
+          type: string
+        qnode_keys:
+          description: This indicates if you only want to consider nodes with specific
+            node_keys. If not provided or empty, all nodes will be looked at.
+          examples:
+          - [ e01 ]
+          items:
+            type: string
+          title: qnode_keys
+          type: array
+      required:
+      - ascending_or_descending
+      - node_attribute
+      title: OperationSortResultsNodeAttribute_parameters
+      type: object
+    OperationSortResultsScore_parameters:
+      properties:
+        ascending_or_descending:
+          description: Indicates whether results should be sorted in ascending or
+            descending order.
+          enum:
+          - ascending
+          - descending
+          title: ascending_or_descending
+          type: string
+      required:
+      - ascending_or_descending
+      title: OperationSortResultsScore_parameters
+      type: object
