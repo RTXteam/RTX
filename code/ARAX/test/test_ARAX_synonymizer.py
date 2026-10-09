@@ -449,5 +449,20 @@ def test_truncate_cluster():
     assert "biolink:Drug" not in results[PARKINSONS_CURIE]["categories"]
 
 
+# each maturity must use its own tier's NodeNorm, so PROD never calls CI (#2913)
+@pytest.mark.parametrize("maturity, expected_url", [
+    ("development", "https://nodenorm-es.ci.transltr.io"),
+    ("staging", "https://nodenorm-es.ci.transltr.io"),
+    ("testing", "https://nodenorm-es.test.transltr.io"),
+    ("production", "https://nodenorm-es.transltr.io"),
+])
+def test_node_normalizer_url_by_maturity(monkeypatch, maturity, expected_url):
+    fake_module = type(sys)("RTXConfiguration")
+    fake_module.RTXConfiguration = type("RTXConfiguration", (), {"maturity": maturity})
+    monkeypatch.setitem(sys.modules, "RTXConfiguration", fake_module)
+    monkeypatch.setattr(NodeSynonymizer, "_resolved_node_normalizer_url", None)
+    assert NodeSynonymizer.resolve_node_normalizer_url() == expected_url
+
+
 if __name__ == "__main__":
     pytest.main(['-v', 'test_ARAX_synonymizer.py'])

@@ -127,14 +127,13 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
     NAME_RESOLVER_URL = "https://name-resolution-sri.renci.org"
 
     # one Node Normalizer deployment per Translator maturity tier.
-    # production still runs the pre-ElasticSearch service; point it at an
-    # ES host once ITRB stands one up (nodenorm-es.transltr.io has no DNS
-    # as of 2026-09-16).
+    # production uses the ElasticSearch NodeNorm that ITRB deployed to
+    # PROD on 2026-10-08 (same version as nodenorm-es.test), #2913.
     NODE_NORMALIZER_URL_BY_MATURITY = {
         "development": "https://nodenorm-es.ci.transltr.io",
         "staging": "https://nodenorm-es.ci.transltr.io",
         "testing": "https://nodenorm-es.test.transltr.io",
-        "production": "https://nodenorm.transltr.io/1.4",
+        "production": "https://nodenorm-es.transltr.io",
     }
 
     # resolved once per class by resolve_node_normalizer_url() and shared
