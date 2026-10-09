@@ -65,16 +65,10 @@ servers:
   url: https://arax.ci.transltr.io/api/arax/v1.4
   x-maturity: staging
 - description: ARAX TRAPI 1.6 endpoint - development
-  url: https://arax.ncats.io/beta/api/arax/v1.4
+  url: https://arax.ncats.io/api/arax/v1.4
   x-maturity: development
 - description: ARAX TRAPI 1.6 endpoint - development
   url: https://arax.ncats.io/test/api/arax/v1.4
-  x-maturity: development
-- description: ARAX TRAPI 1.6 endpoint - development
-  url: https://arax.ncats.io/devED/api/arax/v1.4
-  x-maturity: development
-- description: ARAX TRAPI 1.6 endpoint - development
-  url: https://arax.ncats.io/devLM/api/arax/v1.4
   x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web
