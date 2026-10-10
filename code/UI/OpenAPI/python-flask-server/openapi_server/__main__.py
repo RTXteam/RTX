@@ -55,7 +55,7 @@ import sys
 import traceback
 from pathlib import Path
 import setproctitle
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
+
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
@@ -63,7 +63,7 @@ from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrument
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+#from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.sdk.resources import Resource
 
