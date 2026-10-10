@@ -63,7 +63,7 @@ from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrument
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.sdk.resources import Resource
 
@@ -103,15 +103,18 @@ def instrument(app, host, port):
     trace.set_tracer_provider(provider)
     provider.add_span_processor(
         SimpleSpanProcessor(
-            OTLPSpanExporter(endpoint = f"{host}:{port}")
+            JaegerExporter(
+                agent_host_name=host,
+                agent_port=port
+            )
         )
     )
 
-    FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=provider)
-    HTTPXClientInstrumentor().instrument(tracer_provider=provider)
-    RequestsInstrumentor().instrument(tracer_provider=provider)
-    SQLite3Instrumentor().instrument(tracer_provider=provider)
-    AioHttpClientInstrumentor().instrument(tracer_provider=provider)
+    #FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=provider)
+    #HTTPXClientInstrumentor().instrument(tracer_provider=provider)
+    #RequestsInstrumentor().instrument(tracer_provider=provider)
+    #SQLite3Instrumentor().instrument(tracer_provider=provider)
+    #AioHttpClientInstrumentor().instrument(tracer_provider=provider)
 
 
 def main():
