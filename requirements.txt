@@ -56,7 +56,7 @@ opentelemetry-sdk==1.17.0
 opentelemetry-semantic-conventions==0.38b0
 opentelemetry-util-http==0.38b0
 catrax-pathfinder==2.4.3
-catrax-xcrg @ git+https://github.com/Translator-CATRAX/xCRG.git@e67f2c082d53edf186e1feb609d563cea340eee0
+catrax-xcrg @ git+https://github.com/Translator-CATRAX/xCRG.git@1ed10a64eb71d72d7d44c061e1a1f1fc48bdb1cd
 biolink-helper-pkg==1.0.1
 httpx==0.28.1
 fastapi==0.142.2
