@@ -4,7 +4,7 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 import datetime
 import os
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.log_entry import LogEntry
 
 class ARAXResponse:
