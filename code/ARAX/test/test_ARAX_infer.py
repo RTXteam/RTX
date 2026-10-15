@@ -129,13 +129,11 @@ def test_xdtd_issue2160():
             {
                 "edges": {
                     "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "on",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "sn"
                     }
                 },
@@ -144,19 +142,17 @@ def test_xdtd_issue2160():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0019600"
-                    ],
+                    ]
                     },
                     "sn": {
                     "categories": [
                         "biolink:SmallMolecule"
                     ],
-                    "constraints": [],
                     "ids": [
                         "PUBCHEM.COMPOUND:23931"
-                    ],
+                    ]
                     }
                 }
             }
@@ -363,16 +359,13 @@ def test_xcrg_with_qg1():
                     "subject": "chemical",
                     "predicates": ['biolink:regulates', 'biolink:affects'],
                     "knowledge_type": "inferred",
-                    "qualifier_constraints": [
-                        {
-                            "qualifier_set": [
-                                {
-                                    "qualifier_type_id": "biolink:object_direction_qualifier",
-                                    "qualifier_value": "increased"
-                                }
-                            ]
-                        }
-                    ]
+                    "constraints": {
+                        "qualifiers": [
+                            {
+                                "biolink:object_direction_qualifier": "increased"
+                            }
+                        ]
+                    }
                 }
             }
         }
@@ -404,8 +397,7 @@ def test_xcrg_with_qg2():
                 },
                 "gene": {
                     "categories": ["biolink:Gene","biolink:Protein"]
-                },
-
+                }
             },
             "edges": {
                 "r_edge": {
@@ -413,16 +405,13 @@ def test_xcrg_with_qg2():
                     "subject": "chemical",
                     "predicates": ['biolink:affects'],
                     "knowledge_type": "inferred",
-                    "qualifier_constraints": [
-                        {
-                            "qualifier_set": [
-                                {
-                                    "qualifier_type_id": "biolink:object_direction_qualifier",
-                                    "qualifier_value": "decreased"
-                                }
-                            ]
-                        }
-                    ]
+                    "constraints": {
+                        "qualifiers": [
+                            {
+                                "biolink:object_direction_qualifier": "decreased"
+                            }
+                        ]
+                    }
                 }
             }
         }
@@ -454,20 +443,14 @@ def test_xcrg_with_only_qg():
                 "predicates": [
                     "biolink:affects"
                 ],
-                "qualifier_constraints": [
-                    {
-                    "qualifier_set": [
+                "constraints": {
+                    "qualifiers": [
                         {
-                        "qualifier_type_id": "biolink:object_aspect_qualifier",
-                        "qualifier_value": "activity_or_abundance"
-                        },
-                        {
-                        "qualifier_type_id": "biolink:object_direction_qualifier",
-                        "qualifier_value": "increased"
+                            "biolink:object_aspect_qualifier": "activity_or_abundance",
+                            "biolink:object_direction_qualifier": "increased"
                         }
                     ]
-                    }
-                ],
+                },
                 "subject": "SN"
                 }
             },
@@ -531,13 +514,11 @@ def test_xdtd_publications_in_edge_attributes():
         "message": {"query_graph": {
             "edges": {
                 "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "on",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "sn"
                 }
             },
@@ -546,16 +527,14 @@ def test_xdtd_publications_in_edge_attributes():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0015564"
-                    ],
+                    ]
                 },
                 "sn": {
                     "categories": [
                         "biolink:SmallMolecule"
-                    ],
-                    "constraints": [],
+                    ]
                 }
             }
         }}
@@ -592,13 +571,11 @@ def test_xdtd_extra_edge_attributes_and_qualifiers():
         "message": {"query_graph": {
             "edges": {
                 "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "on",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "sn"
                 }
             },
@@ -607,16 +584,14 @@ def test_xdtd_extra_edge_attributes_and_qualifiers():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0015564"
-                    ],
+                    ]
                 },
                 "sn": {
                     "categories": [
                         "biolink:SmallMolecule"
-                    ],
-                    "constraints": [],
+                    ]
                 }
             }
         }}
@@ -700,13 +675,11 @@ def test_xdtd_source_record_urls_in_retrieval_sources():
         "message": {"query_graph": {
             "edges": {
                 "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "on",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "sn"
                 }
             },
@@ -715,16 +688,14 @@ def test_xdtd_source_record_urls_in_retrieval_sources():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0015564"
-                    ],
+                    ]
                 },
                 "sn": {
                     "categories": [
                         "biolink:SmallMolecule"
-                    ],
-                    "constraints": [],
+                    ]
                 }
             }
         }}

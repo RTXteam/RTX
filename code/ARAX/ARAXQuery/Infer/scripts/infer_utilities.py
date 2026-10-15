@@ -42,7 +42,7 @@ from openapi_server.models.node import Node
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.qualifier import Qualifier
 from openapi_server.models.retrieval_source import RetrievalSource
-from openapi_server.models.q_edge_constraints import QEdgeConstraints #T2FIXME
+from openapi_server.models.q_edge_constraints import QEdgeConstraints
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
@@ -768,9 +768,11 @@ class InferUtilities:
                 edge_qualifier_direction = 'increased'
             else:
                 edge_qualifier_direction = 'decreased'
-            qualifier_set = [
-                Qualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
-                Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
+            qualifier_constraint_set = [
+                {
+                    "biolink:object_aspect_qualifier": "activity_or_abundance",
+                    "biolink:object_direction_qualifier": edge_qualifier_direction
+                }
             ]
             add_qedge_params = {
                 'key': qedge_id,
@@ -780,9 +782,7 @@ class InferUtilities:
             }
             self.response = messenger.add_qedge(self.response, add_qedge_params)
             message.query_graph.edges[add_qedge_params['key']].knowledge_type = "inferred"
-            message.query_graph.edges[add_qedge_params['key']].constraints = [  #T2FIXME
-                QEdgeConstraints(qualifiers=qualifier_set)  #T2FIXME
-            ]
+            message.query_graph.edges[add_qedge_params['key']].constraints = QEdgeConstraints(qualifiers=qualifier_constraint_set)
             message.query_graph.edges[add_qedge_params['key']]._filled = True
             chemical_qnode_key = 'chemical'
             gene_qnode_key = 'gene'

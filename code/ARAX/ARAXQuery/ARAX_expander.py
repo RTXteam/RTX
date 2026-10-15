@@ -247,8 +247,8 @@ class ARAXExpander:
                                   f"Don't know how to handle! Supported qnode constraints are: "
                                   f"{self.supported_qnode_attribute_constraints}", error_code="UnsupportedConstraint")
         for qedge_key, qedge in query_graph.edges.items():
-            if qedge.constraints:     #T2FIXME
-                for constraint in qedge.constraints:   #T2FIXME
+            if qedge.constraints and qedge.constraints.attributes:
+                for constraint in qedge.constraints.attributes:
                     if not self.is_supported_constraint(constraint, self.supported_qedge_attribute_constraints):
                         log.error(f"Unsupported constraint(s) detected on qedge {qedge_key}: \n{constraint}\n"
                                   f"Don't know how to handle! Supported qedge constraints are: "
@@ -991,10 +991,15 @@ class ARAXExpander:
                     # Get the subject and object of this edge
                     subject_qnode = query_graph.nodes[qedge.subject]  # chemical
                     object_qnode = query_graph.nodes[qedge.object]  # gene
-                    qualifier_direction = \
-                        [qualifier.qualifier_value for qualifier_constraint in qedge.qualifier_constraints for
-                         qualifier in qualifier_constraint.qualifier_set if
-                         qualifier.qualifier_type_id == 'biolink:object_direction_qualifier'][0]
+                    qualifier_direction = None
+                    if qedge.constraints and qedge.constraints.qualifiers:
+                        for qualifier_set in qedge.constraints.qualifiers:
+                            if 'biolink:object_direction_qualifier' in qualifier_set:
+                                qualifier_direction = qualifier_set['biolink:object_direction_qualifier']
+                                break
+                    if qualifier_direction is None:
+                        response.error("No 'biolink:object_direction_qualifier' found in qedge constraints.qualifiers for xCRG query.")
+                        return response, overarching_kg
                     if qualifier_direction == 'increased':
                         regulation_type = 'increase'
                     elif qualifier_direction == 'decreased':

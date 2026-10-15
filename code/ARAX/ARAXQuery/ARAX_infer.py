@@ -23,8 +23,7 @@ from ARAX_response import ARAXResponse
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
-from openapi_server.models.qualifier import Qualifier
-from openapi_server.models.q_edge_constraints import QEdgeConstraints #T2FIXME
+from openapi_server.models.q_edge_constraints import QEdgeConstraints
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
 from node_synonymizer import NodeSynonymizer
@@ -770,15 +769,18 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 edge_qualifier_direction = 'increased'
             else:
                 edge_qualifier_direction = 'decreased'
-            edge_qualifier_list = [
-                Qualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
-                Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)]
+            qualifier_constraint_set = [
+                {
+                    "biolink:object_aspect_qualifier": "activity_or_abundance",
+                    "biolink:object_direction_qualifier": edge_qualifier_direction
+                }
+            ]
                 
             for qedge in qedges:
                 edge = message.query_graph.edges[qedge]
                 edge.knowledge_type = "inferred"
                 edge.predicates = ["biolink:affects"]
-                edge.constraints = [QEdgeConstraints(qualifiers=edge_qualifier_list)] #T2FIXME
+                edge.constraints = QEdgeConstraints(qualifiers=qualifier_constraint_set)
                    
 
         else:
