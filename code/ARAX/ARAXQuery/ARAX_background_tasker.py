@@ -23,6 +23,13 @@ from meta_kg_background_refresh import refresh_meta_kg
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
+
+def log_error(message: str):
+    """Log an ERROR line with the current traceback, so tasker failures are easy to find (#2908)."""
+    timestamp = str(datetime.datetime.now().isoformat())
+    eprint(f"{timestamp}: ERROR: ARAXBackgroundTasker: {message}")
+    eprint(traceback.format_exc())
+
 FREQ_KP_INFO_CACHER_SEC = 3600
 FREQ_META_KG_REFRESH_SEC = 3600  # 1 hour
 FREQ_CHECK_ONGOING_SEC = 60
@@ -44,13 +51,33 @@ class ARAXBackgroundTasker:
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker created")
 
 
+    def _create_query_tracker(self):
+        """The query tracker (MySQL), or None if it can't be set up right now (#2908)."""
+        try:
+            return ARAXQueryTracker()
+        except Exception:
+            log_error("could not set up the query tracker (MySQL); will try again on the next pass")
+            return None
+
+
+    def _create_kp_query_cacher(self, mode):
+        """The KP query cache, or None if it can't be set up right now (#2908)."""
+        try:
+            return KPQueryCacher(mode=mode)
+        except Exception:
+            log_error("could not set up the KP query cache; will try again on the next pass")
+            return None
+
+
     def run_tasks(self):
 
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker starting")
 
-        # Set up the query tracker
-        query_tracker = ARAXQueryTracker()
+        # Set up the query tracker. It and the KP query cache are not needed to
+        # refresh the KP info caches, so if one of them can't be set up (for
+        # example MySQL is down), keep going and try again on the next pass (#2908)
+        query_tracker = self._create_query_tracker()
 
         if self.run_kp_info_cacher:
             kp_info_cacher = KPInfoCacher()
@@ -62,10 +89,13 @@ class ARAXBackgroundTasker:
         load_file_path = os.path.dirname(os.path.abspath(__file__))+"/ARAX_background_tasker_loadlog.txt"
 
         # Clear the table of existing queries, only when the application starts
-        if self.first_start:
+        if self.first_start and query_tracker is not None:
             eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Clearing any "
                    "potential stale queries in ongoing query table")
-            query_tracker.clear_ongoing_queries()
+            try:
+                query_tracker.clear_ongoing_queries()
+            except Exception:
+                log_error("clear_ongoing_queries() failed")
 
         # Print out our package versions on start for troubleshooting
         if DUMP_PACKAGE_VERSIONS_ON_START:
@@ -83,7 +113,7 @@ class ARAXBackgroundTasker:
 
         #### Set up the KP Cacher to be used for periodic refreshing.
         #### mode='BackgroundTasker' clears the KP query cache, so only on the first start
-        kp_cacher = KPQueryCacher(mode='BackgroundTasker' if self.first_start else None)
+        kp_cacher = self._create_kp_query_cacher(mode='BackgroundTasker' if self.first_start else None)
 
         # Loop forever performing various background tasks
         my_pid = os.getpid()
@@ -162,30 +192,39 @@ class ARAXBackgroundTasker:
                         f"{error}")
 
             # Check on the ongoing queries table to see how many we have
-            try:
-                ongoing_queries_by_addr = query_tracker.check_ongoing_queries()
-            except Exception as error:
-                eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: failed check_ongoing_queries with error {error}")
-                ongoing_queries_by_addr = {}
+            if query_tracker is None:
+                query_tracker = self._create_query_tracker()
+            ongoing_queries_by_addr = {}
+            if query_tracker is not None:
+                try:
+                    ongoing_queries_by_addr = query_tracker.check_ongoing_queries() or {}
+                except Exception as error:
+                    eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: failed check_ongoing_queries with error {error}")
             n_ongoing_queries = 0
             n_clients = 0
             for client, n_queries in ongoing_queries_by_addr.items():
                 n_clients += 1
                 n_ongoing_queries += n_queries
 
-            #### Refresh the KP cache
+            #### Refresh the KP cache (never clear it here: the server is running)
+            if kp_cacher is None:
+                kp_cacher = self._create_kp_query_cacher(mode=None)
             start_time = time.time()
-            try:
-                kp_cacher.refresh_cache()
-            except Exception as error:
-                eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: failed to_refresh_cache with error {error}")
+            if kp_cacher is not None:
+                try:
+                    kp_cacher.refresh_cache()
+                except Exception as error:
+                    eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: failed to_refresh_cache with error {error}")
             elapsed_time = time.time() - start_time
             if elapsed_time < FREQ_CHECK_ONGOING_SEC - 1:
                 time_to_sleep = FREQ_CHECK_ONGOING_SEC - round(elapsed_time)
             else:
                 time_to_sleep = 2
 
-            # Collect current system load information
+            # Collect current system load information. Defaults first, so a
+            # failure here can't leave the names below unset or a minute old
+            load_tuple = cpu_percent = cpu_count = available_gb = total_gb = None
+            matching_processes = []
             try:
                 load_tuple = psutil.getloadavg()
                 cpu_percent = psutil.cpu_percent(interval=1)
