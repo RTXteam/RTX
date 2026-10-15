@@ -32,10 +32,14 @@ class ARAXBackgroundTasker:
 
     def __init__(self, parent_pid: int,
                  run_kp_info_cacher: bool = True,
-                 run_meta_kg_refresh: bool = True):
+                 run_meta_kg_refresh: bool = True,
+                 first_start: bool = True):
         self.run_kp_info_cacher = run_kp_info_cacher
         self.run_meta_kg_refresh = run_meta_kg_refresh
         self.parent_pid = parent_pid
+        # False when the tasker is restarted after a crash (#2908); then the
+        # server may be running queries, so skip the one-time startup cleanup
+        self.first_start = first_start
         timestamp = str(datetime.datetime.now().isoformat())
         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker created")
 
@@ -57,10 +61,11 @@ class ARAXBackgroundTasker:
 
         load_file_path = os.path.dirname(os.path.abspath(__file__))+"/ARAX_background_tasker_loadlog.txt"
 
-        # Clear the table of existing queries
-        eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Clearing any "
-               "potential stale queries in ongoing query table")
-        query_tracker.clear_ongoing_queries()
+        # Clear the table of existing queries, only when the application starts
+        if self.first_start:
+            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Clearing any "
+                   "potential stale queries in ongoing query table")
+            query_tracker.clear_ongoing_queries()
 
         # Print out our package versions on start for troubleshooting
         if DUMP_PACKAGE_VERSIONS_ON_START:
@@ -76,8 +81,9 @@ class ARAXBackgroundTasker:
                 else:
                     pass
 
-        #### Set up the KP Cacher to be used for periodic refreshing
-        kp_cacher = KPQueryCacher(mode='BackgroundTasker')
+        #### Set up the KP Cacher to be used for periodic refreshing.
+        #### mode='BackgroundTasker' clears the KP query cache, so only on the first start
+        kp_cacher = KPQueryCacher(mode='BackgroundTasker' if self.first_start else None)
 
         # Loop forever performing various background tasks
         my_pid = os.getpid()
