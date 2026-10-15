@@ -18,9 +18,6 @@ from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/Expand")
 from kp_info_cacher import KPInfoCacher
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../KnowledgeSources")
-from meta_kg_background_refresh import refresh_meta_kg
-
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 
@@ -153,7 +150,13 @@ class ARAXBackgroundTasker:
                     eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: Running "
                            "meta knowledge graph refresh")
                     try:
-                        # Import and run meta KG refresh using existing function
+                        # Import and run meta KG refresh using existing function.
+                        # The import stays inside this try, so a broken meta KG module
+                        # only stops the meta KG refresh, not the whole tasker (#2908)
+                        knowledge_sources_dir = os.path.dirname(os.path.abspath(__file__)) + "/../KnowledgeSources"
+                        if knowledge_sources_dir not in sys.path:
+                            sys.path.append(knowledge_sources_dir)
+                        from meta_kg_background_refresh import refresh_meta_kg
                         success = refresh_meta_kg()
                         if success:
                             eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
