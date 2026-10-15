@@ -130,14 +130,8 @@ class ARAXBackgroundTasker:
                         kp_info_cacher.refresh_kp_info_caches()
                         eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
                                "Completed refresh_kp_info_caches()")
-                    except Exception as error:
-                        e_type, e_value, e_traceback = sys.exc_info()
-                        err_str = repr(traceback.format_exception(e_type,
-                                                                  e_value,
-                                                                  e_traceback))
-                        eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
-                               "refresh_kp_info_caches() failed: "
-                               f"{error}: {err_str}")
+                    except Exception:
+                        log_error("refresh_kp_info_caches() failed")
                 kp_info_cacher_counter += 1
                 if kp_info_cacher_counter * FREQ_CHECK_ONGOING_SEC > \
                    FREQ_KP_INFO_CACHER_SEC:
@@ -162,17 +156,10 @@ class ARAXBackgroundTasker:
                             eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
                                    "Completed meta KG refresh successfully")
                         else:
-                            eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
+                            eprint(f"{timestamp}: ERROR: ARAXBackgroundTasker: "
                                    "meta KG refresh failed")
-                    except Exception as error:
-                        e_type, e_value, e_traceback =\
-                            sys.exc_info()
-                        err_str = repr(traceback.format_exception(e_type,
-                                                                  e_value,
-                                                                  e_traceback))
-                        eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: "
-                               "meta KG refresh failed: "
-                               f"{error}: {err_str}")
+                    except Exception:
+                        log_error("meta KG refresh failed")
                 meta_kg_refresh_counter += 1
                 if meta_kg_refresh_counter * FREQ_CHECK_ONGOING_SEC > \
                    FREQ_META_KG_REFRESH_SEC:
@@ -201,8 +188,8 @@ class ARAXBackgroundTasker:
             if query_tracker is not None:
                 try:
                     ongoing_queries_by_addr = query_tracker.check_ongoing_queries() or {}
-                except Exception as error:
-                    eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: failed check_ongoing_queries with error {error}")
+                except Exception:
+                    log_error("check_ongoing_queries() failed")
             n_ongoing_queries = 0
             n_clients = 0
             for client, n_queries in ongoing_queries_by_addr.items():
@@ -216,8 +203,8 @@ class ARAXBackgroundTasker:
             if kp_cacher is not None:
                 try:
                     kp_cacher.refresh_cache()
-                except Exception as error:
-                    eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: failed to_refresh_cache with error {error}")
+                except Exception:
+                    log_error("KP query cache refresh_cache() failed")
             elapsed_time = time.time() - start_time
             if elapsed_time < FREQ_CHECK_ONGOING_SEC - 1:
                 time_to_sleep = FREQ_CHECK_ONGOING_SEC - round(elapsed_time)
@@ -243,8 +230,8 @@ class ARAXBackgroundTasker:
                         for arg in proc.info['cmdline']:
                             if 'child' in arg:
                                 matching_processes.append(proc)
-            except Exception as error:
-                eprint(f"{timestamp}: INFO: ARAXBackgroundTasker: failed get system load information with error {error}")
+            except Exception:
+                log_error("could not read the system load information")
 
             try:
                 eprint(f"{timestamp}: INFO: ARAXBackgroundTasker "
