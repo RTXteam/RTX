@@ -27,3 +27,5 @@ test_ARAX_resultify.py::test_issue720_1 PASSED                            [ 33%]
 test_ARAX_resultify.py::test_issue720_2 PASSED                            [ 66%]
 test_ARAX_resultify.py::test_issue720_3 PASSED                            [100%]
 ```
+
+x
