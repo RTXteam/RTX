@@ -3,7 +3,6 @@
 
 # Table of contents
 
-
 - [About the Translator project, Team Expander Agent, and ARAX](#about-the-translator-project-team-expander-agent-and-arax)
 - [ARAX analyzes knowledge graphs to answer biomedical questions](#arax-analyzes-knowledge-graphs-to-answer-biomedical-questions)
 - [How does ARAX work?](#how-does-arax-work)
