@@ -23,6 +23,7 @@ info:
   x-trapi:
     version: 1.6.0
     asyncquery: true
+    test_data_location: https://raw.githubusercontent.com/RTXteam/RTX/master/code/ARAX/Documentation/arax_kps.json
     operations:
     - lookup
     - lookup_and_score
@@ -53,8 +54,26 @@ externalDocs:
   description: Documentation for the NCATS Biomedical Translator Reasoners web services
   url: https://github.com/NCATSTranslator/ReasonerAPI
 servers:
-- description: ARAX TRAPI 1.6alpha endpoint - development
-  url: https://arax.ncats.io/api/arax/v1.4
+- description: ARAX TRAPI 1.6 endpoint - production
+  url: https://arax.transltr.io/api/arax/v1.4
+  x-maturity: production
+- description: ARAX TRAPI 1.4 endpoint - testing
+  url: https://arax.test.transltr.io/api/arax/v1.4
+  x-maturity: testing
+- description: ARAX TRAPI 1.4 endpoint - staging
+  url: https://arax.ci.transltr.io/api/arax/v1.4
+  x-maturity: staging
+- description: ARAX TRAPI 1.4 endpoint - development
+  url: https://arax.ncats.io/beta/api/arax/v1.4
+  x-maturity: development
+- description: ARAX TRAPI 1.4 endpoint - development
+  url: https://arax.ncats.io/test/api/arax/v1.4
+  x-maturity: development
+- description: ARAX TRAPI 1.4 endpoint - development
+  url: https://arax.ncats.io/devED/api/arax/v1.4
+  x-maturity: development
+- description: ARAX TRAPI 1.4 endpoint - development
+  url: https://arax.ncats.io/devLM/api/arax/v1.4
   x-maturity: development
 tags:
 - description: Retrieve the meta knowledge graph representation of this TRAPI web
