@@ -42,7 +42,7 @@ XCRG_RETRIEVER_URL_BY_MATURITY = {
     "staging": "https://retriever.ci.transltr.io/query",
     "testing": "https://retriever.test.transltr.io/query",
     "production": "https://retriever.transltr.io/query",
-    "development": "https://retriever.ci.transltr.io/query",
+    "development": "https://dev.retriever.biothings.io/query",
 }
 DEFAULT_XCRG_TIMEOUT = 210
 DEFAULT_XCRG_TF_BATCH_SIZE = 200
@@ -595,17 +595,21 @@ class ARAXConnect:
             self.response.envelope.message.auxiliary_graphs = {}
 
         if self.response.envelope.message.knowledge_graph is None:
-            self.response.envelope.message.knowledge_graph = {}
+            self.response.envelope.message.knowledge_graph = KnowledgeGraph(nodes={}, edges={})
+        if self.response.envelope.message.knowledge_graph.edges is None:
+            self.response.envelope.message.knowledge_graph.edges = {}
         rehydrated_kg = self.rehydrate(knowledge_graph, retriever_url)
-        kg = KnowledgeGraph().from_dict(rehydrated_kg)
+        kg = KnowledgeGraph.from_dict(rehydrated_kg)
 
+        # The pathfinder package still emits TRAPI 1.x bindings ([{"id": ..., "attributes": []}])
+        # and auxiliary graphs with "attributes"; convert them to the TRAPI 2.0 shape here.
         analyses = []
         for analys in result['analyses']:
             path_bindings = {}
             for key, value in analys['path_bindings'].items():
-                path_bindings[key] = [PathBinding(id=value[0]['id'])]
+                path_bindings[key] = PathBinding(ids=[binding['id'] for binding in value])
             analyses.append(
-                Analysis(  #T2FIXME
+                Analysis(
                     resource_id=analys["resource_id"],
                     path_bindings=path_bindings,
                     score=analys['score']
@@ -614,7 +618,7 @@ class ARAXConnect:
 
         node_bindings = {}
         for key, value in result["node_bindings"].items():
-            node_bindings[key] = [NodeBinding(id=value[0]['id'], attributes=[])]
+            node_bindings[key] = NodeBinding(ids=[binding['id'] for binding in value])
         self.response.envelope.message.results.append(
             Result(
                 id=result["id"],
@@ -624,11 +628,8 @@ class ARAXConnect:
             )
         )
         for key, value in aux_graphs.items():
-            self.response.envelope.message.auxiliary_graphs[key] = AuxiliaryGraph(
-                edges=value['edges'],
-                attributes=[]
-            )
-        self.response.envelope.message.knowledge_graph.edges.update(kg.edges)
+            self.response.envelope.message.auxiliary_graphs[key] = AuxiliaryGraph(edges=value['edges'])
+        self.response.envelope.message.knowledge_graph.edges.update(kg.edges or {})
         self.response.envelope.message.knowledge_graph.nodes.update(kg.nodes)
 
     def rehydrate(self, kg, retriever_url):
