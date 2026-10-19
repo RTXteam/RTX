@@ -474,7 +474,8 @@ class ARAXConnect:
             get_kg2c_db_path(),
             blocked_curies,
             blocked_synonyms,
-            self.response
+            self.response,
+            rtx_config.maturity
         )
         max_pathfinder_paths = 500
         if 'max_pathfinder_paths' in self.parameters:
@@ -512,7 +513,7 @@ class ARAXConnect:
             return self.response
 
         with tracer.start_as_current_span("ARAX_connect.convert_to_trapi"):
-            self.convert_to_trapi(result, aux_graphs, knowledge_graph, retriever_url)
+            self.convert_to_trapi(result, aux_graphs, knowledge_graph, retriever_url, rtx_config.maturity)
 
         mode = 'ARAX'
         if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
@@ -600,7 +601,7 @@ class ARAXConnect:
         synonyms = set(s.lower() for s in json_block_list['synonyms'])
         return set(json_block_list['curies']), synonyms
 
-    def convert_to_trapi(self, result, aux_graphs, knowledge_graph, retriever_url):
+    def convert_to_trapi(self, result, aux_graphs, knowledge_graph, retriever_url, maturity):
         if self.response.envelope.message.results is None:
             self.response.envelope.message.results = []
 
@@ -609,7 +610,7 @@ class ARAXConnect:
 
         if self.response.envelope.message.knowledge_graph is None:
             self.response.envelope.message.knowledge_graph = {}
-        rehydrated_kg = self.rehydrate(knowledge_graph, retriever_url)
+        rehydrated_kg = self.rehydrate(knowledge_graph, retriever_url, maturity)
         kg = KnowledgeGraph().from_dict(rehydrated_kg)
 
         analyses = []
@@ -644,7 +645,7 @@ class ARAXConnect:
         self.response.envelope.message.knowledge_graph.edges.update(kg.edges)
         self.response.envelope.message.knowledge_graph.nodes.update(kg.nodes)
 
-    def rehydrate(self, kg, retriever_url):
+    def rehydrate(self, kg, retriever_url, maturity):
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         payload = {
             "message": {
@@ -653,7 +654,8 @@ class ARAXConnect:
             "parameters": {
                 "rehydrate": True,
                 "tier": 0
-            }
+            },
+            "submitter": f"arax-pathfinder@{maturity}"
         }
 
         try:
