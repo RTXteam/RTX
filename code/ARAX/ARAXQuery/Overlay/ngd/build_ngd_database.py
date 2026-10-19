@@ -16,6 +16,8 @@ import sqlite3
 import subprocess
 import time
 
+import numpy as np
+
 from lxml import etree
 from extraction_script import process_names
 from stitch.local_babel import (
@@ -348,7 +350,7 @@ class NGDDatabaseBuilder:
         out_cursor.execute("""
             CREATE TABLE curie_to_pmids (
                 curie TEXT PRIMARY KEY,
-                pmids TEXT
+                pmids BLOB
             )
         """)
 
@@ -366,18 +368,20 @@ class NGDDatabaseBuilder:
         for curie, pmid in rows_iter:
             if curie != current_curie:
                 if current_curie is not None:
+                    blob = np.array(sorted(current_pmids), dtype=np.int32).tobytes()
                     write_cursor.execute(
                         "INSERT INTO curie_to_pmids VALUES (?, ?)",
-                        (current_curie, json.dumps(sorted(current_pmids))),
+                        (current_curie, blob),
                     )
                     n_written += 1
                 current_curie = curie
                 current_pmids = set()
             current_pmids.add(pmid)
         if current_curie is not None:
+            blob = np.array(sorted(current_pmids), dtype=np.int32).tobytes()
             write_cursor.execute(
                 "INSERT INTO curie_to_pmids VALUES (?, ?)",
-                (current_curie, json.dumps(sorted(current_pmids))),
+                (current_curie, blob),
             )
             n_written += 1
 

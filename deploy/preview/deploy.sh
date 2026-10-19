@@ -298,6 +298,18 @@ verify_checkout() {
     refuse "the preview built ${actual:-an unknown commit}, not the PR head ${SHA}. This PR's DockerBuild/CICD-Dockerfile predates the BUILD_BRANCH support, so the build ran master instead of the branch. Rebase the branch onto master, then comment /deploy."
 }
 
+# pin_maturity
+# Without an override the container auto-detects maturity=development and
+# queries the dev tier KPs, whose in-progress changes can break a preview (in
+# 2026-09 dev Retriever switched to a non TRAPI 1.6 binding format). Staging
+# makes the preview query the same ci tier KPs as arax.ci. Must run before
+# kp_info_cacher.py, the cache is keyed by maturity. Written as rt, the owner
+# of the clone.
+pin_maturity() {
+    log "pinning maturity to staging (ci tier KPs, same as arax.ci)"
+    ${DOCKER} exec "${CONTAINER}" bash -c "sudo -u rt bash -c 'echo staging > ${CONTAINER_REPO}/code/maturity_override.txt'"
+}
+
 # wait_healthy <seconds>
 # Polls the container's own status endpoint. Returns non-zero on timeout so
 # the caller can decide what to log and how to fail.
@@ -619,8 +631,10 @@ if [ "${MODE}" = "fast" ]; then
     log "step 4/10 refreshing database symlinks"
     ${DOCKER} exec "${CONTAINER}" bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
 
-    # 5. KP info cache
+    # 5. KP info cache. Rewrite the maturity override first, so a container
+    #    created before the override existed also moves to the ci tier KPs.
     log "step 5/10 rebuilding the KP info cache"
+    pin_maturity
     ${DOCKER} exec "${CONTAINER}" bash -c "cd /mnt/data/orangeboard/production/RTX/code/ARAX/ARAXQuery/Expand && python3 kp_info_cacher.py"
 
     # 6. Restart the Flask services only. Apache serves the UI straight from
@@ -706,6 +720,7 @@ else
     ${DOCKER} exec "${CONTAINER}" bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
 
     log "building the KP info cache"
+    pin_maturity
     ${DOCKER} exec "${CONTAINER}" bash -c "cd /mnt/data/orangeboard/production/RTX/code/ARAX/ARAXQuery/Expand && python3 kp_info_cacher.py"
 
     log "starting apache2, RTX_OpenAPI_production and RTX_Complete"
