@@ -1,5 +1,5 @@
-# Dockerfile for ITRB CI (arax.ci.transltr.io)
-# This Dockerfile is used by Jenkins to build the ITRB CI image
+# Dockerfile for ITRB test (arax.test.transltr.io)
+# This Dockerfile is used by Jenkins to build the ITRB test image
 FROM ubuntu:24.04
 
 # suppress debconf error messages:

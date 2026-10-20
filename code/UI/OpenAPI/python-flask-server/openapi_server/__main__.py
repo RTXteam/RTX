@@ -51,11 +51,14 @@ import json
 import os
 import signal
 import sys
+import time
 import traceback
 from pathlib import Path
 import setproctitle
 from opentelemetry.instrumentation.flask import FlaskInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
 from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrumentor
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
@@ -98,8 +101,57 @@ def instrument(app, host, port):
     )
 
     FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=provider)
+    HTTPXClientInstrumentor().instrument(tracer_provider=provider)
     RequestsInstrumentor().instrument(tracer_provider=provider)
+    SQLite3Instrumentor().instrument(tracer_provider=provider)
     AioHttpClientInstrumentor().instrument(tracer_provider=provider)
+
+
+# How long to wait before restarting a crashed background tasker (issue 2908)
+BACKGROUND_TASKER_FIRST_RESTART_DELAY_SEC = 30
+BACKGROUND_TASKER_MAX_RESTART_DELAY_SEC = 900
+BACKGROUND_TASKER_HEALTHY_RUN_SEC = 600
+
+
+def run_background_tasker_with_restarts(parent_pid: int) -> None:
+    """Run the background tasker in this child process and restart it after a crash.
+
+    See ARAX issue 2908: when the tasker died, nothing started it again, the KP
+    info caches stopped refreshing, and 24 hours later Expand refused every
+    query. After a crash this waits 30 s, then 60 s, 120 s, ... up to 15 min
+    before the next try. A run that lasted 10 min or more resets the wait.
+
+    Only the first start does the one-time startup cleanup (ongoing query table,
+    KP query cache), because on a restart the server may be running queries.
+
+    This never returns: the tasker raises SystemExit when the parent server is
+    gone, and this exits too if the server goes away while waiting to restart.
+    The restart stays in this child, not in the parent, because the parent runs
+    a threaded web server, and forking a threaded process can deadlock the child.
+    """
+    first_start = True
+    restart_delay_sec = BACKGROUND_TASKER_FIRST_RESTART_DELAY_SEC
+    while True:
+        start_time = time.monotonic()
+        try:
+            from ARAX_background_tasker import ARAXBackgroundTasker  # pylint: disable=import-outside-toplevel, import-error
+            ARAXBackgroundTasker(parent_pid, first_start=first_start).run_tasks()
+            eprint("Background tasker run_tasks() returned unexpectedly")
+        except Exception:  # pylint: disable=broad-exception-caught
+            eprint("Error in ARAXBackgroundTasker.run_tasks()")
+            eprint(traceback.format_exc())
+        first_start = False
+        if time.monotonic() - start_time >= BACKGROUND_TASKER_HEALTHY_RUN_SEC:
+            restart_delay_sec = BACKGROUND_TASKER_FIRST_RESTART_DELAY_SEC
+        eprint(f"{time.strftime('%Y-%m-%dT%H:%M:%S')}: ERROR: background tasker "
+               f"stopped; restarting it in {restart_delay_sec} s")
+        for _ in range(restart_delay_sec):
+            if os.getppid() != parent_pid:
+                eprint("Background tasker: parent server process is gone; exiting")
+                os._exit(0)
+            time.sleep(1)
+        restart_delay_sec = min(restart_delay_sec * 2,
+                                BACKGROUND_TASKER_MAX_RESTART_DELAY_SEC)
 
 
 def main():
@@ -179,20 +231,13 @@ def main():
         parent_pid = os.getpid()
         pid = os.fork()
         if pid == 0:  # I am the child process
-            from ARAX_background_tasker import ARAXBackgroundTasker  # pylint: disable=import-outside-toplevel, import-error
             sys.stdout = open(os.devnull, 'w', encoding="utf-8")  # pylint: disable=consider-using-with
             sys.stdin = open(os.devnull, 'r', encoding="utf-8")  # pylint: disable=consider-using-with
             setproctitle.setproctitle("python3 ARAX_background_tasker"
                                       f"::run_tasks [port={tcp_port}]")
             eprint("Starting background tasker in a child process")
-            try:
-                ARAXBackgroundTasker(parent_pid).run_tasks()
-                eprint("Background tasker child process ended unexpectedly")
-                os._exit(1)
-            except Exception:  # pylint: disable=broad-exception-caught
-                eprint("Error in ARAXBackgroundTasker.run_tasks()")
-                eprint(traceback.format_exc())
-                os._exit(1)
+            run_background_tasker_with_restarts(parent_pid)
+            os._exit(1)
         elif pid > 0:  # I am the parent process
             child_pid = pid
 

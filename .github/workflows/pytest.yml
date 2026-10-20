@@ -76,6 +76,14 @@ jobs:
     - name: Run docker container
       run: sudo docker run -d -it --name rtx_test -v /mnt/data/orangeboard/databases:/mnt/data/orangeboard/databases -v /mnt/config/config_secrets.json:/mnt/data/orangeboard/production/RTX/code/config_secrets.json rtx:test
 
+    # Without an override the container auto-detects maturity=development and
+    # queries the dev tier KPs, whose in-progress changes can break every PR (in
+    # 2026-09 dev Retriever switched to a non TRAPI 1.6 binding format). Staging
+    # makes CI query the same ci tier KPs as arax.ci, where master deploys.
+    # Must run before the KP info cache is built, the cache is keyed by maturity.
+    - name: Pin maturity to staging
+      run: sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'echo staging > /mnt/data/orangeboard/production/RTX/code/maturity_override.txt'"
+
     - name: Create symlinks
       run: sudo docker exec rtx_test bash -c "sudo -u rt bash -c 'cd /mnt/data/orangeboard/production/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
 

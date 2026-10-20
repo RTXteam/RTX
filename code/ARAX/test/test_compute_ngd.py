@@ -76,7 +76,11 @@ def _make_computer(pmid_map, cache_max_pmids=None):
     computer.pmid_set_cache = OrderedDict()
     computer.pmid_set_cache_n_pmids = 0
     computer.ngd_normalizer = NGD_NORMALIZER
+    computer._log_normalizer = math.log(NGD_NORMALIZER)
     computer.first_ngd_log = True
+    computer.curie_ngd_cursor = None
+    computer.curie_ngd_connection = None
+    computer.precomputed_ngd_cache = {}
     if cache_max_pmids is not None:
         computer.PMID_SET_CACHE_MAX_PMIDS = cache_max_pmids
     return computer
