@@ -26,9 +26,6 @@ sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'Ope
 from openapi_server.models.qualifier import Qualifier
 from openapi_server.models.qualifier_constraint import QualifierConstraint as QConstraint
 
-sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
-from node_synonymizer import NodeSynonymizer
-
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'scripts']))
 from infer_utilities import InferUtilities
 from creativeCRG import creativeCRG
@@ -250,14 +247,6 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
     #  Helper methods
     # ──────────────────────────────────────────────────────────────────────────
 
-    def _normalize_curie(self, curie):
-        """Resolve a curie to its preferred canonical form via the NodeSynonymizer.
-        Returns (preferred_curie, was_normalized) tuple."""
-        result = self.synonymizer.get_canonical_curies(curie)[curie]
-        if result:
-            return result['preferred_curie'], True
-        return curie, False
-
     def _validate_int_param(self, param_name, default, max_val=None):
         """Validate and coerce an integer parameter with optional ceiling.
         Sets self.parameters[param_name] to the validated value or default."""
@@ -383,7 +372,6 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
             response = ARAXResponse()
         self.response = response
         self.message = response.envelope.message
-        self.synonymizer = NodeSynonymizer()
 
         if not isinstance(input_parameters, dict):
             self.response.error("Provided parameters is not a dict", error_code="ParametersNotDict")
@@ -420,9 +408,8 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
         Predict drug-disease treatment relationships using the xDTD model.
 
         Workflow:
-          1. Validate and normalize drug/disease CURIEs via NodeSynonymizer.
-          2. Query ExplainableDTD database for prediction scores and explanation paths.
-          3. Delegate to InferUtilities.genrete_treat_subgraphs to build TRAPI subgraph.
+          1. Query ExplainableDTD database for prediction scores and explanation paths using drug/disease CURIE as-is (training graph is pre-normalized).
+          2. Delegate to InferUtilities.genrete_treat_subgraphs to build TRAPI subgraph.
         """
         message = self.message
         parameters = self.parameters
@@ -482,13 +469,13 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 if parameters['drug_curie'] not in all_qnode_curie_ids:
                     self.response.error(f"drug_curie '{parameters['drug_curie']}' not found in query graph")
                     return self.response
-                preferred_drug_curie, _ = self._normalize_curie(parameters['drug_curie'])
+                preferred_drug_curie = parameters['drug_curie']
 
             if 'disease_curie' in parameters and parameters['disease_curie']:
                 if parameters['disease_curie'] not in all_qnode_curie_ids:
                     self.response.error(f"disease_curie '{parameters['disease_curie']}' not found in query graph")
                     return self.response
-                preferred_disease_curie, _ = self._normalize_curie(parameters['disease_curie'])
+                preferred_disease_curie = parameters['disease_curie']
 
             if not preferred_drug_curie and not preferred_disease_curie:
                 self.response.error("At least one of 'drug_curie' or 'disease_curie' must have a non-empty value")
@@ -509,21 +496,13 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 raw = parameters['drug_curie']
                 parameters['drug_curie'] = None if raw == 'None' else raw
                 if parameters['drug_curie']:
-                    preferred_drug_curie, normalized = self._normalize_curie(parameters['drug_curie'])
-                    if normalized:
-                        self.response.debug(f"Normalized drug curie {parameters['drug_curie']} -> {preferred_drug_curie}")
-                    else:
-                        self.response.warning(f"Could not normalize drug curie {parameters['drug_curie']}, using as-is")
+                    preferred_drug_curie = parameters['drug_curie']
 
             if 'disease_curie' in parameters:
                 raw = parameters['disease_curie']
                 parameters['disease_curie'] = None if raw == 'None' else raw
                 if parameters['disease_curie']:
-                    preferred_disease_curie, normalized = self._normalize_curie(parameters['disease_curie'])
-                    if normalized:
-                        self.response.debug(f"Normalized disease curie {parameters['disease_curie']} -> {preferred_disease_curie}")
-                    else:
-                        self.response.warning(f"Could not normalize disease curie {parameters['disease_curie']}, using as-is")
+                    preferred_disease_curie = parameters['disease_curie']
 
             if not preferred_drug_curie and not preferred_disease_curie:
                 self.response.error("At least one of 'drug_curie' or 'disease_curie' must have a non-empty value")
@@ -725,11 +704,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                             self.response.error(f"The corresponding ids of subject_qnode_id '{parameters['subject_qnode_id']}' is None")
                             return self.response
                         subject_curie = qnodes[parameters['subject_qnode_id']].ids[0]
-                        normalized_subject_curie = self.synonymizer.get_canonical_curies(subject_curie)[subject_curie]
-                        if normalized_subject_curie:
-                            preferred_subject_curie = normalized_subject_curie['preferred_curie']
-                        else:
-                            preferred_subject_curie = subject_curie
+                        preferred_subject_curie = subject_curie
                     else:
                         self.response.error(f"Could not find subject_qnode_id '{parameters['subject_qnode_id']}' in the query graph")
                         return self.response
@@ -742,11 +717,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                             self.response.error(f"The corresponding ids of object_qnode_id '{parameters['object_qnode_id']}' is None")
                             return self.response
                         object_curie = qnodes[parameters['object_qnode_id']].ids[0]
-                        normalized_object_curie = self.synonymizer.get_canonical_curies(object_curie)[object_curie]
-                        if normalized_object_curie:
-                            preferred_object_curie = normalized_object_curie['preferred_curie']
-                        else:
-                            preferred_object_curie = subject_curie
+                        preferred_object_curie = object_curie
                     else:
                         self.response.error(f"Could not find object_qnode_id '{parameters['object_qnode_id']}' in the query graph")
                         return self.response
@@ -786,14 +757,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 if 'subject_curie' in parameters:
                     parameters['subject_curie'] = eval(parameters['subject_curie']) if parameters['subject_curie'] == 'None' else parameters['subject_curie']
                     if parameters['subject_curie']:
-                        ## if 'subject_curie' passes, return its normalized curie
-                        normalized_subject_curie = self.synonymizer.get_canonical_curies(self.parameters['subject_curie'])[self.parameters['subject_curie']]
-                        if normalized_subject_curie:
-                            preferred_subject_curie = normalized_subject_curie['preferred_curie']
-                            self.response.debug(f"Get a preferred sysnonym {preferred_subject_curie} from Node Synonymizer for subject curie {self.parameters['subject_curie']}")
-                        else:
-                            preferred_subject_curie = self.parameters['subject_curie']
-                            self.response.warning(f"Could not get a preferred sysnonym for the queried chemical {self.parameters['subject_curie']} and thus keep it as it")
+                        preferred_subject_curie = self.parameters['subject_curie']
                     else:
                         preferred_subject_curie = None
                 else:
@@ -802,14 +766,7 @@ chemical_gene_regulation_graph_expansion predicts the regulation relationship be
                 if 'object_curie' in parameters:
                     parameters['object_curie'] = eval(parameters['object_curie']) if parameters['object_curie'] == 'None' else parameters['object_curie']
                     if parameters['object_curie']:
-                        ## if 'object_curie' passes, return its normalized curie
-                        normalized_object_curie = self.synonymizer.get_canonical_curies(self.parameters['object_curie'])[self.parameters['object_curie']]
-                        if normalized_object_curie:
-                            preferred_object_curie = normalized_object_curie['preferred_curie']
-                            self.response.debug(f"Get a preferred sysnonym {preferred_object_curie} from Node Synonymizer for object curie {self.parameters['object_curie']}")
-                        else:
-                            preferred_object_curie = self.parameters['object_curie']
-                            self.response.warning(f"Could not get a preferred sysnonym for the queried gene {self.parameters['object_curie']}")
+                        preferred_object_curie = self.parameters['object_curie']
                     else:
                         preferred_object_curie = None
                 else:
