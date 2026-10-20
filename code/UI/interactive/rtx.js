@@ -1673,7 +1673,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
                 table.style.borderCollapse = "collapse";
 
 		for (var vtype of ["critical","error","warning","info","skipped"]) {
-                    if (Object.keys(jsonObj2.validation_result.validation_messages[vtype]).length > 0) {
+                    if (jsonObj2.validation_result.validation_messages[vtype] && Object.keys(jsonObj2.validation_result.validation_messages[vtype]).length > 0) {
 			tr = document.createElement("tr");
 			td = document.createElement("th");
 			td.style.background = "#3d6d98";
@@ -3240,19 +3240,39 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 
     var results_fragment = document.createDocumentFragment();
 
+    var path_src;
+    var path_end;
+
     // deal with multiple curie/ids per binding?  ToDo?
-    var path_src = result.node_bindings[Object.keys(result.node_bindings)[0]][0].id;
-    var path_end = result.node_bindings[Object.keys(result.node_bindings)[1]][0].id;
 
-    if ('n0' in result.node_bindings)
-	path_src = result.node_bindings['n0'][0].id;
-    else if ('sn' in result.node_bindings)
-	path_src = result.node_bindings['sn'][0].id;
+    if (trapi.startsWith('1')) {
+        path_src = result.node_bindings[Object.keys(result.node_bindings)[0]][0].id;
+        path_end = result.node_bindings[Object.keys(result.node_bindings)[1]][0].id;
 
-    if ('n1' in result.node_bindings)
-	path_end = result.node_bindings['n1'][0].id;
-    else if ('on' in result.node_bindings)
-	path_end = result.node_bindings['on'][0].id;
+        if ('n0' in result.node_bindings)
+            path_src = result.node_bindings['n0'][0].id;
+        else if ('sn' in result.node_bindings)
+            path_src = result.node_bindings['sn'][0].id;
+
+        if ('n1' in result.node_bindings)
+            path_end = result.node_bindings['n1'][0].id;
+        else if ('on' in result.node_bindings)
+            path_end = result.node_bindings['on'][0].id;
+    }
+    else {
+        path_src = result.node_bindings[Object.keys(result.node_bindings)[0]].ids[0];
+        path_end = result.node_bindings[Object.keys(result.node_bindings)[1]].ids[0];
+
+        if ('n0' in result.node_bindings)
+            path_src = result.node_bindings['n0'].ids[0];
+        else if ('sn' in result.node_bindings)
+            path_src = result.node_bindings['sn'].ids[0];
+
+        if ('n1' in result.node_bindings)
+            path_end = result.node_bindings['n1'].ids[0];
+        else if ('on' in result.node_bindings)
+            path_end = result.node_bindings['on'].ids[0];
+    }
 
     var uniq_paths = {};
     var num = 0;
@@ -3260,12 +3280,14 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 	num++;
 
 	div = document.createElement("div");
-        div.id = 'pathdivhead_'+num;
+    div.id = 'pathdivhead_'+num;
 	div.title = 'Click to expand / collapse analysis '+num;
-        div.className = 'accordion';
+    div.className = 'accordion';
 
-	var auxgraph = ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'];  // TODO: deal with more than one path_binding...?
-        add_aux_graph(kg,auxgraph,aux,num,trapi);
+	var auxgraph = trapi.startsWith('1') ?   // TODO: deal with more than one path_binding...?
+		ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'] :
+		ranal.path_bindings[Object.keys(ranal.path_bindings)[0]].ids[0];
+	add_aux_graph(kg,auxgraph,aux,num,trapi);
 	div.setAttribute('onclick', 'add_cyto('+num+',"AUX'+auxgraph+'","grid");sesame(this,a'+num+'_div);');
 
 	div.dataset.pnodes = "|filter|";
@@ -3278,7 +3300,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         div.append(span);
 
 	var pnodelist = '';
-	for (var pnode of get_node_list_in_paths(ranal.path_bindings,kg,aux).sort((a, b) => kg.nodes[a]['name'].localeCompare(kg.nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
+	for (var pnode of get_node_list_in_paths(trapi,ranal.path_bindings,kg,aux).sort((a, b) => kg.nodes[a]['name'].localeCompare(kg.nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
 	    if (all_nodes[pnode]) {
                 all_nodes[pnode]['total']++;
                 all_nodes[pnode]['filtered']++;
@@ -3655,15 +3677,17 @@ function filter_paths(curie="CURRENT",only=false, display=true) {
     return showing;
 }
 
-function get_node_list_in_paths(path_bindings,kg,aux) {
+function get_node_list_in_paths(trapi,path_bindings,kg,aux) {
     var pathnodes = {};
     for (var pb in path_bindings) {
-	for (var path in path_bindings[pb]) {
-	    for (var edgeid of aux[path_bindings[pb][path]["id"]]["edges"]) {
-		pathnodes[kg.edges[edgeid]["subject"]] = 1;
-		pathnodes[kg.edges[edgeid]["object"]] = 1;
-	    }
-	}
+        var pathlist = trapi.startsWith('1') ? path_bindings[pb] : path_bindings[pb].ids;
+        for (var path of pathlist) {
+            var path_id = trapi.startsWith('1') ? path.id : path;
+			for (var edgeid of aux[path_id]["edges"]) {
+				pathnodes[kg.edges[edgeid]["subject"]] = 1;
+				pathnodes[kg.edges[edgeid]["object"]] = 1;
+			}
+		}
     }
 
     return Object.keys(pathnodes);
@@ -3963,12 +3987,16 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	    }
 	}
 
-	//FIX THIS for multiple result.analyses...
-	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
-            for (var sg in result.analyses[0].support_graphs) {
-		var sgid = result.analyses[0].support_graphs[sg];
-		add_aux_graph(kg,sgid,aux,num,trapi);
-	    }
+	// Handle multiple result.analyses
+    if (result.analyses) {
+		result.analyses.forEach((ranal) => {
+			if (ranal.support_graphs && ranal.support_graphs.length > 0) {
+				for (var sg in ranal.support_graphs) {
+					var sgid = ranal.support_graphs[sg];
+					add_aux_graph(kg,sgid,aux,num,trapi);
+				}
+			}
+		});
 	}
 
     }
