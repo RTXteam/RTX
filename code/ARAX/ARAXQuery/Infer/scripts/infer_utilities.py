@@ -46,9 +46,6 @@ from openapi_server.models.retrieval_source import RetrievalSource
 from openapi_server.models.qualifier_constraint import QualifierConstraint as QConstraint
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 
-sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'NodeSynonymizer']))
-from node_synonymizer import NodeSynonymizer
-
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'scripts']))
 from build_mapping_db import xDTDMappingDB
 
