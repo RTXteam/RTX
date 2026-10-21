@@ -608,7 +608,7 @@ class InferUtilities:
                         retrieval_source = self._build_retrieval_sources(edge_info, kp=self.kp)
                         # TRAPI 2.0 requires sources, knowledge_level, and agent_type at construction
                         new_edge = Edge(subject=subject_curie, object=object_curie, predicate=predicate,
-                                        attributes=edge_attribute_list, qualifiers=edge_qualifier_list,
+                                        attributes=edge_attribute_list, qualifiers=edge_qualifier_list or None,
                                         sources=retrieval_source,
                                         knowledge_level=edge_info.knowledge_level or "not_provided",
                                         agent_type=edge_info.agent_type or "not_provided")
@@ -876,7 +876,7 @@ class InferUtilities:
                         Qualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                         Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                     ]
-                    new_edge = Edge(subject=chemical_curie, object=gene_canonical_id, predicate=f'biolink:affects', attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source, knowledge_level="prediction", agent_type="computational_model")
+                    new_edge = Edge(subject=chemical_curie, object=gene_canonical_id, predicate=f'biolink:affects', attributes=edge_attribute_list, qualifiers=edge_qualifier_list or None, sources=retrieval_source, knowledge_level="prediction", agent_type="computational_model")
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source="infores:arax", kp='infores:rtx-kg2')
                     if new_edge_key not in message.knowledge_graph.edges:
                         message.knowledge_graph.edges[new_edge_key] = new_edge
@@ -922,7 +922,7 @@ class InferUtilities:
                         Qualifier(qualifier_type_id='biolink:object_aspect_qualifier', qualifier_value='activity_or_abundance'),
                         Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                     ]
-                    new_edge = Edge(subject=chemical_canonical_id, object=gene_curie, predicate=f'biolink:affects', attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source, knowledge_level="prediction", agent_type="computational_model")
+                    new_edge = Edge(subject=chemical_canonical_id, object=gene_curie, predicate=f'biolink:affects', attributes=edge_attribute_list, qualifiers=edge_qualifier_list or None, sources=retrieval_source, knowledge_level="prediction", agent_type="computational_model")
                     new_edge_key = self.__get_formated_edge_key(edge=new_edge, primary_knowledge_source="infores:arax", kp='infores:rtx-kg2')
                     if new_edge_key not in message.knowledge_graph.edges:
                         message.knowledge_graph.edges[new_edge_key] = new_edge
@@ -1044,7 +1044,7 @@ class InferUtilities:
                     Qualifier(qualifier_type_id='biolink:object_direction_qualifier', qualifier_value=edge_qualifier_direction)
                 ]
                 
-                fixed_edge = Edge(predicate=edge_predicate, subject=preferred_chemical_curie, object=preferred_gene_curie, attributes=edge_attribute_list, qualifiers=edge_qualifier_list, sources=retrieval_source, knowledge_level="prediction", agent_type="computational_model")
+                fixed_edge = Edge(predicate=edge_predicate, subject=preferred_chemical_curie, object=preferred_gene_curie, attributes=edge_attribute_list or None, qualifiers=edge_qualifier_list, sources=retrieval_source, knowledge_level="prediction", agent_type="computational_model")
                 fixed_edge._qedge_keys = [qedge_id]
                 message.knowledge_graph.edges[f"creative_CRG_prediction_{self.kedge_global_iter}"] = fixed_edge
                 self.kedge_global_iter += 1

@@ -88,16 +88,14 @@ class SortResults:
             type_flag = 'edge_relation' in params
             for result in self.message.results:
                 for analysis in result.analyses:
-                    for binding_list in analysis.edge_bindings.values():
-                        for binding in binding_list:
-                            # need to test this for TRAPI 1.0 after expand (and resultify?)is updated to see if binding.id matches edge_key
-                            if edge_values[binding.id]['value'] is not None:
-                                if not type_flag or (type_flag and params['edge_relation'] == edge_values[binding.id]['relation']):
-                                    if abs(value_list[i]) == math.inf:
-                                        value_list[i] = edge_values[binding.id]['value']
-                                    else:
-                                        # this will take the sum off all edges with the attribute if we want to change to max edit this line
-                                        value_list[i] += edge_values[binding.id]['value']
+                    for binding in analysis.edge_bindings.values():
+                        for edge_id in binding.ids: 
+                            if edge_values[edge_id]['value'] is not None: 
+                                if not type_flag or (type_flag and params['edge_relation'] == edge_values[edge_id]['relation']):
+                                    if abs(value_list[i]) == math.inf: 
+                                        value_list[i] = edge_values[edge_id]['value']
+                                    else: 
+                                        value_list[i] += edge_values[edge_id]['value']
                     i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -130,7 +128,7 @@ class SortResults:
             value_list=[0]*len(self.message.results)
             i = 0
             for result in self.message.results:
-                value_list[i] = len([binding for analysis in result.analyses for binding_list in analysis.edge_bindings.values() for binding in binding_list])
+                value_list[i] = len([edge_id for analysis in result.analyses for binding in analysis.edge_bindings.values() for edge_id in binding.ids])
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -218,15 +216,14 @@ class SortResults:
             i = 0
             type_flag = 'node_category' in params
             for result in self.message.results:
-                for binding_list in result.node_bindings.values():
-                    for binding in binding_list:
-                        if node_values[binding.id]['value'] is not None:
-                            if not type_flag or (type_flag and params['node_category'] == node_values[binding.id]['category']):
+                for binding in result.node_bindings.values():
+                    for node_id in binding.ids: 
+                        if node_values[node_id]['value'] is not None:
+                            if not type_flag or (type_flag and params['node_category'] == node_values[node_id]['category']):
                                 if abs(value_list[i]) == math.inf:
-                                    value_list[i] = node_values[binding.id]['value']
-                                else:
-                                    # this will take the sum off all nodes with the attribute if we want to change to max edit this line
-                                    value_list[i] += node_values[binding.id]['value']
+                                    value_list[i] = node_values[node_id]['value']
+                                else: 
+                                    value_list[i] += node_values[node_id]['value']
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]
@@ -259,7 +256,7 @@ class SortResults:
             value_list=[0]*len(self.message.results)
             i = 0
             for result in self.message.results:
-                value_list[i] = len([binding for binding_list in result.node_bindings.values() for binding in binding_list])
+                value_list[i] = len([node_id for binding in result.node_bindings.values() for node_id in binding.ids])
                 i+=1
             idx = sort_index(value_list, params['descending'])
             self.message.results = [self.message.results[i] for i in idx]

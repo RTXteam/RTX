@@ -472,7 +472,7 @@ class ARAXExpander:
                         self._store_kryptonite_edge_info(qg_org_kg,
                                                          qedge_key,
                                                          message.query_graph,
-                                                         message.encountered_kryptonite_edges_info,
+                                                         message._encountered_kryptonite_edges_info,
                                                          response)
                     # Otherwise just merge the answer into the overarching KG
                     else:
@@ -939,7 +939,7 @@ class ARAXExpander:
                         response.info(f"Found a cached result with response_code={response_code}, n_results={n_results} from the cache in {elapsed_time:.3f} seconds")
                         #### Transform the dict message into objects
                         response.envelope.message = ARAXMessenger().from_dict(response_data['message'])
-                        response.envelope.message.encountered_kryptonite_edges_info = response_data['message']['encountered_kryptonite_edges_info']
+                        response.envelope.message._encountered_kryptonite_edges_info = response_data['message']['encountered_kryptonite_edges_info']
                         for node_key, node in response_data['message']['knowledge_graph']['nodes'].items():
                             response.info(f"Copying qnode_keys for node {node_key}") 
                             response.envelope.message.knowledge_graph.nodes[node_key]._qnode_keys = node['qnode_keys']
@@ -956,7 +956,7 @@ class ARAXExpander:
                         elapsed_time = time.time() - start
                         response.info(f"Got result from ARAX inferer after {elapsed_time}. Converting to_dict()")
                         response_object = response.envelope.to_dict()
-                        response_object['message']['encountered_kryptonite_edges_info'] = response.envelope.message.encountered_kryptonite_edges_info
+                        response_object['message']['encountered_kryptonite_edges_info'] = getattr(response.envelope.message, '_encountered_kryptonite_edges_info', {})
                         for node_key, node in response.envelope.message.knowledge_graph.nodes.items():
                             response_object['message']['knowledge_graph']['nodes'][node_key]['qnode_keys'] = node._qnode_keys
                         for edge_key, edge in response.envelope.message.knowledge_graph.edges.items():
@@ -1453,7 +1453,7 @@ class ARAXExpander:
             while len(kept_nodes) < prune_threshold and counter < len(results):
                 current_result = intermediate_results_response.envelope.message.results[counter]
                 scores.append(current_result.analyses[0].score)
-                kept_nodes.update({binding.id for binding in current_result.node_bindings[qnode_key_to_prune]})
+                kept_nodes.update(current_result.node_bindings[qnode_key_to_prune].ids)
                 counter += 1
             if kept_nodes:
                 log.info(f"Kept top {len(kept_nodes)} answers for {qnode_key_to_prune}. "

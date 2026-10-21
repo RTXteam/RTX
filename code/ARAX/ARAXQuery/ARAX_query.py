@@ -360,8 +360,8 @@ class ARAXQuery:
         try:
             #### Determine a plan for what to do based on the input
             eprint(f"*** {query}")
-            query_dict = query.copy()
-            query_dict['message'] = query['message'].to_dict()
+            # Turn every pydantic part of the query into plain dicts 
+            query_dict = json.loads(json.dumps(query, default=lambda obj: obj.to_dict()))
             eprint(json.dumps(query_dict, indent=2, sort_keys=True))
             result = self.examine_incoming_query(query_dict, mode=mode)
             if result.status != 'OK':

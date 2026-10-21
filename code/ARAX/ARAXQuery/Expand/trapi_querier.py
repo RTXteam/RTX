@@ -232,15 +232,14 @@ class TRAPIQuerier:
                         ## ValueError later when the response gets serialized to
                         ## JSON; I conjecture this represents a bug in the
                         ## OpenAPI-generated model class, but anyhow, the
-                        ## workaround is easy here:]
-                        aux_graph = AuxiliaryGraph(edges=[], attributes=[])
+                        ## workaround is easy here.] TRAPI 2.0 requires at least
+                        ## one edge, so the aux graph starts out holding this edge.
+                        aux_graph = AuxiliaryGraph(edges=[edge_id], attributes=[])
                         result_aux_graphs[aux_graph_id] = aux_graph
                     else:
-                        # => yes, so just get a reference to the stored aux graph
+                        # => yes, so get the stored aux graph and add this edge to it
                         aux_graph = result_aux_graphs[aux_graph_id]
-
-                    # Add the edge_id for this edge to the aux graph
-                    aux_graph.edges.append(edge_id)
+                        aux_graph.edges.append(edge_id)
 
                     # Add the edge to the unbounded_edges object
                     result_kg.unbound_edges[edge_id] = edge
@@ -656,10 +655,9 @@ class TRAPIQuerier:
             for result in results:
                 for analysis in result.analyses or []:
                     edge_bindings_iterable = analysis.edge_bindings or {}
-                    for qedge_key, edge_bindings in edge_bindings_iterable.items():
+                    for qedge_key, edge_binding in edge_bindings_iterable.items():
                         if qedge_key in qg.edges:
-                            for edge_binding in edge_bindings or []:
-                                edge_id = edge_binding.id
+                            for edge_id in edge_binding.ids:
                                 if edge_id in edges_dict:
                                     edge = edges_dict[edge_id]
                                     nodes_linked_in_bound_edges.add(edge.subject)

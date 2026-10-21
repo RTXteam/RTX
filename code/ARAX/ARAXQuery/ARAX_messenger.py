@@ -473,8 +473,7 @@ class ARAXMessenger:
         if message.query_graph.edges is None:
             message.query_graph.edges = {}
 
-        #### Create a QEdge
-        qedge = QEdge()
+        #### Pick the key for the new QEdge 
         if parameters['key'] is not None:
             key = parameters['key']
             if key in message.query_graph.edges:
@@ -491,7 +490,6 @@ class ARAXMessenger:
             if parameters['subject'] not in qnodes:
                 response.error(f"While trying to add QEdge, there is no QNode with key {parameters['subject']}", error_code="UnknownSourceKey")
                 return response
-            qedge.subject = parameters['subject']
         else:
             response.error(f"While trying to add QEdge, subject is a required parameter", error_code="MissingSourceKey")
             return response
@@ -501,10 +499,12 @@ class ARAXMessenger:
             if parameters['object'] not in qnodes:
                 response.error(f"While trying to add QEdge, there is no QNode with key {parameters['object']}", error_code="UnknownTargetKey")
                 return response
-            qedge.object = parameters['object']
         else:
             response.error(f"While trying to add QEdge, object is a required parameter", error_code="MissingTargetKey")
             return response
+
+        #### Create the QEdge; subject and object are required fields of the TRAPI 2.0 model
+        qedge = QEdge(subject=parameters['subject'], object=parameters['object'])
 
         #### Add the predicates if any. Need to verify they are allowed predicates. FIXME
         if parameters['predicates'] is not None:
