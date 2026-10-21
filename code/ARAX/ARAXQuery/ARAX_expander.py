@@ -1065,7 +1065,7 @@ class ARAXExpander:
         log.info(f"{kp_to_use}: Query for edge {qedge_key} completed ({eu.get_printable_counts_by_qg_id(qg_org_kg)})")
 
         # Do some post-processing (deduplicate nodes, remove self-edges..)
-        # KG2c and retriever are already deduplicated and uses canonical predicates
+        # Retriever is already deduplicated and uses canonical predicates
         if kp_to_use not in KPS_THAT_RETURN_PREFERRED_NODE_CURIES:
             log.warning(f"{kp_to_use}: this KP may not return preferred CURIEs; please check, and if it does return only preferred CURIEs, add to the Expand whitelist")
 

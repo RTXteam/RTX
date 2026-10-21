@@ -35,7 +35,7 @@ var providers = {
     "ARAX" : { "url" : baseAPI },
     "ARAXQ": { "url" : araxQuery },
     "ARS"  : { "url" : "https://ars-prod.transltr.io/ars/api/submit" },
-    "EXT"  : { "url" : "https://kg2cploverdb.ci.transltr.io" }
+    "EXT"  : { "url" : "https://retriever.ci.transltr.io" }
 };
 
 // these attributes are floats; truncate them
