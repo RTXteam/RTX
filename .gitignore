@@ -68,3 +68,6 @@ venv
 sample_names.txt
 *.log
 
+
+code/ARAX/ARAXQuery/Infer/data/xCRG_data/*.pt
+code/ARAX/ARAXQuery/Infer/data/xCRG_data/*.npz
