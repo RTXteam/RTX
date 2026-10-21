@@ -11,9 +11,5 @@
    },
    "plover_url_override": "https://automat.renci.org/translatorkg-gandalf",
    "node_normalizer_url_override": null,
-   "name_resolver_url_override": null,
-   "neo4j": {
-      "KG2pre": "kg2endpoint-kg2-10-2.rtx.ai",
-      "KG2c": "kg2-10-2c.rtx.ai"
-   }
+   "name_resolver_url_override": null
 }
