@@ -25,6 +25,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.async_query_status_response import AsyncQueryStatusResponse
+from openapi_server.models.log_entry import LogEntry
+from openapi_server.models.log_level import LogLevel
 
 Base = declarative_base()
 
@@ -654,7 +656,8 @@ class ARAXQueryTracker:
         if rows.count() == 0:
             description = f"ERROR: Unable to find a record of job_id {job_id}"
             eprint(description)
-            response = AsyncQueryStatusResponse(status='UnknownJobId', description=description, logs=[])
+            response = AsyncQueryStatusResponse(status='UnknownJobId', description=description,
+                                                logs=[LogEntry(timestamp=datetime.now(timezone.utc), level=LogLevel.ERROR, message=description)])
             ## Should return a 404
             return response
 
@@ -676,7 +679,8 @@ class ARAXQueryTracker:
         else:
             description = f"Job {job_id} has status '{status}' and state '{state}' with pid {pid}"
 
-        response = AsyncQueryStatusResponse(status=state, description=description, logs=[])
+        response = AsyncQueryStatusResponse(status=state, description=description,
+                                            logs=[LogEntry(timestamp=datetime.now(timezone.utc), level=LogLevel.INFO, message=description)])
         if response_id is not None:
             response.response_url = f"https://arax.ncats.io/?r={response_id}"
 

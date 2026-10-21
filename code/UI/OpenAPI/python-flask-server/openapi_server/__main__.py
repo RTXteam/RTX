@@ -305,8 +305,8 @@ def main():
     import uvicorn # pylint: disable=import-outside-toplevel
 
     #from openapi_server.apis.pubmed_mesh_ngd_api import router as PubmedMeshNgdApiRouter
-    #from openapi_server.apis.asyncquery_api import router as AsyncqueryApiRouter
-    #from openapi_server.apis.asyncquery_status_api import router as AsyncqueryStatusApiRouter
+    from openapi_server.apis.asyncquery_api import router as AsyncqueryApiRouter
+    from openapi_server.apis.asyncquery_status_api import router as AsyncqueryStatusApiRouter
     from openapi_server.apis.entity_api import router as EntityApiRouter
     #from openapi_server.apis.example_questions_api import router as ExampleQuestionsApiRouter
     from openapi_server.apis.meta_knowledge_graph_api import router as MetaKnowledgeGraphApiRouter
@@ -328,8 +328,8 @@ def main():
 
     api_prefix = "/api/arax/v2.0"
     #app.include_router(PubmedMeshNgdApiRouter, prefix=api_prefix)
-    #app.include_router(AsyncqueryApiRouter, prefix=api_prefix)
-    #app.include_router(AsyncqueryStatusApiRouter, prefix=api_prefix)
+    app.include_router(AsyncqueryApiRouter, prefix=api_prefix)
+    app.include_router(AsyncqueryStatusApiRouter, prefix=api_prefix)
     app.include_router(EntityApiRouter, prefix=api_prefix)
     #app.include_router(ExampleQuestionsApiRouter, prefix=api_prefix)
     app.include_router(MetaKnowledgeGraphApiRouter, prefix=api_prefix)

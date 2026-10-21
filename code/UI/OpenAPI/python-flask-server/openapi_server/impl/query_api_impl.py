@@ -143,7 +143,7 @@ class ImplQueryApi(BaseQueryApi):
     def _run_query_and_return_json_generator_nonstream(self, query_dict: dict) -> Iterator[str]:
         envelope = ARAX_query.ARAXQuery().query_return_message(query_dict)
         envelope_dict = envelope.to_dict()
-        http_status = getattr(envelope, 'http_status', 200)
+        http_status = getattr(envelope, '_http_status', 200)
         envelope_dict['http_status'] = http_status
         yield json.dumps({"__http_status__": http_status}) + "\n"
         yield json.dumps(envelope_dict, sort_keys=True, allow_nan=False) + "\n"

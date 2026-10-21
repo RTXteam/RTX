@@ -246,8 +246,10 @@ class ARAXQuery:
         if response.status != 'OK':
             response.envelope.status = response.error_code
             response.envelope.description = response.message
-            #if hasattr(response,'http_status'):  #T2FIXME
-            #    response.envelope.http_status = response.http_status
+            # The TRAPI 2.0 Response model has no http_status field, so carry the status
+            # code to the API layer in a private attribute (pydantic allows those)
+            if hasattr(response, 'http_status'):
+                response.envelope._http_status = response.http_status
             self.track_query_finish()
             return response.envelope
 
