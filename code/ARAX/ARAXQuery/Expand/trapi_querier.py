@@ -715,7 +715,7 @@ class TRAPIQuerier:
                 node._query_ids = eu.convert_to_list(query_curie_mappings.get(node_key))
 
         # Add subclass_of edges for any parent to child relationships KPs returned
-        answer_kg = self._add_subclass_of_edges(answer_kg)
+        answer_kg = self._add_subclass_of_edges(answer_kg, qg)
 
         return answer_kg, aux_graphs
 
@@ -753,7 +753,7 @@ class TRAPIQuerier:
         else:
             return 120
 
-    def _add_subclass_of_edges(self, answer_kg: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
+    def _add_subclass_of_edges(self, answer_kg: QGOrganizedKnowledgeGraph, qg: QueryGraph) -> QGOrganizedKnowledgeGraph:
         for qnode_key in answer_kg.nodes_by_qg_id:
             nodes_with_non_empty_parent_query_ids = {node_key for node_key, node in answer_kg.nodes_by_qg_id[qnode_key].items()
                                                      if hasattr(node, "_query_ids") and node._query_ids}
@@ -779,7 +779,10 @@ class TRAPIQuerier:
                     if parent_curie not in existing_parent_nodes:
                         self.log.warning(f"{self.kp_infores_curie}: Parent node {parent_curie} not found "
                                          f"anywhere in the answer KG; creating an empty Node")
-                        existing_parent_nodes[parent_curie] = Node()
+                        # TRAPI 2.0 requires at least one category; use the qnode's, since the parent is one of its ids
+                        qnode = qg.nodes.get(qnode_key)
+                        parent_categories = qnode.categories if qnode is not None and qnode.categories else None
+                        existing_parent_nodes[parent_curie] = Node(categories=parent_categories or ["biolink:NamedThing"])
 
             # Add subclass_of edges to the answer KG for any nodes that the KP provided query ID mappings for
             for node_key in nodes_with_non_empty_parent_query_ids:

@@ -143,7 +143,7 @@ def test_xcrg_retriever_url_uses_arax_maturity(monkeypatch):
     )
     assert (
         get_xcrg_retriever_url(SimpleNamespace(maturity="unknown"))
-        == "https://retriever.ci.transltr.io/query"
+        == "https://dev.retriever.biothings.io/query"
     )
 
 

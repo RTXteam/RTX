@@ -56,6 +56,7 @@ from openapi_server.models.query import Query
 from openapi_server.models.response import Response as TrapiResponse
 
 from openapi_server.apis.query_api_base import BaseQueryApi
+from openapi_server.request_context import get_remote_address
 
 import ARAX_query  # pylint: disable=import-outside-toplevel,import-error,wrong-import-position
 
@@ -171,16 +172,8 @@ class ImplQueryApi(BaseQueryApi):
 
         query = dict(query)
 
-        #### T2FIXME Convert from Flask to FastAPI
-        #x_forwarded_for = connexion.request.headers.get("x-forwarded-for")
-        #remote_address = (
-        #    x_forwarded_for.split(",")[0].strip()
-        #    if x_forwarded_for
-        #    else connexion.request.remote_addr or "???"
-        #)
         #### Record the remote IP address in the query for now so it is available downstream
-        #query['remote_address'] = remote_address
-        query['remote_address'] = '?.?.?.T2F'  #T2FIXME
+        query['remote_address'] = get_remote_address()
 
         # if stream_progress is specified and if it is True:
         if query.get('stream_progress', False):

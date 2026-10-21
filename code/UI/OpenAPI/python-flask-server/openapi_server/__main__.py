@@ -297,6 +297,10 @@ def main():
     app.include_router(StatusApiRouter, prefix=api_prefix)
     #app.include_router(TranslateApiRouter, prefix=api_prefix)
 
+    # Record each request's client address for the query tracker's per-client limit
+    from openapi_server.request_context import record_remote_address  # pylint: disable=import-outside-toplevel
+    app.middleware("http")(record_remote_address)
+
 # Store configuration in app.state
     app.state.QUERY_FORK_MODE = query_fork_mode
     app.state.CHILD_PROCESS_RLIMIT = child_process_rlimit

@@ -14,8 +14,8 @@ def test_query_by_query_graph_2():
                 "qg2": { "subject": "qg1", "object": "qg0", "predicates": ["biolink:physically_interacts_with"] }
             },
             "nodes": {
-                "qg0": { "name": "acetaminophen", "ids": ["CHEMBL.COMPOUND:CHEMBL112"], "categories": ["biolink:ChemicalEntity"] },
-                "qg1": { "name": None, "ids": None, "categories": ["biolink:Protein"] }
+                "qg0": { "ids": ["CHEMBL.COMPOUND:CHEMBL112"], "categories": ["biolink:ChemicalEntity"] },
+                "qg1": { "ids": None, "categories": ["biolink:Protein"] }
             } } } }
     araxq = ARAXQuery()
     araxq.query(query)
@@ -25,7 +25,7 @@ def test_query_by_query_graph_2():
     assert response.status == 'OK'
     message = response.envelope.message
     assert len(message.results) >= 10
-    assert response.envelope.schema_version == '1.6.0'
+    assert response.envelope.schema_version == '2.0.0'
 
 
 if __name__ == "__main__": pytest.main(['-v'])

@@ -213,6 +213,10 @@ class ARAXQuery:
 
         except MemoryError as e:
             self.handle_memory_error(e)
+        except Exception as error:
+            # Record the error so the streaming thread sees DONE and the tracker entry gets closed,
+            # rather than the stream waiting forever on a thread that has died
+            self.response.error(f"An uncaught error occurred: {error}: {traceback.format_exc()}", error_code="UncaughtError")
 
 
         # Insert a little flag into the response status to denote that this thread is done
@@ -229,7 +233,14 @@ class ARAXQuery:
         response = self.response
         response.debug("in query_return_message")
 
-        self.query(query, mode=mode, origin='API')
+        try:
+            self.query(query, mode=mode, origin='API')
+        except Exception as error:
+            # Close this query's tracker entry before re-raising, otherwise it stays "started"
+            # and holds one of the client's concurrent-query slots until the server restarts
+            response.error(f"An uncaught error occurred: {error}: {traceback.format_exc()}", error_code="UncaughtError")
+            self.track_query_finish()
+            raise
 
         #### If the query ended in an error, copy the error to the envelope
         if response.status != 'OK':

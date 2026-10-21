@@ -1474,6 +1474,7 @@ def test_issue1848():
     assert non_subclass_qedge_bindings_in_kg == {"e0"}
 
 @pytest.mark.broken 
+@pytest.mark.skip(reason="TRAPI 2.0 removed NodeBinding.query_id")
 def test_node_binding_query_id_one_hop_single_input_curie():
 
     actions = [
@@ -1509,6 +1510,7 @@ def test_node_binding_query_id_one_hop_single_input_curie():
     assert len(insulin_results) == 1
 
 
+@pytest.mark.skip(reason="TRAPI 2.0 removed NodeBinding.query_id")
 def test_node_binding_query_id_one_hop_multiple_input_curies():
     parent_query_ids = {DIABETES_CURIE, TYPE_1_DIABETES_CURIE}
     actions = [
@@ -1545,6 +1547,7 @@ def test_node_binding_query_id_one_hop_multiple_input_curies():
 
 
 @pytest.mark.slow
+@pytest.mark.skip(reason="TRAPI 2.0 removed NodeBinding.query_id")
 def test_node_binding_query_id_two_hop_double_pinned():
     actions = [
         f"add_qnode(ids={DIABETES_CURIE}, key=n00)",
