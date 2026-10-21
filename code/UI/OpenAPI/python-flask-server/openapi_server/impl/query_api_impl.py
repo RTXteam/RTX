@@ -43,6 +43,7 @@ import resource
 import traceback
 from fastapi import FastAPI, Response
 from fastapi.responses import StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from typing import Callable, Iterator
 import setproctitle
 
@@ -209,10 +210,13 @@ class ImplQueryApi(BaseQueryApi):
                     child_rlimit
                 )
 
-            status_line = next(json_generator)
+            # Run the (blocking) ARAX query in a worker thread, so that it does not
+            # block uvicorn's event loop, and so that ARAX code that creates its own
+            # asyncio event loop (e.g., Expand) is not run inside a running loop
+            status_line = await run_in_threadpool(next, json_generator)
             status_dict = json.loads(status_line)
             http_status = status_dict['__http_status__']
-            response_serialized_str = next(json_generator)
+            response_serialized_str = await run_in_threadpool(next, json_generator)
             resp_obj = Response(response_serialized_str, status_code=http_status, media_type="application/json")
 
         return resp_obj
