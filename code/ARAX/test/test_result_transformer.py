@@ -23,6 +23,7 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.query_graph import QueryGraph
 from openapi_server.models.response import Response
 from openapi_server.models.result import Result
+from openapi_server.models.retrieval_source import RetrievalSource
 
 def test_creative_noninf_ngd_only_support_graph_filters_result():
     """Programmatically construct a TRAPI message with one inferred-mode
@@ -72,6 +73,9 @@ def test_creative_noninf_ngd_only_support_graph_filters_result():
         predicate="biolink:treats",
         subject=drug_id,
         object=disease_id,
+        sources=[RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")],
+        knowledge_level="not_provided",
+        agent_type="not_provided",
         attributes=[
             Attribute(
                 attribute_type_id="biolink:support_graphs",
@@ -84,6 +88,9 @@ def test_creative_noninf_ngd_only_support_graph_filters_result():
         predicate="biolink:occurs_together_in_literature_with",
         subject=drug_id,
         object=disease_id,
+        sources=[RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")],
+        knowledge_level="not_provided",
+        agent_type="not_provided",
         attributes=[
             Attribute(
                 attribute_type_id="biolink:Attribute",
@@ -104,11 +111,11 @@ def test_creative_noninf_ngd_only_support_graph_filters_result():
     # Single result binding the inferred edge to the original qedge.
     analysis = Analysis(
         resource_id="infores:arax",
-        edge_bindings={qedge_treats: [EdgeBinding(id=inferred_edge_id)]},
+        edge_bindings={qedge_treats: EdgeBinding(ids=[inferred_edge_id])},
     )
     result = Result(
-        node_bindings={qnode_drug: [NodeBinding(id=drug_id)],
-                       qnode_disease: [NodeBinding(id=disease_id)]},
+        node_bindings={qnode_drug: NodeBinding(ids=[drug_id]),
+                       qnode_disease: NodeBinding(ids=[disease_id])},
         analyses=[analysis],
         essence="metformin",
     )
@@ -181,6 +188,9 @@ def test_creative_inf_ngd_only_support_graph_filters_result():
         predicate="biolink:treats",
         subject=drug_id,
         object=disease_id,
+        sources=[RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")],
+        knowledge_level="not_provided",
+        agent_type="not_provided",
         attributes=[
             Attribute(
                 attribute_type_id="biolink:support_graphs",
@@ -193,6 +203,9 @@ def test_creative_inf_ngd_only_support_graph_filters_result():
         predicate="biolink:occurs_together_in_literature_with",
         subject=drug_id,
         object=disease_id,
+        sources=[RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")],
+        knowledge_level="not_provided",
+        agent_type="not_provided",
         attributes=[
             Attribute(
                 attribute_type_id="biolink:Attribute",
@@ -213,11 +226,11 @@ def test_creative_inf_ngd_only_support_graph_filters_result():
     # Single result binding the inferred edge to the original qedge.
     analysis = Analysis(
         resource_id="infores:arax",
-        edge_bindings={qedge_treats: [EdgeBinding(id=inferred_edge_id)]},
+        edge_bindings={qedge_treats: EdgeBinding(ids=[inferred_edge_id])},
     )
     result = Result(
-        node_bindings={qnode_drug: [NodeBinding(id=drug_id)],
-                       qnode_disease: [NodeBinding(id=disease_id)]},
+        node_bindings={qnode_drug: NodeBinding(ids=[drug_id]),
+                       qnode_disease: NodeBinding(ids=[disease_id])},
         analyses=[analysis],
         essence="metformin",
     )
@@ -289,6 +302,9 @@ def test_creative_inferred_edge_without_support_graph_filters_result():
         predicate="biolink:treats",
         subject=drug_id,
         object=disease_id,
+        sources=[RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")],
+        knowledge_level="not_provided",
+        agent_type="computational_model",
         attributes=[
             Attribute(
                 attribute_type_id="biolink:agent_type",
@@ -304,11 +320,11 @@ def test_creative_inferred_edge_without_support_graph_filters_result():
 
     analysis = Analysis(
         resource_id="infores:arax",
-        edge_bindings={qedge_treats: [EdgeBinding(id=inferred_edge_id)]},
+        edge_bindings={qedge_treats: EdgeBinding(ids=[inferred_edge_id])},
     )
     result = Result(
-        node_bindings={qnode_drug: [NodeBinding(id=drug_id)],
-                       qnode_disease: [NodeBinding(id=disease_id)]},
+        node_bindings={qnode_drug: NodeBinding(ids=[drug_id]),
+                       qnode_disease: NodeBinding(ids=[disease_id])},
         analyses=[analysis],
         essence="metformin",
     )

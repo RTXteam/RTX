@@ -98,13 +98,11 @@ def test_ARAXRanker_test1_asset12():
     query = { "message": { "query_graph": {
                 "edges": {
                     "e01": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "SN"
                     }
                 },
@@ -113,7 +111,6 @@ def test_ARAXRanker_test1_asset12():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0015564"
                     ],
@@ -123,7 +120,6 @@ def test_ARAXRanker_test1_asset12():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -158,13 +154,11 @@ def test_ARAXRanker_test5_asset70():
     query = { "message": { "query_graph": {
                 "edges": {
                     "e01": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "SN"
                     }
                 },
@@ -173,7 +167,6 @@ def test_ARAXRanker_test5_asset70():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0018982"
                     ],
@@ -183,7 +176,6 @@ def test_ARAXRanker_test5_asset70():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -218,13 +210,11 @@ def test_ARAXRanker_test6_asset72():
     query = { "message": { "query_graph": {
                 "edges": {
                     "e01": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "SN"
                     }
                 },
@@ -233,7 +223,6 @@ def test_ARAXRanker_test6_asset72():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0018328"
                     ],
@@ -243,7 +232,6 @@ def test_ARAXRanker_test6_asset72():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -278,13 +266,11 @@ def test_ARAXRanker_test9_asset614():
     query = { "message": { "query_graph": {
                 "edges": {
                     "e01": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "SN"
                     }
                 },
@@ -293,7 +279,6 @@ def test_ARAXRanker_test9_asset614():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0007186"
                     ],
@@ -303,7 +288,6 @@ def test_ARAXRanker_test9_asset614():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -338,13 +322,11 @@ def test_ARAXRanker_test9_asset619():
     query = { "message": { "query_graph": {
                 "edges": {
                     "e01": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "SN"
                     }
                 },
@@ -353,7 +335,6 @@ def test_ARAXRanker_test9_asset619():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0007186"
                     ],
@@ -363,7 +344,6 @@ def test_ARAXRanker_test9_asset619():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -398,13 +378,11 @@ def test_ARAXRanker_test9_asset623():
     query = { "message": { "query_graph": {
                 "edges": {
                     "e01": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "SN"
                     }
                 },
@@ -413,7 +391,6 @@ def test_ARAXRanker_test9_asset623():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0007186"
                     ],
@@ -423,7 +400,6 @@ def test_ARAXRanker_test9_asset623():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -458,26 +434,19 @@ def test_ARAXRanker_test13_asset311():
     query = { "message": { "query_graph": {
                 "edges": {
                     "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:affects"
                     ],
-                    "qualifier_constraints": [
-                        {
-                        "qualifier_set": [
+                    "constraints": {
+                        "qualifiers": [
                             {
-                            "qualifier_type_id": "biolink:object_aspect_qualifier",
-                            "qualifier_value": "activity_or_abundance"
-                            },
-                            {
-                            "qualifier_type_id": "biolink:object_direction_qualifier",
-                            "qualifier_value": "decreased"
+                                "biolink:object_aspect_qualifier": "activity_or_abundance",
+                                "biolink:object_direction_qualifier": "decreased"
                             }
                         ]
-                        }
-                    ],
+                    },
                     "subject": "SN"
                     }
                 },
@@ -486,7 +455,6 @@ def test_ARAXRanker_test13_asset311():
                     "categories": [
                         "biolink:Gene"
                     ],
-                    "constraints": [],
                     "ids": [
                         "NCBIGene:1636"
                     ],
@@ -496,7 +464,6 @@ def test_ARAXRanker_test13_asset311():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -531,26 +498,19 @@ def test_ARAXRanker_test13_asset355():
     query = { "message": { "query_graph": {
                 "edges": {
                     "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:affects"
                     ],
-                    "qualifier_constraints": [
-                        {
-                        "qualifier_set": [
+                    "constraints": {
+                        "qualifiers": [
                             {
-                            "qualifier_type_id": "biolink:object_aspect_qualifier",
-                            "qualifier_value": "activity_or_abundance"
-                            },
-                            {
-                            "qualifier_type_id": "biolink:object_direction_qualifier",
-                            "qualifier_value": "decreased"
+                                "biolink:object_aspect_qualifier": "activity_or_abundance",
+                                "biolink:object_direction_qualifier": "decreased"
                             }
                         ]
-                        }
-                    ],
+                    },
                     "subject": "SN"
                     }
                 },
@@ -559,7 +519,6 @@ def test_ARAXRanker_test13_asset355():
                     "categories": [
                         "biolink:Gene"
                     ],
-                    "constraints": [],
                     "ids": [
                         "NCBIGene:1636"
                     ],
@@ -569,7 +528,6 @@ def test_ARAXRanker_test13_asset355():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -604,26 +562,19 @@ def test_ARAXRanker_test13_asset360():
     query = { "message": { "query_graph": {
                 "edges": {
                     "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:affects"
                     ],
-                    "qualifier_constraints": [
-                        {
-                        "qualifier_set": [
+                    "constraints": {
+                        "qualifiers": [
                             {
-                            "qualifier_type_id": "biolink:object_aspect_qualifier",
-                            "qualifier_value": "activity_or_abundance"
-                            },
-                            {
-                            "qualifier_type_id": "biolink:object_direction_qualifier",
-                            "qualifier_value": "decreased"
+                                "biolink:object_aspect_qualifier": "activity_or_abundance",
+                                "biolink:object_direction_qualifier": "decreased"
                             }
                         ]
-                        }
-                    ],
+                    },
                     "subject": "SN"
                     }
                 },
@@ -632,7 +583,6 @@ def test_ARAXRanker_test13_asset360():
                     "categories": [
                         "biolink:Gene"
                     ],
-                    "constraints": [],
                     "ids": [
                         "NCBIGene:1636"
                     ],
@@ -642,7 +592,6 @@ def test_ARAXRanker_test13_asset360():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -677,26 +626,19 @@ def test_ARAXRanker_test13_asset361():
     query = { "message": { "query_graph": {
                 "edges": {
                     "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:affects"
                     ],
-                    "qualifier_constraints": [
-                        {
-                        "qualifier_set": [
+                    "constraints": {
+                        "qualifiers": [
                             {
-                            "qualifier_type_id": "biolink:object_aspect_qualifier",
-                            "qualifier_value": "activity_or_abundance"
-                            },
-                            {
-                            "qualifier_type_id": "biolink:object_direction_qualifier",
-                            "qualifier_value": "decreased"
+                                "biolink:object_aspect_qualifier": "activity_or_abundance",
+                                "biolink:object_direction_qualifier": "decreased"
                             }
                         ]
-                        }
-                    ],
+                    },
                     "subject": "SN"
                     }
                 },
@@ -705,7 +647,6 @@ def test_ARAXRanker_test13_asset361():
                     "categories": [
                         "biolink:Gene"
                     ],
-                    "constraints": [],
                     "ids": [
                         "NCBIGene:1636"
                     ],
@@ -715,7 +656,6 @@ def test_ARAXRanker_test13_asset361():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -750,26 +690,19 @@ def test_ARAXRanker_test21_asset338():
     query = { "message": { "query_graph": {
                 "edges": {
                     "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:affects"
                     ],
-                    "qualifier_constraints": [
-                        {
-                        "qualifier_set": [
+                    "constraints": {
+                        "qualifiers": [
                             {
-                            "qualifier_type_id": "biolink:object_aspect_qualifier",
-                            "qualifier_value": "activity_or_abundance"
-                            },
-                            {
-                            "qualifier_type_id": "biolink:object_direction_qualifier",
-                            "qualifier_value": "decreased"
+                                "biolink:object_aspect_qualifier": "activity_or_abundance",
+                                "biolink:object_direction_qualifier": "decreased"
                             }
                         ]
-                        }
-                    ],
+                    },
                     "subject": "SN"
                     }
                 },
@@ -778,7 +711,6 @@ def test_ARAXRanker_test21_asset338():
                     "categories": [
                         "biolink:Gene"
                     ],
-                    "constraints": [],
                     "ids": [
                         "NCBIGene:6524"
                     ],
@@ -788,7 +720,6 @@ def test_ARAXRanker_test21_asset338():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -823,26 +754,19 @@ def test_ARAXRanker_test23_asset381():
     query = { "message": { "query_graph": {
                 "edges": {
                     "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:affects"
                     ],
-                    "qualifier_constraints": [
-                        {
-                        "qualifier_set": [
+                    "constraints": {
+                        "qualifiers": [
                             {
-                            "qualifier_type_id": "biolink:object_aspect_qualifier",
-                            "qualifier_value": "activity_or_abundance"
-                            },
-                            {
-                            "qualifier_type_id": "biolink:object_direction_qualifier",
-                            "qualifier_value": "decreased"
+                                "biolink:object_aspect_qualifier": "activity_or_abundance",
+                                "biolink:object_direction_qualifier": "decreased"
                             }
                         ]
-                        }
-                    ],
+                    },
                     "subject": "SN"
                     }
                 },
@@ -851,7 +775,6 @@ def test_ARAXRanker_test23_asset381():
                     "categories": [
                         "biolink:Gene"
                     ],
-                    "constraints": [],
                     "ids": [
                         "NCBIGene:154"
                     ],
@@ -861,7 +784,6 @@ def test_ARAXRanker_test23_asset381():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }
@@ -897,26 +819,19 @@ def test_ARAXRanker_test23_asset378():
     query = { "message": { "query_graph": {
                 "edges": {
                     "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "ON",
                     "predicates": [
                         "biolink:affects"
                     ],
-                    "qualifier_constraints": [
-                        {
-                        "qualifier_set": [
+                    "constraints": {
+                        "qualifiers": [
                             {
-                            "qualifier_type_id": "biolink:object_aspect_qualifier",
-                            "qualifier_value": "activity_or_abundance"
-                            },
-                            {
-                            "qualifier_type_id": "biolink:object_direction_qualifier",
-                            "qualifier_value": "decreased"
+                                "biolink:object_aspect_qualifier": "activity_or_abundance",
+                                "biolink:object_direction_qualifier": "decreased"
                             }
                         ]
-                        }
-                    ],
+                    },
                     "subject": "SN"
                     }
                 },
@@ -925,7 +840,6 @@ def test_ARAXRanker_test23_asset378():
                     "categories": [
                         "biolink:Gene"
                     ],
-                    "constraints": [],
                     "ids": [
                         "NCBIGene:154"
                     ],
@@ -935,7 +849,6 @@ def test_ARAXRanker_test23_asset378():
                     "categories": [
                         "biolink:ChemicalEntity"
                     ],
-                    "constraints": [],
                     "set_interpretation": "BATCH"
                     }
                 }

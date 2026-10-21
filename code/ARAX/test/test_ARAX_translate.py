@@ -453,10 +453,10 @@ def test_overlay_after_lookup():
     ngd_bindings = set()
     for result in message.results:
         assert result.analyses[0].score is not None
-        for eb_key, edge_bindings in result.analyses[0].edge_bindings.items():
-            for edge_binding in edge_bindings:
-                if edge_binding.id.startswith("NGD1"):
-                    ngd_bindings.add(edge_binding.id)
+        for eb_key, edge_binding in result.analyses[0].edge_bindings.items():
+            for edge_id in edge_binding.ids:
+                if edge_id.startswith("NGD1"):
+                    ngd_bindings.add(edge_id)
     assert len(ngd_bindings) == len(message.results)
 
 @pytest.mark.slow

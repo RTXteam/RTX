@@ -369,11 +369,11 @@ class ARAXQuery:
             query_attributes = result.data
             eprint(f"*** query_attributes={query_attributes}")
 
-            #### Convert the message from dicts to objects
-            #if 'message' in query:                                   #  Not needed now T2FIXME
-            #    response.debug("Deserializing message")
-            #    query['message'] = ARAXMessenger().from_dict(query['message'])
-            eprint(f"*** message={query['message']}")
+            #### Convert the message from dicts to objects (the API already passes a Message object)
+            if isinstance(query.get('message'), dict):
+                response.debug("Deserializing message")
+                query['message'] = ARAXMessenger().from_dict(query['message'])
+            eprint(f"*** message={query.get('message')}")
 
             # If there is a workflow, translate it to ARAXi and append it to the operations actions list
             if "have_workflow" in query_attributes:
@@ -618,7 +618,7 @@ class ARAXQuery:
                                     node['attributes'] = new_attrs
 
                     if isinstance(referenced_envelope,dict):
-                        referenced_envelope = Response().from_dict(referenced_envelope)
+                        referenced_envelope = Response.from_dict(referenced_envelope)
                         #messages.append(referenced_message)
                         messages = [ referenced_envelope.message ]
                         #eprint(json.dumps(referenced_envelope.message.results,indent=2))

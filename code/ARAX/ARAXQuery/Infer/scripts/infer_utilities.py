@@ -306,9 +306,7 @@ class InferUtilities:
 
         # if the knowledge graph is empty, create it
         if not message.knowledge_graph or not hasattr(message, 'knowledge_graph'):
-            message.knowledge_graph = KnowledgeGraph()
-            message.knowledge_graph.nodes = {}
-            message.knowledge_graph.edges = {}
+            message.knowledge_graph = KnowledgeGraph(nodes={}, edges={})
         if not hasattr(message.knowledge_graph, 'nodes'):
             message.knowledge_graph.nodes = {}
         if not hasattr(message.knowledge_graph, 'edges'):
@@ -716,9 +714,7 @@ class InferUtilities:
             self.response.original_query_graph = copy.deepcopy(message.query_graph)
 
         if not message.knowledge_graph or not hasattr(message, 'knowledge_graph'):  # if the knowledge graph is empty, create it
-            message.knowledge_graph = KnowledgeGraph()
-            message.knowledge_graph.nodes = {}
-            message.knowledge_graph.edges = {}
+            message.knowledge_graph = KnowledgeGraph(nodes={}, edges={})
         if not hasattr(message.knowledge_graph, 'nodes'):
             message.knowledge_graph.nodes = {}
         if not hasattr(message.knowledge_graph, 'edges'):

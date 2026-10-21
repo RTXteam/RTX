@@ -301,7 +301,7 @@ def test_FET_ranking_1():
     ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    scores = [result.row_data[0] for result in message.results]
+    scores = [result.row_data[0].actual_instance for result in message.results]
     assert min(scores) != max(scores)
 
 @pytest.mark.slow

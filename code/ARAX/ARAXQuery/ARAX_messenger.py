@@ -235,9 +235,7 @@ class ARAXMessenger:
 
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = {}
-            message.query_graph.edges = {}
+            message.query_graph = QueryGraph(nodes={}, edges={})
         if message.query_graph.nodes is None:
             message.query_graph.nodes = {}
 
@@ -343,9 +341,7 @@ class ARAXMessenger:
         #### Set up local references to the message and verify the query_graph nodes
         message = self.envelope.message
         if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = []
-            message.query_graph.edges = []
+            message.query_graph = QueryGraph(nodes={}, edges={})
         if message.query_graph.nodes is None:
             message.query_graph.nodes = []
         qnodes = message.query_graph.nodes
@@ -467,9 +463,7 @@ class ARAXMessenger:
 
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = {}
-            message.query_graph.edges = {}
+            message.query_graph = QueryGraph(nodes={}, edges={})
         if message.query_graph.edges is None:
             message.query_graph.edges = {}
 
@@ -540,9 +534,7 @@ class ARAXMessenger:
         #### Set up local references to the message and verify the query_graph nodes
         message = self.envelope.message
         if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = {}
-            message.query_graph.edges = {}
+            message.query_graph = QueryGraph(nodes={}, edges={})
         if message.query_graph.edges is None:
             message.query_graph.edges = {}
         qedges = message.query_graph.edges
@@ -723,7 +715,7 @@ class ARAXMessenger:
 
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
-            message.query_graph = QueryGraph()
+            message.query_graph = QueryGraph(nodes={})
 
         #### Create a QPath
         qpath = QPath.model_construct()
@@ -873,7 +865,7 @@ class ARAXMessenger:
         #### Unpack the response content into a dict and dump
         try:
             response_dict = response_content.json()
-            envelope = Response().from_dict(response_dict)
+            envelope = Response.from_dict(response_dict)
         except:
             response.error(f"Error converting response from '{message_uri}' to objects from content", error_code="UnableToParseContent")
             return response
