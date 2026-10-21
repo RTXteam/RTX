@@ -9,6 +9,9 @@ import traceback
 from collections import defaultdict
 from typing import Union, Optional, Any
 
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))  # ARAXQuery directory
 from ARAX_response import ARAXResponse
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../")  # code directory
@@ -34,6 +37,9 @@ from Expand.trapi_query_cacher import KPQueryCacher
 from ARAX_messenger import ARAXMessenger
 
 UNBOUND_NODES_KEY = "__UNBOUND__"
+
+# Tracer for Expand's KP queries, so each one shows up in Jaeger (issue #2923)
+tracer = trace.get_tracer(__name__)
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
@@ -1033,29 +1039,36 @@ class ARAXExpander:
                       error_code="InvalidKP")
             return answer_kg, None, log
 
-        # Route this query to the KP's TRAPI API
-        try:
-            kp_querier = TRAPIQuerier(response_object=log,
-                                      kp_name=kp_to_use,
-                                      user_specified_kp=user_specified_kp,
-                                      kp_timeout=kp_timeout,
-                                      bypass_cache=bypass_cache,
-                                      kp_selector=kp_selector)
-            qg_org_kg, aux_graphs = await kp_querier.answer_one_hop_query_async(
-                edge_qg,
-                be_creative_treats=be_creative_treats)
-        except Exception:
-            tb = traceback.format_exc()
-            error_type, error, _ = sys.exc_info()
-            if user_specified_kp:
-                log.error(f"An uncaught error of type {error_type} was thrown while "
-                          f"trying to Expand using {kp_to_use}. Error was: {tb}",
-                          error_code="UncaughtError")
-            else:
-                log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
-                            f"get answers from that KP. Error was: {tb}")
-            log.update_query_plan(qedge_key, kp_to_use, "Error", f"Process error-ed out with {log.status}")
-            return QGOrganizedKnowledgeGraph(), {}, log
+        # Route this query to the KP's TRAPI API, in one span per KP query (issue #2923)
+        with tracer.start_as_current_span(
+                "Expand.kp_query",
+                attributes={'arax.kp.infores': kp_to_use,
+                            'arax.kp.qedge_key': qedge_key,
+                            'arax.kp.bypass_cache': bool(bypass_cache)}) as kp_span:
+            try:
+                kp_querier = TRAPIQuerier(response_object=log,
+                                          kp_name=kp_to_use,
+                                          user_specified_kp=user_specified_kp,
+                                          kp_timeout=kp_timeout,
+                                          bypass_cache=bypass_cache,
+                                          kp_selector=kp_selector)
+                qg_org_kg, aux_graphs = await kp_querier.answer_one_hop_query_async(
+                    edge_qg,
+                    be_creative_treats=be_creative_treats)
+            except Exception:
+                tb = traceback.format_exc()
+                error_type, error, _ = sys.exc_info()
+                kp_span.set_status(Status(StatusCode.ERROR, f"{error_type.__name__}: {error}"))
+                if user_specified_kp:
+                    log.error(f"An uncaught error of type {error_type} was thrown while "
+                              f"trying to Expand using {kp_to_use}. Error was: {tb}",
+                              error_code="UncaughtError")
+                else:
+                    log.warning(f"An uncaught error was thrown while trying to Expand using {kp_to_use}, so I couldn't "
+                                f"get answers from that KP. Error was: {tb}")
+                log.update_query_plan(qedge_key, kp_to_use, "Error", f"Process error-ed out with {log.status}")
+                return QGOrganizedKnowledgeGraph(), {}, log
+            kp_span.set_attribute('arax.kp.n_edges', len(qg_org_kg.edges_by_qg_id.get(qedge_key, {})))
 
         if log.status != 'OK':
             if multiple_kps:
