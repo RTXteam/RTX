@@ -323,7 +323,7 @@ class ARAXDecorator:
             search_key_to_edge_keys_map[search_key].add(edge_key)
         node_pair_key_col = "node_pair"
 
-        # Extract the proper entries from sqlite. Tier0 doesn't have KG2c's `publications_info`
+        # Extract the proper entries from sqlite. The Tier0 sqlite has no `publications_info`
         # dict field; the nearest analog is `supporting_text`, which is what we pull here.
         connection, cursor = self._connect_to_sqlite()
         response.debug("Looking up EPC edge info in tier0 sqlite to decorate NGD edges")
@@ -404,7 +404,7 @@ class ARAXDecorator:
         rtx_index = path_list.index("RTX")
         rtxc = RTXConfiguration()
         sqlite_dir_path = os.path.sep.join([*path_list[:(rtx_index + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Tier0'])
-        sqlite_name = rtxc.tier0_sqlite_path.split('/')[-1]
+        sqlite_name = rtxc.info_for_overlay_sqlite_path.split('/')[-1]
         sqlite_file_path = f"{sqlite_dir_path}{os.path.sep}{sqlite_name}"
         # Decoration only reads this file, and on a busy instance every forked query process
         # opens it; see util.connect_to_sqlite_read_only for what a read-only open saves.

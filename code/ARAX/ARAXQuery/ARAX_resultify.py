@@ -10,8 +10,8 @@ default is to ignore edge direction).
    Usage: python3 -u ARAX_resultify.py
 
    will run the built-in tests for ARAX_resultify.py. When testing, also be sure
-   to run the `document_dsl_commands.py` script in the `code/ARAX/Documentation`
-   directory since that script uses the `describe_me` method of this module.
+   to run the `document_dsl_commands.py` script (now kept in the autobuild repo
+   under `from_rtx/`) since that script uses the `describe_me` method of this module.
 
 '''
 

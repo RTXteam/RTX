@@ -603,7 +603,7 @@ def test_category_and_predicate_format():
 
 
 def test_issue_1212():
-    # If a qnode curie isn't recognized by synonymizer, shouldn't end up with results when using KG2c
+    # If a qnode curie isn't recognized by synonymizer, shouldn't end up with results
     actions_list = [
         "add_qnode(ids=FAKE:Curie, categories=biolink:ChemicalEntity, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",

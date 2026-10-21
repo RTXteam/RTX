@@ -5,8 +5,6 @@ requests-cache==1.2.1
 matplotlib
 seaborn
 psutil==7.1.2
-neo4j-driver==1.7.6
-ipython-cypher==0.2.6
 networkx==2.8.8
 graphviz==0.20.1
 lxml==4.9.4

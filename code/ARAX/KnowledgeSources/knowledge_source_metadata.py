@@ -7,7 +7,6 @@ import json
 import ast
 import re
 import inspect
-import csv
 import requests
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
@@ -35,7 +34,6 @@ class KnowledgeSourceMetadata:
 
     #### Constructor
     def __init__(self):
-        self.predicates = None
         self.meta_knowledge_graph = KnowledgeSourceMetadata.cached_meta_knowledge_graph
         self.simplified_meta_knowledge_graph = KnowledgeSourceMetadata.cached_simplified_meta_knowledge_graph
         self.RTXConfig = RTXConfiguration()
@@ -51,7 +49,7 @@ class KnowledgeSourceMetadata:
     def _fetch_ploverdb_meta_kg(self) -> Optional[Dict[str, Any]]:
         """Fetch meta knowledge graph from PloverDB"""
         try:
-            plover_url = getattr(self.RTXConfig, 'plover_url', "https://kg2cplover.rtx.ai:9990")
+            plover_url = self.RTXConfig.plover_url
             response = requests.get(f"{plover_url}/meta_knowledge_graph", timeout=30)
             if response.status_code == 200:
                 return response.json()
@@ -295,52 +293,6 @@ class KnowledgeSourceMetadata:
 
 
 
-    #### Get a list of all supported subjects, predicates, and objects and reformat to /predicates format
-    def get_kg_predicates(self):
-        method_name = inspect.stack()[0][3]
-
-        #### If we've already loaded the predicates, just return it
-        if self.predicates is not None:
-            return self.predicates
-
-        # We always furnish KG2C results
-        kg_prefix = 'KG2C'
-
-        # Verify that the source data file exists
-        input_filename = os.path.dirname(os.path.abspath(__file__)) + f"/{kg_prefix}_allowed_predicate_triples.csv"
-        if not os.path.exists(input_filename):
-            eprint(f"ERROR [{method_name}]: File '{input_filename}' not found")
-            return None
-
-        # Read the data and fill the predicates dict
-        predicates = {}
-        iline = 0
-        with open(input_filename) as infile:
-            rows = csv.reader(infile, delimiter=',', quotechar='"')
-            for columns in rows:
-                iline += 1
-
-                # Ensure there are exactly 3 columns
-                if len(columns) != 3:
-                    eprint(f"ERROR [{method_name}]: input file {input_filename} line '{iline} does not have 3 columns")
-                    continue
-
-                subject_category = columns[0]
-                predicate = columns[1]
-                object_category = columns[2]
-
-                if subject_category not in predicates:
-                    predicates[subject_category] = {}
-
-                if object_category not in predicates[subject_category]:
-                    predicates[subject_category][object_category] = []
-
-                predicates[subject_category][object_category].append(predicate)
-
-        self.predicates = predicates
-
-        return predicates
-
     #### Get a list of all supported subjects, predicates, and objects and return in /meta_knowledge_graph format
     def get_meta_knowledge_graph(self, format_='full'):
         method_name = inspect.stack()[0][3]
@@ -394,8 +346,6 @@ class KnowledgeSourceMetadata:
 def main():
     #test the meta knowledge graph (simple format)
     ksm = KnowledgeSourceMetadata()
-    #predicates = ksm.get_kg_predicates()
-    #print(json.dumps(predicates,sort_keys=True,indent=2))
 
     meta_knowledge_graph = ksm.get_meta_knowledge_graph(format_='simple')
     print(json.dumps(meta_knowledge_graph,sort_keys=True,indent=2))
