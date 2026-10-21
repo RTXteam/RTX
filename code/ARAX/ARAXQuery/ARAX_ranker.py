@@ -67,8 +67,8 @@ def _get_edge_attributes(edge: Edge) -> dict[str, str | float | list[str] | None
 
 
 def _get_overlay_sqlite_path() -> str:
-    sqlite_name = os.path.basename(RTXConfiguration().tier0_sqlite_path)
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "KnowledgeSources", "KG2c", sqlite_name)
+    sqlite_name = os.path.basename(RTXConfiguration().info_for_overlay_sqlite_path)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "KnowledgeSources", "Tier0", sqlite_name)
 
 
 def _get_sps_by_node_id(node_ids: set[str]) -> dict[str, float]:

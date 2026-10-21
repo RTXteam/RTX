@@ -36,12 +36,12 @@ class ComputeFTEST:
         self.parameters = parameters
         self.nodesynonymizer = NodeSynonymizer()
 
-        ## construct the path to the kg2c sqlite file
+        ## construct the path to the info-for-overlay sqlite file
         rtx_root = Path(__file__).resolve()
         while rtx_root.name != "RTX":
             rtx_root = rtx_root.parent
-        sqlite_name = Path(RTX_CONFIG.kg2c_sqlite_path).name
-        sqlite_file_path = rtx_root / "code" / "ARAX" / "KnowledgeSources" / "KG2c" / sqlite_name
+        sqlite_name = Path(RTX_CONFIG.info_for_overlay_sqlite_path).name
+        sqlite_file_path = rtx_root / "code" / "ARAX" / "KnowledgeSources" / "Tier0" / sqlite_name
         self.sqlite_file_path = sqlite_file_path
 
 
@@ -463,7 +463,7 @@ class ComputeFTEST:
             failure_nodes += list(normalized_nodes.keys() - mapping.keys())
 
             query_nodes = list(set(mapping.values()))
-            # Get connected to kg2c sqlite
+            # Get connected to info-for-overlay sqlite
             connection = sqlite3.connect(self.sqlite_file_path)
             cursor = connection.cursor()
             # Extract the neighbor count data
@@ -566,7 +566,7 @@ class ComputeFTEST:
         node_type = ComputeFTEST.convert_string_to_snake_case(node_type.replace('biolink:',''))
         node_type = ComputeFTEST.convert_string_biolinkformat(node_type)
 
-        # Get connected to kg2c sqlite
+        # Get connected to info-for-overlay sqlite
         connection = sqlite3.connect(self.sqlite_file_path)
         cursor = connection.cursor()
 

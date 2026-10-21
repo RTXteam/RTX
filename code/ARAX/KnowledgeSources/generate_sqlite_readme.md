@@ -125,4 +125,4 @@ Optional:
 | `code/ARAX/ARAXQuery/Overlay/fisher_exact_test.py` | `neighbors`, `category_counts` |
 | `code/ARAX/ARAXQuery/Overlay/` (NGD-style decoration) | `edge_publications` |
 
-The path to the SQLite file is configured in `code/config_dbs.json` under `database_downloads.tier0_sqlite`.
+The path to the SQLite file is configured in `code/config_dbs.json` under `database_downloads.info_for_overlay_sqlite`.

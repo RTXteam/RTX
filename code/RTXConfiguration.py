@@ -167,10 +167,8 @@ class RTXConfiguration:
         self.curie_to_pmids_version = self.curie_to_pmids_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.curie_ngd_path = database_downloads["curie_ngd"]
         self.curie_ngd_version = self.curie_ngd_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.kg2c_sqlite_path = database_downloads["kg2c_sqlite"]
-        self.kg2c_sqlite_version = self.kg2c_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.tier0_sqlite_path = database_downloads["tier0_sqlite"]
-        self.tier0_sqlite_version = self.tier0_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
+        self.info_for_overlay_sqlite_path = database_downloads["info_for_overlay_sqlite"]
+        self.info_for_overlay_sqlite_version = self.info_for_overlay_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.fda_approved_drugs_path = database_downloads["fda_approved_drugs"]
         self.fda_approved_drugs_version = self.fda_approved_drugs_path.split('/')[-1].split('_v')[-1].replace('.pickle', '')
         self.autocomplete_path = database_downloads["autocomplete"]

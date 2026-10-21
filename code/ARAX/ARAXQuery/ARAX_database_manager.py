@@ -59,9 +59,9 @@ class ARAXDatabaseManager:
         if not  os.path.exists(cohd_filepath):
             _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(cohd_filepath)}")
         
-        kg2c_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'KG2c'])
-        if not os.path.exists(kg2c_filepath):
-            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(kg2c_filepath)}")
+        tier0_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'Tier0'])
+        if not os.path.exists(tier0_filepath):
+            _run_cmd_in_shell_chk_status(f"mkdir -p {shlex.quote(tier0_filepath)}")
 
         fda_approved_drugs_filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources'])
         if not os.path.exists(fda_approved_drugs_filepath):
@@ -79,7 +79,7 @@ class ARAXDatabaseManager:
             'cohd_database': f"{cohd_filepath}{os.path.sep}{self.RTXConfig.cohd_database_path.split('/')[-1]}",
             'curie_to_pmids': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_to_pmids_path.split('/')[-1]}",
             'curie_ngd': f"{ngd_filepath}{os.path.sep}{self.RTXConfig.curie_ngd_path.split('/')[-1]}",
-            'kg2c_sqlite': f"{kg2c_filepath}{os.path.sep}{self.RTXConfig.kg2c_sqlite_path.split('/')[-1]}",
+            'info_for_overlay_sqlite': f"{tier0_filepath}{os.path.sep}{self.RTXConfig.info_for_overlay_sqlite_path.split('/')[-1]}",
             'fda_approved_drugs': f"{fda_approved_drugs_filepath}{os.path.sep}{self.RTXConfig.fda_approved_drugs_path.split('/')[-1]}",
             'autocomplete': f"{autocomplete_filepath}{os.path.sep}{self.RTXConfig.autocomplete_path.split('/')[-1]}",
             'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}"
@@ -92,7 +92,7 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_database_subpath(self.RTXConfig.cohd_database_path),
             'curie_to_pmids': self.get_database_subpath(self.RTXConfig.curie_to_pmids_path),
             'curie_ngd': self.get_database_subpath(self.RTXConfig.curie_ngd_path),
-            'kg2c_sqlite': self.get_database_subpath(self.RTXConfig.kg2c_sqlite_path),
+            'info_for_overlay_sqlite': self.get_database_subpath(self.RTXConfig.info_for_overlay_sqlite_path),
             'fda_approved_drugs': self.get_database_subpath(self.RTXConfig.fda_approved_drugs_path),
             'autocomplete': self.get_database_subpath(self.RTXConfig.autocomplete_path),
             'explainable_dtd_db': self.get_database_subpath(self.RTXConfig.explainable_dtd_db_path)
@@ -103,7 +103,7 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_remote_location('cohd_database'),
             'curie_to_pmids': self.get_remote_location('curie_to_pmids'),
             'curie_ngd': self.get_remote_location('curie_ngd'),
-            'kg2c_sqlite': self.get_remote_location('kg2c_sqlite'),
+            'info_for_overlay_sqlite': self.get_remote_location('info_for_overlay_sqlite'),
             'fda_approved_drugs': self.get_remote_location('fda_approved_drugs'),
             'autocomplete': self.get_remote_location('autocomplete'),
             'explainable_dtd_db': self.get_remote_location('explainable_dtd_db')
@@ -114,7 +114,7 @@ class ARAXDatabaseManager:
             'cohd_database': self.get_docker_path('cohd_database'),
             'curie_to_pmids': self.get_docker_path('curie_to_pmids'),
             'curie_ngd': self.get_docker_path('curie_ngd'),
-            'kg2c_sqlite': self.get_docker_path('kg2c_sqlite'),
+            'info_for_overlay_sqlite': self.get_docker_path('info_for_overlay_sqlite'),
             'fda_approved_drugs': self.get_docker_path('fda_approved_drugs'),
             'autocomplete': self.get_docker_path('autocomplete'),
             'explainable_dtd_db': self.get_docker_path('explainable_dtd_db')
@@ -134,9 +134,9 @@ class ARAXDatabaseManager:
                 'path': self.local_paths['curie_ngd'],
                 'version': self.RTXConfig.curie_ngd_version
             },
-            'kg2c_sqlite': {
-                'path': self.local_paths['kg2c_sqlite'],
-                'version': self.RTXConfig.kg2c_sqlite_version
+            'info_for_overlay_sqlite': {
+                'path': self.local_paths['info_for_overlay_sqlite'],
+                'version': self.RTXConfig.info_for_overlay_sqlite_version
             },
             'fda_approved_drugs': {
                 'path': self.local_paths['fda_approved_drugs'],
