@@ -55,7 +55,8 @@ class Response(object):
     table_column_names: Optional[List[StrictStr]] = Field(default=None, description="List of column names that corresponds to the row_data for each result")
     original_question: Optional[StrictStr] = Field(default=None, description="The original question text typed in by the user")
     restated_question: Optional[StrictStr] = Field(default=None, description="A precise restatement of the question, as understood by the Translator, for which the answer applies. The user should verify that the restated question matches the intent of their original question (it might not).")
-    query_options: Optional[Dict[str, Any]] = Field(default=None, description="Dict of options that can be sent with the query. Options are tool specific and not stipulated here")
+    # TODO: Marked deprecated until the class is regenerated and this field is removed
+    query_options: Optional[Dict[str, Any]] = Field(default=None, description="Dict of options that can be sent with the query. Options are tool specific and not stipulated here", deprecated = True)
     context: Optional[StrictStr] = Field(default=None, description="JSON-LD context URI")
     type: Optional[StrictStr] = Field(default=None, description="Entity type of this response")
     id: Optional[StrictStr] = Field(default=None, description="URI for this response")

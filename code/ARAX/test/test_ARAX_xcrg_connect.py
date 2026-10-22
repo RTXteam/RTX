@@ -422,7 +422,7 @@ def test_gene_object_xcrg_full_trapi_integration():
                 },
             }
         },
-        "query_options": {"bypass_cache": True},
+        "parameters": {"bypass_cache": True},
     }
 
     araxq = ARAXQuery()

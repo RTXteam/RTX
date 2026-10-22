@@ -32,7 +32,7 @@ def _run_query_and_do_standard_testing(actions: list[str] | None = None,
     query_object: dict[str, Any] = \
         {"operations": {"actions": actions}} if actions else {"message": {"query_graph": json_query}}
     if timeout:
-        query_object["query_options"] = {"kp_timeout": timeout}
+        query_object["parameters"] = {"timeout": timeout}
     response = araxq.query(query_object)
     message = araxq.message
     if response.status != 'OK':

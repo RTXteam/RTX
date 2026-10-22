@@ -228,15 +228,7 @@ class ARAXExpander:
         else:
             kp_timeout = None
 
-        # set bypass_cache based on input parameters, it'll be used later
-        if response.envelope.query_options is not None and "bypass_cache" in response.envelope.query_options:
-            if response.envelope.query_options["bypass_cache"] is None or str(response.envelope.query_options["bypass_cache"]).lower() == 'false':
-                bypass_cache = False
-            else:
-                bypass_cache = True
-            log.debug(f"Found bypass_cache parameter {bypass_cache}")
-        else:
-            bypass_cache = False
+        bypass_cache = response.envelope.parameters and response.envelope.parameters.bypass_cache or False
 
         # Verify we understand all constraints
         for qnode_key, qnode in query_graph.nodes.items():

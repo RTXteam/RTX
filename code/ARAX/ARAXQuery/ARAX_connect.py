@@ -282,12 +282,7 @@ class ARAXConnect:
         pathfinder_input_data = {'query_graph': response_envelope_as_dict['message']['query_graph'],
                                  'parameters': cleaned_parameters}
 
-        query_options = self.response.envelope.query_options
-        if query_options is not None and "bypass_cache" in query_options:
-            bypass_cache = query_options["bypass_cache"] is not None and str(query_options["bypass_cache"]).lower() != 'false'
-        else:
-            bypass_cache = False
-        if bypass_cache:
+        if self.response.envelope.parameters and self.response.envelope.parameters.bypass_cache:
             self.response.debug(f"bypass_cache is set; skipping cache lookup for {kp_curie}")
             response_code = -2
         else:

@@ -608,29 +608,29 @@ function postQuery_ARAX(qtype,queryObj) {
 
     queryObj.stream_progress = true;
     if (UIstate["timeout"]) {
-	if (!queryObj.query_options)
-	    queryObj.query_options = {};
-	queryObj.query_options['kp_timeout'] = UIstate["timeout"];
+	if (!queryObj.parameters)
+	    queryObj.parameters = {};
+	queryObj.parameters['timeout'] = parseInt(UIstate["timeout"]) || null;
     }
     if (UIstate["pruning"]) {
-	if (!queryObj.query_options)
-	    queryObj.query_options = {};
-	queryObj.query_options['prune_threshold'] = UIstate["pruning"];
+	if (!queryObj.additional_properties)
+	    queryObj.additional_properties = {};
+	queryObj.additional_properties['prune_threshold'] = UIstate["pruning"];
     }
     if (UIstate["maxpaths"]) {
-	if (!queryObj.query_options)
-	    queryObj.query_options = {};
-	queryObj.query_options['max_pathfinder_paths'] = UIstate["maxpaths"];
+	if (!queryObj.additional_properties)
+	    queryObj.additional_properties = {};
+	queryObj.additional_properties['max_pathfinder_paths'] = UIstate["maxpaths"];
     }
     if (UIstate["maxpathlen"]) {
-        if (!queryObj.query_options)
-            queryObj.query_options = {};
-        queryObj.query_options['max_path_length'] = UIstate["maxpathlen"];
+        if (!queryObj.additional_properties)
+            queryObj.additional_properties = {};
+        queryObj.additional_properties['max_path_length'] = UIstate["maxpathlen"];
     }
     if (!UIstate["usecache"]) {
-        if (!queryObj.query_options)
-            queryObj.query_options = {};
-        queryObj.query_options['bypass_cache'] = true;
+        if (!queryObj.parameters)
+            queryObj.parameters = {};
+        queryObj.parameters['bypass_cache'] = true;
     }
 
     var cmddiv = document.createElement("div");
@@ -2218,7 +2218,7 @@ function render_response(respObj,dispjson) {
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
 
-    if (respObj.query_options && respObj.query_options.query_plan) {
+    if (respObj.additional_properties && respObj.additional_properties.query_plan) {
         var div = document.createElement("div");
 	div.className = 'statushead';
 	div.append("Expansion Results");
@@ -2229,7 +2229,7 @@ function render_response(respObj,dispjson) {
 	div.append(document.createElement("br"));
         document.getElementById("queryplan_container").append(div);
 
-	div.append(render_queryplan_table(respObj.query_options.query_plan));
+	div.append(render_queryplan_table(respObj.additional_properties.query_plan));
 	div.append(document.createElement("br"));
     }
 

@@ -21,12 +21,13 @@ from ARAX_response import ARAXResponse
 PACKAGE_PARENT = '../../UI/OpenAPI/openapi_server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
 from openapi_server.models.message import Message
+from openapi_server.models.query_parameters import QueryParameters
 
 
 def _do_arax_query(query: dict, timeout: Optional[int] = None) -> List[Union[ARAXResponse, Message]]:
     araxq = ARAXQuery()
     if timeout:
-        query["query_options"] = {"kp_timeout": timeout}
+        query["parameters"] = QueryParameters(timeout = timeout)
     response = araxq.query(query)
     if response.status != 'OK':
         print(response.show(level=response.DEBUG))

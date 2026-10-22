@@ -35,6 +35,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.response import Response
 from openapi_server.models.message import Message
 from openapi_server.models.operations import Operations
+from openapi_server.models.query_parameters import QueryParameters
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
@@ -67,6 +68,7 @@ class response_locking(ARAXResponse):
             super()._add_message(message, level, code)
 
 class ARAXQuery:
+    response: ARAXResponse | None
 
     #### Constructor
     def __init__(self):
@@ -299,13 +301,13 @@ class ARAXQuery:
 
     ########################################################################################
     def query(self, query, mode='ARAX', origin='local'):  #T2FIXME
-
+        if not self.response:
+            # At this point in the code, the response should only be None in regression tests
+            # that call ARAXQuery.query() directly
+            self.response = ARAXResponse()
         #### Create the skeleton of the response
         response = self.response
-        if response is None:  # At this point in the code, the response should only be
-                              # None in regression tests that call ARAXQuery.query() directly
-            response = ARAXResponse()
-            self.response = response
+        assert response # Help type checkers
 
         #### Announce the launch of query()
         #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
@@ -328,16 +330,14 @@ class ARAXQuery:
         #### Create an empty envelope
         messenger = ARAXMessenger()
         messenger.create_envelope(response)
+        assert response.envelope # Help type checkers
 
-        #### Preserve the query_options
-        if 'query_options' in query and query['query_options'] is not None:
-            response.envelope.query_options = query['query_options']
-        else:
-            response.envelope.query_options = {}
-
-        #### Need to put certain input Query parameters into query_options to later use by Expand et al.
-        if 'return_minimal_metadata' in query:
-            response.envelope.query_options['return_minimal_metadata'] = query['return_minimal_metadata']
+        ### Preserve Query.parameters
+        if 'parameters' in query:
+            response.envelope.parameters = QueryParameters.from_dict(query['parameters'])
+        #### Preserve the additional_properties i.e. bespoke properties from application
+        if 'additional_properties' in query:
+            response.envelope.additional_properties = query['additional_properties']
 
         #### If a submitter came in, reflect that back into the response
         if "callback" in query and query['callback'] is not None and query['callback'].startswith('http://localhost:8000/ars/'):
@@ -795,9 +795,7 @@ class ARAXQuery:
                     if action['command'] == 'create_message' or action['command'] == 'create_envelope':
                         messenger.create_envelope(response)
                         #### Put our input processing actions into the envelope
-                        if response.envelope.query_options is None:
-                            response.envelope.query_options = {}
-                        response.envelope.query_options['actions'] = operations.actions
+                        response.envelope.additional_properties['actions'] = operations.actions
 
                     elif action['command'] == 'fetch_message':
                         messenger.apply_fetch_message(response,action['parameters'])
@@ -812,9 +810,9 @@ class ARAXQuery:
                         messenger.add_qpath(response,action['parameters'])
 
                     elif action['command'] == 'expand':
-                        self.inject_int_value_into_parameters('kp_timeout', response.envelope.query_options, action['parameters'], 'UserTimeoutNotInt')
-                        self.inject_int_value_into_parameters('prune_threshold', response.envelope.query_options, action['parameters'], 'PruneThresholdNotInt')
-                        self.inject_boolean_value_into_parameters('return_minimal_metadata', response.envelope.query_options, action['parameters'], 'InternalError')
+                        self.inject_int_value_into_parameters('kp_timeout', response.envelope.additional_properties, action['parameters'], 'UserTimeoutNotInt')
+                        self.inject_int_value_into_parameters('prune_threshold', response.envelope.additional_properties, action['parameters'], 'PruneThresholdNotInt')
+                        self.inject_boolean_value_into_parameters('return_minimal_metadata', response.envelope.additional_properties, action['parameters'], 'InternalError')
                         if response.status == 'ERROR':
                             if mode == 'asynchronous':
                                 self.send_to_callback(callback, response)
@@ -970,9 +968,7 @@ class ARAXQuery:
             if response.envelope.status == 'OK':
                 response.envelope.status = 'Success'
 
-            if response.envelope.query_options is None:
-                response.envelope.query_options = {}
-            response.envelope.query_options['query_plan'] = response.query_plan
+            response.envelope.additional_properties['query_plan'] = response.query_plan
 
             # If store=true, then put the message in the database
             response_id = None
@@ -1052,10 +1048,10 @@ class ARAXQuery:
 
 
     ############################################################################################
-    def inject_int_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
+    def inject_int_value_into_parameters(self, parameter_name, additional_properties, parameters, error_code):
         parameter_value = None
-        if query_options is not None and parameter_name in query_options and query_options[parameter_name] is not None:
-            parameter_value = query_options[parameter_name]
+        if additional_properties is not None and parameter_name in additional_properties and additional_properties[parameter_name] is not None:
+            parameter_value = additional_properties[parameter_name]
             #### Try to convery the value to an integer
             try:
                 parameter_value = int(parameter_value)
@@ -1068,10 +1064,10 @@ class ARAXQuery:
 
 
     ############################################################################################
-    def inject_boolean_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
+    def inject_boolean_value_into_parameters(self, parameter_name, additional_properties, parameters, error_code):
         parameter_value = False
-        if query_options is not None and parameter_name in query_options and query_options[parameter_name] is not None:
-            if query_options[parameter_name] is True:
+        if additional_properties is not None and parameter_name in additional_properties and additional_properties[parameter_name] is not None:
+            if additional_properties[parameter_name] is True:
                 parameter_value = True
         parameters[parameter_name] = parameter_value
 
