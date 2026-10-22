@@ -19,7 +19,7 @@ import copy
 import time
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from Path_Finder.utility import get_curie_ngd_path, get_curie_to_pmids_path, get_kg2c_db_path
+from Path_Finder.utility import get_curie_ngd_path, get_curie_to_pmids_path, get_info_for_overlay_db_path
 from Expand.trapi_query_cacher import KPQueryCacher
 from ARAX_messenger import ARAXMessenger
 
@@ -471,7 +471,7 @@ class ARAXConnect:
         pathfinder = Pathfinder(
             f"retriever:{retriever_url}",
             get_curie_ngd_path(),
-            get_kg2c_db_path(),
+            get_info_for_overlay_db_path(),
             blocked_curies,
             blocked_synonyms,
             self.response,

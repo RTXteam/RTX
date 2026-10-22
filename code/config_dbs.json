@@ -1,7 +1,6 @@
 {
    "database_downloads": {
-      "tier0_sqlite": "/translator/data/orangeboard/databases/tier0-20260621/tier0-info-for-overlay_v1.0_tier0-20260621.sqlite",
-      "kg2c_sqlite": "/translator/data/orangeboard/databases/tier0-20260621/tier0-info-for-overlay_v1.0_tier0-20260621.sqlite",
+      "info_for_overlay_sqlite": "/translator/data/orangeboard/databases/tier0-20260621/tier0-info-for-overlay_v1.0_tier0-20260621.sqlite",
       "fda_approved_drugs": "/translator/data/orangeboard/databases/tier0-20260408/fda_approved_drugs_v1.0.pickle",
       "autocomplete": "/translator/data/orangeboard/databases/tier0-20260621/autocomplete_v1.0_tier0-20260621.sqlite",
       "curie_to_pmids": "/translator/data/orangeboard/databases/tier0-20260621/curie_to_pmids_v1.1_tier0-20260621.sqlite",
@@ -11,9 +10,5 @@
    },
    "plover_url_override": "https://automat.renci.org/translatorkg-gandalf",
    "node_normalizer_url_override": null,
-   "name_resolver_url_override": null,
-   "neo4j": {
-      "KG2pre": "kg2endpoint-kg2-10-2.rtx.ai",
-      "KG2c": "kg2-10-2c.rtx.ai"
-   }
+   "name_resolver_url_override": null
 }

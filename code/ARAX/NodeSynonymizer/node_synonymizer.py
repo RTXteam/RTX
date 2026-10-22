@@ -42,8 +42,8 @@ from openapi_server.models.attribute import Attribute  # type: ignore[import-not
 # Share one BMT (Biolink Model Toolkit) across all NodeSynonymizer instances.
 # Building it per instance caused the issue 2800 memory growth. Build it lazily
 # on first use, not at import, so importing this module (which happens in many
-# non-server places, including the test suite, CLI usage, and the KG2c build
-# scripts) does no network or parsing. The Flask server warms it once at
+# non-server places, including the test suite and CLI usage) does no network
+# or parsing. The Flask server warms it once at
 # startup (see __main__.py) before any request threads start.
 _BMT_TOOLKIT = None
 _BMT_TOOLKIT_LOCK = threading.Lock()

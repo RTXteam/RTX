@@ -58,12 +58,7 @@ code/ARAX/NodeSynonymizer/*.tsv
 code/ARAX/NodeSynonymizer/*.pickle
 code/ARAX/NodeSynonymizer/kg2_synonyms.json
 
-code/kg2c/**/*.tsv
-code/kg2c/*.pickle
-
-
 code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.json
-code/UI/OpenAPI/specifications/export/KG2/*/openapi.json
 **/cache_refresh.pid
 
 
@@ -73,3 +68,6 @@ venv
 sample_names.txt
 *.log
 
+
+code/ARAX/ARAXQuery/Infer/data/xCRG_data/*.pt
+code/ARAX/ARAXQuery/Infer/data/xCRG_data/*.npz

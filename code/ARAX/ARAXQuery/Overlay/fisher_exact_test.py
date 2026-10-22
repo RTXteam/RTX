@@ -36,12 +36,12 @@ class ComputeFTEST:
         self.parameters = parameters
         self.nodesynonymizer = NodeSynonymizer()
 
-        ## construct the path to the kg2c sqlite file
+        ## construct the path to the info-for-overlay sqlite file
         rtx_root = Path(__file__).resolve()
         while rtx_root.name != "RTX":
             rtx_root = rtx_root.parent
-        sqlite_name = Path(RTX_CONFIG.kg2c_sqlite_path).name
-        sqlite_file_path = rtx_root / "code" / "ARAX" / "KnowledgeSources" / "KG2c" / sqlite_name
+        sqlite_name = Path(RTX_CONFIG.info_for_overlay_sqlite_path).name
+        sqlite_file_path = rtx_root / "code" / "ARAX" / "KnowledgeSources" / "Tier0" / sqlite_name
         self.sqlite_file_path = sqlite_file_path
 
 
@@ -75,7 +75,7 @@ class ComputeFTEST:
 
         sqlite_file_path = self.sqlite_file_path
         if not os.path.exists(sqlite_file_path):
-            self.response.error(f"Unable to load KG2c sqlite file: {sqlite_file_path}")
+            self.response.error(f"Unable to load info-for-overlay sqlite file: {sqlite_file_path}")
             return self.response
 
         if rel_edge_key is not None:
@@ -292,7 +292,7 @@ class ComputeFTEST:
 
         # find all nodes with the same type of 'subject_qnode_key' nodes in specified KP ('ARAX/KG1','infores:rtx-kg2') that are adjacent to target nodes
         # if rel_edge_key is not None, query adjacent node from database otherwise query adjacent node with DSL command by providing a list of query nodes to add_qnode()
-        ## Note: Regarding of whether kp='ARAX/KG1' or kp='infores:rtx-kg2', it will always query adjacent node count based on kg2c
+        ## Note: Regarding of whether kp='ARAX/KG1' or kp='infores:rtx-kg2', it will always query adjacent node count based on the info-for-overlay sqlite
         if rel_edge_key:
             if len(rel_edge_type) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
                 self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total object nodes in Fisher's Exact Test")
@@ -327,10 +327,10 @@ class ComputeFTEST:
 
         if len(object_node_dict) != 0:
             ## Based on KP detected in message KG, find the total count of node with the same type of source node
-            ## Note: Regardless of what kp is specified in self.size_of_given_type_in_KP, it will always query total count based on kg2c
+            ## Note: Regardless of what kp is specified in self.size_of_given_type_in_KP, it will always query total count based on the info-for-overlay sqlite
             if kp=='infores:rtx-kg2':
                 size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0])
-                self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in KG2c based on 'nodesynonymizer.get_total_entity_count' and this number will be used for Fisher's Exact Test")
+                self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in the info-for-overlay sqlite based on 'nodesynonymizer.get_total_entity_count' and this number will be used for Fisher's Exact Test")
             else:
                 self.response.error("Only KG2 is allowable to calculate the Fisher's exact test temporally")
                 return self.response
@@ -463,7 +463,7 @@ class ComputeFTEST:
             failure_nodes += list(normalized_nodes.keys() - mapping.keys())
 
             query_nodes = list(set(mapping.values()))
-            # Get connected to kg2c sqlite
+            # Get connected to info-for-overlay sqlite
             connection = sqlite3.connect(self.sqlite_file_path)
             cursor = connection.cursor()
             # Extract the neighbor count data
@@ -566,11 +566,11 @@ class ComputeFTEST:
         node_type = ComputeFTEST.convert_string_to_snake_case(node_type.replace('biolink:',''))
         node_type = ComputeFTEST.convert_string_biolinkformat(node_type)
 
-        # Get connected to kg2c sqlite
+        # Get connected to info-for-overlay sqlite
         connection = sqlite3.connect(self.sqlite_file_path)
         cursor = connection.cursor()
 
-        # Extract total count of nodes with certain type in kg2c
+        # Extract total count of nodes with certain type in the info-for-overlay sqlite
         sql_query = f"SELECT C.count " \
                     f"FROM category_counts AS C " \
                     f"WHERE C.category = '{node_type}'"

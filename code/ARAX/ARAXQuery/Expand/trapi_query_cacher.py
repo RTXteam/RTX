@@ -926,8 +926,8 @@ def main():
 
         query_destination = 0
         if query_destination == 0:
-            kp_url = 'https://kg2cploverdb.ci.transltr.io/query'
-            kp_curie = 'infores:rtx-kg2'
+            kp_url = 'https://retriever.ci.transltr.io/query'
+            kp_curie = 'infores:retriever'
         elif query_destination == 1:
             kp_url = 'https://collaboratory-api.ci.transltr.io/query'
             kp_curie = 'infores:knowledge-collaboratory'
