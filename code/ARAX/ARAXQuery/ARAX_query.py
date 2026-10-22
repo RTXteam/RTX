@@ -10,6 +10,7 @@ import threading
 import requests
 import gc
 import contextlib
+from pydantic_core import to_jsonable_python
 
 from ARAX_response import ARAXResponse
 from actions_parser import ActionsParser
@@ -361,7 +362,10 @@ class ARAXQuery:
                 remote_address = query['remote_address']
             else:
                 remote_address = '????'
-            attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': remote_address }
+            # Store the query as plain JSON-style data rather than TRAPI 2.0 model objects, so that
+            # every ARAX version sharing the tracker database can unpickle it (e.g., for /status)
+            input_query = to_jsonable_python(query, by_alias=True, exclude_none=True)
+            attributes = { 'submitter': response.envelope.submitter, 'input_query': input_query, 'remote_address': remote_address }
             job_id = query_tracker.create_tracker_entry(attributes)
 
             if job_id == -999:

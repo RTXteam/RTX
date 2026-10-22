@@ -11,6 +11,7 @@ make live calls to the Retriever; they take tens of seconds.
 
 import os
 import sys
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -195,10 +196,10 @@ def test_connect_xcrg_calls_package_and_updates_response(monkeypatch):
         def _get_n_results(self, _response_data):
             return 0
 
-    def mock_run_xcrg(query, config, logger):
+    def mock_run_query(query, config, reporter):
         captured["query"] = query
         captured["config"] = config
-        captured["logger"] = logger
+        captured["reporter"] = reporter
         return _xcrg_response(query_graph)
 
     monkeypatch.delenv(XCRG_RETRIEVER_URL_ENV, raising=False)
@@ -209,7 +210,7 @@ def test_connect_xcrg_calls_package_and_updates_response(monkeypatch):
     monkeypatch.setattr(ARAX_connect, "get_curie_ngd_path", lambda: "sqlite:/tmp/xcrg-ngd.sqlite")
     monkeypatch.setattr(ARAX_connect, "get_curie_to_pmids_path", lambda: "sqlite:/tmp/xcrg-pmids.sqlite")
     monkeypatch.setattr(ARAX_connect, "get_current_arax_biolink_version", lambda: "4.3.2")
-    monkeypatch.setattr(ARAX_connect, "run_xcrg", mock_run_xcrg)
+    monkeypatch.setattr(ARAX_connect.xcrg, "run_query", mock_run_query)
 
     response = ARAXConnect().apply(response, {"action": "xcrg"})
 
@@ -223,7 +224,7 @@ def test_connect_xcrg_calls_package_and_updates_response(monkeypatch):
     assert captured["config"].retriever_url == "https://retriever.test.transltr.io/query"
     assert captured["config"].curie_ngd_db_file == "/tmp/xcrg-ngd.sqlite"
     assert captured["config"].curie_to_pmids_db_file == "/tmp/xcrg-pmids.sqlite"
-    assert captured["config"].timeout == 17
+    assert captured["config"].timeout == timedelta(seconds=17)
     assert captured["config"].tiers == [0]
     assert captured["config"].tf_batch_size == 23
     xcrg_plan = response.query_plan["qedge_keys"]["e0"]["arax-xcrg"]
@@ -343,7 +344,7 @@ def test_gene_object_connect_xcrg_calls_package_and_updates_response(monkeypatch
         def _get_n_results(self, _response_data):
             return 0
 
-    def mock_run_xcrg(query, config, logger):
+    def mock_run_query(query, config, reporter):
         captured["query"] = query
         return _xcrg_gene_object_response(query_graph)
 
@@ -353,7 +354,7 @@ def test_gene_object_connect_xcrg_calls_package_and_updates_response(monkeypatch
     monkeypatch.setattr(ARAX_connect, "get_curie_ngd_path", lambda: "sqlite:/tmp/xcrg-ngd.sqlite")
     monkeypatch.setattr(ARAX_connect, "get_curie_to_pmids_path", lambda: "sqlite:/tmp/xcrg-pmids.sqlite")
     monkeypatch.setattr(ARAX_connect, "get_current_arax_biolink_version", lambda: "4.3.2")
-    monkeypatch.setattr(ARAX_connect, "run_xcrg", mock_run_xcrg)
+    monkeypatch.setattr(ARAX_connect.xcrg, "run_query", mock_run_query)
 
     response = ARAXConnect().apply(response, {"action": "xcrg"})
 
