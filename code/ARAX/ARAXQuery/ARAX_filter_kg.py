@@ -1,5 +1,6 @@
 import sys
 import traceback
+from typing import Self
 from collections import Counter
 from collections.abc import Hashable
 from Filter_KG.remove_edges import RemoveEdges
@@ -25,6 +26,7 @@ class ARAXFilterKG:
             'remove_nodes_by_property',
             'remove_nodes_by_category',
             'remove_edges_by_discrete_attribute',
+            'remove_edges_by_statistical_significance',
             'remove_orphaned_nodes',
             'remove_general_concept_nodes'
         }
@@ -75,6 +77,14 @@ class ARAXFilterKG:
             "examples": ["jaccard_index", "observed_expected_ratio", "normalized_google_distance"],
             "type": "string",
             "description": "The name of the edge attribute to filter on."
+        }
+        self.minimum_significance_info = {
+            "is_required": True,
+            "enum": ['very_strongly_significant', 'strongly_significant', 'significant', 'suggestive', 'not_significant'],
+            "type": "string",
+            "description": "The minimum statistical significance band to keep. "
+                           "Edges with a significance qualifier below this band are removed. "
+                           "Edges without a qualifier are always kept."
         }
         self.direction_info = {
             "is_required": True,
@@ -259,6 +269,36 @@ remove_edges_by_discrete_attribute removes edges from the knowledge graph (KG) b
                 "parameters": {
                     "edge_attribute": self.edge_property_info,
                     "value": self.edge_property_value_info,
+                    "remove_connected_nodes": self.remove_connected_nodes_info,
+                    "qnode_keys": self.qnode_key_info,
+                    "qedge_keys": self.qedge_key_info
+                }
+            },
+            "remove_edges_by_statistical_significance": {
+                "dsl_command": "filter_kg(action=remove_edges_by_statistical_significance)",
+                "description": """
+`remove_edges_by_statistical_significance` removes edges from the knowledge graph (KG) whose
+`biolink:statistical_significance_qualifier` falls below a specified minimum band.
+
+This is an **ordinal** filter: setting `minimum_significance=significant` removes edges
+labelled `suggestive` or `not_significant`, while keeping `significant`, `strongly_significant`,
+and `very_strongly_significant`.
+
+**Important:** Edges that do not carry the qualifier at all are **kept** (not penalized),
+since the qualifier is still being rolled out across knowledge sources.
+
+Use cases include:
+
+* removing all non-significant edges: `filter_kg(action=remove_edges_by_statistical_significance, minimum_significance=suggestive)`
+* keeping only strongly significant evidence: `filter_kg(action=remove_edges_by_statistical_significance, minimum_significance=strongly_significant)`
+
+You have the option (defaults to false) to remove connected nodes via `remove_connected_nodes=t`.
+                """,
+                'brief_description': """
+remove_edges_by_statistical_significance removes edges whose statistical significance qualifier falls below a minimum band.
+                """,
+                "parameters": {
+                    "minimum_significance": self.minimum_significance_info,
                     "remove_connected_nodes": self.remove_connected_nodes_info,
                     "qnode_keys": self.qnode_key_info,
                     "qedge_keys": self.qedge_key_info
@@ -751,6 +791,77 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
         # now do the call out to NGD
         RE = RemoveEdges(self.response, self.message, edge_params)
         response = RE.remove_edges_by_property()
+        return response
+
+    def __remove_edges_by_statistical_significance(self: Self, describe: bool = False):
+        """
+        Removes edges from the KG whose statistical_significance_qualifier falls below
+        the specified minimum band. Edges without the qualifier are kept.
+        """
+        message = self.message
+        parameters = self.parameters
+
+        significance_values = {'very_strongly_significant', 'strongly_significant',
+                               'significant', 'suggestive', 'not_significant'}
+
+        if message and parameters and hasattr(message, 'query_graph') and hasattr(message.query_graph, 'edges'):
+            known_values = set()
+            _sig_type_id = "biolink:statistical_significance_qualifier"
+            for edge in message.knowledge_graph.edges.values():
+                if edge.qualifiers:
+                    for q in edge.qualifiers:
+                        if q.qualifier_type_id == _sig_type_id:
+                            val = q.qualifier_value.replace("biolink:", "") if isinstance(q.qualifier_value, str) and q.qualifier_value.startswith("biolink:") else q.qualifier_value
+                            known_values.add(val)
+            allowable_parameters = {'action': {'remove_edges_by_statistical_significance'},
+                                    'minimum_significance': significance_values,
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_keys': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys]),
+                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
+                                    }
+        else:
+            allowable_parameters = {'action': {'remove_edges_by_statistical_significance'},
+                                    'minimum_significance': significance_values,
+                                    'remove_connected_nodes': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
+                                    'qnode_keys': {'a specific query node id to remove'},
+                                    'qedge_keys': {'a list of specific query edge ids to remove'}
+                                    }
+
+        if describe:
+            brief_description = self.command_definitions['remove_edges_by_statistical_significance']
+            allowable_parameters['brief_description'] = brief_description
+            return allowable_parameters
+
+        # FW: patch to allow qnode_key to be backwards compatible:
+        if 'qnode_key' in self.parameters and 'qnode_keys' not in self.parameters:
+            self.parameters['qnode_keys'] = [self.parameters['qnode_key']]
+
+        resp = self.check_params(allowable_parameters)
+        if self.response.status != 'OK' or resp == -1:
+            return self.response
+
+        edge_params = self.parameters
+        if 'remove_connected_nodes' in edge_params:
+            value = edge_params['remove_connected_nodes']
+            if value in {'true', 'True', 't', 'T'}:
+                edge_params['remove_connected_nodes'] = True
+            elif value in {'false', 'False', 'f', 'F'}:
+                edge_params['remove_connected_nodes'] = False
+            else:
+                self.response.error(f"Supplied value {value} is not permitted. In parameter remove_connected_nodes, allowable values are: {list(allowable_parameters['remove_connected_nodes'])}",
+                    error_code="UnknownValue")
+        else:
+            edge_params['remove_connected_nodes'] = False
+
+        if 'minimum_significance' not in edge_params:
+            self.response.error(
+                f"minimum_significance must be provided, allowable values are: {list(allowable_parameters['minimum_significance'])}",
+                error_code="UnknownValue")
+        if self.response.status != 'OK':
+            return self.response
+
+        RE = RemoveEdges(self.response, self.message, edge_params)
+        response = RE.remove_edges_by_statistical_significance()
         return response
 
     def __remove_edges_by_continuous_attribute(self, describe=False):
