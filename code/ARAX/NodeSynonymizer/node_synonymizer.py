@@ -79,7 +79,7 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
 
     Migration context (issue #2585):
     The old implementation queried a local SQLite database built
-    from KG2 + SRI bulk downloads. This version replaces all
+    from bulk downloads. This version replaces all
     SQLite queries with live API calls to two SRI services:
 
     SRI Node Normalizer (CURIE -> canonical info + equivalents):

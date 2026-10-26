@@ -28,7 +28,7 @@ databases and `araxconfig.rtx.ai` for the ARAX main config file). The script wil
 If you look at the shell script `build-test-arax-from-fresh-instance.sh`, you
 will see that it uses the Dockerfile `Merged-Dockerfile` to build a container
 `arax` (constructed from a Ubuntu 20.04-based Docker image `arax:1.0`) that
-contains both the ARAX and RTX-KG2 services. No TLS is configured in the host
+contains the ARAX services. No TLS is configured in the host
 OS, in contrast to how we set up ARAX in production (this decision was made in
 order to keep things simple for deploying a test system, i.e., to avoid having
 to run `certbot` to get SSL certificates).

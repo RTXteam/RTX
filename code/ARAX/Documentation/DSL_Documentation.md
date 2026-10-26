@@ -217,8 +217,8 @@ The `add_qedge` command adds an additional QEdge to the QueryGraph in the Messag
 ### expand()
 This command will expand (aka, answer/fill) your query graph in an edge-by-edge fashion, intelligently selecting which KPs to use for each edge. It selects KPs from the SmartAPI Registry based on the meta information provided by their TRAPI APIs, whether they have an endpoint running a matching TRAPI version, and whether they have an endpoint with matching maturity. For each QEdge, it queries the selected KPs concurrently; it will timeout for a particular KP if it decides it's taking too long to respond (this KP timeout can be controlled by the user). You may also optionally specify a particular KP to use via the 'kp' parameter (described below).
 
-Current candidate KPs include (for TRAPI 1.5, maturity 'development'): 
-infores:answer-coalesce, infores:automat-binding-db, infores:automat-cam-kp, infores:automat-ctd, infores:automat-drug-central, infores:automat-ehr-clinical-connections-kp, infores:automat-ehr-may-treat-kp, infores:automat-genome-alliance, infores:automat-gtex, infores:automat-gtopdb, infores:automat-gwas-catalog, infores:automat-hetionet, infores:automat-hgnc, infores:automat-hmdb, infores:automat-human-goa, infores:automat-icees-kg, infores:automat-intact, infores:automat-monarchinitiative, infores:automat-panther, infores:automat-pharos, infores:automat-reactome, infores:automat-robokop, infores:automat-string-db, infores:automat-ubergraph, infores:automat-viral-proteome, infores:biothings-multiomics-biggim-drugresponse, infores:catrax-pharmacogenomics, infores:cohd, infores:connections-hypothesis, infores:gelinea, infores:genetics-data-provider, infores:knowledge-collaboratory, infores:molepro, infores:multiomics-clinicaltrials, infores:multiomics-drugapprovals, infores:multiomics-microbiome, infores:multiomics-multiomics, infores:openpredict, infores:rtx-kg2, infores:service-provider-trapi, infores:spoke, infores:text-mining-provider-cooccurrence. 
+Current candidate KPs include (for TRAPI 1.6, maturity 'staging'): 
+infores:retriever. 
 
 (Note that this list of KPs may change unexpectedly based on the SmartAPI registry.)
 
@@ -232,7 +232,7 @@ infores:answer-coalesce, infores:automat-binding-db, infores:automat-cam-kp, inf
 
     - This is not a required parameter and may be omitted.
 
-    - `infores:rtx-kg2, infores:spoke, [infores:rtx-kg2, infores:molepro]` are examples of valid inputs.
+    - `infores:retriever, [infores:retriever, infores:arax-drug-treats-disease]` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
@@ -248,7 +248,7 @@ infores:answer-coalesce, infores:automat-binding-db, infores:automat-cam-kp, inf
 
 * ##### node_key
 
-    - A query graph node ID or list of such IDs to expand (default is to expand entire query graph).
+    - A query graph node ID or list of such IDs to expand on their own. Not currently supported (single-node queries require a KP that answers edge-less queries, and Retriever does not), so specifying this results in an error.
 
     - Acceptable input types: string.
 
@@ -788,7 +788,7 @@ Use cases include:
 * removing all edges that were provided by a certain knowledge provider (KP) via `edge_attribute=biolink:original_source, value=infores:semmeddb` to remove all edges provided by SemMedDB.
 * removing all edges that connect to a certain node via `edge_attribute=subject, value=DOID:8398`
 * removing all edges with a certain relation via `edge_attribute=relation, value=upregulates`
-* removing all edges provided by another ARA via `edge_attribute=is_defined_by, value=RTX-KG2`
+* removing all edges provided by another ARA via `edge_attribute=is_defined_by, value=infores:aragorn`
 * etc. etc.
                 
 You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or

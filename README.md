@@ -8,7 +8,7 @@
 - [How does ARAX work?](#how-does-arax-work)
 - [The Reasoners Standard Application Programming Interface](#the-reasoners-standard-application-programming-interface)
 - [What knowledge providers does ARAX use?](#what-knowledge-providers-does-arax-use)
-  - [RTX-KG2](#rtx-kg2)
+  - [Translator Retriever](#translator-retriever)
   - [Columbia Open Health Data (COHD)](#columbia-open-health-data-cohd)
   - [PubMed](#pubmed)
   - [Identifier mapping](#identifier-mapping)
@@ -23,8 +23,6 @@
     - [subdirectory `code/UI/OpenAPI`](#subdirectory-codeuiopenapi)
     - [subdirectory `code/UI/Feedback`](#subdirectory-codeuifeedback)
     - [subdirectory `code/UI/interactive`](#subdirectory-codeuiinteractive)
-    - [subdirectory `code/kg2`](#subdirectory-codekg2)
-    - [subdirectory `code/kg2/mediKanren`](#subdirectory-codekg2medikanren)
     - [subdirectory `code/reasoningtool/kg-construction`](#subdirectory-codereasoningtoolkg-construction)
     - [subdirectory `code/reasoningtool/SemMedDB`](#subdirectory-codereasoningtoolsemmeddb)
     - [subdirectory `code/reasoningtool/QuestionAnswering`](#subdirectory-codereasoningtoolquestionanswering)
@@ -148,8 +146,7 @@ based on the [Biolink Model](https://biolink.github.io/biolink-model).
 4. ARAX is integrated with the _RTX_ reasoning tool's knowledge graphs and graph
 visualization capabilities. During the NCATS Translator feasibility assessment
 phase, our team built a prototype reasoning tool system called RTX, whose
-knowledge graphs (both the first-generation knowledge graph **RTX-KG1** and the
-second-generation knowledge graph **RTX-KG2**) and user interface capabilities
+first-generation knowledge graph **RTX-KG1** and user interface capabilities
 are now available through ARAX. This integration enables a user of ARAX to
 seamlessly refer a server-side knowledge graph or result-set for RTX-based
 graphical visualization within a web browser. It also provides ARAX with
@@ -209,30 +206,14 @@ development process for the Reasoners Standard API.
 Currently, ARAX/RTX directly accesses four main knowledge providers in order to
 handle queries, along with several additional APIs for identifier mapping.
 
-## RTX-KG2
+## Translator Retriever
 
-RTX-KG2 (GitHub project area is [RTXteam/RTX-KG2](https://github.com/RTXteam/RTX-KG2)) 
-is a knowledge graph comprising 7.5M nodes and 34.3M relationships
-that is built by integrating concepts and concept-predicate-concept triples
-obtained from:
-
-1. Unified Medical Language System (UMLS)
-2. NCBI Genes
-3. Ensembl Genes
-4. UniChem
-5. Semantic Medline Database (SemMedDB)
-
-RTX-KG2 complies with the Biomedical Data Translator Knowledge Graph object
-model standard, which is based on the Biolink model. RTX-KG2 is hosted in a
-Neo4j graph database server and can be accessed at
-[kg2endpoint2.rtx.ai:7474](http://kg2endpoint2.rtx.ai:7474) (username is
-`neo4j`; contact Team Expander Agent for the password). Alternatively, a
-JSON dump of KG2 is available from the
-[RTX-KG2 S3 bucket](http://rtx-kg2-public.s3-website-us-west-2.amazonaws.com/).
-A version of KG2 that is formatted and indexed for the knowledge graph
-exploration tool [mediKanren](https://github.com/webyrd/mediKanren) is
-available; contact Team Expander Agent for details. For extensive technical
-documentation on RTX-KG2, see this repository's [KG2 subdirectory](code/kg2).
+ARAX gets its knowledge graph data from the Translator
+[Retriever](https://retriever.transltr.io) knowledge provider
+(`infores:retriever`), querying its tier 0 data. ARAX looks up the Retriever
+URL for its maturity level (development, staging, testing, or production) in
+the SmartAPI Registry, so each ARAX instance queries the matching Retriever
+instance.
 
 ## Columbia Open Health Data (COHD)
 
@@ -295,7 +276,7 @@ construction of a "query graph" that is used as a template for finding subgraphs
 of the RTX-KG1 knowledge graph. The design for the ARAX software system
 relates to RTX in four ways:
 1. ARAX builds on the code-base for RTX and leverages the
-already-built user interface and knowledge graphs for RTX (RTX-KG1 and RTX-KG2).
+already-built user interface and knowledge graph for RTX (RTX-KG1).
 2. Through the expressive (but user-friendly) domain-specific language ARAXi, ARAX exposes RTX's graph
 exploration and analysis capabilities so that they can be used (in combination
 or individually) by Translator tools or workflows in accordance with the
@@ -349,16 +330,6 @@ RTX web browser-based user interface [(link)](code/UI/Feedback).
 
 Contains the code for the RTX web browser-based user interface 
 [(link)](code/UI/interactive).
-
-### subdirectory `code/kg2`
-
-Contains the code for building the RTX second-generation
-knowledge graph (RTX-KG2) and hosting it in Neo4j [(link)](code/kg2).
-
-### subdirectory `code/kg2/mediKanren`
-
-Contains the code for exporting a version of the RTX-KG2
-knowledge graph that is formatted and indexed for use with the [mediKanren](https://github.com/webyrd/mediKanren) knowledge graph exploration tool [(link)](code/kg2/mediKanren).
 
 ### subdirectory `code/reasoningtool/kg-construction`
 

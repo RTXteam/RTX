@@ -187,7 +187,7 @@ var araxi_commands = {
       "kp": {
         "is_required": false,
         "examples": [
-          "infores:rtx-kg2, infores:spoke, [infores:rtx-kg2, infores:molepro]"
+          "infores:retriever, [infores:retriever, infores:arax-drug-treats-disease]"
         ],
         "type": "string",
         "default": null,

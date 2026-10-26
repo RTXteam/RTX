@@ -287,37 +287,6 @@ either labeling in the metadata or has the MeSH term occurring in the abstract o
                     'max_num': self.max_num_info
                 }
             },
-#             "predict_drug_treats_disease": {
-#                 "dsl_command": "overlay(action=predict_drug_treats_disease)",
-#                 "description": """
-# `predict_drug_treats_disease` utilizes a machine learning model (trained on KP ARAX/KG1) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
-# For more information about how this model was trained and how it performs, please see [this publication](https://doi.org/10.1101/765305).
-# The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name `probability_treats`).
-# You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-# If the later, virtual edges are added with the relation specified by `virtual_edge_type` and the type `probably_treats`.
-# Use cases include:
-
-# * Overlay drug the probability of any drug in your knowledge graph treating any disease via `overlay(action=predict_drug_treats_disease)`
-# * For specific drugs and diseases/phenotypes in your graph, add the probability that the drug treats them with something like `overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)`
-# * Subsequently remove low-probability treating drugs with `overlay(action=predict_drug_treats_disease)` followed by `filter_kg(action=remove_edges_by_attribute, edge_attribute=probability_treats, direction=below, threshold=.6, remove_connected_nodes=t, qnode_key=n02)`
-
-# This can be applied to an arbitrary knowledge graph as possible edge types are computed dynamically (i.e. not just those created/recognized by the ARA Expander team).
-#                     """,
-#                 'brief_description': """
-# predict_drug_treats_disease utilizes a machine learning model (trained on KP RTX-KG2C) to assign a probability that a given drug/chemical_substance treats a disease/phenotypic feature.
-# For more information about how this model was trained and how it performs, please see this publication (https://doi.org/10.1101/765305) for the version trained on KG1 which used node2vec for its
-# embeddings. The current version uses KG2C; publication in preparation.
-# The drug-disease treatment prediction probability is included as an edge attribute (with the attribute name 'probability_treats').
-# You have the choice of applying this to all appropriate edges in the knowledge graph, or only between specified subject/object qnode id's (make sure one is a chemical_substance, and the other is a disease or phenotypic_feature). 
-#                     """,
-#                 "parameters": {
-#                     'virtual_relation_label': self.virtual_relation_label_info,
-#                     'subject_qnode_key': self.subject_qnode_key_info,
-#                     'object_qnode_key': self.object_qnode_key_info,
-#                     'threshold': self.dtd_threshold_info,
-#                     'slow_mode': self.dtd_slow_mode_info
-#                 }
-#             },
             "fisher_exact_test": {
                 "dsl_command": "overlay(action=fisher_exact_test)",
                 "description": """
@@ -397,7 +366,6 @@ This information is included in edge attributes with the name 'icees_p-value'.
                                                                                            'nodes') and message.knowledge_graph.nodes and hasattr(
                     message.knowledge_graph, 'edges') and message.knowledge_graph.edges:
                 response.debug(f"Number of nodes in KG is {len(message.knowledge_graph.nodes)}")
-                # This works for KG1 and KG2
                 response.debug(
                     f"Number of nodes in KG by type is {Counter([x.categories[0] for x in message.knowledge_graph.nodes.values() if x.categories])}")  # type is a list, just get the first one
                     #f"Number of nodes in KG by type is {Counter([x for x in message.knowledge_graph.nodes.values()])}")

@@ -259,7 +259,7 @@ def test_FET_example_3():
 
 @pytest.mark.broken 
 def test_FET_example_4():
-    # This a FET 2-hop example collecting nodes and edges from KG2: try to find the diseases that share the same protein with Parkinson disease（DOID:14330)
+    # This a FET 2-hop example collecting nodes and edges from Retriever: try to find the diseases that share the same protein with Parkinson disease（DOID:14330)
     query = {"operations": {"actions": [
         "add_qnode(ids=DOID:10718, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Protein, key=n01)",
@@ -305,7 +305,7 @@ def test_FET_ranking_1():
     assert min(scores) != max(scores)
 
 @pytest.mark.slow
-def test_example_2_kg2():
+def test_example_2_parkinsons():
     query = {"operations": { "actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
@@ -792,7 +792,7 @@ def test_issue_1848():
     assert response.status == 'OK'
 
 # Not working yet
-# def test_example_3_kg2():
+# def test_example_3_hypopituitarism():
 #     query = {"operations": { "actions": [
 #             "create_message",
 #             #"add_qnode(key=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis

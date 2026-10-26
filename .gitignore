@@ -56,7 +56,6 @@ code/ARAX/KnowledgeSources/Prediction/*.gz
 
 code/ARAX/NodeSynonymizer/*.tsv
 code/ARAX/NodeSynonymizer/*.pickle
-code/ARAX/NodeSynonymizer/kg2_synonyms.json
 
 code/UI/OpenAPI/python-flask-server/openapi_server/openapi/openapi.json
 **/cache_refresh.pid

@@ -33,9 +33,6 @@ class COHDIndex:
     def __init__(self):
         filepath = os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'KnowledgeSources', 'COHD_local', 'data'])
         self.databaseLocation = filepath
-        # lastest_version = "v1.0"
-        # kg = 'KG2.7.3'
-        # self.databaseName = f"COHDdatabase_{lastest_version}_{kg}.db"
         self.databaseName = RTXConfig.cohd_database_path.split('/')[-1]
         self.success_con = self.connect()
         self.synonymizer = NodeSynonymizer()
@@ -54,22 +51,7 @@ class COHDIndex:
             print("INFO: Connecting to database", flush=True)
             return True
         else:
-            # # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt', 'preferred_synonyms_kg2_7_1_with_concepts.pkl', 'concepts_table_Athena.txt']
-            # required_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'paired_concept_counts_associations.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt']
-            # has_files = [f for f in os.listdir(self.databaseLocation) if os.path.isfile(os.path.join(self.databaseLocation, f))]
-            # for file in required_files:
-            #     if file in has_files:
-            #         pass
-            #     else:
-            #         print(f"Error: no file '{file}' in {self.databaseLocation}! Please make sure these files {required_files} exist before build database.", flush=True)
-            #         return False
-
-            # delete the old version of COHD database
-            # old_version_database = "COHDdatabase_v1.0.db"
-            # if os.path.exists(f"{self.databaseLocation}/{old_version_database}"):
-            #     os.remove(f"{self.databaseLocation}/{old_version_database}")
             # copy the database file to local if it doesn't exist
-            # os.system(f"scp rtxconfig@arax.ncats.io:/data/orangeboard/databases/KG2.3.4/{self.databaseName} {database}")
             os.system(f"scp {RTXConfig.db_username}@{RTXConfig.db_host}:{RTXConfig.cohd_database_path} {database}")
 
             self.connection = sqlite3.connect(database)
@@ -119,125 +101,6 @@ class COHDIndex:
     def populate_table(self):
 
         return
-        # if self.success_con is True:
-        #     # read all tables from COHD database to local database
-        #     COHD_database_files = ['single_concept_counts.txt', 'patient_count.txt', 'domain_pair_concept_counts.txt', 'domain_concept_counts.txt', 'concepts.txt', 'dataset.txt']
-
-        #     for file_name in COHD_database_files:
-
-        #         current_table_name = file_name.replace('.txt', '').upper()
-        #         print(f"INFO: Populating table {current_table_name}", flush=True)
-        #         with open(f"{self.databaseLocation}/{file_name}", 'r') as file:
-        #             content_list = file.readlines()
-        #             col_name = content_list.pop(0)
-        #             insert_command1 = f"INSERT INTO {current_table_name}("
-        #             insert_command2 = f" values ("
-        #             for col in col_name.strip().split("\t"):
-        #                 insert_command1 = insert_command1 + f"{col},"
-        #                 insert_command2 = insert_command2 + f"?,"
-
-        #             insert_command = insert_command1 + ")" + insert_command2 + ")"
-        #             insert_command = insert_command.replace(',)', ')')
-
-        #             if DEBUG:
-        #                 print(insert_command, flush=True)
-        #                 print(tuple(content_list[0].strip().split("\t")), flush=True)
-
-        #             for line in content_list:
-        #                 line = tuple(line.strip().split("\t"))
-        #                 self.connection.execute(insert_command, line)
-
-        #             self.connection.commit()
-
-        #     paired_file = 'paired_concept_counts_associations.txt'
-        #     current_table_name = paired_file.replace('.txt', '').upper()
-        #     print(f"INFO: Populating table {current_table_name}", flush=True)
-        #     with open(f"{self.databaseLocation}/{paired_file}", 'r') as file:
-        #         content_list = file.readlines()
-        #         col_name = content_list.pop(0)
-        #         insert_command1 = f"INSERT INTO {current_table_name}(concept_pair_id,"
-        #         insert_command2 = f" values (?,"
-        #         for col in col_name.strip().split("\t"):
-        #             insert_command1 = insert_command1 + f"{col},"
-        #             insert_command2 = insert_command2 + f"?,"
-
-        #         insert_command = insert_command1 + ")" + insert_command2 + ")"
-        #         insert_command = insert_command.replace(',)', ')')
-
-        #         if DEBUG:
-        #             print(insert_command, flush=True)
-        #             content_col = content_list[0].strip().split("\t")
-        #             concept_pair_id = f"{content_col[1]}_{content_col[2]}"
-        #             content_col.insert(0, concept_pair_id)
-        #             print(tuple(content_col), flush=True)
-
-        #         for line in content_list:
-        #             content_col = line.strip().split("\t")
-        #             concept_pair_id = f"{content_col[1]}_{content_col[2]}"
-        #             content_col.insert(0, concept_pair_id)
-        #             record = tuple(content_col)
-        #             self.connection.execute(insert_command, record)
-
-        #     self.connection.commit()
-
-        #     # concepts_table_Athena_file = 'concepts_table_Athena.txt'
-        #     # current_table_name = paired_file.replace('.txt', '').upper()
-        #     # print(f"INFO: Populating table {current_table_name}", flush=True)
-        #     # with open(f"{self.databaseLocation}/{concepts_table_Athena_file}", 'r') as file:
-        #     #     content_list = file.readlines()
-        #     #     col_name = content_list.pop(0)
-        #     #     insert_command1 = f"INSERT INTO CURIE_TO_OMOP_MAPPING_ATHENA(curie, concept_id)"
-        #     #     insert_command2 = f" values (?,?)"
-
-        #     #     insert_command = insert_command1 + insert_command2
-
-        #     #     for line in content_list:
-        #     #         content_col = line.strip().split("\t")
-        #     #         record = tuple([content_col[1],content_col[0]])
-        #     #         self.connection.execute(insert_command, record)
-
-        #     # self.connection.commit()
-
-        #     # read KG1 and KG2 mapping
-        #     # with open(f"{self.databaseLocation}/synonyms_kg2_with_concepts.pkl", "rb") as file:
-        #     #     kg_mapping = pickle.load(file)
-
-        #     # with open(f"{self.databaseLocation}/synonyms_kg1_with_concepts.pkl", "rb") as file:
-        #     #     kg1_mapping = pickle.load(file)
-        #     # for key in kg1_mapping:
-        #     #     if key not in kg_mapping:
-        #     #         kg_mapping[key] = kg1_mapping[key]
-
-
-        #     # with open(f"{self.databaseLocation}/preferred_synonyms_kg2_7_1_with_concepts.pkl", "rb") as file:
-        #     #     kg = pickle.load(file)
-
-        #     # insert_command = 'INSERT INTO CURIE_TO_OMOP_MAPPING(preferred_curie,concept_id) values (?,?)'
-        #     # count = 0
-        #     # total_key = [key for key in kg if len(kg[key]['concept_ids']) != 0]
-
-        #     # print(f"INFO: Populating table CURIE_TO_OMOP_MAPPING", flush=True)
-        #     # if DEBUG:
-        #     #     key = total_key[0]
-        #     #     records = list(itertools.product([key], list(kg[key]['concept_ids'])))
-        #     #     print(records, flush=True)
-
-        #     # for key in total_key:
-        #     #     if len(kg[key]['concept_ids']) > 0:
-        #     #         count = count + 1
-        #     #         records = list(itertools.product([key], list(kg[key]['concept_ids'])))
-        #     #         self.connection.executemany(insert_command, records)
-
-        #     #         if count % 10000 == 0:
-        #     #             self.connection.commit()
-        #     #             percentage = round((count * 100.0 / len(total_key)), 2)
-        #     #             print(str(percentage) + "%..", end='', flush=True)
-
-        #     # self.connection.commit()
-        #     # percentage = round((count * 100.0 / len(total_key)), 2)
-        #     # print(str(percentage) + "%..", end='', flush=True)
-
-        #     print(f"INFO: Populating tables is completed", flush=True)
 
     ## create indexes for the tables
     def create_indexes(self):

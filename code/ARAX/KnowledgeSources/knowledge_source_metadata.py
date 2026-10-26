@@ -169,7 +169,7 @@ class KnowledgeSourceMetadata:
         standard_attributes = [
             {
                 "attribute_type_id": "biolink:original_predicate",
-                "constraint_name": "kg2 ids",
+                "constraint_name": "original predicate",
                 "constraint_use": True
             },
             {

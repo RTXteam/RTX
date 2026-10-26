@@ -615,7 +615,7 @@ def test_issue_1212():
 
 
 def test_issue_1314():
-    # KG2 should return answers for "treated_by" (even though it only contains "treats" edges)
+    # Should return answers for "treated_by" (even though KPs store these as "treats" edges)
     actions_list = [
         "add_qnode(key=n0, ids=DRUGBANK:DB00394, categories=biolink:ChemicalEntity)",
         "add_qnode(key=n1, categories=biolink:Disease)",
@@ -638,16 +638,16 @@ def test_issue_1236_a():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
-    actions_list_kg2_only = [
+    actions_list_retriever_only = [
         "add_qnode(ids=NCBIGene:1803, key=n00)",
         "add_qnode(categories=biolink:Disease, key=n01)",
         "add_qedge(subject=n00, object=n01, key=e00, predicates=biolink:gene_associated_with_condition)",
         "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
-    nodes_by_qg_id_kg2_only, edges_by_qg_id_kg2_only = _run_query_and_do_standard_testing(actions_list_kg2_only)
+    nodes_by_qg_id_retriever_only, edges_by_qg_id_retriever_only = _run_query_and_do_standard_testing(actions_list_retriever_only)
 
-    assert len(nodes_by_qg_id["n01"]) > len(nodes_by_qg_id_kg2_only["n01"])
+    assert len(nodes_by_qg_id["n01"]) > len(nodes_by_qg_id_retriever_only["n01"])
 
 
 def test_issue_1236_b():
@@ -661,7 +661,7 @@ def test_issue_1236_b():
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
 
 
-def test_kg2_predicate_hierarchy_reasoning():
+def test_predicate_hierarchy_reasoning():
     actions_list = [
         "add_qnode(ids=CHEBI:83766, categories=biolink:ChemicalEntity, key=n00)",
         "add_qnode(categories=biolink:Protein, key=n01)",
@@ -769,8 +769,6 @@ def test_qualified_regulates_query():
                          "qualifier_value": "biolink:causes"},
                         # {"qualifier_type_id": "biolink:object_direction_qualifier",
                         #  "qualifier_value": "decreased"}, # for RTX issue 2068
-                        #                                   # see also RTX-KG2 issue 339
-                        #                                   # Uncomment to test in KG2.8.5
                         {"qualifier_type_id": "biolink:object_aspect_qualifier",
                          "qualifier_value": "activity"}
                     ]}

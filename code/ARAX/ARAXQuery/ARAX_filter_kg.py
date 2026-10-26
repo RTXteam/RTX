@@ -245,7 +245,7 @@ Use cases include:
 * removing all edges that were provided by a certain knowledge provider (KP) via `edge_attribute=biolink:original_source, value=infores:semmeddb` to remove all edges provided by SemMedDB.
 * removing all edges that connect to a certain node via `edge_attribute=subject, value=DOID:8398`
 * removing all edges with a certain relation via `edge_attribute=relation, value=upregulates`
-* removing all edges provided by another ARA via `edge_attribute=is_defined_by, value=RTX-KG2`
+* removing all edges provided by another ARA via `edge_attribute=is_defined_by, value=infores:aragorn`
 * etc. etc.
                 
 You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or

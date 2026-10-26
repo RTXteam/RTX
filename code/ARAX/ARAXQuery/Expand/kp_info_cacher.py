@@ -194,7 +194,7 @@ class KPInfoCacher:
 
         # Make sure the map doesn't contain any 'stale' KPs (KPs that used to be in SmartAPI but no longer are)
         stale_kps = set(meta_map).difference(allowed_kps_dict)
-        if stale_kps:  # For dev work, we don't want to edit the metamap when in KG2 mode
+        if stale_kps:
             for stale_kp in stale_kps:
                 eprint(f"Detected a stale KP in meta map ({stale_kp}) - deleting it")
                 del meta_map[stale_kp]

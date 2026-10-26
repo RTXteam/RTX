@@ -266,7 +266,7 @@ def test_chemical_substances_that_down_regulate_STK11_issue_28():
     assert len(message.results) > 0
 
 
-# This query doesn't find results after conflations were resolved in KG2.6.7
+# This query doesn't find results after conflations were resolved upstream
 @pytest.mark.skip
 def test_phenotypes_for_angel_shaped_phalango_epiphyseal_dysplasia_issue_33():
     query = {
