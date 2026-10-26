@@ -56,7 +56,6 @@ def trim_to_size(input_list, length):
         return input_list
 
 KPS_THAT_RETURN_PREFERRED_NODE_CURIES = {'infores:retriever'}
-KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES = {'infores:rtx-kg2'}
 
 class ARAXExpander:
 
@@ -123,8 +122,9 @@ class ARAXExpander:
                 "is_required": False,
                 "examples": ["n00", "[n00, n01]"],
                 "type": "string",  # TODO: A string OR list is allowed... way to specify that?
-                "description": "A query graph node ID or list of such IDs to expand (default is to expand "
-                               "entire query graph)."
+                "description": "A query graph node ID or list of such IDs to expand on their own. Not currently "
+                               "supported (single-node queries require a KP that answers edge-less queries, and "
+                               "Retriever does not), so specifying this results in an error."
             },
             "prune_threshold": {
                 "is_required": False,
@@ -272,6 +272,11 @@ class ARAXExpander:
                       error_code="InvalidQG")
             return response
         qnode_keys_to_expand = eu.convert_to_list(parameters['node_key'])
+        if qnode_keys_to_expand:
+            log.error(f"Cannot expand qnode(s) {', '.join(qnode_keys_to_expand)} on their own: single-node (edge-less) "
+                      f"queries are not supported, because Retriever requires at least one qedge",
+                      error_code="InvalidQuery")
+            return response
         user_specified_kp = True if parameters['kp'] else False
 
         # Convert message knowledge graph to format organized by QG keys, for faster processing
@@ -601,22 +606,6 @@ class ARAXExpander:
                                     f"no paths remain from any KPs that satisfy qedge(s) {unfulfilled_qedge_keys}.")
                     else:
                         log.warning(f"No paths were found in any KPs satisfying qedge {unfulfilled_qedge_keys}.")
-                    return response
-
-        # Expand any specified nodes
-        if qnode_keys_to_expand:
-            kps_to_use = eu.convert_to_list(parameters["kp"]) if user_specified_kp else ["infores:rtx-kg2"]  # Only KG2 does single-node queries
-            for qnode_key in qnode_keys_to_expand:
-                answer_kg = self._expand_node(qnode_key,
-                                              kps_to_use,
-                                              query_graph,
-                                              user_specified_kp,
-                                              kp_timeout,
-                                              log)
-                if log.status != 'OK':
-                    return response
-                self._merge_answer_into_message_kg(answer_kg, overarching_kg, message.query_graph, query_graph, log)
-                if log.status != 'OK':
                     return response
 
         # Get rid of any lingering expand-added subclass self-qedges that are no longer relevant (edges pruned)
@@ -1090,41 +1079,6 @@ class ARAXExpander:
 
         return qg_org_kg, aux_graphs, log
 
-    @staticmethod
-    def _expand_node(qnode_key: str,
-                     kps_to_use: list[str],
-                     query_graph: QueryGraph,
-                     user_specified_kp: bool,
-                     kp_timeout: Optional[int],
-                     log: ARAXResponse) -> QGOrganizedKnowledgeGraph:
-        # This function expands a single node using the specified knowledge provider (for now only KG2 is supported)
-        log.debug(f"Expanding node {qnode_key} using {kps_to_use}")
-        qnode = query_graph.nodes[qnode_key]
-        if qnode.ids:
-            qnode.ids = eu.get_canonical_curies_list(qnode.ids, log)
-        single_node_qg = QueryGraph(nodes={qnode_key: qnode}, edges={})
-        answer_kg = QGOrganizedKnowledgeGraph()
-        if log.status != 'OK':
-            return answer_kg
-        if not qnode.ids:
-            log.error("Cannot expand a single query node if it doesn't have a curie", error_code="InvalidQuery")
-            return answer_kg
-
-        # Answer the query using the proper KP (only our own KP answers single-node queries for now)
-        kps_to_use_that_cannot_handle_single_node_queries = set(kps_to_use) - KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES
-        if kps_to_use_that_cannot_handle_single_node_queries:
-            log.error("these KPs cannot answer single-node queries: "
-                      f"{kps_to_use_that_cannot_handle_single_node_queries}",
-                      error_code="InvalidKP")
-            return answer_kg
-
-        kp_querier = TRAPIQuerier(response_object=log,
-                                  kp_name=next(iter(KP_THAT_CAN_HANDLE_SINGLE_NODE_QUERIES)),
-                                  user_specified_kp=user_specified_kp,
-                                  kp_timeout=kp_timeout)
-        answer_kg = kp_querier.answer_single_node_query(single_node_qg)
-        log.info(f"Query for node {qnode_key} returned results ({eu.get_printable_counts_by_qg_id(answer_kg)})")
-        return answer_kg
 
     def _get_query_graph_for_edge(self, qedge_key: str, full_qg: QueryGraph, overarching_kg: QGOrganizedKnowledgeGraph, log: ARAXResponse) -> QueryGraph:
         # This function creates a query graph for the specified qedge, updating its qnodes' curies as needed

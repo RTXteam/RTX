@@ -288,28 +288,6 @@ class TRAPIQuerier:
             kg_edges_for_qedge.update(add_bound_edges)
         return result_kg, result_aux_graphs
 
-    def answer_single_node_query(
-            self, single_node_qg: QueryGraph
-    ) -> QGOrganizedKnowledgeGraph:
-        """
-        This function answers a single-node (edge-less) query using the specified KP.
-        :param single_node_qg: A TRAPI query graph containing a single node (no edges).
-        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
-           results for the query. (Organized by QG IDs.)
-        """
-        log = self.log
-        final_kg = QGOrganizedKnowledgeGraph()
-        qg_copy = copy.deepcopy(single_node_qg)
-
-        # Verify this query graph is valid, preprocess it for the KP's needs, and make sure it's answerable by the KP
-        self._verify_is_single_node_query_graph(qg_copy)
-        if log.status != 'OK':
-            return final_kg
-
-        # Answer the query using the KP and load its answers into our object model
-        final_kg, _ = self._answer_query_using_kp(qg_copy)
-        return final_kg
-
     def _verify_is_one_hop_query_graph(self, query_graph: QueryGraph):
         if len(query_graph.edges) != 1:
             self.log.error(f"answer_one_hop_query() was passed a query graph that is not one-hop: "
@@ -319,11 +297,6 @@ class TRAPIQuerier:
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
         elif len(query_graph.nodes) < 2:
             self.log.error(f"answer_one_hop_query() was passed a query graph with less than two nodes: "
-                           f"{query_graph.to_dict()}", error_code="InvalidQuery")
-
-    def _verify_is_single_node_query_graph(self, query_graph: QueryGraph):
-        if len(query_graph.edges) > 0:
-            self.log.error(f"answer_single_node_query() was passed a query graph that has edges: "
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
 
     def _get_kg_to_qg_mappings_from_results(

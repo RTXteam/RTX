@@ -23,10 +23,7 @@ templates:
     description: A single node question, where the one node has a curie
     template:
       - n00(ids)
-    DSL:
-      - expand(node_key=n00)
-      - filter_kg(action=remove_general_concept_nodes,perform_action=True)
-      - resultify()
+    error: Single-node queries are not currently supported, because Retriever requires at least one edge.
 
   one_node_with_categories:
     name: One node with only a categories
