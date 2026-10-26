@@ -233,7 +233,6 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
 
         self.api_base_url = self.resolve_node_normalizer_url().rstrip("/")
         self.name_resolver_url = self.resolve_name_resolver_url().rstrip("/")
-        self.kg2_infores_curie = "infores:rtx-kg2"
         self.sri_nn_infores_curie = "infores:sri-node-normalizer"
         self.arax_infores_curie = "infores:arax"
         self.bmt_tk = get_bmt_toolkit()
@@ -752,13 +751,10 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
     ) -> dict[str, dict[str, Any]]:
         """Build per-node metadata dict from API results.
 
-        The output dict preserves the same field names that
+        The output dict preserves the same SRI field names that
         the old SQLite version produced (in_sri, name_sri,
-        category_sri, in_kg2pre, name_kg2pre, category_kg2pre).
-        In API mode all data comes from the Node Normalizer,
-        so in_sri is always True when we have equivalent IDs,
-        and in_kg2pre is always False (KG2pre source info is
-        not available from the API).
+        category_sri). All data comes from the Node Normalizer,
+        so in_sri is True whenever we have equivalent IDs.
         """
         nodes_dict: dict[str, dict[str, Any]] = {}
         for node_id in all_node_ids:
@@ -790,9 +786,6 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                 "in_sri": in_sri,
                 "name_sri": name_sri,
                 "category_sri": category_sri,
-                "in_kg2pre": False,
-                "name_kg2pre": None,
-                "category_kg2pre": None,
                 "cluster_id": cluster_id,
                 "cluster_preferred_name": cluster_name
             }
@@ -1485,8 +1478,6 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
         provided_bys = []
         if normalizer_node["in_sri"]:
             provided_bys.append(self.sri_nn_infores_curie)
-        if normalizer_node["in_kg2pre"]:
-            provided_bys.append(self.kg2_infores_curie)
         node.attributes.append(Attribute(
             attribute_type_id="biolink:provided_by",
             value=provided_bys,
@@ -1513,24 +1504,6 @@ class NodeSynonymizer:  # pylint: disable=too-many-instance-attributes
                 description=(
                     "Category for this identifier in the"
                     " SRI NodeNormalizer bulk download")))
-
-        if normalizer_node["in_kg2pre"]:
-            node.attributes.append(Attribute(
-                attribute_type_id="biolink:name",
-                value=normalizer_node["name_kg2pre"],
-                value_type_id="metatype:String",
-                attribute_source=self.kg2_infores_curie,
-                description=(
-                    "Name for this identifier in"
-                    " RTX-KG2pre")))
-            node.attributes.append(Attribute(
-                attribute_type_id="biolink:category",
-                value=normalizer_node["category_kg2pre"],
-                value_type_id="metatype:Uriorcurie",
-                attribute_source=self.kg2_infores_curie,
-                description=(
-                    "Category for this identifier in"
-                    " RTX-KG2pre")))
 
         return node
 
