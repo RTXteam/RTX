@@ -347,13 +347,13 @@ def main():
     app.state.CHILD_PROCESS_RLIMIT = child_process_rlimit
 
     # Set up CORS
-    #app.add_middleware(
-    #    CORSMiddleware,
-    #    allow_origins=["*"],
-    #    allow_credentials=False,
-    #    allow_methods=["*"],
-    #    allow_headers=["*"],
-    #)
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     setproctitle.setproctitle(setproctitle.getproctitle() +
                               f" [port={tcp_port}]")
