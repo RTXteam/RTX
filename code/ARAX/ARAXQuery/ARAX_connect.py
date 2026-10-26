@@ -515,8 +515,7 @@ class ARAXConnect:
         with tracer.start_as_current_span("ARAX_connect.convert_to_trapi"):
             self.convert_to_trapi(result, aux_graphs, knowledge_graph, retriever_url, rtx_config.maturity)
 
-        mode = 'ARAX'
-        if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
+        if not hasattr(self.response, "original_query_graph"):
             self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
         return self.response
 

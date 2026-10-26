@@ -624,26 +624,6 @@ def remove_semmeddb_edges_and_nodes_with_low_publications(kg: KnowledgeGraph,
         log.info(f"{edges_removed_counter} Semmeddb Edges with low publication count successfully removed")
 
 
-def filter_response_domain_range_exclusion(plover_answer, qg, log: ARAXResponse):
-    log.debug("Applying domain range exclusion to plover response")
-    filtered_count = 0
-    qg_edge_keys = qg.edges.keys()
-    try:
-        for qg_edge_key in qg_edge_keys:
-
-            edge_keys_to_filter = {edge_id for edge_id, edge in plover_answer['edges'][qg_edge_key].items() if edge[7] == "True"}
-            for edge_key in edge_keys_to_filter:
-                del plover_answer['edges'][qg_edge_key][edge_key]
-                filtered_count += 1
-
-        log.info(f"Filtered out {filtered_count} edges from response due to domain range exclusion")
-    except Exception:
-        log.warning("Plover response does not have domain_range_exclusion key.")
-
-
-    return plover_answer
-
-
 def is_expand_created_subclass_qedge_key(qedge_key: str, qg: QueryGraph) -> bool:
     """
     When Expand adds subclass_of self-qedges to the QG, it assigns them keys in this kind of format:

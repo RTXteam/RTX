@@ -505,7 +505,7 @@ class ComputeFTEST:
                                    {'FET_e00': fet_e00}}
             query_graph = QueryGraph.from_dict(query_graph_builtin)
             from ARAX.ARAXQuery.Expand.kp_selector import KPSelector
-            kp_selector = KPSelector(kg2_mode=False, log=self.response)
+            kp_selector = KPSelector(log=self.response)
             self.response.debug(f"FET querying {infores_key} at URL: "
                                 f"{kp_selector.kp_urls.get(infores_key)}")
 

@@ -134,12 +134,11 @@ class TRAPIQuerier:
             return final_kg, None
 
         # Verify that the KP accepts these predicates/categories/prefixes
-        if self.kp_infores_curie != "infores:rtx-kg2":
-            if self.user_specified_kp:  # This is already done if expand chose the KP itself
-                if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_infores_curie):
-                    log.error(f"{self.kp_infores_curie} cannot answer queries with the specified categories/predicates",
-                              error_code="UnsupportedQG")
-                    return final_kg, None
+        if self.user_specified_kp:  # This is already done if expand chose the KP itself
+            if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_infores_curie):
+                log.error(f"{self.kp_infores_curie} cannot answer queries with the specified categories/predicates",
+                          error_code="UnsupportedQG")
+                return final_kg, None
 
         # Convert the QG so that it uses curies with prefixes the KP likes
         qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_infores_curie, log)
@@ -563,10 +562,7 @@ class TRAPIQuerier:
         json_qg = {'nodes': stripped_qnodes, 'edges': stripped_qedges}
         body: dict[str, Any] = {'message': {'query_graph': json_qg},
                                 'submitter': 'infores:arax'}
-        if self.kp_infores_curie == "infores:rtx-kg2":
-            body['return_minimal_metadata'] = True  # Don't want KG2 attributes because ARAX adds them later (faster)
-
-        # If sending a query to Retriever: specify Tier 1 only, unless tiers is already present
+        # If sending a query to Retriever: specify Tier 0 only, unless tiers is already present
         if self.kp_infores_curie == "infores:retriever":
             body.setdefault('parameters', {})
             if 'tiers' not in body['parameters']:
@@ -782,9 +778,7 @@ class TRAPIQuerier:
 
     def _get_query_timeout_length(self) -> int:
         # Returns the number of seconds we should wait for a response
-        if self.kp_infores_curie == "infores:rtx-kg2":
-            return 600
-        elif self.kp_timeout:
+        if self.kp_timeout:
             return self.kp_timeout
         else:
             return 120
