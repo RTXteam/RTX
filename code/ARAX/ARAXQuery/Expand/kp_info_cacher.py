@@ -103,11 +103,6 @@ class KPInfoCacher:
             # Just use the first URL listed for this KP (for this maturity level and TRAPI version)
             raw_url = kp_smart_api_registration["servers"][0]["url"]
 
-            # Handle the special case of RTX-KG2
-            if kp_smart_api_registration["infores_name"] == "infores:rtx-kg2":
-                # Captures an override if one is in place; otherwise server is read from our SmartAPI yaml/JSON
-                raw_url = self.rtx_config.plover_url
-
             # Remove any trailing slashes
             return raw_url.strip("/") if isinstance(raw_url, str) else raw_url
         else:

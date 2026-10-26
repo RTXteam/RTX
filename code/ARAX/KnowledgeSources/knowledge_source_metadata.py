@@ -23,6 +23,16 @@ from RTXConfiguration import RTXConfiguration
 # Imported here instead of inside _merge_kp_info, see ARAX issue 2794.
 from kp_info_cacher import KPInfoCacher
 
+# Expand queries Retriever with tiers=[0] (see trapi_querier.py), so the meta KG we advertise is the tier 0 one
+RETRIEVER_INFORES_CURIE = "infores:retriever"
+RETRIEVER_META_KG_TIER = 0
+
+
+class MockARAXResponse:
+    """Simple stand-in for ARAXResponse, for logging from KPInfoCacher.load_kp_info_caches"""
+    def error(self, msg): eprint(f"ERROR: {msg}")
+    def debug(self, msg): eprint(f"DEBUG: {msg}")
+
 
 class KnowledgeSourceMetadata:
 
@@ -46,18 +56,24 @@ class KnowledgeSourceMetadata:
         
         return datetime.now() - KnowledgeSourceMetadata.cache_timestamp < self.cache_duration
 
-    def _fetch_ploverdb_meta_kg(self) -> Optional[Dict[str, Any]]:
-        """Fetch meta knowledge graph from PloverDB"""
+    def _fetch_retriever_meta_kg(self) -> Optional[Dict[str, Any]]:
+        """Fetch meta knowledge graph from Retriever, using the URL SmartAPI lists for our maturity"""
         try:
-            plover_url = self.RTXConfig.plover_url
-            response = requests.get(f"{plover_url}/meta_knowledge_graph", timeout=30)
+            smart_api_info, _ = KPInfoCacher().load_kp_info_caches(MockARAXResponse())
+            retriever_url = smart_api_info["allowed_kp_urls"].get(RETRIEVER_INFORES_CURIE)
+            if not retriever_url:
+                eprint(f"ERROR: No URL for {RETRIEVER_INFORES_CURIE} in the KP info cache")
+                return None
+            response = requests.get(f"{retriever_url}/meta_knowledge_graph",
+                                    params={"tier": RETRIEVER_META_KG_TIER},
+                                    timeout=30)
             if response.status_code == 200:
                 return response.json()
             else:
-                eprint(f"ERROR: PloverDB returned status {response.status_code}")
+                eprint(f"ERROR: Retriever returned status {response.status_code}")
                 return None
         except Exception as e:
-            eprint(f"ERROR: Failed to fetch from PloverDB: {e}")
+            eprint(f"ERROR: Failed to fetch from Retriever: {e}")
             return None
 
     def _merge_kp_info(self, base_meta_kg: Dict[str, Any]) -> Dict[str, Any]:
@@ -65,11 +81,6 @@ class KnowledgeSourceMetadata:
         try:
             kp_cacher = KPInfoCacher()
             if kp_cacher.cache_file_present():
-                # Create a simple mock ARAXResponse for logging
-                class MockARAXResponse:
-                    def error(self, msg): eprint(f"ERROR: {msg}")
-                    def debug(self, msg): eprint(f"DEBUG: {msg}")
-                
                 smart_api_info, meta_map = kp_cacher.load_kp_info_caches(MockARAXResponse())
                 
                 if meta_map:
@@ -263,10 +274,10 @@ class KnowledgeSourceMetadata:
         """Build the meta knowledge graph dynamically from multiple sources"""
         eprint("Building dynamic meta knowledge graph...")
         
-        # Step 1: Fetch from PloverDB
-        plover_meta_kg = self._fetch_ploverdb_meta_kg()
-        if not plover_meta_kg:
-            eprint("WARNING: Failed to fetch meta knowledge graph from PloverDB, using backup")
+        # Step 1: Fetch from Retriever
+        retriever_meta_kg = self._fetch_retriever_meta_kg()
+        if not retriever_meta_kg:
+            eprint("WARNING: Failed to fetch meta knowledge graph from Retriever, using backup")
             # Try to load from backup
             backup_meta_kg = self._load_latest_backup_meta_kg()
             if backup_meta_kg:
@@ -276,7 +287,7 @@ class KnowledgeSourceMetadata:
             return None
         
         # Step 2: Merge KP information using existing KP info cacher
-        merged_meta_kg = self._merge_kp_info(plover_meta_kg)
+        merged_meta_kg = self._merge_kp_info(retriever_meta_kg)
         
         # Step 3: Add ReasonerAPI information (only adds missing TRAPI 1.4 fields)
         final_meta_kg = self._add_reasoner_api_info(merged_meta_kg)

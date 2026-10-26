@@ -182,9 +182,6 @@ class RTXConfiguration:
         self.mysql_feedback_username = self.config_secrets["mysql_feedback"]["username"]
         self.mysql_feedback_password = self.config_secrets["mysql_feedback"]["password"]
 
-        # The Retriever/Gandalf URL comes from config_dbs.json
-        self.plover_url = self.config_dbs["plover_url_override"].strip("/")
-
         if DEBUG:
             t1 = timeit.default_timer()
             print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Done creating RTXConfiguration object")
@@ -244,7 +241,6 @@ def main():
     rtxConfig = RTXConfiguration()
     t1 = timeit.default_timer()
     print("RTX Version string: " + rtxConfig.version)
-    print("plover url: %s" % rtxConfig.plover_url)
     print("mysql feedback host: %s" % rtxConfig.mysql_feedback_host)
     print("mysql feedback port: %s" % rtxConfig.mysql_feedback_port)
     print("mysql feedback username: %s" % rtxConfig.mysql_feedback_username)

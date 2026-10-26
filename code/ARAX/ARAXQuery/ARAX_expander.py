@@ -63,7 +63,6 @@ class ARAXExpander:
     def __init__(self):
         self.bh = get_biolink_helper()
         self.rtxc = RTXConfiguration()
-        self.plover_url = self.rtxc.plover_url
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
         self.supported_qnode_attribute_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
         self.supported_qedge_attribute_constraints = {"knowledge_source": {"==": "*"},
