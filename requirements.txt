@@ -9,7 +9,7 @@ networkx==2.8.8
 graphviz==0.20.1
 lxml==4.9.4
 nltk==3.7
-scipy==1.15.3
+scipy==1.16.3
 scikit-learn==1.7.1
 connexion==3.3.0
 SQLAlchemy==1.4.47
