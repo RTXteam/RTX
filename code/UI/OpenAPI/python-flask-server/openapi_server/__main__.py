@@ -222,7 +222,7 @@ def main():
     run_background_tasker = local_config.get('run_background_tasker', True)
     force_disable_telemetry = local_config.get('force_disable_telemetry', False)
     query_fork_mode = local_config.get('query_fork_mode', True)
-    query_fork_mode = False  #T2FIXME
+    eprint(f"Query fork mode: {query_fork_mode}")
     child_process_rlimit = local_config.get('child_process_rlimit', 34359738368)
 
     if check_databases:
