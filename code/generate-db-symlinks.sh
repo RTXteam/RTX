@@ -2,7 +2,7 @@
 set -euo pipefail
 # Purpose: sets up symbolic links for ARAX database files
 # Usage: it's a three-step process
-#   1. configure `DB_DIR` and `LATEST_KG2_VER` shell variabless
+#   1. configure `DB_DIR` and `LATEST_TIER0_VER` shell variables
 #   2. `cd` to the directory just above the `RTX` root code directory
 #   3. `./generate-db-symlinks.sy`
 # When you run the pytest suite, don't forget to pass `--nodatabases`
@@ -11,7 +11,7 @@ set -euo pipefail
 
 # Stephen Ramsey, Oregon State University
 
-LATEST_TIER0_VER="tier0-20260621"
+LATEST_TIER0_VER="tier0-20260928"
 
 DB_DIR="/mnt/data/orangeboard/databases"
 
@@ -44,7 +44,7 @@ link() {
 
 link "${DB_DIR}/KG2.8.0/COHDdatabase_v1.0_KG2.8.0.db" "RTX/code/ARAX/KnowledgeSources/COHD_local/data/COHDdatabase_v1.0_KG2.8.0.db"
 
-link "${DB_DIR}/${LATEST_TIER0_VER}/ExplainableDTD_v1.0_${LATEST_TIER0_VER}-all_with_paths.db" "RTX/code/ARAX/KnowledgeSources/Prediction/ExplainableDTD_v1.0_${LATEST_TIER0_VER}-all_with_paths.db"
+link "${DB_DIR}/${LATEST_TIER0_VER}/ExplainableDTD_v1.0-${LATEST_TIER0_VER}-all_with_paths.db" "RTX/code/ARAX/KnowledgeSources/Prediction/ExplainableDTD_v1.0-${LATEST_TIER0_VER}-all_with_paths.db"
 link "${DB_DIR}/${LATEST_TIER0_VER}/curie_ngd_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/ARAX/KnowledgeSources/NormalizedGoogleDistance/curie_ngd_v1.0_${LATEST_TIER0_VER}.sqlite"
 link "${DB_DIR}/${LATEST_TIER0_VER}/curie_to_pmids_v1.0_${LATEST_TIER0_VER}.sqlite" "RTX/code/ARAX/KnowledgeSources/NormalizedGoogleDistance/curie_to_pmids_v1.0_${LATEST_TIER0_VER}.sqlite"
 link "${DB_DIR}/${LATEST_TIER0_VER}/fda_approved_drugs_v1.0.pickle" "RTX/code/ARAX/KnowledgeSources/fda_approved_drugs_v1.0.pickle"
