@@ -221,33 +221,20 @@ def test_diseases_treated_by_drug_issue_20():
     assert len(message.results) > 0
 
 
-@pytest.mark.skip  # TODO: Needs to be rewritten using qualifiers (many of the predicates are no longer valid)
 def test_chemical_substances_that_down_regulate_STK11_issue_28():
+    # "Down-regulates" is expressed with qualifiers on biolink:affects now, not with the old regulation predicates
     query = {
       "message": {
         "query_graph": {
           "edges": {
             "e01": {
+              "subject": "n1",
               "object": "n0",
-              "predicates": ["biolink:prevents",
-                "biolink:negatively_regulates",
-                "biolink:decreases_secretion_of",
-                "biolink:decreases_secretion_of",
-                "biolink:decreases_transport_of",
-                "biolink:decreases_activity_of",
-                "biolink:decreases_synthesis_of",
-                "biolink:decreases_expression_of",
-                "biolink:increases_degradation_of",
-                "biolink:entity_negatively_regulates_entity",
-                "biolink:disrupts",
-                "biolink:directly_negatively_regulates",
-                "biolink:inhibits",
-                "biolink:inhibitor",
-                "biolink:channel_blocker",
-                "biolink:disrupts",
-                "biolink:may_inhibit_effect_of"
-              ],
-              "subject": "n1"
+              "predicates": ["biolink:affects"],
+              "qualifier_constraints": [{"qualifier_set": [
+                {"qualifier_type_id": "biolink:object_aspect_qualifier", "qualifier_value": "activity_or_abundance"},
+                {"qualifier_type_id": "biolink:object_direction_qualifier", "qualifier_value": "decreased"}
+              ]}]
             }
           },
           "nodes": {
@@ -266,16 +253,15 @@ def test_chemical_substances_that_down_regulate_STK11_issue_28():
     assert len(message.results) > 0
 
 
-# This query doesn't find results after conflations were resolved upstream
-@pytest.mark.skip
+# The disease is the subject of has_phenotype (disease has_phenotype phenotypic feature)
 def test_phenotypes_for_angel_shaped_phalango_epiphyseal_dysplasia_issue_33():
     query = {
       "message": {
         "query_graph": {
           "edges": {
             "e01": {
-              "object": "n0",
-              "subject": "n1",
+              "subject": "n0",
+              "object": "n1",
               "predicates":["biolink:has_phenotype"]
             }
           },
