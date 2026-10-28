@@ -415,27 +415,21 @@ ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
 - 1,023 GiB of elastic block storage
 - host OS Ubuntu v22.04. 
 
-The host OS has nginx v1.14.0 installed and configured
-(see `notes/ARAX/rtx-host-os-nginx-config` for configuration details) for
-SSL/TLS termination and proxying of HTTP traffic to `localhost:8080`. The SSL
-site certificate was generated using Letsencrypt (certbot v0.27.0). ARAX
+The host OS has nginx v1.18.0 installed and configured
+(see `self-hosted-configs/nginx_default_config` for the configuration) to
+proxy HTTP traffic on port 80 to `localhost:8081`. TLS is not terminated on
+the host; `arax.ncats.io` resolves to an AWS load balancer. ARAX
 and all of its database dependencies run inside a Docker container
-(Docker v19.03.5) that is configured to map TCP ports as
+(Docker v29.0.2) that is configured to map TCP ports as
 follows (host-port:container-port):
 
-- 7473:7473
-- 7474:7474
-- 7687:7687
-- 8080:80 
+- 8081:80
 
-(for the specific Docker run command, see
-`notes/ARAX/arax-run-container-nodes.md`). Within the Docker container,
-ARAX uses
+Within the Docker container, ARAX uses
 
 - Ubuntu v20.04
 - Apache v2.4.18 
 - python v3.9
-- Neo4j v3.2.6 (see [`code/reasoningtool/kg-construction`](code/reasoningtool/kg-construction) on how to set up Neo4j for running ARAX/RTX)
 - OpenJDK v1.8.0_131
 - mysql v5.7.19-0ubuntu0.16.04.1
 
