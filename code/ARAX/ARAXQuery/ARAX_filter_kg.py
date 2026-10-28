@@ -691,6 +691,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     known_values.add(val)
                         if len(known_attributes.intersection(provided_by_attributes)) > 0:
                             known_attributes = known_attributes.union(provided_by_attributes)
+                # Since TRAPI 1.4, knowledge sources are on edge.sources rather than in attributes
+                if edge.sources:
+                    known_attributes = known_attributes.union(provided_by_attributes)
+                    known_values.update(source.resource_id for source in edge.sources)
 
             allowable_parameters = {'action': {'remove_edges_by_discrete_attribute'},
                                     'edge_attribute': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) is str or type(val) is list]).union(known_attributes),

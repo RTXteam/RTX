@@ -72,20 +72,26 @@ class WorkflowToARAXi:
             response.warning("This query graph has 3 or more nodes. This may take a while")
         nodes_keys_with_categories = [key for key,node in query_graph['nodes'].items() if node['categories'] is not None]
         qnode_pairs = itertools.combinations(nodes_keys_with_categories,2)
-        ARAXi.append(f"overlay(action=compute_ngd,default_value=inf,virtual_relation_label=connect_knodes_ngd)")
-        ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=connect_knodes_paired_freq)")
-        #ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=observed_expected_ratio,virtual_relation_label=connect_knodes_obs_exp)")
-        #ARAXi.append(f"overlay(action=overlay_clinical_info,COHD_method=chi_square,virtual_relation_label=connect_knodes_chi_sqr)")
-        ARAXi.append(f"overlay(action=predict_drug_treats_disease,virtual_relation_label=connect_knodes_pred_dtd)")
+        # Each virtual relation label becomes one virtual qedge, so every qnode pair gets its own label
+        for source, target in itertools.combinations(query_graph['nodes'].keys(), 2):
+            ARAXi.append(f"overlay(action=compute_ngd,default_value=inf,virtual_relation_label=connect_knodes_ngd_{source}_{target},subject_qnode_key={source},object_qnode_key={target})")
+        # Fisher's exact test needs a qedge connecting the two qnodes
+        qedge_qnode_pairs = {frozenset((qedge['subject'], qedge['object'])) for qedge in query_graph['edges'].values()}
         for qnode_pair in qnode_pairs:
-            ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label=connect_knodes_fisher,subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
-            ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label=connect_knodes_fisher,subject_qnode_key={qnode_pair[1]},object_qnode_key={qnode_pair[0]})")
+            if frozenset(qnode_pair) not in qedge_qnode_pairs:
+                continue
+            fisher_label = f"connect_knodes_fisher_{qnode_pair[0]}_{qnode_pair[1]}"
+            ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label={fisher_label},subject_qnode_key={qnode_pair[0]},object_qnode_key={qnode_pair[1]})")
+            ARAXi.append(f"overlay(action=fisher_exact_test,virtual_relation_label={fisher_label},subject_qnode_key={qnode_pair[1]},object_qnode_key={qnode_pair[0]})")
         if len(query_graph['nodes']) >= 3:
             qnode_triples = itertools.combinations(query_graph['nodes'].keys(),3)
             for qnode_triple in qnode_triples:
-                ARAXi.append(f"overlay(action=compute_jaccard,virtual_relation_label=connect_knodes_jaccard,start_node_key={qnode_triple[0]},end_node_key={qnode_triple[1]},intermediate_node_key={qnode_triple[2]})")
-                ARAXi.append(f"overlay(action=compute_jaccard,virtual_relation_label=connect_knodes_jaccard,start_node_key={qnode_triple[2]},end_node_key={qnode_triple[0]},intermediate_node_key={qnode_triple[1]})")
-                ARAXi.append(f"overlay(action=compute_jaccard,virtual_relation_label=connect_knodes_jaccard,start_node_key={qnode_triple[1]},end_node_key={qnode_triple[2]},intermediate_node_key={qnode_triple[0]})")
+                for start, end, intermediate in ((qnode_triple[0], qnode_triple[1], qnode_triple[2]),
+                                                 (qnode_triple[2], qnode_triple[0], qnode_triple[1]),
+                                                 (qnode_triple[1], qnode_triple[2], qnode_triple[0])):
+                    # Jaccard needs the intermediate qnode connected by qedges to both the start and end qnodes
+                    if frozenset((start, intermediate)) in qedge_qnode_pairs and frozenset((intermediate, end)) in qedge_qnode_pairs:
+                        ARAXi.append(f"overlay(action=compute_jaccard,virtual_relation_label=connect_knodes_jaccard_{start}_{end},start_node_key={start},end_node_key={end},intermediate_node_key={intermediate})")
         return ARAXi
 
     @staticmethod

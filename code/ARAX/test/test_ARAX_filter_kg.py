@@ -258,8 +258,7 @@ def test_provided_by_filter():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    count1 = len(message.results)
-    # Retriever also has non-SemMedDB sources (e.g., CTD) for some of these edges, so only some results go away (checked below)
+    filtered_edges = message.knowledge_graph.edges
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalEntity, key=n0)",
@@ -273,8 +272,14 @@ def test_provided_by_filter():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    count2 = len(message.results)
-    assert count2 > count1
+    unfiltered_edges = message.knowledge_graph.edges
+
+    # Every gene-glycerol pair here also has a non-SemMedDB edge, so the filter removes edges but not results
+    def _has_semmeddb_source(edge) -> bool:
+        return any(source.resource_id == "infores:semmeddb" for source in edge.sources or [])
+    assert any(_has_semmeddb_source(edge) for edge in unfiltered_edges.values())
+    assert not any(_has_semmeddb_source(edge) for edge in filtered_edges.values())
+    assert len(filtered_edges) < len(unfiltered_edges)
 
 def test_tuple_bug():
     query = {"operations": {"actions": [

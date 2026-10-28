@@ -245,6 +245,12 @@ def get_primary_knowledge_source(edge: Edge) -> str:
     return primary_ks_sources[0] if primary_ks_sources else ""
 
 
+def get_support_graph_ids(edge: Edge) -> list[str]:
+    return [aux_graph_id for attribute in edge.attributes or []
+            if attribute.attribute_type_id == "biolink:support_graphs"
+            for aux_graph_id in convert_to_list(attribute.value)]
+
+
 def merge_two_kgs(kg_a: QGOrganizedKnowledgeGraph, kg_b: QGOrganizedKnowledgeGraph) -> QGOrganizedKnowledgeGraph:
     for qnode_key, nodes in kg_a.nodes_by_qg_id.items():
         for node_key, node in nodes.items():
@@ -289,9 +295,13 @@ def convert_qg_organized_kg_to_standard_kg(organized_kg: QGOrganizedKnowledgeGra
                 edge.qedge_keys = [qedge_key]
                 standard_kg.edges[edge_key] = edge
     for node_key, node in organized_kg.unbound_nodes.items():
-        standard_kg.nodes[node_key] = node
+        if node_key not in standard_kg.nodes:
+            node.qnode_keys = []
+            standard_kg.nodes[node_key] = node
     for edge_key, edge in organized_kg.unbound_edges.items():
-        standard_kg.edges[edge_key] = edge
+        if edge_key not in standard_kg.edges:
+            edge.qedge_keys = []
+            standard_kg.edges[edge_key] = edge
     return standard_kg
 
 

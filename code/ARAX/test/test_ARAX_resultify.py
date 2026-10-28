@@ -33,17 +33,6 @@ TYPE_1_DIABETES_CURIE = "MONDO:0005147"
 INSULIN_CURIE = "CHEBI:5931"
 
 
-def _slim_kg(kg: KnowledgeGraph) -> KnowledgeGraph:
-    slimmed_nodes = {node_key: Node(categories=node.categories,
-                                    name=node.name,
-                                    qnode_keys=node.qnode_keys) for node_key, node in kg.nodes.items()}
-    slimmed_edges = {edge_key: Edge(subject=edge.subject,
-                                    object=edge.object,
-                                    predicate=edge.predicate,
-                                    qedge_keys=edge.qedge_keys) for edge_key, edge in kg.edges.items()}
-    return KnowledgeGraph(nodes=slimmed_nodes, edges=slimmed_edges)
-
-
 def _create_nodes(kg_node_info: Iterable[Dict[str, any]]) -> Dict[str, Node]:
     nodes_dict = dict()
     for kg_node in kg_node_info:

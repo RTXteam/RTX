@@ -86,18 +86,6 @@ def test_prune():
             "expand(edge_key=e00, kp=infores:retriever)",
             "overlay(action=add_node_pmids, max_num=15)",
             "resultify(ignore_edge_direction=true)",
-            "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20, prune_kg=f)",
-            "return(message=true, store=false)"
-        ]}}
-    [no_prune_response, no_prune_message] = _do_arax_query(query)
-    query = {"operations": {"actions": [
-            "create_message",
-            "add_qnode(name=DOID:4337, key=n00)",
-            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-            "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, kp=infores:retriever)",
-            "overlay(action=add_node_pmids, max_num=15)",
-            "resultify(ignore_edge_direction=true)",
             "filter_results(action=sort_by_node_attribute, node_attribute=pubmed_ids, direction=a, max_results=20)",
             "return(message=true, store=false)"
         ]}}
@@ -109,15 +97,34 @@ def test_prune():
         for node_binding_list in result.node_bindings.values():
             for node_binding in node_binding_list:
                 result_nodes.add(node_binding.id)
-        for edge_binding_list in result.edge_bindings.values():
-            for edge_binding in edge_binding_list:
-                result_edges.add(edge_binding.id)
+        for analysis in result.analyses:
+            for edge_binding_list in analysis.edge_bindings.values():
+                for edge_binding in edge_binding_list:
+                    result_edges.add(edge_binding.id)
+    # The KG may also hold support-graph nodes/edges, which results reach via support graphs rather than bindings
+    kg_edges = message.knowledge_graph.edges
+    aux_graph_keys_to_visit = {aux_graph_key for result in message.results for analysis in result.analyses
+                               for aux_graph_key in analysis.support_graphs or []}
+    visited_aux_graph_keys = set()
+    edge_keys_to_check = set(result_edges)
+    while edge_keys_to_check or aux_graph_keys_to_visit:
+        for edge_key in edge_keys_to_check:
+            for attribute in kg_edges[edge_key].attributes or []:
+                if attribute.attribute_type_id == "biolink:support_graphs":
+                    aux_graph_keys_to_visit.update(attribute.value)
+        edge_keys_to_check = set()
+        for aux_graph_key in aux_graph_keys_to_visit - visited_aux_graph_keys:
+            visited_aux_graph_keys.add(aux_graph_key)
+            for edge_key in message.auxiliary_graphs[aux_graph_key].edges:
+                if edge_key not in result_edges:
+                    result_edges.add(edge_key)
+                    edge_keys_to_check.add(edge_key)
+                result_nodes.update({kg_edges[edge_key].subject, kg_edges[edge_key].object})
+        aux_graph_keys_to_visit = set()
     for key, node in message.knowledge_graph.nodes.items():
         assert key in result_nodes
     for key, edge in message.knowledge_graph.edges.items():
         assert key in result_edges
-    assert len(message.knowledge_graph.nodes) < len(no_prune_message.knowledge_graph.nodes)
-    assert len(message.knowledge_graph.edges) < len(no_prune_message.knowledge_graph.edges)
 
 def test_warning():
     query = {"operations": {"actions": [

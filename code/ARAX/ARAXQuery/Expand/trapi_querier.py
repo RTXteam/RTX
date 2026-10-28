@@ -50,6 +50,10 @@ _TREATS_DESCENDANTS = frozenset(
 
 UUID_NAMESPACE = uuid.UUID('31a17f10-c100-45ad-a3bb-2cccc37a8924')
 
+# Qnode constraints that ARAX applies itself after the KP answers (see ARAX_expander._apply_qnode_post_filters);
+#  these are not sent to KPs, since KPs reject queries containing constraints they don't support
+_ARAX_POST_FILTERED_QNODE_CONSTRAINT_IDS = frozenset({"biolink:highest_FDA_approval_status"})
+
 def _remove_attributes_with_invalid_values(response_json: dict,
                                            kp_curie: str,
                                            log: ARAXResponse) -> \
@@ -531,6 +535,16 @@ class TRAPIQuerier:
         stripped_qedges = {qedge_key: self._strip_empty_properties(qedge)
                            for qedge_key, qedge in qg.edges.items()}
 
+        # Leave out constraints that ARAX applies itself after the KP answers
+        for stripped_qnode in stripped_qnodes.values():
+            if "constraints" in stripped_qnode:
+                kp_constraints = [constraint for constraint in stripped_qnode["constraints"]
+                                  if constraint.get("id") not in _ARAX_POST_FILTERED_QNODE_CONSTRAINT_IDS]
+                if kp_constraints:
+                    stripped_qnode["constraints"] = kp_constraints
+                else:
+                    del stripped_qnode["constraints"]
+
         # Load the query into a JSON Query object
         json_qg = {'nodes': stripped_qnodes, 'edges': stripped_qedges}
         body: dict[str, Any] = {'message': {'query_graph': json_qg},
@@ -588,6 +602,7 @@ class TRAPIQuerier:
 
         # Populate our final KG with the returned edges
         unbound_edges = {}
+        kp_to_arax_edge_keys = {}
         nodes_dict = kg.nodes or {}
         edges_dict = kg.edges or {}
         for edge_key, edge in edges_dict.items():
@@ -614,6 +629,7 @@ class TRAPIQuerier:
             arax_edge_key = self._get_arax_edge_key(edge)
 
             if edge_key in kg_to_qg_mappings['edges']:
+                kp_to_arax_edge_keys[edge_key] = arax_edge_key
                 for qedge_key in kg_to_qg_mappings['edges'][edge_key]:
                     # for each `qedge_key` to which this edge is bound,
                     # add the edge to `answer_kg` with the ARAX edge key
@@ -718,6 +734,10 @@ class TRAPIQuerier:
         for nodes in answer_kg.nodes_by_qg_id.values():
             for node_key, node in nodes.items():
                 node.query_ids = eu.convert_to_list(query_curie_mappings.get(node_key))
+
+        # Bound edges were re-keyed with ARAX edge keys above, so point aux graphs at those keys too
+        for aux_graph in aux_graphs.values():
+            aux_graph.edges = [kp_to_arax_edge_keys.get(edge_id, edge_id) for edge_id in aux_graph.edges or []]
 
         # Add subclass_of edges for any parent to child relationships KPs returned
         answer_kg = self._add_subclass_of_edges(answer_kg)
