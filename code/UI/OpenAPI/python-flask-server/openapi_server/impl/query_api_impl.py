@@ -41,7 +41,7 @@ import sys
 import signal
 import resource
 import traceback
-from fastapi import FastAPI, Response
+from fastapi import Response
 from fastapi.responses import StreamingResponse
 from starlette.concurrency import run_in_threadpool
 from typing import Callable, Iterator
@@ -56,7 +56,7 @@ from openapi_server.models.query import Query
 from openapi_server.models.response import Response as TrapiResponse
 
 from openapi_server.apis.query_api_base import BaseQueryApi
-from openapi_server.request_context import get_remote_address
+from openapi_server.request_context import get_app, get_remote_address
 
 import ARAX_query  # pylint: disable=import-outside-toplevel,import-error,wrong-import-position
 
@@ -161,12 +161,11 @@ class ImplQueryApi(BaseQueryApi):
         """Initiate a query and wait to receive a Response
         """
 
-        #app = FastAPI.current_app  #T2FIXME
-        #fork_mode = app.state.get("QUERY_FORK_MODE", True)  #T2FIXME
-        fork_mode = False  #T2FIXME
+        app_state = get_app().state
+        fork_mode = getattr(app_state, "QUERY_FORK_MODE", True)
         child_rlimit = None
-        #if fork_mode:  #T2FIXME
-        #    child_rlimit = app.state.get("CHILD_PROCESS_RLIMIT", None)
+        if fork_mode:
+            child_rlimit = getattr(app_state, "CHILD_PROCESS_RLIMIT", None)
 
         # Note that we never even get here if the query is not schema-valid JSON
 
@@ -184,7 +183,11 @@ class ImplQueryApi(BaseQueryApi):
                     query
                 )
             else:
-                json_generator = self.run_query_dict_in_child_process(
+                # fork from a worker thread, not the event loop thread, so the child
+                # does not inherit a "running" event loop (ARAX code such as Expand
+                # calls loop.run_until_complete(), which fails inside a running loop)
+                json_generator = await run_in_threadpool(
+                    self.run_query_dict_in_child_process,
                     query,
                     self._run_query_and_return_json_generator_stream,
                     child_rlimit
@@ -197,7 +200,11 @@ class ImplQueryApi(BaseQueryApi):
                     query
                 )
             else:
-                json_generator = run_query_dict_in_child_process(
+                # fork from a worker thread, not the event loop thread, so the child
+                # does not inherit a "running" event loop (ARAX code such as Expand
+                # calls loop.run_until_complete(), which fails inside a running loop)
+                json_generator = await run_in_threadpool(
+                    self.run_query_dict_in_child_process,
                     query,
                     self._run_query_and_return_json_generator_nonstream,
                     child_rlimit
