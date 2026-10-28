@@ -44,7 +44,7 @@ class OperationFillParameters(BaseModel):
     # data type: OperationFillParametersOneOf1
     oneof_schema_2_validator: Optional[OperationFillParametersOneOf1] = None
     actual_instance: Optional[Union[OperationFillParametersOneOf, OperationFillParametersOneOf1]] = None
-    one_of_schemas: List[str] = Literal["OperationFillParametersOneOf", "OperationFillParametersOneOf1"]
+    one_of_schemas: List[str] = ["OperationFillParametersOneOf", "OperationFillParametersOneOf1"]
 
     model_config = {
         "validate_assignment": True,

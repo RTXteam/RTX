@@ -42,7 +42,7 @@ class ResultRowDataInner(BaseModel):
     # data type: float
     oneof_schema_2_validator: Optional[Union[StrictFloat, StrictInt]] = None
     actual_instance: Optional[Union[float, str]] = None
-    one_of_schemas: List[str] = Literal["float", "str"]
+    one_of_schemas: List[str] = ["float", "str"]
 
     model_config = {
         "validate_assignment": True,

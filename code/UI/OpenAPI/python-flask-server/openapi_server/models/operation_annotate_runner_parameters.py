@@ -44,7 +44,7 @@ class OperationAnnotateRunnerParameters(BaseModel):
     # data type: OperationAnnotateRunnerParametersOneOf1
     oneof_schema_2_validator: Optional[OperationAnnotateRunnerParametersOneOf1] = None
     actual_instance: Optional[Union[OperationAnnotateRunnerParametersOneOf, OperationAnnotateRunnerParametersOneOf1]] = None
-    one_of_schemas: List[str] = Literal["OperationAnnotateRunnerParametersOneOf", "OperationAnnotateRunnerParametersOneOf1"]
+    one_of_schemas: List[str] = ["OperationAnnotateRunnerParametersOneOf", "OperationAnnotateRunnerParametersOneOf1"]
 
     model_config = {
         "validate_assignment": True,
