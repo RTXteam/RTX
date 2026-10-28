@@ -19,14 +19,11 @@
 - [Organization of the ARAX/RTX software repository](#organization-of-the-araxrtx-software-repository)
   - [subdirectory `code`](#subdirectory-code)
     - [subdirectory `code/ARAX`](#subdirectory-codearax)
-    - [subdirectory `code/ARAX/Examples`](#subdirectory-codearaxexamples)
     - [subdirectory `code/UI/OpenAPI`](#subdirectory-codeuiopenapi)
     - [subdirectory `code/UI/Feedback`](#subdirectory-codeuifeedback)
     - [subdirectory `code/UI/interactive`](#subdirectory-codeuiinteractive)
     - [subdirectory `code/reasoningtool/kg-construction`](#subdirectory-codereasoningtoolkg-construction)
     - [subdirectory `code/reasoningtool/SemMedDB`](#subdirectory-codereasoningtoolsemmeddb)
-    - [subdirectory `code/reasoningtool/QuestionAnswering`](#subdirectory-codereasoningtoolquestionanswering)
-    - [subdirectory `code/reasoningtool/MLDrugRepurposing`](#subdirectory-codereasoningtoolmldrugrepurposing)
     - [subdirectory `code/autocomplete`](#subdirectory-codeautocomplete)
   - [subdirectory `data`](#subdirectory-data)
   - [Key repository branches](#key-repository-branches)
@@ -38,7 +35,6 @@
 - [Try out ARAX/RTX...](#try-out-araxrtx)
   - [...in your web browser](#in-your-web-browser)
   - [...using our web API](#using-our-web-api)
-  - [...by customizing a Jupyter Notebook](#by-customizing-a-jupyter-notebook)
 - [Links](#links)
   - [General links for the Biomedical Data Translator project](#general-links-for-the-biomedical-data-translator-project)
   - [ARAX- and RTX-specific links](#arax--and-rtx-specific-links)
@@ -298,8 +294,7 @@ knowledge provider capable of sending a Reasoners Standard API message.
 ARAX and RTX are mostly written in the Python programming language and a small
 amount of JavaScript and bash shell. Yet Another Markup Language (YAML) and
 JavaScript Object Notation (JSON) are extensively used for configuration
-files. Many examples of analysis workflow code that access RTX and/or ARAX are
-provided in Jupyter notebook format, in several places in the code-base.
+files.
 
 ## subdirectory `code`
 
@@ -308,11 +303,6 @@ All software code files for ARAX and RTX are stored under this directory [link](
 ### subdirectory `code/ARAX`
 
 Contains the core software code for ARAX [link](code/ARAX).
-
-### subdirectory `code/ARAX/Examples`
-
-Contains example Jupyter notebooks for using ARAX from
-software [link](code/ARAX/Examples)
 
 ### subdirectory `code/UI/OpenAPI`
 
@@ -341,19 +331,6 @@ knowledge graph (RTX-KG1) [(link)](code/reasoningtool/kg-construction).
 Contains the code for a python interface to an instance of the
 Semantic Medline Database (SemMedDB) that is being hosted in a MySQL database
 [(link)](code/reasoningtool/SemMedDB).
-
-### subdirectory `code/reasoningtool/QuestionAnswering`
-
-Contains the code for parsing and answering questions
-posed to the RTX reasoning tool [(link)](code/reasoningtool/QuestionAnswering).
-
-### subdirectory `code/reasoningtool/MLDrugRepurposing`
-
-Contains the code that is used for the machine-learning model for drug
-repositioning that was described in the article *Leveraging distributed
-biomedical knowledge sources to discover novel uses for known drugs*
-[article](https://doi.org/10.1101/765305) by Finn Womack, Jason McClelland, and
-David Koslicki [(link)](code/reasoningtool/MLDrugRepurposing).
 
 ### subdirectory `code/autocomplete`
 
@@ -459,11 +436,6 @@ Here is the link to access the web browser interface to RTX:
 Here is the link to documentation on the web API interface to RTX:
 [arax.rtx.ai/api/arax/v1.2/ui/](https://arax.rtx.ai/api/arax/v1.2/ui/).
 
-## ...by customizing a Jupyter Notebook
-
-Three Jupyter notebooks that demonstrate how to programmatically use ARAX are provided
-[here](code/ARAX/Examples).
-
 # Links
 
 ## General links for the Biomedical Data Translator project
@@ -480,5 +452,4 @@ Three Jupyter notebooks that demonstrate how to programmatically use ARAX are pr
 - [ARAX browser-based interface (arax.rtx.ai)](https://arax.rtx.ai)
 - [Technical documentation on ARAXi, the ARAX domain-specific language (this repo)](code/ARAX/Documentation/DSL_Documentation.md)
 - [Technical documentation on the ARAX web API interface (arax.rtx.ai)](https://arax.rtx.ai/api/rtx/v1/ui/)
-- [Example notebooks on how to programmatically use ARAX (this repo)](code/ARAX/Examples)
 
