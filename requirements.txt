@@ -29,7 +29,7 @@ aiohttp==3.9.4
 boto3==1.40.16
 tornado==6.4.1
 MarkupSafe==3.0.4
-reasoner-validator==7.1.1
+reasoner-validator==7.1.2
 pronto==2.5.3
 bmt==1.4.8
 pygit2==1.18.0
