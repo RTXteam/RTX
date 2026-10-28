@@ -102,7 +102,7 @@ class ARAXExpander:
         parameter_info_dict = {
             "kp": {
                 "is_required": False,
-                "examples": ["infores:retriever, [infores:retriever, infores:arax-drug-treats-disease]"],
+                "examples": ["infores:retriever, [infores:retriever]"],
                 "type": "string",  # TODO: A string OR list is allowed... way to specify that?
                 "default": None,
                 "description": "The KP(s) to ask for answers to the given query. KPs must be referred to by their"

@@ -232,7 +232,7 @@ infores:retriever.
 
     - This is not a required parameter and may be omitted.
 
-    - `infores:retriever, [infores:retriever, infores:arax-drug-treats-disease]` are examples of valid inputs.
+    - `infores:retriever, [infores:retriever]` are examples of valid inputs.
 
     - If not specified the default input will be None. 
 
