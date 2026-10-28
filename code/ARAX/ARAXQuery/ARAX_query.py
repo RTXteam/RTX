@@ -726,8 +726,8 @@ class ARAXQuery:
 
             #### Put our input processing actions into the envelope
             if response.envelope.operations is None:
-                response.envelope.operations = {}
-            response.envelope.operations['actions'] = operations.actions
+                response.envelope.operations = Operations()
+            response.envelope.operations.actions = operations.actions
 
 
             #### Instantiate the individual ARAX processing modules and process DSL commands
