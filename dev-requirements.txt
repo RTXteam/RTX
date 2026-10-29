@@ -1,6 +1,6 @@
 mypy==1.19.1
 openapi-generator-cli==7.19.0
-pylint==4.0.5
+pylint==4.0.9
 ruff==0.15.8
 types-PyYAML==6.0.12.20250915
 types-python-dateutil==2.9.0.20260305
