@@ -1,5 +1,5 @@
-# Dockerfile for ITRB CI (arax.ci.transltr.io)
-# This Dockerfile is used by Jenkins to build the ITRB CI image
+# Dockerfile for ITRB test (arax.test.transltr.io)
+# This Dockerfile is used by Jenkins to build the ITRB test image
 FROM ubuntu:24.04
 
 # suppress debconf error messages:
@@ -103,5 +103,5 @@ RUN chmod 700 /etc/init.d/RTX_Complete
 RUN cd /mnt/data/orangeboard/production/RTX/code/autocomplete && sed -i 's/devED/production/g' RTX_Complete.start
 RUN update-rc.d RTX_Complete defaults
 
-# setup config.domain for ITRB CI
-RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX/code/ && echo 'arax.ci.transltr.io' > config.domain"
+# setup config.domain for ITRB PROD
+RUN su - rt -c "cd /mnt/data/orangeboard/production/RTX/code/ && echo 'arax.transltr.io' > config.domain"
