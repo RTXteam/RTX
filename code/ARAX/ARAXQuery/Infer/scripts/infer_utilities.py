@@ -104,7 +104,7 @@ class InferUtilities:
         Args:
             extras: Dict returned by _parse_edge_extras().
 
-        Returns 'infores:arax-xdtd' if no primary knowledge source is found.
+        Returns 'infores:arax' if no primary knowledge source is found.
         """
         sources = extras.get('sources')
         if sources:
@@ -115,11 +115,11 @@ class InferUtilities:
                     sources = []
             for s in sources:
                 if s.get('resource_role') == 'primary_knowledge_source':
-                    return s.get('resource_id', 'infores:arax-xdtd')
-        return "infores:arax-xdtd"
+                    return s.get('resource_id', 'infores:arax')
+        return "infores:arax"
 
     @staticmethod
-    def _build_retrieval_sources(extras: dict, kp='infores:arax-xdtd'):
+    def _build_retrieval_sources(extras: dict, kp='infores:arax'):
         """Build TRAPI RetrievalSource objects from a pre-parsed extras dict.
 
         The sources form an ordered chain: the first entry is the primary_knowledge_source
@@ -134,7 +134,7 @@ class InferUtilities:
         Example chain from extras['sources']:
           [infores:mgi (primary)] -> [infores:agrkb (aggregator, upstream=[infores:mgi])]
         becomes:
-          [infores:mgi (primary)] -> [infores:agrkb (aggregator)] -> [infores:arax-xdtd (aggregator)]
+          [infores:mgi (primary)] -> [infores:agrkb (aggregator)] -> [infores:arax (aggregator)]
         """
         fallback = [RetrievalSource(resource_id=kp, resource_role="primary_knowledge_source")]
         sources = extras.get('sources')
@@ -164,7 +164,7 @@ class InferUtilities:
         ))
         return retrieval_sources
 
-    def __get_formated_edge_key(self, edge: Edge, primary_knowledge_source: str, kp: str = 'infores:arax-xdtd') -> str:
+    def __get_formated_edge_key(self, edge: Edge, primary_knowledge_source: str, kp: str = 'infores:arax') -> str:
         """Build an edge key for a knowledge graph edge.
 
         The edge key is a unique identifier for a knowledge graph edge.
@@ -251,7 +251,7 @@ class InferUtilities:
         self.option_global_iter = 0
         self.qedge_id = qedge_id
         message = self.response.envelope.message
-        self.kp = 'infores:arax-xdtd'
+        self.kp = 'infores:arax'
 
         # Check to make sure that the qedge_id either exists and is in the QG, or else does not exist and the QG is empty
         if qedge_id is not None:
