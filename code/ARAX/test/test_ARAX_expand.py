@@ -803,14 +803,14 @@ def test_1516_single_quotes_in_ids():
 
 def test_input_curie_remapping():
     actions = [
-        "add_qnode(key=n0, ids=KEGG.COMPOUND:C00022)",
+        "add_qnode(key=n0, ids=HMDB:HMDB0000243)",
         "add_qnode(key=n1, categories=biolink:Protein)",
         "add_qedge(key=e01, subject=n0, object=n1)",
         "expand(kp=infores:retriever)",
         "return(message=true, store=false)"
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions)
-    assert "KEGG.COMPOUND:C00022" in nodes_by_qg_id["n0"]
+    assert "HMDB:HMDB0000243" in nodes_by_qg_id["n0"]
 
 
 def test_constraint_validation():
