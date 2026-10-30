@@ -1,0 +1,141 @@
+<VirtualHost *:80>
+	# ARAX Apache Configuration
+	# Standardized to use "path stripping" pattern for all dev endpoints
+	# This means: DEVAREA prefix exists only in public URLs, not in Flask routes
+	# Benefit: Single openapi.yaml works across all environments
+	
+	ServerAdmin webmaster@localhost
+	DocumentRoot /var/www/html
+	TimeOut 3000
+
+	# ========================================================================
+	# PRODUCTION ENDPOINTS (no DEVAREA prefix)
+	# ========================================================================
+	
+	# ARAX Production - Main endpoint
+	<Location "/api/arax/v1.4">
+		ProxyPass "http://localhost:5000/api/arax/v1.4"
+		ProxyPassReverse "http://localhost:5000/api/arax/v1.4"
+		Header add Access-Control-Allow-Headers "Content-Type"
+		Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	</Location>
+	
+	# RTX Complete - Path stripping pattern
+	<Location "/rtxcomplete/">
+		ProxyPass "http://localhost:4999/"
+		ProxyPassReverse "http://localhost:4999/"
+		Header add Access-Control-Allow-Headers "Content-Type"
+		Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	</Location>
+
+	# ========================================================================
+	# DEVELOPMENT ENDPOINTS (DEVAREA prefix stripped at proxy)
+	# ========================================================================
+	# Pattern: External URL has /DEVAREA prefix, Flask sees generic /api/arax/v1.4
+	# This allows a single openapi.yaml to work across all environments
+	
+	# TEST endpoint
+	# Changed from: ProxyPass "http://localhost:5002/test/api/arax/v1.4"
+	# Now strips /test prefix so Flask only sees /api/arax/v1.4
+	<Location "/test/api/arax/v1.4">
+		ProxyPass "http://localhost:5002/api/arax/v1.4"
+		ProxyPassReverse "http://localhost:5002/api/arax/v1.4"
+		Header add Access-Control-Allow-Headers "Content-Type"
+		Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	</Location>
+	
+	# BETA endpoint (already correct - using path stripping)
+	<Location "/beta/api/arax/v2.0">
+		ProxyPass "http://localhost:5003/api/arax/v2.0"
+		ProxyPassReverse "http://localhost:5003/api/arax/v2.0"
+		Header add Access-Control-Allow-Origins "*"
+		Header add Access-Control-Allow-Headers "Content-Type"
+		Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	</Location>
+
+	# LEGACY endpoint (last-kg2-arax-branch, served from venv-legacy-arax)
+	<Location "/legacy/api/arax/v1.4">
+		ProxyPass "http://localhost:5006/api/arax/v1.4"
+		ProxyPassReverse "http://localhost:5006/api/arax/v1.4"
+		Header add Access-Control-Allow-Headers "Content-Type"
+		Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	</Location>
+
+	# Special proxy for FastAPI to get to its 2.0 openapi.json
+	<Location "/api/arax/v2.0/openapi.json">
+		ProxyPass "http://localhost:5001/api/arax/v2.0/openapi.json"
+		Header add Access-Control-Allow-Origins "*"
+		Header add Access-Control-Allow-Headers "Content-Type"
+		Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	</Location>
+	
+	# DEVED endpoint
+	<Location "/devED/api/arax/v2.0">
+		ProxyPass "http://localhost:5001/api/arax/v2.0"
+		ProxyPassReverse "http://localhost:5001/api/arax/v2.0"
+		Header add Access-Control-Allow-Origins "*"
+		Header add Access-Control-Allow-Headers "Content-Type"
+		Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	</Location>
+	
+	# DEVLM endpoint
+	# Changed from: ProxyPass "http://localhost:5004/devLM/api/arax/v1.4"
+	# Now strips /devLM prefix so Flask only sees /api/arax/v1.4
+	<Location "/devLM/api/arax/v1.4">
+		ProxyPass "http://localhost:5004/api/arax/v1.4"
+		ProxyPassReverse "http://localhost:5004/api/arax/v1.4"
+		Header add Access-Control-Allow-Headers "Content-Type"
+		Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	</Location>
+	
+	# SHEPHERD endpoint
+	# Port: 5005 (moved from 5008 to avoid conflict with KG2)
+	# Currently uses pass-through pattern (keeps /shepherd prefix)
+	# TODO: Update openapi.yaml to remove /shepherd prefix, then change to stripping pattern like beta
+	<Location "/shepherd/api/arax/v1.4">
+		ProxyPass "http://localhost:5005/api/arax/v1.4"
+		ProxyPassReverse "http://localhost:5005/api/arax/v1.4"
+		Header add Access-Control-Allow-Headers "Content-Type"
+		Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	</Location>
+	
+	# DEVLM ARS Testing endpoint (special configuration)
+	<Location "/devLM/ARS-testing">
+		Header add Access-Control-Allow-Origin "*"
+		Header add Access-Control-Allow-Headers "Content-Type, cache-control, pragma"
+		Header add Access-Control-Allow-Methods "GET, POST, OPTIONS"
+	</Location>
+
+	# ========================================================================
+	# LOGGING
+	# ========================================================================
+	ErrorLog ${APACHE_LOG_DIR}/error.log
+	CustomLog ${APACHE_LOG_DIR}/access.log combined
+</VirtualHost>
+
+# ============================================================================
+# SSL/HTTPS VirtualHost (Port 443)
+# ============================================================================
+<VirtualHost *:443>
+	ServerAdmin webmaster@localhost
+	DocumentRoot /var/www/html
+
+	ErrorLog ${APACHE_LOG_DIR}/error.log
+	CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+	#   SSL Engine Switch
+	SSLEngine on
+
+	#   Self-signed certificate (for development)
+	SSLCertificateFile      /etc/ssl/certs/ssl-cert-snakeoil.pem
+	SSLCertificateKeyFile   /etc/ssl/private/ssl-cert-snakeoil.key
+
+	<FilesMatch "\.(?:cgi|shtml|phtml|php)$">
+		SSLOptions +StdEnvVars
+	</FilesMatch>
+	<Directory /usr/lib/cgi-bin>
+		SSLOptions +StdEnvVars
+	</Directory>
+</VirtualHost>
+
+# vim: syntax=apache ts=4 sw=4 sts=4 sr noet

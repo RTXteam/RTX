@@ -25,6 +25,7 @@ from openapi_server.models.retrieval_source import RetrievalSource
 from ARAX.NodeSynonymizer.node_synonymizer import NodeSynonymizer
 
 RTX_CONFIG = RTXConfiguration()
+RETRIEVER_INFORES_CURIE = "infores:retriever"
 
 
 class ComputeFTEST:
@@ -36,12 +37,12 @@ class ComputeFTEST:
         self.parameters = parameters
         self.nodesynonymizer = NodeSynonymizer()
 
-        ## construct the path to the kg2c sqlite file
+        ## construct the path to the info-for-overlay sqlite file
         rtx_root = Path(__file__).resolve()
         while rtx_root.name != "RTX":
             rtx_root = rtx_root.parent
-        sqlite_name = Path(RTX_CONFIG.kg2c_sqlite_path).name
-        sqlite_file_path = rtx_root / "code" / "ARAX" / "KnowledgeSources" / "KG2c" / sqlite_name
+        sqlite_name = Path(RTX_CONFIG.info_for_overlay_sqlite_path).name
+        sqlite_file_path = rtx_root / "code" / "ARAX" / "KnowledgeSources" / "Tier0" / sqlite_name
         self.sqlite_file_path = sqlite_file_path
 
 
@@ -75,7 +76,7 @@ class ComputeFTEST:
 
         sqlite_file_path = self.sqlite_file_path
         if not os.path.exists(sqlite_file_path):
-            self.response.error(f"Unable to load KG2c sqlite file: {sqlite_file_path}")
+            self.response.error(f"Unable to load info-for-overlay sqlite file: {sqlite_file_path}")
             return self.response
 
         if rel_edge_key is not None:
@@ -277,9 +278,6 @@ class ComputeFTEST:
                 object_node_category = [normalized_object_node['preferred_category']]
                 self.response.info(f"No category is specified for the object node with qnode key {object_qnode_key} in Query Graph. We will automatically assign {object_node_category} to it based on the node synonymizer, otherwise please specify its node type.")
 
-        ## always set 'infores:rtx-kg2' to kp because we only have statistics for kg2 to calcualte fisher exact test
-        kp = 'infores:rtx-kg2'
-
         ## Print out some information used to calculate FET
         if len(subject_node_list) == 1:
             self.response.debug(f"{len(subject_node_list)} subject node with qnode key {subject_qnode_key} and node type {subject_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
@@ -290,23 +288,23 @@ class ComputeFTEST:
         else:
             self.response.debug(f"{len(object_node_dict)} object nodes with qnode key {object_qnode_key} and node type {object_node_category[0]} was found in message KG and used to calculate Fisher's Exact Test")
 
-        # find all nodes with the same type of 'subject_qnode_key' nodes in specified KP ('ARAX/KG1','infores:rtx-kg2') that are adjacent to target nodes
-        # if rel_edge_key is not None, query adjacent node from database otherwise query adjacent node with DSL command by providing a list of query nodes to add_qnode()
-        ## Note: Regarding of whether kp='ARAX/KG1' or kp='infores:rtx-kg2', it will always query adjacent node count based on kg2c
+        # find all nodes with the same type of 'subject_qnode_key' nodes that are adjacent to target nodes
+        # if the edge with rel_edge_key has exactly one predicate, query adjacent nodes from Retriever with that predicate;
+        # otherwise use the neighbor counts in the tier0 info-for-overlay sqlite
         if rel_edge_key:
             if len(rel_edge_type) == 1:  # if the edge with rel_edge_key has only type, we use this rel_edge_predicate to find all subject nodes in KP
-                self.response.debug(f"{kp} and edge relation type {list(rel_edge_type)[0]} were used to calculate total object nodes in Fisher's Exact Test")
-                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp=kp, rel_type=list(rel_edge_type)[0])
+                self.response.debug(f"{RETRIEVER_INFORES_CURIE} and edge relation type {list(rel_edge_type)[0]} were used to calculate total object nodes in Fisher's Exact Test")
+                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], rel_type=list(rel_edge_type)[0])
             else:  # if the edge with rel_edge_key has more than one type or no edge, we ignore the edge predicate and use all categories to find all subject nodes in KP
                 if len(rel_edge_key) == 0:
                     self.response.warning(f"The edges with specified qedge key {rel_edge_key} have no category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
                 else:
                     self.response.warning(f"The edges with specified qedge key {rel_edge_key} have more than one category, we ignore the edge predicate and use all categories to calculate Fisher's Exact Test")
-                self.response.debug("infores:rtx-kg2 was used to calculate total object nodes in Fisher's Exact Test")
-                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='infores:rtx-kg2', rel_type=None)
+                self.response.debug("The tier0 info-for-overlay sqlite was used to calculate total object nodes in Fisher's Exact Test")
+                result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], rel_type=None)
         else:  # if no rel_edge_key is specified, we ignore the edge predicate and use all categories to find all subject nodes in KP
-            self.response.debug("infores:rtx-kg2 was used to calculate total object nodes in Fisher's Exact Test")
-            result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], kp='infores:rtx-kg2', rel_type=None)
+            self.response.debug("The tier0 info-for-overlay sqlite was used to calculate total object nodes in Fisher's Exact Test")
+            result = self.query_size_of_adjacent_nodes(node_curie=list(object_node_dict.keys()), source_type=object_node_category[0], adjacent_type=subject_node_category[0], rel_type=None)
 
         if result is None:
             return self.response  ## Something wrong happened for querying the adjacent nodes
@@ -326,14 +324,9 @@ class ComputeFTEST:
                 size_of_object = res
 
         if len(object_node_dict) != 0:
-            ## Based on KP detected in message KG, find the total count of node with the same type of source node
-            ## Note: Regardless of what kp is specified in self.size_of_given_type_in_KP, it will always query total count based on kg2c
-            if kp=='infores:rtx-kg2':
-                size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0])
-                self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in KG2c based on 'nodesynonymizer.get_total_entity_count' and this number will be used for Fisher's Exact Test")
-            else:
-                self.response.error("Only KG2 is allowable to calculate the Fisher's exact test temporally")
-                return self.response
+            ## Find the total count of nodes with the same type as the source node, from the tier0 info-for-overlay sqlite
+            size_of_total = self.size_of_given_type_in_KP(node_type=subject_node_category[0])
+            self.response.debug(f"Total {size_of_total} unique concepts with node category {subject_node_category[0]} was found in the info-for-overlay sqlite based on 'nodesynonymizer.get_total_entity_count' and this number will be used for Fisher's Exact Test")
 
             size_of_query_sample = len(subject_node_list)
 
@@ -433,14 +426,14 @@ class ComputeFTEST:
         return self.response
 
 
-    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, kp="infores:rtx-kg2", rel_type=None):
+    def query_size_of_adjacent_nodes(self, node_curie, source_type, adjacent_type, rel_type=None):
         """
         Query adjacent nodes of a given source node based on adjacent node type.
         :param node_curie: (required) the curie id of query node. It accepts both single curie id or curie id list eg. "UniProtKB:P14136" or ['UniProtKB:P02675', 'UniProtKB:P01903', 'UniProtKB:P09601', 'UniProtKB:Q02878']
         :param source_type: (required) the type of source node, eg. "gene"
         :param adjacent_type: (required) the type of adjacent node, eg. "biological_process"
-        :param kp: (optional) the knowledge provider to use, eg. "infores:rtx-kg2"(default)
-        :param rel_type: (optional) edge type to consider, eg. "involved_in"
+        :param rel_type: (optional) edge type to consider, eg. "involved_in". If given, Retriever is queried;
+            otherwise the tier0 info-for-overlay sqlite neighbor counts are used
         :return a tuple with a dict containing the number of adjacent nodes for the query node and a list of removed nodes
         """
 
@@ -463,7 +456,7 @@ class ComputeFTEST:
             failure_nodes += list(normalized_nodes.keys() - mapping.keys())
 
             query_nodes = list(set(mapping.values()))
-            # Get connected to kg2c sqlite
+            # Get connected to info-for-overlay sqlite
             connection = sqlite3.connect(self.sqlite_file_path)
             cursor = connection.cursor()
             # Extract the neighbor count data
@@ -488,7 +481,7 @@ class ComputeFTEST:
             else:
                 return (res_dict, [])
         else:
-            infores_key = "infores:gandalf"
+            infores_key = RETRIEVER_INFORES_CURIE
             from ARAX.ARAXQuery.ARAX_expander import ARAXExpander
             expander = ARAXExpander()
             fet_e00 = {'subject': 'FET_n00', 'object': 'FET_n01'}
@@ -505,7 +498,7 @@ class ComputeFTEST:
                                    {'FET_e00': fet_e00}}
             query_graph = QueryGraph.from_dict(query_graph_builtin)
             from ARAX.ARAXQuery.Expand.kp_selector import KPSelector
-            kp_selector = KPSelector(kg2_mode=False, log=self.response)
+            kp_selector = KPSelector(log=self.response)
             self.response.debug(f"FET querying {infores_key} at URL: "
                                 f"{kp_selector.kp_urls.get(infores_key)}")
 
@@ -555,22 +548,20 @@ class ComputeFTEST:
 
     def size_of_given_type_in_KP(self, node_type):
         """
-        find all nodes of a certain type in KP
+        find the total number of nodes of a certain type, from the tier0 info-for-overlay sqlite
         :param node_type: the query node type
-        :param kg: only allowed for choosing 'KG1' or 'KG2' now. Will extend to BTE later
         """
-        # TODO: extend this to KG2, BTE, and other KP's we know of
 
         size_of_total = None
 
         node_type = ComputeFTEST.convert_string_to_snake_case(node_type.replace('biolink:',''))
         node_type = ComputeFTEST.convert_string_biolinkformat(node_type)
 
-        # Get connected to kg2c sqlite
+        # Get connected to info-for-overlay sqlite
         connection = sqlite3.connect(self.sqlite_file_path)
         cursor = connection.cursor()
 
-        # Extract total count of nodes with certain type in kg2c
+        # Extract total count of nodes with certain type in the info-for-overlay sqlite
         sql_query = f"SELECT C.count " \
                     f"FROM category_counts AS C " \
                     f"WHERE C.category = '{node_type}'"

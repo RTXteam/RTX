@@ -1,5 +1,4 @@
-Here are some coding guidelines for working on ARAX and
-[RTX-KG2](https://github.com/RTXteam/RTX-KG2).
+Here are some coding guidelines for working on ARAX.
 
 # Caveat
 
@@ -32,7 +31,7 @@ on feedback from the team.
    adding a `pytest` unit test to a module (either a new module or an existing
    module) in `RTX/code/ARAX/test`.
    
-7. ARAX and RTX-KG2 currently use CPython 3.9 in production; any newer language
+7. ARAX currently uses CPython 3.12 in production; any newer language
    features should be avoided or used with utmost caution (i.e., only if you
    fully understand the implications of that choice for deployment).
 
@@ -70,6 +69,5 @@ on feedback from the team.
 8. Don't do a task a query time that can (without undue complexity) be done at
    application start-up or by the ARAX Background Tasker.
 
-9. Avoid making RTX-KG2 do tasks at query time that only ARAX needs to be doing.
 
 

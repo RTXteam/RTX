@@ -76,7 +76,7 @@ def get_node_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]
 
 
 def get_edge_ids_by_qg_id(knowledge_graph: KnowledgeGraph) -> dict[str, set[str]]:
-    # Returns all edge IDs in the KG organized like so: {"e00": {"KG2:123", ...}, "e01": {"KG2:224", "KG2:225", ...}}
+    # Returns all edge IDs in the KG organized like so: {"e00": {"edge_123", ...}, "e01": {"edge_224", "edge_225", ...}}
     edge_keys_by_qg_key: dict[str, set[str]] = dict()
     if knowledge_graph.edges:
         for key, edge in knowledge_graph.edges.items():

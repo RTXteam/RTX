@@ -19,7 +19,7 @@ import copy
 import time
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from Path_Finder.utility import get_curie_ngd_path, get_curie_to_pmids_path, get_kg2c_db_path
+from Path_Finder.utility import get_curie_ngd_path, get_curie_to_pmids_path, get_info_for_overlay_db_path
 from Expand.trapi_query_cacher import KPQueryCacher
 from ARAX_messenger import ARAXMessenger
 
@@ -480,7 +480,7 @@ class ARAXConnect:
         pathfinder = Pathfinder(
             f"retriever:{retriever_url}",
             get_curie_ngd_path(),
-            get_kg2c_db_path(),
+            get_info_for_overlay_db_path(),
             blocked_curies,
             blocked_synonyms,
             self.response,
@@ -524,8 +524,7 @@ class ARAXConnect:
         with tracer.start_as_current_span("ARAX_connect.convert_to_trapi"):
             self.convert_to_trapi(result, aux_graphs, knowledge_graph, retriever_url, rtx_config.maturity)
 
-        mode = 'ARAX'
-        if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
+        if not hasattr(self.response, "original_query_graph"):
             self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
         return self.response
 

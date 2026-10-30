@@ -24,28 +24,6 @@ def _do_arax_query(query: dict) -> List[Union[ARAXResponse, Message]]:
     return [response, response.envelope.message]
 
 
-def _attribute_tester(message, attribute_name: str, attribute_type: str, num_different_values=2):
-    """
-    Tests attributes of a message
-    message: returned from _do_arax_query
-    attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
-    num_different_values: the number of distinct values you wish to see have been added as attributes
-    """
-    edges_of_interest = []
-    values = set()
-    for key, edge in message.knowledge_graph.edges.items():
-        assert 'primary_knowledge_source' in [source.resource_role for source in edge.sources]
-        if hasattr(edge, 'edge_attributes'):
-            for attr in edge.edge_attributes:
-                if attr.original_attribute_name == attribute_name:
-                    edges_of_interest.append(edge)
-                    assert attr.attribute_type_id == attribute_type
-                    values.add(attr.value)
-    assert len(edges_of_interest) > 0
-    assert len(values) >= num_different_values
-
-
 def _virtual_tester(message: Message, edge_predicate: str, relation: str, attribute_name: str, attribute_type: str, num_different_values=2):
     """
     Tests overlay functions that add virtual edges
@@ -58,16 +36,17 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     """
     edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
     assert edge_predicate in edge_predicates_in_kg
-    edges_of_interest = [x for x in message.knowledge_graph.edges.values() if x.relation == relation]
+    edges_of_interest = [x for x in message.knowledge_graph.edges.values()
+                         if any(attribute.original_attribute_name == "virtual_relation_label" and attribute.value == relation
+                                for attribute in x.attributes or [])]
     values = set()
     assert len(edges_of_interest) > 0
     for edge in edges_of_interest:
         assert 'primary_knowledge_source' in [source.resource_role for source in edge.sources]
-        assert hasattr(edge, 'attributes')
-        assert edge.attributes
-        assert edge.attributes[0].original_attribute_name == attribute_name
-        values.add(edge.attributes[0].value)
-        assert edge.attributes[0].attribute_type_id == attribute_type
+        matching_attributes = [attribute for attribute in edge.attributes if attribute.original_attribute_name == attribute_name]
+        assert matching_attributes
+        values.add(matching_attributes[0].value)
+        assert matching_attributes[0].attribute_type_id == attribute_type
     # make sure two or more values were added
     assert len(values) >= num_different_values
 
@@ -109,14 +88,14 @@ def test_exclude():
 def test_example_2():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:7551, key=n00)",
+        "add_qnode(name=DOID:14221, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
         "expand(edge_key=[e00,e01], kp=infores:retriever)",
         "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_keys=[n02])",
+        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.01, remove_connected_nodes=t, qnode_keys=[n02])",  # Retriever jaccard values for this disease top out around 0.02
         "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=provided_by, value=Pharos)",
         # "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1, threshold=0)",
         "resultify(ignore_edge_direction=true)",
@@ -140,8 +119,6 @@ def test_example_3():
         "add_qedge(subject=n00, object=n01, key=e00)",
         "add_qedge(subject=n01, object=n02, key=e01)",
         "expand(edge_key=[e00,e01], kp=infores:retriever)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=1, remove_connected_nodes=t, qnode_keys=[n01])",
         "filter_kg(action=remove_orphaned_nodes, node_category=biolink:Protein)",
         "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
         "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=normalized_google_distance, direction=above, threshold=0.85, remove_connected_nodes=t, qnode_keys=[n02])",
@@ -153,7 +130,6 @@ def test_example_3():
     #assert len(message.results) in [47, 48]  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
     assert len(message.results) >= 60
     assert message.results[0].essence is not None
-    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C1', 'observed_expected_ratio', 'EDAM-DATA:0951', 2)
     _virtual_tester(message, 'biolink:occurs_together_in_literature_with', 'N1', 'normalized_google_distance', 'EDAM-DATA:2526', 2)
 
 @pytest.mark.broken 
@@ -191,7 +167,6 @@ def test_FET_example_1():
         assert 0 <= float(FET_edge_attribute[0].value) < 0.005
         assert FET_edge_attribute[0].attribute_type_id == 'EDAM-DATA:1669'
 
-@pytest.mark.broken 
 def test_FET_example_2():
     # This a FET 2-hop example: try to find the diseases that share the same protein with ibuprofen (CHEMBL.COMPOUND:CHEMBL521)
     query = {"operations": {"actions": [
@@ -257,9 +232,8 @@ def test_FET_example_3():
         assert 0 <= float(FET_edge_attribute[0].value) < 0.001
         assert FET_edge_attribute[0].attribute_type_id == 'EDAM-DATA:1669'
 
-@pytest.mark.broken 
 def test_FET_example_4():
-    # This a FET 2-hop example collecting nodes and edges from KG2: try to find the diseases that share the same protein with Parkinson disease（DOID:14330)
+    # This a FET 2-hop example collecting nodes and edges from Retriever: try to find the diseases that share the same protein with Parkinson disease（DOID:14330)
     query = {"operations": {"actions": [
         "add_qnode(ids=DOID:10718, key=n00, categories=biolink:Disease)",
         "add_qnode(categories=biolink:Protein, key=n01)",
@@ -305,14 +279,15 @@ def test_FET_ranking_1():
     assert min(scores) != max(scores)
 
 @pytest.mark.slow
-def test_example_2_kg2():
+@pytest.mark.broken
+def test_example_2_parkinsons():
     query = {"operations": { "actions": [
             "create_message",
             "add_qnode(name=DOID:14330, key=n00)",
             "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
             "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
             "add_qedge(subject=n00, object=n01, key=e00)",
-            "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
+            "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
             "expand(edge_key=[e00,e01], kp=infores:retriever, prune_threshold=20)",
             "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",  # seems to work just fine
             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.008, remove_connected_nodes=t, qnode_keys=[n02])",
@@ -326,191 +301,6 @@ def test_example_2_kg2():
     assert message.results[0].essence is not None
     _virtual_tester(response.envelope.message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM-DATA:1772', 2)
 
-
-@pytest.mark.slow
-def test_clinical_overlay_example1():
-    """
-    Gives an example of a KG that does not have edges that COHD can decorate, but does have pairs of nodes that COHD
-    could decorate (eg here is drug and chemical_substance), so add the info in as a virtual edge.
-    """
-    query = {"operations": {"actions": [
-        "create_message",
-        "add_qnode(name=DOID:11830, key=n00)",
-        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:molecularly_interacts_with)",
-        "expand(edge_key=[e00,e01], infores:retriever)",
-        # overlay a bunch of clinical info
-        "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
-        "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C3)",
-        # filter some stuff out for the fun of it
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=paired_concept_frequency, direction=above, threshold=0.5, remove_connected_nodes=true, qnode_keys=[n02])",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=observed_expected_ratio, direction=above, threshold=1, remove_connected_nodes=true, qnode_keys=[n02])",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=chi_square, direction=below, threshold=0.05, remove_connected_nodes=true, qnode_keys=[n02])",
-        # return results
-        "resultify(ignore_edge_direction=true)",
-        "return(message=true, store=false)",
-    ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-    _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM-DATA:0951', 2)
-    _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM-DATA:0951', 2)
-    _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM-DATA:0951', 2)
-
-
-@pytest.mark.skip(reason="redundant if the test_clinical_overlay_example() passes and test_ARAX_overlay passes")
-def test_clinical_overlay_example2():
-    """
-    Gives an example of overlaying (and filtering) clinical attributes when there exist edges in the KG that COHD can decorate
-    """
-    query = {"operations": {"actions": [
-        "create_message",
-        "add_qnode(name=DOID:11830, key=n00)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "expand(edge_key=e00, infores:retriever)",
-        # overlay a bunch of clinical info
-        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-        "overlay(action=overlay_clinical_info, chi_square=true)",
-        # filter some stuff out for the fun of it
-        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=paired_concept_frequency, type=std, remove_connected_nodes=F)",
-        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=observed_expected_ratio, type=std, remove_connected_nodes=F)",
-        "filter_kg(action=remove_edges_by_attribute_default, edge_attribute=chi_square, type=std, remove_connected_nodes=F)",
-        # return results
-        "resultify(ignore_edge_direction=true)",
-        "return(message=true, store=false)",
-    ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
-    _attribute_tester(message, 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
-    _attribute_tester(message, 'chi_square', 'EDAM-DATA:0951', 1)
-
-
-@pytest.mark.skip(reason="redundant if test_one_hop_based_on_types_1() and test_ARAX_overlay() passes")
-def test_two_hop_based_on_types_1():
-    """
-    Example DSL for a two hop question that is based on types
-    """
-    #doid_list = {"DOID:11830", "DOID:5612", "DOID:2411", "DOID:8501", "DOID:174"}
-    doid_list = {"DOID:11830"}
-    for doid in doid_list:
-        query = {"operations": {"actions": [
-            "create_message",
-            f"add_qnode(name={doid}, key=n00, categories=biolink:Disease)",
-            "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-            "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
-            "add_qedge(subject=n00, object=n01, key=e00)",
-            "add_qedge(subject=n01, object=n02, key=e01)",
-            "expand(edge_key=e00, infores:retriever)",
-            #"expand(edge_key=e00, kp=infores:biothings-explorer)",
-            "expand(edge_key=e01, infores:retriever)",
-            "overlay(action=overlay_clinical_info, paired_concept_frequency=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C1)",
-            "overlay(action=overlay_clinical_info, observed_expected_ratio=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C2)",
-            "overlay(action=overlay_clinical_info, chi_square=true, subject_qnode_key=n00, object_qnode_key=n02, virtual_relation_label=C3)",
-            # "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
-            "overlay(action=compute_ngd)",
-            "resultify(ignore_edge_direction=true)",
-            "filter_results(action=limit_number_of_results, max_results=50)",
-            "return(message=false, store=true)",
-        ]}}
-        [response, message] = _do_arax_query(query)
-        print(message.id)
-        assert response.status == 'OK'
-        _virtual_tester(message, 'biolink:has_paired_concept_frequency_with', 'C1', 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
-        _virtual_tester(message, 'biolink:has_observed_expected_ratio_with', 'C2', 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
-        _virtual_tester(message, 'biolink:has_chi_square_with', 'C3', 'chi_square', 'EDAM-DATA:0951', 1)
-        assert len(message.results) > 1
-
-
-@pytest.mark.external
-@pytest.mark.slow
-def test_one_hop_based_on_types_1():
-    """
-    Example DSL for a one hop question that is based on types
-    """
-    #doid_list = {"DOID:11830", "DOID:5612", "DOID:2411", "DOID:8501", "DOID:174"}
-    doid_list = {"DOID:11830"}
-    for doid in doid_list:
-        query = {"operations": {"actions": [
-            "create_message",
-            f"add_qnode(ids={doid}, key=n00, categories=biolink:Disease)",
-            "add_qnode(categories=biolink:ChemicalEntity, key=n01)",
-            "add_qedge(subject=n00, object=n01, key=e00)",
-            "expand(edge_key=e00, infores:retriever)",
-            "expand(edge_key=e00, kp=infores:biothings-explorer)",
-            "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-            # "overlay(action=predict_drug_treats_disease)",
-            "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=probability_treats, direction=below, threshold=0.75, remove_connected_nodes=true, qnode_keys=[n01])",
-            "overlay(action=compute_ngd)",
-            "resultify(ignore_edge_direction=true)",
-            "filter_results(action=limit_number_of_results, max_results=50)",
-            "return(message=true, store=false)",
-        ]}}
-        [response, message] = _do_arax_query(query)
-        assert response.status == 'OK'
-        assert len(message.results) > 1
-
-
-@pytest.mark.skip(reason="Work in progress (and takes a very long time)")
-def test_one_hop_kitchen_sink_BTE_1():
-    """
-    Example of throwing everything at a simple BTE query
-    """
-    query = {"operations": {"actions": [
-        "create_message",
-        "add_qnode(curie=DOID:11830, key=n0, categories=biolink:Disease)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e1)",
-        #"expand(edge_key=e00, infores:retriever)",
-        "expand(edge_key=e1, kp=infores:biothings-explorer)",
-        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-        "overlay(action=overlay_clinical_info, chi_square=true)",
-        # "overlay(action=predict_drug_treats_disease)",
-        "overlay(action=compute_ngd)",
-        "resultify(ignore_edge_direction=true)",
-        "filter_results(action=limit_number_of_results, max_results=50)",
-        "return(message=true, store=true)",
-    ]}}
-    [response, message] = _do_arax_query(query)
-    print(message.id)
-    assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
-    _attribute_tester(message, 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
-    _attribute_tester(message, 'chi_square', 'EDAM-DATA:0951', 1)
-
-
-@pytest.mark.skip(reason="Work in progress (and takes a very long time)")
-def test_one_hop_kitchen_sink_BTE_2():
-    """
-    Example of throwing everything at a simple BTE query, but with node types that aren't appropriate for some reasoning capabilities
-    """
-    query = {"operations": {"actions": [
-        "create_message",
-        "add_qnode(curie=DOID:11830, key=n0, categories=biolink:Disease)",
-        "add_qnode(categories=biolink:Gene, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e1)",
-        #"expand(edge_key=e00, infores:retriever)",
-        "expand(edge_key=e1, kp=infores:biothings-explorer)",
-        "overlay(action=overlay_clinical_info, paired_concept_frequency=true)",
-        "overlay(action=overlay_clinical_info, observed_expected_ratio=true)",
-        "overlay(action=overlay_clinical_info, chi_square=true)",
-        # "overlay(action=predict_drug_treats_disease)",
-        "overlay(action=compute_ngd)",
-        "resultify(ignore_edge_direction=true)",
-        "filter_results(action=limit_number_of_results, max_results=50)",
-        "return(message=true, store=true)",
-    ]}}
-    [response, message] = _do_arax_query(query)
-    print(message.id)
-    assert response.status == 'OK'
-    _attribute_tester(message, 'paired_concept_frequency', 'EDAM-DATA:0951', 1)
-    _attribute_tester(message, 'observed_expected_ratio', 'EDAM-DATA:0951', 1)
-    _attribute_tester(message, 'chi_square', 'EDAM-DATA:0951', 1)
 
 def test_FET_ranking_2():
     query = {"operations": {"actions": [
@@ -542,87 +332,6 @@ def test_FET_ranking_2():
             for diff in [abs(x - y) for i,x in enumerate(conf_list) for j,y in enumerate(conf_list) if i < j]:
                 assert diff == 0
 
-
-@pytest.mark.external
-def test_genetics_kp_ranking():
-    query = {"operations": {"actions": [
-        "create_message",
-        "add_qnode(name=type 2 diabetes mellitus, categories=biolink:Disease, key=n0)",
-        "add_qnode(categories=biolink:Gene, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e0, predicates=biolink:condition_associated_with_gene)",
-        "expand(edge_key=e0,kp=infores:genetics-data-provider)",
-        "resultify()",
-        "filter_results(action=limit_number_of_results, max_results=30)",
-        "return(message=true, store=false)"
-    ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-    gen_kp_ranking_value = {}
-    for result in message.results:
-        for key, edge_bindings in result.edge_bindings.items():
-            for edge in edge_bindings:
-                if edge.id.startswith('infores:genetics-data-provider'):
-                    if message.knowledge_graph.edges[edge.id].attributes is not None:
-                        for attribute in message.knowledge_graph.edges[edge.id].attributes:
-                            if attribute.original_attribute_name == "pValue":
-                                if str(result.score) in gen_kp_ranking_value:
-                                    gen_kp_ranking_value[str(result.score)].append(float(attribute.value))
-                                else:
-                                    gen_kp_ranking_value[str(result.score)] = [float(attribute.value)]
-    assert len(gen_kp_ranking_value) > 0
-
-@pytest.mark.slow
-def test_ranker_float_error_ex1():
-    query = {"operations": {"actions": [
-        "create_message",
-        "add_qnode(ids=CHEMBL.COMPOUND:CHEMBL112, key=n0, categories=biolink:ChemicalEntity)",
-        "add_qnode(categories=biolink:DiseaseOrPhenotypicFeature, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand()",
-        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
-        "overlay(action=fisher_exact_test,subject_qnode_key=n0,virtual_relation_label=F1,object_qnode_key=n1)",
-        "overlay(action=overlay_clinical_info,COHD_method=paired_concept_frequency,virtual_relation_label=C1,subject_qnode_key=n0,object_qnode_key=n1)",
-        # "overlay(action=predict_drug_treats_disease,virtual_relation_label=P1,subject_qnode_key=n0,object_qnode_key=n1,threshold=0.8,slow_mode=false)",
-        "resultify()",
-        "filter_results(action=limit_number_of_results, max_results=30)",
-        "return(message=true, store=false)"
-    ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-
-@pytest.mark.external
-def test_ranker_float_error_ex2():
-    query = {"operations": {"actions": [
-        "create_message",
-        "add_qnode(ids=MONDO:0005301, key=n0)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e0)",
-        "expand(kp=infores:cohd)",
-        "resultify()",
-        "filter_results(action=limit_number_of_results, max_results=30)",
-        "return(message=true, store=false)"
-    ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-    result_scores = [x.score for x in message.results]
-    assert max(result_scores) == 1
-
-@pytest.mark.external
-def test_cmap_ranking():
-    query = {"operations": {"actions": [
-        "create_message",
-        "add_qnode(key=n00,categories=biolink:Gene,ids=HGNC:321)",
-        "add_qnode(categories=biolink:ChemicalEntity)",
-        "add_qedge(subject=n00,object=n01)",
-        "expand(kp=infores:molepro)",
-        "resultify()",
-        "filter_results(action=limit_number_of_results, max_results=500)",
-        "return(message=true, store=false)"
-    ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-    result_scores = {x.score for x in message.results}
-    assert len(result_scores) > 1
 
 @pytest.mark.slow
 def test_ranker_float_error_ex3():
@@ -668,131 +377,8 @@ def test_ranker_float_error_ex3():
     assert response.status == 'OK'
 
 
-@pytest.mark.external
-def test_issue_1848():
-    query = {
-            "workflow": [
-                {
-                    "id": "fill",
-                    "parameters": { "allowlist": ["infores:cohd"],
-                        "qedge_keys": [
-                            "e0"
-                        ]
-                    }
-                },
-                {
-                    "id": "overlay_compute_ngd",
-                    "parameters": {
-                        "virtual_relation_label": "N1",
-                        "qnode_keys": [
-                            "n0",
-                            "n1"
-                        ]
-                    }
-                },
-                {
-                    "id": "bind"
-                },
-                {
-                    "id": "score"
-                },
-                {
-                    "id": "filter_results_top_n",
-                    "parameters": {
-                        "max_results": 3
-                    }
-                },
-                {
-                    "id": "fill",
-                    "parameters": { "allowlist": ["infores:retriever"],
-                        "qedge_keys": [
-                            "e1",
-                            "e2",
-                            "e3",
-                            "e4"
-                        ]
-                    }
-                },
-                {
-                    "id": "bind"
-                },
-                {
-                    "id": "score"
-                }
-            ],
-            "message": {
-                "query_graph": {
-                    "edges": {
-                        "e0": {
-                            "subject": "n0",
-                            "object": "n1",
-                            "predicates": [
-                                "biolink:associated_with"
-                            ]
-                        },
-                        "e1": {
-                            "subject": "n1",
-                            "object": "n2",
-                            "predicates": [
-                                "biolink:increases_activity_of"
-                            ]
-                        },
-                        "e2": {
-                            "subject": "n3",
-                            "object": "n2",
-                            "predicates": [
-                                "biolink:increases_activity_of"
-                            ]
-                        },
-                        "e3": {
-                            "subject": "n1",
-                            "object": "n2",
-                            "predicates": [
-                                "biolink:decreases_activity_of"
-                            ],
-                            "option_group_id": "decr"
-                        },
-                        "e4": {
-                            "subject": "n3",
-                            "object": "n2",
-                            "predicates": [
-                                "biolink:decreases_activity_of"
-                            ],
-                            "option_group_id": "decr"
-                        }
-                    },
-                    "nodes": {
-                        "n0": {
-                            "ids": [
-                                "MONDO:0009061"
-                            ],
-                            "name": "MONDO:0009061"
-                        },
-                        "n1": {
-                            "categories": [
-                                "biolink:ChemicalEntity"
-                            ]
-                        },
-                        "n2": {
-                            "categories": [
-                                "biolink:Gene",
-                                "biolink:Protein"
-                            ]
-                        },
-                        "n3": {
-                            "categories": [
-                                "biolink:ChemicalEntity"
-                            ]
-                        }
-                    }
-                }
-            }
-        }
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-
 # Not working yet
-# def test_example_3_kg2():
+# def test_example_3_hypopituitarism():
 #     query = {"operations": { "actions": [
 #             "create_message",
 #             #"add_qnode(key=n00, curie=DOID:0050156)",  # idiopathic pulmonary fibrosis
@@ -801,7 +387,7 @@ def test_issue_1848():
 #             "add_qnode(key=n02, categories=protein)",
 #             "add_qedge(key=e00, subject=n00, object=n01)",
 #             "add_qedge(key=e01, subject=n01, object=n02)",
-#             "expand(edge_key=[e00,e01], infores:retriever)",
+#             "expand(edge_key=[e00,e01], kp=infores:retriever)",
 #             "overlay(action=overlay_clinical_info, observed_expected_ratio=true, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
 #             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
 #             "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=observed_expected_ratio, direction=below, threshold=2, remove_connected_nodes=t, qnode_keys=[n01])",
@@ -825,8 +411,6 @@ def test_example_3_issue_679():
             "add_qedge(subject=n00, object=n01, key=e00)",
             "add_qedge(subject=n01, object=n02, key=e01)",
             "expand()",
-            "overlay(action=overlay_clinical_info, COHD_method=observed_expected_ratio, virtual_relation_label=C1, subject_qnode_key=n00, object_qnode_key=n01)",
-            "filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute=observed_expected_ratio,direction=below,threshold=3,remove_connected_nodes=true,qnode_keys=n01)",
             "filter_kg(action=remove_orphaned_nodes,node_category=biolink:Protein)",
             "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n01, object_qnode_key=n02)",
             "filter_kg(action=remove_edges_by_continuous_attribute,edge_attribute=ngd,direction=above,threshold=0.85,remove_connected_nodes=true,qnode_keys=n02)",

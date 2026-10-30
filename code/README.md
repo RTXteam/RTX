@@ -16,10 +16,6 @@
 
 - Contains the query suggestion backend and frontend code to be used in the RTX UI.
 
-### Subdirectory `kg2`
-
-- Contains the code for the RTX-KG2 knowledge graph.
-
 ### Subdirectory `reasoningtool`
 
 - Contains the engine-level code for the RTX software.

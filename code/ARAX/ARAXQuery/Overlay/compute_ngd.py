@@ -167,7 +167,6 @@ class ComputeNGD:
                                               attribute_type_id="EDAM-OPERATION:0226",
                                               attribute_source=attribute_source),
                                 #EdgeAttribute(original_attribute_name="is_defined_by", value=is_defined_by, attribute_type_id="biolink:Unknown"),
-                                # EdgeAttribute(original_attribute_name=None, value="infores:rtx-kg2", attribute_type_id="biolink:knowledge_source", attribute_source="infores:rtx-kg2", value_type_id="biolink:InformationResource"),
                                 # EdgeAttribute(original_attribute_name=None, value="infores:arax", attribute_type_id="primary_knowledge_source", attribute_source="infores:arax", value_type_id="biolink:InformationResource"),
                                 EdgeAttribute(original_attribute_name="defined_datetime",
                                               value=defined_datetime,

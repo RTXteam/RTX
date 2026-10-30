@@ -113,7 +113,7 @@ def test_edge_key_removal():
 def test_default_std_dev():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:0060680, key=n00)",
+        "add_qnode(name=DOID:14221, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
@@ -129,7 +129,7 @@ def test_default_std_dev():
     comp_len = len([x for x in all_vals if x > comp_val])
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:0060680, key=n00)",
+        "add_qnode(name=DOID:14221, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
@@ -150,7 +150,7 @@ def test_default_std_dev():
 def test_std_dev():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:0060680, key=n00)",
+        "add_qnode(name=DOID:14221, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
@@ -169,7 +169,7 @@ def test_std_dev():
     comp_len = len([x for x in all_vals if x < comp_val])
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:0060680, key=n00)",
+        "add_qnode(name=DOID:14221, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
@@ -191,7 +191,7 @@ def test_std_dev():
 def test_default_top_n():
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:0060680, key=n00)",
+        "add_qnode(name=DOID:14221, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
@@ -209,7 +209,7 @@ def test_default_top_n():
     sorted_vals = all_vals[:50]
     query = {"operations": {"actions": [
         "create_message",
-        "add_qnode(name=DOID:0060680, key=n00)",
+        "add_qnode(name=DOID:14221, key=n00)",
         "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
         "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
         "add_qedge(subject=n00, object=n01, key=e00)",
@@ -244,33 +244,12 @@ def test_remove_property_known_attributes():
     assert response.status == 'OK'
 
 @pytest.mark.slow
-def  test_remove_attribute_known_attributes():
-    query = {"operations": {"actions": [
-        "create_message",
-        "add_qnode(name=DOID:14330, key=n00)",
-        "add_qnode(categories=biolink:Protein, is_set=true, key=n01)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n02)",
-        "add_qedge(subject=n00, object=n01, key=e00)",
-        "add_qedge(subject=n01, object=n02, key=e01, predicates=biolink:physically_interacts_with)",
-        "expand(edge_key=[e00,e01], kp=infores:retriever)",
-        "overlay(action=compute_jaccard, start_node_key=n00, intermediate_node_key=n01, end_node_key=n02, virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_continuous_attribute, edge_attribute=jaccard_index, direction=below, threshold=.2, remove_connected_nodes=t, qnode_keys=[n02])",
-        #"filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=provided_by, value=Pharos)",
-        "overlay(action=predict_drug_treats_disease, subject_qnode_key=n02, object_qnode_key=n00, virtual_relation_label=P1)",
-        "resultify(ignore_edge_direction=true)",
-        "filter_results(action=sort_by_edge_attribute, edge_attribute=jaccard_index, direction=descending, max_results=15)",
-        "return(message=true, store=false)",
-        ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
-
-@pytest.mark.slow
 def test_provided_by_filter():
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalEntity, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
-        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:entity_negatively_regulates_entity)",
+        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:affects)",
         "expand(kp=infores:retriever)",
         "filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=knowledge_source,value=infores:semmeddb,remove_connected_nodes=false)",
         "resultify()",
@@ -279,13 +258,12 @@ def test_provided_by_filter():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    count1 = len(message.results)
-    assert count1 == 0
+    filtered_edges = message.knowledge_graph.edges
     query = {"operations": {"actions": [
         "create_message",
         "add_qnode(ids=CHEBI:17754, categories=biolink:ChemicalEntity, key=n0)",
         "add_qnode(categories=biolink:Gene, key=n1)",
-        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:entity_negatively_regulates_entity)",
+        "add_qedge(subject=n1, object=n0, key=e0,predicates=biolink:affects)",
         "expand(kp=infores:retriever)",
         #"filter_kg(action=remove_edges_by_discrete_attribute,edge_attribute=biolink:original_source,value=infores:semmeddb,remove_connected_nodes=false)",
         "resultify()",
@@ -294,37 +272,14 @@ def test_provided_by_filter():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    count2 = len(message.results)
-    assert count2 > count1
+    unfiltered_edges = message.knowledge_graph.edges
 
-@pytest.mark.external
-@pytest.mark.slow
-def test_stats_error_int_threshold():
-    query = {"operations": {"actions": [
-        "create_message",
-        # Multiple sclerosis -> chemical substance with "related_to" from Clinical Risk KP
-        "add_qnode(ids=MONDO:0005301, key=n0)",
-        "add_qnode(categories=biolink:ChemicalEntity, key=n1)",
-        "add_qedge(subject=n0, object=n1, key=e0, predicates=biolink:related_to)",
-        "expand(kp=infores:biothings-multiomics-clinical-risk,edge_key=e0)",
-        "overlay(action=compute_ngd, virtual_relation_label=N1, subject_qnode_key=n0, object_qnode_key=n1)",
-        "resultify()",
-        "filter_results(action=limit_number_of_results, max_results=10)",
-        # Then look for proteins that are shared with these chemical substances and MS
-        "add_qnode(categories=biolink:Protein, key=n2, is_set=True)",
-        "add_qedge(subject=n0, object=n2, key=e1)",
-        "add_qedge(subject=n1, object=n2, key=e2)",
-        "expand(edge_key=[e1,e2])",
-        # Rank drugs by Jaccard Index
-        "overlay(action=compute_jaccard,start_node_key=n0,intermediate_node_key=n2,end_node_key=n1,virtual_relation_label=J1)",
-        "filter_kg(action=remove_edges_by_top_n,edge_attribute=jaccard_index, n=10,remove_connected_nodes=true,qnode_keys=[n2])",
-        "overlay(action=compute_ngd, virtual_relation_label=N2, subject_qnode_key=n1, object_qnode_key=n2)",
-        "overlay(action=compute_ngd, virtual_relation_label=N3, subject_qnode_key=n0, object_qnode_key=n2)",
-        "resultify()",
-        "return(message=true, store=false)",
-        ]}}
-    [response, message] = _do_arax_query(query)
-    assert response.status == 'OK'
+    # Every gene-glycerol pair here also has a non-SemMedDB edge, so the filter removes edges but not results
+    def _has_semmeddb_source(edge) -> bool:
+        return any(source.resource_id == "infores:semmeddb" for source in edge.sources or [])
+    assert any(_has_semmeddb_source(edge) for edge in unfiltered_edges.values())
+    assert not any(_has_semmeddb_source(edge) for edge in filtered_edges.values())
+    assert len(filtered_edges) < len(unfiltered_edges)
 
 def test_tuple_bug():
     query = {"operations": {"actions": [

@@ -13,7 +13,6 @@ from typing import Any, Optional
 
 import yaml
 from pygit2 import Repository, discover_repository
-import pprint
 
 DEBUG = False
 
@@ -95,14 +94,14 @@ class RTXConfiguration:
             # Otherwise we'll dynamically determine our maturity based on instance/domain name and/or branch
             if DEBUG:
                 print(f"Auto-detecting maturity: self.domain={self.domain}, self.instance_name={self.instance_name}")
-            if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io"]:
+            if self.domain == "arax.ci.transltr.io":
                 self.maturity = "staging"
-            elif self.domain in ["arax.test.transltr.io", "kg2.test.transltr.io"] or self.current_branch_name == "itrb-test":
+            elif self.domain == "arax.test.transltr.io" or self.current_branch_name == "itrb-test":
                 self.maturity = "testing"
-            elif self.domain in ["arax.transltr.io", "kg2.transltr.io"] or self.current_branch_name == "production":
+            elif self.domain == "arax.transltr.io" or self.current_branch_name == "production":
                 self.maturity = "production"
             elif self.domain == "arax.ncats.io":
-                if self.instance_name in ["ARAX", "kg2"] or self.current_branch_name == "production":
+                if self.instance_name == "ARAX" or self.current_branch_name == "production":
                     self.maturity = "staging"
                 else:
                     self.maturity = "development"
@@ -167,10 +166,8 @@ class RTXConfiguration:
         self.curie_to_pmids_version = self.curie_to_pmids_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.curie_ngd_path = database_downloads["curie_ngd"]
         self.curie_ngd_version = self.curie_ngd_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.kg2c_sqlite_path = database_downloads["kg2c_sqlite"]
-        self.kg2c_sqlite_version = self.kg2c_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
-        self.tier0_sqlite_path = database_downloads["tier0_sqlite"]
-        self.tier0_sqlite_version = self.tier0_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
+        self.info_for_overlay_sqlite_path = database_downloads["info_for_overlay_sqlite"]
+        self.info_for_overlay_sqlite_version = self.info_for_overlay_sqlite_path.split('/')[-1].split('_v')[-1].replace('.sqlite', '')
         self.fda_approved_drugs_path = database_downloads["fda_approved_drugs"]
         self.fda_approved_drugs_version = self.fda_approved_drugs_path.split('/')[-1].split('_v')[-1].replace('.pickle', '')
         self.autocomplete_path = database_downloads["autocomplete"]
@@ -185,20 +182,6 @@ class RTXConfiguration:
         self.mysql_feedback_username = self.config_secrets["mysql_feedback"]["username"]
         self.mysql_feedback_password = self.config_secrets["mysql_feedback"]["password"]
 
-        # Find the correct KG2/Plover URL (defaults to our SmartAPI yaml, but can override in config_dbs.json)
-        plover_url_override = self.config_dbs.get("plover_url_override")
-        if plover_url_override:
-            self.plover_url = plover_url_override.strip("/")
-        else:
-            # Default to what we list in our SmartAPI registration
-            # YAML is super slow to ready, so refresh a JSON if necessary or read the JSON, which is much faster
-            openapi_kg2_yaml_path = f"{file_dir}/UI/OpenAPI/specifications/export/KG2/1.5.0/openapi.yaml"
-            kg2_openapi_config = self.load_openapi_json(openapi_kg2_yaml_path, t0)
-            servers_map = {server["x-maturity"]: server for server in kg2_openapi_config["servers"]}
-            self.plover_url = servers_map[self.maturity]["url"]
-
-        # Default to KG2c neo4j
-        self.neo4j_kg2 = "KG2c"
         if DEBUG:
             t1 = timeit.default_timer()
             print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Done creating RTXConfiguration object")
@@ -217,20 +200,6 @@ class RTXConfiguration:
         else:
             return None
 
-
-    def get_neo4j_info(self, kg2_type: str) -> dict:
-        if kg2_type not in self.config_dbs["neo4j"].keys():
-            return {'bolt': None,
-                    'database': None,
-                    'username': None,
-                    'password': None}
-        else:
-            neo4j_instance = self.config_dbs["neo4j"][kg2_type]
-            config_secrets = self.config_secrets
-            return {'bolt': f"bolt://{neo4j_instance}:7687",
-                    'database': f"{neo4j_instance}:7474/db/data",
-                    'username': config_secrets["neo4j"][kg2_type]["username"],
-                    'password': config_secrets["neo4j"][kg2_type]["password"]}
 
     @staticmethod
     def load_openapi_json(yaml_path: str, t0: Any) -> dict:
@@ -272,9 +241,6 @@ def main():
     rtxConfig = RTXConfiguration()
     t1 = timeit.default_timer()
     print("RTX Version string: " + rtxConfig.version)
-    kg2_info = rtxConfig.get_neo4j_info("KG2c")
-    pprint.pprint(kg2_info)
-    print("plover url: %s" % rtxConfig.plover_url)
     print("mysql feedback host: %s" % rtxConfig.mysql_feedback_host)
     print("mysql feedback port: %s" % rtxConfig.mysql_feedback_port)
     print("mysql feedback username: %s" % rtxConfig.mysql_feedback_username)

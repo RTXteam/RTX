@@ -245,7 +245,7 @@ Use cases include:
 * removing all edges that were provided by a certain knowledge provider (KP) via `edge_attribute=biolink:original_source, value=infores:semmeddb` to remove all edges provided by SemMedDB.
 * removing all edges that connect to a certain node via `edge_attribute=subject, value=DOID:8398`
 * removing all edges with a certain relation via `edge_attribute=relation, value=upregulates`
-* removing all edges provided by another ARA via `edge_attribute=is_defined_by, value=RTX-KG2`
+* removing all edges provided by another ARA via `edge_attribute=is_defined_by, value=infores:aragorn`
 * etc. etc.
                 
 You have the option to either remove all connected nodes to such edges (via `remove_connected_nodes=t`), or
@@ -691,6 +691,10 @@ This can be applied to an arbitrary knowledge graph as possible node categories 
                                     known_values.add(val)
                         if len(known_attributes.intersection(provided_by_attributes)) > 0:
                             known_attributes = known_attributes.union(provided_by_attributes)
+                # Since TRAPI 1.4, knowledge sources are on edge.sources rather than in attributes
+                if edge.sources:
+                    known_attributes = known_attributes.union(provided_by_attributes)
+                    known_values.update(source.resource_id for source in edge.sources)
 
             allowable_parameters = {'action': {'remove_edges_by_discrete_attribute'},
                                     'edge_attribute': set([key for x in self.message.knowledge_graph.edges.values() for key, val in x.to_dict().items() if type(val) is str or type(val) is list]).union(known_attributes),

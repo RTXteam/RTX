@@ -415,24 +415,14 @@ class ARAXQuery:
 
                 response.envelope.message.query_graph = query['message'].query_graph
 
-                #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
-                if mode == 'ARAX' or mode == 'asynchronous':
-                    response.info("Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
-                    interpreter = ARAXQueryGraphInterpreter()
-                    interpreter.translate_to_araxi(response)
-                    if response.status != 'OK':
-                        return response
-                    query['operations'] = {}
-                    query['operations']['actions'] = result.data['araxi_commands']
-
-                #### Else the mode is KG2 mode, where we just accept one-hop queries, and run a simple ARAXi
-                else:
-                    response.info("Found input query_graph. Querying RTX KG2 to answer it")
-                    if len(response.envelope.message.query_graph.nodes) > 2:
-                        response.error("Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
-                        return response
-                    query['operations'] = {}
-                    query['operations']['actions'] = [ 'expand(kp=infores:rtx-kg2)', 'resultify()', 'return(store=false)' ]
+                #### Run the QueryGraph through the QueryGraphInterpreter to generate ARAXi
+                response.info("Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                interpreter = ARAXQueryGraphInterpreter()
+                interpreter.translate_to_araxi(response)
+                if response.status != 'OK':
+                    return response
+                query['operations'] = {}
+                query['operations']['actions'] = result.data['araxi_commands']
 
                 query_attributes['have_operations'] = True
 
@@ -482,12 +472,6 @@ class ARAXQuery:
             return response
 
         # #### FIXME Need to do more validation and tidying of the incoming message here or somewhere
-
-
-        # RTXKG2 does not support operations
-        if mode == 'RTXKG2' and "have_operations" in response.data:
-            response.error("RTXKG2 does not support operations in Query", error_code="OperationsNotSupported")
-            return response
 
         #### If we got this far, then everything seems to be good enough to proceed
         return response
@@ -700,7 +684,7 @@ class ARAXQuery:
                 optionsDict[option] = 1
 
         # Save the original input query for later reference
-        if mode != "RTXKG2" and response.envelope.message.query_graph and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
+        if response.envelope.message.query_graph and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
             response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
             edge_or_path_text = ''
             if hasattr(response.original_query_graph,'edges'):
@@ -891,7 +875,7 @@ class ARAXQuery:
                     return response
 
                 #### Immediately after resultify, run the experimental ranker
-                if action['command'] == 'resultify' and mode != 'RTXKG2' \
+                if action['command'] == 'resultify' \
                    and 'connect' not in (a['command'] for a in actions):
                     response.info("Running experimental reranker on results")
                     try:
@@ -906,12 +890,11 @@ class ARAXQuery:
                             self.send_to_callback(callback, response)
                         return response
 
-            if mode != 'RTXKG2':  # KG2 doesn't use virtual edges or edit the QG, so no transformation needed
-                result_transformer = ResultTransformer()
-                response.debug(f"Calling ResultTransformer; number of results is: {len(response.envelope.message.results)}")
-                with tracer.start_as_current_span("ARAX_query.result_transformer"):
-                    result_transformer.transform(response)
-                response.debug(f"Results have been transformed; number of results is: {len(response.envelope.message.results)}")
+            result_transformer = ResultTransformer()
+            response.debug(f"Calling ResultTransformer; number of results is: {len(response.envelope.message.results)}")
+            with tracer.start_as_current_span("ARAX_query.result_transformer"):
+                result_transformer.transform(response)
+            response.debug(f"Results have been transformed; number of results is: {len(response.envelope.message.results)}")
 
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'response': 'true', 'store': 'true' } }

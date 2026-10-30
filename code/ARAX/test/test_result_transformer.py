@@ -38,8 +38,8 @@ def test_creative_noninf_ngd_only_support_graph_filters_result():
     disease_id = "MONDO:0005015"      # diabetes
     qnode_drug, qnode_disease = "n_drug", "n_disease"
     qedge_treats = "e_treats"
-    inferred_edge_id = "kg2:inferred_treats"
-    ngd_edge_id = "kg2:ngd_co_occur"
+    inferred_edge_id = "edge:inferred_treats"
+    ngd_edge_id = "edge:ngd_co_occur"
     aux_graph_id = "aux_inf_ngd_only"
 
     # Original (input) query graph: drug --treats[inferred]--> diabetes
@@ -147,8 +147,8 @@ def test_creative_inf_ngd_only_support_graph_filters_result():
     disease_id = "MONDO:0005015"      # diabetes
     qnode_drug, qnode_disease = "n_drug", "n_disease"
     qedge_treats = "e_treats"
-    inferred_edge_id = "kg2:inferred_treats"
-    ngd_edge_id = "kg2:ngd_co_occur"
+    inferred_edge_id = "edge:inferred_treats"
+    ngd_edge_id = "edge:ngd_co_occur"
     aux_graph_id = "aux_inf_ngd_only"
 
     # Original (input) query graph: drug --treats[inferred]--> diabetes
@@ -259,7 +259,7 @@ def test_creative_inferred_edge_without_support_graph_filters_result():
     disease_id = "MONDO:0005015"      # diabetes
     qnode_drug, qnode_disease = "n_drug", "n_disease"
     qedge_treats = "e_treats"
-    inferred_edge_id = "kg2:inferred_treats_no_support"
+    inferred_edge_id = "edge:inferred_treats_no_support"
 
     # Original (input) query graph: drug --treats[inferred]--> diabetes
     original_qg = QueryGraph(
