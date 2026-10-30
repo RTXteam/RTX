@@ -29,7 +29,7 @@ aiohttp==3.9.4
 boto3==1.40.16
 tornado==6.4.1
 MarkupSafe==3.0.4
-reasoner-validator==7.1.2
+reasoner-validator==7.1.3
 pronto==2.5.3
 bmt==1.4.8
 pygit2==1.18.0
@@ -53,7 +53,7 @@ opentelemetry-instrumentation-sqlite3==0.66b0
 opentelemetry-instrumentation-wsgi==0.66b0
 opentelemetry-semantic-conventions==0.66b0
 opentelemetry-util-http==0.66b0
-catrax-pathfinder==3.0.0
+catrax-pathfinder==3.1.0
 catrax-xcrg==1.0.1.dev2
 biolink-helper-pkg==1.0.1
 httpx==0.28.1
