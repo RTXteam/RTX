@@ -10,6 +10,7 @@ import requests
 from typing import cast, Any, Optional, Union
 
 import requests_cache
+from opentelemetry import trace
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import Expand.expand_utilities as eu
@@ -25,6 +26,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelp
 from biolink_helper import get_biolink_helper
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
+# Tracer for the KP request (cache lookup or HTTP call), so cache hits show up in Jaeger (issue #2923)
+tracer = trace.get_tracer(__name__)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node  # noqa: E402
@@ -402,12 +406,20 @@ class TRAPIQuerier:
         cacher = KPQueryCacher()
         r = None
         try:
-            response_data, http_code, elapsed_time, error = await cacher.get_result(f"{self.kp_endpoint}/query",
-                                                                                    request_body,
-                                                                                    kp_curie=self.kp_infores_curie,
-                                                                                    timeout=query_timeout,
-                                                                                    bypass_cache=bypass_cache,
-                                                                                    async_session=True)
+            # On a cache hit no HTTP call is made, so record it on this span (issue #2923)
+            with tracer.start_as_current_span(
+                    "Expand.kp_request",
+                    attributes={'arax.kp.infores': self.kp_infores_curie,
+                                'arax.kp.url': f"{self.kp_endpoint}/query",
+                                'arax.kp.bypass_cache': bool(bypass_cache)}) as request_span:
+                response_data, http_code, elapsed_time, error = await cacher.get_result(f"{self.kp_endpoint}/query",
+                                                                                        request_body,
+                                                                                        kp_curie=self.kp_infores_curie,
+                                                                                        timeout=query_timeout,
+                                                                                        bypass_cache=bypass_cache,
+                                                                                        async_session=True)
+                request_span.set_attribute('arax.kp.cache_hit', error == "from cache")
+                request_span.set_attribute('arax.kp.http_status', http_code)
             if http_code == 200:
                 r = response_data
 
