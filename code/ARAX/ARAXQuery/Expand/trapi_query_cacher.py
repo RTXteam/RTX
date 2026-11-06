@@ -508,6 +508,13 @@ class KPQueryCacher:
                 record.n_failed_refreshes = 0
                 record.n_refresh_same_results = 0
                 record.n_refresh_different_results = 0
+                # This is now a new first response, and lookups prefer last_refresh_http_code over first_query_http_code
+                record.last_attempted_refresh_datetime = None
+                record.last_successful_refresh_datetime = None
+                record.last_refresh_elapsed = None
+                record.last_attempted_refresh_http_code = None
+                record.last_refresh_http_code = None
+                record.last_refresh_n_results = None
                 session.commit()
                 updated_existing_record = True
 
