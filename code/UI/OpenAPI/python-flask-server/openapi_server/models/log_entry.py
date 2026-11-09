@@ -21,7 +21,7 @@ import json
 
 
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from openapi_server.models.log_level import LogLevel
@@ -86,7 +86,14 @@ class LogEntry(object):
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
 
-        _dict['timestamp'] = str(_dict['timestamp'])
+        # HAND EDIT: TRAPI requires RFC 3339 date-time with a 'T' and a Z/offset.
+        # json.dumps(envelope.to_dict()) is called in many places, so the timestamp must be a string here.
+        # Re-apply this edit if the models are regenerated.
+        ts = _dict.get('timestamp')
+        if isinstance(ts, datetime):
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            _dict['timestamp'] = ts.isoformat().replace('+00:00', 'Z')
 
         return _dict
 

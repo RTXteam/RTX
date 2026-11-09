@@ -133,7 +133,7 @@ class ARAXResponse:
         :type code: str
         """
 
-        timestamp = str(datetime.datetime.now().isoformat())
+        timestamp = datetime.datetime.now(datetime.timezone.utc)
         pid = os.getpid()
         self.messages.append( LogEntry( timestamp=timestamp, level=self.level_names[level], code=code, message=message ) )
         self.n_messages += 1
