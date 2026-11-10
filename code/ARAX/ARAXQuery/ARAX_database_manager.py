@@ -372,7 +372,11 @@ class ARAXDatabaseManager:
             eprint(f"Looks like we have previously extracted: {resolved}")
 
     def symlink_database(self, symlink_path, target_path):
-        _run_cmd_in_shell_chk_status(f"ln -s {shlex.quote(target_path)} {shlex.quote(symlink_path)}")
+        # -sfn replaces an existing (possibly stale or dangling) symlink in place,
+        # so re-running the database manager is idempotent. Never clobber a real file.
+        if os.path.lexists(symlink_path) and not os.path.islink(symlink_path):
+            raise FileExistsError(f"{symlink_path} exists and is not a symlink; refusing to overwrite")
+        _run_cmd_in_shell_chk_status(f"ln -sfn {shlex.quote(target_path)} {shlex.quote(symlink_path)}")
 
     def rsync_database(self, remote_location, local_path, debug=False):
         verbose = ""
