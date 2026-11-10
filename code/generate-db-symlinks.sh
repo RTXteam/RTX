@@ -10,9 +10,9 @@ set -euo pipefail
 #      ${DB_DIR}/tier0-20260621/curie_ngd_v1.1_tier0-20260621.sqlite
 #   2. `cd` to the directory just above the `RTX` root code directory
 #   3. `RTX/code/generate-db-symlinks.sh`
-# `LATEST_TIER0_VER` defaults to the tier0 version of `tier0_sqlite` in
-# config_dbs.json. Set it to link a different tier0 build; databases that
-# config_dbs.json keeps in another directory (e.g. fda_approved_drugs) are
+# `LATEST_TIER0_VER` defaults to the tier0 version of `info_for_overlay_sqlite`
+# in config_dbs.json. Set it to link a different tier0 build; databases that
+# config_dbs.json keeps in another directory (e.g. cohd_database) are
 # not affected by it.
 # The pytest suite only runs the database manager if you pass
 # `--withdatabases`, so by default it won't attempt to download 200 GiB
@@ -40,9 +40,9 @@ for key, path in downloads.items():
     print("\t".join([key] + path.split("/")[-2:]))
 ' "$CONFIG_DBS")"
 
-config_tier0_ver="$(awk -F'\t' '$1 == "tier0_sqlite" {print $2}' <<< "$db_entries")"
+config_tier0_ver="$(awk -F'\t' '$1 == "info_for_overlay_sqlite" {print $2}' <<< "$db_entries")"
 if [[ -z "$config_tier0_ver" ]]; then
-  echo "ERROR: No database_downloads.tier0_sqlite entry in $CONFIG_DBS" >&2
+  echo "ERROR: No database_downloads.info_for_overlay_sqlite entry in $CONFIG_DBS" >&2
   exit 1
 fi
 LATEST_TIER0_VER="${LATEST_TIER0_VER:-$config_tier0_ver}"
@@ -53,8 +53,7 @@ dest_dir_for() {
   case "$1" in
     cohd_database)            echo "RTX/code/ARAX/KnowledgeSources/COHD_local/data" ;;
     curie_to_pmids|curie_ngd) echo "RTX/code/ARAX/KnowledgeSources/NormalizedGoogleDistance" ;;
-    kg2c_sqlite)              echo "RTX/code/ARAX/KnowledgeSources/KG2c" ;;
-    tier0_sqlite)             echo "RTX/code/ARAX/KnowledgeSources/Tier0" ;;
+    info_for_overlay_sqlite)  echo "RTX/code/ARAX/KnowledgeSources/Tier0" ;;
     fda_approved_drugs)       echo "RTX/code/ARAX/KnowledgeSources" ;;
     autocomplete)             echo "RTX/code/autocomplete" ;;
     explainable_dtd_db)       echo "RTX/code/ARAX/KnowledgeSources/Prediction" ;;
