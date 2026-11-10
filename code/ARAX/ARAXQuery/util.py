@@ -29,7 +29,8 @@ def get_arax_edge_key(edge: Edge) -> str:
 
     The key must stay byte-identical to the value written into the
     `arax_edge_key` column of the tier0-info-for-overlay sqlite by
-    KnowledgeSources/generate_sqlite.py, otherwise lookups will miss.
+    workflow/scripts/overlay/generate_sqlite.py in the autobuild repo, otherwise
+    lookups will miss.
     """
     qualifiers_dict = (
         {q.qualifier_type_id: q.qualifier_value for q in edge.qualifiers}

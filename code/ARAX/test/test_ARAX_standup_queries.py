@@ -5,7 +5,6 @@
 import sys
 import os
 import pytest
-from collections import Counter
 import copy
 import json
 import ast
@@ -31,54 +30,6 @@ def _do_arax_query(query: dict, timeout: Optional[int] = None) -> List[Union[ARA
     if response.status != 'OK':
         print(response.show(level=response.DEBUG))
     return [response, response.envelope.message]
-
-
-def _attribute_tester(message, attribute_name: str, attribute_type: str, num_different_values=2):
-    """
-    Tests attributes of a message
-    message: returned from _do_arax_query
-    attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
-    num_different_values: the number of distinct values you wish to see have been added as attributes
-    """
-    edges_of_interest = []
-    values = set()
-    for key, edge in message.knowledge_graph.edges.items():
-        assert 'primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
-        if hasattr(edge, 'edge_attributes'):
-            for attr in edge.edge_attributes:
-                if attr.name == attribute_name:
-                    edges_of_interest.append(edge)
-                    assert attr.type == attribute_type
-                    values.add(attr.value)
-    assert len(edges_of_interest) > 0
-    assert len(values) >= num_different_values
-
-
-def _virtual_tester(message: Message, edge_predicate: str, relation: str, attribute_name: str, attribute_type: str, num_different_values=2):
-    """
-    Tests overlay functions that add virtual edges
-    message: returned from _do_arax_query
-    edge_predicate: the name of the virtual edge (eg. biolink:has_jaccard_index_with)
-    relation: the relation you picked for the virtual_edge_relation (eg. N1)
-    attribute_name: the attribute name to test (eg. 'jaccard_index')
-    attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
-    num_different_values: the number of distinct values you wish to see have been added as attributes
-    """
-    edge_predicates_in_kg = Counter([x.predicate for x in message.knowledge_graph.edges.values()])
-    assert edge_predicate in edge_predicates_in_kg
-    edges_of_interest = [x for x in message.knowledge_graph.edges.values() if x.relation == relation]
-    values = set()
-    assert len(edges_of_interest) > 0
-    for edge in edges_of_interest:
-        assert 'primary_knowledge_source' in [attribute.attribute_type_id for attribute in edge.attributes]
-        assert hasattr(edge, 'attributes')
-        assert edge.attributes
-        assert edge.attributes[0].name == attribute_name
-        values.add(edge.attributes[0].value)
-        assert edge.attributes[0].type == attribute_type
-    # make sure two or more values were added
-    assert len(values) >= num_different_values
 
 
 def test_gene_to_pathway_issue_9():
@@ -221,33 +172,20 @@ def test_diseases_treated_by_drug_issue_20():
     assert len(message.results) > 0
 
 
-@pytest.mark.skip  # TODO: Needs to be rewritten using qualifiers (many of the predicates are no longer valid)
 def test_chemical_substances_that_down_regulate_STK11_issue_28():
+    # "Down-regulates" is expressed with qualifiers on biolink:affects now, not with the old regulation predicates
     query = {
       "message": {
         "query_graph": {
           "edges": {
             "e01": {
+              "subject": "n1",
               "object": "n0",
-              "predicates": ["biolink:prevents",
-                "biolink:negatively_regulates",
-                "biolink:decreases_secretion_of",
-                "biolink:decreases_secretion_of",
-                "biolink:decreases_transport_of",
-                "biolink:decreases_activity_of",
-                "biolink:decreases_synthesis_of",
-                "biolink:decreases_expression_of",
-                "biolink:increases_degradation_of",
-                "biolink:entity_negatively_regulates_entity",
-                "biolink:disrupts",
-                "biolink:directly_negatively_regulates",
-                "biolink:inhibits",
-                "biolink:inhibitor",
-                "biolink:channel_blocker",
-                "biolink:disrupts",
-                "biolink:may_inhibit_effect_of"
-              ],
-              "subject": "n1"
+              "predicates": ["biolink:affects"],
+              "qualifier_constraints": [{"qualifier_set": [
+                {"qualifier_type_id": "biolink:object_aspect_qualifier", "qualifier_value": "activity_or_abundance"},
+                {"qualifier_type_id": "biolink:object_direction_qualifier", "qualifier_value": "decreased"}
+              ]}]
             }
           },
           "nodes": {
@@ -266,16 +204,15 @@ def test_chemical_substances_that_down_regulate_STK11_issue_28():
     assert len(message.results) > 0
 
 
-# This query doesn't find results after conflations were resolved in KG2.6.7
-@pytest.mark.skip
+# The disease is the subject of has_phenotype (disease has_phenotype phenotypic feature)
 def test_phenotypes_for_angel_shaped_phalango_epiphyseal_dysplasia_issue_33():
     query = {
       "message": {
         "query_graph": {
           "edges": {
             "e01": {
-              "object": "n0",
-              "subject": "n1",
+              "subject": "n0",
+              "object": "n1",
               "predicates":["biolink:has_phenotype"]
             }
           },

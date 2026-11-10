@@ -4,9 +4,9 @@ Autocompletion server for prefix and fuzzy matches
 To run server:
 python server.py
 
-To create dict.db:
-chmod u+x create_load_db.sh
-./create_load_db.sh
+The autocomplete database is built in the
+[arax-build-automation](https://github.com/Translator-CATRAX/arax-build-automation) repo
+(see `workflow/scripts/autocomplete/`).
 
 ## How to use RTXComplete
 
@@ -29,7 +29,7 @@ chmod u+x create_load_db.sh
 See rtxcomplete.js
 
 ### From the backend
-Example code is in ```sample.py```. The two core lines are:
+The two core lines are:
 
 ```
   
@@ -41,7 +41,7 @@ Example code is in ```sample.py```. The two core lines are:
 
 ### Quick Definitions
 
-create_quick_def.py has been provided, but needs the definition function implemented based on chosen data sources. It also includes the expected format of the quick definitions along with an example.
+`quick_def_creator.py` (now in the arax-build-automation repo, under `from_rtx/code/autocomplete/`) needs the definition function implemented based on chosen data sources. It also includes the expected format of the quick definitions along with an example.
 
 ## Demonstration Link
 http://rtxcomplete.ixlab.org

@@ -73,7 +73,7 @@ for devarea in production
 do
     sudo docker cp RTX/code/config_secrets.json arax:${arax_base}/${devarea}/RTX/code
     sudo docker exec arax chown rt.rt ${arax_base}/${devarea}/RTX/code/config_secrets.json
-    # create the required symbolic links for ARAX/KG2 database files, inside the container
+    # create the required symbolic links for ARAX database files, inside the container
     sudo docker exec arax bash -c "sudo -u rt bash -c 'cd ${arax_base}/${devarea}/RTX && python3 code/ARAX/ARAXQuery/ARAX_database_manager.py'"
 done
 

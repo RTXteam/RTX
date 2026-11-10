@@ -480,7 +480,7 @@ and [frobenius norm](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm).
 
     def __normalize_probability(self, value):
         """
-        These (as of 7/28/2020 in KG1 and KG2 only "drug->protein binding probabilities"
+        These (as of 7/28/2020) are only "drug->protein binding probabilities"
         As Vlado suggested, the lower ones are more rubbish, so again throw into a logistic function, but even steeper.
         see __normalize_probability_treats for how to visualize this
         """
@@ -830,8 +830,8 @@ def main():
         # message_dict = araxdb.getMessage(306)  # all clinical info, neurtropenia, but with virtual edges
         # message_dict = araxdb.getMessage(307)  # all clinical info, osteoarthritis, but with virtual edges
         # message_dict = araxdb.getMessage(322)  # Parkinsons Jaccard, top 50
-        # message_dict = araxdb.getMessage(324)  # chi_square, KG2
-        # message_dict = araxdb.getMessage(325)  # chi_square, ngd, KG2
+        # message_dict = araxdb.getMessage(324)  # chi_square
+        # message_dict = araxdb.getMessage(325)  # chi_square, ngd
         # message_dict = araxdb.getMessage(326)  # prob drug treats disease as attribute to all edge thrombocytopenia
         # message_dict = araxdb.getMessage(327)
         # add_qnode(name=DOID:1227, id=n00)

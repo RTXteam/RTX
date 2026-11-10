@@ -214,8 +214,8 @@ def main():
             eprint("Checking for complete databases")
             # check_versions returns True if new databases need to be downloaded
             if dbmanager.check_versions():
-                if (rtx_config.domain == "arax.ncats.io" and (
-                        rtx_config.maturity == "development" or rtx_config.maturity == "production")):
+                # Every devarea on this host can link to the central databases, whatever its maturity (/ runs at staging)
+                if rtx_config.domain == "arax.ncats.io":
                     eprint("ARAX databases incomplete; checking if only a symlink is missing")
                     dbmanager.symlink_from_central_and_write_versions(debug=True)
                 else:

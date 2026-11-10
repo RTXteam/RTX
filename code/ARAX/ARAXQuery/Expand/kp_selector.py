@@ -23,33 +23,28 @@ KPS_SKIP_METAKG_CHECKS = {'infores:retriever'}
 
 class KPSelector:
 
-    def __init__(self, kg2_mode: bool = False, log: ARAXResponse = ARAXResponse()):
+    def __init__(self, log: ARAXResponse = ARAXResponse()):
         self.log = log
-        self.kg2_mode = kg2_mode
         self.kp_cacher = KPInfoCacher()
         self.meta_map, self.kp_urls, self.kps_excluded_by_version, self.kps_excluded_by_maturity = self._load_cached_kp_info()
-        if (not self.kg2_mode) and (self.kp_urls is None):
-            raise ValueError("KP info cache has not been filled and we are not in KG2 mode; cannot initialize KP selector")
-        self.valid_kps = {"infores:rtx-kg2"} if self.kg2_mode else set(self.kp_urls.keys())
+        if self.kp_urls is None:
+            raise ValueError("KP info cache has not been filled; cannot initialize KP selector")
+        self.valid_kps = set(self.kp_urls.keys())
         self.bh = get_biolink_helper()
 
     def _load_cached_kp_info(self) -> tuple:
-        if self.kg2_mode:
-            # We don't need any KP meta info when in KG2 mode, because there are no KPs to choose from
+        # Load cached KP info
+        kp_cacher = KPInfoCacher()
+        try:
+            smart_api_info, meta_map = kp_cacher.load_kp_info_caches(self.log)
+        except Exception as e:
+            self.log.error(f"Failed to load KP info caches due to {e}", error_code="LoadKPCachesFailed")
             return None, None, None, None
-        else:
-            # Load cached KP info
-            kp_cacher = KPInfoCacher()
-            try:
-                smart_api_info, meta_map = kp_cacher.load_kp_info_caches(self.log)
-            except Exception as e:
-                self.log.error(f"Failed to load KP info caches due to {e}", error_code="LoadKPCachesFailed")
-                return None, None, None, None
 
-            return (meta_map,
-                    smart_api_info["allowed_kp_urls"],
-                    smart_api_info["kps_excluded_by_version"],
-                    smart_api_info["kps_excluded_by_maturity"])
+        return (meta_map,
+                smart_api_info["allowed_kp_urls"],
+                smart_api_info["kps_excluded_by_version"],
+                smart_api_info["kps_excluded_by_maturity"])
 
     def get_kps_for_single_hop_qg(self, qg: QueryGraph) -> Optional[set[str]]:
         """

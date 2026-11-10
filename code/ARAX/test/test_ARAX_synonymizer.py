@@ -333,15 +333,13 @@ def test_get_normalizer_results():
             assert results[input_entity]["nodes"]
             assert len(results[input_entity]["nodes"]) > 1
             for equivalent_node in results[input_entity]["nodes"]:
-                assert {"identifier", "category", "label", "major_branch", "in_sri", "name_sri", "category_sri",
-                        "in_kg2pre", "name_kg2pre", "category_kg2pre"} == set(equivalent_node)
+                assert {"identifier", "category", "label", "major_branch", "in_sri", "name_sri",
+                        "category_sri"} == set(equivalent_node)
                 assert equivalent_node["identifier"]
                 assert equivalent_node["category"]
                 assert equivalent_node["category"].startswith("biolink:")
                 if equivalent_node["category_sri"]:
                     assert equivalent_node["category_sri"].startswith("biolink:")
-                if equivalent_node["category_kg2pre"]:
-                    assert equivalent_node["category_kg2pre"].startswith("biolink:")
 
 
 def test_improper_curie_prefix_capitalization():

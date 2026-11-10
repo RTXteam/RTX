@@ -53,22 +53,5 @@ server {
         deny 18.236.105.98;
     }
 
-    location /kg2/ {
-	proxy_read_timeout 3000s;
-        add_header 'X-Frame-Options' 'SAMEORIGIN';
-        proxy_buffering off;
-
-	include proxy_params;
-	proxy_pass http://localhost:8180;
-        rewrite /kg2/(.*) /$1  break;
-        proxy_set_header  X-Forwarded-Proto $scheme;
-	proxy_set_header  X-Real-IP         $remote_addr;
-	proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
-	proxy_set_header  X-Real-IP-AWS	    $remote_addr;
-
-        deny 66.27.73.63;
-        deny 18.236.105.98;
-    }
-
 }
 

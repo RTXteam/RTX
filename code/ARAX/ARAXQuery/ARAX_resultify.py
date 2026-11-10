@@ -10,8 +10,8 @@ default is to ignore edge direction).
    Usage: python3 -u ARAX_resultify.py
 
    will run the built-in tests for ARAX_resultify.py. When testing, also be sure
-   to run the `document_dsl_commands.py` script in the `code/ARAX/Documentation`
-   directory since that script uses the `describe_me` method of this module.
+   to run the `document_dsl_commands.py` script (now kept in the autobuild repo
+   under `from_rtx/`) since that script uses the `describe_me` method of this module.
 
 '''
 
@@ -1214,7 +1214,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
     log.debug("Loading final result graphs into TRAPI object model")
     qnodes_with_ids = {qnode_key for qnode_key, qnode in qg.nodes.items() if qnode.ids}
 
-    resource_id = "infores:rtx-kg2" if mode == "RTXKG2" else "infores:arax"
+    resource_id = "infores:arax"
     results = []
     for result_graph in final_result_graphs:
         node_bindings = dict()

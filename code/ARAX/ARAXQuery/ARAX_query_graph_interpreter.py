@@ -215,7 +215,14 @@ class ARAXQueryGraphInterpreter:
 
         # If the final best template name is a real one in templates, then get the ARAXI for it
         if query_graph_template_name in self.query_graph_templates['templates']:
-            araxi_commands = self.query_graph_templates['templates'][query_graph_template_name]['DSL']
+            template = self.query_graph_templates['templates'][query_graph_template_name]
+
+            # Some templates describe query graphs we don't support; those have an 'error' instead of 'DSL'
+            if 'error' in template:
+                response.error(template['error'], error_code="QueryGraphInterpreterUnsupportedGraph")
+                return response
+
+            araxi_commands = template['DSL']
 
             # Need to remap the theoretical node and edge ids into the actual ones
             # Do it in two passes in case there are overlaps in the names. Issue #1457

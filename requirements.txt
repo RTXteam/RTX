@@ -7,8 +7,6 @@ requests-cache==1.2.1
 matplotlib
 seaborn
 psutil
-neo4j-driver>=1.7.0,<=1.7.6
-ipython-cypher==0.2.6
 networkx==2.8.8
 graphviz==0.20.1
 lxml==4.9.4  # UPGRADED: 4.9.1 doesn't build on Python 3.12, 4.9.4 has pre-built wheels

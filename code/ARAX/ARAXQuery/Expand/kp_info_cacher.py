@@ -103,11 +103,6 @@ class KPInfoCacher:
             # Just use the first URL listed for this KP (for this maturity level and TRAPI version)
             raw_url = kp_smart_api_registration["servers"][0]["url"]
 
-            # Handle the special case of RTX-KG2
-            if kp_smart_api_registration["infores_name"] == "infores:rtx-kg2":
-                # Captures an override if one is in place; otherwise server is read from our SmartAPI yaml/JSON
-                raw_url = self.rtx_config.plover_url
-
             # Remove any trailing slashes
             return raw_url.strip("/") if isinstance(raw_url, str) else raw_url
         else:
@@ -199,7 +194,7 @@ class KPInfoCacher:
 
         # Make sure the map doesn't contain any 'stale' KPs (KPs that used to be in SmartAPI but no longer are)
         stale_kps = set(meta_map).difference(allowed_kps_dict)
-        if stale_kps:  # For dev work, we don't want to edit the metamap when in KG2 mode
+        if stale_kps:
             for stale_kp in stale_kps:
                 eprint(f"Detected a stale KP in meta map ({stale_kp}) - deleting it")
                 del meta_map[stale_kp]

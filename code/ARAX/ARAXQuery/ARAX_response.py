@@ -329,7 +329,7 @@ def main():
     #### Example for
     if params.example == 2:
         response.update_query_plan('e00', 'infores:molepro', 'Skipped', "KP does not support predicate 'biolink:physically_interacts_with'")
-        response.update_query_plan('e00', 'infores:rtx-kg2', 'Done', "Query returned 89 results")
+        response.update_query_plan('e00', 'infores:retriever', 'Done', "Query returned 89 results")
         response.update_query_plan('e00', 'infores:genetics-data-provider', 'Waiting', "Query with 12 CURIEs sent: waiting for response")
         print(json.dumps(response.query_plan,sort_keys=True,indent=2))
         return

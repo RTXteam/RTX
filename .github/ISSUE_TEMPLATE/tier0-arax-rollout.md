@@ -8,9 +8,9 @@ assignees: ""
 
 
 
-- [ ] Build database file `curie_to_pmids_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: ) (build script: [`build_ngd_database.py`](https://github.com/RTXteam/RTX/blob/master/code/ARAX/ARAXQuery/Overlay/ngd/build_ngd_database.py))
-- [ ] Build database file `autocomplete_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: ) (build script: [`create_load_db.py`](https://github.com/RTXteam/RTX/blob/master/code/autocomplete/create_load_db.py))
-- [ ] Build database file `tier0-info-for-overlay_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: ) (build script: [`generate_sqlite.py`](https://github.com/RTXteam/RTX/blob/master/code/ARAX/KnowledgeSources/generate_sqlite.py))
+- [ ] Build database file `curie_to_pmids_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: ) (build script: [`build_ngd_database.py`](https://github.com/Translator-CATRAX/arax-build-automation/blob/master/workflow/scripts/curie_pmids/build_ngd_database.py))
+- [ ] Build database file `autocomplete_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: ) (build script: [`create_load_db.py`](https://github.com/Translator-CATRAX/arax-build-automation/blob/master/workflow/scripts/autocomplete/create_load_db.py))
+- [ ] Build database file `tier0-info-for-overlay_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: ) (build script: [`generate_sqlite.py`](https://github.com/Translator-CATRAX/arax-build-automation/blob/master/workflow/scripts/overlay/generate_sqlite.py))
 - [ ] Build database file `curie_ngd_v1.0_tier0-MMDDYYYY.sqlite` (assignee: ; subissue: )
 - [ ] Build database file `ExplainableDTD_v1.0_tier0-MMDDYYYY-all_with_paths.db` (assignee: ; subissue: )
 - [ ] Update ARAX `config_dbs.json` for the new database files. (assignee: ; subissue: )
