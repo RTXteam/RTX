@@ -23,6 +23,16 @@ from RTXConfiguration import RTXConfiguration
 # Imported here instead of inside _merge_kp_info, see ARAX issue 2794.
 from kp_info_cacher import KPInfoCacher
 
+# Expand queries Retriever with tiers=[0] (see trapi_querier.py), so the meta KG we advertise is the tier 0 one
+RETRIEVER_INFORES_CURIE = "infores:retriever"
+RETRIEVER_META_KG_TIER = 0
+
+
+class MockARAXResponse:
+    """Simple stand-in for ARAXResponse, for logging from KPInfoCacher.load_kp_info_caches"""
+    def error(self, msg): eprint(f"ERROR: {msg}")
+    def debug(self, msg): eprint(f"DEBUG: {msg}")
+
 
 class KnowledgeSourceMetadata:
 
@@ -46,97 +56,95 @@ class KnowledgeSourceMetadata:
         
         return datetime.now() - KnowledgeSourceMetadata.cache_timestamp < self.cache_duration
 
-    def _fetch_ploverdb_meta_kg(self) -> Optional[Dict[str, Any]]:
-        """Fetch meta knowledge graph from PloverDB"""
+    def _fetch_retriever_meta_kg(self, smart_api_info: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """Fetch meta knowledge graph from Retriever, using the URL SmartAPI lists for our maturity"""
+        if smart_api_info is None:
+            return None
         try:
-            plover_url = self.RTXConfig.plover_url
-            response = requests.get(f"{plover_url}/meta_knowledge_graph", timeout=30)
+            retriever_url = smart_api_info["allowed_kp_urls"].get(RETRIEVER_INFORES_CURIE)
+            if not retriever_url:
+                eprint(f"ERROR: No URL for {RETRIEVER_INFORES_CURIE} in the KP info cache")
+                return None
+            response = requests.get(f"{retriever_url}/meta_knowledge_graph",
+                                    params={"tier": RETRIEVER_META_KG_TIER},
+                                    timeout=30)
             if response.status_code == 200:
                 return response.json()
             else:
-                eprint(f"ERROR: PloverDB returned status {response.status_code}")
+                eprint(f"ERROR: Retriever returned status {response.status_code}")
                 return None
         except Exception as e:
-            eprint(f"ERROR: Failed to fetch from PloverDB: {e}")
+            eprint(f"ERROR: Failed to fetch from Retriever: {e}")
             return None
 
-    def _merge_kp_info(self, base_meta_kg: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge_kp_info(self, base_meta_kg: Dict[str, Any], meta_map: Optional[Dict[str, Any]]) -> Dict[str, Any]:
         """Merge additional KP information from the KP info cacher"""
         try:
-            kp_cacher = KPInfoCacher()
-            if kp_cacher.cache_file_present():
-                # Create a simple mock ARAXResponse for logging
-                class MockARAXResponse:
-                    def error(self, msg): eprint(f"ERROR: {msg}")
-                    def debug(self, msg): eprint(f"DEBUG: {msg}")
-                
-                smart_api_info, meta_map = kp_cacher.load_kp_info_caches(MockARAXResponse())
-                
-                if meta_map:
-                    eprint(f"Merging data from {len(meta_map)} knowledge providers")
-                    
-                    # Ensure TRAPI 1.4 compliance for existing edges
-                    for edge in base_meta_kg.get('edges', []):
-                        if 'knowledge_types' not in edge:
-                            edge['knowledge_types'] = ['lookup']
-                    
-                    # Ensure TRAPI 1.4 compliance for existing nodes
-                    for node_data in base_meta_kg.get('nodes', {}).values():
-                        if 'attributes' not in node_data:
-                            node_data['attributes'] = []
-                    
-                    # Merge additional predicates from KP meta map
-                    for kp_name, kp_data in meta_map.items():
-                        if 'predicates' in kp_data:
-                            for subject, objects in kp_data['predicates'].items():
-                                for obj, predicates in objects.items():
-                                    # Add new edges if they don't exist
-                                    existing_predicates = set()
-                                    
-                                    # Check existing edges
-                                    for edge in base_meta_kg.get('edges', []):
-                                        if edge['subject'] == subject and edge['object'] == obj:
-                                            existing_predicates.add(edge['predicate'])
-                                    
-                                    # Add new predicates
-                                    for predicate in predicates:
-                                        if predicate not in existing_predicates:
-                                            new_edge = {
-                                                "subject": subject,
-                                                "object": obj,
-                                                "predicate": predicate,
-                                                "knowledge_types": ["lookup"], #TRAPI 1.4 compliance direct lookup of existing knowledge from the knowledge graph
-                                                "attributes": [
-                                                    {
-                                                        "attribute_type_id": "biolink:knowledge_source",
-                                                        "value": kp_name,
-                                                        "value_type_id": "biolink:InformationResource"
-                                                    }
-                                                ],
-                                                "qualifiers": []
-                                            }
-                                            base_meta_kg['edges'].append(new_edge)
-                    
-                    # Merge additional node prefixes
-                    for kp_name, kp_data in meta_map.items():
-                        if 'prefixes' in kp_data:
-                            for node_type, prefixes in kp_data['prefixes'].items():
-                                if node_type in base_meta_kg.get('nodes', {}):
-                                    existing_prefixes = set(base_meta_kg['nodes'][node_type].get('id_prefixes', []))
-                                    new_prefixes = set(prefixes)
-                                    base_meta_kg['nodes'][node_type]['id_prefixes'] = list(existing_prefixes | new_prefixes)
-                                else:
-                                    # Add new node type if it doesn't exist
-                                    base_meta_kg.setdefault('nodes', {})[node_type] = {
-                                        "id_prefixes": list(prefixes),
-                                        "attributes": []  # TRAPI 1.4 compliance
-                                    }
-                else:
-                    eprint("No KP meta map data available for merging")
-                                
+            if meta_map:
+                eprint(f"Merging data from {len(meta_map)} knowledge providers")
+
+                # Ensure TRAPI 1.4 compliance for existing edges
+                for edge in base_meta_kg.get('edges', []):
+                    if 'knowledge_types' not in edge:
+                        edge['knowledge_types'] = ['lookup']
+
+                # Ensure TRAPI 1.4 compliance for existing nodes
+                for node_data in base_meta_kg.get('nodes', {}).values():
+                    if 'attributes' not in node_data:
+                        node_data['attributes'] = []
+
+                # Merge additional predicates from KP meta map
+                for kp_name, kp_data in meta_map.items():
+                    if 'predicates' in kp_data:
+                        for subject, objects in kp_data['predicates'].items():
+                            for obj, predicates in objects.items():
+                                # Add new edges if they don't exist
+                                existing_predicates = set()
+
+                                # Check existing edges
+                                for edge in base_meta_kg.get('edges', []):
+                                    if edge['subject'] == subject and edge['object'] == obj:
+                                        existing_predicates.add(edge['predicate'])
+
+                                # Add new predicates
+                                for predicate in predicates:
+                                    if predicate not in existing_predicates:
+                                        new_edge = {
+                                            "subject": subject,
+                                            "object": obj,
+                                            "predicate": predicate,
+                                            "knowledge_types": ["lookup"], #TRAPI 1.4 compliance direct lookup of existing knowledge from the knowledge graph
+                                            "attributes": [
+                                                {
+                                                    "attribute_type_id": "biolink:knowledge_source",
+                                                    "value": kp_name,
+                                                    "value_type_id": "biolink:InformationResource"
+                                                }
+                                            ],
+                                            "qualifiers": []
+                                        }
+                                        base_meta_kg['edges'].append(new_edge)
+
+                # Merge additional node prefixes
+                for kp_name, kp_data in meta_map.items():
+                    if 'prefixes' in kp_data:
+                        for node_type, prefixes in kp_data['prefixes'].items():
+                            if node_type in base_meta_kg.get('nodes', {}):
+                                existing_prefixes = set(base_meta_kg['nodes'][node_type].get('id_prefixes', []))
+                                new_prefixes = set(prefixes)
+                                base_meta_kg['nodes'][node_type]['id_prefixes'] = list(existing_prefixes | new_prefixes)
+                            else:
+                                # Add new node type if it doesn't exist
+                                base_meta_kg.setdefault('nodes', {})[node_type] = {
+                                    "id_prefixes": list(prefixes),
+                                    "attributes": []  # TRAPI 1.4 compliance
+                                }
+            else:
+                eprint("No KP meta map data available for merging")
+
         except Exception as e:
             eprint(f"WARNING: Failed to merge KP info: {e}")
-        
+
         return base_meta_kg
 
     def _add_reasoner_api_info(self, meta_kg: Dict[str, Any]) -> Dict[str, Any]:
@@ -158,7 +166,7 @@ class KnowledgeSourceMetadata:
         standard_attributes = [
             {
                 "attribute_type_id": "biolink:original_predicate",
-                "constraint_name": "kg2 ids",
+                "constraint_name": "original predicate",
                 "constraint_use": True
             },
             {
@@ -263,10 +271,17 @@ class KnowledgeSourceMetadata:
         """Build the meta knowledge graph dynamically from multiple sources"""
         eprint("Building dynamic meta knowledge graph...")
         
-        # Step 1: Fetch from PloverDB
-        plover_meta_kg = self._fetch_ploverdb_meta_kg()
-        if not plover_meta_kg:
-            eprint("WARNING: Failed to fetch meta knowledge graph from PloverDB, using backup")
+        # Load the KP info caches once, since both Step 1 and Step 2 need them
+        try:
+            smart_api_info, meta_map = KPInfoCacher().load_kp_info_caches(MockARAXResponse())
+        except Exception as e:
+            eprint(f"ERROR: Failed to load KP info caches: {e}")
+            smart_api_info, meta_map = None, None
+
+        # Step 1: Fetch from Retriever
+        retriever_meta_kg = self._fetch_retriever_meta_kg(smart_api_info)
+        if not retriever_meta_kg:
+            eprint("WARNING: Failed to fetch meta knowledge graph from Retriever, using backup")
             # Try to load from backup
             backup_meta_kg = self._load_latest_backup_meta_kg()
             if backup_meta_kg:
@@ -276,7 +291,7 @@ class KnowledgeSourceMetadata:
             return None
         
         # Step 2: Merge KP information using existing KP info cacher
-        merged_meta_kg = self._merge_kp_info(plover_meta_kg)
+        merged_meta_kg = self._merge_kp_info(retriever_meta_kg, meta_map)
         
         # Step 3: Add ReasonerAPI information (only adds missing TRAPI 1.4 fields)
         final_meta_kg = self._add_reasoner_api_info(merged_meta_kg)

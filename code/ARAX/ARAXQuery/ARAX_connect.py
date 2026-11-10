@@ -288,10 +288,14 @@ class ARAXConnect:
         else:
             self.response.info(f"Looking for a previously cached result from {kp_curie}")
             response_data, response_code, elapsed_time, error = cacher.get_cached_result(kp_curie, pathfinder_input_data)
+        #### Never reuse an empty xCRG answer: it is most likely a transient upstream failure, not a real empty result
         if (
                 response_code != -2
                 and response_code == 200
-                and (is_xcrg_action or self.response.envelope.message.results)
+                and (
+                    (is_xcrg_action and (cacher._get_n_results(response_data) or 0) > 0)
+                    or (not is_xcrg_action and self.response.envelope.message.results)
+                )
         ):
             n_results = cacher._get_n_results(response_data)
             # Note: This logging message is keyed off to provide progress updates to the RTX front-end.
@@ -333,17 +337,22 @@ class ARAXConnect:
             elapsed_time = time.time() - start
             self.response.info(f"Got result from ARAX {kp_curie} Connect after {elapsed_time}. Converting to_dict()")
             response_object = self.response.envelope.to_dict()
-            self.response.info(f"Storing resulting dict in the cache")
-            cacher.store_response(
-                kp_curie=kp_curie,
-                query_url=kp_url,
-                query_object=pathfinder_input_data,
-                response_object=response_object,
-                http_code=http_status,
-                elapsed_time=elapsed_time,
-                status=status
-            )
-            self.response.info(f"Stored result in the cache.")
+            #### Only cache successful, non-empty answers so a transient failure is not replayed later
+            n_results = len(self.response.envelope.message.results or [])
+            if http_status == 200 and n_results > 0:
+                self.response.info(f"Storing resulting dict in the cache")
+                cacher.store_response(
+                    kp_curie=kp_curie,
+                    query_url=kp_url,
+                    query_object=pathfinder_input_data,
+                    response_object=response_object,
+                    http_code=http_status,
+                    elapsed_time=elapsed_time,
+                    status=status
+                )
+                self.response.info(f"Stored result in the cache.")
+            else:
+                self.response.info(f"Not caching {kp_curie} result (http_status={http_status}, n_results={n_results})")
 
         if self.report_stats:  # helper to report information in debug if class self.report_stats = True
             self.response = self.report_response_stats(self.response)
@@ -511,8 +520,7 @@ class ARAXConnect:
         with tracer.start_as_current_span("ARAX_connect.convert_to_trapi"):
             self.convert_to_trapi(result, aux_graphs, knowledge_graph, retriever_url, rtx_config.maturity)
 
-        mode = 'ARAX'
-        if mode != "RTXKG2" and not hasattr(self.response, "original_query_graph"):
+        if not hasattr(self.response, "original_query_graph"):
             self.response.original_query_graph = copy.deepcopy(self.response.envelope.message.query_graph)
         return self.response
 

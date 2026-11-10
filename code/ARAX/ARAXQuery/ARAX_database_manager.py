@@ -85,7 +85,7 @@ class ARAXDatabaseManager:
             'explainable_dtd_db': f"{explainable_dtd_db_filepath}{os.path.sep}{self.RTXConfig.explainable_dtd_db_path.split('/')[-1]}"
         }
 
-        # Stores the "/KG2.X.Y/some_database_v1.0_KG2.X.Y.sqlite" portion of each database's path
+        # Stores the "/<db_dir>/<db_file>" portion of each database's path (e.g., "/tier0-YYYYMMDD/some_database_v1.0_tier0-YYYYMMDD.sqlite")
         # This portion of the db path is the same on arax-databases.rtx.ai as it is on the ARAX docker instance
         # Note: there is no meta KG database here; the meta knowledge graph is fetched live from Retriever
         self.database_subpaths = {
@@ -372,7 +372,11 @@ class ARAXDatabaseManager:
             eprint(f"Looks like we have previously extracted: {resolved}")
 
     def symlink_database(self, symlink_path, target_path):
-        _run_cmd_in_shell_chk_status(f"ln -s {shlex.quote(target_path)} {shlex.quote(symlink_path)}")
+        # -sfn replaces an existing (possibly stale or dangling) symlink in place,
+        # so re-running the database manager is idempotent. Never clobber a real file.
+        if os.path.lexists(symlink_path) and not os.path.islink(symlink_path):
+            raise FileExistsError(f"{symlink_path} exists and is not a symlink; refusing to overwrite")
+        _run_cmd_in_shell_chk_status(f"ln -sfn {shlex.quote(target_path)} {shlex.quote(symlink_path)}")
 
     def rsync_database(self, remote_location, local_path, debug=False):
         verbose = ""

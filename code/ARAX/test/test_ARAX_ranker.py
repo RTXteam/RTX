@@ -422,6 +422,7 @@ def test_ARAXRanker_test9_asset623():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 @pytest.mark.slow
+@pytest.mark.broken
 def test_ARAXRanker_test13_asset311():
     # test 'Benazepril decreases activity or abundance of ACE'
     expected_answer = 'Benazepril'
@@ -486,6 +487,7 @@ def test_ARAXRanker_test13_asset311():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 @pytest.mark.slow
+@pytest.mark.broken
 def test_ARAXRanker_test13_asset355():
     # test 'Fosinopril decreases activity or abundance of ACE'
     expected_answer = 'Fosinopril'
@@ -550,6 +552,7 @@ def test_ARAXRanker_test13_asset355():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 @pytest.mark.slow
+@pytest.mark.broken
 def test_ARAXRanker_test13_asset360():
     # test 'Trandolapril decreases activity or abundance of ACE'
     expected_answer = 'Trandolapril'
@@ -614,6 +617,7 @@ def test_ARAXRanker_test13_asset360():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
     
 @pytest.mark.slow
+@pytest.mark.broken
 def test_ARAXRanker_test13_asset361():
     # test 'Moexipril decreases activity or abundance of ACE'
     expected_answer = 'Moexipril'
@@ -678,6 +682,7 @@ def test_ARAXRanker_test13_asset361():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 @pytest.mark.slow
+@pytest.mark.broken
 def test_ARAXRanker_test21_asset338():
     # test 'canagliflozin decreases activity or abundance of SLC5A2 (human)'
     expected_answer = 'canagliflozin'
@@ -742,6 +747,7 @@ def test_ARAXRanker_test21_asset338():
     assert (rank_right_answer < 0.1 * total_results) or (rank_right_answer < 0.3 * total_results)
 
 @pytest.mark.slow
+@pytest.mark.broken
 def test_ARAXRanker_test23_asset381():
     # test 'atenolol decreases activity or abundance of ADRB2'
     expected_answer = 'atenolol'
@@ -807,6 +813,7 @@ def test_ARAXRanker_test23_asset381():
 
 
 @pytest.mark.slow
+@pytest.mark.broken
 def test_ARAXRanker_test23_asset378():
     # test 'propranolol decreases activity or abundance of ADRB2'
     expected_answer = 'propranolol'

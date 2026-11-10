@@ -8,7 +8,7 @@
 - [How does ARAX work?](#how-does-arax-work)
 - [The Reasoners Standard Application Programming Interface](#the-reasoners-standard-application-programming-interface)
 - [What knowledge providers does ARAX use?](#what-knowledge-providers-does-arax-use)
-  - [RTX-KG2](#rtx-kg2)
+  - [Translator Retriever](#translator-retriever)
   - [Columbia Open Health Data (COHD)](#columbia-open-health-data-cohd)
   - [PubMed](#pubmed)
   - [Identifier mapping](#identifier-mapping)
@@ -19,16 +19,11 @@
 - [Organization of the ARAX/RTX software repository](#organization-of-the-araxrtx-software-repository)
   - [subdirectory `code`](#subdirectory-code)
     - [subdirectory `code/ARAX`](#subdirectory-codearax)
-    - [subdirectory `code/ARAX/Examples`](#subdirectory-codearaxexamples)
     - [subdirectory `code/UI/OpenAPI`](#subdirectory-codeuiopenapi)
     - [subdirectory `code/UI/Feedback`](#subdirectory-codeuifeedback)
     - [subdirectory `code/UI/interactive`](#subdirectory-codeuiinteractive)
-    - [subdirectory `code/kg2`](#subdirectory-codekg2)
-    - [subdirectory `code/kg2/mediKanren`](#subdirectory-codekg2medikanren)
     - [subdirectory `code/reasoningtool/kg-construction`](#subdirectory-codereasoningtoolkg-construction)
     - [subdirectory `code/reasoningtool/SemMedDB`](#subdirectory-codereasoningtoolsemmeddb)
-    - [subdirectory `code/reasoningtool/QuestionAnswering`](#subdirectory-codereasoningtoolquestionanswering)
-    - [subdirectory `code/reasoningtool/MLDrugRepurposing`](#subdirectory-codereasoningtoolmldrugrepurposing)
     - [subdirectory `code/autocomplete`](#subdirectory-codeautocomplete)
   - [subdirectory `data`](#subdirectory-data)
   - [Key repository branches](#key-repository-branches)
@@ -40,7 +35,6 @@
 - [Try out ARAX/RTX...](#try-out-araxrtx)
   - [...in your web browser](#in-your-web-browser)
   - [...using our web API](#using-our-web-api)
-  - [...by customizing a Jupyter Notebook](#by-customizing-a-jupyter-notebook)
 - [Links](#links)
   - [General links for the Biomedical Data Translator project](#general-links-for-the-biomedical-data-translator-project)
   - [ARAX- and RTX-specific links](#arax--and-rtx-specific-links)
@@ -148,8 +142,7 @@ based on the [Biolink Model](https://biolink.github.io/biolink-model).
 4. ARAX is integrated with the _RTX_ reasoning tool's knowledge graphs and graph
 visualization capabilities. During the NCATS Translator feasibility assessment
 phase, our team built a prototype reasoning tool system called RTX, whose
-knowledge graphs (both the first-generation knowledge graph **RTX-KG1** and the
-second-generation knowledge graph **RTX-KG2**) and user interface capabilities
+first-generation knowledge graph **RTX-KG1** and user interface capabilities
 are now available through ARAX. This integration enables a user of ARAX to
 seamlessly refer a server-side knowledge graph or result-set for RTX-based
 graphical visualization within a web browser. It also provides ARAX with
@@ -209,30 +202,14 @@ development process for the Reasoners Standard API.
 Currently, ARAX/RTX directly accesses four main knowledge providers in order to
 handle queries, along with several additional APIs for identifier mapping.
 
-## RTX-KG2
+## Translator Retriever
 
-RTX-KG2 (GitHub project area is [RTXteam/RTX-KG2](https://github.com/RTXteam/RTX-KG2)) 
-is a knowledge graph comprising 7.5M nodes and 34.3M relationships
-that is built by integrating concepts and concept-predicate-concept triples
-obtained from:
-
-1. Unified Medical Language System (UMLS)
-2. NCBI Genes
-3. Ensembl Genes
-4. UniChem
-5. Semantic Medline Database (SemMedDB)
-
-RTX-KG2 complies with the Biomedical Data Translator Knowledge Graph object
-model standard, which is based on the Biolink model. RTX-KG2 is hosted in a
-Neo4j graph database server and can be accessed at
-[kg2endpoint2.rtx.ai:7474](http://kg2endpoint2.rtx.ai:7474) (username is
-`neo4j`; contact Team Expander Agent for the password). Alternatively, a
-JSON dump of KG2 is available from the
-[RTX-KG2 S3 bucket](http://rtx-kg2-public.s3-website-us-west-2.amazonaws.com/).
-A version of KG2 that is formatted and indexed for the knowledge graph
-exploration tool [mediKanren](https://github.com/webyrd/mediKanren) is
-available; contact Team Expander Agent for details. For extensive technical
-documentation on RTX-KG2, see this repository's [KG2 subdirectory](code/kg2).
+ARAX gets its knowledge graph data from the Translator
+[Retriever](https://retriever.transltr.io) knowledge provider
+(`infores:retriever`), querying its tier 0 data. ARAX looks up the Retriever
+URL for its maturity level (development, staging, testing, or production) in
+the SmartAPI Registry, so each ARAX instance queries the matching Retriever
+instance.
 
 ## Columbia Open Health Data (COHD)
 
@@ -295,7 +272,7 @@ construction of a "query graph" that is used as a template for finding subgraphs
 of the RTX-KG1 knowledge graph. The design for the ARAX software system
 relates to RTX in four ways:
 1. ARAX builds on the code-base for RTX and leverages the
-already-built user interface and knowledge graphs for RTX (RTX-KG1 and RTX-KG2).
+already-built user interface and knowledge graph for RTX (RTX-KG1).
 2. Through the expressive (but user-friendly) domain-specific language ARAXi, ARAX exposes RTX's graph
 exploration and analysis capabilities so that they can be used (in combination
 or individually) by Translator tools or workflows in accordance with the
@@ -317,8 +294,7 @@ knowledge provider capable of sending a Reasoners Standard API message.
 ARAX and RTX are mostly written in the Python programming language and a small
 amount of JavaScript and bash shell. Yet Another Markup Language (YAML) and
 JavaScript Object Notation (JSON) are extensively used for configuration
-files. Many examples of analysis workflow code that access RTX and/or ARAX are
-provided in Jupyter notebook format, in several places in the code-base.
+files.
 
 ## subdirectory `code`
 
@@ -327,11 +303,6 @@ All software code files for ARAX and RTX are stored under this directory [link](
 ### subdirectory `code/ARAX`
 
 Contains the core software code for ARAX [link](code/ARAX).
-
-### subdirectory `code/ARAX/Examples`
-
-Contains example Jupyter notebooks for using ARAX from
-software [link](code/ARAX/Examples)
 
 ### subdirectory `code/UI/OpenAPI`
 
@@ -350,16 +321,6 @@ RTX web browser-based user interface [(link)](code/UI/Feedback).
 Contains the code for the RTX web browser-based user interface 
 [(link)](code/UI/interactive).
 
-### subdirectory `code/kg2`
-
-Contains the code for building the RTX second-generation
-knowledge graph (RTX-KG2) and hosting it in Neo4j [(link)](code/kg2).
-
-### subdirectory `code/kg2/mediKanren`
-
-Contains the code for exporting a version of the RTX-KG2
-knowledge graph that is formatted and indexed for use with the [mediKanren](https://github.com/webyrd/mediKanren) knowledge graph exploration tool [(link)](code/kg2/mediKanren).
-
 ### subdirectory `code/reasoningtool/kg-construction`
 
 Contains the code for building the RTX first-generation
@@ -370,19 +331,6 @@ knowledge graph (RTX-KG1) [(link)](code/reasoningtool/kg-construction).
 Contains the code for a python interface to an instance of the
 Semantic Medline Database (SemMedDB) that is being hosted in a MySQL database
 [(link)](code/reasoningtool/SemMedDB).
-
-### subdirectory `code/reasoningtool/QuestionAnswering`
-
-Contains the code for parsing and answering questions
-posed to the RTX reasoning tool [(link)](code/reasoningtool/QuestionAnswering).
-
-### subdirectory `code/reasoningtool/MLDrugRepurposing`
-
-Contains the code that is used for the machine-learning model for drug
-repositioning that was described in the article *Leveraging distributed
-biomedical knowledge sources to discover novel uses for known drugs*
-[article](https://doi.org/10.1101/765305) by Finn Womack, Jason McClelland, and
-David Koslicki [(link)](code/reasoningtool/MLDrugRepurposing).
 
 ### subdirectory `code/autocomplete`
 
@@ -444,27 +392,21 @@ ARAX is designed to be installed on an Amazon Web Services Elastic Compute Cloud
 - 1,023 GiB of elastic block storage
 - host OS Ubuntu v22.04. 
 
-The host OS has nginx v1.14.0 installed and configured
-(see `notes/ARAX/rtx-host-os-nginx-config` for configuration details) for
-SSL/TLS termination and proxying of HTTP traffic to `localhost:8080`. The SSL
-site certificate was generated using Letsencrypt (certbot v0.27.0). ARAX
+The host OS has nginx v1.18.0 installed and configured
+(see `self-hosted-configs/nginx_default_config` for the configuration) to
+proxy HTTP traffic on port 80 to `localhost:8081`. TLS is not terminated on
+the host; `arax.ncats.io` resolves to an AWS load balancer. ARAX
 and all of its database dependencies run inside a Docker container
-(Docker v19.03.5) that is configured to map TCP ports as
+(Docker v29.0.2) that is configured to map TCP ports as
 follows (host-port:container-port):
 
-- 7473:7473
-- 7474:7474
-- 7687:7687
-- 8080:80 
+- 8081:80
 
-(for the specific Docker run command, see
-`notes/ARAX/arax-run-container-nodes.md`). Within the Docker container,
-ARAX uses
+Within the Docker container, ARAX uses
 
 - Ubuntu v20.04
 - Apache v2.4.18 
 - python v3.9
-- Neo4j v3.2.6 (see [`code/reasoningtool/kg-construction`](code/reasoningtool/kg-construction) on how to set up Neo4j for running ARAX/RTX)
 - OpenJDK v1.8.0_131
 - mysql v5.7.19-0ubuntu0.16.04.1
 
@@ -494,11 +436,6 @@ Here is the link to access the web browser interface to RTX:
 Here is the link to documentation on the web API interface to RTX:
 [arax.rtx.ai/api/arax/v1.2/ui/](https://arax.rtx.ai/api/arax/v1.2/ui/).
 
-## ...by customizing a Jupyter Notebook
-
-Three Jupyter notebooks that demonstrate how to programmatically use ARAX are provided
-[here](code/ARAX/Examples).
-
 # Links
 
 ## General links for the Biomedical Data Translator project
@@ -515,5 +452,4 @@ Three Jupyter notebooks that demonstrate how to programmatically use ARAX are pr
 - [ARAX browser-based interface (arax.rtx.ai)](https://arax.rtx.ai)
 - [Technical documentation on ARAXi, the ARAX domain-specific language (this repo)](code/ARAX/Documentation/DSL_Documentation.md)
 - [Technical documentation on the ARAX web API interface (arax.rtx.ai)](https://arax.rtx.ai/api/rtx/v1/ui/)
-- [Example notebooks on how to programmatically use ARAX (this repo)](code/ARAX/Examples)
 

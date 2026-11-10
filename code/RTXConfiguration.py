@@ -94,14 +94,14 @@ class RTXConfiguration:
             # Otherwise we'll dynamically determine our maturity based on instance/domain name and/or branch
             if DEBUG:
                 print(f"Auto-detecting maturity: self.domain={self.domain}, self.instance_name={self.instance_name}")
-            if self.domain in ["arax.ci.transltr.io", "kg2.ci.transltr.io"]:
+            if self.domain == "arax.ci.transltr.io":
                 self.maturity = "staging"
-            elif self.domain in ["arax.test.transltr.io", "kg2.test.transltr.io"] or self.current_branch_name == "itrb-test":
+            elif self.domain == "arax.test.transltr.io" or self.current_branch_name == "itrb-test":
                 self.maturity = "testing"
-            elif self.domain in ["arax.transltr.io", "kg2.transltr.io"] or self.current_branch_name == "production":
+            elif self.domain == "arax.transltr.io" or self.current_branch_name == "production":
                 self.maturity = "production"
             elif self.domain == "arax.ncats.io":
-                if self.instance_name in ["ARAX", "kg2"] or self.current_branch_name == "production":
+                if self.instance_name == "ARAX" or self.current_branch_name == "production":
                     self.maturity = "staging"
                 else:
                     self.maturity = "development"
@@ -182,9 +182,6 @@ class RTXConfiguration:
         self.mysql_feedback_username = self.config_secrets["mysql_feedback"]["username"]
         self.mysql_feedback_password = self.config_secrets["mysql_feedback"]["password"]
 
-        # The Retriever/Gandalf URL comes from config_dbs.json
-        self.plover_url = self.config_dbs["plover_url_override"].strip("/")
-
         if DEBUG:
             t1 = timeit.default_timer()
             print(f"Elapsed time: {(t1-t0)*1000:.2f} ms. Done creating RTXConfiguration object")
@@ -244,7 +241,6 @@ def main():
     rtxConfig = RTXConfiguration()
     t1 = timeit.default_timer()
     print("RTX Version string: " + rtxConfig.version)
-    print("plover url: %s" % rtxConfig.plover_url)
     print("mysql feedback host: %s" % rtxConfig.mysql_feedback_host)
     print("mysql feedback port: %s" % rtxConfig.mysql_feedback_port)
     print("mysql feedback username: %s" % rtxConfig.mysql_feedback_username)

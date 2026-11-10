@@ -1,0 +1,40 @@
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+
+    server_name arax2.ncats.io;
+    root /etc/nginx/www;
+    server_tokens         off;
+
+    location /.well-known {
+    	try_files $uri $uri/ =404;
+        add_header 'Access-Control-Allow-Origin' '*';
+    }
+    
+    location / {
+	proxy_read_timeout 3000s;
+        add_header 'X-Frame-Options' 'SAMEORIGIN';
+        proxy_buffering off;
+
+	#include proxy_params;
+	proxy_set_header  X-Forwarded-Proto $scheme;
+	proxy_set_header  X-Real-IP         $remote_addr;
+	proxy_set_header X-Forwarded-For $remote_addr;
+	proxy_set_header  X-Real-IP-AWS	    $remote_addr;
+	proxy_pass http://localhost:8080;
+        proxy_ignore_client_abort on;
+
+        deny 18.236.105.98;
+        deny 76.119.57.87;
+        deny 52.149.164.134;
+
+        #deny 54.149.211.163;
+        #deny 66.27.73.63;
+        #deny 35.161.155.225;
+    }
+}
+

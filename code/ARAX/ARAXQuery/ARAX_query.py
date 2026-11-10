@@ -12,6 +12,9 @@ import gc
 import contextlib
 from pydantic_core import to_jsonable_python
 
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
+
 from ARAX_response import ARAXResponse
 from actions_parser import ActionsParser
 from ARAX_filter import ARAXFilter
@@ -56,6 +59,29 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 ARAXResponse.output = 'STDERR'
 
 null_context_manager = contextlib.nullcontext()
+
+# Tracer for ARAX's own processing steps, so they show up in Jaeger (issue #2923).
+# When telemetry is off, this is a no-op tracer.
+tracer = trace.get_tracer(__name__)
+
+
+def _action_span_name(action: dict) -> str:
+    """Span name for one ARAXi action, e.g. ARAX_query.expand or ARAX_query.overlay.compute_ngd"""
+    sub_action = (action.get('parameters') or {}).get('action')
+    if sub_action:
+        return f"ARAX_query.{action['command']}.{sub_action}"
+    return f"ARAX_query.{action['command']}"
+
+
+def _set_message_size_attributes(span, response) -> None:
+    """Record the KG and results size after a step, so a trace shows how each step changes the message"""
+    try:
+        message = response.envelope.message
+        span.set_attribute("arax.kg.n_nodes", len(message.knowledge_graph.nodes))
+        span.set_attribute("arax.kg.n_edges", len(message.knowledge_graph.edges))
+        span.set_attribute("arax.n_results", len(message.results or []))
+    except (AttributeError, TypeError):
+        pass
 
 
 class response_locking(ARAXResponse):
@@ -411,24 +437,14 @@ class ARAXQuery:
 
                 response.envelope.message.query_graph = query['message'].query_graph
 
-                #### In ARAX mode, run the QueryGraph through the QueryGraphInterpreter and to generate ARAXi
-                if mode == 'ARAX' or mode == 'asynchronous':
-                    response.info("Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
-                    interpreter = ARAXQueryGraphInterpreter()
-                    interpreter.translate_to_araxi(response)
-                    if response.status != 'OK':
-                        return response
-                    query['operations'] = {}
-                    query['operations']['actions'] = result.data['araxi_commands']
-
-                #### Else the mode is KG2 mode, where we just accept one-hop queries, and run a simple ARAXi
-                else:
-                    response.info("Found input query_graph. Querying RTX KG2 to answer it")
-                    if len(response.envelope.message.query_graph.nodes) > 2:
-                        response.error("Only 1 hop (2 node) queries can be handled at this time", error_code="TooManyHops")
-                        return response
-                    query['operations'] = {}
-                    query['operations']['actions'] = [ 'expand(kp=infores:rtx-kg2)', 'resultify()', 'return(store=false)' ]
+                #### Run the QueryGraph through the QueryGraphInterpreter to generate ARAXi
+                response.info("Found input query_graph. Interpreting it and generating ARAXi processing plan to answer it")
+                interpreter = ARAXQueryGraphInterpreter()
+                interpreter.translate_to_araxi(response)
+                if response.status != 'OK':
+                    return response
+                query['operations'] = {}
+                query['operations']['actions'] = result.data['araxi_commands']
 
                 query_attributes['have_operations'] = True
 
@@ -478,12 +494,6 @@ class ARAXQuery:
             return response
 
         # #### FIXME Need to do more validation and tidying of the incoming message here or somewhere
-
-
-        # RTXKG2 does not support operations
-        if mode == 'RTXKG2' and "have_operations" in response.data:
-            response.error("RTXKG2 does not support operations in Query", error_code="OperationsNotSupported")
-            return response
 
         #### If we got this far, then everything seems to be good enough to proceed
         return response
@@ -706,7 +716,7 @@ class ARAXQuery:
                 optionsDict[option] = 1
 
         # Save the original input query for later reference
-        if mode != "RTXKG2" and response.envelope.message.query_graph and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
+        if response.envelope.message.query_graph and response.envelope.message.query_graph.nodes and not hasattr(response, "original_query_graph"):
             response.original_query_graph = copy.deepcopy(response.envelope.message.query_graph)
             edge_or_path_text = ''
             if hasattr(response.original_query_graph,'edges'):
@@ -790,89 +800,101 @@ class ARAXQuery:
                 # Note: This logging message is keyed off to provide progress updates to the RTX front-end.
                 response.info(f"Processing action '{action['command']}' with parameters {action['parameters']}")
 
-                # Catch a crash
-                try:
-                    if action['command'] == 'create_message' or action['command'] == 'create_envelope':
-                        messenger.create_envelope(response)
-                        #### Put our input processing actions into the envelope
-                        response.envelope.additional_properties['actions'] = operations.actions
+                # One span per ARAXi action, so each step shows up in Jaeger (issue #2923)
+                with tracer.start_as_current_span(
+                        _action_span_name(action),
+                        attributes={'arax.action.command': action['command'],
+                                    'arax.action.parameters': json.dumps(action['parameters'], default=str)}) as action_span:
+                    # Catch a crash
+                    try:
+                        if action['command'] == 'create_message' or action['command'] == 'create_envelope':
+                            messenger.create_envelope(response)
+                            #### Put our input processing actions into the envelope
+                            response.envelope.additional_properties['actions'] = operations.actions
 
-                    elif action['command'] == 'fetch_message':
-                        messenger.apply_fetch_message(response,action['parameters'])
+                        elif action['command'] == 'fetch_message':
+                            messenger.apply_fetch_message(response,action['parameters'])
 
-                    elif action['command'] == 'add_qnode':
-                        messenger.add_qnode(response,action['parameters'])
+                        elif action['command'] == 'add_qnode':
+                            messenger.add_qnode(response,action['parameters'])
 
-                    elif action['command'] == 'add_qedge':
-                        messenger.add_qedge(response,action['parameters'])
+                        elif action['command'] == 'add_qedge':
+                            messenger.add_qedge(response,action['parameters'])
 
-                    elif action['command'] == 'add_qpath':
-                        messenger.add_qpath(response,action['parameters'])
+                        elif action['command'] == 'add_qpath':
+                            messenger.add_qpath(response,action['parameters'])
 
-                    elif action['command'] == 'expand':
-                        self.inject_int_value_into_parameters('kp_timeout', response.envelope.additional_properties, action['parameters'], 'UserTimeoutNotInt')
-                        self.inject_int_value_into_parameters('prune_threshold', response.envelope.additional_properties, action['parameters'], 'PruneThresholdNotInt')
-                        self.inject_boolean_value_into_parameters('return_minimal_metadata', response.envelope.additional_properties, action['parameters'], 'InternalError')
-                        if response.status == 'ERROR':
+                        elif action['command'] == 'expand':
+                            self.inject_int_value_into_parameters('kp_timeout', response.envelope.additional_properties, action['parameters'], 'UserTimeoutNotInt')
+                            self.inject_int_value_into_parameters('prune_threshold', response.envelope.additional_properties, action['parameters'], 'PruneThresholdNotInt')
+                            self.inject_boolean_value_into_parameters('return_minimal_metadata', response.envelope.additional_properties, action['parameters'], 'InternalError')
+                            if response.status == 'ERROR':
+                                if mode == 'asynchronous':
+                                    self.send_to_callback(callback, response)
+                                return response
+                            expander.apply(response, action['parameters'], mode=mode)
+
+                        elif action['command'] == 'filter':
+                            filter.apply(response,action['parameters'])
+
+                        elif action['command'] == 'resultify':
+                            resultifier.apply(response, action['parameters'], mode=mode)
+
+                        elif action['command'] == 'scoreless_resultify':
+                            resultifier.apply(response, action['parameters'], mode=mode)
+
+                        elif action['command'] == 'overlay':  # recognize the overlay command
+                            overlay.apply(response, action['parameters'])
+
+                        elif action['command'] == 'filter_kg':  # recognize the filter_kg command
+                            filter_kg.apply(response, action['parameters'])
+
+                        elif action['command'] == 'infer':  # recognize the infer command
+                            infer.apply(response, action['parameters'])
+
+                        elif action['command'] == 'filter_results':  # recognize the filter_results command
+                            response.debug(f"Before filtering, there are {len(response.envelope.message.results)} results")
+                            filter_results.apply(response, action['parameters'])
+                            response.debug(f"After filtering, there are {len(response.envelope.message.results)} results")
+
+                        elif action['command'] == 'connect':
+                            connect.apply(response, action['parameters'])
+
+                        elif action['command'] == 'return':
+                            action_stats['return_action'] = action
+                            break
+
+                        elif action['command'] == 'rank_results':
+                            response.info("Running experimental reranker on results")
+                            try:
+                                ranker = ARAXRanker()
+                                ranker.aggregate_scores_dmk(response)
+                            except Exception as error:
+                                exception_type, exception_value, exception_traceback = sys.exc_info()
+                                response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
+                                if mode == 'asynchronous':
+                                    self.send_to_callback(callback, response)
+                                return response
+
+                        else:
+                            response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
                             if mode == 'asynchronous':
                                 self.send_to_callback(callback, response)
                             return response
-                        expander.apply(response, action['parameters'], mode=mode)
 
-                    elif action['command'] == 'filter':
-                        filter.apply(response,action['parameters'])
-
-                    elif action['command'] == 'resultify':
-                        resultifier.apply(response, action['parameters'], mode=mode)
-
-                    elif action['command'] == 'scoreless_resultify':
-                        resultifier.apply(response, action['parameters'], mode=mode)
-
-                    elif action['command'] == 'overlay':  # recognize the overlay command
-                        overlay.apply(response, action['parameters'])
-
-                    elif action['command'] == 'filter_kg':  # recognize the filter_kg command
-                        filter_kg.apply(response, action['parameters'])
-
-                    elif action['command'] == 'infer':  # recognize the infer command
-                        infer.apply(response, action['parameters'])
-
-                    elif action['command'] == 'filter_results':  # recognize the filter_results command
-                        response.debug(f"Before filtering, there are {len(response.envelope.message.results)} results")
-                        filter_results.apply(response, action['parameters'])
-                        response.debug(f"After filtering, there are {len(response.envelope.message.results)} results")
-
-                    elif action['command'] == 'connect':
-                        connect.apply(response, action['parameters'])
-
-                    elif action['command'] == 'return':
-                        action_stats['return_action'] = action
-                        break
-
-                    elif action['command'] == 'rank_results':
-                        response.info("Running experimental reranker on results")
-                        try:
-                            ranker = ARAXRanker()
-                            ranker.aggregate_scores_dmk(response)
-                        except Exception as error:
-                            exception_type, exception_value, exception_traceback = sys.exc_info()
-                            response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
-                            if mode == 'asynchronous':
-                                self.send_to_callback(callback, response)
-                            return response
-
-                    else:
-                        response.error(f"Unrecognized command {action['command']}", error_code="UnrecognizedCommand")
+                    except Exception as error:
+                        action_span.record_exception(error)
+                        exception_type, exception_value, exception_traceback = sys.exc_info()
+                        response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
                         if mode == 'asynchronous':
                             self.send_to_callback(callback, response)
                         return response
 
-                except Exception as error:
-                    exception_type, exception_value, exception_traceback = sys.exc_info()
-                    response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
-                    if mode == 'asynchronous':
-                        self.send_to_callback(callback, response)
-                    return response
+                    finally:
+                        # Runs on every way out of this action, including the early returns above
+                        _set_message_size_attributes(action_span, response)
+                        if response.status != 'OK':
+                            action_span.set_status(Status(StatusCode.ERROR, f"{response.error_code}: {response.message}"))
 
                 #### If we're in an error state return now
                 if response.status != 'OK':
@@ -883,12 +905,14 @@ class ARAXQuery:
                     return response
 
                 #### Immediately after resultify, run the experimental ranker
-                if action['command'] == 'resultify' and mode != 'RTXKG2' \
+                if action['command'] == 'resultify' \
                    and 'connect' not in (a['command'] for a in actions):
                     response.info("Running experimental reranker on results")
                     try:
                         ranker = ARAXRanker()
-                        ranker.aggregate_scores_dmk(response)
+                        with tracer.start_as_current_span("ARAX_query.rank_results",
+                                                          attributes={'arax.action.automatic': True}):
+                            ranker.aggregate_scores_dmk(response)
                     except Exception as error:
                         exception_type, exception_value, exception_traceback = sys.exc_info()
                         response.error(f"An uncaught error occurred: {error}: {repr(traceback.format_exception(exception_type, exception_value, exception_traceback))}", error_code="UncaughtARAXiError")
@@ -896,11 +920,11 @@ class ARAXQuery:
                             self.send_to_callback(callback, response)
                         return response
 
-            if mode != 'RTXKG2':  # KG2 doesn't use virtual edges or edit the QG, so no transformation needed
-                result_transformer = ResultTransformer()
-                response.debug(f"Calling ResultTransformer; number of results is: {len(response.envelope.message.results)}")
+            result_transformer = ResultTransformer()
+            response.debug(f"Calling ResultTransformer; number of results is: {len(response.envelope.message.results)}")
+            with tracer.start_as_current_span("ARAX_query.result_transformer"):
                 result_transformer.transform(response)
-                response.debug(f"Results have been transformed; number of results is: {len(response.envelope.message.results)}")
+            response.debug(f"Results have been transformed; number of results is: {len(response.envelope.message.results)}")
 
             #### At the end, process the explicit return() action, or implicitly perform one
             return_action = { 'command': 'return', 'parameters': { 'response': 'true', 'store': 'true' } }
@@ -974,7 +998,8 @@ class ARAXQuery:
             response_id = None
             if return_action['parameters']['store'] == 'true':
                 response.debug("Storing resulting Message")
-                response_id = response_cache.add_new_response(response)
+                with tracer.start_as_current_span("ARAX_query.store_response"):
+                    response_id = response_cache.add_new_response(response)
                 response.info(f"Result was stored with id {response_id}. It can be viewed at https://arax.ncats.io/?r={response_id}")
             response.response_id = response_id
 

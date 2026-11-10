@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # output info used for dev
-# The MD5 "/md5_sums_new/KG2.6.7/map_v1.0_KG2.6.7.txt.md5" is different from "/md5_sums_local/KG2.6.7/map_v1.0_KG2.6.7.txt.md5"
+# The MD5 "/md5_sums_new/<db_dir>/<db_file>.md5" is different from "/md5_sums_local/<db_dir>/<db_file>.md5"
 
-# team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/databases/KG2.6.7/map_v1.0_KG2.6.7.txt
+# team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/databases/<db_dir>/<db_file>
 
 # sftp -i /etc/ssh-key/ssh-key-SECRET_FILE -o StrictHostKeyChecking=no -pr team-expander-ops@sftp.transltr.io:/transltr-063208468694-sftp/team-expander/md5_sums/ /md5_sums_new
 
@@ -27,7 +27,7 @@ echo "
       ################################################################################
       #                                                                              #
       #                                                                              #
-      #                      KG2 Database Download Utility                           #
+      #                      ARAX Database Download Utility                          #
       #                                                                              #
       #                                                                              #
       ################################################################################"

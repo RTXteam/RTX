@@ -47,11 +47,6 @@ spec:
             - name: http
               containerPort: 80
               protocol: TCP
-          # Startup probe gives slow first-time startup (gandalf tarball
-          # extraction + Flask boot) up to 20 minutes to come up before the
-          # liveness probe takes over. Without this the default liveness probe
-          # (10s period, 3 failures = ~30s budget) kills the container during
-          # extraction, the unpacked indicator never gets written, and we loop.
           startupProbe:
             httpGet:
               path: /

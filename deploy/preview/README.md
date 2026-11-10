@@ -72,16 +72,19 @@ and live query comments are informational: they report what happened and never t
 because a preview that is up and answering is still useful when one test is broken.
 
 A command that cannot be carried out gets a comment saying which limit was hit rather than a
-generic failure. The reasons are a fork pull request, a closed pull request, no free preview slot,
+generic failure. The reasons are a closed pull request, no free preview slot,
 not enough free disk, not enough free memory, the port already taken, and for `/redeploy` the
 cases in **What /redeploy does** below: no preview running, the commit not pushed yet, or a change
 to one of the files a restart cannot pick up.
 
 The scripts always run from the workflow's own branch on master, never from the pull
-request. The pull request head is checked out
+request. That means a pull request opened before this tooling existed can be previewed.
+For a pull request from a branch on `RTXteam/RTX`, the head is checked out
 into `pr-head/` and used only as the docker build context, so a pull request that changes
 `DockerBuild/CICD-Dockerfile` is built with its own Dockerfile, exactly as `pytest.yml` does.
-This also means a pull request opened before this tooling existed can be previewed.
+A fork pull request is the exception. Its build context is `DockerBuild/` from the same trusted
+checkout the scripts run from, never the fork's, and the image clones the fork's code from
+`refs/pull/<N>/head`. See **Limitations** and the **Security note** below.
 
 GitHub only registers a workflow, and only fires `workflow_dispatch`, `issue_comment` and
 `schedule`, from the default branch copy of the file. Until this workflow is merged to master
@@ -101,7 +104,8 @@ described in **What /redeploy does** below.
   +------------------------------------+
   | GitHub Actions: Preview Deploy     |
   |  resolve PR -> branch, sha         |
-  |  refuse fork PRs and closed PRs    |
+  |  (fork PR -> pull/<N>/head)        |
+  |  refuse closed PRs                 |
   +------------------------------------+
               |  runs on the self-hosted runner
               v
@@ -498,7 +502,7 @@ Everything below is read by `deploy/preview/lib.sh` and can be overridden in the
 | `PREVIEW_HEALTH_TIMEOUT` | `900` | seconds to wait for the ARAX status endpoint after start |
 | `PREVIEW_FAST_HEALTH_TIMEOUT` | `180` | same wait after a fast redeploy, where only the Flask services restart |
 | `PREVIEW_REPO` | `RTXteam/RTX` | repository the pull request state is checked against |
-| `PREVIEW_BUILD_CONTEXT` | `<repo>/DockerBuild` | docker build context, the workflow points it at `pr-head/DockerBuild` |
+| `PREVIEW_BUILD_CONTEXT` | `<repo>/DockerBuild` | docker build context, the workflow points it at `pr-head/DockerBuild`, or for a fork PR at the trusted checkout's own `DockerBuild` |
 | `PREVIEW_DOCKERFILE` | `$PREVIEW_BUILD_CONTEXT/CICD-Dockerfile` | Dockerfile used for the image |
 | `PREVIEW_NGINX_SITE` | `/etc/nginx/sites-enabled/default` | site file edited by `install-nginx-include.sh` |
 | `PREVIEW_MEMORY_LIMIT` | `2g` | `docker run --memory` for a preview container. Never lower than `2g` |
@@ -615,8 +619,9 @@ sudo bash deploy/preview/install-nginx-include.sh
   branch copy of `DockerBuild/`, never the fork's, so a fork cannot change what executes on
   the box outside its container (a fork PR that edits `DockerBuild/` will not see those edits
   in its own preview). Second, the preview container still mounts `config_secrets.json`, so
-  read a fork's diff before commenting `/deploy` on it. The comment gate already limits the
-  command to repository members.
+  read a fork's diff before commenting `/deploy` or `/redeploy` on it, and again after every new
+  push. The comment gate already limits the commands to repository members. `/redeploy` works on
+  a fork PR too, because the container fetches `refs/pull/<N>/head` along with the branch heads.
 - **One box, shared resources.** Previews run on the same EC2 instance as the pytest workflow
   and as every other preview. Several previews at once compete for memory and disk. The preflight
   and the per-container caps described under **Resource guards** keep that from taking the host
@@ -643,7 +648,13 @@ gets those secrets. Two guards follow from that:
 - `/deploy`, `/redeploy` and `/undeploy` are only honoured when the comment author association is
   `OWNER`, `MEMBER` or `COLLABORATOR`. A drive-by comment from an outside contributor does
   nothing.
-- Fork pull requests are refused outright.
+- Fork pull requests build with the trusted recipe. The fork supplies only the code the image
+  clones from `refs/pull/<N>/head`. The docker build context is the default branch copy of
+  `DockerBuild/`, never the fork's, so a fork cannot change the Dockerfile or what runs on the
+  host outside its container. The fork's code still runs inside the build and the preview
+  container, with the real databases and `config_secrets.json` mounted at run time. The member
+  who comments `/deploy` or `/redeploy` on a fork pull request is the last guard, so read its
+  diff first, and read it again after every new push.
 
 Preview URLs are unauthenticated and anybody who knows the pull request number can reach one.
 Treat a preview as public and do not put anything sensitive into a preview query.

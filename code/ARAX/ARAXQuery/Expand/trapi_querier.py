@@ -10,6 +10,7 @@ import requests
 from typing import cast, Any, Optional, Union
 
 import requests_cache
+from opentelemetry import trace
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import Expand.expand_utilities as eu
@@ -26,6 +27,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../../BiolinkHelp
 from biolink_helper import get_biolink_helper
 
 def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
+
+# Tracer for the KP request (cache lookup or HTTP call), so cache hits show up in Jaeger (issue #2923)
+tracer = trace.get_tracer(__name__)
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.node import Node  # noqa: E402
@@ -46,6 +50,10 @@ _TREATS_DESCENDANTS = frozenset(
 )
 
 UUID_NAMESPACE = uuid.UUID('31a17f10-c100-45ad-a3bb-2cccc37a8924')
+
+# Qnode constraints that ARAX applies itself after the KP answers (see ARAX_expander._apply_qnode_post_filters);
+#  these are not sent to KPs, since KPs reject queries containing constraints they don't support
+_ARAX_POST_FILTERED_QNODE_CONSTRAINT_IDS = frozenset({"biolink:highest_FDA_approval_status"})
 
 def _remove_attributes_with_invalid_values(response_json: dict,
                                            kp_curie: str,
@@ -131,12 +139,11 @@ class TRAPIQuerier:
             return final_kg, None
 
         # Verify that the KP accepts these predicates/categories/prefixes
-        if self.kp_infores_curie != "infores:rtx-kg2":
-            if self.user_specified_kp:  # This is already done if expand chose the KP itself
-                if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_infores_curie):
-                    log.error(f"{self.kp_infores_curie} cannot answer queries with the specified categories/predicates",
-                              error_code="UnsupportedQG")
-                    return final_kg, None
+        if self.user_specified_kp:  # This is already done if expand chose the KP itself
+            if not self.kp_selector.kp_accepts_single_hop_qg(qg_copy, self.kp_infores_curie):
+                log.error(f"{self.kp_infores_curie} cannot answer queries with the specified categories/predicates",
+                          error_code="UnsupportedQG")
+                return final_kg, None
 
         # Convert the QG so that it uses curies with prefixes the KP likes
         qg_copy = self.kp_selector.make_qg_use_supported_prefixes(qg_copy, self.kp_infores_curie, log)
@@ -271,28 +278,6 @@ class TRAPIQuerier:
             kg_edges_for_qedge.update(add_bound_edges)
         return result_kg, result_aux_graphs
 
-    def answer_single_node_query(
-            self, single_node_qg: QueryGraph
-    ) -> QGOrganizedKnowledgeGraph:
-        """
-        This function answers a single-node (edge-less) query using the specified KP.
-        :param single_node_qg: A TRAPI query graph containing a single node (no edges).
-        :return: An (almost) TRAPI knowledge graph containing all of the nodes and edges returned as
-           results for the query. (Organized by QG IDs.)
-        """
-        log = self.log
-        final_kg = QGOrganizedKnowledgeGraph()
-        qg_copy = copy.deepcopy(single_node_qg)
-
-        # Verify this query graph is valid, preprocess it for the KP's needs, and make sure it's answerable by the KP
-        self._verify_is_single_node_query_graph(qg_copy)
-        if log.status != 'OK':
-            return final_kg
-
-        # Answer the query using the KP and load its answers into our object model
-        final_kg, _ = self._answer_query_using_kp(qg_copy)
-        return final_kg
-
     def _verify_is_one_hop_query_graph(self, query_graph: QueryGraph):
         if len(query_graph.edges) != 1:
             self.log.error(f"answer_one_hop_query() was passed a query graph that is not one-hop: "
@@ -302,11 +287,6 @@ class TRAPIQuerier:
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
         elif len(query_graph.nodes) < 2:
             self.log.error(f"answer_one_hop_query() was passed a query graph with less than two nodes: "
-                           f"{query_graph.to_dict()}", error_code="InvalidQuery")
-
-    def _verify_is_single_node_query_graph(self, query_graph: QueryGraph):
-        if len(query_graph.edges) > 0:
-            self.log.error(f"answer_single_node_query() was passed a query graph that has edges: "
                            f"{query_graph.to_dict()}", error_code="InvalidQuery")
 
     def _get_kg_to_qg_mappings_from_results(
@@ -377,12 +357,20 @@ class TRAPIQuerier:
         cacher = KPQueryCacher()
         r = None
         try:
-            response_data, http_code, elapsed_time, error = await cacher.get_result(f"{self.kp_endpoint}/query",
-                                                                                    request_body,
-                                                                                    kp_curie=self.kp_infores_curie,
-                                                                                    timeout=query_timeout,
-                                                                                    bypass_cache=bypass_cache,
-                                                                                    async_session=True)
+            # On a cache hit no HTTP call is made, so record it on this span (issue #2923)
+            with tracer.start_as_current_span(
+                    "Expand.kp_request",
+                    attributes={'arax.kp.infores': self.kp_infores_curie,
+                                'arax.kp.url': f"{self.kp_endpoint}/query",
+                                'arax.kp.bypass_cache': bool(bypass_cache)}) as request_span:
+                response_data, http_code, elapsed_time, error = await cacher.get_result(f"{self.kp_endpoint}/query",
+                                                                                        request_body,
+                                                                                        kp_curie=self.kp_infores_curie,
+                                                                                        timeout=query_timeout,
+                                                                                        bypass_cache=bypass_cache,
+                                                                                        async_session=True)
+                request_span.set_attribute('arax.kp.cache_hit', error == "from cache")
+                request_span.set_attribute('arax.kp.http_status', http_code)
             if http_code == 200:
                 r = response_data
 
@@ -524,14 +512,21 @@ class TRAPIQuerier:
         stripped_qedges = {qedge_key: self._strip_empty_properties(qedge)
                            for qedge_key, qedge in qg.edges.items()}
 
+        # Leave out constraints that ARAX applies itself after the KP answers
+        for stripped_qnode in stripped_qnodes.values():
+            if "constraints" in stripped_qnode:
+                kp_constraints = [constraint for constraint in stripped_qnode["constraints"]
+                                  if constraint.get("id") not in _ARAX_POST_FILTERED_QNODE_CONSTRAINT_IDS]
+                if kp_constraints:
+                    stripped_qnode["constraints"] = kp_constraints
+                else:
+                    del stripped_qnode["constraints"]
+
         # Load the query into a JSON Query object
         json_qg = {'nodes': stripped_qnodes, 'edges': stripped_qedges}
         body: dict[str, Any] = {'message': {'query_graph': json_qg},
                                 'submitter': 'infores:arax'}
-        if self.kp_infores_curie == "infores:rtx-kg2":
-            body['return_minimal_metadata'] = True  # Don't want KG2 attributes because ARAX adds them later (faster)
-
-        # If sending a query to Retriever: specify Tier 1 only, unless tiers is already present
+        # If sending a query to Retriever: specify Tier 0 only, unless tiers is already present
         if self.kp_infores_curie == "infores:retriever":
             body.setdefault('parameters', {})
             if 'tiers' not in body['parameters']:
@@ -584,6 +579,7 @@ class TRAPIQuerier:
 
         # Populate our final KG with the returned edges
         unbound_edges = {}
+        kp_to_arax_edge_keys = {}
         nodes_dict = kg.nodes or {}
         edges_dict = kg.edges or {}
         for edge_key, edge in edges_dict.items():
@@ -610,6 +606,7 @@ class TRAPIQuerier:
             arax_edge_key = self._get_arax_edge_key(edge)
 
             if edge_key in kg_to_qg_mappings['edges']:
+                kp_to_arax_edge_keys[edge_key] = arax_edge_key
                 for qedge_key in kg_to_qg_mappings['edges'][edge_key]:
                     # for each `qedge_key` to which this edge is bound,
                     # add the edge to `answer_kg` with the ARAX edge key
@@ -714,6 +711,10 @@ class TRAPIQuerier:
             for node_key, node in nodes.items():
                 node._query_ids = eu.convert_to_list(query_curie_mappings.get(node_key))
 
+        # Bound edges were re-keyed with ARAX edge keys above, so point aux graphs at those keys too
+        for aux_graph in aux_graphs.values():
+            aux_graph.edges = [kp_to_arax_edge_keys.get(edge_id, edge_id) for edge_id in aux_graph.edges or []]
+
         # Add subclass_of edges for any parent to child relationships KPs returned
         answer_kg = self._add_subclass_of_edges(answer_kg, qg)
 
@@ -746,9 +747,7 @@ class TRAPIQuerier:
 
     def _get_query_timeout_length(self) -> int:
         # Returns the number of seconds we should wait for a response
-        if self.kp_infores_curie == "infores:rtx-kg2":
-            return 600
-        elif self.kp_timeout:
+        if self.kp_timeout:
             return self.kp_timeout
         else:
             return 120

@@ -1195,7 +1195,7 @@ def _get_results_for_kg_by_qg(kg: KnowledgeGraph,              # all nodes *must
 
     # ------------------ Convert the final result graphs into actual Swagger object model results ----------- #
     log.debug("Loading final result graphs into TRAPI object model")
-    resource_id = "infores:rtx-kg2" if mode == "RTXKG2" else "infores:arax"
+    resource_id = "infores:arax"
     results = []
     for result_graph in final_result_graphs:
         # TRAPI 2.0: one binding per qnode/qedge key, holding all bound KG ids ('ids' must be non-empty)

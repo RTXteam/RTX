@@ -1076,7 +1076,7 @@ async function sendSyn() {
 	table = document.createElement("table");
 	table.className = 'sumtab';
 	tr = document.createElement("tr");
-	for (var head of ["Identifier","Label","Category","KG2pre","KG2pre Name","KG2pre Category","SRI_NN","SRI Name","SRI Category"] ) {
+	for (var head of ["Identifier","Label","Category","SRI_NN","SRI Name","SRI Category"] ) {
 	    td = document.createElement("th");
 	    td.append(head);
 	    tr.append(td);
@@ -1094,28 +1094,6 @@ async function sendSyn() {
 	    tr.append(td);
 	    td = document.createElement("td");
 	    td.append(syn.category);
-	    tr.append(td);
-
-	    td = document.createElement("td")
-	    text = document.createElement("span");
-	    if (syn.in_kg2pre) {
-		text.innerHTML = '&check;';
-		text.className = 'explevel p9';
-		text.title = 'Found in KG2pre';
-	    }
-	    else {
-		text.innerHTML = '&cross;';
-		text.className = 'explevel p0';
-		text.title = 'NOT found in KG2pre';
-	    }
-	    td.append(text);
-	    tr.append(td);
-
-            td = document.createElement("td")
-	    td.append(syn.name_kg2pre);
-	    tr.append(td);
-	    td = document.createElement("td")
-	    td.append(syn.category_kg2pre);
 	    tr.append(td);
 
 	    td = document.createElement("td")

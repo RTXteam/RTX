@@ -13,7 +13,7 @@ info:
     component: ARA
     team:
       - Expander Agent
-    biolink-version: 4.2.5
+    biolink-version: 4.4.4
     infores: infores:arax
     externalDocs:
       description: >-
