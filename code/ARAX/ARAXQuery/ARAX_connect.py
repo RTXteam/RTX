@@ -418,15 +418,15 @@ class ARAXConnect:
             return None
         if len(path.constraints) == 0:
             return None
-        if path.constraints[0].intermediate_categories is None:
+        if path.constraints[0].required_intermediate_categories is None:
             return None
-        if len(path.constraints[0].intermediate_categories) == 0:
+        if len(path.constraints[0].required_intermediate_categories) == 0:
             return None
-        if len(path.constraints[0].intermediate_categories) > 1:
+        if len(path.constraints[0].required_intermediate_categories) > 1:
             self.response.error(f"Currently, PathFinder can only handle one constraint node. "
-                                f"Number of constraint nodes: {len(path.intermediate_categories)}")
+                                f"Number of constraint nodes: {len(path.constraints[0].required_intermediate_categories)}")
 
-        return path.constraints[0].intermediate_categories[0]
+        return path.constraints[0].required_intermediate_categories[0]
 
     def __connect_nodes(self, describe=False):
         """

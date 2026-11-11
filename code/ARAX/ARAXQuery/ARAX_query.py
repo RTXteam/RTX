@@ -10,6 +10,8 @@ import threading
 import requests
 import gc
 import contextlib
+import functools
+import yaml
 from pydantic_core import to_jsonable_python
 
 from opentelemetry import trace
@@ -59,6 +61,87 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 ARAXResponse.output = 'STDERR'
 
 null_context_manager = contextlib.nullcontext()
+
+
+_LOG_LEVEL_RANKS = {'DEBUG': 10, 'INFO': 20, 'WARNING': 30, 'ERROR': 40}
+
+
+def _requested_log_level_rank(envelope) -> int | None:
+    """The rank of the query's parameters.log_level ("the least critical level of logs to return"), or None"""
+    parameters = getattr(envelope, 'parameters', None)
+    log_level = getattr(parameters, 'log_level', None) if parameters is not None else None
+    if log_level is None:
+        return None
+    return _LOG_LEVEL_RANKS.get(str(getattr(log_level, 'value', log_level)).upper())
+
+
+def _log_entry_is_wanted(log_entry, min_rank: int | None) -> bool:
+    if min_rank is None:
+        return True
+    level = log_entry.get('level') if isinstance(log_entry, dict) else getattr(log_entry, 'level', None)
+    rank = _LOG_LEVEL_RANKS.get(str(getattr(level, 'value', level)).upper())
+    return rank is None or rank >= min_rank
+
+
+def _apply_requested_log_level(envelope) -> None:
+    """Honor parameters.log_level in the Response that is sent back. Only the outgoing envelope.logs list is
+    replaced; response.messages (and so the copy already stored in the ResponseCache) keeps every log entry."""
+    min_rank = _requested_log_level_rank(envelope)
+    if min_rank is not None and envelope.logs:
+        # TRAPI 2.0: logs, if present, must have at least one entry, so leave it out if nothing is left
+        envelope.logs = [log_entry for log_entry in envelope.logs if _log_entry_is_wanted(log_entry, min_rank)] or None
+
+
+def _envelope_dict_with_requested_logs(envelope) -> dict:
+    """envelope.to_dict(), with logs below the query's parameters.log_level left out"""
+    envelope_dict = envelope.to_dict()
+    min_rank = _requested_log_level_rank(envelope)
+    if min_rank is not None and envelope_dict.get('logs'):
+        envelope_dict['logs'] = [log_entry for log_entry in envelope_dict['logs']
+                                 if _log_entry_is_wanted(log_entry, min_rank)]
+        if not envelope_dict['logs']:
+            del envelope_dict['logs']
+    return envelope_dict
+
+
+def _drop_empty_query_graph(envelope) -> None:
+    """TRAPI 2.0 needs QueryGraph.nodes to be non-empty and QueryGraph.edges to be non-empty or left out.
+    Error responses can carry ARAX's empty template QG, so leave out whatever would be invalid."""
+    message = getattr(envelope, 'message', None)
+    query_graph = getattr(message, 'query_graph', None)
+    if query_graph is None:
+        return
+    if not query_graph.nodes:
+        message.query_graph = None
+    elif query_graph.edges is not None and len(query_graph.edges) == 0:
+        query_graph.edges = None
+
+
+@functools.lru_cache(maxsize=1)
+def _get_valid_biolink_predicates() -> frozenset:
+    """All predicates (including mixins) in ARAX's current Biolink version"""
+    from biolink_helper import get_biolink_helper
+    return frozenset(get_biolink_helper().get_descendants("biolink:related_to"))
+
+
+@functools.lru_cache(maxsize=1)
+def _get_valid_biolink_qualifier_types() -> frozenset:
+    """All qualifier slots (e.g. biolink:object_aspect_qualifier) in ARAX's current Biolink version"""
+    from biolink_helper import get_current_arax_biolink_version
+    model_path = f"{os.path.dirname(os.path.abspath(__file__))}/../BiolinkHelper/biolink_model_{get_current_arax_biolink_version()}.yaml"
+    with open(model_path) as model_file:
+        slots = yaml.safe_load(model_file)['slots']
+
+    def is_qualifier(slot_name):
+        seen = set()
+        while slot_name and slot_name not in seen:
+            if slot_name == 'qualifier':
+                return True
+            seen.add(slot_name)
+            slot_name = (slots.get(slot_name) or {}).get('is_a')
+        return False
+
+    return frozenset(f"biolink:{name.replace(' ', '_')}" for name in slots if name != 'qualifier' and is_qualifier(name))
 
 # Tracer for ARAX's own processing steps, so they show up in Jaeger (issue #2923).
 # When telemetry is off, this is a no-op tracer.
@@ -155,7 +238,9 @@ class ARAXQuery:
                     while i_message < n_messages:
                         with self.lock:
                             i_message_dict = self.response.messages[i_message].copy().to_dict()
-                        yield(json.dumps(i_message_dict, allow_nan=False) + "\n")
+                            min_log_rank = _requested_log_level_rank(self.response.envelope)
+                        if _log_entry_is_wanted(i_message_dict, min_log_rank):
+                            yield(json.dumps(i_message_dict, allow_nan=False) + "\n")
                         i_message += 1
                         idle_ticks = 0.0
 
@@ -184,8 +269,10 @@ class ARAXQuery:
 
                 # #### If there are any more logging messages in the queue, send them first
             n_messages = len(self.response.messages)
+            min_log_rank = _requested_log_level_rank(self.response.envelope)
             while i_message < n_messages:
-                yield(json.dumps(self.response.messages[i_message].to_dict(), allow_nan=False) + "\n")
+                if _log_entry_is_wanted(self.response.messages[i_message], min_log_rank):
+                    yield(json.dumps(self.response.messages[i_message].to_dict(), allow_nan=False) + "\n")
                 i_message += 1
 
             #### Also emit any updates to the query_plan
@@ -203,7 +290,7 @@ class ARAXQuery:
 
             # Stream the resulting message back to the client
             try:
-                msg_str = json.dumps(self.response.envelope.to_dict(),
+                msg_str = json.dumps(_envelope_dict_with_requested_logs(self.response.envelope),
                                      allow_nan=False,
                                      sort_keys=True) + "\n"
             except ValueError as v:
@@ -279,6 +366,8 @@ class ARAXQuery:
             # code to the API layer in a private attribute (pydantic allows those)
             if hasattr(response, 'http_status'):
                 response.envelope._http_status = response.http_status
+            _drop_empty_query_graph(response.envelope)
+            _apply_requested_log_level(response.envelope)
             self.track_query_finish()
             return response.envelope
 
@@ -296,6 +385,7 @@ class ARAXQuery:
             self.track_query_finish()
             #### Switch OK to Success for TRAPI compliance
             response.envelope.status = 'Success'
+            _apply_requested_log_level(response.envelope)
 
 
         return response.envelope
@@ -361,6 +451,10 @@ class ARAXQuery:
         ### Preserve Query.parameters
         if 'parameters' in query:
             response.envelope.parameters = QueryParameters.from_dict(query['parameters'])
+            #### ARAX only queries Tier 0 (by design), so say so if the query asked for other tiers
+            requested_tiers = response.envelope.parameters.to_dict().get('tiers') if response.envelope.parameters else None
+            if requested_tiers is not None and list(requested_tiers) != [0]:
+                response.warning(f"ARAX only answers queries using Tier 0 data; ignoring the requested tiers {requested_tiers}")
         #### Preserve the additional_properties i.e. bespoke properties from application
         if 'additional_properties' in query:
             response.envelope.additional_properties = query['additional_properties']
@@ -555,13 +649,16 @@ class ARAXQuery:
                     response.error(f"QueryGraph node '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQNodeProperty")
                     return response
 
-        #### Check to ensure that either edges EOR paths is present
-        if 'edges' not in message['query_graph'] and 'paths' not in message['query_graph']:
-            response.error("QueryGraph is missing both 'edges' and 'paths'. At least one must be present.", error_code="MissingQEdgeAndQPath")
+        #### Check to ensure that either edges EOR paths is present. A node-only QueryGraph is valid TRAPI 2.0,
+        #### but ARAX can't answer it (Retriever needs at least one edge), so it is "Not Implemented" (501)
+        if not message['query_graph'].get('edges') and not message['query_graph'].get('paths'):
+            response.error("QueryGraph has no 'edges' or 'paths'. Node-only queries are valid TRAPI 2.0, but ARAX does not "
+                           "support them: at least one edge or path must be present.", error_code="MissingQEdgeAndQPath",
+                           http_status=501)
             return response
 
         #### Loop through edges checking the attributes
-        if 'edges' in message['query_graph']:
+        if message['query_graph'].get('edges'):
             for id,qedge in message['query_graph']['edges'].items():
                 for attr in qedge:
                     if attr not in allowed_qedge_attributes:
@@ -570,6 +667,21 @@ class ARAXQuery:
                         else:
                             response.error(f"QueryGraph edge '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQEdgeProperty")
                         return response
+
+            #### Check that predicates and qualifier types are real Biolink terms
+            valid_predicates = _get_valid_biolink_predicates()
+            valid_qualifier_types = _get_valid_biolink_qualifier_types()
+            for id,qedge in message['query_graph']['edges'].items():
+                for predicate in qedge.get('predicates') or []:
+                    if predicate not in valid_predicates:
+                        response.error(f"QueryGraph edge '{id}' has predicate '{predicate}', which is not a Biolink predicate", error_code="InvalidPredicate", http_status=400)
+                        return response
+                constraints = qedge.get('constraints') or {}
+                for qualifier_set in constraints.get('qualifiers') or []:
+                    for qualifier_type in qualifier_set or {}:
+                        if qualifier_type not in valid_qualifier_types:
+                            response.error(f"QueryGraph edge '{id}' has a qualifier constraint with qualifier type '{qualifier_type}', which is not a Biolink qualifier", error_code="InvalidQualifier", http_status=422)
+                            return response
 
         return response
 
@@ -1037,7 +1149,7 @@ class ARAXQuery:
 
     ############################################################################################
     def send_to_callback(self, callback, response):
-        envelope_dict = response.envelope.to_dict()
+        envelope_dict = _envelope_dict_with_requested_logs(response.envelope)
         post_succeeded = False
         send_attempts = 0
         timeout = 300

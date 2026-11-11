@@ -104,6 +104,10 @@ class Message(object):
                 if self.auxiliary_graphs[_key]:
                     _field_dict[_key] = self.auxiliary_graphs[_key].to_dict()
             _dict['auxiliary_graphs'] = _field_dict
+        # HAND EDIT: TRAPI 2.0 requires auxiliary_graphs to have at least one entry, or be left out.
+        # Re-apply this edit if the models are regenerated.
+        if not _dict.get('auxiliary_graphs'):
+            _dict.pop('auxiliary_graphs', None)
         # puts key-value pairs in additional_properties in the top level
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():

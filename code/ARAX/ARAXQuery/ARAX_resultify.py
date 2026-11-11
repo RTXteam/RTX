@@ -201,8 +201,15 @@ def _extract_aux_graph_contents(
 
 def analyze_message_get_referenced_IDs(
         message: Message,
-        log: ARAXResponse
+        log: ARAXResponse,
+        apply_both_endpoints_rule: bool = True
 ) -> tuple[set[str], set[str], set[str], set[int]]:
+    """Return the IDs of the KG nodes, KG edges, aux graphs and results that the message's results reference.
+
+    apply_both_endpoints_rule: when True (the default), a KG edge whose subject and object are both
+    referenced also counts as referenced (rule (a) below). Pass False for the final TRAPI 2.0 cleanup,
+    which must drop any KG edge that no result or support graph references.
+    """
     kg = message.knowledge_graph
     if kg is None:
         log.error("Message has no knowledge graph; returning")
@@ -431,7 +438,8 @@ def analyze_message_get_referenced_IDs(
             if not hasattr(edge, 'object') or edge.object is None:
                 log.warning(f"KG edge {edge_id} has no object; skipping")
                 continue
-            if edge.subject in referenced_nodes and edge.object in referenced_nodes \
+            if apply_both_endpoints_rule \
+               and edge.subject in referenced_nodes and edge.object in referenced_nodes \
                and edge_id not in referenced_edges:
                 referenced_edges.add(edge_id)
                 added_this_round = True

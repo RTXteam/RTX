@@ -44,6 +44,9 @@ class QueryParameters(object):
         "populate_by_name": True,
         "validate_assignment": True,
         "protected_namespaces": (),
+        # HAND EDIT: TRAPI 2.0 QueryParameters has additionalProperties: true, and the server MUST repeat
+        # the parameters it is given, so keep unknown keys (model_dump includes them). Re-apply if regenerated.
+        "extra": "allow",
     }
 
 

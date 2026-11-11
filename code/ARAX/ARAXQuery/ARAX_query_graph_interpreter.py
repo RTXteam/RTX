@@ -263,6 +263,15 @@ class ARAXQueryGraphInterpreter:
 
                 new_araxi_commands.append(new_command)
 
+            # NGD virtual edges are statistical_association edges with no qualifiers, so they would violate
+            # knowledge_level/agent_type or qualifier constraints on a qedge. Skip the NGD overlay for such queries.
+            if self._has_klat_or_qualifier_constraints(response.envelope.message.query_graph):
+                ngd_commands = [command for command in new_araxi_commands if 'action=compute_ngd' in command]
+                if ngd_commands:
+                    response.info("Skipping the NGD overlay because the query graph has knowledge_level, "
+                                  "agent_type, or qualifier constraints")
+                    new_araxi_commands = [command for command in new_araxi_commands if command not in ngd_commands]
+
             # TODO: Create the restated_question from the template
             response.data['araxi_commands'] = new_araxi_commands
             return response
@@ -278,6 +287,18 @@ class ARAXQueryGraphInterpreter:
         ]
 
         return response
+
+
+    @staticmethod
+    def _has_klat_or_qualifier_constraints(query_graph) -> bool:
+        """True if any qedge has a knowledge_level, agent_type, or qualifier constraint (TRAPI 2.0 QEdge.constraints)"""
+        for qedge in (getattr(query_graph, 'edges', None) or {}).values():
+            constraints = getattr(qedge, 'constraints', None)
+            if constraints is not None and (constraints.knowledge_level is not None
+                                            or constraints.agent_type is not None
+                                            or constraints.qualifiers):
+                return True
+        return False
 
 
     # #### Read the YAML file containing the current QueryGraph templates

@@ -58,6 +58,18 @@ class ARAXMessenger:
         return description_list
 
 
+    @staticmethod
+    def _get_data_release_versions(rtx_config) -> dict | None:
+        """TRAPI 2.0 data_release_versions: the Tier0 build that ARAX's own databases (NGD, xDTD, overlay
+        info, etc.) were made from, taken from the directory names in config_dbs.json (e.g. tier0-20260928)"""
+        database_paths = (getattr(rtx_config, 'config_dbs', None) or {}).get('database_downloads') or {}
+        tier0_builds = sorted({os.path.basename(os.path.dirname(path)) for path in database_paths.values()
+                               if os.path.basename(os.path.dirname(path)).startswith('tier0-')})
+        if not tier0_builds:
+            return None
+        return {"infores:arax": ",".join(tier0_builds)}
+
+
     # #### Create a fresh ARAXResponse object as an envelple and fill with defaults
     def create_envelope(self, response, describe=False):
         """
@@ -100,9 +112,11 @@ class ARAXMessenger:
         envelope.id = None
         envelope.type = "translator_reasoner_response"
         envelope.resource_id = "ARAX"
-        envelope.tool_version = RTXConfiguration().version
-        envelope.schema_version = RTXConfiguration().trapi_version
+        rtx_config = RTXConfiguration()
+        envelope.tool_version = rtx_config.version
+        envelope.schema_version = rtx_config.trapi_version
         envelope.biolink_version = get_current_arax_biolink_version()
+        envelope.data_release_versions = self._get_data_release_versions(rtx_config)
         envelope.status = "OK"
         envelope.description = "Created empty template response"
         envelope.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"

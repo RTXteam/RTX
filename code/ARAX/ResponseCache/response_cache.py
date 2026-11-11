@@ -243,7 +243,7 @@ class ResponseCache:
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
             servername = 'arax.ncats.io'
-        envelope.id = f"https://{servername}/api/arax/v1.4/response/{response_id}"
+        envelope.id = f"https://{servername}/api/arax/v{self.rtxConfig.trapi_major_version}/response/{response_id}"
 
         #### New system to store the responses in an S3 bucket
         rtx_config = RTXConfiguration()

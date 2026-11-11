@@ -54,6 +54,45 @@ UUID_NAMESPACE = uuid.UUID('31a17f10-c100-45ad-a3bb-2cccc37a8924')
 # Qnode constraints that ARAX applies itself after the KP answers (see ARAX_expander._apply_qnode_post_filters);
 #  these are not sent to KPs, since KPs reject queries containing constraints they don't support
 _ARAX_POST_FILTERED_QNODE_CONSTRAINT_IDS = frozenset({"biolink:highest_FDA_approval_status"})
+# Qedge attribute constraints that ARAX applies itself after the KP answers (see
+#  ARAX_expander._apply_qedge_attribute_post_filters); these are not sent to KPs either
+ARAX_POST_FILTERED_QEDGE_CONSTRAINT_IDS = frozenset({"biolink:evidence_count"})
+
+
+def _expand_agent_types(agent_types: list[str]) -> list[str]:
+    """Add each agent_type's Biolink subtypes (e.g. automated_agent -> data_analysis_pipeline,
+    computational_model, ...), so an agent_type constraint also matches edges with a more specific agent_type"""
+    subtypes_by_agent_type = _get_agent_type_subtypes()
+    expanded = list(agent_types)
+    for agent_type in agent_types:
+        for subtype in subtypes_by_agent_type.get(agent_type, ()):
+            if subtype not in expanded:
+                expanded.append(subtype)
+    return expanded
+
+
+_AGENT_TYPE_SUBTYPES_CACHE: dict[str, list[str]] | None = None
+
+
+def _get_agent_type_subtypes() -> dict[str, list[str]]:
+    """{agent_type: [all of its subtypes]} from the Biolink model's AgentTypeEnum"""
+    global _AGENT_TYPE_SUBTYPES_CACHE
+    if _AGENT_TYPE_SUBTYPES_CACHE is None:
+        import yaml
+        from biolink_helper import get_current_arax_biolink_version
+        model_path = (f"{os.path.dirname(os.path.abspath(__file__))}/../../BiolinkHelper/"
+                      f"biolink_model_{get_current_arax_biolink_version()}.yaml")
+        with open(model_path) as model_file:
+            permissible_values = yaml.safe_load(model_file)['enums']['AgentTypeEnum']['permissible_values']
+        parents = {value: (info or {}).get('is_a') for value, info in permissible_values.items()}
+        subtypes: dict[str, list[str]] = defaultdict(list)
+        for value in parents:
+            ancestor = parents[value]
+            while ancestor:
+                subtypes[ancestor].append(value)
+                ancestor = parents.get(ancestor)
+        _AGENT_TYPE_SUBTYPES_CACHE = dict(subtypes)
+    return _AGENT_TYPE_SUBTYPES_CACHE
 
 def _remove_attributes_with_invalid_values(response_json: dict,
                                            kp_curie: str,
@@ -521,6 +560,25 @@ class TRAPIQuerier:
                     stripped_qnode["constraints"] = kp_constraints
                 else:
                     del stripped_qnode["constraints"]
+
+        for stripped_qedge in stripped_qedges.values():
+            qedge_constraints = stripped_qedge.get("constraints")
+            if not isinstance(qedge_constraints, dict):
+                continue
+            # agent_type constraints also match the given agent_types' Biolink subtypes
+            agent_type_constraint = qedge_constraints.get("agent_type")
+            if isinstance(agent_type_constraint, dict) and agent_type_constraint.get("values"):
+                agent_type_constraint["values"] = _expand_agent_types(agent_type_constraint["values"])
+            # Leave out attribute constraints that ARAX applies itself after the KP answers
+            if qedge_constraints.get("attributes"):
+                kp_attribute_constraints = [constraint for constraint in qedge_constraints["attributes"]
+                                            if constraint.get("id") not in ARAX_POST_FILTERED_QEDGE_CONSTRAINT_IDS]
+                if kp_attribute_constraints:
+                    qedge_constraints["attributes"] = kp_attribute_constraints
+                else:
+                    del qedge_constraints["attributes"]
+            if not qedge_constraints:
+                del stripped_qedge["constraints"]
 
         # Load the query into a JSON Query object
         json_qg = {'nodes': stripped_qnodes, 'edges': stripped_qedges}

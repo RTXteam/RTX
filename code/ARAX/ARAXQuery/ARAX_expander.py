@@ -30,7 +30,7 @@ from openapi_server.models.q_node import QNode
 from openapi_server.models.edge import Edge
 from openapi_server.models.attribute_constraint import AttributeConstraint
 from openapi_server.models.auxiliary_graph import AuxiliaryGraph
-from Expand.trapi_querier import TRAPIQuerier
+from Expand.trapi_querier import TRAPIQuerier, ARAX_POST_FILTERED_QEDGE_CONSTRAINT_IDS
 from Expand.trapi_query_cacher import KPQueryCacher
 from ARAX_messenger import ARAXMessenger
 from ARAX_resultify import set_qnode_is_set
@@ -63,7 +63,8 @@ class ARAXExpander:
         self.rtxc = RTXConfiguration()
         # Keep record of which constraints we support (format is: {constraint_id: {operator: {values}}})
         self.supported_qnode_attribute_constraints = {"biolink:highest_FDA_approval_status": {"==": {"regular approval"}}}
-        self.supported_qedge_attribute_constraints = {"knowledge_source": {"==": "*"},
+        self.supported_qedge_attribute_constraints = {"biolink:evidence_count": {">": "*", "<": "*", "==": "*"},
+                                                      "knowledge_source": {"==": "*"},
                                                       "primary_knowledge_source": {"==": "*"},
                                                       "aggregator_knowledge_source": {"==": "*"}}
         # NOTE: nothing in the code-base seems to reference self.supported_qedge_qualifier_constraints;
@@ -406,11 +407,11 @@ class ARAXExpander:
                 # Figure out which KPs would be best to expand this edge with (if no KP was specified)
                 if not user_specified_kp:
                     queriable_kps = set(kp_selector.get_kps_for_single_hop_qg(one_hop_qg))
-                    # remove kps if this edge has kp constraints
-                    allowlist, denylist = eu.get_knowledge_source_constraints(qedge)
+                    # remove kps if this edge's sources constraint denies them. An ALLOW list names knowledge
+                    # sources (e.g. infores:ctd), which an aggregator KP like Retriever can still provide, so
+                    # it is applied to the returned edges (_apply_knowledge_source_constraints), not to KPs
+                    _, denylist = eu.get_knowledge_source_constraints(qedge)
                     kps_to_query = queriable_kps - denylist
-                    if allowlist:
-                        kps_to_query = {kp for kp in kps_to_query if kp in allowlist}
 
                     for skipped_kp in queriable_kps.difference(kps_to_query):
                         skipped_message = "This KP was constrained by this edge"
@@ -549,6 +550,12 @@ class ARAXExpander:
                 # Handle knowledge source constraints for this qedge
                 # (remove edges that have any sources that are constrained)
                 self._apply_knowledge_source_constraints(qedge_key,
+                                                         message.query_graph,
+                                                         overarching_kg,
+                                                         log)
+
+                # Handle numeric attribute constraints (e.g. biolink:evidence_count > 5) for this qedge
+                self._apply_qedge_attribute_post_filters(qedge_key,
                                                          message.query_graph,
                                                          overarching_kg,
                                                          log)
@@ -708,17 +715,70 @@ class ARAXExpander:
                     # Don't keep edges that ONLY come from excluded sources
                     if edge_sources.issubset(denylist):
                         kedges_to_remove.append(kedge_key)
-                        break
                     # Only keep edges that come from at least ONE allowed source
                     elif allowlist and not edge_sources.intersection(allowlist):
                         kedges_to_remove.append(kedge_key)
-                        break
             if kedges_to_remove:
                 log.debug(f"Removing {len(kedges_to_remove)} edges because they do not fulfill knowledge source constraint")
                 # remove kedges which have been determined to be constrained
                 for kedge_key in kedges_to_remove:
                     if kedge_key in overarching_kg.edges_by_qg_id[qedge_key]:
                         del overarching_kg.edges_by_qg_id[qedge_key][kedge_key]
+
+
+    def _apply_qedge_attribute_post_filters(
+        self,
+        qedge_key: str,
+        query_graph: QueryGraph,
+        overarching_kg: QGOrganizedKnowledgeGraph,
+        log: ARAXResponse,
+    ) -> None:
+        """Remove edges fulfilling qedge_key that don't satisfy its numeric attribute constraints (e.g.
+        biolink:evidence_count > 5). Per TRAPI, an edge without the constrained attribute doesn't satisfy it."""
+        qedge = query_graph.edges[qedge_key]
+        attribute_constraints = (qedge.constraints.attributes if qedge.constraints else None) or []
+        constraints_to_apply = [constraint for constraint in attribute_constraints
+                                if constraint.id in ARAX_POST_FILTERED_QEDGE_CONSTRAINT_IDS]
+        if not constraints_to_apply or qedge_key not in overarching_kg.edges_by_qg_id:
+            return
+        edges_for_qedge = overarching_kg.edges_by_qg_id[qedge_key]
+        edge_keys_to_remove = [edge_key for edge_key, edge in edges_for_qedge.items()
+                               if not all(self._edge_satisfies_numeric_constraint(edge, constraint)
+                                          for constraint in constraints_to_apply)]
+        for edge_key in edge_keys_to_remove:
+            del edges_for_qedge[edge_key]
+        log.info(f"Removed {len(edge_keys_to_remove)} edges fulfilling {qedge_key} that don't satisfy its attribute "
+                 f"constraints ({', '.join(f'{c.id} {c.operator} {c.value}' for c in constraints_to_apply)}); "
+                 f"{len(edges_for_qedge)} remain")
+
+    @staticmethod
+    def _edge_satisfies_numeric_constraint(edge: Edge, constraint: AttributeConstraint) -> bool:
+        def to_number(value):
+            if isinstance(value, bool):
+                return None
+            if isinstance(value, (int, float)):
+                return value
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return None
+
+        edge_values = [to_number(attribute.value) for attribute in (edge.attributes or [])
+                       if attribute.attribute_type_id == constraint.id]
+        edge_values = [value for value in edge_values if value is not None]
+        if not edge_values:
+            return False
+        constraint_values = constraint.value if isinstance(constraint.value, list) else [constraint.value]
+        constraint_values = [value for value in (to_number(value) for value in constraint_values) if value is not None]
+        if not constraint_values:
+            return False
+        if constraint.operator == ">":
+            satisfied = any(edge_value > value for edge_value in edge_values for value in constraint_values)
+        elif constraint.operator == "<":
+            satisfied = any(edge_value < value for edge_value in edge_values for value in constraint_values)
+        else:  # "=="
+            satisfied = any(edge_value == value for edge_value in edge_values for value in constraint_values)
+        return not satisfied if constraint.var_not else satisfied
 
 
     def _apply_qnode_post_filters(

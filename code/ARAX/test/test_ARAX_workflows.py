@@ -28,7 +28,7 @@ def _virtual_tester(message: Message, edge_predicate: str, relation: str, attrib
     """
     Tests overlay functions that add virtual edges
     message: returned from _do_arax_query
-    edge_predicate: the name of the virtual edge (eg. biolink:has_jaccard_index_with)
+    edge_predicate: the name of the virtual edge (eg. biolink:similar_to)
     relation: the relation you picked for the virtual_edge_relation (eg. N1)
     attribute_name: the attribute name to test (eg. 'jaccard_index')
     attribute_type: the attribute type (eg. 'EDAM-DATA:1234')
@@ -107,7 +107,7 @@ def test_example_2():
     assert len(message.results) > 0  # :BUG: sometimes the workflow returns 47 results, sometimes 48 (!?)
     assert message.results[0].essence is not None
     # _virtual_tester(message, 'biolink:probably_treats', 'P1', 'probability_treats', 'EDAM-DATA:0951', 2)
-    _virtual_tester(message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM-DATA:1772', 2)
+    _virtual_tester(message, 'biolink:similar_to', 'J1', 'jaccard_index', 'EDAM-DATA:1772', 2)
 
 
 @pytest.mark.slow
@@ -299,7 +299,7 @@ def test_example_2_parkinsons():
     assert response.status == 'OK'
     assert len(message.results) == 15
     assert message.results[0].essence is not None
-    _virtual_tester(response.envelope.message, 'biolink:has_jaccard_index_with', 'J1', 'jaccard_index', 'EDAM-DATA:1772', 2)
+    _virtual_tester(response.envelope.message, 'biolink:similar_to', 'J1', 'jaccard_index', 'EDAM-DATA:1772', 2)
 
 
 def test_FET_ranking_2():

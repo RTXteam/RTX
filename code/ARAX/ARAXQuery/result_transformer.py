@@ -79,6 +79,10 @@ class ResultTransformer:
     def transform(response: ARAXResponse):
         message = response.envelope.message
         if not message.results:
+            # TRAPI 2.0 requires auxiliary_graphs to have at least one entry, or be left out.
+            # (The KG is left as-is: ARAXi workflows like expand() without resultify() return a KG with no results.)
+            if not message.auxiliary_graphs:
+                message.auxiliary_graphs = None
             return
         if ( #Bypassing pathfinder queries
                 message.query_graph
@@ -92,10 +96,10 @@ class ResultTransformer:
 
         if not hasattr(response, "original_query_graph") or not response.original_query_graph.nodes:
             response.error("The original QG was never saved before ARAX edited it! So we can't transform results "
-                           "to TRAPI 1.4 format (i.e., support_graphs).", error_code="NoOriginalQG")
+                           "to use support graphs.", error_code="NoOriginalQG")
             return
 
-        response.info("Transforming results to TRAPI 1.5 format (moving 'virtual' nodes/edges to support graphs)")
+        response.info("Transforming results to use support graphs (moving 'virtual' nodes/edges to auxiliary graphs)")
 
         original_qedge_keys = {qedge_key for qedge_key, qedge in response.original_query_graph.edges.items()
                                if not qedge.exclude}  # 'Exclude'/'kryptonite' edges shouldn't appear in results
@@ -309,17 +313,20 @@ class ResultTransformer:
         # shared resultify helper to compute the live reference closure
         # (following both `biolink:support_graphs` attributes on KG edges and
         # `Analysis.support_graphs` on results), then rebuild the KG and aux
-        # graphs to contain only what is reachable.
+        # graphs to contain only what is reachable. The "both-endpoints rule" is
+        # turned off here: TRAPI 2.0 forbids KG edges that no result or support
+        # graph references, even if both of their nodes are referenced.
         ref_nodes, ref_edges, ref_aux_graphs, _ref_results = \
-            analyze_message_get_referenced_IDs(message, response)
+            analyze_message_get_referenced_IDs(message, response, apply_both_endpoints_rule=False)
         message.knowledge_graph = KnowledgeGraph(
             nodes={nid: n for nid, n in message.knowledge_graph.nodes.items()
                    if nid in ref_nodes},
             edges={eid: e for eid, e in message.knowledge_graph.edges.items()
                    if eid in ref_edges})
+        # TRAPI 2.0 requires auxiliary_graphs to have at least one entry, or be left out
         message.auxiliary_graphs = {aid: a
                                     for aid, a in message.auxiliary_graphs.items()
-                                    if aid in ref_aux_graphs}
+                                    if aid in ref_aux_graphs} or None
 
         # Return the original query graph in the response, rather than our edited version
         response.debug("Replacing ARAX's internal edited QG with the original input QG..")
@@ -328,4 +335,4 @@ class ResultTransformer:
         # Log some final stats about result transformation
         response.debug(f"Virtual qedge keys moved to support_graphs were: {all_virtual_qedge_keys}")
         response.debug(f"There are a total of {len(message.auxiliary_graphs) if message.auxiliary_graphs else 0} AuxiliaryGraphs.")
-        response.info("Done transforming results to TRAPI 1.5 format (i.e., using support_graphs)")
+        response.info("Done transforming results to use support graphs")

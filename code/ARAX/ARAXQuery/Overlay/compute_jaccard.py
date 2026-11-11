@@ -85,7 +85,7 @@ class ComputeJaccard:
             j_iter = 0
             now = datetime.now()
             #edge_type = parameters['virtual_edge_type']
-            edge_type = 'biolink:has_jaccard_index_with'
+            edge_type = 'biolink:similar_to'  # Biolink 4.4.4 has no has_jaccard_index_with predicate
             qedge_keys = [parameters['virtual_relation_label']]
             relation = parameters['virtual_relation_label']
             defined_datetime = now.strftime("%Y-%m-%d %H:%M:%S")
