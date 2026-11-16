@@ -21,6 +21,16 @@ from sqlalchemy import text
 
 DEBUG = False
 
+# TRAPI AsyncQueryStatusResponse.status allows only Queued, Running, Completed and Failed,
+# so the tracker's own states are mapped onto those; the tracker state stays in the description.
+TRAPI_ASYNC_STATUS_BY_STATE = {
+    'started': 'Running',
+    'Running Async': 'Running',
+    'Completed': 'Completed',
+    'Died': 'Failed',
+    'Reset': 'Failed',
+}
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
@@ -695,10 +705,19 @@ class ARAXQueryTracker:
                 description += f" with response_id {response_id}"
         elif state == 'Died':
             description = f"Job {job_id} was found to be dead after {elapsed} seconds. Reason unknown."
+        elif state == 'Reset':
+            description = f"Job {job_id} was reset (state '{state}') before it finished, probably by a server restart"
         else:
             description = f"Job {job_id} has status '{status}' and state '{state}' with pid {pid}"
 
-        response = AsyncQueryStatusResponse(status=state, description=description,
+        trapi_status = TRAPI_ASYNC_STATUS_BY_STATE.get(state)
+        if trapi_status is None:
+            # an unrecognized state would otherwise leave clients polling forever
+            eprint(f"ERROR: [ARAX_query_tracker.get_job_status] job {job_id} has unrecognized state '{state}'; reporting Failed")
+            trapi_status = 'Failed'
+            description += f" (unrecognized state '{state}')"
+
+        response = AsyncQueryStatusResponse(status=trapi_status, description=description,
                                             logs=[LogEntry(timestamp=datetime.now(timezone.utc), level=LogLevel.INFO, message=description)])
         if response_id is not None:
             response.response_url = f"https://arax.ncats.io/?r={response_id}"
