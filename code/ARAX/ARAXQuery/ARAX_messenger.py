@@ -13,7 +13,7 @@ import numpy as np
 import requests
 
 from ARAX_response import ARAXResponse
-from ARAX_resultify import ARAXResultify
+from ARAX_resultify import ARAXResultify, qnode_is_set, set_qnode_is_set
 from query_graph_info import QueryGraphInfo
 from knowledge_graph_info import KnowledgeGraphInfo
 
@@ -25,7 +25,6 @@ from openapi_server.models.response import Response
 from openapi_server.models.message import Message
 from openapi_server.models.knowledge_graph import KnowledgeGraph
 from openapi_server.models.query_graph import QueryGraph
-from openapi_server.models.pathfinder_query_graph import PathfinderQueryGraph
 from openapi_server.models.q_node import QNode
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_path import QPath
@@ -59,6 +58,18 @@ class ARAXMessenger:
         return description_list
 
 
+    @staticmethod
+    def _get_data_release_versions(rtx_config) -> dict | None:
+        """TRAPI 2.0 data_release_versions: the Tier0 build that ARAX's own databases (NGD, xDTD, overlay
+        info, etc.) were made from, taken from the directory names in config_dbs.json (e.g. tier0-20260928)"""
+        database_paths = (getattr(rtx_config, 'config_dbs', None) or {}).get('database_downloads') or {}
+        tier0_builds = sorted({os.path.basename(os.path.dirname(path)) for path in database_paths.values()
+                               if os.path.basename(os.path.dirname(path)).startswith('tier0-')})
+        if not tier0_builds:
+            return None
+        return {"infores:arax": ",".join(tier0_builds)}
+
+
     # #### Create a fresh ARAXResponse object as an envelple and fill with defaults
     def create_envelope(self, response, describe=False):
         """
@@ -88,7 +99,7 @@ class ARAXMessenger:
     
         #### Create the top-level Response object called an envelope
         response.info("Creating an empty template TRAPI Response")
-        envelope = Response()
+        envelope = Response.model_construct()
         response.envelope = envelope
         self.envelope = envelope
 
@@ -101,9 +112,11 @@ class ARAXMessenger:
         envelope.id = None
         envelope.type = "translator_reasoner_response"
         envelope.resource_id = "ARAX"
-        envelope.tool_version = RTXConfiguration().version
-        envelope.schema_version = RTXConfiguration().trapi_version
+        rtx_config = RTXConfiguration()
+        envelope.tool_version = rtx_config.version
+        envelope.schema_version = rtx_config.trapi_version
         envelope.biolink_version = get_current_arax_biolink_version()
+        envelope.data_release_versions = self._get_data_release_versions(rtx_config)
         envelope.status = "OK"
         envelope.description = "Created empty template response"
         envelope.context = "https://raw.githubusercontent.com/biolink/biolink-model/master/context.jsonld"
@@ -111,12 +124,12 @@ class ARAXMessenger:
         envelope.datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 		#### Create an empty master knowledge graph
-        message.knowledge_graph = KnowledgeGraph()
+        message.knowledge_graph = KnowledgeGraph.model_construct()
         message.knowledge_graph.nodes = {}
         message.knowledge_graph.edges = {}
 
 		#### Create an empty query graph
-        message.query_graph = QueryGraph()
+        message.query_graph = QueryGraph.model_construct()
         message.query_graph.nodes = {}
         message.query_graph.edges = {}
 
@@ -236,9 +249,7 @@ class ARAXMessenger:
 
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = {}
-            message.query_graph.edges = {}
+            message.query_graph = QueryGraph(nodes={}, edges={})
         if message.query_graph.nodes is None:
             message.query_graph.nodes = {}
 
@@ -260,7 +271,7 @@ class ARAXMessenger:
         
         # Set the is_set parameter to what the user selected
         if parameters['is_set'] is not None:
-            qnode.is_set = ( parameters['is_set'].lower() == 'true' or parameters['is_set'].lower() == 't' )
+            set_qnode_is_set(qnode, parameters['is_set'].lower() == 'true' or parameters['is_set'].lower() == 't')
 
         #### If the ids is specified, try to find that
         if parameters['ids'] is not None:
@@ -274,9 +285,9 @@ class ARAXMessenger:
                 id_list = parameters['ids']
                 is_id_a_list = True
                 if len(id_list) == 1:
-                    if qnode.is_set == True:
+                    if qnode_is_set(qnode):
                         response.warning(f"Specified ids '{parameters['ids']}' is singular, but is_set=true, which doesn't make sense, so automatically setting to false. Avoid this warning by not explictly setting to true.")
-                        qnode.is_set = False
+                        set_qnode_is_set(qnode, False)
 
             # Or if it's neither a list or a string, then error out. This cannot be handled at present
             else:
@@ -328,7 +339,7 @@ class ARAXMessenger:
             else:
                 qnode.categories = parameters['categories']
             if parameters['is_set'] is not None:
-                qnode.is_set = (parameters['is_set'].lower() == 'true')
+                set_qnode_is_set(qnode, parameters['is_set'].lower() == 'true')
             message.query_graph.nodes[key] = qnode
             return response
 
@@ -344,9 +355,7 @@ class ARAXMessenger:
         #### Set up local references to the message and verify the query_graph nodes
         message = self.envelope.message
         if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = []
-            message.query_graph.edges = []
+            message.query_graph = QueryGraph(nodes={}, edges={})
         if message.query_graph.nodes is None:
             message.query_graph.nodes = []
         qnodes = message.query_graph.nodes
@@ -468,14 +477,11 @@ class ARAXMessenger:
 
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = {}
-            message.query_graph.edges = {}
+            message.query_graph = QueryGraph(nodes={}, edges={})
         if message.query_graph.edges is None:
             message.query_graph.edges = {}
 
-        #### Create a QEdge
-        qedge = QEdge()
+        #### Pick the key for the new QEdge 
         if parameters['key'] is not None:
             key = parameters['key']
             if key in message.query_graph.edges:
@@ -492,7 +498,6 @@ class ARAXMessenger:
             if parameters['subject'] not in qnodes:
                 response.error(f"While trying to add QEdge, there is no QNode with key {parameters['subject']}", error_code="UnknownSourceKey")
                 return response
-            qedge.subject = parameters['subject']
         else:
             response.error(f"While trying to add QEdge, subject is a required parameter", error_code="MissingSourceKey")
             return response
@@ -502,10 +507,12 @@ class ARAXMessenger:
             if parameters['object'] not in qnodes:
                 response.error(f"While trying to add QEdge, there is no QNode with key {parameters['object']}", error_code="UnknownTargetKey")
                 return response
-            qedge.object = parameters['object']
         else:
             response.error(f"While trying to add QEdge, object is a required parameter", error_code="MissingTargetKey")
             return response
+
+        #### Create the QEdge; subject and object are required fields of the TRAPI 2.0 model
+        qedge = QEdge(subject=parameters['subject'], object=parameters['object'])
 
         #### Add the predicates if any. Need to verify they are allowed predicates. FIXME
         if parameters['predicates'] is not None:
@@ -541,9 +548,7 @@ class ARAXMessenger:
         #### Set up local references to the message and verify the query_graph nodes
         message = self.envelope.message
         if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = {}
-            message.query_graph.edges = {}
+            message.query_graph = QueryGraph(nodes={}, edges={})
         if message.query_graph.edges is None:
             message.query_graph.edges = {}
         qedges = message.query_graph.edges
@@ -724,21 +729,13 @@ class ARAXMessenger:
 
         #### Make sure there's a query_graph already here
         if message.query_graph is None:
-            message.query_graph = QueryGraph()
-            message.query_graph.nodes = {}
-            message.query_graph.paths = {}
-
-        #### Extract the existing paths if any
-        if isinstance(message.query_graph, PathfinderQueryGraph):
-            query_graph_paths = message.query_graph.paths
-        else:
-            query_graph_paths = []
+            message.query_graph = QueryGraph(nodes={})
 
         #### Create a QPath
-        qpath = QPath()
+        qpath = QPath.model_construct()
         if parameters['key'] is not None:
             key = parameters['key']
-            if key in query_graph_paths:
+            if key in message.query_graph.paths:
                 response.error(f"Duplicate key '{key}' specified when trying to create a new QPath", error_code="QPathDuplicateKey")
                 return response
         else:
@@ -767,22 +764,10 @@ class ARAXMessenger:
             response.error(f"While trying to add QPath, object is a required parameter", error_code="MissingTargetKey")
             return response
 
-        #### If the query_graph is type PathfinderQueryGraph already, then just add the new qpath
-        if isinstance(message.query_graph, PathfinderQueryGraph):
-            message.query_graph.paths[key] = qpath
+        if message.query_graph.paths is None:
+            message.query_graph.paths = {}
+        message.query_graph.paths[key] = qpath
 
-        #### If the query_graph is type QueryGraph instead of PathfinderQueryGraph, then migrate to PathfinderQueryGraph
-        elif isinstance(message.query_graph, QueryGraph):
-            eprint(f"INFO: Converting a QueryGraph to a PathfinderQueryGraph")
-            new_query_graph = PathfinderQueryGraph(nodes = message.query_graph.nodes, paths = { key: qpath} )
-            message.query_graph = new_query_graph
-
-        #### Else fail
-        else:
-            response.error(f"Unrecognized class type for message.query_graph: {type(message.query_graph)}", error_code="UnknownQueryGraphType")
-            return response
-
-        #### Return the response
         return response
 
 
@@ -793,12 +778,14 @@ class ARAXMessenger:
         #### If the query_graph is absent of type legacy QueryGraph, then there are no paths yet
         #### so just default to p00
         message = self.envelope.message
-        if message.query_graph is None or isinstance(message.query_graph, QueryGraph):
+        if message.query_graph is None or not isinstance(message.query_graph, QueryGraph):
             return 'p00'
 
         #### Otherwise find the first unused key
         index = 0
         qpaths = message.query_graph.paths
+        if qpaths is None:
+            qpaths = {}
         while 1:
             pad = '0'
             if index > 9:
@@ -892,7 +879,7 @@ class ARAXMessenger:
         #### Unpack the response content into a dict and dump
         try:
             response_dict = response_content.json()
-            envelope = Response().from_dict(response_dict)
+            envelope = Response.from_dict(response_dict)
         except:
             response.error(f"Error converting response from '{message_uri}' to objects from content", error_code="UnableToParseContent")
             return response
@@ -959,13 +946,6 @@ class ARAXMessenger:
 
         #### Deserialize
         message_obj = Message().from_dict(message)
-
-        #### Special handling for the QueryGraph because of its PathfinderQueryGraph duality
-        if 'query_graph' in message and message['query_graph'] is not None:
-            if 'paths' in message['query_graph']:
-                pathfinder_query_graph_obj = PathfinderQueryGraph().from_dict(message['query_graph'])
-                message_obj.query_graph = pathfinder_query_graph_obj
-
 
         #### Revert some things back temporarily
 

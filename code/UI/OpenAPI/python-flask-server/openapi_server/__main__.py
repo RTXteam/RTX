@@ -22,7 +22,7 @@ Implementation notes:
 - Uses a custom JSON provider for Flask response serialization.
 
 Configuration:
-- The configuration file (`flask_config.json`) resides alongside this module and may define:
+- The configuration file (`app_server_config.json`) resides alongside this module and may define:
     - `port` (int): TCP port for the Flask server (default: 5000)
     - `check_databases` (bool): Whether to verify/update databases at startup
     - `run_background_tasker` (bool): Whether to launch the background tasker
@@ -35,6 +35,7 @@ Caveats:
 
 This module is primarily intended for deployment and operational use rather than reuse.
 """
+import yaml
 import warnings
 warnings.filterwarnings(
     "ignore",
@@ -55,7 +56,7 @@ import time
 import traceback
 from pathlib import Path
 import setproctitle
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
+
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.instrumentation.sqlite3 import SQLite3Instrumentor
@@ -63,7 +64,7 @@ from opentelemetry.instrumentation.aiohttp_client import AioHttpClientInstrument
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
+#from opentelemetry.exporter.jaeger.thrift import JaegerExporter
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.sdk.resources import Resource
 
@@ -74,6 +75,16 @@ def eprint(*args, **kwargs):
 FLASK_DEFAULT_TCP_PORT = 5000
 
 HERE = Path(__file__).resolve().parent
+
+trapi_openapi_definition_cache = None
+def trapi_openapi_definition():
+    global trapi_openapi_definition_cache
+    if trapi_openapi_definition_cache is None:
+        yaml_filename = os.path.dirname(os.path.abspath(__file__)) + "/openapi/openapi.yaml"
+        eprint(f"INFO: Reading OpenAPI definition {yaml_filename}")
+        with open( yaml_filename, "r") as infile:
+            trapi_openapi_definition_cache = yaml.safe_load(infile)
+    return trapi_openapi_definition_cache
 
 
 def add_to_syspath(path: Path) -> None:
@@ -100,11 +111,11 @@ def instrument(app, host, port):
         )
     )
 
-    FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=provider)
-    HTTPXClientInstrumentor().instrument(tracer_provider=provider)
-    RequestsInstrumentor().instrument(tracer_provider=provider)
-    SQLite3Instrumentor().instrument(tracer_provider=provider)
-    AioHttpClientInstrumentor().instrument(tracer_provider=provider)
+    #FlaskInstrumentor().instrument_app(app=app.app, tracer_provider=provider)
+    #HTTPXClientInstrumentor().instrument(tracer_provider=provider)
+    #RequestsInstrumentor().instrument(tracer_provider=provider)
+    #SQLite3Instrumentor().instrument(tracer_provider=provider)
+    #AioHttpClientInstrumentor().instrument(tracer_provider=provider)
 
 
 # How long to wait before restarting a crashed background tasker (issue 2908)
@@ -163,6 +174,12 @@ def main():
     araxquery_dir = rtx_root_dir / "code/ARAX/ARAXQuery"
     add_to_syspath(araxquery_dir)
 
+    code_dir = rtx_root_dir / "code/ARAX/ResponseCache"
+    add_to_syspath(code_dir)
+
+    code_dir = rtx_root_dir / "code/ARAX/KnowledgeSources"
+    add_to_syspath(code_dir)
+
     # See ARAX issue 2788. Load kp_info_cacher once in the parent, before
     # the fork below and before any request threads start, so two threads
     # never import it for the first time at the same moment. Import the
@@ -178,15 +195,15 @@ def main():
     # toolkit process-wide, so every controller reuses this one.
     nodesyn_dir = rtx_root_dir / "code/ARAX/NodeSynonymizer"
     add_to_syspath(nodesyn_dir)
-    try:
-        import node_synonymizer  # pylint: disable=import-outside-toplevel, import-error
-        node_synonymizer.get_bmt_toolkit()
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        eprint("FATAL: NodeSynonymizer could not load the BMT toolkit at "
-               f"startup, aborting. {exc}")
-        sys.exit(1)
+    #try:
+    #    import node_synonymizer  # pylint: disable=import-outside-toplevel, import-error
+    #    node_synonymizer.get_bmt_toolkit()
+    #except Exception as exc:  # pylint: disable=broad-exception-caught
+    #    eprint("FATAL: NodeSynonymizer could not load the BMT toolkit at "
+    #           f"startup, aborting. {exc}")
+    #    sys.exit(1)
 
-    config_file_path = HERE / "flask_config.json"
+    config_file_path = HERE / "app_server_config.json"
     # Read any local configuration details for this instance
     local_config = {}
     try:
@@ -205,6 +222,7 @@ def main():
     run_background_tasker = local_config.get('run_background_tasker', True)
     force_disable_telemetry = local_config.get('force_disable_telemetry', False)
     query_fork_mode = local_config.get('query_fork_mode', True)
+    eprint(f"Query fork mode: {query_fork_mode}")
     child_process_rlimit = local_config.get('child_process_rlimit', 34359738368)
 
     if check_databases:
@@ -279,32 +297,79 @@ def main():
             assert False, "****** fork() unsuccessful in __main__"
 
     # loading overly general nodes JSON file
-    from Filter_KG.remove_nodes import RemoveNodes  # pylint: disable=import-outside-toplevel, import-error
-    RemoveNodes.load_block_list_file()
+    #from Filter_KG.remove_nodes import RemoveNodes  # pylint: disable=import-outside-toplevel, import-error
+    #RemoveNodes.load_block_list_file()
 
-    # Import web framework components only in parent process
-    import connexion  # pylint: disable=import-outside-toplevel
-    import flask_cors  # pylint: disable=import-outside-toplevel
-    from openapi_server.provider import CustomJSONProvider  # pylint: disable=import-outside-toplevel
-    specification_dir = HERE / "openapi"
-    app = connexion.App(__name__, specification_dir=str(specification_dir))
-    app.app.json_provider_class = CustomJSONProvider
-    app.app.json = app.app.json_provider_class(app.app)
-    app.app.config["QUERY_FORK_MODE"] = query_fork_mode
-    app.app.config["CHILD_PROCESS_RLIMIT"] = child_process_rlimit
-    eprint(f"Using JSON provider: {type(app.app.json).__name__}")
-    app.add_api('openapi.yaml',
-                arguments={'title': 'ARAX Translator Reasoner'},
-                pythonic_params=True)
-    flask_cors.CORS(app.app)
+    from fastapi import FastAPI, APIRouter
+    from fastapi.middleware.cors import CORSMiddleware
+    import uvicorn # pylint: disable=import-outside-toplevel
+
+    #from openapi_server.apis.pubmed_mesh_ngd_api import router as PubmedMeshNgdApiRouter
+    from openapi_server.apis.asyncquery_api import router as AsyncqueryApiRouter
+    from openapi_server.apis.asyncquery_status_api import router as AsyncqueryStatusApiRouter
+    from openapi_server.apis.entity_api import router as EntityApiRouter
+    #from openapi_server.apis.example_questions_api import router as ExampleQuestionsApiRouter
+    from openapi_server.apis.meta_knowledge_graph_api import router as MetaKnowledgeGraphApiRouter
+    from openapi_server.apis.query_api import router as QueryApiRouter
+    from openapi_server.apis.response_api import router as ResponseApiRouter
+    from openapi_server.apis.status_api import router as StatusApiRouter
+    #from openapi_server.apis.translate_api import router as TranslateApiRouter
+
+    # In FastAPI, custom JSON encoding is typically handled by creating a custom 
+    # Response class (e.g., inheriting from starlette.responses.JSONResponse)
+    # from openapi_server.provider import CustomJSONResponse 
+    app = FastAPI(
+        docs_url="/api/arax/v2.0/docs",
+        openapi_url="/api/arax/v2.0/openapi.json"
+        )
+    app.openapi = trapi_openapi_definition
+    api_router = APIRouter(prefix="/api/arax/v2.0")
+    app.include_router(api_router)
+
+    api_prefix = "/api/arax/v2.0"
+    #app.include_router(PubmedMeshNgdApiRouter, prefix=api_prefix)
+    app.include_router(AsyncqueryApiRouter, prefix=api_prefix)
+    app.include_router(AsyncqueryStatusApiRouter, prefix=api_prefix)
+    app.include_router(EntityApiRouter, prefix=api_prefix)
+    #app.include_router(ExampleQuestionsApiRouter, prefix=api_prefix)
+    app.include_router(MetaKnowledgeGraphApiRouter, prefix=api_prefix)
+    app.include_router(QueryApiRouter, prefix=api_prefix)
+    app.include_router(ResponseApiRouter, prefix=api_prefix)
+    app.include_router(StatusApiRouter, prefix=api_prefix)
+    #app.include_router(TranslateApiRouter, prefix=api_prefix)
+
+    # Record each request's client address for the query tracker's per-client limit
+    from openapi_server.request_context import record_remote_address  # pylint: disable=import-outside-toplevel
+    app.middleware("http")(record_remote_address)
+
+# Store configuration in app.state
+    app.state.QUERY_FORK_MODE = query_fork_mode
+    app.state.CHILD_PROCESS_RLIMIT = child_process_rlimit
+
+    # Set up CORS
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     setproctitle.setproctitle(setproctitle.getproctitle() +
                               f" [port={tcp_port}]")
     if rtx_config.telemetry_enabled and not force_disable_telemetry:
-        eprint("Starting OpenTelemetry instrumentation")
-        instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
-    eprint(f"Starting flask application with TCP port: {tcp_port}")
-    app.run(port=tcp_port, threaded=True)
+        eprint("NOT Starting OpenTelemetry instrumentation")
+        #instrument(app, rtx_config.jaeger_endpoint, rtx_config.jaeger_port)
+
+
+    eprint(f"Starting ARAX API on TCP port: {tcp_port}")
+    # /asyncquery forks the job from inside this process, and the child inherits the sockets of
+    # Apache's keep-alive connections. With uvicorn's default 5s keep-alive timeout the parent
+    # closes an idle connection while the child still holds it open, so Apache reuses a dead
+    # connection and gets a 502 when the child exits. Keep idle connections open well past
+    # Apache's backend keep-alive, as the old Werkzeug server did (it never timed them out).
+    uvicorn.run(app, host="0.0.0.0", port=tcp_port, timeout_keep_alive=300)
+
 
 if __name__ == '__main__':
     main()

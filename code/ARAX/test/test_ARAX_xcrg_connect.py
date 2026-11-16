@@ -11,6 +11,7 @@ make live calls to the Retriever; they take tens of seconds.
 
 import os
 import sys
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -50,20 +51,14 @@ def _xcrg_query_graph():
                 "object": "gene",
                 "predicates": ["biolink:affects"],
                 "knowledge_type": "inferred",
-                "qualifier_constraints": [
-                    {
-                        "qualifier_set": [
-                            {
-                                "qualifier_type_id": "biolink:object_aspect_qualifier",
-                                "qualifier_value": "activity_or_abundance",
-                            },
-                            {
-                                "qualifier_type_id": "biolink:object_direction_qualifier",
-                                "qualifier_value": "decreased",
-                            },
-                        ],
-                    },
-                ],
+                "constraints": {
+                    "qualifiers": [
+                        {
+                            "biolink:object_aspect_qualifier": "activity_or_abundance",
+                            "biolink:object_direction_qualifier": "decreased"
+                        }
+                    ]
+                },
             },
         },
     }
@@ -85,6 +80,8 @@ def _xcrg_response(query_graph):
                         "subject": "CHEBI:1",
                         "predicate": "biolink:affects",
                         "object": "NCBIGene:6323",
+                        "knowledge_level": "not_provided",
+                        "agent_type": "not_provided",
                         "attributes": [],
                         "sources": [
                             {
@@ -99,14 +96,14 @@ def _xcrg_response(query_graph):
             "results": [
                 {
                     "node_bindings": {
-                        "chem": [{"id": "CHEBI:1", "attributes": []}],
-                        "gene": [{"id": "NCBIGene:6323", "attributes": []}],
+                        "chem": {"ids": ["CHEBI:1"]},
+                        "gene": {"ids": ["NCBIGene:6323"]},
                     },
                     "analyses": [
                         {
                             "resource_id": "infores:arax",
                             "edge_bindings": {
-                                "e0": [{"id": "xcrg_edge_0", "attributes": []}],
+                                "e0": {"ids": ["xcrg_edge_0"]},
                             },
                             "score": 1.0,
                         },
@@ -125,7 +122,6 @@ def _response_with_query_graph(query_graph):
             "query_graph": query_graph,
             "knowledge_graph": {"nodes": {}, "edges": {}},
             "results": [],
-            "auxiliary_graphs": {},
         }
     )
     return response
@@ -148,7 +144,7 @@ def test_xcrg_retriever_url_uses_arax_maturity(monkeypatch):
     )
     assert (
         get_xcrg_retriever_url(SimpleNamespace(maturity="unknown"))
-        == "https://retriever.ci.transltr.io/query"
+        == "https://dev.retriever.biothings.io/query"
     )
 
 
@@ -200,10 +196,10 @@ def test_connect_xcrg_calls_package_and_updates_response(monkeypatch):
         def _get_n_results(self, _response_data):
             return 0
 
-    def mock_run_xcrg(query, config, logger):
+    def mock_run_query(query, config, reporter):
         captured["query"] = query
         captured["config"] = config
-        captured["logger"] = logger
+        captured["reporter"] = reporter
         return _xcrg_response(query_graph)
 
     monkeypatch.delenv(XCRG_RETRIEVER_URL_ENV, raising=False)
@@ -214,7 +210,7 @@ def test_connect_xcrg_calls_package_and_updates_response(monkeypatch):
     monkeypatch.setattr(ARAX_connect, "get_curie_ngd_path", lambda: "sqlite:/tmp/xcrg-ngd.sqlite")
     monkeypatch.setattr(ARAX_connect, "get_curie_to_pmids_path", lambda: "sqlite:/tmp/xcrg-pmids.sqlite")
     monkeypatch.setattr(ARAX_connect, "get_current_arax_biolink_version", lambda: "4.3.2")
-    monkeypatch.setattr(ARAX_connect, "run_xcrg", mock_run_xcrg)
+    monkeypatch.setattr(ARAX_connect.xcrg, "run_query", mock_run_query)
 
     response = ARAXConnect().apply(response, {"action": "xcrg"})
 
@@ -226,9 +222,9 @@ def test_connect_xcrg_calls_package_and_updates_response(monkeypatch):
     assert len(response.envelope.message.results) == 1
     assert captured["query"]["message"]["query_graph"]["edges"]["e0"]["knowledge_type"] == "inferred"
     assert captured["config"].retriever_url == "https://retriever.test.transltr.io/query"
-    assert captured["config"].ngd_db_path == "/tmp/xcrg-ngd.sqlite"
-    assert captured["config"].curie_to_pmids_db_path == "/tmp/xcrg-pmids.sqlite"
-    assert captured["config"].timeout == 17
+    assert captured["config"].curie_ngd_db_file == "/tmp/xcrg-ngd.sqlite"
+    assert captured["config"].curie_to_pmids_db_file == "/tmp/xcrg-pmids.sqlite"
+    assert captured["config"].timeout == timedelta(seconds=17)
     assert captured["config"].tiers == [0]
     assert captured["config"].tf_batch_size == 23
     xcrg_plan = response.query_plan["qedge_keys"]["e0"]["arax-xcrg"]
@@ -255,20 +251,14 @@ def _xcrg_gene_object_query_graph():
                 "object": "on",
                 "predicates": ["biolink:affects"],
                 "knowledge_type": "inferred",
-                "qualifier_constraints": [
-                    {
-                        "qualifier_set": [
-                            {
-                                "qualifier_type_id": "biolink:object_aspect_qualifier",
-                                "qualifier_value": "activity_or_abundance",
-                            },
-                            {
-                                "qualifier_type_id": "biolink:object_direction_qualifier",
-                                "qualifier_value": "increased",
-                            },
-                        ],
-                    },
-                ],
+                "constraints": {
+                    "qualifiers": [
+                        {
+                            "biolink:object_aspect_qualifier": "activity_or_abundance",
+                            "biolink:object_direction_qualifier": "increased"
+                        }
+                    ]
+                },
             },
         },
     }
@@ -290,6 +280,8 @@ def _xcrg_gene_object_response(query_graph):
                         "subject": "CHEBI:2",
                         "predicate": "biolink:affects",
                         "object": "NCBIGene:1576",
+                        "knowledge_level": "not_provided",
+                        "agent_type": "not_provided",
                         "attributes": [],
                         "sources": [
                             {
@@ -304,14 +296,14 @@ def _xcrg_gene_object_response(query_graph):
             "results": [
                 {
                     "node_bindings": {
-                        "sn": [{"id": "CHEBI:2", "attributes": []}],
-                        "on": [{"id": "NCBIGene:1576", "attributes": []}],
+                        "sn": {"ids": ["CHEBI:2"]},
+                        "on": {"ids": ["NCBIGene:1576"]},
                     },
                     "analyses": [
                         {
                             "resource_id": "infores:arax",
                             "edge_bindings": {
-                                "t_edge": [{"id": "xcrg_edge_0", "attributes": []}],
+                                "t_edge": {"ids": ["xcrg_edge_0"]},
                             },
                             "score": 1.0,
                         },
@@ -352,7 +344,7 @@ def test_gene_object_connect_xcrg_calls_package_and_updates_response(monkeypatch
         def _get_n_results(self, _response_data):
             return 0
 
-    def mock_run_xcrg(query, config, logger):
+    def mock_run_query(query, config, reporter):
         captured["query"] = query
         return _xcrg_gene_object_response(query_graph)
 
@@ -362,7 +354,7 @@ def test_gene_object_connect_xcrg_calls_package_and_updates_response(monkeypatch
     monkeypatch.setattr(ARAX_connect, "get_curie_ngd_path", lambda: "sqlite:/tmp/xcrg-ngd.sqlite")
     monkeypatch.setattr(ARAX_connect, "get_curie_to_pmids_path", lambda: "sqlite:/tmp/xcrg-pmids.sqlite")
     monkeypatch.setattr(ARAX_connect, "get_current_arax_biolink_version", lambda: "4.3.2")
-    monkeypatch.setattr(ARAX_connect, "run_xcrg", mock_run_xcrg)
+    monkeypatch.setattr(ARAX_connect.xcrg, "run_query", mock_run_query)
 
     response = ARAXConnect().apply(response, {"action": "xcrg"})
 
@@ -374,9 +366,9 @@ def test_gene_object_connect_xcrg_calls_package_and_updates_response(monkeypatch
     assert edge["knowledge_type"] == "inferred"
     assert edge["predicates"] == ["biolink:affects"]
     qualifiers = {
-        q["qualifier_type_id"]: q["qualifier_value"]
-        for qs in edge["qualifier_constraints"]
-        for q in qs["qualifier_set"]
+        qualifier_type_id: qualifier_value
+        for qualifier_set in edge["constraints"]["qualifiers"]
+        for qualifier_type_id, qualifier_value in qualifier_set.items()
     }
     assert qualifiers["biolink:object_aspect_qualifier"] == "activity_or_abundance"
     assert qualifiers["biolink:object_direction_qualifier"] == "increased"
@@ -408,20 +400,14 @@ def test_gene_object_xcrg_full_trapi_integration():
                         "knowledge_type": "inferred",
                         "object": "on",
                         "predicates": ["biolink:affects"],
-                        "qualifier_constraints": [
-                            {
-                                "qualifier_set": [
-                                    {
-                                        "qualifier_type_id": "biolink:object_aspect_qualifier",
-                                        "qualifier_value": "activity_or_abundance",
-                                    },
-                                    {
-                                        "qualifier_type_id": "biolink:object_direction_qualifier",
-                                        "qualifier_value": "increased",
-                                    },
-                                ]
-                            }
-                        ],
+                        "constraints": {
+                            "qualifiers": [
+                                {
+                                    "biolink:object_aspect_qualifier": "activity_or_abundance",
+                                    "biolink:object_direction_qualifier": "increased"
+                                }
+                            ]
+                        },
                         "subject": "sn",
                     }
                 },
@@ -436,7 +422,7 @@ def test_gene_object_xcrg_full_trapi_integration():
                 },
             }
         },
-        "query_options": {"bypass_cache": True},
+        "parameters": {"bypass_cache": True},
     }
 
     araxq = ARAXQuery()

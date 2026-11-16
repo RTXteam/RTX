@@ -481,7 +481,7 @@ def test_example1():
         del test_query_graph['description']
         print(f"Query Graph '{description}'")
 
-        response.envelope.message.query_graph = QueryGraph().from_dict(test_query_graph)
+        response.envelope.message.query_graph = QueryGraph.from_dict(test_query_graph)
 
         query_graph_info = QueryGraphInfo()
         result = query_graph_info.assess(response.envelope.message)

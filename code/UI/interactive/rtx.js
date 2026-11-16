@@ -16,7 +16,7 @@ var UIstate = {};
 
 // defaults
 var base = "";
-var baseAPI = base + "api/arax/v1.4";
+var baseAPI = base + "api/arax/v2.0";
 var araxQuery = '';
 
 // possibly imported by calling page (e.g. index.html)
@@ -77,7 +77,7 @@ function main() {
     UIstate["prevtimestampobj"] = null;
     UIstate["curiefilter"] = [];
     UIstate["summarizetests"] = false;
-    document.getElementById("menuapiurl").href = providers["ARAX"].url + "/ui/";
+    document.getElementById("menuapiurl").href = providers["ARAX"].url + "/docs";
 
     load_meta_knowledge_graph();
     populate_dsl_commands();
@@ -259,10 +259,10 @@ function pasteExample(type) {
 	document.getElementById("jsonText").value = '{\n   "edges": {\n      "e00": {\n         "subject":   "n00",\n         "object":    "n01",\n         "predicates": ["biolink:interacts_with"]\n      }\n   },\n   "nodes": {\n      "n00": {\n         "ids":        ["CHEBI:46195"]\n      },\n      "n01": {\n         "categories":  ["biolink:Protein"]\n      }\n   }\n}\n';
     }
     else if (type == "JSON2") {
-	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "attribute_constraints": [],\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:treats"\n      ],\n      "qualifier_constraints": [],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Disease"\n      ],\n      "constraints": [],\n      "ids": [\n        "MONDO:0015564"\n      ],\n      "is_set": false\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ],\n      "constraints": [],\n      "is_set": false\n    }\n  }\n}\n';
+	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:treats"\n      ],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Disease"\n      ],\n      "ids": [\n        "MONDO:0015564"\n      ]\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ]\n    }\n  }\n}\n';
     }
     else if (type == "JSON3") {
-	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:affects"\n      ],\n      "qualifier_constraints": [\n        {\n          "qualifier_set": [\n            {\n              "qualifier_type_id": "biolink:object_aspect_qualifier",\n              "qualifier_value": "activity_or_abundance"\n            },\n            {\n              "qualifier_type_id": "biolink:object_direction_qualifier",\n              "qualifier_value": "increased"\n            }\n          ]\n        }\n      ],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Gene"\n      ],\n      "ids": [\n        "NCBIGene:1576"\n      ]\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ]\n    }\n  }\n}\n';
+	document.getElementById("jsonText").value = '{\n  "edges": {\n    "t_edge": {\n      "constraints": {\n        "qualifiers": [\n          {\n            "biolink:object_aspect_qualifier": "activity_or_abundance",\n            "biolink:object_direction_qualifier": "increased"\n          }\n        ]\n      },\n      "knowledge_type": "inferred",\n      "object": "on",\n      "predicates": [\n        "biolink:affects"\n      ],\n      "subject": "sn"\n    }\n  },\n  "nodes": {\n    "on": {\n      "categories": [\n        "biolink:Gene"\n      ],\n      "ids": [\n        "NCBIGene:1576"\n      ]\n    },\n    "sn": {\n      "categories": [\n        "biolink:ChemicalEntity"\n      ]\n    }\n  }\n}\n';
     }
     else if (type == "PATH1") {
 	document.getElementById("jsonText").value = '{\n   "nodes": {\n      "n0": {\n         "ids": [ "MONDO:0005011" ]\n      },\n      "n1": {\n         "ids": [ "MONDO:0005180" ]\n      }\n   },\n   "paths": {\n      "p0": {\n         "subject":   "n0",\n         "object":    "n1",\n         "predicates": [ "biolink:related_to" ]\n      }\n   }\n}\n';
@@ -608,29 +608,29 @@ function postQuery_ARAX(qtype,queryObj) {
 
     queryObj.stream_progress = true;
     if (UIstate["timeout"]) {
-	if (!queryObj.query_options)
-	    queryObj.query_options = {};
-	queryObj.query_options['kp_timeout'] = UIstate["timeout"];
+	if (!queryObj.parameters)
+	    queryObj.parameters = {};
+	queryObj.parameters['timeout'] = parseInt(UIstate["timeout"]) || null;
     }
     if (UIstate["pruning"]) {
-	if (!queryObj.query_options)
-	    queryObj.query_options = {};
-	queryObj.query_options['prune_threshold'] = UIstate["pruning"];
+	if (!queryObj.additional_properties)
+	    queryObj.additional_properties = {};
+	queryObj.additional_properties['prune_threshold'] = UIstate["pruning"];
     }
     if (UIstate["maxpaths"]) {
-	if (!queryObj.query_options)
-	    queryObj.query_options = {};
-	queryObj.query_options['max_pathfinder_paths'] = UIstate["maxpaths"];
+	if (!queryObj.additional_properties)
+	    queryObj.additional_properties = {};
+	queryObj.additional_properties['max_pathfinder_paths'] = UIstate["maxpaths"];
     }
     if (UIstate["maxpathlen"]) {
-        if (!queryObj.query_options)
-            queryObj.query_options = {};
-        queryObj.query_options['max_path_length'] = UIstate["maxpathlen"];
+        if (!queryObj.additional_properties)
+            queryObj.additional_properties = {};
+        queryObj.additional_properties['max_path_length'] = UIstate["maxpathlen"];
     }
     if (!UIstate["usecache"]) {
-        if (!queryObj.query_options)
-            queryObj.query_options = {};
-        queryObj.query_options['bypass_cache'] = true;
+        if (!queryObj.parameters)
+            queryObj.parameters = {};
+        queryObj.parameters['bypass_cache'] = true;
     }
 
     var cmddiv = document.createElement("div");
@@ -1373,7 +1373,7 @@ function process_ars_message(ars_msg, level) {
 	table.className = 'sumtab';
 
 	tr = document.createElement("tr");
-	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 1.6?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
+	for (var head of ["","Agent","Status / Code","Message Id","Size","TRAPI 2.0?","N_Results","Nodes / Edges","Sources","Aux","Cache"] ) {
 	    td = document.createElement("th")
 	    td.style.paddingRight = "15px";
 	    td.append(head);
@@ -1584,7 +1584,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&cross;';
 	    nr.className = 'explevel p1';
-	    nr.title = 'Failed TRAPI 1.6 validation';
+	    nr.title = 'Failed TRAPI validation';
 	}
         else if (jsonObj2.validation_result.status == "ERROR") {
             if (type == "all") {
@@ -1596,7 +1596,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	    }
 	    nr.innerHTML = '&#x2755;';
 	    nr.className = 'explevel p3';
-            nr.title = 'There were TRAPI 1.6 validation errors';
+            nr.title = 'There were TRAPI validation errors';
 	}
         else if (jsonObj2.validation_result.status == "NA") {
             if (type == "all") {
@@ -1625,7 +1625,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
 	else {
 	    nr.innerHTML = '&check;';
 	    nr.className = 'explevel p9';
-	    nr.title = 'Passed TRAPI 1.6 validation';
+	    nr.title = 'Passed TRAPI validation';
 	}
 
 	if (document.getElementById("istrapi_"+jsonObj2.araxui_response)) {
@@ -1651,7 +1651,7 @@ function process_response(resp_url, resp_id, type, jsonObj2) {
                 table.style.borderCollapse = "collapse";
 
 		for (var vtype of ["critical","error","warning","info","skipped"]) {
-                    if (Object.keys(jsonObj2.validation_result.validation_messages[vtype]).length > 0) {
+                    if (jsonObj2.validation_result.validation_messages[vtype] && Object.keys(jsonObj2.validation_result.validation_messages[vtype]).length > 0) {
 			tr = document.createElement("tr");
 			td = document.createElement("th");
 			td.style.background = "#3d6d98";
@@ -2196,7 +2196,7 @@ function render_response(respObj,dispjson) {
         document.getElementById("summary_container").innerHTML += "<h2>Summary not available for this query</h2>";
 
 
-    if (respObj.query_options && respObj.query_options.query_plan) {
+    if (respObj.additional_properties && respObj.additional_properties.query_plan) {
         var div = document.createElement("div");
 	div.className = 'statushead';
 	div.append("Expansion Results");
@@ -2207,7 +2207,7 @@ function render_response(respObj,dispjson) {
 	div.append(document.createElement("br"));
         document.getElementById("queryplan_container").append(div);
 
-	div.append(render_queryplan_table(respObj.query_options.query_plan));
+	div.append(render_queryplan_table(respObj.additional_properties.query_plan));
 	div.append(document.createElement("br"));
     }
 
@@ -3096,7 +3096,7 @@ function display_QG_from_JSON() {
 
     if ("nodes" in jsonInput &&
 	"edges" in jsonInput) {
-	process_graph(jsonInput,'QG',"1.6");
+	process_graph(jsonInput,'QG',"2.0");
 
 	if (cyobj[99999]) { cyobj[99999].elements().remove(); }
 	else add_cyto(99999,'QG');
@@ -3218,19 +3218,39 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 
     var results_fragment = document.createDocumentFragment();
 
+    var path_src;
+    var path_end;
+
     // deal with multiple curie/ids per binding?  ToDo?
-    var path_src = result.node_bindings[Object.keys(result.node_bindings)[0]][0].id;
-    var path_end = result.node_bindings[Object.keys(result.node_bindings)[1]][0].id;
 
-    if ('n0' in result.node_bindings)
-	path_src = result.node_bindings['n0'][0].id;
-    else if ('sn' in result.node_bindings)
-	path_src = result.node_bindings['sn'][0].id;
+    if (trapi.startsWith('1')) {
+        path_src = result.node_bindings[Object.keys(result.node_bindings)[0]][0].id;
+        path_end = result.node_bindings[Object.keys(result.node_bindings)[1]][0].id;
 
-    if ('n1' in result.node_bindings)
-	path_end = result.node_bindings['n1'][0].id;
-    else if ('on' in result.node_bindings)
-	path_end = result.node_bindings['on'][0].id;
+        if ('n0' in result.node_bindings)
+            path_src = result.node_bindings['n0'][0].id;
+        else if ('sn' in result.node_bindings)
+            path_src = result.node_bindings['sn'][0].id;
+
+        if ('n1' in result.node_bindings)
+            path_end = result.node_bindings['n1'][0].id;
+        else if ('on' in result.node_bindings)
+            path_end = result.node_bindings['on'][0].id;
+    }
+    else {
+        path_src = result.node_bindings[Object.keys(result.node_bindings)[0]].ids[0];
+        path_end = result.node_bindings[Object.keys(result.node_bindings)[1]].ids[0];
+
+        if ('n0' in result.node_bindings)
+            path_src = result.node_bindings['n0'].ids[0];
+        else if ('sn' in result.node_bindings)
+            path_src = result.node_bindings['sn'].ids[0];
+
+        if ('n1' in result.node_bindings)
+            path_end = result.node_bindings['n1'].ids[0];
+        else if ('on' in result.node_bindings)
+            path_end = result.node_bindings['on'].ids[0];
+    }
 
     var uniq_paths = {};
     var num = 0;
@@ -3238,12 +3258,14 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
 	num++;
 
 	div = document.createElement("div");
-        div.id = 'pathdivhead_'+num;
+    div.id = 'pathdivhead_'+num;
 	div.title = 'Click to expand / collapse analysis '+num;
-        div.className = 'accordion';
+    div.className = 'accordion';
 
-	var auxgraph = ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'];  // TODO: deal with more than one path_binding...?
-        add_aux_graph(kg,auxgraph,aux,num,trapi);
+	var auxgraph = trapi.startsWith('1') ?   // TODO: deal with more than one path_binding...?
+		ranal.path_bindings[Object.keys(ranal.path_bindings)[0]][0]['id'] :
+		ranal.path_bindings[Object.keys(ranal.path_bindings)[0]].ids[0];
+	add_aux_graph(kg,auxgraph,aux,num,trapi);
 	div.setAttribute('onclick', 'add_cyto('+num+',"AUX'+auxgraph+'","grid");sesame(this,a'+num+'_div);');
 
 	div.dataset.pnodes = "|filter|";
@@ -3256,7 +3278,7 @@ function process_pathfinder(result,kg,aux,trapi,mainreasoner) {
         div.append(span);
 
 	var pnodelist = '';
-	for (var pnode of get_node_list_in_paths(ranal.path_bindings,kg,aux).sort((a, b) => kg.nodes[a]['name'].localeCompare(kg.nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
+	for (var pnode of get_node_list_in_paths(trapi,ranal.path_bindings,kg,aux).sort((a, b) => kg.nodes[a]['name'].localeCompare(kg.nodes[b]['name'], 'en', {'sensitivity': 'base'}))) {
 	    if (all_nodes[pnode]) {
                 all_nodes[pnode]['total']++;
                 all_nodes[pnode]['filtered']++;
@@ -3633,15 +3655,17 @@ function filter_paths(curie="CURRENT",only=false, display=true) {
     return showing;
 }
 
-function get_node_list_in_paths(path_bindings,kg,aux) {
+function get_node_list_in_paths(trapi,path_bindings,kg,aux) {
     var pathnodes = {};
     for (var pb in path_bindings) {
-	for (var path in path_bindings[pb]) {
-	    for (var edgeid of aux[path_bindings[pb][path]["id"]]["edges"]) {
-		pathnodes[kg.edges[edgeid]["subject"]] = 1;
-		pathnodes[kg.edges[edgeid]["object"]] = 1;
-	    }
-	}
+        var pathlist = trapi.startsWith('1') ? path_bindings[pb] : path_bindings[pb].ids;
+        for (var path of pathlist) {
+            var path_id = trapi.startsWith('1') ? path.id : path;
+			for (var edgeid of aux[path_id]["edges"]) {
+				pathnodes[kg.edges[edgeid]["subject"]] = 1;
+				pathnodes[kg.edges[edgeid]["object"]] = 1;
+			}
+		}
     }
 
     return Object.keys(pathnodes);
@@ -3649,12 +3673,16 @@ function get_node_list_in_paths(path_bindings,kg,aux) {
 
 
 // a watered-down essence, if you will...
-function eau_du_essence(result) {
+function eau_du_essence(result,trapi) {
     var guessence = 'n/a';
-    for (var nbid in result.node_bindings)
-	for (var node of result.node_bindings[nbid])
-	    if (all_nodes[node.id] < all_nodes[guessence])
-		guessence = node.id;
+    for (var nbid in result.node_bindings) {
+		var nodelist = trapi.startsWith('1') ? result.node_bindings[nbid] : result.node_bindings[nbid].ids;
+		for (var node of nodelist) {
+			var node_id = trapi.startsWith('1') ? node.id : node;
+			if (all_nodes[node_id] < all_nodes[guessence])
+				guessence = node_id;
+		}
+	}
     return guessence;
 }
 
@@ -3662,13 +3690,15 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
     // do this only once
     if (Object.keys(all_nodes).length === 0 && all_nodes.constructor === Object) {
 	for (var result of reslist)
-            for (var nbid in result.node_bindings)
-		for (var node of result.node_bindings[nbid]) {
-		    if (all_nodes[node.id])
-			all_nodes[node.id]++;
-		    else
-			all_nodes[node.id] = 1;
-		    //console.log(node.id+" :: "+all_nodes[node.id]);
+		for (var nbid in result.node_bindings) {
+			var nodelist = trapi.startsWith('1') ? result.node_bindings[nbid] : result.node_bindings[nbid].ids;
+			for (var node of nodelist) {
+				var node_id = trapi.startsWith('1') ? node.id : node;
+				if (all_nodes[node_id])
+					all_nodes[node_id]++;
+				else
+					all_nodes[node_id] = 1;
+			}
 		}
     }
     all_nodes['n/a'] = 10000; // for eau_du_essence
@@ -3683,7 +3713,7 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	if (result.essence)
 	    ess = result.essence;
 	else {
-	    ess = eau_du_essence(result);
+	    ess = eau_du_essence(result,trapi);
 	    if (ess != 'n/a')
 		ess = kg.nodes[ess].name ? kg.nodes[ess].name : kg.nodes[ess].id;
 	}
@@ -3854,11 +3884,13 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	//console.log("=================== CYTO num:"+num+"  #nb:"+result.node_bindings.length);
 
         for (var nbid in result.node_bindings) {
-            for (var node of result.node_bindings[nbid]) {
-		var kmne = Object.create(kg.nodes[node.id]);
+			var nodelist = trapi.startsWith('1') ? result.node_bindings[nbid] : result.node_bindings[nbid].ids;
+            for (var node of nodelist) {
+				var node_id = trapi.startsWith('1') ? node.id : node;
+		var kmne = Object.create(kg.nodes[node_id]);
 		kmne.parentdivnum = num;
 		kmne.trapiversion = trapi;
-		kmne.id = node.id;
+		kmne.id = node_id;
 		if (node.attributes)
 		    kmne.node_binding_attributes = node.attributes;
 		else if (node.detail_lookup)
@@ -3885,16 +3917,17 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 
         for (var ebcidx in full_edge_bindings_collection) {
 	    for (var ebid in full_edge_bindings_collection[ebcidx]) {
-		for (var edge of full_edge_bindings_collection[ebcidx][ebid]) {
-
+			var edgelist = trapi.startsWith('1') ? full_edge_bindings_collection[ebcidx][ebid] : full_edge_bindings_collection[ebcidx][ebid].ids;
+		for (var edge of edgelist) {
+			var edge_id = trapi.startsWith('1') ? edge.id : edge;
 		    // console.log("ebcidx:"+ebcidx+"  ebid:"+ebid+"  edge:"+JSON.stringify(edge));
-		    if (!(edge.id in kg.edges))
-			throw Error("Result graph edge not defined in KG: "+edge.id);
+		    if (!(edge_id in kg.edges))
+			throw Error("Result graph edge not defined in KG: "+edge_id);
 
-		    var kmne = Object.create(kg.edges[edge.id]);
+		    var kmne = Object.create(kg.edges[edge_id]);
 		    kmne.parentdivnum = num;
 		    kmne.trapiversion = trapi;
-		    kmne.id = edge.id;
+		    kmne.id = edge_id;
 		    kmne.source = kmne.subject;
 		    kmne.target = kmne.object;
 		    if (kmne.predicate)
@@ -3932,12 +3965,16 @@ function process_results(reslist,kg,aux,trapi,mainreasoner) {
 	    }
 	}
 
-	//FIX THIS for multiple result.analyses...
-	if (result.analyses && result.analyses[0] && result.analyses[0].support_graphs && result.analyses[0].support_graphs.length > 0) {
-            for (var sg in result.analyses[0].support_graphs) {
-		var sgid = result.analyses[0].support_graphs[sg];
-		add_aux_graph(kg,sgid,aux,num,trapi);
-	    }
+	// Handle multiple result.analyses
+    if (result.analyses) {
+		result.analyses.forEach((ranal) => {
+			if (ranal.support_graphs && ranal.support_graphs.length > 0) {
+				for (var sg in ranal.support_graphs) {
+					var sgid = ranal.support_graphs[sg];
+					add_aux_graph(kg,sgid,aux,num,trapi);
+				}
+			}
+		});
 	}
 
     }
@@ -7842,8 +7879,10 @@ function retrieveKPInfo() {
 			    text.className = "qprob p0";
 			}
 			else if (item["version"] == "1.5.0")
-			    text.className = "qprob p9";
+			    text.className = "qprob p7";
 			else if (item["version"] == "1.6.0")
+			    text.className = "qprob p9";
+			else if (item["version"] == "2.0.0")
 			    text.className = "qprob schp";
 			else
 			    text.className = "qprob p1";

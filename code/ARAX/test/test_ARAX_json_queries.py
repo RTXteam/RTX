@@ -31,7 +31,7 @@ def _run_query_and_do_standard_testing(actions: Optional[List[str]] = None, json
     else:
         query_object = json_query
     if timeout:
-        query_object["query_options"] = {"kp_timeout": timeout}
+        query_object["parameters"] = {"timeout": timeout}
     response = araxq.query(query_object)
     message = araxq.message
     if response.status != 'OK':
@@ -65,8 +65,8 @@ def test_query_by_query_graph_2():
                 "qg2": { "subject": "qg1", "object": "qg0", "predicates": ["biolink:physically_interacts_with"] }
             },
             "nodes": {
-                "qg0": { "name": "acetaminophen", "ids": ["CHEMBL.COMPOUND:CHEMBL112"], "categories": ["biolink:ChemicalEntity"] },
-                "qg1": { "name": None, "ids": None, "categories": ["biolink:Protein"] }
+                "qg0": { "ids": ["CHEMBL.COMPOUND:CHEMBL112"], "categories": ["biolink:ChemicalEntity"] },
+                "qg1": { "ids": None, "categories": ["biolink:Protein"] }
             } } } }
     #araxq = ARAXQuery()
     #araxq.query(query)

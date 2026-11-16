@@ -404,10 +404,10 @@ def test_overlay_after_lookup():
     ngd_bindings = set()
     for result in message.results:
         assert result.analyses[0].score is not None
-        for eb_key, edge_bindings in result.analyses[0].edge_bindings.items():
-            for edge_binding in edge_bindings:
-                if edge_binding.id.startswith("NGD1"):
-                    ngd_bindings.add(edge_binding.id)
+        for eb_key, edge_binding in result.analyses[0].edge_bindings.items():
+            for edge_id in edge_binding.ids:
+                if edge_id.startswith("NGD1"):
+                    ngd_bindings.add(edge_id)
     assert len(ngd_bindings) == len(message.results)
 
 @pytest.mark.slow
@@ -417,8 +417,9 @@ def _get_result_edge_keys(message: Message) -> list[set[str]]:
     for result in message.results:
         edge_keys = set()
         for analysis in result.analyses:
-            edge_keys.update(edge_binding.id for edge_bindings in analysis.edge_bindings.values()
-                             for edge_binding in edge_bindings)
+            # TRAPI 2.0: one EdgeBinding per qedge key, holding all bound edge 'ids'
+            edge_keys.update(edge_id for edge_binding in analysis.edge_bindings.values()
+                             for edge_id in edge_binding.ids)
             for aux_graph_key in analysis.support_graphs or []:
                 edge_keys.update(message.auxiliary_graphs[aux_graph_key].edges)
         edge_keys_by_result.append(edge_keys)

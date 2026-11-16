@@ -17,7 +17,6 @@ import requests
 import json
 import requests
 import requests_cache
-from flask import Flask,redirect
 import copy
 import multiprocessing
 from importlib import metadata
@@ -49,8 +48,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.response import Response as Envelope
 
 # only certain versions of TRAPI can be validated; place default in position [0]
-valid_trapi_versions = ['1.6.0', '1.5.0']
-biolink_version = '4.4.2'
+valid_trapi_versions = ['2.0.0']
+biolink_version = '4.4.4'
 
 try:
     validator_version = f"{metadata.version('reasoner-validator')}"
@@ -244,7 +243,7 @@ class ResponseCache:
         servername = 'localhost'
         if self.rtxConfig.is_production_server:
             servername = 'arax.ncats.io'
-        envelope.id = f"https://{servername}/api/arax/v1.4/response/{response_id}"
+        envelope.id = f"https://{servername}/api/arax/v{self.rtxConfig.trapi_major_version}/response/{response_id}"
 
         #### New system to store the responses in an S3 bucket
         rtx_config = RTXConfiguration()

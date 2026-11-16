@@ -20,12 +20,13 @@ from ARAX_response import ARAXResponse
 PACKAGE_PARENT = '../../UI/OpenAPI/openapi_server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
 from openapi_server.models.message import Message
+from openapi_server.models.query_parameters import QueryParameters
 
 
 def _do_arax_query(query: dict, timeout: Optional[int] = None) -> List[Union[ARAXResponse, Message]]:
     araxq = ARAXQuery()
     if timeout:
-        query["query_options"] = {"kp_timeout": timeout}
+        query["parameters"] = QueryParameters(timeout = timeout)
     response = araxq.query(query)
     if response.status != 'OK':
         print(response.show(level=response.DEBUG))
@@ -182,10 +183,12 @@ def test_chemical_substances_that_down_regulate_STK11_issue_28():
               "subject": "n1",
               "object": "n0",
               "predicates": ["biolink:affects"],
-              "qualifier_constraints": [{"qualifier_set": [
-                {"qualifier_type_id": "biolink:object_aspect_qualifier", "qualifier_value": "activity_or_abundance"},
-                {"qualifier_type_id": "biolink:object_direction_qualifier", "qualifier_value": "decreased"}
-              ]}]
+              "constraints": {
+                "qualifiers": [
+                  {"biolink:object_aspect_qualifier": "activity_or_abundance",
+                   "biolink:object_direction_qualifier": "decreased"}
+                ]
+              }
             }
           },
           "nodes": {

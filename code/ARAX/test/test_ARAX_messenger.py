@@ -16,7 +16,7 @@ def test_create_message_basic():
     messenger.create_envelope(response)
     assert response.status == 'OK'
     assert response.envelope.type == 'translator_reasoner_response'
-    assert response.envelope.schema_version == '1.6.0'
+    assert response.envelope.schema_version == '2.0.0'
 
 
 def test_create_message_node_edge_types():
@@ -222,6 +222,7 @@ def test_add_qpath():
     messenger.add_qnode(response, { 'key': 'n01', 'ids': [ 'MONDO:0007739' ] } )
     messenger.add_qpath(response, { 'subject': 'n00', 'object': 'n01' } )
     assert response.status == 'OK'
+    assert len(message.query_graph.paths) == 1
     messenger.add_qnode(response, { 'key': 'n02', 'ids': [ 'MONDO:0007740' ] } )
     messenger.add_qpath(response, { 'subject': 'n00', 'object': 'n02' } )
     assert response.status == 'OK'

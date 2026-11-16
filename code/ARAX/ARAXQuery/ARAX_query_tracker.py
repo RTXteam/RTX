@@ -21,10 +21,22 @@ from sqlalchemy import text
 
 DEBUG = False
 
+# TRAPI AsyncQueryStatusResponse.status allows only Queued, Running, Completed and Failed,
+# so the tracker's own states are mapped onto those; the tracker state stays in the description.
+TRAPI_ASYNC_STATUS_BY_STATE = {
+    'started': 'Running',
+    'Running Async': 'Running',
+    'Completed': 'Completed',
+    'Died': 'Failed',
+    'Reset': 'Failed',
+}
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../")
 from RTXConfiguration import RTXConfiguration
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
 from openapi_server.models.async_query_status_response import AsyncQueryStatusResponse
+from openapi_server.models.log_entry import LogEntry
+from openapi_server.models.log_level import LogLevel
 
 Base = declarative_base()
 
@@ -660,7 +672,14 @@ class ARAXQueryTracker:
 
 
     ##################################################################################################
-    def get_job_status(self, job_id):
+    def get_job_status(self, job_id, api_base_url=None):
+        """Return the TRAPI AsyncQueryStatusResponse for job_id.
+
+        api_base_url is the public URL of the TRAPI API root that the status request came in on
+        (e.g. https://arax.ncats.io/devED/api/arax/v2.0). When given, response_url points at that
+        instance's /response endpoint, which serves the TRAPI Response JSON, and the description
+        links the same response in the ARAX UI for people. Without it, response_url is left out.
+        """
         if self.session is None:
             return
 
@@ -673,7 +692,8 @@ class ARAXQueryTracker:
         if rows.count() == 0:
             description = f"ERROR: Unable to find a record of job_id {job_id}"
             eprint(description)
-            response = AsyncQueryStatusResponse(status='UnknownJobId', description=description, logs=[])
+            response = AsyncQueryStatusResponse(status='UnknownJobId', description=description,
+                                                logs=[LogEntry(timestamp=datetime.now(timezone.utc), level=LogLevel.ERROR, message=description)])
             ## Should return a 404
             return response
 
@@ -690,14 +710,29 @@ class ARAXQueryTracker:
                 description += " but no response_id is available"
             else:
                 description += f" with response_id {response_id}"
+                if api_base_url:
+                    # the UI lives at the instance root, above /api/arax/vX.Y
+                    ui_root = api_base_url.rstrip('/').split('/api/arax/')[0]
+                    description += f". View it in the ARAX UI: {ui_root}/?r={response_id}"
         elif state == 'Died':
             description = f"Job {job_id} was found to be dead after {elapsed} seconds. Reason unknown."
+        elif state == 'Reset':
+            description = f"Job {job_id} was reset (state '{state}') before it finished, probably by a server restart"
         else:
             description = f"Job {job_id} has status '{status}' and state '{state}' with pid {pid}"
 
-        response = AsyncQueryStatusResponse(status=state, description=description, logs=[])
-        if response_id is not None:
-            response.response_url = f"https://arax.ncats.io/?r={response_id}"
+        trapi_status = TRAPI_ASYNC_STATUS_BY_STATE.get(state)
+        if trapi_status is None:
+            # an unrecognized state would otherwise leave clients polling forever
+            eprint(f"ERROR: [ARAX_query_tracker.get_job_status] job {job_id} has unrecognized state '{state}'; reporting Failed")
+            trapi_status = 'Failed'
+            description += f" (unrecognized state '{state}')"
+
+        response = AsyncQueryStatusResponse(status=trapi_status, description=description,
+                                            logs=[LogEntry(timestamp=datetime.now(timezone.utc), level=LogLevel.INFO, message=description)])
+        # TRAPI: response_url is a URL a client can GET to retrieve the full TRAPI Response (JSON)
+        if response_id is not None and api_base_url:
+            response.response_url = f"{api_base_url.rstrip('/')}/response/{response_id}"
 
         return response
 

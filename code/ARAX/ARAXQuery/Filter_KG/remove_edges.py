@@ -18,7 +18,7 @@ class RemoveEdges:
         for key, node in self.message.query_graph.nodes.items():
             qids[key] = 0
         for key, node in self.message.knowledge_graph.nodes.items():
-            for qid in (getattr(node, 'qnode_keys', None) or []):
+            for qid in (getattr(node, '_qnode_keys', None) or []):
                 qids[qid] += 1
         for k, v in qids.items():
             if v == 0:
@@ -49,7 +49,7 @@ class RemoveEdges:
                     edges_to_remove.add(key)
                     self.response.debug(f"Removing edge: {key}")
                     if edge_params['remove_connected_nodes']:
-                        for qedge_key in getattr(edge, 'qedge_keys', []):
+                        for qedge_key in getattr(edge, '_qedge_keys', []):
                             if edge.subject not in node_keys_to_remove:
                                 node_keys_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
                             else:
@@ -66,7 +66,7 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in kg.nodes.items():
                     if key in node_keys_to_remove:
-                        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
+                        node_qnode_keys = getattr(node, '_qnode_keys', None) or []
                         if 'qnode_keys' in edge_params:
                             if node_qnode_keys:
                                 for param_qnode_key in edge_params['qnode_keys']:
@@ -75,7 +75,7 @@ class RemoveEdges:
                                             nodes_to_remove.add(key)
                                         else:
                                             node_qnode_keys.remove(param_qnode_key)
-                                            node.qnode_keys = node_qnode_keys
+                                            node._qnode_keys = node_qnode_keys
                                     else:
                                         # del node_keys_to_remove[key]
                                         skipped_qnode_keys.add(key)
@@ -88,7 +88,7 @@ class RemoveEdges:
                             else:
                                 for node_key in node_keys_to_remove[key]:
                                     node_qnode_keys.remove(node_key)
-                                    node.qnode_keys = node_qnode_keys
+                                    node._qnode_keys = node_qnode_keys
                                 if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
@@ -105,13 +105,13 @@ class RemoveEdges:
             for key in edges_to_remove:
                 if edge_params.get('qedge_keys', None) is not None:
                     key_edge = kg.edges[key]
-                    key_edge_qedge_keys = getattr(key_edge, 'qedge_keys', None)
+                    key_edge_qedge_keys = getattr(key_edge, '_qedge_keys', None)
                     if key_edge_qedge_keys is not None:
                         qedge_key_diff = set(key_edge_qedge_keys) - set(edge_params['qedge_keys'])
                         if len(qedge_key_diff) < 1:
                             del kg.edges[key]
                         else:
-                            key_edge.qedge_keys = list(qedge_key_diff)
+                            key_edge._qedge_keys = list(qedge_key_diff)
                     else:
                         self.response.warning(
                             f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
@@ -184,7 +184,7 @@ class RemoveEdges:
                         if edge_params['value'] in edge_dict[edge_params['edge_attribute']]:
                             edges_to_remove.add(key)
                             if edge_params['remove_connected_nodes']:
-                                for qedge_key in (getattr(edge, 'qedge_keys', None) or []):
+                                for qedge_key in (getattr(edge, '_qedge_keys', None) or []):
                                     if edge.subject not in node_keys_to_remove:
                                         node_keys_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
                                     else:
@@ -197,7 +197,7 @@ class RemoveEdges:
                         if edge_dict[edge_params['edge_attribute']] == edge_params['value']:
                             edges_to_remove.add(key)
                             if edge_params['remove_connected_nodes']:
-                                for qedge_key in (getattr(edge, 'qedge_keys', None) or []):
+                                for qedge_key in (getattr(edge, '_qedge_keys', None) or []):
                                     if edge.subject not in node_keys_to_remove:
                                         node_keys_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
                                     else:
@@ -214,7 +214,7 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in kg.nodes.items():
                     if key in node_keys_to_remove:
-                        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
+                        node_qnode_keys = getattr(node, '_qnode_keys', None) or []
                         if 'qnode_keys' in edge_params:
                             if node_qnode_keys:
                                 for param_qnode_key in edge_params['qnode_keys']:
@@ -223,7 +223,7 @@ class RemoveEdges:
                                             nodes_to_remove.add(key)
                                         else:
                                             node_qnode_keys.remove(param_qnode_key)
-                                            node.qnode_keys = node_qnode_keys
+                                            node._qnode_keys = node_qnode_keys
                                     else:
                                         skipped_qnode_keys.add(key)
                             else:
@@ -234,7 +234,7 @@ class RemoveEdges:
                             else:
                                 for node_key in node_keys_to_remove[key]:
                                     node_qnode_keys.remove(node_key)
-                                    node.qnode_keys = node_qnode_keys
+                                    node._qnode_keys = node_qnode_keys
                                 if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
@@ -251,13 +251,13 @@ class RemoveEdges:
             for key in edges_to_remove:
                 if edge_params.get('qedge_keys',None) is not None:
                     key_edge = kg.edges[key]
-                    key_edge_qedge_keys = getattr(key_edge, 'qedge_keys', None)
+                    key_edge_qedge_keys = getattr(key_edge, '_qedge_keys', None)
                     if key_edge_qedge_keys is not None:
                         qedge_key_diff = set(key_edge_qedge_keys) - set(edge_params['qedge_keys'])
                         if len(qedge_key_diff) < 1:
                             del kg.edges[key]
                         else:
-                            key_edge.qedge_keys = list(qedge_key_diff)
+                            key_edge._qedge_keys = list(qedge_key_diff)
                     else:
                         self.response.warning(
                             f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
@@ -305,7 +305,7 @@ class RemoveEdges:
                                 if compare(float(attribute.value), edge_params['threshold']):  # check if it's above/below the threshold
                                     edges_to_remove.add(key)  # mark it to be removed
                                     if edge_params['remove_connected_nodes']:  # if you want to remove the connected nodes, mark those too
-                                        for qedge_key in (getattr(edge, 'qedge_keys', None) or []):
+                                        for qedge_key in (getattr(edge, '_qedge_keys', None) or []):
                                             if edge.subject not in node_keys_to_remove:
                                                 node_keys_to_remove[edge.subject] = {edge_qid_dict[qedge_key]['subject']}
                                             else:
@@ -322,7 +322,7 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in kg.nodes.items():
                     if key in node_keys_to_remove:
-                        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
+                        node_qnode_keys = getattr(node, '_qnode_keys', None) or []
                         if 'qnode_keys' in edge_params:
                             if node_qnode_keys:
                                 for param_qnode_key in edge_params['qnode_keys']:
@@ -331,7 +331,7 @@ class RemoveEdges:
                                             nodes_to_remove.add(key)
                                         else:
                                             node_qnode_keys.remove(param_qnode_key)
-                                            node.qnode_keys = node_qnode_keys
+                                            node._qnode_keys = node_qnode_keys
                                     else:
                                         skipped_qnode_keys.add(key)
                             else:
@@ -342,7 +342,7 @@ class RemoveEdges:
                             else:
                                 for node_key in node_keys_to_remove[key]:
                                     node_qnode_keys.remove(node_key)
-                                    node.qnode_keys = node_qnode_keys
+                                    node._qnode_keys = node_qnode_keys
                                 if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
@@ -362,13 +362,13 @@ class RemoveEdges:
             for key in edges_to_remove:
                 if edge_params.get('qedge_keys',None) is not None:
                     key_edge = kg.edges[key]
-                    key_edge_qedge_keys = getattr(key_edge, 'qedge_keys', None)
+                    key_edge_qedge_keys = getattr(key_edge, '_qedge_keys', None)
                     if key_edge_qedge_keys is not None:
                         qedge_key_diff = set(key_edge_qedge_keys) - set(edge_params['qedge_keys'])
                         if len(qedge_key_diff) < 1:
                             del kg.edges[key]
                         else:
-                            key_edge.qedge_keys = list(qedge_key_diff)
+                            key_edge._qedge_keys = list(qedge_key_diff)
                     else:
                         self.response.warning(
                             f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")
@@ -450,7 +450,7 @@ class RemoveEdges:
             for edge in values: # here edge = (edge index, value, subject id, object id)
                 edges_to_remove.add(edge[0])  # mark it to be removed
                 if edge_params['remove_connected_nodes']:  # if you want to remove the connected nodes, mark those too
-                    for qedge_key in (getattr(kg.edges[edge[0]], 'qedge_keys', None) or []):
+                    for qedge_key in (getattr(kg.edges[edge[0]], '_qedge_keys', None) or []):
                         if edge[2] not in node_keys_to_remove: # edge[2] = edge subect
                             node_keys_to_remove[edge[2]] = {edge_qid_dict[qedge_key]['subject']}
                         else:
@@ -468,7 +468,7 @@ class RemoveEdges:
                 # iterate over nodes find adjacent connected nodes
                 for key, node in kg.nodes.items():
                     if key in node_keys_to_remove:
-                        node_qnode_keys = getattr(node, 'qnode_keys', None) or []
+                        node_qnode_keys = getattr(node, '_qnode_keys', None) or []
                         if 'qnode_keys' in edge_params:
                             if node_qnode_keys:
                                 for param_qnode_key in edge_params['qnode_keys']:
@@ -477,7 +477,7 @@ class RemoveEdges:
                                             nodes_to_remove.add(key)
                                         else:
                                             node_qnode_keys.remove(param_qnode_key)
-                                            node.qnode_keys = node_qnode_keys
+                                            node._qnode_keys = node_qnode_keys
                                     else:
                                         # del node_keys_to_remove[key]
                                         skipped_qnode_keys.add(key)
@@ -490,7 +490,7 @@ class RemoveEdges:
                             else:
                                 for node_key in node_keys_to_remove[key]:
                                     node_qnode_keys.remove(node_key)
-                                    node.qnode_keys = node_qnode_keys
+                                    node._qnode_keys = node_qnode_keys
                                 if len(node_qnode_keys) == 0:
                                     nodes_to_remove.add(key)
                 for key in skipped_qnode_keys:
@@ -512,13 +512,13 @@ class RemoveEdges:
             for key in edges_to_remove:
                 if edge_params.get('qedge_keys',None) is not None:
                     key_edge = kg.edges[key]
-                    key_edge_qedge_keys = getattr(key_edge, 'qedge_keys', None)
+                    key_edge_qedge_keys = getattr(key_edge, '_qedge_keys', None)
                     if key_edge_qedge_keys is not None:
                         qedge_key_diff = set(key_edge_qedge_keys) - set(edge_params['qedge_keys'])
                         if len(qedge_key_diff) < 1:
                             del kg.edges[key]
                         else:
-                            key_edge.qedge_keys = list(qedge_key_diff)
+                            key_edge._qedge_keys = list(qedge_key_diff)
                     else:
                         self.response.warning(
                             f"The edge {key} does not have a qedge_keys property. Since a value was supplied for the qedge_keys parameter the edge was not removed.")

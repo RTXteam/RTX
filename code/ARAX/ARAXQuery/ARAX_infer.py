@@ -21,8 +21,7 @@ from ARAX_response import ARAXResponse
 pathlist = os.path.realpath(__file__).split(os.path.sep)
 RTXindex = pathlist.index("RTX")
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'UI', 'OpenAPI', 'python-flask-server']))
-from openapi_server.models.qualifier import Qualifier
-from openapi_server.models.qualifier_constraint import QualifierConstraint as QConstraint
+from openapi_server.models.q_edge_constraints import QEdgeConstraints
 
 sys.path.append(os.path.sep.join([*pathlist[:(RTXindex + 1)], 'code', 'ARAX', 'ARAXQuery', 'Infer', 'scripts']))
 from infer_utilities import InferUtilities

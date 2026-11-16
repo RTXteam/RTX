@@ -110,7 +110,7 @@ class OverlayExposuresData:
                           predicate=self.icees_edge_type,
                           option_group_id=ou.determine_virtual_qedge_option_group(subject_qnode_key, object_qnode_key,
                                                                                   query_graph, log))
-        new_qedge.filled = True
+        new_qedge._filled = True
         query_graph.edges[self.virtual_relation_label] = new_qedge
 
         if num_node_pairs_recognized:
@@ -229,15 +229,16 @@ class OverlayExposuresData:
                                                         upstream_resource_ids=["infores:icees"])
                     ]
         edge = Edge(predicate=self.icees_edge_type, subject=subject_curie, object=object_curie,
-                        attributes=edge_attribute_list,sources=retrieval_source)
-        edge.qedge_keys=[self.virtual_relation_label]
+                        attributes=edge_attribute_list,sources=retrieval_source,
+                        knowledge_level="statistical_association", agent_type="automated_agent")
+        edge._qedge_keys=[self.virtual_relation_label]
         return id, edge
 
     @staticmethod
     def _get_nodes_by_qg_id(knowledge_graph):
         nodes_by_qg_key = dict()
         for key, node in knowledge_graph.nodes.items():
-            for qnode_key in node.qnode_keys:
+            for qnode_key in node._qnode_keys:
                 if qnode_key not in nodes_by_qg_key:
                     nodes_by_qg_key[qnode_key] = dict()
                 nodes_by_qg_key[qnode_key][key] = node

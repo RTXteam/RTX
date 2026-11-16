@@ -1,12 +1,13 @@
 import json
+import logging
 import sys
+from datetime import timedelta
 
 import requests
+import xcrg
 from opentelemetry import trace
 from RTXConfiguration import RTXConfiguration
 from pathfinder.Pathfinder import Pathfinder
-from xcrg import XCRGConfig, run_xcrg
-
 
 tracer = trace.get_tracer(__name__)
 
@@ -29,7 +30,7 @@ from openapi_server.models.result import Result
 from openapi_server.models.node_binding import NodeBinding
 from openapi_server.models.auxiliary_graph import AuxiliaryGraph
 from openapi_server.models.path_binding import PathBinding
-from openapi_server.models.pathfinder_analysis import PathfinderAnalysis
+from openapi_server.models.analysis import Analysis  #T2FIXME
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../NodeSynonymizer/")
 from node_synonymizer import NodeSynonymizer
@@ -45,29 +46,29 @@ XCRG_RETRIEVER_URL_BY_MATURITY = {
     "staging": "https://retriever.ci.transltr.io/query",
     "testing": "https://retriever.test.transltr.io/query",
     "production": "https://retriever.transltr.io/query",
-    "development": "https://retriever.ci.transltr.io/query",
+    "development": "https://dev.retriever.biothings.io/query",
 }
 DEFAULT_XCRG_TIMEOUT = 210
 DEFAULT_XCRG_TF_BATCH_SIZE = 200
 
 
-class ARAXXCRGLogger:
+class ARAX_XCRG_Reporter(xcrg.Reporter):
     """Adapt xCRG package log calls to ARAXResponse logging."""
 
     def __init__(self, response):
-        self.response = response
+        self.response = response # TODO: ARAXResponse?
 
-    def debug(self, message, *args):
-        self.response.debug(self._format(message, args))
-
-    def info(self, message, *args):
-        self.response.info(self._format(message, args))
-
-    def warning(self, message, *args):
-        self.response.warning(self._format(message, args))
-
-    def error(self, message, *args):
-        self.response.error(self._format(message, args), http_status=500)
+    def handle_message(self, message: xcrg.Message):
+        match message:
+            case xcrg.Log_Message(level, message, args, _):
+                match level:
+                    case logging.DEBUG:   self.response.debug(self._format(message, args))
+                    case logging.INFO:    self.response.info(self._format(message, args))
+                    case logging.WARNING: self.response.warning(self._format(message, args))
+                    case logging.ERROR:   self.response.error(self._format(message, args), http_status = 500)
+            case xcrg.Progress_Message(pct_done):
+                # TODO: Report progress to the front-end
+                pass
 
     @staticmethod
     def _format(message, args):
@@ -281,12 +282,7 @@ class ARAXConnect:
         pathfinder_input_data = {'query_graph': response_envelope_as_dict['message']['query_graph'],
                                  'parameters': cleaned_parameters}
 
-        query_options = self.response.envelope.query_options
-        if query_options is not None and "bypass_cache" in query_options:
-            bypass_cache = query_options["bypass_cache"] is not None and str(query_options["bypass_cache"]).lower() != 'false'
-        else:
-            bypass_cache = False
-        if bypass_cache:
+        if self.response.envelope.parameters and self.response.envelope.parameters.bypass_cache:
             self.response.debug(f"bypass_cache is set; skipping cache lookup for {kp_curie}")
             response_code = -2
         else:
@@ -319,10 +315,10 @@ class ARAXConnect:
             else:
                 # Hack to explicitly convert the analyses to PathfinderAnalysis objects because this doesn't work automatically. It should. Maybe move this into Messenger? FIXME
                 i_analysis = 0
-                for analysis_dict in response_data['message']['results'][0]['analyses']:
-                    analysis_obj = PathfinderAnalysis.from_dict(analysis_dict)
-                    self.response.envelope.message.results[0].analyses[i_analysis] = analysis_obj
-                    i_analysis += 1
+                #for analysis_dict in response_data['message']['results'][0]['analyses']:  # T2FIXME
+                #    analysis_obj = PathfinderAnalysis.from_dict(analysis_dict)
+                #    self.response.envelope.message.results[0].analyses[i_analysis] = analysis_obj
+                #    i_analysis += 1
 
         else:
             self.response.debug(f"Applying Connect to Message with parameters {parameters}")
@@ -422,15 +418,15 @@ class ARAXConnect:
             return None
         if len(path.constraints) == 0:
             return None
-        if path.constraints[0].intermediate_categories is None:
+        if path.constraints[0].required_intermediate_categories is None:
             return None
-        if len(path.constraints[0].intermediate_categories) == 0:
+        if len(path.constraints[0].required_intermediate_categories) == 0:
             return None
-        if len(path.constraints[0].intermediate_categories) > 1:
+        if len(path.constraints[0].required_intermediate_categories) > 1:
             self.response.error(f"Currently, PathFinder can only handle one constraint node. "
-                                f"Number of constraint nodes: {len(path.intermediate_categories)}")
+                                f"Number of constraint nodes: {len(path.constraints[0].required_intermediate_categories)}")
 
-        return path.constraints[0].intermediate_categories[0]
+        return path.constraints[0].required_intermediate_categories[0]
 
     def __connect_nodes(self, describe=False):
         """
@@ -547,35 +543,31 @@ class ARAXConnect:
         qedge_keys = list(query["message"].get("query_graph", {}).get("edges", {}))
         qedge_key = qedge_keys[0] if qedge_keys else "xcrg"
         rtx_config = RTXConfiguration()
-        retriever_url = get_xcrg_retriever_url(rtx_config)
-        timeout = get_xcrg_env_int(XCRG_TIMEOUT_ENV, DEFAULT_XCRG_TIMEOUT)
-        tf_batch_size = get_xcrg_env_int(XCRG_TF_BATCH_SIZE_ENV, DEFAULT_XCRG_TF_BATCH_SIZE)
-        ngd_db_path = get_curie_ngd_path().removeprefix("sqlite:")
-        curie_to_pmids_db_path = get_curie_to_pmids_path().removeprefix("sqlite:")
-        config = XCRGConfig(
-            retriever_url=retriever_url,
-            ngd_db_path=ngd_db_path,
-            curie_to_pmids_db_path=curie_to_pmids_db_path,
-            timeout=timeout,
+        config = xcrg.Config(
+            retriever_url=get_xcrg_retriever_url(rtx_config),
+            curie_ngd_db_file=get_curie_ngd_path().removeprefix("sqlite:"),
+            curie_to_pmids_db_file= get_curie_to_pmids_path().removeprefix("sqlite:"),
+            timeout=timedelta(seconds=get_xcrg_env_int(XCRG_TIMEOUT_ENV, DEFAULT_XCRG_TIMEOUT)),
             tiers=[0],
-            tf_batch_size=tf_batch_size,
+            tf_batch_size= get_xcrg_env_int(XCRG_TF_BATCH_SIZE_ENV, DEFAULT_XCRG_TF_BATCH_SIZE),
             resource_id="infores:arax",
             trapi_schema_version=rtx_config.trapi_version,
             biolink_version=get_current_arax_biolink_version(),
+            # TODO: consider enabling the http cache
         )
         self.response.update_query_plan(
             qedge_key,
             "arax-xcrg",
             "Waiting",
-            f"Sending xCRG lookup query to {retriever_url}",
+            f"Sending xCRG lookup query to {config.retriever_url}",
             query=query,
         )
         start = time.time()
         try:
-            xcrg_response = run_xcrg(
-                query,
+            xcrg_response = xcrg.run_query(
+                query=query,
                 config=config,
-                logger=ARAXXCRGLogger(self.response),
+                reporter=ARAX_XCRG_Reporter(self.response),
             )
         except Exception as e:
             elapsed = round(time.time() - start)
@@ -617,17 +609,21 @@ class ARAXConnect:
             self.response.envelope.message.auxiliary_graphs = {}
 
         if self.response.envelope.message.knowledge_graph is None:
-            self.response.envelope.message.knowledge_graph = {}
+            self.response.envelope.message.knowledge_graph = KnowledgeGraph(nodes={}, edges={})
+        if self.response.envelope.message.knowledge_graph.edges is None:
+            self.response.envelope.message.knowledge_graph.edges = {}
         rehydrated_kg = self.rehydrate(knowledge_graph, retriever_url, maturity)
-        kg = KnowledgeGraph().from_dict(rehydrated_kg)
+        kg = KnowledgeGraph.from_dict(rehydrated_kg)
 
+        # The pathfinder package still emits TRAPI 1.x bindings ([{"id": ..., "attributes": []}])
+        # and auxiliary graphs with "attributes"; convert them to the TRAPI 2.0 shape here.
         analyses = []
         for analys in result['analyses']:
             path_bindings = {}
             for key, value in analys['path_bindings'].items():
-                path_bindings[key] = [PathBinding(id=value[0]['id'])]
+                path_bindings[key] = PathBinding(ids=[binding['id'] for binding in value])
             analyses.append(
-                PathfinderAnalysis(
+                Analysis(
                     resource_id=analys["resource_id"],
                     path_bindings=path_bindings,
                     score=analys['score']
@@ -636,7 +632,7 @@ class ARAXConnect:
 
         node_bindings = {}
         for key, value in result["node_bindings"].items():
-            node_bindings[key] = [NodeBinding(id=value[0]['id'], attributes=[])]
+            node_bindings[key] = NodeBinding(ids=[binding['id'] for binding in value])
         self.response.envelope.message.results.append(
             Result(
                 id=result["id"],
@@ -646,11 +642,8 @@ class ARAXConnect:
             )
         )
         for key, value in aux_graphs.items():
-            self.response.envelope.message.auxiliary_graphs[key] = AuxiliaryGraph(
-                edges=value['edges'],
-                attributes=[]
-            )
-        self.response.envelope.message.knowledge_graph.edges.update(kg.edges)
+            self.response.envelope.message.auxiliary_graphs[key] = AuxiliaryGraph(edges=value['edges'])
+        self.response.envelope.message.knowledge_graph.edges.update(kg.edges or {})
         self.response.envelope.message.knowledge_graph.nodes.update(kg.nodes)
 
     def rehydrate(self, kg, retriever_url, maturity):

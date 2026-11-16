@@ -381,7 +381,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()},
                                     'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x.qedge_keys is not None for t in x.qedge_keys])
+                                    'qedge_keys': set([t for x in self.message.knowledge_graph.edges.values() if x._qedge_keys is not None for t in x._qedge_keys])
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_edge_attribute'},
@@ -489,7 +489,7 @@ sort_by_node_count sorts the results by the number of nodes in the results.
                                     'direction': {'descending', 'd', 'ascending', 'a'},
                                     'max_results': {float()},
                                     'prune_kg': {'true', 'false', 'True', 'False', 't', 'f', 'T', 'F'},
-                                    'qnode_keys': set([t for x in self.message.knowledge_graph.nodes.values() if x.qnode_keys is not None for t in x.qnode_keys])
+                                    'qnode_keys': set([t for x in self.message.knowledge_graph.nodes.values() if x._qnode_keys is not None for t in x._qnode_keys])
                                     }
         else:
             allowable_parameters = {'action': {'sort_by_node_attribute'},

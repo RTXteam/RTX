@@ -32,7 +32,7 @@ def _run_query_and_do_standard_testing(actions: list[str] | None = None,
     query_object: dict[str, Any] = \
         {"operations": {"actions": actions}} if actions else {"message": {"query_graph": json_query}}
     if timeout:
-        query_object["query_options"] = {"kp_timeout": timeout}
+        query_object["parameters"] = {"timeout": timeout}
     response = araxq.query(query_object)
     message = araxq.message
     if response.status != 'OK':
@@ -75,14 +75,14 @@ def print_counts_by_qgid(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_qg
 def print_nodes(nodes_by_qg_id: dict[str, dict[str, Node]]):
     for qnode_key, nodes in sorted(nodes_by_qg_id.items()):
         for node_key, node in sorted(nodes.items()):
-            print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node.qnode_keys}, "
+            print(f"{qnode_key}: {node.categories}, {node_key}, {node.name}, {node._qnode_keys}, "
                   f"{node.query_ids if hasattr(node, 'query_ids') else ''}")
 
 
 def print_edges(edges_by_qg_id: dict[str, dict[str, Edge]]):
     for qedge_key, edges in sorted(edges_by_qg_id.items()):
         for edge_key, edge in sorted(edges.items()):
-            print(f"{qedge_key}: {edge_key}, {edge.subject}--{edge.predicate}->{edge.object}, {edge.qedge_keys}")
+            print(f"{qedge_key}: {edge_key}, {edge.subject}--{edge.predicate}->{edge.object}, {edge._qedge_keys}")
 
 
 def check_for_orphans(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_qg_id: dict[str, dict[str, Edge]]):
@@ -102,7 +102,7 @@ def check_property_format(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_q
     for qnode_key, nodes in nodes_by_qg_id.items():
         for node_key, node in nodes.items():
             assert node_key and isinstance(node_key, str)
-            assert node.qnode_keys and isinstance(node.qnode_keys, list)
+            assert node._qnode_keys and isinstance(node._qnode_keys, list)
             assert isinstance(node.name, str) or node.name is None
             assert isinstance(node.categories, list) or node.categories is None
             if node.attributes:
@@ -111,7 +111,7 @@ def check_property_format(nodes_by_qg_id: dict[str, dict[str, Node]], edges_by_q
     for qedge_key, edges in edges_by_qg_id.items():
         for edge_key, edge in edges.items():
             assert edge_key and isinstance(edge_key, str)
-            assert edge.qedge_keys and isinstance(edge.qedge_keys, list)
+            assert edge._qedge_keys and isinstance(edge._qedge_keys, list)
             assert edge.subject and isinstance(edge.subject, str)
             assert edge.object and isinstance(edge.object, str)
             assert isinstance(edge.predicate, str) or edge.predicate is None
@@ -156,7 +156,7 @@ def test_720_multiple_qg_ids_in_different_results():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     assert set(nodes_by_qg_id['n01']).intersection(set(nodes_by_qg_id['n03']))
-    assert any(set(node.qnode_keys) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
+    assert any(set(node._qnode_keys) == {'n01', 'n03'} for node in nodes_by_qg_id['n01'].values())
 
 
 @pytest.mark.slow
@@ -564,25 +564,24 @@ def test_qualified_regulates_query():
             "e0": {
                 "subject": "n0",
                 "object": "n1",
-                "qualifier_constraints": [
-                    {"qualifier_set": [
-                        {"qualifier_type_id": "biolink:qualified_predicate",
-                         "qualifier_value": "biolink:causes"},
-                        # {"qualifier_type_id": "biolink:object_direction_qualifier",
-                        #  "qualifier_value": "decreased"}, # for RTX issue 2068
-                        {"qualifier_type_id": "biolink:object_aspect_qualifier",
-                         "qualifier_value": "activity"}
-                    ]}
-                ],
-                "attribute_constraints": [
-                    {
-                        "id": "knowledge_source",
-                        "name": "knowledge source",
-                        "value": ["infores:retriever"],
-                        "operator": "==",
-                        "not": False
-                    }
-                ]
+                "constraints": {
+                    "qualifiers": [
+                        {"biolink:qualified_predicate": "biolink:causes",
+                         # "biolink:object_direction_qualifier": "decreased",  # for RTX issue 2068
+                         #                                                     # see also RTX-KG2 issue 339
+                         #                                                     # Uncomment to test in KG2.8.5
+                         "biolink:object_aspect_qualifier": "activity"}
+                    ],
+                    "attributes": [
+                        {
+                            "id": "knowledge_source",
+                            "name": "knowledge source",
+                            "value": ["infores:retriever"],
+                            "operator": "==",
+                            "not": False
+                        }
+                    ]
+                }
             }
         }
     }
@@ -619,8 +618,8 @@ def test_constraint_validation():
           "object": "n01",
           "predicates": ["biolink:physically_interacts_with"],
           "subject": "n00",
-          "attribute_constraints": [{"id": "test_edge_constraint_1", "name": "test name edge", "operator": "<", "value": 1.0},
-                                    {"id": "test_edge_constraint_2", "name": "test name edge", "operator": ">", "value": 0.5}]
+          "constraints": {"attributes": [{"id": "test_edge_constraint_1", "name": "test name edge", "operator": "<", "value": 1.0},
+                                    {"id": "test_edge_constraint_2", "name": "test name edge", "operator": ">", "value": 0.5}]}
         }
       },
       "nodes": {
@@ -652,7 +651,7 @@ def test_edge_constraints():
                 "e00": {
                     "object": "n00",
                     "subject": "n01",
-                    "attribute_constraints": [
+                    "constraints": {"attributes": [
                         {
                             "id": "knowledge_source",
                             "name": "knowledge source",
@@ -660,7 +659,7 @@ def test_edge_constraints():
                             "operator": "==",
                             "not": False
                         }
-                    ]
+                    ]}
                 }
             }
         }
@@ -1052,7 +1051,7 @@ def test_no_query_ids_issue():
                 "predicates": [
                     "biolink:expresses"
                 ],
-                "attribute_constraints": [
+                "constraints": {"attributes": [
                     {
                         "id": "knowledge_source",
                         "name": "knowledge source",
@@ -1060,7 +1059,7 @@ def test_no_query_ids_issue():
                         "operator": "==",
                         "not": False
                     }
-                ]
+                ]}
             }
         }
     }
@@ -1165,10 +1164,9 @@ def test_klat_attributes():
     ]
     nodes_by_qg_id, edges_by_qg_id = _run_query_and_do_standard_testing(actions_list)
     for edge_key, edge in edges_by_qg_id["e0"].items():
-        assert any(attribute.attribute_type_id == "biolink:knowledge_level" for attribute in edge.attributes)
-        assert any(attribute.attribute_type_id == "biolink:agent_type" for attribute in edge.attributes)
-        assert all(isinstance(attribute.value, str) for attribute in edge.attributes
-                   if attribute.attribute_type_id in {"biolink:knowledge_level", "biolink:agent_type"})
+        # TRAPI 2.0 carries knowledge_level and agent_type as Edge fields, not attributes
+        assert isinstance(edge.knowledge_level, str) and edge.knowledge_level
+        assert isinstance(edge.agent_type, str) and edge.agent_type
 
 # change "CHEBI:175901" to "CHEBI:28748" (Doxorubicin), because the "CHEBI:175901" ranks 304 among all drugs with RxCUI with the xDTD model trained on tir0 graph 20260408 version. 
 def test_treats_patch_issue_2328_a():
@@ -1187,14 +1185,14 @@ def test_treats_patch_issue_2328_a():
                 "subject": "chemical",
                 "predicates": ["biolink:treats"],
                 "knowledge_type": "inferred",
-                "attribute_constraints": [
+                "constraints": {"attributes": [
                     {
                         "id": "knowledge_source",
                         "name": "knowledge source",
                         "value": ["infores:arax"],
                         "operator": "=="
                     }
-                ]
+                ]}
             }
         }
     }
@@ -1371,7 +1369,7 @@ def test_issue_2678():
     response = aq.query_return_message(envelope_dict)
     message = response.message
     assert 'MONDO:0016098' in message.knowledge_graph.nodes
-    messages_str = json.dumps(aq.response.messages)
+    messages_str = json.dumps(aq.response.messages, default=lambda obj: obj.to_dict())
     assert 'biolink:PhenotypicFeature' not in messages_str
 
 
@@ -1379,13 +1377,11 @@ def test_issue_2736():
     query_graph_dict = {
         "edges": {
             "q0": {
-                "attribute_constraints": [],
                 "knowledge_type": "inferred",
                 "object": "on",
                 "predicates": [
                     "biolink:treats"
                 ],
-                "qualifier_constraints": [],
                 "subject": "sn"
             }
         },
@@ -1394,11 +1390,9 @@ def test_issue_2736():
                 "categories": [
                     "biolink:Disease"
                 ],
-                "constraints": [],
                 "ids": [
                     "MONDO:0016063"
-                ],
-                "is_set": False
+                ]
             },
             "sn": {
                 "ids": [
@@ -1406,9 +1400,7 @@ def test_issue_2736():
                 ],
                 "categories": [
                     "biolink:ChemicalEntity"
-                ],
-                "constraints": [],
-                "is_set": False
+                ]
             }
         }
     }
@@ -1427,9 +1419,8 @@ def test_issue_2736():
     qedge_predicates = []
     for result in results:
         for analysis in result.analyses:
-            edge_bindings = analysis.edge_bindings['q0']
-            for edge_binding in edge_bindings:
-                edge_key = edge_binding.id
+            edge_binding = analysis.edge_bindings['q0']
+            for edge_key in edge_binding.ids:
                 edge = edges[edge_key]
                 qedge_predicates.append(edge.predicate)
     assert all(p == 'biolink:treats' for p in qedge_predicates)

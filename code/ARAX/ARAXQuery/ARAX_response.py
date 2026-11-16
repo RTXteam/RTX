@@ -4,7 +4,8 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 
 import datetime
 import os
-
+sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/python-flask-server/")
+from openapi_server.models.log_entry import LogEntry
 
 class ARAXResponse:
 
@@ -132,9 +133,9 @@ class ARAXResponse:
         :type code: str
         """
 
-        timestamp = str(datetime.datetime.now().isoformat())
+        timestamp = datetime.datetime.now(datetime.timezone.utc)
         pid = os.getpid()
-        self.messages.append( { 'timestamp': timestamp, 'level': self.level_names[level], 'code': code, 'message': message } )
+        self.messages.append( LogEntry( timestamp=timestamp, level=self.level_names[level], code=code, message=message ) )
         self.n_messages += 1
 
         # Create a pretty printable message prefix
@@ -190,14 +191,14 @@ class ARAXResponse:
         if self.status != 'OK':
             buffer += f"  error_code: {self.error_code}   message: {self.message}\n"
         for message in self.messages:
-            if message['level'] in self.equal_or_greater_levels[self.level_names[level]]:
+            if message.level in self.equal_or_greater_levels[self.level_names[level]]:
 
                 # Create a pretty printable message prefix
-                prefix = f"{message['timestamp']} {message['level']}: "
-                if message['code'] is not None:
-                    prefix += f"[{message['code']}] "
+                prefix = f"{message.timestamp} {message.level}: "
+                if message.code is not None:
+                    prefix += f"[{message.code}] "
 
-                buffer += f"  - {prefix}{message['message']}\n"
+                buffer += f"  - {prefix}{message.message}\n"
         return buffer
 
 
@@ -214,8 +215,9 @@ class ARAXResponse:
         """
         result = []
         for message in self.messages:
-            if message['level'] in self.equal_or_greater_levels[self.level_names[level]]:
-                result.append(message)
+            if message.level in self.equal_or_greater_levels[self.level_names[level]]:
+                print(f"***{message.to_dict()}")
+                result.append(message.to_dict())
         return result
 
 

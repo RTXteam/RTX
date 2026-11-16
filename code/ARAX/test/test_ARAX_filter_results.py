@@ -59,7 +59,7 @@ def test_n_results():
         ]}}
     [response, message] = _do_arax_query(query)
     assert response.status == 'OK'
-    assert message.n_results == len(message.results) == 3
+    assert len(message.results) == 3
 
 def test_no_results():
     query = {"operations": {"actions": [

@@ -80,13 +80,11 @@ def test_xdtd_issue2160():
             {
                 "edges": {
                     "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "on",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "sn"
                     }
                 },
@@ -95,19 +93,17 @@ def test_xdtd_issue2160():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0019600"
-                    ],
+                    ]
                     },
                     "sn": {
                     "categories": [
                         "biolink:SmallMolecule"
                     ],
-                    "constraints": [],
                     "ids": [
                         "PUBCHEM.COMPOUND:23931"
-                    ],
+                    ]
                     }
                 }
             }
@@ -284,13 +280,11 @@ def test_xdtd_publications_in_edge_attributes():
         "message": {"query_graph": {
             "edges": {
                 "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "on",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "sn"
                 }
             },
@@ -299,16 +293,14 @@ def test_xdtd_publications_in_edge_attributes():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0015564"
-                    ],
+                    ]
                 },
                 "sn": {
                     "categories": [
                         "biolink:SmallMolecule"
-                    ],
-                    "constraints": [],
+                    ]
                 }
             }
         }}
@@ -344,13 +336,11 @@ def test_xdtd_extra_edge_attributes_and_qualifiers():
         "message": {"query_graph": {
             "edges": {
                 "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "on",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "sn"
                 }
             },
@@ -359,16 +349,14 @@ def test_xdtd_extra_edge_attributes_and_qualifiers():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0015564"
-                    ],
+                    ]
                 },
                 "sn": {
                     "categories": [
                         "biolink:SmallMolecule"
-                    ],
-                    "constraints": [],
+                    ]
                 }
             }
         }}
@@ -452,13 +440,11 @@ def test_xdtd_source_record_urls_in_retrieval_sources():
         "message": {"query_graph": {
             "edges": {
                 "t_edge": {
-                    "attribute_constraints": [],
                     "knowledge_type": "inferred",
                     "object": "on",
                     "predicates": [
                         "biolink:treats"
                     ],
-                    "qualifier_constraints": [],
                     "subject": "sn"
                 }
             },
@@ -467,16 +453,14 @@ def test_xdtd_source_record_urls_in_retrieval_sources():
                     "categories": [
                         "biolink:Disease"
                     ],
-                    "constraints": [],
                     "ids": [
                         "MONDO:0015564"
-                    ],
+                    ]
                 },
                 "sn": {
                     "categories": [
                         "biolink:SmallMolecule"
-                    ],
-                    "constraints": [],
+                    ]
                 }
             }
         }}

@@ -10,6 +10,9 @@ import threading
 import requests
 import gc
 import contextlib
+import functools
+import yaml
+from pydantic_core import to_jsonable_python
 
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
@@ -37,6 +40,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../../UI/OpenAPI/py
 from openapi_server.models.response import Response
 from openapi_server.models.message import Message
 from openapi_server.models.operations import Operations
+from openapi_server.models.query_parameters import QueryParameters
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__))+"/../..")
 from RTXConfiguration import RTXConfiguration
@@ -57,6 +61,87 @@ def eprint(*args, **kwargs): print(*args, file=sys.stderr, **kwargs)
 ARAXResponse.output = 'STDERR'
 
 null_context_manager = contextlib.nullcontext()
+
+
+_LOG_LEVEL_RANKS = {'DEBUG': 10, 'INFO': 20, 'WARNING': 30, 'ERROR': 40}
+
+
+def _requested_log_level_rank(envelope) -> int | None:
+    """The rank of the query's parameters.log_level ("the least critical level of logs to return"), or None"""
+    parameters = getattr(envelope, 'parameters', None)
+    log_level = getattr(parameters, 'log_level', None) if parameters is not None else None
+    if log_level is None:
+        return None
+    return _LOG_LEVEL_RANKS.get(str(getattr(log_level, 'value', log_level)).upper())
+
+
+def _log_entry_is_wanted(log_entry, min_rank: int | None) -> bool:
+    if min_rank is None:
+        return True
+    level = log_entry.get('level') if isinstance(log_entry, dict) else getattr(log_entry, 'level', None)
+    rank = _LOG_LEVEL_RANKS.get(str(getattr(level, 'value', level)).upper())
+    return rank is None or rank >= min_rank
+
+
+def _apply_requested_log_level(envelope) -> None:
+    """Honor parameters.log_level in the Response that is sent back. Only the outgoing envelope.logs list is
+    replaced; response.messages (and so the copy already stored in the ResponseCache) keeps every log entry."""
+    min_rank = _requested_log_level_rank(envelope)
+    if min_rank is not None and envelope.logs:
+        # TRAPI 2.0: logs, if present, must have at least one entry, so leave it out if nothing is left
+        envelope.logs = [log_entry for log_entry in envelope.logs if _log_entry_is_wanted(log_entry, min_rank)] or None
+
+
+def _envelope_dict_with_requested_logs(envelope) -> dict:
+    """envelope.to_dict(), with logs below the query's parameters.log_level left out"""
+    envelope_dict = envelope.to_dict()
+    min_rank = _requested_log_level_rank(envelope)
+    if min_rank is not None and envelope_dict.get('logs'):
+        envelope_dict['logs'] = [log_entry for log_entry in envelope_dict['logs']
+                                 if _log_entry_is_wanted(log_entry, min_rank)]
+        if not envelope_dict['logs']:
+            del envelope_dict['logs']
+    return envelope_dict
+
+
+def _drop_empty_query_graph(envelope) -> None:
+    """TRAPI 2.0 needs QueryGraph.nodes to be non-empty and QueryGraph.edges to be non-empty or left out.
+    Error responses can carry ARAX's empty template QG, so leave out whatever would be invalid."""
+    message = getattr(envelope, 'message', None)
+    query_graph = getattr(message, 'query_graph', None)
+    if query_graph is None:
+        return
+    if not query_graph.nodes:
+        message.query_graph = None
+    elif query_graph.edges is not None and len(query_graph.edges) == 0:
+        query_graph.edges = None
+
+
+@functools.lru_cache(maxsize=1)
+def _get_valid_biolink_predicates() -> frozenset:
+    """All predicates (including mixins) in ARAX's current Biolink version"""
+    from biolink_helper import get_biolink_helper
+    return frozenset(get_biolink_helper().get_descendants("biolink:related_to"))
+
+
+@functools.lru_cache(maxsize=1)
+def _get_valid_biolink_qualifier_types() -> frozenset:
+    """All qualifier slots (e.g. biolink:object_aspect_qualifier) in ARAX's current Biolink version"""
+    from biolink_helper import get_current_arax_biolink_version
+    model_path = f"{os.path.dirname(os.path.abspath(__file__))}/../BiolinkHelper/biolink_model_{get_current_arax_biolink_version()}.yaml"
+    with open(model_path) as model_file:
+        slots = yaml.safe_load(model_file)['slots']
+
+    def is_qualifier(slot_name):
+        seen = set()
+        while slot_name and slot_name not in seen:
+            if slot_name == 'qualifier':
+                return True
+            seen.add(slot_name)
+            slot_name = (slots.get(slot_name) or {}).get('is_a')
+        return False
+
+    return frozenset(f"biolink:{name.replace(' ', '_')}" for name in slots if name != 'qualifier' and is_qualifier(name))
 
 # Tracer for ARAX's own processing steps, so they show up in Jaeger (issue #2923).
 # When telemetry is off, this is a no-op tracer.
@@ -92,6 +177,7 @@ class response_locking(ARAXResponse):
             super()._add_message(message, level, code)
 
 class ARAXQuery:
+    response: ARAXResponse | None
 
     #### Constructor
     def __init__(self):
@@ -151,8 +237,10 @@ class ARAXQuery:
                         n_messages = len(self.response.messages)
                     while i_message < n_messages:
                         with self.lock:
-                            i_message_obj = self.response.messages[i_message].copy()
-                        yield(json.dumps(i_message_obj, allow_nan=False) + "\n")
+                            i_message_dict = self.response.messages[i_message].copy().to_dict()
+                            min_log_rank = _requested_log_level_rank(self.response.envelope)
+                        if _log_entry_is_wanted(i_message_dict, min_log_rank):
+                            yield(json.dumps(i_message_dict, allow_nan=False) + "\n")
                         i_message += 1
                         idle_ticks = 0.0
 
@@ -181,8 +269,10 @@ class ARAXQuery:
 
                 # #### If there are any more logging messages in the queue, send them first
             n_messages = len(self.response.messages)
+            min_log_rank = _requested_log_level_rank(self.response.envelope)
             while i_message < n_messages:
-                yield(json.dumps(self.response.messages[i_message], allow_nan=False) + "\n")
+                if _log_entry_is_wanted(self.response.messages[i_message], min_log_rank):
+                    yield(json.dumps(self.response.messages[i_message].to_dict(), allow_nan=False) + "\n")
                 i_message += 1
 
             #### Also emit any updates to the query_plan
@@ -200,7 +290,7 @@ class ARAXQuery:
 
             # Stream the resulting message back to the client
             try:
-                msg_str = json.dumps(self.response.envelope.to_dict(),
+                msg_str = json.dumps(_envelope_dict_with_requested_logs(self.response.envelope),
                                      allow_nan=False,
                                      sort_keys=True) + "\n"
             except ValueError as v:
@@ -239,6 +329,10 @@ class ARAXQuery:
 
         except MemoryError as e:
             self.handle_memory_error(e)
+        except Exception as error:
+            # Record the error so the streaming thread sees DONE and the tracker entry gets closed,
+            # rather than the stream waiting forever on a thread that has died
+            self.response.error(f"An uncaught error occurred: {error}: {traceback.format_exc()}", error_code="UncaughtError")
 
 
         # Insert a little flag into the response status to denote that this thread is done
@@ -255,14 +349,25 @@ class ARAXQuery:
         response = self.response
         response.debug("in query_return_message")
 
-        self.query(query, mode=mode, origin='API')
+        try:
+            self.query(query, mode=mode, origin='API')
+        except Exception as error:
+            # Close this query's tracker entry before re-raising, otherwise it stays "started"
+            # and holds one of the client's concurrent-query slots until the server restarts
+            response.error(f"An uncaught error occurred: {error}: {traceback.format_exc()}", error_code="UncaughtError")
+            self.track_query_finish()
+            raise
 
         #### If the query ended in an error, copy the error to the envelope
         if response.status != 'OK':
             response.envelope.status = response.error_code
             response.envelope.description = response.message
-            if hasattr(response,'http_status'):
-                response.envelope.http_status = response.http_status
+            # The TRAPI 2.0 Response model has no http_status field, so carry the status
+            # code to the API layer in a private attribute (pydantic allows those)
+            if hasattr(response, 'http_status'):
+                response.envelope._http_status = response.http_status
+            _drop_empty_query_graph(response.envelope)
+            _apply_requested_log_level(response.envelope)
             self.track_query_finish()
             return response.envelope
 
@@ -280,6 +385,7 @@ class ARAXQuery:
             self.track_query_finish()
             #### Switch OK to Success for TRAPI compliance
             response.envelope.status = 'Success'
+            _apply_requested_log_level(response.envelope)
 
 
         return response.envelope
@@ -310,14 +416,14 @@ class ARAXQuery:
 
 
     ########################################################################################
-    def query(self, query, mode='ARAX', origin='local'):
-
+    def query(self, query, mode='ARAX', origin='local'):  #T2FIXME
+        if not self.response:
+            # At this point in the code, the response should only be None in regression tests
+            # that call ARAXQuery.query() directly
+            self.response = ARAXResponse()
         #### Create the skeleton of the response
         response = self.response
-        if response is None:  # At this point in the code, the response should only be
-                              # None in regression tests that call ARAXQuery.query() directly
-            response = ARAXResponse()
-            self.response = response
+        assert response # Help type checkers
 
         #### Announce the launch of query()
         #### Note that setting ARAXResponse.output = 'STDERR' means that we get noisy output to the logs
@@ -340,16 +446,18 @@ class ARAXQuery:
         #### Create an empty envelope
         messenger = ARAXMessenger()
         messenger.create_envelope(response)
+        assert response.envelope # Help type checkers
 
-        #### Preserve the query_options
-        if 'query_options' in query and query['query_options'] is not None:
-            response.envelope.query_options = query['query_options']
-        else:
-            response.envelope.query_options = {}
-
-        #### Need to put certain input Query parameters into query_options to later use by Expand et al.
-        if 'return_minimal_metadata' in query:
-            response.envelope.query_options['return_minimal_metadata'] = query['return_minimal_metadata']
+        ### Preserve Query.parameters
+        if 'parameters' in query:
+            response.envelope.parameters = QueryParameters.from_dict(query['parameters'])
+            #### ARAX only queries Tier 0 (by design), so say so if the query asked for other tiers
+            requested_tiers = response.envelope.parameters.to_dict().get('tiers') if response.envelope.parameters else None
+            if requested_tiers is not None and list(requested_tiers) != [0]:
+                response.warning(f"ARAX only answers queries using Tier 0 data; ignoring the requested tiers {requested_tiers}")
+        #### Preserve the additional_properties i.e. bespoke properties from application
+        if 'additional_properties' in query:
+            response.envelope.additional_properties = query['additional_properties']
 
         #### If a submitter came in, reflect that back into the response
         if "callback" in query and query['callback'] is not None and query['callback'].startswith('http://localhost:8000/ars/'):
@@ -374,7 +482,10 @@ class ARAXQuery:
                 remote_address = query['remote_address']
             else:
                 remote_address = '????'
-            attributes = { 'submitter': response.envelope.submitter, 'input_query': query, 'remote_address': remote_address }
+            # Store the query as plain JSON-style data rather than TRAPI 2.0 model objects, so that
+            # every ARAX version sharing the tracker database can unpickle it (e.g., for /status)
+            input_query = to_jsonable_python(query, by_alias=True, exclude_none=True)
+            attributes = { 'submitter': response.envelope.submitter, 'input_query': input_query, 'remote_address': remote_address }
             job_id = query_tracker.create_tracker_entry(attributes)
 
             if job_id == -999:
@@ -385,16 +496,21 @@ class ARAXQuery:
 
         try:
             #### Determine a plan for what to do based on the input
-            #eprint(json.dumps(query, indent=2, sort_keys=True))
-            result = self.examine_incoming_query(query, mode=mode)
+            eprint(f"*** {query}")
+            # Turn every pydantic part of the query into plain dicts 
+            query_dict = json.loads(json.dumps(query, default=lambda obj: obj.to_dict()))
+            eprint(json.dumps(query_dict, indent=2, sort_keys=True))
+            result = self.examine_incoming_query(query_dict, mode=mode)
             if result.status != 'OK':
                 return response
             query_attributes = result.data
+            eprint(f"*** query_attributes={query_attributes}")
 
-            #### Convert the message from dicts to objects
-            if 'message' in query:
+            #### Convert the message from dicts to objects (the API already passes a Message object)
+            if isinstance(query.get('message'), dict):
                 response.debug("Deserializing message")
                 query['message'] = ARAXMessenger().from_dict(query['message'])
+            eprint(f"*** message={query.get('message')}")
 
             # If there is a workflow, translate it to ARAXi and append it to the operations actions list
             if "have_workflow" in query_attributes:
@@ -511,32 +627,61 @@ class ARAXQuery:
         response = self.response
         response.info("Validating the input query graph")
 
-        # Define allowed qnode and qedge attributes to check later
-        allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'is_set': 1, 'set_interpretation': 1, 'set_id': 1, 'member_ids': 1, 'option_group_id': 1, 'name': 1, 'constraints': 1 }
-        allowed_qedge_attributes = { 'predicates': 1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'relation': 1, 'attribute_constraints': 1, 'qualifier_constraints': 1, 'knowledge_type': 1 }
+        # Define allowed qnode and qedge attributes to check later (per the TRAPI 2.0 QNode and QEdge schemas)
+        allowed_qnode_attributes = { 'ids': 1, 'categories':1, 'set_interpretation': 1, 'member_ids': 1, 'option_group_id': 1, 'constraints': 1 }
+        allowed_qedge_attributes = { 'predicates': 1, 'subject': 1, 'object': 1, 'option_group_id': 1, 'exclude': 1, 'constraints': 1, 'knowledge_type': 1 }
+
+        # Properties from older TRAPI versions that are no longer valid, with migration hints
+        obsolete_qnode_attributes = { 'is_set': "use 'set_interpretation': 'COLLATE' instead",
+                                      'set_id': "it was removed; for a set query, put the set UUID in 'ids' and its members in 'member_ids'" }
+        obsolete_qedge_attributes = { 'predicate': "it should be plural 'predicates' (TRAPI 1.4 and higher)",
+                                      'attribute_constraints': "use 'constraints.attributes' instead",
+                                      'qualifier_constraints': "use 'constraints.qualifiers' instead",
+                                      'relation': "it was removed from the TRAPI QEdge schema" }
 
         #### Loop through nodes checking the attributes
         for id,qnode in message['query_graph']['nodes'].items():
             for attr in qnode:
+                if attr in obsolete_qnode_attributes:
+                    response.error(f"QueryGraph node '{id}' has an obsolete property '{attr}', which is not valid in TRAPI 2.0: {obsolete_qnode_attributes[attr]}. Your query may be from an older TRAPI version and should be migrated to TRAPI 2.0", error_code="UnknownQNodeProperty")
+                    return response
                 if attr not in allowed_qnode_attributes:
                     response.error(f"QueryGraph node '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQNodeProperty")
                     return response
 
-        #### Check to ensure that either edges EOR paths is present
-        if 'edges' not in message['query_graph'] and 'paths' not in message['query_graph']:
-            response.error("QueryGraph is missing both 'edges' and 'paths'. At least one must be present.", error_code="MissingQEdgeAndQPath")
+        #### Check to ensure that either edges EOR paths is present. A node-only QueryGraph is valid TRAPI 2.0,
+        #### but ARAX can't answer it (Retriever needs at least one edge), so it is "Not Implemented" (501)
+        if not message['query_graph'].get('edges') and not message['query_graph'].get('paths'):
+            response.error("QueryGraph has no 'edges' or 'paths'. Node-only queries are valid TRAPI 2.0, but ARAX does not "
+                           "support them: at least one edge or path must be present.", error_code="MissingQEdgeAndQPath",
+                           http_status=501)
             return response
 
         #### Loop through edges checking the attributes
-        if 'edges' in message['query_graph']:
+        if message['query_graph'].get('edges'):
             for id,qedge in message['query_graph']['edges'].items():
                 for attr in qedge:
                     if attr not in allowed_qedge_attributes:
-                        if attr == 'predicate':
-                            response.error(f"QueryGraph edge '{id}' has an obsolete property '{attr}'. This property should be plural 'predicates' in TRAPI 1.4 and higher. Your query may be TRAPI 1.3 or lower and should be checked carefully and migrated to TRAPI 1.4", error_code="UnknownQEdgeProperty")
+                        if attr in obsolete_qedge_attributes:
+                            response.error(f"QueryGraph edge '{id}' has an obsolete property '{attr}', which is not valid in TRAPI 2.0: {obsolete_qedge_attributes[attr]}. Your query may be from an older TRAPI version and should be migrated to TRAPI 2.0", error_code="UnknownQEdgeProperty")
                         else:
                             response.error(f"QueryGraph edge '{id}' has an unexpected property '{attr}'. This property is not understood and therefore processing is halted, rather than answer an incompletely understood query", error_code="UnknownQEdgeProperty")
                         return response
+
+            #### Check that predicates and qualifier types are real Biolink terms
+            valid_predicates = _get_valid_biolink_predicates()
+            valid_qualifier_types = _get_valid_biolink_qualifier_types()
+            for id,qedge in message['query_graph']['edges'].items():
+                for predicate in qedge.get('predicates') or []:
+                    if predicate not in valid_predicates:
+                        response.error(f"QueryGraph edge '{id}' has predicate '{predicate}', which is not a Biolink predicate", error_code="InvalidPredicate", http_status=400)
+                        return response
+                constraints = qedge.get('constraints') or {}
+                for qualifier_set in constraints.get('qualifiers') or []:
+                    for qualifier_type in qualifier_set or {}:
+                        if qualifier_type not in valid_qualifier_types:
+                            response.error(f"QueryGraph edge '{id}' has a qualifier constraint with qualifier type '{qualifier_type}', which is not a Biolink qualifier", error_code="InvalidQualifier", http_status=422)
+                            return response
 
         return response
 
@@ -547,7 +692,6 @@ class ARAXQuery:
             if message.results is not None:
                 if len(message.results) > query["max_results"]:
                     del message.results[query["max_results"]:]
-                    message.code_description += " (output is limited to "+str(query["max_results"]) + " results)"
 
 
 
@@ -613,7 +757,7 @@ class ARAXQuery:
                                     node['attributes'] = new_attrs
 
                     if isinstance(referenced_envelope,dict):
-                        referenced_envelope = Response().from_dict(referenced_envelope)
+                        referenced_envelope = Response.from_dict(referenced_envelope)
                         #messages.append(referenced_message)
                         messages = [ referenced_envelope.message ]
                         #eprint(json.dumps(referenced_envelope.message.results,indent=2))
@@ -704,8 +848,8 @@ class ARAXQuery:
 
             #### Put our input processing actions into the envelope
             if response.envelope.operations is None:
-                response.envelope.operations = {}
-            response.envelope.operations['actions'] = operations.actions
+                response.envelope.operations = Operations()
+            response.envelope.operations.actions = operations.actions
 
 
             #### Instantiate the individual ARAX processing modules and process DSL commands
@@ -778,9 +922,7 @@ class ARAXQuery:
                         if action['command'] == 'create_message' or action['command'] == 'create_envelope':
                             messenger.create_envelope(response)
                             #### Put our input processing actions into the envelope
-                            if response.envelope.query_options is None:
-                                response.envelope.query_options = {}
-                            response.envelope.query_options['actions'] = operations.actions
+                            response.envelope.additional_properties['actions'] = operations.actions
 
                         elif action['command'] == 'fetch_message':
                             messenger.apply_fetch_message(response,action['parameters'])
@@ -795,9 +937,9 @@ class ARAXQuery:
                             messenger.add_qpath(response,action['parameters'])
 
                         elif action['command'] == 'expand':
-                            self.inject_int_value_into_parameters('kp_timeout', response.envelope.query_options, action['parameters'], 'UserTimeoutNotInt')
-                            self.inject_int_value_into_parameters('prune_threshold', response.envelope.query_options, action['parameters'], 'PruneThresholdNotInt')
-                            self.inject_boolean_value_into_parameters('return_minimal_metadata', response.envelope.query_options, action['parameters'], 'InternalError')
+                            self.inject_int_value_into_parameters('kp_timeout', response.envelope.additional_properties, action['parameters'], 'UserTimeoutNotInt')
+                            self.inject_int_value_into_parameters('prune_threshold', response.envelope.additional_properties, action['parameters'], 'PruneThresholdNotInt')
+                            self.inject_boolean_value_into_parameters('return_minimal_metadata', response.envelope.additional_properties, action['parameters'], 'InternalError')
                             if response.status == 'ERROR':
                                 if mode == 'asynchronous':
                                     self.send_to_callback(callback, response)
@@ -962,9 +1104,7 @@ class ARAXQuery:
             if response.envelope.status == 'OK':
                 response.envelope.status = 'Success'
 
-            if response.envelope.query_options is None:
-                response.envelope.query_options = {}
-            response.envelope.query_options['query_plan'] = response.query_plan
+            response.envelope.additional_properties['query_plan'] = response.query_plan
 
             # If store=true, then put the message in the database
             response_id = None
@@ -1009,7 +1149,7 @@ class ARAXQuery:
 
     ############################################################################################
     def send_to_callback(self, callback, response):
-        envelope_dict = response.envelope.to_dict()
+        envelope_dict = _envelope_dict_with_requested_logs(response.envelope)
         post_succeeded = False
         send_attempts = 0
         timeout = 300
@@ -1045,10 +1185,10 @@ class ARAXQuery:
 
 
     ############################################################################################
-    def inject_int_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
+    def inject_int_value_into_parameters(self, parameter_name, additional_properties, parameters, error_code):
         parameter_value = None
-        if query_options is not None and parameter_name in query_options and query_options[parameter_name] is not None:
-            parameter_value = query_options[parameter_name]
+        if additional_properties is not None and parameter_name in additional_properties and additional_properties[parameter_name] is not None:
+            parameter_value = additional_properties[parameter_name]
             #### Try to convery the value to an integer
             try:
                 parameter_value = int(parameter_value)
@@ -1061,10 +1201,10 @@ class ARAXQuery:
 
 
     ############################################################################################
-    def inject_boolean_value_into_parameters(self, parameter_name, query_options, parameters, error_code):
+    def inject_boolean_value_into_parameters(self, parameter_name, additional_properties, parameters, error_code):
         parameter_value = False
-        if query_options is not None and parameter_name in query_options and query_options[parameter_name] is not None:
-            if query_options[parameter_name] is True:
+        if additional_properties is not None and parameter_name in additional_properties and additional_properties[parameter_name] is not None:
+            if additional_properties[parameter_name] is True:
                 parameter_value = True
         parameters[parameter_name] = parameter_value
 

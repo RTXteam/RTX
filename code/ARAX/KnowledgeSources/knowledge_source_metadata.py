@@ -113,6 +113,9 @@ class KnowledgeSourceMetadata:
                                             "subject": subject,
                                             "object": obj,
                                             "predicate": predicate,
+                                            # TRAPI 2.0 MetaEdge.sources: the KP's meta map doesn't say which
+                                            # knowledge sources are behind it, so name the KP itself
+                                            "sources": [kp_name],
                                             "knowledge_types": ["lookup"], #TRAPI 1.4 compliance direct lookup of existing knowledge from the knowledge graph
                                             "attributes": [
                                                 {

@@ -58,7 +58,13 @@ def pytest_sessionstart(session):
         db_manager = ARAXDatabaseManager(allow_downloads=True)
         db_manager.update_databases()
     else:
-        print("Skipping database check (pass --withdatabases to download/update databases)")
+        # Refuse to run tests if any database files are missing; otherwise, tests that use them fail with cryptic errors
+        db_manager = ARAXDatabaseManager(allow_downloads=False)
+        missing_dbs = {name: path for name, path in db_manager.local_paths.items() if not os.path.exists(path)}
+        if missing_dbs:
+            missing_files = "\n".join(f"  * {name}: {path}" for name, path in missing_dbs.items())
+            message = f"Expected database files are missing:\n{missing_files}\nRun pytest with --withdatabases to fetch them."
+            pytest.exit(message, returncode=pytest.ExitCode.USAGE_ERROR)
 
     # Refresh KP info cache if it hasn't been updated in more than an hour
     kp_info_cacher = KPInfoCacher()

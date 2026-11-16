@@ -116,26 +116,21 @@ class ARAXFilter:
  
         response.debug(f"Applying maximum_results filter")
 
-        #### Verify that n_results is correct and warn if not
-        results = message.results
-        if len(results) != message.n_results:
-            response.warning(f"n_results does not match the number of results in list")
-            message.n_results = len(results)
+        n_results = len(message.results or [])
 
         #### First check for no results
-        if message.n_results == 0:
+        if n_results == 0:
             response.debug(f"n_results is already 0, nothing to do")
             return response
 
         #### If there are more results than the maximum, then truncate
-        if message.n_results > maximum_results:
-            response.info(f"Truncating message results from {message.n_results} to {maximum_results}")
+        if n_results > maximum_results:
+            response.info(f"Truncating message results from {n_results} to {maximum_results}")
             del message.results[maximum_results:]
-            message.n_results = len(message.results)
 
         #### Otherwise nothing to do
         else:
-            response.debug(f"Number of message results={message.n_results}, less than {maximum_results} so nothing to do")
+            response.debug(f"Number of message results={n_results}, less than {maximum_results} so nothing to do")
 
         #### Return the response
         return response
@@ -188,7 +183,7 @@ def main():
 
     #### Show the final message
     print(response.show(level=ARAXResponse.DEBUG))
-    response.data['message_stats'] = { 'n_results': message.n_results, 'id': message.id,
+    response.data['message_stats'] = { 'n_results': len(message.results or []), 'id': message.id,
         'resource_id': message.resource_id, 'tool_version': message.tool_version }
     print(json.dumps(ast.literal_eval(repr(response.data['parameters'])),sort_keys=True,indent=2))
     for result in message.results:

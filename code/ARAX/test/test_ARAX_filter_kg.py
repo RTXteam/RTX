@@ -24,6 +24,7 @@ PACKAGE_PARENT = '../../UI/OpenAPI/python-flask-server'
 sys.path.append(os.path.normpath(os.path.join(os.getcwd(), PACKAGE_PARENT)))
 from openapi_server.models.attribute import Attribute
 from openapi_server.models.edge import Edge
+from openapi_server.models.retrieval_source import RetrievalSource
 from openapi_server.models.node import Node
 from openapi_server.models.q_edge import QEdge
 from openapi_server.models.q_node import QNode
@@ -106,7 +107,7 @@ def test_edge_key_removal():
     assert response.status == 'OK'
     edge_key_set = set()
     for edge in message.knowledge_graph.edges.values():
-        edge_key_set = edge_key_set.union(edge.qedge_keys)
+        edge_key_set = edge_key_set.union(edge._qedge_keys)
     assert 'e01' not in edge_key_set
 
 @pytest.mark.slow
@@ -321,8 +322,12 @@ def test_remove_general_concept_nodes_attribute_shapes(attribute_name: str, type
                                edges={"e0": QEdge(subject="n0", object="n1")}),
         knowledge_graph=KnowledgeGraph(
             nodes={"UMLS:C0242912": general, "CHEBI:59173": specific, "NCBIGene:2147": gene},
-            edges={"e_general": Edge(subject="UMLS:C0242912", object="NCBIGene:2147", predicate="biolink:affects"),
-                   "e_specific": Edge(subject="CHEBI:59173", object="NCBIGene:2147", predicate="biolink:affects")}))
+            edges={"e_general": Edge(subject="UMLS:C0242912", object="NCBIGene:2147", predicate="biolink:affects",
+                                     sources=[RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")],
+                                     knowledge_level="not_provided", agent_type="not_provided"),
+                   "e_specific": Edge(subject="CHEBI:59173", object="NCBIGene:2147", predicate="biolink:affects",
+                                      sources=[RetrievalSource(resource_id="infores:arax", resource_role="primary_knowledge_source")],
+                                      knowledge_level="not_provided", agent_type="not_provided")}))
 
     response = RemoveNodes(ARAXResponse(), message, {}).remove_general_concept_nodes()
 
