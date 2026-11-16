@@ -672,7 +672,14 @@ class ARAXQueryTracker:
 
 
     ##################################################################################################
-    def get_job_status(self, job_id):
+    def get_job_status(self, job_id, api_base_url=None):
+        """Return the TRAPI AsyncQueryStatusResponse for job_id.
+
+        api_base_url is the public URL of the TRAPI API root that the status request came in on
+        (e.g. https://arax.ncats.io/devED/api/arax/v2.0). When given, response_url points at that
+        instance's /response endpoint, which serves the TRAPI Response JSON, and the description
+        links the same response in the ARAX UI for people. Without it, response_url is left out.
+        """
         if self.session is None:
             return
 
@@ -703,6 +710,10 @@ class ARAXQueryTracker:
                 description += " but no response_id is available"
             else:
                 description += f" with response_id {response_id}"
+                if api_base_url:
+                    # the UI lives at the instance root, above /api/arax/vX.Y
+                    ui_root = api_base_url.rstrip('/').split('/api/arax/')[0]
+                    description += f". View it in the ARAX UI: {ui_root}/?r={response_id}"
         elif state == 'Died':
             description = f"Job {job_id} was found to be dead after {elapsed} seconds. Reason unknown."
         elif state == 'Reset':
@@ -719,8 +730,9 @@ class ARAXQueryTracker:
 
         response = AsyncQueryStatusResponse(status=trapi_status, description=description,
                                             logs=[LogEntry(timestamp=datetime.now(timezone.utc), level=LogLevel.INFO, message=description)])
-        if response_id is not None:
-            response.response_url = f"https://arax.ncats.io/?r={response_id}"
+        # TRAPI: response_url is a URL a client can GET to retrieve the full TRAPI Response (JSON)
+        if response_id is not None and api_base_url:
+            response.response_url = f"{api_base_url.rstrip('/')}/response/{response_id}"
 
         return response
 

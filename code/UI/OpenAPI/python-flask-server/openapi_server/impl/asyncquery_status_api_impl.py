@@ -14,6 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from typing_extensions import Annotated
 
 from openapi_server.apis.asyncquery_status_api_base import BaseAsyncqueryStatusApi
+from openapi_server.request_context import get_public_api_base
 from openapi_server.models.async_query_status_response import AsyncQueryStatusResponse
 
 from ARAX_query_tracker import ARAXQueryTracker  # pylint: disable=import-error,wrong-import-position
@@ -27,7 +28,9 @@ class ImplAsyncqueryStatusApi(BaseAsyncqueryStatusApi):
     ) -> AsyncQueryStatusResponse:
         """Return the tracker's current status for a previously submitted /asyncquery job"""
 
-        status_response = await run_in_threadpool(ARAXQueryTracker().get_job_status, job_id)
+        # read it here, on the request's own context, and hand it to the worker thread
+        api_base_url = get_public_api_base()
+        status_response = await run_in_threadpool(ARAXQueryTracker().get_job_status, job_id, api_base_url)
         if status_response is None:
             return JSONResponse(content={"detail": "Query tracker is not available"}, status_code=500)
         if status_response.status == 'UnknownJobId':
