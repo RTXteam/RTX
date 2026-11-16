@@ -363,7 +363,12 @@ def main():
 
 
     eprint(f"Starting ARAX API on TCP port: {tcp_port}")
-    uvicorn.run(app, host="0.0.0.0", port=tcp_port)
+    # /asyncquery forks the job from inside this process, and the child inherits the sockets of
+    # Apache's keep-alive connections. With uvicorn's default 5s keep-alive timeout the parent
+    # closes an idle connection while the child still holds it open, so Apache reuses a dead
+    # connection and gets a 502 when the child exits. Keep idle connections open well past
+    # Apache's backend keep-alive, as the old Werkzeug server did (it never timed them out).
+    uvicorn.run(app, host="0.0.0.0", port=tcp_port, timeout_keep_alive=300)
 
 
 if __name__ == '__main__':
