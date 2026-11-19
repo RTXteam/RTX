@@ -28,6 +28,25 @@ from openapi_server.models.async_query_status_response import AsyncQueryStatusRe
 
 Base = declarative_base()
 
+
+class SafePickleType(PickleType):
+    """PickleType that logs an error and returns an error dict instead of raising when a stored value
+    cannot be unpickled (e.g., a query pickled by another ARAX version as a class this version does not have),
+    so that one bad row cannot break /status for every instance sharing the tracker database"""
+    cache_ok = True
+
+    def result_processor(self, dialect, coltype):
+        unpickle = super().result_processor(dialect, coltype)
+
+        def process(value):
+            try:
+                return unpickle(value)
+            except Exception as error:
+                eprint(f"ERROR: Unable to unpickle input_query: {type(error).__name__}: {error}")
+                return { 'error': f"Unable to unpickle input_query: {type(error).__name__}: {error}" }
+        return process
+
+
 class ARAXQuery(Base):
     __tablename__ = 'arax_query'
     query_id = Column(Integer, primary_key=True)
@@ -40,7 +59,7 @@ class ARAXQuery(Base):
     hostname = Column(String(255), nullable=True)
     instance_name = Column(String(255), nullable=False)
     origin = Column(String(255), nullable=False)
-    input_query = Column(PickleType, nullable=False) ## blob object
+    input_query = Column(SafePickleType, nullable=False) ## blob object
     message_id = Column(Integer, nullable=True)
     message_code = Column(String(255), nullable=True)
     code_description = Column(String(255), nullable=True)
@@ -60,7 +79,7 @@ class ARAXOngoingQuery(Base):
     hostname = Column(String(255), nullable=True)
     instance_name = Column(String(255), nullable=False)
     origin = Column(String(255), nullable=False)
-    input_query = Column(PickleType, nullable=False) ## blob object
+    input_query = Column(SafePickleType, nullable=False) ## blob object
     message_id = Column(Integer, nullable=True)
     message_code = Column(String(255), nullable=True)
     code_description = Column(String(255), nullable=True)

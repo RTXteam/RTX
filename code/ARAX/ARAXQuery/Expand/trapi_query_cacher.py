@@ -340,7 +340,15 @@ class KPQueryCacher:
 
             if not record:
                 return None, NO_CACHED_RESPONSE, time.time() - start_time, None
-                
+
+            # refresh_cache() only refreshes http entries, so expire the others (xCRG, PathFinder) by age instead
+            if not record.query_url.startswith('http'):
+                cached_at = datetime.strptime(record.first_request_datetime, '%Y-%m-%d %H:%M:%S')
+                age_hours = (datetime.now() - cached_at).total_seconds() / 3600
+                if age_hours > AGE_BEFORE_REFRESH_HOURS:
+                    eprint(f"Cached {record.kp_curie} entry is {age_hours:.1f} hours old; treating as a cache miss")
+                    return None, NO_CACHED_RESPONSE, time.time() - start_time, None
+
             # Found a record, update stats
             record.n_requests += 1
             record.last_request_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

@@ -7,12 +7,11 @@ SQLite interface for mapping nodes and edges from Translator KG JSONL files
 
 Tables:
   NODE_MAPPING_TABLE:
-    id, name, category (JSON list), equivalent_identifiers, description,
-    synonym, xref, chembl_natural_product, chembl_availability_type, chembl_black_box_warning
+    id, name, category (JSON list), extra_attributes (JSON dict of all
+    remaining properties discovered in the JSONL)
   EDGE_MAPPING_TABLE:
-    subject, predicate, object, id, category, qualifier, publications, sources,
-    resource_id (pipe-delimited), resource_role (pipe-delimited), knowledge_level,
-    agent_type, stage_qualifier, original_subject, original_object, extra_attributes (JSON)
+    subject, predicate, object, id, category, extra_attributes (JSON dict of
+    all remaining properties discovered in the JSONL)
 
 Author: Chunyu Ma
 """
@@ -23,22 +22,20 @@ import json
 import argparse
 import collections
 import sqlite3
-from typing import Optional, List
+from typing import Optional, List, Dict
 from tqdm import tqdm
 
 
 # Named tuples returned by get_node_info / get_edge_info
+# Only core fields are separate columns; all other node properties are stored
+# in a single extra_attributes JSON column, so the schema adapts automatically
+# when the upstream KG adds or removes node properties.
 NodeInfo = collections.namedtuple('NodeInfo', [
-    'id', 'name', 'category', 'equivalent_identifiers', 'description',
-    'synonym', 'xref', 'chembl_natural_product', 'chembl_availability_type',
-    'chembl_black_box_warning'
+    'id', 'name', 'category', 'extra_attributes'
 ])
 
 EdgeInfo = collections.namedtuple('EdgeInfo', [
-    'subject', 'predicate', 'object', 'id', 'category', 'qualifier',
-    'publications', 'sources', 'resource_id', 'resource_role',
-    'knowledge_level', 'agent_type', 'stage_qualifier',
-    'original_subject', 'original_object', 'extra_attributes'
+    'subject', 'predicate', 'object', 'id', 'category', 'extra_attributes'
 ])
 
 
@@ -98,13 +95,7 @@ class xDTDMappingDB:
                 id TEXT NOT NULL,
                 name TEXT,
                 category TEXT,
-                equivalent_identifiers TEXT,
-                description TEXT,
-                synonym TEXT,
-                xref TEXT,
-                chembl_natural_product TEXT,
-                chembl_availability_type TEXT,
-                chembl_black_box_warning TEXT
+                extra_attributes TEXT
             )
         """)
 
@@ -116,16 +107,6 @@ class xDTDMappingDB:
                 object TEXT NOT NULL,
                 id TEXT,
                 category TEXT,
-                qualifier TEXT,
-                publications TEXT,
-                sources TEXT,
-                resource_id TEXT,
-                resource_role TEXT,
-                knowledge_level TEXT,
-                agent_type TEXT,
-                stage_qualifier TEXT,
-                original_subject TEXT,
-                original_object TEXT,
                 extra_attributes TEXT
             )
         """)
@@ -138,8 +119,8 @@ class xDTDMappingDB:
         Uses WAL journal mode and disabled synchronous writes for bulk-load performance.
         """
         BATCH_SIZE = 50000
-        NODE_INSERT = "INSERT INTO NODE_MAPPING_TABLE VALUES (?,?,?,?,?,?,?,?,?,?)"
-        EDGE_INSERT = "INSERT INTO EDGE_MAPPING_TABLE VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+        NODE_INSERT = "INSERT INTO NODE_MAPPING_TABLE VALUES (?,?,?,?)"
+        EDGE_INSERT = "INSERT INTO EDGE_MAPPING_TABLE VALUES (?,?,?,?,?,?)"
 
         self.conn.execute("PRAGMA journal_mode = WAL")
         self.conn.execute("PRAGMA synchronous = OFF")
@@ -151,24 +132,28 @@ class xDTDMappingDB:
         self.conn.execute("PRAGMA synchronous = NORMAL")
         print("INFO: Table population completed", flush=True)
 
+    _NODE_CORE_KEYS = frozenset({'id', 'name', 'category'})
+
     def _insert_nodes(self, jsonl_path: str, insert_sql: str, batch_size: int):
-        """Parse nodes.jsonl and batch-insert rows."""
+        """Parse nodes.jsonl and batch-insert rows.
+
+        Core fields (id, name, category) become dedicated columns.  Every
+        other key found in the JSON line is collected into an
+        ``extra_attributes`` JSON column, so the schema automatically adapts
+        when upstream adds or removes node properties.  Lists, dicts, and
+        other non-scalar values are preserved natively in the JSON blob.
+        """
         batch: list = []
         count = 0
         with open(jsonl_path, 'r', encoding='utf-8') as f:
             for line in tqdm(f, desc="Inserting nodes"):
                 d = json.loads(line)
+                extra = {k: v for k, v in d.items() if k not in self._NODE_CORE_KEYS}
                 row = (
                     d['id'],
                     d.get('name'),
                     json.dumps(d['category']) if 'category' in d else None,
-                    json.dumps(d['equivalent_identifiers']) if 'equivalent_identifiers' in d else None,
-                    d.get('description'),
-                    json.dumps(d['synonym']) if 'synonym' in d else None,
-                    json.dumps(d['xref']) if 'xref' in d else None,
-                    str(d['chembl_natural_product']) if 'chembl_natural_product' in d else None,
-                    d.get('chembl_availability_type'),
-                    d.get('chembl_black_box_warning'),
+                    json.dumps(extra) if extra else None,
                 )
                 batch.append(row)
                 count += 1
@@ -181,45 +166,28 @@ class xDTDMappingDB:
             self.conn.commit()
         print(f"INFO: Inserted {count} rows into NODE_MAPPING_TABLE", flush=True)
 
-    _CORE_EDGE_KEYS = frozenset({
-        'subject', 'predicate', 'object', 'id', 'category', 'qualifier',
-        'publications', 'sources', 'knowledge_level', 'agent_type',
-        'stage_qualifier', 'original_subject', 'original_object',
-    })
+    _EDGE_CORE_KEYS = frozenset({'subject', 'predicate', 'object', 'id', 'category'})
 
     def _insert_edges(self, jsonl_path: str, insert_sql: str, batch_size: int):
         """Parse edges.jsonl and batch-insert rows.
 
-        Flattens the 'sources' array into pipe-delimited resource_id and resource_role strings
-        for efficient querying of primary knowledge sources.  Any top-level keys not in
-        _CORE_EDGE_KEYS are collected into an ``extra_attributes`` JSON column so that
-        qualifiers and other metadata survive the round-trip.
+        Core fields (subject, predicate, object, id, category) become dedicated
+        columns.  Every other key found in the JSON line is collected into an
+        ``extra_attributes`` JSON column, so the schema automatically adapts
+        when upstream adds or removes edge properties.
         """
         batch: list = []
         count = 0
         with open(jsonl_path, 'r', encoding='utf-8') as f:
             for line in tqdm(f, desc="Inserting edges"):
                 d = json.loads(line)
-                sources = d.get('sources', [])
-                resource_ids = '|'.join(s.get('resource_id', '') for s in sources)
-                resource_roles = '|'.join(s.get('resource_role', '') for s in sources)
-                extra = {k: v for k, v in d.items() if k not in self._CORE_EDGE_KEYS}
+                extra = {k: v for k, v in d.items() if k not in self._EDGE_CORE_KEYS}
                 row = (
                     d['subject'],
                     d['predicate'],
                     d['object'],
                     d.get('id'),
                     json.dumps(d['category']) if 'category' in d else None,
-                    d.get('qualifier'),
-                    json.dumps(d['publications']) if 'publications' in d else None,
-                    json.dumps(sources) if sources else None,
-                    resource_ids or None,
-                    resource_roles or None,
-                    d.get('knowledge_level'),
-                    d.get('agent_type'),
-                    d.get('stage_qualifier'),
-                    d.get('original_subject'),
-                    d.get('original_object'),
                     json.dumps(extra) if extra else None,
                 )
                 batch.append(row)
@@ -270,15 +238,13 @@ class xDTDMappingDB:
             return None
         # `category` is stored as a JSON-encoded list string by _insert_nodes;
         # decode it back to a list so callers (Node.categories expects a list)
-        # don't have to handle the encoding themselves. Other JSON-encoded
-        # fields (equivalent_identifiers/synonym/xref) currently have no live
-        # consumers; leaving them as-is to avoid scope creep (#2671).
+        # don't have to handle the encoding themselves.
         values = list(result)
         cat_idx = NodeInfo._fields.index('category')
         if values[cat_idx]:
             try:
                 values[cat_idx] = json.loads(values[cat_idx])
-            except json.JSONDecodeError:
+            except (json.JSONDecodeError, TypeError):
                 pass
         return NodeInfo._make(values)
 
@@ -309,14 +275,113 @@ class xDTDMappingDB:
         if predicate == 'SELF_LOOP_RELATION':
             return [EdgeInfo._make((
                 subject, predicate, object_id,
-                None, None, None, None, None, None, None, None, None, None, None, None, None
+                None, None, None
             ))]
 
         cursor.execute(
             "SELECT * FROM EDGE_MAPPING_TABLE WHERE subject = ? AND predicate = ? AND object = ?",
             (subject, predicate, object_id)
         )
-        return [EdgeInfo._make(record) for record in cursor.fetchall()]
+        return [self._make_edge_info(record) for record in cursor.fetchall()]
+
+    # ──────────────────────────────────────────────────────────────────────
+    #  Batch query methods (performance optimization for xDTD path lookups)
+    # ──────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _decode_category(raw_value):
+        """Decode a JSON-encoded category string back to a list."""
+        if raw_value is None:
+            return None
+        try:
+            return json.loads(raw_value)
+        except (json.JSONDecodeError, TypeError):
+            return raw_value
+
+    _EDGE_CAT_IDX = EdgeInfo._fields.index('category')
+
+    def _make_edge_info(self, row: tuple) -> EdgeInfo:
+        """Construct an EdgeInfo from a raw SQL row, decoding the category JSON."""
+        values = list(row)
+        values[self._EDGE_CAT_IDX] = self._decode_category(values[self._EDGE_CAT_IDX])
+        return EdgeInfo._make(values)
+
+    def get_nodes_info_batch(self, node_ids: List[str]) -> Dict[str, NodeInfo]:
+        """Look up multiple nodes by ID in a single query.
+
+        Args:
+            node_ids: List of node CURIEs to look up.
+        Returns:
+            Dict mapping node_id -> NodeInfo. Missing IDs are omitted.
+        """
+        if not node_ids:
+            return {}
+
+        unique_ids = list(set(node_ids))
+        result_map: Dict[str, NodeInfo] = {}
+        cat_idx = NodeInfo._fields.index('category')
+
+        CHUNK = 500
+        cursor = self.conn.cursor()
+        for start in range(0, len(unique_ids), CHUNK):
+            chunk = unique_ids[start:start + CHUNK]
+            placeholders = ','.join('?' * len(chunk))
+            cursor.execute(
+                f"SELECT * FROM NODE_MAPPING_TABLE WHERE id IN ({placeholders})", chunk
+            )
+            for row in cursor.fetchall():
+                values = list(row)
+                values[cat_idx] = self._decode_category(values[cat_idx])
+                info = NodeInfo._make(values)
+                result_map[info.id] = info
+
+        return result_map
+
+    def get_edges_info_batch(self, triples: List[tuple]) -> Dict[tuple, List[EdgeInfo]]:
+        """Look up multiple edges by (subject, predicate, object) triples in a single query.
+
+        Args:
+            triples: List of (subject, predicate, object) tuples.
+        Returns:
+            Dict mapping (subject, predicate, object) -> list of EdgeInfo.
+            Missing triples map to an empty list.
+        """
+        if not triples:
+            return {}
+
+        unique_triples = list(set(triples))
+        result_map: Dict[tuple, List[EdgeInfo]] = {t: [] for t in unique_triples}
+
+        db_triples = []
+        for t in unique_triples:
+            if t[1] == 'SELF_LOOP_RELATION':
+                result_map[t] = [EdgeInfo._make((
+                    t[0], t[1], t[2],
+                    None, None, None
+                ))]
+            else:
+                db_triples.append(t)
+
+        if not db_triples:
+            return result_map
+
+        CHUNK = 200
+        cursor = self.conn.cursor()
+        for start in range(0, len(db_triples), CHUNK):
+            chunk = db_triples[start:start + CHUNK]
+            parts = []
+            params = []
+            for s, p, o in chunk:
+                parts.append("SELECT * FROM EDGE_MAPPING_TABLE WHERE subject = ? AND predicate = ? AND object = ?")
+                params.extend([s, p, o])
+            sql = " UNION ALL ".join(parts)
+            cursor.execute(sql, params)
+            for row in cursor.fetchall():
+                edge = self._make_edge_info(row)
+                key = (edge.subject, edge.predicate, edge.object)
+                result_map[key].append(edge)
+
+        return result_map
 
 
 # ══════════════════════════════════════════════════════════════════════════
