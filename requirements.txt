@@ -30,7 +30,7 @@ pickledb==0.9.2
 pytest==8.1.1
 joblib==1.2.0
 PyYAML==6.0.2  # UPGRADED: 6.0 doesn't have pre-built wheels for Python 3.12, 6.0.2 does
-ujson==5.4.0
+ujson==5.13.0
 # asyncio==3.4.3 # built into Python 3.12
 aiohttp==3.9.4
 boto3==1.40.16  # UPGRADED: 1.24.59 doesn't support urllib3>=2.5.0 required by reasoner-validator 5.0.0
